@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   Settings2Icon,
   SettingsIcon,
+  LogOutIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -22,6 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
+import { useAuth } from "@/extensions/hooks/useAuth";
 
 import { SettingsDialog } from "./settings";
 
@@ -53,6 +55,7 @@ export function WorkspaceNavMenu() {
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
+  const { logout } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -93,6 +96,11 @@ export function WorkspaceNavMenu() {
                     {t.common.settings}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOutIcon />
+                  {t.common.logout}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

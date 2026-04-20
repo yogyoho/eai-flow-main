@@ -36,6 +36,13 @@ type SendMessageOptions = {
   additionalKwargs?: Record<string, unknown>;
 };
 
+function getUserId(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("user_id");
+  }
+  return null;
+}
+
 function normalizeStoredRunId(runId: string | null): string | null {
   if (!runId) {
     return null;
@@ -109,6 +116,55 @@ function getRunMetadataStorage(): {
       window.sessionStorage.removeItem(key);
     },
   };
+}
+
+function isThreadNotFoundError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const errorObj = error as Record<string, unknown>;
+
+  const status =
+    typeof errorObj.status === "number"
+      ? errorObj.status
+      : typeof errorObj.status === "string"
+        ? Number.parseInt(errorObj.status, 10)
+        : NaN;
+  if (status === 404) {
+    return true;
+  }
+
+  const message = typeof errorObj.message === "string" ? errorObj.message : "";
+  if (
+    message.toLowerCase().includes("thread") &&
+    message.toLowerCase().includes("not found")
+  ) {
+    return true;
+  }
+
+  const nestedError = errorObj.error;
+  if (typeof nestedError === "string") {
+    const lower = nestedError.toLowerCase();
+    if (
+      (lower.includes("thread") && lower.includes("not found")) ||
+      lower.includes("could not find thread")
+    ) {
+      return true;
+    }
+  }
+  if (typeof nestedError === "object" && nestedError !== null) {
+    const nestedMsg = (nestedError as Record<string, unknown>).message;
+    if (
+      typeof nestedMsg === "string" &&
+      nestedMsg.toLowerCase().includes("thread") &&
+      nestedMsg.toLowerCase().includes("not found")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function getStreamErrorMessage(error: unknown): string {
@@ -215,7 +271,19 @@ export function useThreadStream({
       if (context.agent_name && !isMock) {
         void getAPIClient()
           .threads.update(meta.thread_id, {
-            metadata: { agent_name: context.agent_name },
+            metadata: { 
+              agent_name: context.agent_name,
+              user_id: getUserId(),
+            },
+          })
+          .catch(() => ({}));
+      } else if (!isMock) {
+        // Also update with user_id for non-agent chats
+        void getAPIClient()
+          .threads.update(meta.thread_id, {
+            metadata: { 
+              user_id: getUserId(),
+            },
           })
           .catch(() => ({}));
       }
@@ -288,6 +356,11 @@ export function useThreadStream({
     },
     onError(error) {
       setOptimisticMessages([]);
+      if (isThreadNotFoundError(error)) {
+        toast.error("Thread not found. Redirecting to a new chat...");
+        window.location.href = "/workspace/chats/new";
+        return;
+      }
       toast.error(getStreamErrorMessage(error));
     },
     onFinish(state) {
@@ -539,18 +612,29 @@ export function useThreads(
   },
 ) {
   const apiClient = getAPIClient();
+  const userId = getUserId();
+
+  // Build metadata filter for user isolation
+  const searchParams = { ...params };
+  if (userId) {
+    searchParams.metadata = {
+      ...(searchParams.metadata || {}),
+      user_id: userId,
+    };
+  }
+
   return useQuery<AgentThread[]>({
-    queryKey: ["threads", "search", params],
+    queryKey: ["threads", "search", searchParams, userId],
     queryFn: async () => {
-      const maxResults = params.limit;
-      const initialOffset = params.offset ?? 0;
+      const maxResults = searchParams.limit;
+      const initialOffset = searchParams.offset ?? 0;
       const DEFAULT_PAGE_SIZE = 50;
 
       // Preserve prior semantics: if a non-positive limit is explicitly provided,
       // delegate to a single search call with the original parameters.
       if (maxResults !== undefined && maxResults <= 0) {
         const response =
-          await apiClient.threads.search<AgentThreadState>(params);
+          await apiClient.threads.search<AgentThreadState>(searchParams);
         return response as AgentThread[];
       }
 
@@ -577,7 +661,7 @@ export function useThreads(
         }
 
         const response = (await apiClient.threads.search<AgentThreadState>({
-          ...params,
+          ...searchParams,
           limit: currentLimit,
           offset,
         })) as AgentThread[];

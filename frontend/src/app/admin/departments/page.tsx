@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Plus,
+  RefreshCw,
   Pencil,
   Trash2,
   ChevronRight,
@@ -25,7 +26,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { deptApi, userApi } from "@/extensions/api";
 import type { Department, CreateDepartmentRequest, UpdateDepartmentRequest, User } from "@/extensions/types";
 import { cn } from "@/lib/utils";
@@ -41,10 +41,10 @@ function flattenDepts(depts: Department[], level = 0): { dept: Department; level
 }
 
 function findParentName(tree: Department[], parentId: string | undefined): string {
-  if (!parentId) return "-";
+  if (!parentId) return "—";
   const flat = flattenDepts(tree);
   const p = flat.find((x) => x.dept.id === parentId);
-  return p?.dept.name ?? "-";
+  return p?.dept.name ?? "—";
 }
 
 function collectDeptIds(dept: Department): string[] {
@@ -80,7 +80,7 @@ function DeptTreeNode({ dept, level, selectedId, expandedIds, searchKeyword, onT
       <div
         className={cn(
           "flex items-center gap-1 py-2 px-3 rounded-lg cursor-pointer transition-colors text-sm",
-          isSelected ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted"
+          isSelected ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-accent"
         )}
         style={{ paddingLeft: `${level * 1.5 + 0.75}rem` }}
         onClick={() => onSelect(dept)}
@@ -171,7 +171,9 @@ export default function AdminDepartmentsPage() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const flatList = useMemo(() => flattenDepts(departments), [departments]);
 
@@ -183,7 +185,7 @@ export default function AdminDepartmentsPage() {
       setCreateFormData({ name: "", description: "", parent_id: undefined, leader_id: undefined, sort_order: 0 });
       loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Create failed");
+      alert(err instanceof Error ? err.message : "创建失败");
     }
   };
 
@@ -194,18 +196,18 @@ export default function AdminDepartmentsPage() {
       setIsEditModalOpen(false);
       loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Update failed");
+      alert(err instanceof Error ? err.message : "更新失败");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this department?")) return;
+    if (!confirm("确定要删除该部门吗？")) return;
     try {
       await deptApi.delete(id);
       if (selectedDept?.id === id) setSelectedDept(null);
       loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Delete failed");
+      alert(err instanceof Error ? err.message : "删除失败");
     }
   };
 
@@ -227,7 +229,16 @@ export default function AdminDepartmentsPage() {
     return users.filter((u) => u.dept_id === selectedDept.id);
   }, [selectedDept, users, includeSubDepts]);
 
-  const parentName = selectedDept ? findParentName(departments, selectedDept.parent_id) : "-";
+  const parentName = selectedDept ? findParentName(departments, selectedDept.parent_id) : "—";
+
+  const formatDate = (s: string) => {
+    try {
+      const d = new Date(s);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    } catch {
+      return s;
+    }
+  };
 
   const openEditModal = (dept: Department) => {
     setEditFormData({
@@ -244,7 +255,7 @@ export default function AdminDepartmentsPage() {
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">加载中...</div>
       </main>
     );
   }
@@ -252,45 +263,43 @@ export default function AdminDepartmentsPage() {
   return (
     <main className="h-full flex overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
       {/* Left Pane: Department Tree */}
-      <div className="w-80 border-r border-border bg-muted/50 flex flex-col shrink-0">
-        <div className="p-4 border-b border-border bg-background">
+      <div className="w-80 border-r border-border bg-muted/30 flex flex-col shrink-0">
+        <div className="p-4 border-b border-border bg-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-foreground">Organization</h2>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="text-primary"
+            <h2 className="font-semibold text-foreground">组织架构</h2>
+            <button
               onClick={() => {
-                setCreateFormData({
-                  name: "",
-                  parent_id: selectedDept?.id,
-                  leader_id: undefined,
-                  sort_order: 0,
-                  code: undefined,
-                  status: "active",
-                });
-                setIsCreateModalOpen(true);
+              setCreateFormData({
+                name: "",
+                parent_id: selectedDept?.id,
+                leader_id: undefined,
+                sort_order: 0,
+                code: undefined,
+                status: "active",
+              });
+              setIsCreateModalOpen(true);
               }}
-              title="New Sub-department"
+              className="p-1.5 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+              title="新建子部门"
             >
               <Plus className="w-4 h-4" />
-            </Button>
+            </button>
           </div>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <input
               type="text"
-              placeholder="Search departments..."
+              placeholder="搜索部门..."
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-muted border-transparent focus:bg-background focus:border-primary focus:ring-2 focus:ring-ring/50 rounded-lg text-sm transition-all outline-none"
+              className="w-full pl-9 pr-4 py-2 bg-secondary border-transparent focus:bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-lg text-sm transition-all outline-none"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
           {departments.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-4 text-center">No departments</div>
+            <div className="text-sm text-muted-foreground py-4 text-center">暂无部门</div>
           ) : searchKeyword ? (
             <div className="space-y-1">
               {flattenDepts(departments)
@@ -305,7 +314,7 @@ export default function AdminDepartmentsPage() {
                       "w-full text-left flex items-center py-2 px-3 rounded-lg transition-colors text-sm",
                       selectedDept?.id === dept.id
                         ? "bg-primary/10 text-primary font-medium"
-                        : "text-foreground hover:bg-muted"
+                        : "text-foreground hover:bg-accent"
                     )}
                   >
                     <Building2
@@ -327,7 +336,7 @@ export default function AdminDepartmentsPage() {
               {flattenDepts(departments).filter(({ dept }) =>
                 dept.name.toLowerCase().includes(searchKeyword.toLowerCase())
               ).length === 0 && (
-                <div className="text-sm text-muted-foreground py-4 text-center">No matching departments</div>
+                <div className="text-sm text-muted-foreground py-4 text-center">未找到匹配部门</div>
               )}
             </div>
           ) : (
@@ -351,16 +360,17 @@ export default function AdminDepartmentsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedDept ? (
           <>
+            {/* Header */}
             <div className="px-8 py-6 border-b border-border shrink-0">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <Building2 className="w-4 h-4" />
-                    <span>Department Details</span>
+                    <span>部门详情</span>
                   </div>
                   <h1 className="text-2xl font-bold text-foreground">{selectedDept.name}</h1>
                   <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-                    {selectedDept.description || "No description"}
+                    {selectedDept.description || "暂无描述信息"}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -368,72 +378,72 @@ export default function AdminDepartmentsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => openEditModal(selectedDept)}
-                    className="text-foreground border-border hover:text-foreground hover:bg-muted"
                   >
                     <Pencil className="w-4 h-4 mr-1.5" />
-                    Edit
+                    编辑
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDelete(selectedDept.id)}
-                    className="text-destructive border-border hover:bg-destructive/10 hover:text-destructive"
+                    className="text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-4 h-4 mr-1.5" />
-                    Delete
+                    删除
                   </Button>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-6 mt-8">
-                <div className="bg-zinc-50 rounded-xl p-4 border border-border">
+                <div className="bg-muted/50 rounded-xl p-4 border border-border">
                   <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" /> Parent Department
+                    <Building2 className="w-4 h-4" /> 上级部门
                   </div>
                   <div className="font-medium text-foreground">{parentName}</div>
                 </div>
-                <div className="bg-zinc-50 rounded-xl p-4 border border-border">
+                <div className="bg-muted/50 rounded-xl p-4 border border-border">
                   <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <UserCircle className="w-4 h-4" /> Department Head
+                    <UserCircle className="w-4 h-4" /> 部门负责人
                   </div>
                   <div className="font-medium text-foreground">
                     {selectedDept.leader_name ||
                       (selectedDept.leader_id
                         ? users.find((u) => u.id === selectedDept.leader_id)?.username
-                        : "Not set")}
+                        : "未设置")}
                   </div>
                 </div>
-                <div className="bg-zinc-50 rounded-xl p-4 border border-border">
+                <div className="bg-muted/50 rounded-xl p-4 border border-border">
                   <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Members
+                    <Users className="w-4 h-4" /> 成员数量
                   </div>
-                  <div className="font-medium text-foreground">{memberUsers.length} people</div>
+                  <div className="font-medium text-foreground">{memberUsers.length} 人</div>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 bg-muted/30">
-              <div className="bg-background rounded-2xl border border-border shadow-sm p-8 text-center">
+            {/* Members */}
+            <div className="flex-1 overflow-y-auto p-8 bg-muted/20">
+              <div className="bg-card rounded-2xl border border-border shadow-sm p-8 text-center">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
                   <Users className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">Department Members</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">部门成员管理</h3>
                 <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                  This department has <span className="font-semibold text-foreground">{memberUsers.length}</span> members. Click below to view the member list or go to User Management to adjust members.
+                  当前部门共有 <span className="font-semibold text-foreground">{memberUsers.length}</span> 名成员。点击下方按钮查看成员列表，或前往用户管理页面调整成员归属。
                 </p>
                 <div className="flex items-center justify-center gap-3">
-                  <Button
+                  <button
                     onClick={() => setIsMembersModalOpen(true)}
-                    className="gap-2"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm"
                   >
                     <Users className="w-4 h-4" />
-                    View Members
-                  </Button>
+                    查看成员
+                  </button>
                   <a
                     href="/admin/users"
                     className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors shadow-sm"
                   >
-                    Go to User Management
+                    前往用户管理
                   </a>
                 </div>
               </div>
@@ -443,7 +453,7 @@ export default function AdminDepartmentsPage() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Select a department to view details</p>
+              <p>请选择一个部门查看详情</p>
             </div>
           </div>
         )}
@@ -467,22 +477,22 @@ export default function AdminDepartmentsPage() {
               className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Create Department</h3>
+                <h3 className="text-lg font-semibold text-foreground">新建部门</h3>
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleCreate} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Parent Department</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">上级部门</label>
                   <AdminSelect
                     value={createFormData.parent_id || ""}
                     onChange={(val) => setCreateFormData({ ...createFormData, parent_id: val || undefined })}
                     options={[
-                      { value: "", label: "None (Top-level)" },
+                      { value: "", label: "无 (顶级部门)" },
                       ...flatList.map(({ dept, level }) => ({
                         value: dept.id,
                         label: "—".repeat(level) + dept.name,
@@ -492,37 +502,38 @@ export default function AdminDepartmentsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Name <span className="text-destructive">*</span>
+                    部门名称 <span className="text-destructive">*</span>
                   </label>
                   <Input
-                    placeholder="Department name"
+                    placeholder="部门名称"
                     value={createFormData.name}
                     onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Description</label>
-                  <Textarea
+                  <label className="block text-sm font-medium text-foreground mb-1">部门描述</label>
+                  <textarea
                     rows={3}
-                    placeholder="Department description (optional)"
+                    placeholder="请输入部门描述（选填）"
                     value={createFormData.description ?? ""}
                     onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Department Head</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">部门负责人</label>
                   <AdminSelect
                     value={createFormData.leader_id || ""}
                     onChange={(val) => setCreateFormData({ ...createFormData, leader_id: val || undefined })}
                     options={[
-                      { value: "", label: "Not set" },
+                      { value: "", label: "未设置" },
                       ...users.map((u) => ({ value: u.id, label: u.username })),
                     ]}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Sort Order</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">排序</label>
                   <Input
                     type="number"
                     value={createFormData.sort_order}
@@ -531,21 +542,21 @@ export default function AdminDepartmentsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Code</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">部门编码</label>
                     <Input
-                      placeholder="e.g. DEPT001"
+                      placeholder="如：DEPT001"
                       value={createFormData.code ?? ""}
                       onChange={(e) => setCreateFormData({ ...createFormData, code: e.target.value || undefined })}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Status</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">状态</label>
                     <AdminSelect
                       value={createFormData.status || "active"}
                       onChange={(val) => setCreateFormData({ ...createFormData, status: val })}
                       options={[
-                        { value: "active", label: "Active" },
-                        { value: "inactive", label: "Inactive" },
+                        { value: "active", label: "正常" },
+                        { value: "inactive", label: "停用" },
                       ]}
                     />
                   </div>
@@ -555,14 +566,13 @@ export default function AdminDepartmentsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="border-input text-foreground hover:bg-muted"
                   >
-                    Cancel
+                    取消
                   </Button>
                   <Button
                     type="submit"
                   >
-                    Create
+                    创建
                   </Button>
                 </DialogFooter>
               </form>
@@ -590,8 +600,8 @@ export default function AdminDepartmentsPage() {
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Department Members</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">{selectedDept?.name} · {memberUsers.length} members</p>
+                  <h3 className="text-lg font-semibold text-foreground">部门成员</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{selectedDept?.name} · 共 {memberUsers.length} 人</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer mr-2">
@@ -599,13 +609,13 @@ export default function AdminDepartmentsPage() {
                       type="checkbox"
                       checked={includeSubDepts}
                       onChange={(e) => setIncludeSubDepts(e.target.checked)}
-                      className="w-4 h-4 rounded border-input focus:ring-2 focus:ring-ring/50 focus:ring-offset-0"
+                      className="w-4 h-4 rounded border-input focus:ring-2 focus:ring-primary/30 focus:ring-offset-0"
                     />
-                    Include sub-depts
+                    含子部门
                   </label>
                   <button
                     onClick={() => setIsMembersModalOpen(false)}
-                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -614,15 +624,15 @@ export default function AdminDepartmentsPage() {
               <div className="flex-1 overflow-y-auto p-6">
                 {memberUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Users className="w-12 h-12 mb-3 text-muted-foreground/50" />
-                    <p className="text-sm">No members</p>
+                    <Users className="w-12 h-12 mb-3 opacity-40" />
+                    <p className="text-sm">暂无成员</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     {memberUsers.map((u) => (
                       <div
                         key={u.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors"
                       >
                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
                           {(u.full_name || u.username).charAt(0).toUpperCase()}
@@ -635,9 +645,9 @@ export default function AdminDepartmentsPage() {
                         </div>
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                          u.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+                          u.status === "active" ? "bg-success/10 text-success" : "bg-secondary text-muted-foreground"
                         )}>
-                          {u.status === "active" ? "Active" : "Inactive"}
+                          {u.status === "active" ? "正常" : "停用"}
                         </span>
                       </div>
                     ))}
@@ -647,16 +657,16 @@ export default function AdminDepartmentsPage() {
               <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between shrink-0">
                 <a
                   href="/admin/users"
-                  className="text-sm text-primary hover:text-primary font-medium transition-colors"
+                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                 >
-                  Go to User Management
+                  前往用户管理 →
                 </a>
-                <Button
-                  variant="outline"
+                <button
                   onClick={() => setIsMembersModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-accent transition-colors"
                 >
-                  Close
-                </Button>
+                  关闭
+                </button>
               </div>
             </motion.div>
           </div>
@@ -681,45 +691,46 @@ export default function AdminDepartmentsPage() {
               className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">Edit Department</h3>
+                <h3 className="text-lg font-semibold text-foreground">编辑部门</h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Name</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">部门名称</label>
                   <Input
                     value={editFormData.name}
                     onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                    placeholder="Department name"
+                    placeholder="部门名称"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Description</label>
-                  <Textarea
+                  <label className="block text-sm font-medium text-foreground mb-1">部门描述</label>
+                  <textarea
                     rows={3}
-                    placeholder="Department description (optional)"
+                    placeholder="请输入部门描述（选填）"
                     value={editFormData.description ?? ""}
                     onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Department Head</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">部门负责人</label>
                   <AdminSelect
                     value={editFormData.leader_id || ""}
                     onChange={(val) => setEditFormData({ ...editFormData, leader_id: val || undefined })}
                     options={[
-                      { value: "", label: "Not set" },
+                      { value: "", label: "未设置" },
                       ...users.map((u) => ({ value: u.id, label: u.username })),
                     ]}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Sort Order</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">排序</label>
                   <Input
                     type="number"
                     value={editFormData.sort_order}
@@ -728,21 +739,21 @@ export default function AdminDepartmentsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Code</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">部门编码</label>
                     <Input
                       value={editFormData.code ?? ""}
                       onChange={(e) => setEditFormData({ ...editFormData, code: e.target.value || undefined })}
-                      placeholder="e.g. DEPT001"
+                      placeholder="如：DEPT001"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Status</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">状态</label>
                     <AdminSelect
                       value={editFormData.status || "active"}
                       onChange={(val) => setEditFormData({ ...editFormData, status: val })}
                       options={[
-                        { value: "active", label: "Active" },
-                        { value: "inactive", label: "Inactive" },
+                        { value: "active", label: "正常" },
+                        { value: "inactive", label: "停用" },
                       ]}
                     />
                   </div>
@@ -752,14 +763,13 @@ export default function AdminDepartmentsPage() {
                 <Button
                   variant="outline"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="border-input text-foreground hover:bg-muted"
                 >
-                  Cancel
+                  取消
                 </Button>
                 <Button
                   onClick={handleUpdate}
                 >
-                  Save
+                  保存
                 </Button>
               </div>
             </motion.div>

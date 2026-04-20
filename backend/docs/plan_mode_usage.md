@@ -1,6 +1,6 @@
 # Plan Mode with TodoList Middleware
 
-This document describes how to enable and use the Plan Mode feature with TodoList middleware in DeerFlow 2.0.
+This document describes how to enable and use the Plan Mode feature with TodoList middleware in EAIFlow.
 
 ## Overview
 

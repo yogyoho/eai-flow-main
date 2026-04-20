@@ -6,6 +6,13 @@ import type {
   UserMemory,
 } from "./types";
 
+function getUserId(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("user_id");
+  }
+  return null;
+}
+
 async function readMemoryResponse(
   response: Response,
   fallbackMessage: string,
@@ -79,35 +86,48 @@ async function readMemoryResponse(
   return response.json() as Promise<UserMemory>;
 }
 
+function buildUrlWithUserId(url: string): string {
+  const userId = getUserId();
+  if (userId) {
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}user_id=${encodeURIComponent(userId)}`;
+  }
+  return url;
+}
+
 export async function loadMemory(): Promise<UserMemory> {
-  const response = await fetch(`${getBackendBaseURL()}/api/memory`);
+  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/memory`);
+  const response = await fetch(url);
   return readMemoryResponse(response, "Failed to fetch memory");
 }
 
 export async function clearMemory(): Promise<UserMemory> {
-  const response = await fetch(`${getBackendBaseURL()}/api/memory`, {
+  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/memory`);
+  const response = await fetch(url, {
     method: "DELETE",
   });
   return readMemoryResponse(response, "Failed to clear memory");
 }
 
 export async function deleteMemoryFact(factId: string): Promise<UserMemory> {
-  const response = await fetch(
+  const url = buildUrlWithUserId(
     `${getBackendBaseURL()}/api/memory/facts/${encodeURIComponent(factId)}`,
-    {
-      method: "DELETE",
-    },
   );
+  const response = await fetch(url, {
+    method: "DELETE",
+  });
   return readMemoryResponse(response, "Failed to delete memory fact");
 }
 
 export async function exportMemory(): Promise<UserMemory> {
-  const response = await fetch(`${getBackendBaseURL()}/api/memory/export`);
+  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/memory/export`);
+  const response = await fetch(url);
   return readMemoryResponse(response, "Failed to export memory");
 }
 
 export async function importMemory(memory: UserMemory): Promise<UserMemory> {
-  const response = await fetch(`${getBackendBaseURL()}/api/memory/import`, {
+  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/memory/import`);
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -120,7 +140,8 @@ export async function importMemory(memory: UserMemory): Promise<UserMemory> {
 export async function createMemoryFact(
   input: MemoryFactInput,
 ): Promise<UserMemory> {
-  const response = await fetch(`${getBackendBaseURL()}/api/memory/facts`, {
+  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/memory/facts`);
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -134,15 +155,15 @@ export async function updateMemoryFact(
   factId: string,
   input: MemoryFactPatchInput,
 ): Promise<UserMemory> {
-  const response = await fetch(
+  const url = buildUrlWithUserId(
     `${getBackendBaseURL()}/api/memory/facts/${encodeURIComponent(factId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(input),
-    },
   );
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
   return readMemoryResponse(response, "Failed to update memory fact");
 }

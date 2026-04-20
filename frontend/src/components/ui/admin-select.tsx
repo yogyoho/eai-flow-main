@@ -24,6 +24,7 @@ interface AdminSelectProps {
 function AdminSelect({
   value,
   onChange,
+  onValueChange,
   options,
   placeholder = "Select...",
   className,
@@ -33,10 +34,10 @@ function AdminSelect({
       <SelectPrimitive.Root value={value} onValueChange={(v) => { onChange?.(v); onValueChange?.(v); }} disabled={disabled}>
       <SelectPrimitive.Trigger
         className={cn(
-          "flex items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm transition-colors",
+          "flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring",
           "hover:border-input",
-          disabled && "opacity-50 cursor-not-allowed bg-zinc-50",
+          disabled && "opacity-50 cursor-not-allowed bg-muted",
           className
         )}
       >

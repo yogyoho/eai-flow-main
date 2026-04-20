@@ -1,0 +1,17 @@
+## Summary
+
+- 新增用户认证：JWT 登录/注册/中间件
+- 新增系统管理：角色、用户、部门管理 API + 前端页面
+- 新增知识库：文档管理、Web Scraper、Knowledge Factory
+- 新增知识工厂：规则引擎、种子数据、合规检查、模板提取
+- 新增文档空间：Tiptap 编辑器、滚动导航
+- 新增法律库：法规 CRUD、标签管理
+- 新增用户部门关联管理
+- 本地开发端口重映射（2026→4026 等）
+- nginx 配置支持本地开发模式
+- playwright e2e 测试配置更新
+
+## Test plan
+
+- [x] 396 backend tests passed（test_client_e2e, test_channels 及其余测试）
+- [ ] 需在目标仓库 CI 环境中验证

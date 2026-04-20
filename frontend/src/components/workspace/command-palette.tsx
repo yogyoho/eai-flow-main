@@ -36,6 +36,7 @@ export function CommandPalette() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const handleNewChat = useCallback(() => {
     router.push("/workspace/chats/new");
@@ -66,9 +67,15 @@ export function CommandPalette() {
 
   useEffect(() => {
     setIsMac(navigator.userAgent.includes("Mac"));
+    setIsMounted(true);
   }, []);
   const metaKey = isMac ? "⌘" : "Ctrl+";
   const shiftKey = isMac ? "⇧" : "Shift+";
+
+  // Prevent hydration mismatch by only rendering dialogs after mount
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <>

@@ -48,7 +48,7 @@ function KnowledgeFactoryLayoutContent({ children }: { children: React.ReactNode
     <ShellLayout>
       <div className="flex flex-col h-full bg-muted">
         {/* 顶部导航栏 — 与 admin/layout.tsx 一致 */}
-        <header className="bg-background border-b border-border h-16 flex items-center px-6 shrink-0">
+        <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
           <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
             {NAV_ITEMS.map(({ id, label }) => {
@@ -73,7 +73,7 @@ function KnowledgeFactoryLayoutContent({ children }: { children: React.ReactNode
         </header>
 
         {/* 主内容区 */}
-        <div className="flex-1 overflow-hidden min-w-0 min-h-0">{children}</div>
+        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-white">{children}</div>
       </div>
     </ShellLayout>
   );
@@ -83,10 +83,10 @@ function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNod
   return (
     <ShellLayout>
       <div className="flex flex-col h-full bg-muted">
-        <header className="bg-background border-b border-border h-16 flex items-center px-6 shrink-0">
+        <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
         </header>
-        <div className="flex-1 overflow-hidden min-w-0 min-h-0">{children}</div>
+        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-white">{children}</div>
       </div>
     </ShellLayout>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -18,15 +19,13 @@ import {
   Lock,
   Phone,
   Hash,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
 import { userApi, roleApi, deptApi } from "@/extensions/api";
 import type {
   User,
@@ -60,6 +59,7 @@ export default function AdminUsersPage() {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [hireDatePopoverOpen, setHireDatePopoverOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -194,17 +194,17 @@ export default function AdminUsersPage() {
       setIsModalOpen(false);
       void loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Operation failed");
+      alert(err instanceof Error ? err.message : "操作失败");
     }
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    if (!confirm("确定要删除该用户吗？此操作不可恢复。")) return;
     try {
       await userApi.delete(id);
       void loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Delete failed");
+      alert(err instanceof Error ? err.message : "删除失败");
     }
   };
 
@@ -214,7 +214,7 @@ export default function AdminUsersPage() {
       await userApi.update(user.id, { status: newStatus });
       void loadData();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Update status failed");
+      alert(err instanceof Error ? err.message : "更新状态失败");
     }
   };
 
@@ -228,11 +228,11 @@ export default function AdminUsersPage() {
     if (!passwordUser || !newPassword) return;
     try {
       await userApi.resetPassword(passwordUser.id, newPassword);
-      alert("Password reset successfully");
+      alert("密码重置成功");
       setShowPasswordDialog(false);
       setPasswordUser(null);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Password reset failed");
+      alert(err instanceof Error ? err.message : "重置密码失败");
     }
   };
 
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
     return (
       <main className="h-full flex flex-col overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-muted-foreground">Loading...</div>
+          <div className="text-muted-foreground">加载中...</div>
         </div>
       </main>
     );
@@ -252,23 +252,26 @@ export default function AdminUsersPage() {
       <div className="px-8 py-6 border-b border-border shrink-0">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage all users, departments and roles.</p>
+            <h1 className="text-2xl font-bold text-foreground">用户管理</h1>
+            <p className="text-muted-foreground mt-1 text-sm">管理企业内所有用户的账号、部门归属及角色权限。</p>
           </div>
-          <Button onClick={() => handleOpenModal()}>
-            <Plus className="w-4 h-4" /> Add User
-          </Button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> 添加用户
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="搜索姓名或邮箱..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4"
+              className="w-full pl-9 pr-4 py-2 bg-muted border border-input rounded-lg focus:bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm transition-all outline-none"
             />
           </div>
 
@@ -278,7 +281,7 @@ export default function AdminUsersPage() {
               value={filterDept}
               onChange={setFilterDept}
               options={[
-                { value: "all", label: "All Depts" },
+                { value: "all", label: "所有部门" },
                 ...flatDepts.map((d) => ({ value: d.id, label: d.name })),
               ]}
               className="w-36"
@@ -288,7 +291,7 @@ export default function AdminUsersPage() {
               value={filterRole}
               onChange={setFilterRole}
               options={[
-                { value: "all", label: "All Roles" },
+                { value: "all", label: "所有角色" },
                 ...roles.map((r) => ({ value: r.id, label: r.name })),
               ]}
               className="w-36"
@@ -298,9 +301,9 @@ export default function AdminUsersPage() {
               value={filterStatus}
               onChange={(val) => setFilterStatus(val as "all" | "active" | "inactive")}
               options={[
-                { value: "all", label: "All Status" },
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
+                { value: "all", label: "所有状态" },
+                { value: "active", label: "正常" },
+                { value: "inactive", label: "停用" },
               ]}
               className="w-32"
             />
@@ -314,12 +317,12 @@ export default function AdminUsersPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">User Info</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last Login</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Actions</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">用户信息</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">部门</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">角色</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">状态</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">最后登录</th>
+                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -374,7 +377,7 @@ export default function AdminUsersPage() {
                         )}
                       >
                         <span className={cn("w-1.5 h-1.5 rounded-full", user.status === "active" ? "bg-success" : "bg-muted-foreground")} />
-                        {user.status === "active" ? "Active" : "Inactive"}
+                        {user.status === "active" ? "正常" : "已停用"}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-muted-foreground">
@@ -384,41 +387,34 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <button
                           onClick={() => toggleUserStatus(user)}
-                          title={user.status === "active" ? "Deactivate" : "Activate"}
+                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                          title={user.status === "active" ? "停用账号" : "启用账号"}
                         >
                           {user.status === "active" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        </button>
+                        <button
                           onClick={() => handleOpenModal(user)}
-                          title="Edit"
-                          className="hover:text-primary hover:bg-primary/10"
+                          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                          title="编辑用户"
                         >
                           <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        </button>
+                        <button
                           onClick={() => openPasswordDialog(user)}
-                          title="Reset Password"
-                          className="hover:text-warning hover:bg-warning/10"
+                          className="p-1.5 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-colors"
+                          title="重置密码"
                         >
                           <Lock className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        </button>
+                        <button
                           onClick={() => handleDeleteUser(user.id)}
-                          title="Delete"
-                          className="hover:text-destructive hover:bg-destructive/10"
+                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                          title="删除用户"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -428,7 +424,7 @@ export default function AdminUsersPage() {
                   <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center">
                       <UserCircle className="w-12 h-12 text-muted-foreground mb-3" />
-                      <p>No matching users found</p>
+                      <p>没有找到匹配的用户</p>
                     </div>
                   </td>
                 </tr>
@@ -457,47 +453,46 @@ export default function AdminUsersPage() {
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">
-                  {editingUser ? "Edit User" : "Add User"}
+                  {editingUser ? "编辑用户" : "添加用户"}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => setIsModalOpen(false)}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
-                </Button>
+                </button>
               </div>
 
               <div className="p-6 space-y-5">
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
-                      Username <span className="text-destructive">*</span>
+                      登录账号 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
                       <UserCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="text"
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         disabled={!!editingUser}
-                        className="pl-9"
-                        placeholder="e.g. zhangsan"
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-muted disabled:text-muted-foreground"
+                        placeholder="例如：zhangsan"
                       />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
-                      Password {!editingUser && <span className="text-destructive">*</span>}
+                      登录密码 {!editingUser && <span className="text-destructive">*</span>}
                     </label>
                     <div className="relative">
                       <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="password"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-9"
-                        placeholder={editingUser ? "Leave empty to keep current" : "Set initial password"}
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        placeholder={editingUser ? "留空表示不修改" : "设置初始密码"}
                       />
                     </div>
                   </div>
@@ -506,30 +501,30 @@ export default function AdminUsersPage() {
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
-                      Full Name <span className="text-destructive">*</span>
+                      姓名 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
                       <UserCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="text"
                         value={formData.full_name}
                         onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                        className="pl-9"
-                        placeholder="e.g. Zhang San"
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        placeholder="例如：张三"
                       />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
-                      Email <span className="text-destructive">*</span>
+                      邮箱 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="pl-9"
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                         placeholder="zhangsan@example.com"
                       />
                     </div>
@@ -538,27 +533,27 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">手机号码</label>
                     <div className="relative">
                       <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="pl-9"
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                         placeholder="138xxxx"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Employee No.</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">工号</label>
                     <div className="relative">
                       <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                      <input
                         type="text"
                         value={formData.emp_no}
                         onChange={(e) => setFormData({ ...formData, emp_no: e.target.value })}
-                        className="pl-9"
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                         placeholder="EMP001"
                       />
                     </div>
@@ -566,16 +561,38 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Hire Date</label>
-                  <Input
-                    type="date"
-                    value={formData.hire_date}
-                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                  />
+                  <label className="block text-sm font-medium text-foreground mb-1">入职日期</label>
+                  <Popover open={hireDatePopoverOpen} onOpenChange={setHireDatePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="relative w-full flex items-center justify-start pl-9 pr-3 py-2 bg-background border border-input rounded-lg hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                      >
+                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <span className={formData.hire_date ? "text-foreground" : "text-muted-foreground"}>
+                          {formData.hire_date ? format(new Date(formData.hire_date), "yyyy年MM月dd日", { locale: zhCN }) : "选择日期"}
+                        </span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-background border border-border shadow-lg rounded-lg" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.hire_date ? new Date(formData.hire_date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setFormData({ ...formData, hire_date: format(date, "yyyy-MM-dd") });
+                            setHireDatePopoverOpen(false);
+                          }
+                        }}
+                        initialFocus
+                        locale={zhCN}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Departments (multi-select)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">所属部门（可多选）</label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {formData.dept_ids.map((deptId) => (
                       <span
@@ -589,9 +606,9 @@ export default function AdminUsersPage() {
                             ...formData,
                             dept_ids: formData.dept_ids.filter((id) => id !== deptId),
                           })}
-                          className="ml-1 hover:text-primary"
+                          className="ml-1 hover:text-primary/80"
                         >
-                          x
+                          ×
                         </button>
                       </span>
                     ))}
@@ -606,12 +623,12 @@ export default function AdminUsersPage() {
                     options={flatDepts
                       .filter((d) => !formData.dept_ids.includes(d.id))
                       .map((d) => ({ value: d.id, label: d.name }))}
-                    placeholder="Add department..."
+                    placeholder="添加部门..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Assign Role</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
                   <AdminSelect
                     value={formData.role_id}
                     onChange={(val) => setFormData({ ...formData, role_id: val })}
@@ -620,7 +637,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Account Status</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">账号状态</label>
                   <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -631,7 +648,7 @@ export default function AdminUsersPage() {
                         onChange={() => setFormData({ ...formData, status: "active" })}
                         className="text-primary focus:ring-primary"
                       />
-                      <span className="text-sm text-foreground">Active</span>
+                      <span className="text-sm text-foreground">正常</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -642,22 +659,26 @@ export default function AdminUsersPage() {
                         onChange={() => setFormData({ ...formData, status: "inactive" })}
                         className="text-primary focus:ring-primary"
                       />
-                      <span className="text-sm text-foreground">Inactive</span>
+                      <span className="text-sm text-foreground">停用</span>
                     </label>
                   </div>
                 </div>
               </div>
 
               <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors"
+                >
+                  取消
+                </button>
+                <button
                   onClick={handleSaveUser}
                   disabled={!formData.username.trim() || !formData.full_name.trim() || !formData.email.trim() || (!editingUser && !formData.password.trim())}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
                 >
-                  {editingUser ? "Save Changes" : "Confirm Add"}
-                </Button>
+                  {editingUser ? "保存更改" : "确认添加"}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -683,35 +704,39 @@ export default function AdminUsersPage() {
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">
-                  Reset Password - {passwordUser?.username}
+                  重置密码 - {passwordUser?.username}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => setShowPasswordDialog(false)}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
-                </Button>
+                </button>
               </div>
               <div className="p-6">
-                <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
-                <Input
+                <label className="block text-sm font-medium text-foreground mb-1">新密码</label>
+                <input
                   type="password"
-                  placeholder="Enter new password"
+                  placeholder="请输入新密码"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 />
               </div>
               <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
-                  Cancel
-                </Button>
-                <Button
+                <button
+                  onClick={() => setShowPasswordDialog(false)}
+                  className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors"
+                >
+                  取消
+                </button>
+                <button
                   onClick={handleResetPassword}
                   disabled={!newPassword}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
                 >
-                  Confirm Reset
-                </Button>
+                  确定重置
+                </button>
               </div>
             </motion.div>
           </div>

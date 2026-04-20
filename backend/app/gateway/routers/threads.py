@@ -63,12 +63,14 @@ class ThreadCreateRequest(BaseModel):
     """Request body for creating a thread."""
 
     thread_id: str | None = Field(default=None, description="Optional thread ID (auto-generated if omitted)")
+    user_id: str | None = Field(default=None, description="User ID for data isolation (auto-injected from auth if available)")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Initial metadata")
 
 
 class ThreadSearchRequest(BaseModel):
     """Request body for searching threads."""
 
+    user_id: str | None = Field(default=None, description="User ID for data isolation filtering")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata filter (exact match)")
     limit: int = Field(default=100, ge=1, le=1000, description="Maximum results")
     offset: int = Field(default=0, ge=0, description="Pagination offset")
@@ -251,11 +253,19 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
     The thread record is written to the Store (for fast listing) and an
     empty checkpoint is written to the checkpointer (for state reads).
     Idempotent: returns the existing record when ``thread_id`` already exists.
+
+    If user_id is provided (from auth or request body), it is stored in
+    thread metadata for user data isolation.
     """
     store = get_store(request)
     checkpointer = get_checkpointer(request)
     thread_id = body.thread_id or str(uuid.uuid4())
     now = time.time()
+
+    # Auto-inject user_id into metadata for data isolation
+    metadata = dict(body.metadata)
+    if body.user_id:
+        metadata["user_id"] = body.user_id
 
     # Idempotency: return existing record from Store when already present
     if store is not None:
@@ -279,7 +289,7 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
                     "status": "idle",
                     "created_at": now,
                     "updated_at": now,
-                    "metadata": body.metadata,
+                    "metadata": metadata,
                 },
             )
         except Exception:
@@ -296,7 +306,7 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
             "source": "input",
             "writes": None,
             "parents": {},
-            **body.metadata,
+            **metadata,
             "created_at": now,
         }
         await checkpointer.aput(config, empty_checkpoint(), ckpt_metadata, {})
@@ -304,13 +314,13 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
         logger.exception("Failed to create checkpoint for thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to create thread")
 
-    logger.info("Thread created: %s", thread_id)
+    logger.info("Thread created: %s (user_id=%s)", thread_id, body.user_id or "anonymous")
     return ThreadResponse(
         thread_id=thread_id,
         status="idle",
         created_at=str(now),
         updated_at=str(now),
-        metadata=body.metadata,
+        metadata=metadata,
     )
 
 
@@ -330,6 +340,9 @@ async def search_threads(body: ThreadSearchRequest, request: Request) -> list[Th
     newly found thread is immediately written to the Store so that the next
     search skips Phase 2 for that thread — the Store converges to a full
     index over time without a one-shot migration job.
+
+    **User Isolation**: When user_id is provided, only returns threads
+    belonging to that user (filtered via metadata.user_id).
     """
     store = get_store(request)
     checkpointer = get_checkpointer(request)
@@ -348,6 +361,11 @@ async def search_threads(body: ThreadSearchRequest, request: Request) -> list[Th
 
         for item in items:
             val = item.value
+            # User isolation: filter by user_id if provided
+            if body.user_id is not None:
+                thread_user_id = val.get("metadata", {}).get("user_id")
+                if thread_user_id != body.user_id:
+                    continue
             merged[val["thread_id"]] = ThreadResponse(
                 thread_id=val["thread_id"],
                 status=val.get("status", "idle"),
@@ -361,6 +379,7 @@ async def search_threads(body: ThreadSearchRequest, request: Request) -> list[Th
     # Phase 2: Checkpointer supplement
     # Discovers threads not yet in the Store (e.g. created by LangGraph
     # Server) and lazily migrates them so future searches skip this phase.
+    # Also applies user isolation filter here.
     # -----------------------------------------------------------------------
     try:
         async for checkpoint_tuple in checkpointer.alist(None):
@@ -376,6 +395,12 @@ async def search_threads(body: ThreadSearchRequest, request: Request) -> list[Th
             ckpt_meta = getattr(checkpoint_tuple, "metadata", {}) or {}
             # Strip LangGraph internal keys from the user-visible metadata dict
             user_meta = {k: v for k, v in ckpt_meta.items() if k not in ("created_at", "updated_at", "step", "source", "writes", "parents")}
+
+            # User isolation: filter by user_id if provided
+            if body.user_id is not None:
+                thread_user_id = user_meta.get("user_id")
+                if thread_user_id != body.user_id:
+                    continue
 
             # Extract state values (title) from the checkpoint's channel_values
             checkpoint_data = getattr(checkpoint_tuple, "checkpoint", {}) or {}

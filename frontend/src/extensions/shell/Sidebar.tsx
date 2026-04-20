@@ -86,7 +86,7 @@ export function ExtensionsSidebar() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="relative z-30 w-14 shrink-0 flex flex-col items-center border-r border-border bg-background dark:bg-zinc-900">
+      <div className="relative z-30 w-14 shrink-0 flex flex-col items-center border-r border-border bg-background dark:bg-sidebar">
         {/* Logo */}
         <div className="p-3 border-b border-border">
           <Link
