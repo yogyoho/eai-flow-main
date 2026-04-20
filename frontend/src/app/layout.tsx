@@ -5,10 +5,11 @@ import { type Metadata } from "next";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/core/i18n/context";
+import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { detectLocaleServer } from "@/core/i18n/server";
 
 export const metadata: Metadata = {
-  title: "DeerFlow",
+  title: "EAIFlow",
   description: "A LangChain-based framework for building super agents.",
 };
 
@@ -20,7 +21,9 @@ export default async function RootLayout({
     <html lang={locale} suppressContentEditableWarning suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
-          <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+          <I18nProvider initialLocale={locale}>
+            <AuthProvider>{children}</AuthProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

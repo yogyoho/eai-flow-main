@@ -1,0 +1,57 @@
+/**
+ * section-highlight.css
+ * 
+ * 章节高亮样式
+ * 用于滚动定位时的视觉反馈
+ * 使用 CSS 变量替代硬编码颜色值
+ */
+
+/* 章节高亮效果 - 带脉冲动画 */
+:global(.section-highlight-active) {
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-left: 3px solid var(--primary);
+  padding-left: 8px;
+  margin-left: -8px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  animation: section-highlight-pulse 0.5s ease-in-out;
+}
+
+/* 脉冲动画 */
+@keyframes section-highlight-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+  }
+  100% {
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+}
+
+/* 替代高亮样式 - 更柔和的效果（可选） */
+:global(.section-highlight-soft) {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 2%, transparent) 100%
+  );
+  border-left: 2px solid color-mix(in srgb, var(--primary) 60%, white);
+  padding-left: 6px;
+  margin-left: -6px;
+  transition: all 0.3s ease;
+}
+
+/* 高亮闪烁效果 */
+:global(.section-highlight-flash) {
+  animation: section-highlight-flash 0.6s ease-out;
+}
+
+@keyframes section-highlight-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  100% {
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+}

@@ -3,7 +3,9 @@
 .PHONY: help config config-upgrade check install setup doctor dev dev-pro dev-daemon dev-daemon-pro start start-pro start-daemon start-daemon-pro stop up up-pro down clean docker-init docker-start docker-start-pro docker-stop docker-logs docker-logs-frontend docker-logs-gateway
 
 BASH ?= bash
-BACKEND_UV_RUN = cd backend && uv run
+# Detect uv path - prefer uv in PATH, fall back to Windows Python Scripts
+UV_PATH := $(shell which uv 2>/dev/null || echo "/mnt/c/Python314/Scripts/uv.exe")
+BACKEND_UV_RUN = cd backend && $(UV_PATH) run
 
 # Detect OS for Windows compatibility
 ifeq ($(OS),Windows_NT)
@@ -37,13 +39,13 @@ help:
 	@echo "  make clean           - Clean up processes and temporary files"
 	@echo ""
 	@echo "Docker Production Commands:"
-	@echo "  make up              - Build and start production Docker services (localhost:2026)"
+	@echo "  make up              - Build and start production Docker services (localhost:4026)"
 	@echo "  make up-pro          - Build and start production Docker in Gateway mode (experimental)"
 	@echo "  make down            - Stop and remove production Docker containers"
 	@echo ""
 	@echo "Docker Development Commands:"
 	@echo "  make docker-init     - Pull the sandbox image"
-	@echo "  make docker-start    - Start Docker services (mode-aware from config.yaml, localhost:2026)"
+	@echo "  make docker-start    - Start Docker services (mode-aware from config.yaml, localhost:4026)"
 	@echo "  make docker-start-pro - Start Docker in Gateway mode (experimental, no LangGraph container)"
 	@echo "  make docker-stop     - Stop Docker development services"
 	@echo "  make docker-logs     - View Docker development logs"
@@ -70,7 +72,7 @@ check:
 # Install all dependencies
 install:
 	@echo "Installing backend dependencies..."
-	@cd backend && uv sync
+	@cd backend && $(UV_PATH) sync
 	@echo "Installing frontend dependencies..."
 	@cd frontend && pnpm install
 	@echo "✓ All dependencies installed"

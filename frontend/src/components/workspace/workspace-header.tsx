@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquarePlus } from "lucide-react";
+import { Bot, MessageSquarePlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -29,20 +29,22 @@ export function WorkspaceHeader({ className }: { className?: string }) {
       >
         {state === "collapsed" ? (
           <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="text-primary block pt-1 font-serif group-hover/workspace-header:hidden">
-              DF
+            <div className="block pt-1 text-black group-hover/workspace-header:hidden">
+              <Bot className="size-5" />
             </div>
             <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
-              <Link href="/" className="text-primary ml-2 font-serif">
-                DeerFlow
+              <Link href="/" className="ml-2 flex items-center gap-1.5">
+                <Bot className="size-5 text-black" />
+                <span className="font-sans text-base font-semibold text-black">AI智能体</span>
               </Link>
             ) : (
-              <div className="text-primary ml-2 cursor-default font-serif">
-                DeerFlow
+              <div className="ml-2 flex cursor-default items-center gap-1.5">
+                <Bot className="size-5 text-black" />
+                <span className="font-sans text-base font-semibold text-black">AI智能体</span>
               </div>
             )}
             <SidebarTrigger />
@@ -55,7 +57,7 @@ export function WorkspaceHeader({ className }: { className?: string }) {
             isActive={pathname === "/workspace/chats/new"}
             asChild
           >
-            <Link className="text-muted-foreground" href="/workspace/chats/new">
+            <Link className="text-sidebar-foreground" href="/workspace/chats/new">
               <MessageSquarePlus size={16} />
               <span>{t.sidebar.newChat}</span>
             </Link>

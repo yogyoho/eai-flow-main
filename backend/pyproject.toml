@@ -17,6 +17,12 @@ dependencies = [
     "langgraph-sdk>=0.1.51",
     "markdown-to-mrkdwn>=0.3.1",
     "wecom-aibot-python-sdk>=0.1.6",
+    "langchain-ollama[ollama]>=1.1.0",
+    "bcrypt>=4.2.0",
+    "PyJWT>=2.9.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
 ]
 
 [dependency-groups]

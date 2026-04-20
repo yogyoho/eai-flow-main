@@ -1,0 +1,21 @@
+{
+  "industries": [
+    { "value": "environmental", "label": "环境保护" },
+    { "value": "safety_assessment", "label": "安全评价" },
+    { "value": "energy_assessment", "label": "能源评估" },
+    { "value": "fire_safety", "label": "消防安全" },
+    { "value": "occupational_health", "label": "职业卫生" }
+  ],
+  "report_types": [
+    { "value": "coal_mining_planning_eia", "label": "煤矿矿区总体规划环评" },
+    { "value": "coal_mining_project_eia", "label": "煤矿项目环评" },
+    { "value": "industrial_planning_eia", "label": "工业规划环评" },
+    { "value": "construction_project_eia", "label": "建设项目环评" },
+    { "value": "retrospective_evaluation", "label": "回顾性评价" }
+  ],
+  "regions": [
+    { "value": "nationwide", "label": "全国" },
+    { "value": "jilin", "label": "吉林" },
+    { "value": "heilongjiang", "label": "黑龙江" }
+  ]
+}

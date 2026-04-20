@@ -801,7 +801,7 @@ class TestChannelManager:
             bus.subscribe_outbound(capture_outbound)
 
             async def _conflict_stream():
-                request = httpx.Request("POST", "http://127.0.0.1:2024/runs")
+                request = httpx.Request("POST", "http://127.0.0.1:4024/runs")
                 response = httpx.Response(409, request=request)
                 raise ConflictError(
                     "Thread is already running a task. Wait for it to finish or choose a different multitask strategy.",
@@ -1987,29 +1987,29 @@ class TestChannelService:
     def test_service_urls_fall_back_to_env(self, monkeypatch):
         from app.channels.service import ChannelService
 
-        monkeypatch.setenv("DEER_FLOW_CHANNELS_LANGGRAPH_URL", "http://langgraph:2024")
-        monkeypatch.setenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "http://gateway:8001")
+        monkeypatch.setenv("DEER_FLOW_CHANNELS_LANGGRAPH_URL", "http://langgraph:4024")
+        monkeypatch.setenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "http://gateway:4001")
 
         service = ChannelService(channels_config={})
 
-        assert service.manager._langgraph_url == "http://langgraph:2024"
-        assert service.manager._gateway_url == "http://gateway:8001"
+        assert service.manager._langgraph_url == "http://langgraph:4024"
+        assert service.manager._gateway_url == "http://gateway:4001"
 
     def test_config_service_urls_override_env(self, monkeypatch):
         from app.channels.service import ChannelService
 
-        monkeypatch.setenv("DEER_FLOW_CHANNELS_LANGGRAPH_URL", "http://langgraph:2024")
-        monkeypatch.setenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "http://gateway:8001")
+        monkeypatch.setenv("DEER_FLOW_CHANNELS_LANGGRAPH_URL", "http://langgraph:4024")
+        monkeypatch.setenv("DEER_FLOW_CHANNELS_GATEWAY_URL", "http://gateway:4001")
 
         service = ChannelService(
             channels_config={
-                "langgraph_url": "http://custom-langgraph:2024",
-                "gateway_url": "http://custom-gateway:8001",
+                "langgraph_url": "http://custom-langgraph:4024",
+                "gateway_url": "http://custom-gateway:4001",
             }
         )
 
-        assert service.manager._langgraph_url == "http://custom-langgraph:2024"
-        assert service.manager._gateway_url == "http://custom-gateway:8001"
+        assert service.manager._langgraph_url == "http://custom-langgraph:4024"
+        assert service.manager._gateway_url == "http://custom-gateway:4001"
 
 
 # ---------------------------------------------------------------------------

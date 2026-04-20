@@ -11,13 +11,13 @@
 #   bash status.sh thread <id>      # show thread history
 #
 # Environment variables:
-#   DEERFLOW_URL           — Unified proxy base URL (default: http://localhost:2026)
+#   DEERFLOW_URL           — Unified proxy base URL (default: http://localhost:4026)
 #   DEERFLOW_GATEWAY_URL   — Gateway API base URL (default: $DEERFLOW_URL)
 #   DEERFLOW_LANGGRAPH_URL — LangGraph API base URL (default: $DEERFLOW_URL/api/langgraph)
 
 set -euo pipefail
 
-DEERFLOW_URL="${DEERFLOW_URL:-http://localhost:2026}"
+DEERFLOW_URL="${DEERFLOW_URL:-http://localhost:4026}"
 GATEWAY_URL="${DEERFLOW_GATEWAY_URL:-$DEERFLOW_URL}"
 LANGGRAPH_URL="${DEERFLOW_LANGGRAPH_URL:-$DEERFLOW_URL/api/langgraph}"
 CMD="${1:-health}"

@@ -23,7 +23,7 @@ from langchain_core.messages import HumanMessage
 
 from deerflow.agents import make_lead_agent
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(
     level=logging.INFO,

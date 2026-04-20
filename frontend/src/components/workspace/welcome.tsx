@@ -1,5 +1,6 @@
 "use client";
 
+import { Bot } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 
@@ -24,7 +25,7 @@ export function Welcome({
     if (isUltra) {
       return ["#efefbb", "#e9c665", "#e3a812"];
     }
-    return ["var(--color-foreground)"];
+    return ["#38bdf8", "#818cf8", "#c084fc"];
   }, [isUltra]);
   useEffect(() => {
     waved = true;
@@ -42,7 +43,7 @@ export function Welcome({
         ) : (
           <div className="flex items-center gap-2">
             <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
-              {isUltra ? "🚀" : "👋"}
+              {isUltra ? "🚀" : <Bot className="size-7 text-primary" />}
             </div>
             <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
           </div>
@@ -58,17 +59,7 @@ export function Welcome({
             <p>{t.welcome.createYourOwnSkillDescription}</p>
           )}
         </div>
-      ) : (
-        <div className="text-muted-foreground text-sm">
-          {t.welcome.description.includes("\n") ? (
-            <pre className="font-sans whitespace-pre">
-              {t.welcome.description}
-            </pre>
-          ) : (
-            <p>{t.welcome.description}</p>
-          )}
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

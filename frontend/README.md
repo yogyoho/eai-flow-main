@@ -32,7 +32,7 @@ cp .env.example .env
 # Start development server
 pnpm dev
 
-# The app will be available at http://localhost:3000
+# The app will be available at http://localhost:4000
 ```
 
 ### Build & Test

@@ -5,10 +5,10 @@
 #   bash chat.sh "Your question here"
 #   bash chat.sh "Your question" <thread_id>          # continue conversation
 #   bash chat.sh "Your question" "" pro                # specify mode
-#   DEERFLOW_URL=http://host:2026 bash chat.sh "hi"   # custom endpoint
+#   DEERFLOW_URL=http://host:4026 bash chat.sh "hi"   # custom endpoint
 #
 # Environment variables:
-#   DEERFLOW_URL          — Unified proxy base URL (default: http://localhost:2026)
+#   DEERFLOW_URL          — Unified proxy base URL (default: http://localhost:4026)
 #   DEERFLOW_GATEWAY_URL  — Gateway API base URL (default: $DEERFLOW_URL)
 #   DEERFLOW_LANGGRAPH_URL — LangGraph API base URL (default: $DEERFLOW_URL/api/langgraph)
 #
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-DEERFLOW_URL="${DEERFLOW_URL:-http://localhost:2026}"
+DEERFLOW_URL="${DEERFLOW_URL:-http://localhost:4026}"
 GATEWAY_URL="${DEERFLOW_GATEWAY_URL:-$DEERFLOW_URL}"
 LANGGRAPH_URL="${DEERFLOW_LANGGRAPH_URL:-$DEERFLOW_URL/api/langgraph}"
 MESSAGE="${1:?Usage: chat.sh <message> [thread_id] [mode]}"
@@ -104,7 +104,7 @@ import json
 import sys
 
 sse_file = sys.argv[1] if len(sys.argv) > 1 else None
-gateway_url = sys.argv[2].rstrip("/") if len(sys.argv) > 2 else "http://localhost:2026"
+gateway_url = sys.argv[2].rstrip("/") if len(sys.argv) > 2 else "http://localhost:4026"
 thread_id = sys.argv[3] if len(sys.argv) > 3 else ""
 if not sse_file:
     sys.exit(1)

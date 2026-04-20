@@ -41,5 +41,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "generated"]
+  "exclude": ["node_modules", "generated", "check_syntax.py", "copy_kf_frontend.py", "fix_imports.py", "check_ts.js", "src/extensions/knowledge-factory/**/*.test.ts", "src/extensions/knowledge-factory/**/*.test.tsx"]
 }

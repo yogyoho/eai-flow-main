@@ -111,6 +111,7 @@ export interface Translations {
 
   // Sidebar
   sidebar: {
+    goHome: string;
     recentChats: string;
     newChat: string;
     chats: string;

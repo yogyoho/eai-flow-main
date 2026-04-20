@@ -39,6 +39,13 @@ is_port_listening() {
         fi
     fi
 
+    # On Windows Git Bash, use PowerShell to check port
+    if [ -d "/mnt/c/Windows" ]; then
+        if powershell.exe -NoProfile -NonInteractive -Command "Get-NetTCPConnection -LocalPort $PORT -State Listen" 2>/dev/null | grep -q "Listen"; then
+            return 0
+        fi
+    fi
+
     return 1
 }
 
