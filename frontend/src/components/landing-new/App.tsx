@@ -17,8 +17,8 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import React from "react";
 import Link from "next/link";
+import React from "react";
 
 import "./index.css";
 
@@ -69,9 +69,9 @@ export default function LandingNew() {
         </div>
 
         <div className="hidden md:flex items-center space-x-2 text-gray-600 font-medium">
-          <Link href="/workspace/agents" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</Link>
+          <Link href="/workspace/chats/new" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</Link>
           <Link href="/knowledge-factory?tab=reports" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</Link>
-          <a href="#" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</a>
+          <Link href="/docmgr" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</Link>
           <a href="#" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">设置</a>
         </div>
 
@@ -95,7 +95,7 @@ export default function LandingNew() {
             <motion.div variants={itemVariants}>
               <span className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
                 <Sparkles className="w-4 h-4" />
-                <span>AI 驱动的知识平台</span>
+                <span>Harness驱动的Agent平台</span>
               </span>
             </motion.div>
 
@@ -112,7 +112,7 @@ export default function LandingNew() {
 
             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
               <Link
-                href="/workspace/agents/new"
+                href="/workspace/chats/new"
                 className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
               >
                 <Rocket className="w-5 h-5" />
@@ -188,12 +188,14 @@ export default function LandingNew() {
               title="Dashboard"
               path="/dashboard"
             />
+            <Link href="/knowledge">
             <QuickAccessCard
               variants={itemVariants}
               icon={<BookOpen className="w-6 h-6 text-primary" />}
               title="知识库"
-              path="/database"
+              path="/knowledge"
             />
+            </Link>
             <QuickAccessCard
               variants={itemVariants}
               icon={<Network className="w-6 h-6 text-primary" />}

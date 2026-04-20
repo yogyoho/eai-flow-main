@@ -40,11 +40,12 @@ class AgentConfig(BaseModel):
     skills: list[str] | None = None
 
 
-def load_agent_config(name: str | None) -> AgentConfig | None:
+def load_agent_config(name: str | None, user_id: str | None = None) -> AgentConfig | None:
     """Load the custom or default agent's config from its directory.
 
     Args:
         name: The agent name.
+        user_id: Optional user ID for per-user agent storage.
 
     Returns:
         AgentConfig instance.
@@ -58,7 +59,7 @@ def load_agent_config(name: str | None) -> AgentConfig | None:
         return None
 
     name = validate_agent_name(name)
-    agent_dir = get_paths().agent_dir(name)
+    agent_dir = get_paths().agent_dir(name, user_id)
     config_file = agent_dir / "config.yaml"
 
     if not agent_dir.exists():
@@ -84,7 +85,7 @@ def load_agent_config(name: str | None) -> AgentConfig | None:
     return AgentConfig(**data)
 
 
-def load_agent_soul(agent_name: str | None) -> str | None:
+def load_agent_soul(agent_name: str | None, user_id: str | None = None) -> str | None:
     """Read the SOUL.md file for a custom agent, if it exists.
 
     SOUL.md defines the agent's personality, values, and behavioral guardrails.
@@ -92,11 +93,12 @@ def load_agent_soul(agent_name: str | None) -> str | None:
 
     Args:
         agent_name: The name of the agent or None for the default agent.
+        user_id: Optional user ID for per-user agent storage.
 
     Returns:
         The SOUL.md content as a string, or None if the file does not exist.
     """
-    agent_dir = get_paths().agent_dir(agent_name) if agent_name else get_paths().base_dir
+    agent_dir = get_paths().agent_dir(agent_name, user_id) if agent_name else get_paths().base_dir
     soul_path = agent_dir / SOUL_FILENAME
     if not soul_path.exists():
         return None
@@ -104,13 +106,27 @@ def load_agent_soul(agent_name: str | None) -> str | None:
     return content or None
 
 
-def list_custom_agents() -> list[AgentConfig]:
+def list_custom_agents(user_id: str | None = None) -> list[AgentConfig]:
     """Scan the agents directory and return all valid custom agents.
+
+    If user_id is provided, only scans the per-user agents directory:
+    `{base_dir}/agents/{user_id}/`
+
+    If user_id is None, scans the global agents directory:
+    `{base_dir}/agents/`
+
+    Args:
+        user_id: Optional user ID for per-user agent listing.
 
     Returns:
         List of AgentConfig for each valid agent directory found.
     """
-    agents_dir = get_paths().agents_dir
+    if user_id:
+        # Per-user agents directory
+        agents_dir = get_paths().agents_dir / user_id
+    else:
+        # Global agents directory
+        agents_dir = get_paths().agents_dir
 
     if not agents_dir.exists():
         return []
@@ -127,7 +143,7 @@ def list_custom_agents() -> list[AgentConfig]:
             continue
 
         try:
-            agent_cfg = load_agent_config(entry.name)
+            agent_cfg = load_agent_config(entry.name, user_id)
             agents.append(agent_cfg)
         except Exception as e:
             logger.warning(f"Skipping agent '{entry.name}': {e}")

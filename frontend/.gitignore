@@ -44,3 +44,7 @@ yarn-error.log*
 
 # idea files
 .idea
+
+# 补充一些不要上传内容
+/test/
+/andrej-karpathy-skills-main/

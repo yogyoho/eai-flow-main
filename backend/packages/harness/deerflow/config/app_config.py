@@ -26,7 +26,15 @@ from deerflow.config.token_usage_config import TokenUsageConfig
 from deerflow.config.tool_config import ToolConfig, ToolGroupConfig
 from deerflow.config.tool_search_config import ToolSearchConfig, load_tool_search_config_from_dict
 
-load_dotenv(override=True)
+# Load .env - use DEER_FLOW_CONFIG_PATH env var if set, otherwise try backend/.env
+# This avoids Path(__file__).resolve() which triggers blocking os.getcwd in ASGI
+_deer_flow_config_path = os.getenv("DEER_FLOW_CONFIG_PATH")
+if _deer_flow_config_path:
+    _repo_root_for_env = Path(_deer_flow_config_path).parent
+else:
+    # Default to backend/.env (where langgraph.json expects it)
+    _repo_root_for_env = Path(__file__).absolute().parents[4]
+load_dotenv(_repo_root_for_env / ".env", override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +48,8 @@ class CircuitBreakerConfig(BaseModel):
 
 def _default_config_candidates() -> tuple[Path, ...]:
     """Return deterministic config.yaml locations without relying on cwd."""
-    backend_dir = Path(__file__).resolve().parents[4]
+    # Use absolute() instead of resolve() to avoid blocking os.getcwd in ASGI
+    backend_dir = Path(__file__).absolute().parents[4]
     repo_root = backend_dir.parent
     return (backend_dir / "config.yaml", repo_root / "config.yaml")
 

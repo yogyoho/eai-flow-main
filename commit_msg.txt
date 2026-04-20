@@ -1,0 +1,20 @@
+feat: 移植扩展功能模块（登录、系统管理、知识工厂等）
+
+主要新增：
+- 用户认证：JWT 登录/注册/中间件
+- 系统管理：角色、用户、部门管理 API + 前端页面
+- 知识库：文档管理、Web Scraper、Knowledge Factory
+- 知识工厂：规则引擎、种子数据、合规检查、模板提取
+- 文档空间：Tiptap 编辑器、滚动导航、滚动同步
+- 法律库：法规 CRUD、标签管理
+- 用户部门关联管理
+
+其他改进：
+- 本地开发服务端口重映射（2026→4026 等）
+- nginx 配置支持本地开发模式
+- playwright e2e 测试配置更新
+- 扩展前端页面样式更新
+
+依赖项更新：
+- backend: 新增 extensions 扩展包（auth、dept、role、user 等）
+- frontend: 新增 extensions 页面和组件

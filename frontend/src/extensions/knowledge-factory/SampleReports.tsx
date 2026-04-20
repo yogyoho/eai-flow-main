@@ -488,7 +488,7 @@ export default function SampleReports() {
       </div>
 
       {/* 底栏：统计 + 分页 */}
-      <div className="flex flex-col gap-3 border-t border-border bg-card px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+      <div className="flex flex-col gap-3 border-t border-border bg-card px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3">
         <div
           className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[13px] text-muted-foreground sm:text-sm"
           aria-label="报告统计"

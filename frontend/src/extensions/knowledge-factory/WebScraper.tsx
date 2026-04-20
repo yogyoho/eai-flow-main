@@ -332,7 +332,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden bg-muted/30">
-        <div className="flex-1 flex m-6 rounded-2xl border bg-card shadow-sm overflow-hidden">
+        <div className="flex-1 flex m-6 rounded-2xl bg-card shadow-sm overflow-hidden">
           {/* Left: Config */}
           <div className="w-1/2 border-r flex flex-col">
             <div className="p-6 space-y-4">

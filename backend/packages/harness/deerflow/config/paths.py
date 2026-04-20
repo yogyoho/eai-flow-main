@@ -126,13 +126,26 @@ class Paths:
         """Root directory for all custom agents: `{base_dir}/agents/`."""
         return self.base_dir / "agents"
 
-    def agent_dir(self, name: str) -> Path:
-        """Directory for a specific agent: `{base_dir}/agents/{name}/`."""
+    def agent_dir(self, name: str, user_id: str | None = None) -> Path:
+        """Directory for a specific agent.
+        
+        If user_id is provided, agents are stored under per-user subdirectories:
+        `{base_dir}/agents/{user_id}/{name}/`
+        
+        If user_id is None, agents are stored in the global location (backward compatible):
+        `{base_dir}/agents/{name}/`
+        """
+        if user_id:
+            return self.agents_dir / user_id / name.lower()
         return self.agents_dir / name.lower()
 
-    def agent_memory_file(self, name: str) -> Path:
-        """Per-agent memory file: `{base_dir}/agents/{name}/memory.json`."""
-        return self.agent_dir(name) / "memory.json"
+    def agent_memory_file(self, name: str, user_id: str | None = None) -> Path:
+        """Per-agent memory file.
+        
+        With user_id: `{base_dir}/agents/{user_id}/{name}/memory.json`
+        Without user_id: `{base_dir}/agents/{name}/memory.json`
+        """
+        return self.agent_dir(name, user_id) / "memory.json"
 
     def thread_dir(self, thread_id: str) -> Path:
         """

@@ -23,9 +23,9 @@ export function Welcome({
   const isUltra = useMemo(() => mode === "ultra", [mode]);
   const colors = useMemo(() => {
     if (isUltra) {
-      return ["#efefbb", "#e9c665", "#e3a812"];
+      return ["#fef3c7", "#fde68a", "#fcd34d"];
     }
-    return ["#38bdf8", "#818cf8", "#c084fc"];
+    return ["#1f55e1", "#1f55e1", "#1f55e1"];
   }, [isUltra]);
   useEffect(() => {
     waved = true;

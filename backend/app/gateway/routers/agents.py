@@ -1,11 +1,11 @@
-"""CRUD API for custom agents."""
+"""CRUD API for custom agents with per-user data isolation support."""
 
 import logging
 import re
 import shutil
 
 import yaml
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from deerflow.config.agents_api_config import get_agents_api_config
@@ -83,11 +83,11 @@ def _require_agents_api_enabled() -> None:
         )
 
 
-def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False) -> AgentResponse:
+def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False, user_id: str | None = None) -> AgentResponse:
     """Convert AgentConfig to AgentResponse."""
     soul: str | None = None
     if include_soul:
-        soul = load_agent_soul(agent_cfg.name) or ""
+        soul = load_agent_soul(agent_cfg.name, user_id) or ""
 
     return AgentResponse(
         name=agent_cfg.name,
@@ -102,10 +102,13 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
     "/agents",
     response_model=AgentsListResponse,
     summary="List Custom Agents",
-    description="List all custom agents available in the agents directory, including their soul content.",
+    description="List all custom agents available for the current user, including their soul content.",
 )
-async def list_agents() -> AgentsListResponse:
-    """List all custom agents.
+async def list_agents(user_id: str | None = Query(None, description="User ID for data isolation")) -> AgentsListResponse:
+    """List all custom agents for a user.
+
+    Args:
+        user_id: Optional user ID for per-user agent listing. If not provided, lists global agents.
 
     Returns:
         List of all custom agents with their metadata and soul content.
@@ -113,8 +116,8 @@ async def list_agents() -> AgentsListResponse:
     _require_agents_api_enabled()
 
     try:
-        agents = list_custom_agents()
-        return AgentsListResponse(agents=[_agent_config_to_response(a, include_soul=True) for a in agents])
+        agents = list_custom_agents(user_id)
+        return AgentsListResponse(agents=[_agent_config_to_response(a, include_soul=True, user_id=user_id) for a in agents])
     except Exception as e:
         logger.error(f"Failed to list agents: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list agents: {str(e)}")
@@ -125,11 +128,12 @@ async def list_agents() -> AgentsListResponse:
     summary="Check Agent Name",
     description="Validate an agent name and check if it is available (case-insensitive).",
 )
-async def check_agent_name(name: str) -> dict:
+async def check_agent_name(name: str, user_id: str | None = Query(None, description="User ID for data isolation")) -> dict:
     """Check whether an agent name is valid and not yet taken.
 
     Args:
         name: The agent name to check.
+        user_id: Optional user ID for per-user agent namespace.
 
     Returns:
         ``{"available": true/false, "name": "<normalized>"}``
@@ -140,7 +144,10 @@ async def check_agent_name(name: str) -> dict:
     _require_agents_api_enabled()
     _validate_agent_name(name)
     normalized = _normalize_agent_name(name)
-    available = not get_paths().agent_dir(normalized).exists()
+    # Check both global and user-specific agent directories
+    global_exists = get_paths().agent_dir(normalized, None).exists()
+    user_exists = user_id and get_paths().agent_dir(normalized, user_id).exists()
+    available = not (global_exists or user_exists)
     return {"available": available, "name": normalized}
 
 
@@ -150,11 +157,13 @@ async def check_agent_name(name: str) -> dict:
     summary="Get Custom Agent",
     description="Retrieve details and SOUL.md content for a specific custom agent.",
 )
-async def get_agent(name: str) -> AgentResponse:
+async def get_agent(name: str, user_id: str | None = Query(None, description="User ID for data isolation")) -> AgentResponse:
     """Get a specific custom agent by name.
 
     Args:
         name: The agent name.
+        user_id: Optional user ID for per-user agent access.
+        user_id is checked first, then falls back to global agents.
 
     Returns:
         Agent details including SOUL.md content.
@@ -166,11 +175,17 @@ async def get_agent(name: str) -> AgentResponse:
     _validate_agent_name(name)
     name = _normalize_agent_name(name)
 
+    # Try user-specific path first, then fall back to global
     try:
-        agent_cfg = load_agent_config(name)
-        return _agent_config_to_response(agent_cfg, include_soul=True)
+        agent_cfg = load_agent_config(name, user_id)
+        return _agent_config_to_response(agent_cfg, include_soul=True, user_id=user_id)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
+        # Try global path as fallback
+        try:
+            agent_cfg = load_agent_config(name, None)
+            return _agent_config_to_response(agent_cfg, include_soul=True, user_id=None)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
     except Exception as e:
         logger.error(f"Failed to get agent '{name}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get agent: {str(e)}")
@@ -183,11 +198,15 @@ async def get_agent(name: str) -> AgentResponse:
     summary="Create Custom Agent",
     description="Create a new custom agent with its config and SOUL.md.",
 )
-async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
+async def create_agent_endpoint(
+    request: AgentCreateRequest,
+    user_id: str | None = Query(None, description="User ID for data isolation"),
+) -> AgentResponse:
     """Create a new custom agent.
 
     Args:
         request: The agent creation request.
+        user_id: Optional user ID for per-user agent storage.
 
     Returns:
         The created agent details.
@@ -199,12 +218,15 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
     _validate_agent_name(request.name)
     normalized_name = _normalize_agent_name(request.name)
 
-    agent_dir = get_paths().agent_dir(normalized_name)
+    # Check existence in both global and user-specific directories
+    global_agent_dir = get_paths().agent_dir(normalized_name, None)
+    user_agent_dir = get_paths().agent_dir(normalized_name, user_id) if user_id else None
 
-    if agent_dir.exists():
+    if global_agent_dir.exists() or (user_agent_dir and user_agent_dir.exists()):
         raise HTTPException(status_code=409, detail=f"Agent '{normalized_name}' already exists")
 
     try:
+        agent_dir = user_agent_dir if user_agent_dir else global_agent_dir
         agent_dir.mkdir(parents=True, exist_ok=True)
 
         # Write config.yaml
@@ -224,10 +246,10 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
         soul_file = agent_dir / "SOUL.md"
         soul_file.write_text(request.soul, encoding="utf-8")
 
-        logger.info(f"Created agent '{normalized_name}' at {agent_dir}")
+        logger.info(f"Created agent '{normalized_name}' at {agent_dir} (user_id={user_id})")
 
-        agent_cfg = load_agent_config(normalized_name)
-        return _agent_config_to_response(agent_cfg, include_soul=True)
+        agent_cfg = load_agent_config(normalized_name, user_id)
+        return _agent_config_to_response(agent_cfg, include_soul=True, user_id=user_id)
 
     except HTTPException:
         raise
@@ -245,12 +267,17 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
     summary="Update Custom Agent",
     description="Update an existing custom agent's config and/or SOUL.md.",
 )
-async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
+async def update_agent(
+    name: str,
+    request: AgentUpdateRequest,
+    user_id: str | None = Query(None, description="User ID for data isolation"),
+) -> AgentResponse:
     """Update an existing custom agent.
 
     Args:
         name: The agent name.
         request: The update request (all fields optional).
+        user_id: Optional user ID for per-user agent access.
 
     Returns:
         The updated agent details.
@@ -262,12 +289,21 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
     _validate_agent_name(name)
     name = _normalize_agent_name(name)
 
-    try:
-        agent_cfg = load_agent_config(name)
-    except FileNotFoundError:
+    # Try user-specific path first, then fall back to global
+    agent_dir = get_paths().agent_dir(name, user_id)
+    if not agent_dir.exists():
+        agent_dir = get_paths().agent_dir(name, None)
+        effective_user_id = None
+    else:
+        effective_user_id = user_id
+
+    if not agent_dir.exists():
         raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
 
-    agent_dir = get_paths().agent_dir(name)
+    try:
+        agent_cfg = load_agent_config(name, effective_user_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
 
     try:
         # Update config if any config fields changed
@@ -295,10 +331,10 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
             soul_path = agent_dir / "SOUL.md"
             soul_path.write_text(request.soul, encoding="utf-8")
 
-        logger.info(f"Updated agent '{name}'")
+        logger.info(f"Updated agent '{name}' (user_id={effective_user_id})")
 
-        refreshed_cfg = load_agent_config(name)
-        return _agent_config_to_response(refreshed_cfg, include_soul=True)
+        refreshed_cfg = load_agent_config(name, effective_user_id)
+        return _agent_config_to_response(refreshed_cfg, include_soul=True, user_id=effective_user_id)
 
     except HTTPException:
         raise
@@ -378,11 +414,12 @@ async def update_user_profile(request: UserProfileUpdateRequest) -> UserProfileR
     summary="Delete Custom Agent",
     description="Delete a custom agent and all its files (config, SOUL.md, memory).",
 )
-async def delete_agent(name: str) -> None:
+async def delete_agent(name: str, user_id: str | None = Query(None, description="User ID for data isolation")) -> None:
     """Delete a custom agent.
 
     Args:
         name: The agent name.
+        user_id: Optional user ID for per-user agent deletion.
 
     Raises:
         HTTPException: 404 if agent not found.
@@ -391,14 +428,16 @@ async def delete_agent(name: str) -> None:
     _validate_agent_name(name)
     name = _normalize_agent_name(name)
 
-    agent_dir = get_paths().agent_dir(name)
-
+    # Try user-specific path first, then fall back to global
+    agent_dir = get_paths().agent_dir(name, user_id)
     if not agent_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
+        agent_dir = get_paths().agent_dir(name, None)
+        if not agent_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
 
     try:
         shutil.rmtree(agent_dir)
-        logger.info(f"Deleted agent '{name}' from {agent_dir}")
+        logger.info(f"Deleted agent '{name}' from {agent_dir} (user_id={user_id})")
     except Exception as e:
         logger.error(f"Failed to delete agent '{name}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -8,6 +9,9 @@ from pydantic import BaseModel, Field
 from deerflow.models import create_chat_model
 
 logger = logging.getLogger(__name__)
+
+# Timeout for LLM calls in suggestions generation (seconds)
+SUGGESTIONS_LLM_TIMEOUT_SECONDS = 60
 
 router = APIRouter(prefix="/api", tags=["suggestions"])
 
@@ -121,12 +125,18 @@ async def generate_suggestions(thread_id: str, request: SuggestionsRequest) -> S
 
     try:
         model = create_chat_model(name=request.model_name, thinking_enabled=False)
-        response = await model.ainvoke([SystemMessage(content=system_instruction), HumanMessage(content=user_content)])
+        response = await asyncio.wait_for(
+            model.ainvoke([SystemMessage(content=system_instruction), HumanMessage(content=user_content)]),
+            timeout=SUGGESTIONS_LLM_TIMEOUT_SECONDS,
+        )
         raw = _extract_response_text(response.content)
         suggestions = _parse_json_string_list(raw) or []
         cleaned = [s.replace("\n", " ").strip() for s in suggestions if s.strip()]
         cleaned = cleaned[:n]
         return SuggestionsResponse(suggestions=cleaned)
+    except asyncio.TimeoutError:
+        logger.warning("Suggestions generation timed out: thread_id=%s", thread_id)
+        return SuggestionsResponse(suggestions=[])
     except Exception as exc:
         logger.exception("Failed to generate suggestions: thread_id=%s err=%s", thread_id, exc)
         return SuggestionsResponse(suggestions=[])

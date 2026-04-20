@@ -38,6 +38,7 @@ export interface Translations {
     exportAsMarkdown: string;
     exportAsJSON: string;
     exportSuccess: string;
+    logout: string;
   };
 
   home: {
