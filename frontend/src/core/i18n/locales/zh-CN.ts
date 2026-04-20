@@ -61,7 +61,7 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 🦌 DeerFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 🦌 EAIFlow，一个Harness驱动的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
@@ -161,9 +161,10 @@ export const zhCN: Translations = {
 
   // Sidebar
   sidebar: {
+    goHome: "首页",
     newChat: "新对话",
     chats: "对话",
-    recentChats: "最近的对话",
+    recentChats: "对话记录",
     demoChats: "演示对话",
     agents: "智能体",
   },
@@ -307,7 +308,7 @@ export const zhCN: Translations = {
   // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整 DeerFlow 的界面和行为。",
+    description: "根据你的偏好调整AI工作台的界面和行为。",
     sections: {
       appearance: "外观",
       memory: "记忆",
@@ -319,7 +320,7 @@ export const zhCN: Translations = {
     memory: {
       title: "记忆",
       description:
-        "DeerFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
+        "AI智能体会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       exportButton: "导出记忆",

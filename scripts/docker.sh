@@ -234,7 +234,7 @@ start() {
 
     # Set nginx routing for gateway mode (envsubst in nginx container)
     if $gateway_mode; then
-        export LANGGRAPH_UPSTREAM=gateway:8001
+        export LANGGRAPH_UPSTREAM=gateway:4001
         export LANGGRAPH_REWRITE=/api/
     fi
 
@@ -245,13 +245,13 @@ start() {
     echo "  DeerFlow Docker is starting!"
     echo "=========================================="
     echo ""
-    echo "  🌐 Application: http://localhost:2026"
-    echo "  📡 API Gateway: http://localhost:2026/api/*"
+    echo "  🌐 Application: http://localhost:4026"
+    echo "  📡 API Gateway: http://localhost:4026/api/*"
     if $gateway_mode; then
         echo "  🤖 Runtime:     Gateway embedded"
         echo "  API:            /api/langgraph/* → Gateway (compat)"
     else
-        echo "  🤖 LangGraph:   http://localhost:2026/api/langgraph/*"
+        echo "  🤖 LangGraph:   http://localhost:4026/api/langgraph/*"
     fi
     echo ""
     echo "  📋 View logs: make docker-logs"
@@ -318,7 +318,7 @@ restart() {
     echo ""
     echo -e "${GREEN}✓ Docker services restarted${NC}"
     echo ""
-    echo "  🌐 Application: http://localhost:2026"
+    echo "  🌐 Application: http://localhost:4026"
     echo "  📋 View logs: make docker-logs"
     echo ""
 }

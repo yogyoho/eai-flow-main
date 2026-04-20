@@ -27,7 +27,7 @@ from deerflow.config.model_config import ModelConfig
 from deerflow.config.sandbox_config import SandboxConfig
 
 # Load .env from project root (for OPENAI_API_KEY etc.)
-load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"), override=True)
 
 # ---------------------------------------------------------------------------
 # Markers

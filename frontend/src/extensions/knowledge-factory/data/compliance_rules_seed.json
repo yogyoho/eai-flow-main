@@ -1,0 +1,1007 @@
+{
+  "version": "1.0.0",
+  "description": "煤炭行业环评报告合规规则种子数据",
+  "industries": ["environmental"],
+  "sources": [
+    "横城矿区总体规划环评报告书",
+    "新疆伊宁矿区北区总体规划环评报告书",
+    "灵台矿区总体规划环评报告书",
+    "纳林希里矿区总体规划环评报告书",
+    "伊敏矿区规划环评报告书"
+  ],
+  "rules": [
+    {
+      "rule_id": "COAL-001",
+      "name": "环境空气质量达标判定",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "环境空气质量必须满足《环境空气质量标准》(GB3095-2012)二级标准限值",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境质量现状", "大气环境影响评价"],
+      "targetSections": ["环境质量现状", "大气环境影响评价"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "SO2年均浓度", "limit": 150, "unit": "μg/m³", "standard": "GB3095-2012 二类区"},
+          {"fieldName": "NO2年均浓度", "limit": 80, "unit": "μg/m³", "standard": "GB3095-2012 二类区"},
+          {"fieldName": "PM10年均浓度", "limit": 150, "unit": "μg/m³", "standard": "GB3095-2012 二类区"},
+          {"fieldName": "PM2.5年均浓度", "limit": 75, "unit": "μg/m³", "standard": "GB3095-2012 二类区"},
+          {"fieldName": "CO日均值", "limit": 4000, "unit": "μg/m³", "standard": "GB3095-2012 二类区"},
+          {"fieldName": "O3日最大8小时平均", "limit": 160, "unit": "μg/m³", "standard": "GB3095-2012 二类区"}
+        ],
+        "comparisonType": "max_limit"
+      },
+      "errorMessage": "{field}浓度为{value}{unit}，超过GB3095-2012二级标准限值{limit}{unit}",
+      "autoFixSuggestion": "需采取大气污染防治措施，确保污染物排放达标"
+    },
+    {
+      "rule_id": "COAL-002",
+      "name": "环境空气一类区标准",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "自然保护区等一类区必须执行《环境空气质量标准》(GB3095-2012)一级标准",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境质量现状", "自然保护区评价"],
+      "targetSections": ["环境质量现状"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "SO2年均浓度", "limit": 50, "unit": "μg/m³", "standard": "GB3095-2012 一类区"},
+          {"fieldName": "NO2年均浓度", "limit": 40, "unit": "μg/m³", "standard": "GB3095-2012 一类区"},
+          {"fieldName": "PM10年均浓度", "limit": 40, "unit": "μg/m³", "standard": "GB3095-2012 一类区"},
+          {"fieldName": "PM2.5年均浓度", "limit": 35, "unit": "μg/m³", "standard": "GB3095-2012 一类区"}
+        ],
+        "comparisonType": "max_limit"
+      },
+      "errorMessage": "一类区{field}超过GB3095-2012一级标准限值{limit}{unit}",
+      "autoFixSuggestion": "需加强一类区环境保护，禁止污染项目开发"
+    },
+    {
+      "rule_id": "COAL-003",
+      "name": "地表水环境功能区水质目标",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "矿区地表水环境必须满足功能区划水质目标",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["地表水环境", "水环境影响评价"],
+      "targetSections": ["水环境影响评价", "污染防治措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "化学需氧量(COD)", "limit": 30, "unit": "mg/L", "standard": "GB3838-2002 IV类"},
+          {"fieldName": "五日生化需氧量(BOD5)", "limit": 6, "unit": "mg/L", "standard": "GB3838-2002 IV类"},
+          {"fieldName": "氨氮", "limit": 1.5, "unit": "mg/L", "standard": "GB3838-2002 IV类"},
+          {"fieldName": "总磷", "limit": 0.3, "unit": "mg/L", "standard": "GB3838-2002 IV类"},
+          {"fieldName": "氟化物", "limit": 1.5, "unit": "mg/L", "standard": "GB3838-2002 IV类"}
+        ],
+        "comparisonType": "max_limit"
+      },
+      "errorMessage": "{field}超标，不满足地表水{功能区}水质目标要求",
+      "autoFixSuggestion": "需加强水污染防治，控制污染源排放"
+    },
+    {
+      "rule_id": "COAL-004",
+      "name": "地表水Ⅲ类水体标准",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "饮用水源保护区等Ⅲ类水体必须满足更高要求",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["地表水环境", "水源地保护"],
+      "targetSections": ["水源地保护措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "化学需氧量(COD)", "limit": 20, "unit": "mg/L", "standard": "GB3838-2002 Ⅲ类"},
+          {"fieldName": "五日生化需氧量(BOD5)", "limit": 4, "unit": "mg/L", "standard": "GB3838-2002 Ⅲ类"},
+          {"fieldName": "氨氮", "limit": 1.0, "unit": "mg/L", "standard": "GB3838-2002 Ⅲ类"},
+          {"fieldName": "总磷", "limit": 0.2, "unit": "mg/L", "standard": "GB3838-2002 Ⅲ类"}
+        ],
+        "comparisonType": "max_limit"
+      },
+      "errorMessage": "水源保护区{field}超过GB3838-2002Ⅲ类标准限值{limit}{unit}",
+      "autoFixSuggestion": "需严格控制水源保护区周边开发活动"
+    },
+    {
+      "rule_id": "COAL-005",
+      "name": "地下水水质标准",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "地下水环境监测指标必须符合《地下水质量标准》(GB/T14848)Ⅲ类标准",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["地下水环境", "水文地质"],
+      "targetSections": ["地下水环境影响评价"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "pH", "min": 6.5, "max": 8.5, "unit": ""},
+          {"fieldName": "总硬度", "limit": 450, "unit": "mg/L"},
+          {"fieldName": "溶解性总固体", "limit": 1000, "unit": "mg/L"},
+          {"fieldName": "硫酸盐", "limit": 250, "unit": "mg/L"},
+          {"fieldName": "氟化物", "limit": 1.0, "unit": "mg/L"},
+          {"fieldName": "硝酸盐", "limit": 20, "unit": "mg/L"},
+          {"fieldName": "氨氮", "limit": 0.5, "unit": "mg/L"},
+          {"fieldName": "挥发酚", "limit": 0.002, "unit": "mg/L"},
+          {"fieldName": "氰化物", "limit": 0.05, "unit": "mg/L"},
+          {"fieldName": "砷", "limit": 0.01, "unit": "mg/L"},
+          {"fieldName": "汞", "limit": 0.001, "unit": "mg/L"},
+          {"fieldName": "铅", "limit": 0.05, "unit": "mg/L"}
+        ],
+        "comparisonType": "range_or_limit"
+      },
+      "errorMessage": "{field}监测值为{value}{unit}，不符合GB/T14848-2017Ⅲ类标准",
+      "autoFixSuggestion": "需建立地下水监测系统，防止地下水污染"
+    },
+    {
+      "rule_id": "COAL-006",
+      "name": "声环境功能区达标",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "声环境质量必须满足《声环境质量标准》(GB3096-2008)要求",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["声环境", "噪声影响评价"],
+      "targetSections": ["噪声影响评价", "噪声控制措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "昼间噪声-1类区", "limit": 55, "unit": "dB(A)", "standard": "GB3096-2008 1类"},
+          {"fieldName": "夜间噪声-1类区", "limit": 45, "unit": "dB(A)", "standard": "GB3096-2008 1类"},
+          {"fieldName": "昼间噪声-2类区", "limit": 60, "unit": "dB(A)", "standard": "GB3096-2008 2类"},
+          {"fieldName": "夜间噪声-2类区", "limit": 50, "unit": "dB(A)", "standard": "GB3096-2008 2类"},
+          {"fieldName": "昼间噪声-3类区", "limit": 65, "unit": "dB(A)", "standard": "GB3096-2008 3类"},
+          {"fieldName": "夜间噪声-3类区", "limit": 55, "unit": "dB(A)", "standard": "GB3096-2008 3类"},
+          {"fieldName": "昼间噪声-4a类区", "limit": 70, "unit": "dB(A)", "standard": "GB3096-2008 4a类"},
+          {"fieldName": "夜间噪声-4a类区", "limit": 55, "unit": "dB(A)", "standard": "GB3096-2008 4a类"}
+        ],
+        "comparisonType": "max_limit"
+      },
+      "errorMessage": "{field}监测值为{value}{unit}，超过GB3096-2008标准限值",
+      "autoFixSuggestion": "需采取隔声、消声、绿化等噪声控制措施"
+    },
+    {
+      "rule_id": "COAL-007",
+      "name": "清洁生产水平要求",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "煤矿必须达到《煤炭采选业清洁生产评价指标体系》Ⅰ级水平",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["清洁生产"],
+      "targetSections": ["清洁生产与循环经济"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "综合机械化采煤比例", "min": 95, "unit": "%", "standard": "清洁生产Ⅰ级"},
+          {"fieldName": "原煤入选率", "min": 100, "unit": "%", "standard": "清洁生产Ⅰ级"},
+          {"fieldName": "采区回采率", "min": 75, "unit": "%", "standard": "煤矿设计规范"},
+          {"fieldName": "矿井水复用率", "min": 100, "unit": "%", "standard": "清洁生产Ⅰ级"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "{field}为{value}%，未达到清洁生产Ⅰ级水平要求",
+      "autoFixSuggestion": "需提升装备水平，改进生产工艺"
+    },
+    {
+      "rule_id": "COAL-008",
+      "name": "工业场地绿化率",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "煤矿工业场地绿化系数必须达到30%以上",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["生态保护措施"],
+      "targetSections": ["生态恢复与重建"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "工业场地绿化系数", "min": 30, "unit": "%", "standard": "生态恢复标准"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "工业场地绿化系数为{value}%，未达到30%的要求",
+      "autoFixSuggestion": "需增加绿化面积，采用乔灌草立体配置模式"
+    },
+    {
+      "rule_id": "COAL-009",
+      "name": "沉陷区治理率",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "沉陷土地治理率必须达到95%以上",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["沉陷区治理"],
+      "targetSections": ["生态恢复与重建"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "沉陷土地治理率", "min": 95, "unit": "%", "standard": "生态恢复标准"},
+          {"fieldName": "林草植被恢复系数", "min": 95, "unit": "%", "standard": "生态恢复标准"},
+          {"fieldName": "林草植被覆盖度", "min": 20, "unit": "%", "standard": "生态恢复标准"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "{field}为{value}%，未达到标准要求",
+      "autoFixSuggestion": "需对沉陷区进行土地复垦和植被恢复"
+    },
+    {
+      "rule_id": "COAL-010",
+      "name": "水土流失治理标准",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "水土流失治理必须达到规定标准",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["水土保持"],
+      "targetSections": ["生态恢复与重建"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "水土流失总治理度", "min": 85, "unit": "%", "standard": "水土保持标准"},
+          {"fieldName": "土壤流失控制比", "min": 0.7, "unit": "", "standard": "水土保持标准"},
+          {"fieldName": "沉陷灾害治理率", "min": 100, "unit": "%", "standard": "安全标准"},
+          {"fieldName": "拦渣率", "min": 95, "unit": "%", "standard": "水土保持标准"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "{field}未达到标准要求",
+      "autoFixSuggestion": "需采取拦挡、排水、土地整治等水土保持措施"
+    },
+    {
+      "rule_id": "COAL-011",
+      "name": "矸石综合利用率",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "煤矸石综合利用率必须达到100%",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["固体废物", "循环经济"],
+      "targetSections": ["固体废物处置与综合利用"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "矸石综合利用率", "min": 100, "unit": "%", "standard": "循环经济标准"},
+          {"fieldName": "掘进矸石不出井", "allowed": true, "unit": "", "standard": "清洁生产要求"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "矸石综合利用率未达到100%要求",
+      "autoFixSuggestion": "应优先用于井下填充、发电或建材综合利用"
+    },
+    {
+      "rule_id": "COAL-012",
+      "name": "矿井水回用率",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "矿井水必须全部综合利用，禁止外排",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["水环境影响", "水资源"],
+      "targetSections": ["水污染防治措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "矿井水回用率", "min": 100, "unit": "%", "standard": "水污染防治要求"},
+          {"fieldName": "矿井水外排", "allowed": false, "unit": "", "standard": "水污染防治要求"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "矿井水存在外排情况，不符合全部回用要求",
+      "autoFixSuggestion": "需建设矿井水处理设施，处理后回用于生产或园区"
+    },
+    {
+      "rule_id": "COAL-013",
+      "name": "生活污水零排放",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "生活污水必须处理后全部回用，禁止外排",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["水环境影响"],
+      "targetSections": ["水污染防治措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "生活污水外排", "allowed": false, "unit": "", "standard": "水污染防治要求"},
+          {"fieldName": "生活污水回用率", "min": 100, "unit": "%", "standard": "水污染防治要求"}
+        ],
+        "comparisonType": "exact_match"
+      },
+      "errorMessage": "生活污水存在外排情况，不符合零排放要求",
+      "autoFixSuggestion": "需建设生活污水处理设施，处理后回用"
+    },
+    {
+      "rule_id": "COAL-014",
+      "name": "自然保护区保护煤柱",
+      "type": "spatial_check",
+      "typeName": "空间距离检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "井田边界与自然保护区之间必须留设足够保护煤柱",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境保护目标", "井田划分", "自然保护区影响评价"],
+      "targetSections": ["规划方案优化"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "保护煤柱宽度", "min": 280, "unit": "m", "standard": "根据沉陷影响半径确定"},
+          {"fieldName": "与保护区距离", "min": 0, "unit": "m", "standard": "不得重叠"}
+        ],
+        "comparisonType": "spatial_separation"
+      },
+      "errorMessage": "井田与自然保护区距离不足，需留设保护煤柱",
+      "autoFixSuggestion": "需留设不小于沉陷影响半径的保护煤柱"
+    },
+    {
+      "rule_id": "COAL-015",
+      "name": "水源地保护距离",
+      "type": "spatial_check",
+      "typeName": "空间距离检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "井田与水源地保护区必须保持足够距离",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境保护目标", "水源地保护"],
+      "targetSections": ["水源地保护措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "水源地一级保护区距离", "min": 1000, "unit": "m", "standard": "饮用水源保护区要求"},
+          {"fieldName": "水源地二级保护区距离", "min": 500, "unit": "m", "standard": "饮用水源保护区要求"}
+        ],
+        "comparisonType": "spatial_separation"
+      },
+      "errorMessage": "井田与水源地保护距离不足，可能影响水源安全",
+      "autoFixSuggestion": "需调整规划方案或采取特殊防护措施"
+    },
+    {
+      "rule_id": "COAL-016",
+      "name": "文物遗址保护范围",
+      "type": "spatial_check",
+      "typeName": "空间距离检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "文物保护范围为遗址四周外延100米，建设控制地带为外延100米",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境保护目标", "文物分布"],
+      "targetSections": ["规划方案优化"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "保护范围", "min": 100, "unit": "m", "standard": "文物遗址四周外延"},
+          {"fieldName": "建设控制地带", "min": 200, "unit": "m", "standard": "保护范围外延100m"},
+          {"fieldName": "明长城保护范围", "min": 50, "unit": "m", "standard": "长城墙体两侧各扩50米"}
+        ],
+        "comparisonType": "spatial_separation"
+      },
+      "errorMessage": "规划区域进入文物{名称}保护范围或建设控制地带",
+      "autoFixSuggestion": "需调整井田边界，避让文物保护范围"
+    },
+    {
+      "rule_id": "COAL-017",
+      "name": "水库保护禁采区",
+      "type": "spatial_check",
+      "typeName": "空间距离检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "水库保护范围需留设禁采区，确保不受开采沉陷影响",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境保护目标", "水库分布"],
+      "targetSections": ["规划方案优化"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "水库保护距离", "min": 1000, "unit": "m", "standard": "确保不受沉陷影响"}
+        ],
+        "comparisonType": "spatial_separation"
+      },
+      "errorMessage": "井田与水库保护范围距离不足，需调整规划",
+      "autoFixSuggestion": "需留设保护煤柱或调整井田边界"
+    },
+    {
+      "rule_id": "COAL-018",
+      "name": "总量控制指标",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "必须先取得污染物排放总量控制指标才能建设",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["总量控制"],
+      "targetSections": ["环境管理要求"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "总量指标批复", "required": true, "unit": "", "standard": "排污许可管理要求"},
+          {"fieldName": "排污许可证", "required": true, "unit": "", "standard": "排污许可管理要求"},
+          {"fieldName": "NOx排放量", "required": true, "unit": "t/a", "standard": "总量控制指标"}
+        ],
+        "comparisonType": "required_field"
+      },
+      "errorMessage": "未取得污染物排放总量控制指标，禁止建设",
+      "autoFixSuggestion": "需向环保部门申请总量指标，办理排污许可证"
+    },
+    {
+      "rule_id": "COAL-019",
+      "name": "危险废物规范处置",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "危险废物必须交由有资质单位处置，建立危废暂存库",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["固体废物"],
+      "targetSections": ["固体废物处置"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "危废暂存库", "required": true, "unit": "", "standard": "危险废物贮存污染控制标准"},
+          {"fieldName": "危废处置协议", "required": true, "unit": "", "standard": "危废转移联单制度"}
+        ],
+        "comparisonType": "required_field"
+      },
+      "errorMessage": "危险废物处置不符合规范要求",
+      "autoFixSuggestion": "需建设危废暂存库，与有资质单位签订处置协议"
+    },
+    {
+      "rule_id": "COAL-020",
+      "name": "卫生防护距离达标",
+      "type": "spatial_check",
+      "typeName": "空间距离检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "工业场地与居民点之间必须满足卫生防护距离要求",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境保护目标", "总平面布置"],
+      "targetSections": ["规划方案优化", "噪声控制措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "卫生防护距离", "min": 0, "unit": "m", "standard": "无居民点在防护距离内", "comparison": "居民点距离"}
+        ],
+        "comparisonType": "spatial_separation"
+      },
+      "errorMessage": "居民点位于卫生防护距离范围内",
+      "autoFixSuggestion": "需调整工业场地布置或搬迁居民点"
+    },
+    {
+      "rule_id": "COAL-021",
+      "name": "规划范围与规模一致性",
+      "type": "data_consistency",
+      "typeName": "数据一致性检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "规划环评的范围、规模等数据必须与规划文件一致",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["规划方案概况"],
+      "targetSections": ["总则", "规划方案概况"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "规划范围", "comparison": "原规划"},
+          {"fieldName": "开发规模", "comparison": "原规划"},
+          {"fieldName": "井田划分", "comparison": "原规划"},
+          {"fieldName": "矿井数量", "comparison": "原规划"}
+        ],
+        "comparisonType": "cross_reference"
+      },
+      "errorMessage": "{field}数据与原规划不一致：报告为{报告值}，原规划为{规划值}",
+      "autoFixSuggestion": "需核对数据来源，确保与原规划文件一致"
+    },
+    {
+      "rule_id": "COAL-022",
+      "name": "产能核定一致性",
+      "type": "data_consistency",
+      "typeName": "数据一致性检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "各矿井产能数据在全文中必须保持一致",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["规划方案概况", "工程分析"],
+      "targetSections": ["各相关章节"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "各矿井产能", "comparison": "全文一致性"},
+          {"fieldName": "矿区总产能", "comparison": "各矿井之和"}
+        ],
+        "comparisonType": "exact_match"
+      },
+      "errorMessage": "{field}数据不一致：{位置1}为{值1}，{位置2}为{值2}",
+      "autoFixSuggestion": "需统一全文中的产能数据，以批复或核定文件为准"
+    },
+    {
+      "rule_id": "COAL-023",
+      "name": "法规标准时效性",
+      "type": "reference_check",
+      "typeName": "引用规范检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "引用的法律法规和标准规范必须为现行有效版本",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["编制依据"],
+      "targetSections": ["编制依据"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "法律有效性", "required": true},
+          {"fieldName": "标准版本", "required": true},
+          {"fieldName": "规范时效", "required": true}
+        ],
+        "checkRules": [
+          "不得引用已废止的法律法规",
+          "不得引用已作废的标准版本",
+          "优先引用最新发布的标准规范"
+        ],
+        "comparisonType": "reference_validation"
+      },
+      "errorMessage": "{文件名}已废止或被替代，需更新为现行有效版本",
+      "autoFixSuggestion": "需核查引用依据，使用现行有效版本"
+    },
+    {
+      "rule_id": "COAL-024",
+      "name": "导水裂缝带高度控制",
+      "type": "engineering_check",
+      "typeName": "工程技术检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "煤层开采导水裂缝带不得导入地表水体或含水层",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["水文地质", "地下水环境影响"],
+      "targetSections": ["地下水环境保护措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "导水裂缝带距第四系距离", "min": 100, "unit": "m", "standard": "不得导入第四系潜水含水层"},
+          {"fieldName": "导水裂缝带距地表水体距离", "min": 0, "unit": "m", "standard": "不得导入地表水体"}
+        ],
+        "comparisonType": "engineering_calculation"
+      },
+      "errorMessage": "导水裂缝带可能导入{水体名称}，需采取保护措施",
+      "autoFixSuggestion": "需留设防水煤柱或调整开采方案"
+    },
+    {
+      "rule_id": "COAL-025",
+      "name": "地表沉陷预测准确性",
+      "type": "data_consistency",
+      "typeName": "数据一致性检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "沉陷预测参数和结果应在各章节保持一致",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["沉陷影响预测"],
+      "targetSections": ["生态影响评价", "文物保护评价"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "最大下沉值", "comparison": "各章节"},
+          {"fieldName": "沉陷影响半径", "comparison": "各章节"},
+          {"fieldName": "保护煤柱宽度", "comparison": "各章节"}
+        ],
+        "comparisonType": "cross_reference"
+      },
+      "errorMessage": "沉陷预测数据不一致：{字段}在第{章节1}为{值1}，在第{章节2}为{值2}",
+      "autoFixSuggestion": "需统一沉陷预测参数和计算结果"
+    },
+    {
+      "rule_id": "COAL-026",
+      "name": "三线一单符合性",
+      "type": "compliance_check",
+      "typeName": "合规性检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "规划方案必须符合生态保护红线、环境质量底线、资源利用上限和环境准入清单",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["三线一单"],
+      "targetSections": ["规划方案论证"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "生态保护红线", "required": true, "unit": "", "standard": "不得占用"},
+          {"fieldName": "环境质量底线", "required": true, "unit": "", "standard": "达标排放"},
+          {"fieldName": "资源利用上限", "required": true, "unit": "", "standard": "承载力内"},
+          {"fieldName": "环境准入清单", "required": true, "unit": "", "standard": "符合准入条件"}
+        ],
+        "comparisonType": "compliance_check"
+      },
+      "errorMessage": "规划方案不符合三线一单管控要求：{具体问题}",
+      "autoFixSuggestion": "需调整规划方案以符合三线一单管控要求"
+    },
+    {
+      "rule_id": "COAL-027",
+      "name": "与相关规划协调性",
+      "type": "compliance_check",
+      "typeName": "合规性检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "规划方案必须与上位规划、产业政策、环保规划等协调一致",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["规划协调性分析"],
+      "targetSections": ["规划方案论证"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "与国家规划协调", "required": true},
+          {"fieldName": "与地方规划协调", "required": true},
+          {"fieldName": "与产业政策一致", "required": true},
+          {"fieldName": "与环保规划衔接", "required": true}
+        ],
+        "comparisonType": "compliance_check"
+      },
+      "errorMessage": "规划方案与{规划名称}存在不协调：{具体问题}",
+      "autoFixSuggestion": "需调整规划方案或与相关规划进行协调"
+    },
+    {
+      "rule_id": "COAL-028",
+      "name": "煤炭洗选废水零排放",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "选煤厂煤泥水必须实现一级闭路循环，禁止外排",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["水环境影响", "选煤厂设计"],
+      "targetSections": ["水污染防治措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "煤泥水闭路循环", "required": true, "unit": "", "standard": "一级闭路循环"},
+          {"fieldName": "选煤废水外排", "allowed": false, "unit": "", "standard": "禁止外排"}
+        ],
+        "comparisonType": "exact_match"
+      },
+      "errorMessage": "选煤厂煤泥水未实现闭路循环，存在外排风险",
+      "autoFixSuggestion": "需建设煤泥水处理设施，实现闭路循环"
+    },
+    {
+      "rule_id": "COAL-029",
+      "name": "露天矿排土场恢复标准",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "露天矿排土场必须按期完成土地复垦和生态恢复",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["土地复垦", "生态恢复"],
+      "targetSections": ["生态恢复与重建"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "排土场复垦率", "min": 100, "unit": "%", "standard": "土地复垦要求"},
+          {"fieldName": "植被恢复率", "min": 90, "unit": "%", "standard": "生态恢复标准"},
+          {"fieldName": "复垦时限", "required": true, "unit": "", "standard": "与开采同步"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "排土场未按要求完成土地复垦",
+      "autoFixSuggestion": "需制定排土场复垦计划，按期完成恢复"
+    },
+    {
+      "rule_id": "COAL-030",
+      "name": "煤炭自燃防治措施",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "易自燃煤层必须采取综合防灭火措施",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["煤层自燃评价"],
+      "targetSections": ["矿山安全措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "自燃倾向性评价", "required": true, "unit": "", "standard": "必须开展"},
+          {"fieldName": "防灭火设计", "required": true, "unit": "", "standard": "必须有专项设计"},
+          {"fieldName": "监测系统", "required": true, "unit": "", "standard": "CO等监测"}
+        ],
+        "comparisonType": "required_field"
+      },
+      "errorMessage": "易自燃煤层缺少必要的防灭火措施",
+      "autoFixSuggestion": "需制定综合防灭火方案，安装监测系统"
+    },
+    {
+      "rule_id": "COAL-031",
+      "name": "瓦斯等级与抽采要求",
+      "type": "engineering_check",
+      "typeName": "工程技术检查",
+      "severity": "critical",
+      "severityName": "严重",
+      "enabled": true,
+      "description": "高瓦斯、突出矿井必须采取瓦斯抽采措施",
+      "industry": "safety_assessment",
+      "industryName": "安全评价",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["瓦斯评价"],
+      "targetSections": ["瓦斯抽采设计"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "瓦斯等级鉴定", "required": true, "unit": "", "standard": "按规范要求"},
+          {"fieldName": "瓦斯抽采率", "min": 85, "unit": "%", "standard": "突出矿井要求"},
+          {"fieldName": "抽采达标评判", "required": true, "unit": "", "standard": "瓦斯抽采达标"}
+        ],
+        "comparisonType": "engineering_check"
+      },
+      "errorMessage": "高瓦斯矿井未达到瓦斯抽采要求",
+      "autoFixSuggestion": "需加强瓦斯抽采，确保抽采达标"
+    },
+    {
+      "rule_id": "COAL-032",
+      "name": "矸石山自燃防治",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "矸石堆放必须采取防止自燃措施",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["固体废物", "矸石场设计"],
+      "targetSections": ["矸石场环保措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "矸石山监测", "required": true, "unit": "", "standard": "温度监测"},
+          {"fieldName": "分层压实", "required": true, "unit": "", "standard": "及时碾压"},
+          {"fieldName": "覆土绿化", "required": true, "unit": "", "standard": "及时封闭"}
+        ],
+        "comparisonType": "requirement_check"
+      },
+      "errorMessage": "矸石场存在自燃隐患",
+      "autoFixSuggestion": "需加强矸石场管理，采取分层压实、覆土等措施"
+    },
+    {
+      "rule_id": "COAL-033",
+      "name": "土地利用现状核实",
+      "type": "data_consistency",
+      "typeName": "数据一致性检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "报告中的土地利用数据必须与现状调查一致",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境现状调查", "土地利用"],
+      "targetSections": ["生态环境影响评价"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "耕地面积", "comparison": "与现状调查一致"},
+          {"fieldName": "草地面积", "comparison": "与现状调查一致"},
+          {"fieldName": "林地面积", "comparison": "与现状调查一致"},
+          {"fieldName": "建设用地面积", "comparison": "与现状调查一致"}
+        ],
+        "comparisonType": "cross_reference"
+      },
+      "errorMessage": "{用地类型}面积数据与现状调查结果不一致",
+      "autoFixSuggestion": "需核实土地利用现状数据，确保与调查一致"
+    },
+    {
+      "rule_id": "COAL-034",
+      "name": "环境监测计划完整性",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "必须制定完整的环境监测计划",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["环境监测计划"],
+      "targetSections": ["环境管理"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "大气监测计划", "required": true},
+          {"fieldName": "水环境监测计划", "required": true},
+          {"fieldName": "噪声监测计划", "required": true},
+          {"fieldName": "生态监测计划", "required": true},
+          {"fieldName": "地下水监测井", "required": true}
+        ],
+        "comparisonType": "required_field"
+      },
+      "errorMessage": "环境监测计划不完整，缺少{监测要素}",
+      "autoFixSuggestion": "需补充完善环境监测计划"
+    },
+    {
+      "rule_id": "COAL-035",
+      "name": "绿化覆土厚度标准",
+      "type": "requirement_check",
+      "typeName": "合规要求检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "土地复垦绿化必须满足覆土厚度要求",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["土地复垦设计"],
+      "targetSections": ["生态恢复措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "耕地复垦覆土厚度", "min": 80, "unit": "cm", "standard": "耕地质量要求"},
+          {"fieldName": "草地复垦覆土厚度", "min": 30, "unit": "cm", "standard": "草地恢复要求"},
+          {"fieldName": "林地复垦覆土厚度", "min": 50, "unit": "cm", "standard": "林地恢复要求"}
+        ],
+        "comparisonType": "min_limit"
+      },
+      "errorMessage": "{用地类型}复垦覆土厚度不足",
+      "autoFixSuggestion": "需按标准增加覆土厚度"
+    },
+    {
+      "rule_id": "COAL-036",
+      "name": "土壤环境质量标准",
+      "type": "standard_check",
+      "typeName": "标准达标检查",
+      "severity": "warning",
+      "severityName": "警告",
+      "enabled": true,
+      "description": "土壤环境质量必须符合《土壤环境质量 农用地土壤污染风险管控标准》",
+      "industry": "environmental",
+      "industryName": "环境保护",
+      "reportTypes": ["coal_mining_planning_eia", "coal_mining_project_eia"],
+      "applicableRegions": ["nationwide"],
+      "nationalLevel": true,
+      "sourceSections": ["土壤环境"],
+      "targetSections": ["土壤环境保护措施"],
+      "validationConfig": {
+        "fields": [
+          {"fieldName": "pH", "min": 5.5, "max": 8.5, "unit": ""},
+          {"fieldName": "镉", "limit": 0.3, "unit": "mg/kg", "standard": "GB15618 筛选值"},
+          {"fieldName": "汞", "limit": 1.3, "unit": "mg/kg", "standard": "GB15618 筛选值"},
+          {"fieldName": "砷", "limit": 25, "unit": "mg/kg", "standard": "GB15618 筛选值"},
+          {"fieldName": "铅", "limit": 120, "unit": "mg/kg", "standard": "GB15618 筛选值"}
+        ],
+        "comparisonType": "range_or_limit"
+      },
+      "errorMessage": "{监测点}土壤{污染物}超过GB15618筛选值",
+      "autoFixSuggestion": "需加强土壤环境保护，防治土壤污染"
+    }
+  ]
+}

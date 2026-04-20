@@ -130,7 +130,7 @@ Host Machine
   ↓
 Docker Compose (deer-flow-dev)
   ├→ nginx (port 2026) ← Reverse proxy
-  ├→ web (port 3000) ← Frontend with hot-reload
+  ├→ web (port 4000) ← Frontend with hot-reload
   ├→ api (port 8001) ← Gateway API with hot-reload
    ├→ langgraph (port 2024) ← LangGraph server with hot-reload
    └→ provisioner (optional, port 8002) ← Started only in provisioner/K8s sandbox mode
@@ -194,7 +194,7 @@ If you need to start services individually:
    cd backend
    make gateway
 
-   # Terminal 3: Start Frontend (port 3000)
+   # Terminal 3: Start Frontend (port 4000)
    cd frontend
    pnpm dev
    ```
@@ -214,7 +214,7 @@ The nginx configuration provides:
 - Unified entry point on port 2026
 - Routes `/api/langgraph/*` to LangGraph Server (2024)
 - Routes other `/api/*` endpoints to Gateway API (8001)
-- Routes non-API requests to Frontend (3000)
+- Routes non-API requests to Frontend (4000)
 - Centralized CORS handling
 - SSE/streaming support for real-time agent responses
 - Optimized timeouts for long-running operations
@@ -255,7 +255,7 @@ deer-flow/
 Browser
   ↓
 Nginx (port 2026) ← Unified entry point
-  ├→ Frontend (port 3000) ← / (non-API requests)
+  ├→ Frontend (port 4000) ← / (non-API requests)
   ├→ Gateway API (port 8001) ← /api/models, /api/mcp, /api/skills, /api/threads/*/artifacts
   └→ LangGraph Server (port 2024) ← /api/langgraph/* (agent interactions)
 ```

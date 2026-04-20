@@ -149,6 +149,11 @@ export function InputBox({
   const { textInput } = usePromptInputController();
   const promptRootRef = useRef<HTMLDivElement | null>(null);
 
+  const hasContent = useMemo(
+    () => (textInput.value ?? "").trim().length > 0,
+    [textInput.value],
+  );
+
   const [followups, setFollowups] = useState<string[]>([]);
   const [followupsHidden, setFollowupsHidden] = useState(false);
   const [followupsLoading, setFollowupsLoading] = useState(false);
@@ -429,7 +434,7 @@ export function InputBox({
   }, [context.model_name, disabled, isMock, status, thread.messages, threadId]);
 
   return (
-    <div ref={promptRootRef} className="relative flex flex-col gap-4">
+    <div ref={promptRootRef} className="relative flex flex-col">
       {showFollowups && (
         <div className="flex items-center justify-center pb-2">
           <div className="flex items-center gap-2">
@@ -833,7 +838,7 @@ export function InputBox({
             <PromptInputSubmit
               className="rounded-full"
               disabled={disabled}
-              variant="outline"
+              variant={hasContent ? "default" : "outline"}
               status={status}
             />
           </PromptInputTools>
@@ -844,7 +849,7 @@ export function InputBox({
       </PromptInput>
 
       {isNewThread && searchParams.get("mode") !== "skill" && (
-        <div className="flex items-center justify-center pt-2">
+        <div className="flex items-center justify-center">
           <SuggestionList />
         </div>
       )}
@@ -899,6 +904,7 @@ function SuggestionList() {
   );
   return (
     <Suggestions className="min-h-16 w-fit items-start">
+      {/* [COMMENTED OUT] "小惊喜" surprise button — hide until needed
       <ConfettiButton
         className="text-muted-foreground cursor-pointer rounded-full px-4 text-xs font-normal"
         variant="outline"
@@ -907,6 +913,7 @@ function SuggestionList() {
       >
         <SparklesIcon className="size-4" /> {t.inputBox.surpriseMe}
       </ConfettiButton>
+      */}
       {t.inputBox.suggestions.map((suggestion) => (
         <Suggestion
           key={suggestion.suggestion}

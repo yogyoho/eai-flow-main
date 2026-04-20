@@ -234,7 +234,7 @@ echo -e "${BLUE}Runtime mode: $RUNTIME_MODE${NC}"
 
 case "$RUNTIME_MODE" in
     gateway)
-        export LANGGRAPH_UPSTREAM=gateway:8001
+        export LANGGRAPH_UPSTREAM=gateway:4001
         export LANGGRAPH_REWRITE=/api/
         services="frontend gateway nginx"
         ;;
@@ -285,13 +285,13 @@ echo "=========================================="
 echo "  DeerFlow is running! ($RUNTIME_MODE mode)"
 echo "=========================================="
 echo ""
-echo "  🌐 Application: http://localhost:${PORT:-2026}"
-echo "  📡 API Gateway: http://localhost:${PORT:-2026}/api/*"
+echo "  🌐 Application: http://localhost:${PORT:-4026}"
+echo "  📡 API Gateway: http://localhost:${PORT:-4026}/api/*"
 if [ "$RUNTIME_MODE" = "gateway" ]; then
     echo "  🤖 Runtime:     Gateway embedded"
     echo "  API:            /api/langgraph/* → Gateway (compat)"
 else
-    echo "  🤖 LangGraph:   http://localhost:${PORT:-2026}/api/langgraph/*"
+    echo "  🤖 LangGraph:   http://localhost:${PORT:-4026}/api/langgraph/*"
 fi
 echo ""
 echo "  Manage:"

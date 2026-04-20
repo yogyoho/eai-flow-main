@@ -21,6 +21,17 @@ from app.gateway.routers import (
     threads,
     uploads,
 )
+from app.extensions.dept.routers import router as dept_router
+from app.extensions.docmgr.routers import router as docmgr_router
+from app.extensions.auth.routers import router as auth_router
+from app.extensions.database import init_db, migrate_db, seed_db
+from app.extensions.user.routers import router as user_router
+from app.extensions.role.routers import router as role_router
+from app.extensions.user_department.routers import router as user_department_router
+from app.extensions.knowledge import kb_router as knowledge_router
+from app.extensions.web_scraper import web_scraper_router
+from app.extensions.law import router as law_router
+from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
 from deerflow.config.app_config import get_app_config
 
 # Configure logging
@@ -47,6 +58,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise RuntimeError(error_msg) from e
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
+
+    # Initialize extensions database tables and run migrations
+    try:
+        await init_db()
+        await migrate_db()
+        await seed_db()
+        logger.info("Extensions database initialized successfully")
+    except Exception as e:
+        logger.warning("Extensions database init failed (may already exist): %s", e)
 
     # Initialize LangGraph runtime components (StreamBridge, RunManager, checkpointer, store)
     async with langgraph_runtime(app):
@@ -204,6 +224,37 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
+
+    # Extension APIs
+    # Authentication API is mounted at /api/extensions/auth
+    app.include_router(auth_router)
+
+    # Users API is mounted at /api/extensions/users
+    app.include_router(user_router)
+
+    # Roles API is mounted at /api/extensions/roles
+    app.include_router(role_router)
+
+    # Departments API is mounted at /api/extensions/departments
+    app.include_router(dept_router)
+
+    # Doc Mgr API is mounted at /api/extensions/docmgr
+    app.include_router(docmgr_router)
+
+    # User Departments API is mounted at /api/extensions/users/{user_id}/departments
+    app.include_router(user_department_router)
+
+    # Knowledge Bases API is mounted at /knowledge
+    app.include_router(knowledge_router)
+
+    # Web Scraper API is mounted at /scraper
+    app.include_router(web_scraper_router)
+
+    # Law API is mounted at /api/kf/laws (router has prefix="/kf/laws")
+    app.include_router(law_router)
+
+    # Knowledge Factory API is mounted at /api/kf (router has prefix="/kf")
+    app.include_router(knowledge_factory_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict:
