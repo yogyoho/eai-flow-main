@@ -5,7 +5,11 @@ import {
   Settings2Icon,
   SettingsIcon,
   LogOutIcon,
+  BookOpen,
+  FolderCheck,
+  Factory,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
@@ -56,10 +60,29 @@ export function WorkspaceNavMenu() {
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
   const { logout } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const navItems = [
+    {
+      href: "/knowledge",
+      label: t.sidebar.knowledge,
+      icon: BookOpen,
+    },
+    {
+      href: "/docmgr",
+      label: t.sidebar.documentSpace,
+      icon: FolderCheck,
+    },
+    {
+      href: "/knowledge-factory",
+      label: t.sidebar.knowledgeFactory,
+      icon: Factory,
+    },
+  ];
 
   return (
     <>
@@ -85,6 +108,18 @@ export function WorkspaceNavMenu() {
                 align="end"
                 sideOffset={4}
               >
+                <DropdownMenuGroup>
+                  {navItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => router.push(item.href)}
+                    >
+                      <item.icon />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => {

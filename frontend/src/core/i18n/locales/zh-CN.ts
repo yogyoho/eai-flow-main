@@ -168,6 +168,9 @@ export const zhCN: Translations = {
     recentChats: "对话记录",
     demoChats: "演示对话",
     agents: "智能体",
+    knowledge: "知识库",
+    documentSpace: "文档空间",
+    knowledgeFactory: "知识工厂",
   },
 
   // Agents

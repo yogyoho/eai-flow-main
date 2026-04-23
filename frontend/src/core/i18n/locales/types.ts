@@ -118,6 +118,9 @@ export interface Translations {
     chats: string;
     demoChats: string;
     agents: string;
+    knowledge: string;
+    documentSpace: string;
+    knowledgeFactory: string;
   };
 
   // Agents
