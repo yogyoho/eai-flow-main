@@ -7,6 +7,10 @@ import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -15,7 +19,7 @@ import {
   List, ListOrdered, ListChecks,
   AlignLeft, AlignCenter, AlignRight,
   Quote, Code, Minus, Undo2, Redo2,
-  Highlighter, Link2,
+  Highlighter, Link2, Table as TableIcon,
 } from "lucide-react";
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Markdown } from "tiptap-markdown";
@@ -23,7 +27,11 @@ import { Markdown } from "tiptap-markdown";
 import { cn } from "@/lib/utils";
 import { extractHeadings } from "./utils/headingIdManager";
 import { highlightSection } from "./utils/sectionHighlighter";
+import { getMarkdownPasteParseMode, shouldHandleMarkdownPaste } from "./utils/markdownPaste";
 import { useScrollSpy } from "./hooks/useScrollSpy";
+import { SlashCommand, SlashCommandPluginKey, type SlashCommandPluginState } from "./extensions/SlashCommand";
+import SlashMenu from "./components/SlashMenu";
+import EditorDragHandle from "./components/EditorDragHandle";
 
 export interface TiptapEditorRef {
   getMarkdown: () => string;
@@ -87,6 +95,10 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
     if (url === null) return;
     if (url === "") { editor.chain().focus().extendMarkRange("link").unsetLink().run(); return; }
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  };
+
+  const insertTable = (rows: number, cols: number) => {
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
   };
 
   return (
@@ -159,6 +171,10 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
       <TBtn title="分割线" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <Minus className="w-3.5 h-3.5" />
       </TBtn>
+      <TDivider />
+      <TBtn title="插入表格" active={editor.isActive("table")} onClick={() => insertTable(3, 3)}>
+        <TableIcon className="w-3.5 h-3.5" />
+      </TBtn>
     </div>
   );
 }
@@ -207,8 +223,12 @@ function TableOfContents({
 const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   ({ initialContent, onChange, placeholder = "开始输入内容...", className, onReady }, ref) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const editorInstanceRef = useRef<Editor | null>(null);
     const [headings, setHeadings] = useState<HeadingItem[]>([]);
     const [clickedId, setClickedId] = useState<string | null>(null);
+    const [slashMenuVisible, setSlashMenuVisible] = useState(false);
+    const [slashMenuQuery, setSlashMenuQuery] = useState("");
+    const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
 
     const activeId = useScrollSpy({
       containerRef: scrollRef,
@@ -232,12 +252,65 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           HTMLAttributes: { class: "text-primary underline underline-offset-2 cursor-pointer" },
         }),
         Placeholder.configure({ placeholder }),
-        Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: false }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Markdown.configure({
+          html: true,
+          transformPastedText: true,
+          transformCopiedText: false,
+          // @ts-expect-error tiptap-markdown accepts markdown-it plugins at runtime.
+          markdownItPlugins: [], // 使用默认的 markdown-it 表格支持
+        }),
+        SlashCommand.configure({
+          onActivate: (state: SlashCommandPluginState) => {
+            const editorInstance = editorInstanceRef.current;
+            if (!editorInstance) return;
+            if (state.active) {
+              const { view } = editorInstance;
+              const { from } = view.state.selection;
+              const coords = view.coordsAtPos(from);
+              setSlashMenuPosition({
+                top: coords.bottom + 8,
+                left: coords.left,
+              });
+              setSlashMenuQuery(state.query);
+              setSlashMenuVisible(true);
+            } else {
+              setSlashMenuVisible(false);
+              setSlashMenuQuery("");
+            }
+          },
+        }),
       ],
       content: initialContent,
       editorProps: {
         attributes: {
           class: "prose prose-foreground max-w-none focus:outline-none min-h-full pb-32 text-[15px] leading-7",
+        },
+        handlePaste: (view, event) => {
+          const text = event.clipboardData?.getData("text/plain") ?? "";
+          const html = event.clipboardData?.getData("text/html") ?? "";
+
+          if (!shouldHandleMarkdownPaste({ text, html, shiftKey: false })) {
+            return false;
+          }
+
+          const editorInstance = editorInstanceRef.current;
+          const markdownStorage = (editorInstance?.storage as
+            | { markdown?: { parser?: { parse: (content: string, options?: { inline?: boolean }) => string } } }
+            | undefined)?.markdown as
+            | { parser?: { parse: (content: string, options?: { inline?: boolean }) => string } }
+            | undefined;
+          const parser = markdownStorage?.parser;
+          if (!parser) return false;
+
+          event.preventDefault();
+
+          const parsed = parser.parse(text, getMarkdownPasteParseMode(text));
+          editorInstance?.chain().focus().insertContent(parsed).run();
+          return true;
         },
       },
       onUpdate: ({ editor: e }) => {
@@ -250,6 +323,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     });
 
     useEffect(() => {
+      editorInstanceRef.current = editor;
       onReady?.(editor);
     }, [editor, onReady]);
 
@@ -342,6 +416,31 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       getHeadings,
     }));
 
+    const handleSlashCommand = useCallback(
+      (item: { command: (editor: import("@tiptap/core").Editor) => void }) => {
+        if (!editor) return;
+        const pluginState = SlashCommandPluginKey.getState(editor.state) as SlashCommandPluginState | undefined;
+        // Delete the "/" and query text
+        const tr = editor.state.tr.setMeta(SlashCommandPluginKey as Parameters<typeof editor.state.tr.setMeta>[0], {
+          active: false,
+          query: "",
+          range: null,
+        });
+        editor.view.dispatch(tr);
+
+        const { state } = editor;
+        if (pluginState?.range) {
+          editor.chain().focus().deleteRange({ from: pluginState.range.from, to: state.selection.from }).run();
+        }
+
+        // Execute the command
+        item.command(editor);
+        setSlashMenuVisible(false);
+        setSlashMenuQuery("");
+      },
+      [editor]
+    );
+
     return (
       <div className={cn("flex h-full overflow-hidden bg-background relative", className)}>
         {headings.length > 0 && (
@@ -364,7 +463,8 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           ref={scrollRef}
           className="flex-1 overflow-y-auto scrollbar-hide relative"
         >
-          <div className="mx-auto px-8 pt-10 pb-32" style={{ maxWidth: 780 }}>
+          <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
+            <EditorDragHandle editor={editor} />
             <EditorContent editor={editor} />
           </div>
         </div>
@@ -373,6 +473,17 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
             <EditorToolbar editor={editor} />
           </div>
         </div>
+        <SlashMenu
+          editor={editor}
+          visible={slashMenuVisible}
+          position={slashMenuPosition}
+          query={slashMenuQuery}
+          onClose={() => {
+            setSlashMenuVisible(false);
+            setSlashMenuQuery("");
+          }}
+          onCommand={handleSlashCommand}
+        />
       </div>
     );
   }

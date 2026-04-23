@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { mockLangGraphAPI } from "./utils/mock-api";
@@ -7,7 +8,7 @@ import { mockLangGraphAPI } from "./utils/mock-api";
 // ---------------------------------------------------------------------------
 
 /** Mock the extensions API endpoints used by the knowledge factory page. */
-function mockExtensionsAPI(page: Parameters<typeof page>[0]) {
+function mockExtensionsAPI(page: Page) {
   // Mock auth/me — critical: must be set before page navigation
   void page.route("**/api/extensions/auth/me", (route) => {
     return route.fulfill({

@@ -159,32 +159,84 @@ for arg in "$@"; do
     esac
 done
 
+# ── PID file directory ─────────────────────────────────────────────────────────
+PID_DIR="$REPO_ROOT/.pids"
+mkdir -p "$PID_DIR"
+
 # ── Stop helper ──────────────────────────────────────────────────────────────
 
-_kill_port() {
-    local port=$1
-    local pid
-    pid=$(lsof -ti :"$port" 2>/dev/null) || true
-    if [ -n "$pid" ]; then
-        kill -9 $pid 2>/dev/null || true
+# Kill by PID file (safe — only kills our own spawned processes)
+_kill_pidfile() {
+    local pidfile="$1"
+    if [ -f "$pidfile" ]; then
+        local pid
+        pid=$(cat "$pidfile" 2>/dev/null)
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+        rm -f "$pidfile"
     fi
+}
+
+# Cross-platform: kill process by port using netstat (works on both Linux/Mac/Windows MSYS2)
+_kill_by_port() {
+    local port="$1"
+    local pids
+    if [ -d /mnt/c ]; then
+        # Windows: use netstat to find PIDs on the port
+        pids=$(netstat -ano 2>/dev/null | grep ":$port " | grep LISTENING | awk '{print $NF}' | sort -u)
+        for pid in $pids; do
+            [ -n "$pid" ] && [ "$pid" != "0" ] && taskkill //F //PID "$pid" 2>/dev/null || true
+        done
+    else
+        # Linux/Mac: use lsof
+        pids=$(lsof -ti :"$port" 2>/dev/null) || true
+        for pid in $pids; do
+            [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+    sleep 1
 }
 
 stop_all() {
     echo "Stopping all services..."
-    pkill -f "langgraph dev" 2>/dev/null || true
-    pkill -f "uvicorn app.gateway.app:app" 2>/dev/null || true
-    pkill -f "next dev" 2>/dev/null || true
-    pkill -f "next start" 2>/dev/null || true
-    pkill -f "next-server" 2>/dev/null || true
+
+    # 1. Kill by PID files first (our spawned children)
+    _kill_pidfile "$PID_DIR/langgraph.pid"
+    _kill_pidfile "$PID_DIR/gateway.pid"
+    _kill_pidfile "$PID_DIR/frontend.pid"
+    _kill_pidfile "$PID_DIR/nginx.pid"
+
+    # 2. Kill by process name patterns (covers any orphans)
+    if [ -d /mnt/c ]; then
+        # Windows MSYS2: use taskkill via PowerShell for pattern matching
+        powershell.exe -NoProfile -Command "Get-Process | Where-Object { \$_.MainWindowTitle -match 'langgraph|gateway|uvicorn|next-server|deerflow' -or \$_.ProcessName -match 'langgraph|gateway|uvicorn|node|next' } -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null || true
+    else
+        pkill -f "langgraph dev" 2>/dev/null || true
+        pkill -f "uvicorn app.gateway.app:app" 2>/dev/null || true
+        pkill -f "next dev" 2>/dev/null || true
+        pkill -f "next start" 2>/dev/null || true
+        pkill -f "next-server" 2>/dev/null || true
+    fi
+
+    # 3. Nginx graceful shutdown, then force kill survivors
     nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
     sleep 1
-    pkill -9 nginx 2>/dev/null || true
-    # Force-kill any survivors still holding the service ports
-    _kill_port 4024
-    _kill_port 4001
-    _kill_port 4000
+    if [ -d /mnt/c ]; then
+        taskkill //F //IM nginx.exe 2>/dev/null || true
+    else
+        pkill -9 nginx 2>/dev/null || true
+    fi
+
+    # 4. Force-kill anything still holding service ports
+    _kill_by_port 4024
+    _kill_by_port 4001
+    _kill_by_port 4000
+    _kill_by_port 4026
+
+    # 5. Clean up sandbox containers
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
+
     echo "✓ All services stopped"
 }
 
@@ -235,18 +287,13 @@ else
 fi
 
 if $_IS_WINDOWS; then
-    # On Windows, use a .bat launcher with `start ""` to detach PowerShell from the bash process.
-    # Directly calling `powershell.exe` via `sh -c` gets killed when the shell exits.
+    # On Windows, pnpm is available but node path may not be in MSYS2 PATH.
+    # Use the .bat launcher which handles the node path resolution correctly.
     _BAT_FILE="$REPO_ROOT/scripts/frontend-start.bat"
-    if command -v python3 >/dev/null 2>&1; then
-        _PYTHON_BIN="python3"
-    elif command -v python >/dev/null 2>&1; then
-        _PYTHON_BIN="python"
-    fi
     if $DEV_MODE; then
         FRONTEND_CMD="$_BAT_FILE"
     else
-        _SECRET=$($_PYTHON_BIN -c 'import secrets; print(secrets.token_hex(16))')
+        _SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(16))' 2>/dev/null || python -c 'import secrets; print(secrets.token_hex(16))')
         # Dynamically rewrite the .bat file to include the secret for preview mode
         cat <<BATEOF > "$_BAT_FILE"
 @echo off
@@ -305,7 +352,23 @@ fi
 if ! $SKIP_INSTALL; then
     echo "Syncing dependencies..."
     (cd backend && $UV_CMD sync --quiet) || { echo "✗ Backend dependency install failed"; exit 1; }
-    (cd frontend && pnpm install --silent) || { echo "✗ Frontend dependency install failed"; exit 1; }
+    echo "✓ Backend dependencies synced"
+
+    # On Windows MSYS2, pnpm via bash fails because node isn't in MSYS2 PATH.
+    # Check if node_modules already exists — if so, skip pnpm install.
+    if [ -d /mnt/c ]; then
+        if [ -d "frontend/node_modules" ]; then
+            echo "⏩ Frontend dependencies already installed (node_modules exists), skipping pnpm install"
+        else
+            # Try pnpm install; if it fails because node not found, warn but don't exit
+            (cd frontend && pnpm install --silent) || {
+                echo "⚠ Frontend dependency install failed. If the issue is 'node not found', run 'pnpm install' manually in the frontend directory."
+                echo "  Or ensure node is in your PATH, then re-run without --skip-install."
+            }
+        fi
+    else
+        (cd frontend && pnpm install --silent) || { echo "✗ Frontend dependency install failed"; exit 1; }
+    fi
     echo "✓ Dependencies synced"
 else
     echo "⏩ Skipping dependency install (--skip-install)"
@@ -369,15 +432,19 @@ trap cleanup INT TERM
 # ── Helper: start a service ──────────────────────────────────────────────────
 
 # run_service NAME COMMAND PORT TIMEOUT
-# In daemon mode, wraps with nohup. Waits for port to be ready.
+# Saves PID to $PID_DIR/<name>.pid and waits for port to be ready.
 run_service() {
     local name="$1" cmd="$2" port="$3" timeout="$4"
+    local pidfile="$PID_DIR/${name,,}.pid"
 
     echo "Starting $name..."
     if $DAEMON_MODE; then
         nohup sh -c "$cmd" > /dev/null 2>&1 &
+        local bg_pid=$!
+        echo "$bg_pid" > "$pidfile"
     else
         sh -c "$cmd" &
+        echo "$!" > "$pidfile"
     fi
 
     ./scripts/wait-for-port.sh "$port" "$timeout" "$name" || {
@@ -386,7 +453,7 @@ run_service() {
         [ -f "$logfile" ] && tail -20 "$logfile"
         cleanup
     }
-    echo "✓ $name started on localhost:$port"
+    echo "✓ $name started on localhost:$port (PID $(cat "$pidfile"))"
 }
 
 # ── Start services ───────────────────────────────────────────────────────────
@@ -399,18 +466,8 @@ if ! $GATEWAY_MODE; then
     CONFIG_LOG_LEVEL=$(grep -m1 '^log_level:' config.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ')
     LANGGRAPH_LOG_LEVEL="${LANGGRAPH_LOG_LEVEL:-${CONFIG_LOG_LEVEL:-info}}"
     LANGGRAPH_JOBS_PER_WORKER="${LANGGRAPH_JOBS_PER_WORKER:-10}"
-    # On Windows, allow blocking calls (blockbuster intercepts os.unlink on SQLite)
-    if [ -d /mnt/c ]; then
-        LANGGRAPH_ALLOW_BLOCKING="${LANGGRAPH_ALLOW_BLOCKING:-1}"
-    else
-        LANGGRAPH_ALLOW_BLOCKING="${LANGGRAPH_ALLOW_BLOCKING:-0}"
-    fi
-    LANGGRAPH_ALLOW_BLOCKING_FLAG=""
-    if [ "$LANGGRAPH_ALLOW_BLOCKING" = "1" ]; then
-        LANGGRAPH_ALLOW_BLOCKING_FLAG="--allow-blocking"
-    fi
     run_service "LangGraph" \
-        "cd backend && NO_COLOR=1 CLICOLOR=0 CLICOLOR_FORCE=0 PY_COLORS=0 TERM=dumb $UV_CMD run langgraph dev --no-browser --port 4024 $LANGGRAPH_ALLOW_BLOCKING_FLAG --n-jobs-per-worker $LANGGRAPH_JOBS_PER_WORKER --server-log-level $LANGGRAPH_LOG_LEVEL $LANGGRAPH_EXTRA_FLAGS 2>&1 | perl -pe 's/\e\[[0-9;]*[[:alpha:]]//g' > ../logs/langgraph.log" \
+        "cd backend && NO_COLOR=1 CLICOLOR=0 CLICOLOR_FORCE=0 PY_COLORS=0 TERM=dumb DEER_FLOW_HOME='$REPO_ROOT/backend/.deer-flow' $UV_CMD run langgraph dev --no-browser --port 4024 --allow-blocking --n-jobs-per-worker $LANGGRAPH_JOBS_PER_WORKER --server-log-level $LANGGRAPH_LOG_LEVEL $LANGGRAPH_EXTRA_FLAGS 2>&1 | perl -pe 's/\e\[[0-9;]*[[:alpha:]]//g' > ../logs/langgraph.log" \
         4024 60
 else
     echo "⏩ Skipping LangGraph (Gateway mode — runtime embedded in Gateway)"
