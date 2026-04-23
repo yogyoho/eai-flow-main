@@ -16,19 +16,17 @@ import type {
   ComplianceRuleStatistics,
   RuleFilterParams,
 } from "@/extensions/knowledge-factory/types";
-
-const API_BASE = "/api/kf";
+import { authFetch } from "@/extensions/api/client";
+import { buildLawLibraryUrl } from "./law-library-api";
 
 export async function fetchRuleDictionaries(): Promise<RuleDictionaries> {
-  const response = await fetch(`${API_BASE}/rule-dictionaries`, {
-    credentials: "include",
-  });
+  const url = buildLawLibraryUrl("/kf/rule-dictionaries");
+  const data = await authFetch<{
+    industries?: { value: string; label: string }[];
+    report_types?: { value: string; label: string }[];
+    regions?: { value: string; label: string }[];
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取规则字典失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     industries: (data.industries as RuleDictionaries["industries"]) ?? [],
     reportTypes: (data.report_types as RuleDictionaries["reportTypes"]) ?? [],
@@ -52,17 +50,14 @@ export async function fetchRules(params: RuleFilterParams = {}): Promise<Complia
   if (params.limit) searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
-  const response = await fetch(`${API_BASE}/rules${query ? `?${query}` : ""}`, {
-    credentials: "include",
-  });
+  const url = buildLawLibraryUrl("/kf/rules" + (query ? `?${query}` : ""));
+  const data = await authFetch<{
+    rules: Record<string, unknown>[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取规则列表失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  // 转换 snake_case 到 camelCase
   return {
     rules: data.rules.map(transformRule),
     total: data.total,
@@ -75,15 +70,8 @@ export async function fetchRules(params: RuleFilterParams = {}): Promise<Complia
  * 获取单个规则
  */
 export async function fetchRule(ruleId: string): Promise<ComplianceRule> {
-  const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(`获取规则详情失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}`);
+  const data = await authFetch<Record<string, unknown>>(url, undefined, "");
   return transformRule(data);
 }
 
@@ -91,20 +79,15 @@ export async function fetchRule(ruleId: string): Promise<ComplianceRule> {
  * 创建规则
  */
 export async function createRule(rule: ComplianceRuleCreate): Promise<ComplianceRule> {
-  const response = await fetch(`${API_BASE}/rules`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const url = buildLawLibraryUrl("/kf/rules");
+  const data = await authFetch<Record<string, unknown>>(
+    url,
+    {
+      method: "POST",
+      body: JSON.stringify(transformRuleToSnakeCase(rule)),
     },
-    credentials: "include",
-    body: JSON.stringify(transformRuleToSnakeCase(rule)),
-  });
-
-  if (!response.ok) {
-    throw new Error(`创建规则失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+    ""
+  );
   return transformRule(data);
 }
 
@@ -115,20 +98,15 @@ export async function updateRule(
   ruleId: string,
   updates: ComplianceRuleUpdate
 ): Promise<ComplianceRule> {
-  const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}`);
+  const data = await authFetch<Record<string, unknown>>(
+    url,
+    {
+      method: "PUT",
+      body: JSON.stringify(transformRuleToSnakeCase(updates)),
     },
-    credentials: "include",
-    body: JSON.stringify(transformRuleToSnakeCase(updates)),
-  });
-
-  if (!response.ok) {
-    throw new Error(`更新规则失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+    ""
+  );
   return transformRule(data);
 }
 
@@ -136,30 +114,16 @@ export async function updateRule(
  * 删除规则
  */
 export async function deleteRule(ruleId: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(`删除规则失败: ${response.statusText}`);
-  }
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}`);
+  await authFetch<void>(url, { method: "DELETE" }, "");
 }
 
 /**
  * 导入种子数据
  */
 export async function importSeedRules(forceUpdate = false): Promise<ComplianceRuleImportResponse> {
-  const response = await fetch(`${API_BASE}/rules/import-seed?force_update=${forceUpdate}`, {
-    method: "POST",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(`导入种子数据失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const url = buildLawLibraryUrl(`/kf/rules/import-seed?force_update=${forceUpdate}`);
+  const data = await authFetch<Record<string, unknown>>(url, { method: "POST" }, "");
   return mapRuleImportResponse(data);
 }
 
@@ -167,15 +131,18 @@ export async function importSeedRules(forceUpdate = false): Promise<ComplianceRu
  * 获取种子数据状态
  */
 export async function fetchSeedStatus(): Promise<ComplianceRuleStatus> {
-  const response = await fetch(`${API_BASE}/rules/seed-status`, {
-    credentials: "include",
-  });
+  const url = buildLawLibraryUrl("/kf/rules/seed-status");
+  const data = await authFetch<{
+    seed_version: string;
+    seed_total: number;
+    db_total: number;
+    db_enabled: number;
+    db_disabled: number;
+    in_seed_not_in_db: string[];
+    in_db_not_in_seed: string[];
+    up_to_date: boolean;
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取种子数据状态失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     seedVersion: data.seed_version,
     seedTotal: data.seed_total,
@@ -192,15 +159,8 @@ export async function fetchSeedStatus(): Promise<ComplianceRuleStatus> {
  * 获取规则引擎页面总览
  */
 export async function fetchRuleOverview(): Promise<ComplianceRuleOverview> {
-  const response = await fetch(`${API_BASE}/rules/overview`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(`获取规则总览失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const url = buildLawLibraryUrl("/kf/rules/overview");
+  const data = await authFetch<Record<string, unknown>>(url, undefined, "");
   return mapRuleOverviewResponse(data);
 }
 
@@ -208,15 +168,17 @@ export async function fetchRuleOverview(): Promise<ComplianceRuleOverview> {
  * 获取规则统计
  */
 export async function fetchRuleStatistics(): Promise<ComplianceRuleStatistics> {
-  const response = await fetch(`${API_BASE}/rules/statistics`, {
-    credentials: "include",
-  });
+  const url = buildLawLibraryUrl("/kf/rules/statistics");
+  const data = await authFetch<{
+    total: number;
+    enabled: number;
+    disabled: number;
+    from_seed: number;
+    type_distribution: Record<string, number>;
+    severity_distribution: Record<string, number>;
+    industry_distribution: Record<string, number>;
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取规则统计失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     total: data.total,
     enabled: data.enabled,
@@ -366,16 +328,13 @@ export async function fetchRuleLogs(
   total: number;
   logs: RuleExecutionLog[];
 }> {
-  const response = await fetch(
-    `${API_BASE}/rules/${ruleId}/logs?limit=${limit}&offset=${offset}`,
-    { credentials: "include" }
-  );
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}/logs?limit=${limit}&offset=${offset}`);
+  const data = await authFetch<{
+    rule_id: string;
+    total: number;
+    logs?: Record<string, unknown>[];
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取规则日志失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     ruleId: data.rule_id,
     total: data.total,
@@ -397,15 +356,19 @@ export async function fetchRuleLogs(
 export async function fetchRuleExecutionStatistics(
   ruleId: string
 ): Promise<RuleExecutionStatistics> {
-  const response = await fetch(`${API_BASE}/rules/${ruleId}/statistics`, {
-    credentials: "include",
-  });
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}/statistics`);
+  const data = await authFetch<{
+    rule_id: string;
+    rule_name: string;
+    total_executions: number;
+    pass_count: number;
+    fail_count: number;
+    warning_count: number;
+    error_count: number;
+    last_executed_at: string | null;
+    last_failed_at: string | null;
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取规则统计失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     ruleId: data.rule_id,
     ruleName: data.rule_name,
@@ -431,16 +394,15 @@ export async function fetchTriggerStatistics(
   if (endDate) params.set("end_date", endDate);
 
   const query = params.toString();
-  const response = await fetch(
-    `${API_BASE}/rules/trigger-statistics${query ? `?${query}` : ""}`,
-    { credentials: "include" }
-  );
+  const url = buildLawLibraryUrl(`/kf/rules/trigger-statistics${query ? `?${query}` : ""}`);
+  const data = await authFetch<{
+    total_triggers: number;
+    blocked_triggers: number;
+    month_triggers: number;
+    month_blocked: number;
+    pass_rate: number;
+  }>(url, undefined, "");
 
-  if (!response.ok) {
-    throw new Error(`获取触发统计失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     totalTriggers: data.total_triggers,
     blockedTriggers: data.blocked_triggers,
@@ -476,21 +438,28 @@ export async function testRule(
   durationMs: number;
 }> {
   const requestBody = buildRuleTestRequestBody(testData);
+  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}/test`);
 
-  const response = await fetch(`${API_BASE}/rules/${ruleId}/test`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(requestBody),
-  });
+  const data = await authFetch<{
+    success: boolean;
+    rule_id: string;
+    rule_name: string;
+    total_rules: number;
+    passed: number;
+    failed: number;
+    warnings: number;
+    issues?: Array<{
+      rule_id: string;
+      rule_name: string;
+      severity: string;
+      check_result: string;
+      message: string;
+      field_name?: string;
+      suggestion?: string;
+    }>;
+    duration_ms: number;
+  }>(url, { method: "POST", body: JSON.stringify(requestBody) }, "");
 
-  if (!response.ok) {
-    throw new Error(`测试规则失败: ${response.statusText}`);
-  }
-
-  const data = await response.json();
   return {
     success: data.success,
     ruleId: data.rule_id,
@@ -499,7 +468,15 @@ export async function testRule(
     passed: data.passed,
     failed: data.failed,
     warnings: data.warnings,
-    issues: data.issues ?? [],
+    issues: (data.issues ?? []).map((issue) => ({
+      ruleId: issue.rule_id,
+      ruleName: issue.rule_name,
+      severity: issue.severity,
+      checkResult: issue.check_result,
+      message: issue.message,
+      fieldName: issue.field_name,
+      suggestion: issue.suggestion,
+    })),
     durationMs: data.duration_ms,
   };
 }

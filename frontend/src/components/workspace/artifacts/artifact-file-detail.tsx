@@ -43,6 +43,7 @@ import { useThread } from "../messages/context";
 import { Tooltip } from "../tooltip";
 
 import { useArtifacts } from "./context";
+import { SaveArtifactToDocButton, isSavableToDoc } from "./save-artifact-to-doc-button";
 
 export function ArtifactFileDetail({
   className,
@@ -237,6 +238,13 @@ export function ArtifactFileDetail({
                   );
                   if (w) w.opener = null;
                 }}
+              />
+            )}
+            {!isWriteFile && isSavableToDoc(filepath) && (
+              <SaveArtifactToDocButton
+                filepath={filepath}
+                threadId={threadId}
+                variant="icon"
               />
             )}
             <ArtifactAction

@@ -7,8 +7,8 @@ import type {
   ComplianceCheckResponse,
   ValidationIssue,
 } from "@/extensions/knowledge-factory/types";
-
-const API_BASE = "/api/kf";
+import { authFetch } from "@/extensions/api/client";
+import { buildLawLibraryUrl } from "./law-library-api";
 
 /**
  * 执行合规性检查
@@ -16,20 +16,11 @@ const API_BASE = "/api/kf";
 export async function checkCompliance(
   request: ComplianceCheckRequest
 ): Promise<ComplianceCheckResponse> {
-  const response = await fetch(`${API_BASE}/rules/check`, {
+  const url = buildLawLibraryUrl("/kf/rules/check");
+  return authFetch<ComplianceCheckResponse>(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
     body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    throw new Error(`合规性检查失败: ${response.statusText}`);
-  }
-
-  return response.json();
+  }, "");
 }
 
 /**
@@ -44,27 +35,20 @@ export async function checkSingleRule(
   issues: ValidationIssue[];
   duration_ms: number;
 }> {
-  const params = new URLSearchParams({
-    rule_id: ruleId,
-  });
+  const params = new URLSearchParams({ rule_id: ruleId });
+  const url = buildLawLibraryUrl(`/kf/rules/check-single?${params}`);
 
-  const response = await fetch(`${API_BASE}/rules/check-single?${params}`, {
+  return authFetch<{
+    success: boolean;
+    issues: ValidationIssue[];
+    duration_ms: number;
+  }>(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
     body: JSON.stringify({
       report_data: reportData,
       extracted_fields: extractedFields || {},
     }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`单条规则检查失败: ${response.statusText}`);
-  }
-
-  return response.json();
+  }, "");
 }
 
 /**
@@ -77,15 +61,14 @@ export async function validateRule(ruleId: string): Promise<{
   validation_config: Record<string, unknown>;
   enabled: boolean;
 }> {
-  const response = await fetch(`${API_BASE}/rules/validate/${ruleId}`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error(`验证规则失败: ${response.statusText}`);
-  }
-
-  return response.json();
+  const url = buildLawLibraryUrl(`/kf/rules/validate/${ruleId}`);
+  return authFetch<{
+    rule_id: string;
+    type: string;
+    validator_registered: boolean;
+    validation_config: Record<string, unknown>;
+    enabled: boolean;
+  }>(url, undefined, "");
 }
 
 /**

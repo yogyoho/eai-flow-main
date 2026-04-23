@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useArtifacts } from "./context";
+import { SaveArtifactToDocButton, isSavableToDoc } from "./save-artifact-to-doc-button";
 
 export function ArtifactFileList({
   className,
@@ -103,6 +104,13 @@ export function ArtifactFileList({
                   )}
                   {t.common.install}
                 </Button>
+              )}
+              {isSavableToDoc(file) && (
+                <SaveArtifactToDocButton
+                  filepath={file}
+                  threadId={threadId}
+                  variant="button"
+                />
               )}
               <Button variant="ghost" asChild>
                 <a
