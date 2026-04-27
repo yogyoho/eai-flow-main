@@ -224,6 +224,69 @@ GET /api/models/{model_name}
 }
 ```
 
+#### Validate Models
+
+Validate multiple models in parallel to check their availability and configuration status.
+
+```http
+POST /api/extensions/models/validate
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "models": ["gpt-4", "claude-3-opus"]
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "name": "gpt-4",
+      "status": "available",
+      "details": {
+        "exists": true,
+        "api_reachable": true,
+        "supports_thinking": false,
+        "supports_vision": true,
+        "has_credentials": true,
+        "message": "Model available (latency: 523ms)",
+        "latency_ms": 523
+      }
+    },
+    {
+      "name": "claude-3-opus",
+      "status": "unavailable",
+      "details": {
+        "exists": true,
+        "api_reachable": false,
+        "supports_thinking": false,
+        "supports_vision": true,
+        "has_credentials": false,
+        "message": "Missing credentials"
+      }
+    }
+  ]
+}
+```
+
+**Status Values:**
+- `available`: Model is configured and API is reachable
+- `unavailable`: Model exists but has issues (missing credentials, API unreachable)
+- `error`: Model not found in configuration
+
+**Details Fields:**
+- `exists` (boolean): Model exists in configuration
+- `api_reachable` (boolean): API endpoint is reachable
+- `supports_thinking` (boolean): Model supports extended thinking
+- `supports_vision` (boolean): Model supports vision/image input
+- `has_credentials` (boolean): Model has valid API credentials
+- `message` (string): Human-readable status message
+- `latency_ms` (number): API response latency in milliseconds (only for available models)
+
 ### MCP Configuration
 
 #### Get MCP Config
