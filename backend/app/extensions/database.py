@@ -1,10 +1,14 @@
 """Database connection and session management for extensions module."""
 
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+import asyncpg
+from fastapi import HTTPException, status
+from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
@@ -20,21 +24,106 @@ class Base(DeclarativeBase):
     pass
 
 
+# Global engine and session factory
 _engine = None
 _session_factory = None
+_engine_lock = asyncio.Lock()
+_initialized = False
+
+
+async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
+    """Create engine with retry logic for when database is not ready yet."""
+    import asyncpg
+
+    config = get_extensions_config()
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            engine = create_async_engine(
+                config.database.url,
+                echo=False,
+                pool_size=10,
+                max_overflow=20,
+                pool_pre_ping=True,
+                pool_recycle=300,
+                connect_args={
+                    "server_settings": {"jit": "off"},
+                    "timeout": 30,
+                    "command_timeout": 60,
+                },
+            )
+            # Quick test connection
+            try:
+                async with engine.connect() as conn:
+                    await asyncio.wait_for(conn.execute(text("SELECT 1")), timeout=5)
+                logger.info("Database engine created and connected successfully")
+                return engine
+            except (Exception, asyncio.TimeoutError) as e:
+                last_error = e
+                logger.warning(
+                    "Database engine created but connection test failed (attempt %d/%d): %s",
+                    attempt + 1, max_retries, e
+                )
+                await engine.dispose()
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(delay * (attempt + 1))
+                else:
+                    raise
+        except (ConnectionRefusedError, OSError, asyncpg.exceptions.PostgresConnectionError) as e:
+            last_error = e
+            logger.warning(
+                "Failed to create database engine (attempt %d/%d): %s",
+                attempt + 1, max_retries, e
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(delay * (attempt + 1))
+        except Exception as e:
+            last_error = e
+            logger.error("Unexpected error creating database engine: %s", e)
+            raise
+
+    # If all retries failed, create engine anyway and let it handle connection errors at runtime
+    logger.error("All database connection retries failed, creating engine anyway: %s", last_error)
+    engine = create_async_engine(
+        config.database.url,
+        echo=False,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={
+            "server_settings": {"jit": "off"},
+            "timeout": 30,
+            "command_timeout": 60,
+        },
+    )
+    return engine
+
+
+async def init_engine():
+    """Initialize the database engine with retry logic. Call this at startup."""
+    global _engine, _session_factory, _initialized
+
+    async with _engine_lock:
+        if _initialized:
+            return
+
+        _engine = await _create_engine_with_retry(max_retries=3, delay=1.0)
+        _session_factory = async_sessionmaker(
+            bind=_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        _initialized = True
 
 
 def get_engine():
-    """Get or create the async engine."""
+    """Get or create the async engine (synchronous)."""
     global _engine
     if _engine is None:
-        config = get_extensions_config()
-        _engine = create_async_engine(
-            config.database.url,
-            echo=False,
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True,
+        raise RuntimeError(
+            "Database engine not initialized. Call init_engine() first."
         )
     return _engine
 
@@ -43,30 +132,132 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Get or create the session factory."""
     global _session_factory
     if _session_factory is None:
-        _session_factory = async_sessionmaker(
-            bind=get_engine(),
-            class_=AsyncSession,
-            expire_on_commit=False,
+        raise RuntimeError(
+            "Session factory not initialized. Call init_engine() first."
         )
     return _session_factory
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get database session (dependency for FastAPI)."""
-    factory = get_session_factory()
-    async with factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    global _engine, _session_factory
+
+    # Ensure engine is initialized
+    if _engine is None or _session_factory is None:
+        await init_engine()
+
+    last_connection_error = None
+    connection_error_types = (
+        OperationalError,
+        InterfaceError,
+        asyncpg.PostgresConnectionError,
+        OSError,
+        ConnectionError,
+    )
+
+    for attempt in range(2):
+        factory = get_session_factory()
+        async with factory() as session:
+            try:
+                # Validate the pooled connection before handing the session to handlers.
+                await session.execute(text("SELECT 1"))
+                yield session
+                await session.commit()
+                return
+            except HTTPException:
+                await session.rollback()
+                raise
+            except connection_error_types as exc:
+                await session.rollback()
+                last_connection_error = exc
+                logger.warning(
+                    "Extensions database session failed on attempt %d/2, refreshing engine: %s",
+                    attempt + 1,
+                    exc,
+                )
+                await close_db()
+                if attempt == 0:
+                    await init_engine()
+                    continue
+                logger.exception("Extensions database request failed after engine refresh: %s", exc)
+                break
+            except Exception:
+                await session.rollback()
+                raise
+
+    config = get_extensions_config()
+    fresh_engine = create_async_engine(
+        config.database.url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={
+            "server_settings": {"jit": "off"},
+            "timeout": 30,
+            "command_timeout": 60,
+        },
+    )
+    fresh_factory = async_sessionmaker(
+        bind=fresh_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    try:
+        async with fresh_factory() as session:
+            try:
+                logger.warning("Falling back to a fresh per-request extensions database engine")
+                await session.execute(text("SELECT 1"))
+                yield session
+                await session.commit()
+                return
+            except HTTPException:
+                await session.rollback()
+                raise
+            except connection_error_types as exc:
+                await session.rollback()
+                logger.exception("Fresh per-request extensions database engine also failed: %s", exc)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Extensions database is unavailable",
+                ) from exc
+            except Exception:
+                await session.rollback()
+                raise
+    finally:
+        await fresh_engine.dispose()
+
+    if last_connection_error is not None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Extensions database is unavailable",
+        ) from last_connection_error
 
 
 @asynccontextmanager
 async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
     """Get database session as context manager."""
-    factory = get_session_factory()
+    # Always create a fresh engine and session for each request
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from app.extensions.config import get_extensions_config
+
+    config = get_extensions_config()
+    engine = create_async_engine(
+        config.database.url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        connect_args={"server_settings": {"jit": "off"}},
+    )
+    factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
     async with factory() as session:
         try:
             yield session
@@ -74,17 +265,27 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+        finally:
+            await engine.dispose()
 
 
 async def init_db() -> None:
     """Initialize database tables."""
-    async with get_engine().begin() as conn:
+    # Ensure engine is initialized first
+    if _engine is None:
+        await init_engine()
+    engine = get_engine()
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def migrate_db() -> None:
     """Run lightweight column migrations for existing tables."""
-    async with get_engine().begin() as conn:
+    # Ensure engine is initialized first
+    if _engine is None:
+        await init_engine()
+    engine = get_engine()
+    async with engine.begin() as conn:
         await conn.execute(
             text(
                 "ALTER TABLE departments ADD COLUMN IF NOT EXISTS "
@@ -479,46 +680,71 @@ async def migrate_db() -> None:
 
 async def close_db() -> None:
     """Close database connections."""
-    global _engine, _session_factory
+    global _engine, _session_factory, _initialized
     if _engine is not None:
         await _engine.dispose()
         _engine = None
         _session_factory = None
+    _initialized = False
 
 
 async def seed_db() -> None:
     """Seed initial data: create admin user and role if they don't exist."""
     from .auth.jwt import hash_password
 
-    async with get_session_factory()() as session:
-        # Check if admin role exists
-        result = await session.execute(
-            text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
-        )
-        row = result.fetchone()
+    # Create a fresh engine for seed_db
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from app.extensions.config import get_extensions_config
 
-        if row is None:
-            # Create superadmin role
-            role_id = str(uuid.uuid4())
-            await session.execute(
-                text(
-                    "INSERT INTO roles (id, name, code, permissions, is_system, level) "
-                    "VALUES (:id, 'Super Admin', 'superadmin', :perms, true, 100)"
-                ),
-                {"id": role_id, "perms": ["*"]},
-            )
-            logger.info("Created superadmin role")
+    config = get_extensions_config()
+    engine = create_async_engine(
+        config.database.url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        connect_args={"server_settings": {"jit": "off"}},
+    )
+    factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
-            # Create admin user
-            user_id = str(uuid.uuid4())
-            await session.execute(
-                text(
-                    "INSERT INTO users (id, username, email, password_hash, full_name, role_id, status) "
-                    "VALUES (:id, 'admin', 'admin@eai.local', :pw_hash, 'Administrator', :role_id, 'active')"
-                ),
-                {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": role_id},
+    try:
+        async with factory() as session:
+            # Check if admin role exists
+            result = await session.execute(
+                text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
             )
-            logger.info("Created admin user (username: admin, password: admin123)")
-            await session.commit()
-        else:
-            logger.info("Seed data already exists, skipping")
+            row = result.fetchone()
+
+            if row is None:
+                # Create superadmin role
+                role_id = str(uuid.uuid4())
+                await session.execute(
+                    text(
+                        "INSERT INTO roles "
+                        "(id, name, code, permissions, is_system, level, created_at, updated_at) "
+                        "VALUES (:id, 'Super Admin', 'superadmin', :perms, true, 100, NOW(), NOW())"
+                    ),
+                    {"id": role_id, "perms": ["*"]},
+                )
+                logger.info("Created superadmin role")
+
+                # Create admin user
+                user_id = str(uuid.uuid4())
+                await session.execute(
+                    text(
+                        "INSERT INTO users "
+                        "(id, username, email, password_hash, full_name, role_id, status, created_at, updated_at) "
+                        "VALUES (:id, 'admin', 'admin@eai.local', :pw_hash, 'Administrator', :role_id, 'active', NOW(), NOW())"
+                    ),
+                    {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": role_id},
+                )
+                logger.info("Created admin user (username: admin, password: admin123)")
+                await session.commit()
+            else:
+                logger.info("Seed data already exists, skipping")
+    finally:
+        await engine.dispose()

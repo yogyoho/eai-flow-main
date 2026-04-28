@@ -32,6 +32,7 @@ from app.extensions.knowledge import kb_router as knowledge_router
 from app.extensions.web_scraper import web_scraper_router
 from app.extensions.law import router as law_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
+from app.extensions.settings.routers import router as settings_router
 from deerflow.config.app_config import get_app_config
 
 # Configure logging
@@ -59,14 +60,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
 
-    # Initialize extensions database tables and run migrations
+    # Initialize extensions database eagerly when possible, but clear any failed
+    # startup state so request-time lazy init starts from a clean engine/session.
+    extensions_db_ready = False
     try:
-        await init_db()
-        await migrate_db()
-        await seed_db()
-        logger.info("Extensions database initialized successfully")
+        from app.extensions.database import init_engine
+
+        await init_engine()
+        logger.info("Database engine initialized successfully")
+        extensions_db_ready = True
     except Exception as e:
-        logger.warning("Extensions database init failed (may already exist): %s", e)
+        logger.warning("Database engine init failed (will retry on first request): %s", e)
+        from app.extensions.database import close_db
+
+        await close_db()
+
+    if extensions_db_ready:
+        try:
+            from app.extensions.database import init_db, migrate_db, seed_db
+
+            await init_db()
+            await migrate_db()
+            await seed_db()
+            logger.info("Extensions database initialized successfully")
+        except Exception as e:
+            logger.warning("Extensions database init failed (may already exist): %s", e)
+            from app.extensions.database import close_db
+
+            await close_db()
 
     # Initialize LangGraph runtime components (StreamBridge, RunManager, checkpointer, store)
     async with langgraph_runtime(app):
@@ -241,9 +262,6 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Doc Mgr API is mounted at /api/extensions/docmgr
     app.include_router(docmgr_router)
 
-    # User Departments API is mounted at /api/extensions/users/{user_id}/departments
-    app.include_router(user_department_router)
-
     # Knowledge Bases API is mounted at /knowledge
     app.include_router(knowledge_router)
 
@@ -255,6 +273,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # Knowledge Factory API is mounted at /api/kf (router has prefix="/kf")
     app.include_router(knowledge_factory_router)
+
+    # Settings API is mounted at /api/extensions
+    app.include_router(settings_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict:

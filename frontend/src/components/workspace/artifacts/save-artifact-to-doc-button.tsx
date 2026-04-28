@@ -95,7 +95,7 @@ export function SaveArtifactToDocButton({
               ? "border-amber-200 bg-amber-50 text-amber-600"
               : state === "error"
                 ? "border-red-200 bg-red-50 text-red-600"
-                : "border-zinc-200 bg-white text-zinc-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600",
+                : "border-zinc-200 bg-white text-zinc-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600",
           (state === "saving" || state === "checking") && "cursor-not-allowed opacity-60"
         )}
       >

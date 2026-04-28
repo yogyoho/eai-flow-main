@@ -74,6 +74,12 @@ const config = {
       });
     }
 
+    // 代理采购服务前端
+    rewrites.push({
+      source: "/proxy/procurement/:path*",
+      destination: "http://127.0.0.1:5173/:path*",
+    });
+
     return rewrites;
   },
 };

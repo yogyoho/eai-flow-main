@@ -2,6 +2,7 @@
 
 from typing import Literal
 from pydantic import BaseModel
+from functools import lru_cache
 
 from deerflow.config import get_app_config
 
@@ -30,6 +31,12 @@ class ModelValidationRequest(BaseModel):
     """Request to validate models."""
 
     models: list[str]
+
+
+@lru_cache(maxsize=100)
+def _get_model_config_cached(model_name: str):
+    """Cached model config lookup."""
+    return get_app_config().get_model_config(model_name)
 
 
 def check_model_exists(model_name: str) -> bool:
@@ -66,8 +73,7 @@ def get_model_features(model_name: str) -> tuple[bool, bool]:
     Returns:
         (supports_thinking, supports_vision)
     """
-    config = get_app_config()
-    model = config.get_model_config(model_name)
+    model = _get_model_config_cached(model_name)
     if not model:
         return False, False
     return model.supports_thinking, model.supports_vision
@@ -78,8 +84,7 @@ import os
 
 def check_model_credentials(model_name: str) -> bool:
     """Check if model has required API credentials."""
-    config = get_app_config()
-    model = config.get_model_config(model_name)
+    model = _get_model_config_cached(model_name)
     if not model:
         return False
 
@@ -160,5 +165,8 @@ async def validate_models(model_names: list[str]) -> list[ModelValidationResult]
     Returns:
         List of ModelValidationResult.
     """
+    if not model_names:
+        return []
+
     tasks = [validate_model(name) for name in model_names]
     return await asyncio.gather(*tasks)

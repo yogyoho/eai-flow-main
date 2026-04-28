@@ -247,7 +247,7 @@ export default function TemplateExtraction() {
   return (
     <div className="flex flex-col h-full relative">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border bg-card shrink-0">
+      <div className="flex justify-between items-center px-8 py-6 border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground tracking-tight">
             <Settings className="w-5 h-5 text-primary" />
@@ -259,7 +259,7 @@ export default function TemplateExtraction() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium text-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm"
         >
           <Plus className="w-4 h-4" />
           新建抽取任务
@@ -267,7 +267,7 @@ export default function TemplateExtraction() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/30">
+      <div className="flex-1 overflow-y-auto p-8 space-y-4 bg-muted/30">
         {loading && tasks.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -359,7 +359,7 @@ export default function TemplateExtraction() {
                         disabled={actionLoading === task.id}
                         onClick={() => handleRerun(task)}
                         title="重新运行"
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
                       >
                         <RefreshCw className="w-4 h-4" /> 重新运行
                       </button>
@@ -369,7 +369,7 @@ export default function TemplateExtraction() {
                           disabled={actionLoading === task.id}
                           onClick={() => handleRerun(task)}
                           title="重新运行"
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
                         >
                           <RefreshCw className="w-4 h-4" /> 重试
                         </button>
@@ -399,7 +399,7 @@ export default function TemplateExtraction() {
                       className={cn(
                         "h-2.5 rounded-full transition-all duration-500",
                         task.status === "completed" ? "bg-emerald-500" :
-                        task.status === "failed" ? "bg-red-500" : "bg-indigo-600"
+                        task.status === "failed" ? "bg-red-500" : "bg-blue-600"
                       )}
                       style={{ width: `${task.progress}%` }}
                     />

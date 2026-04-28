@@ -36,6 +36,7 @@ import { humanMessagePlugins } from "@/core/streamdown";
 import { cn } from "@/lib/utils";
 
 import { CopyButton } from "../copy-button";
+import { SaveToDocButton } from "../save-to-doc-button";
 
 import { MarkdownContent } from "./markdown-content";
 import { MessageTokenUsage } from "./message-token-usage";
@@ -74,6 +75,12 @@ export function MessageListItem({
           )}
         >
           <div className="flex gap-1">
+            {!isHuman && extractContentFromMessage(message) && (
+              <SaveToDocButton
+                content={extractContentFromMessage(message) ?? ""}
+                threadId={threadId}
+              />
+            )}
             <CopyButton
               clipboardData={
                 extractContentFromMessage(message) ??

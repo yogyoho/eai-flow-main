@@ -464,7 +464,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="p-6 space-y-5">
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
                       登录账号 <span className="text-destructive">*</span>
@@ -560,107 +560,111 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">入职日期</label>
-                  <Popover open={hireDatePopoverOpen} onOpenChange={setHireDatePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="relative w-full flex items-center justify-start pl-9 pr-3 py-2 bg-background border border-input rounded-lg hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-                      >
-                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                        <span className={formData.hire_date ? "text-foreground" : "text-muted-foreground"}>
-                          {formData.hire_date ? format(new Date(formData.hire_date), "yyyy年MM月dd日", { locale: zhCN }) : "选择日期"}
-                        </span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-background border border-border shadow-lg rounded-lg" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formData.hire_date ? new Date(formData.hire_date) : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            setFormData({ ...formData, hire_date: format(date, "yyyy-MM-dd") });
-                            setHireDatePopoverOpen(false);
-                          }
-                        }}
-                        initialFocus
-                        locale={zhCN}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">所属部门（可多选）</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {formData.dept_ids.map((deptId) => (
-                      <span
-                        key={deptId}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm"
-                      >
-                        {getDepartmentName(deptId)}
+                <div className="grid grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">入职日期</label>
+                    <Popover open={hireDatePopoverOpen} onOpenChange={setHireDatePopoverOpen}>
+                      <PopoverTrigger asChild>
                         <button
                           type="button"
-                          onClick={() => setFormData({
-                            ...formData,
-                            dept_ids: formData.dept_ids.filter((id) => id !== deptId),
-                          })}
-                          className="ml-1 hover:text-primary/80"
+                          className="relative w-full flex items-center justify-start pl-9 pr-3 py-2 bg-background border border-input rounded-lg hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
                         >
-                          ×
+                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                          <span className={formData.hire_date ? "text-foreground" : "text-muted-foreground"}>
+                            {formData.hire_date ? format(new Date(formData.hire_date), "yyyy年MM月dd日", { locale: zhCN }) : "选择日期"}
+                          </span>
                         </button>
-                      </span>
-                    ))}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-background border border-border shadow-lg rounded-lg" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.hire_date ? new Date(formData.hire_date) : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              setFormData({ ...formData, hire_date: format(date, "yyyy-MM-dd") });
+                              setHireDatePopoverOpen(false);
+                            }
+                          }}
+                          initialFocus
+                          locale={zhCN}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                  <AdminSelect
-                    value=""
-                    onChange={(val) => {
-                      if (val && !formData.dept_ids.includes(val)) {
-                        setFormData({ ...formData, dept_ids: [...formData.dept_ids, val] });
-                      }
-                    }}
-                    options={flatDepts
-                      .filter((d) => !formData.dept_ids.includes(d.id))
-                      .map((d) => ({ value: d.id, label: d.name }))}
-                    placeholder="添加部门..."
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
-                  <AdminSelect
-                    value={formData.role_id}
-                    onChange={(val) => setFormData({ ...formData, role_id: val })}
-                    options={roles.map((r) => ({ value: r.id, label: r.name }))}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">所属部门（可多选）</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.dept_ids.map((deptId) => (
+                        <span
+                          key={deptId}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm"
+                        >
+                          {getDepartmentName(deptId)}
+                          <button
+                            type="button"
+                            onClick={() => setFormData({
+                              ...formData,
+                              dept_ids: formData.dept_ids.filter((id) => id !== deptId),
+                            })}
+                            className="ml-1 hover:text-primary/80"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <AdminSelect
+                      value=""
+                      onChange={(val) => {
+                        if (val && !formData.dept_ids.includes(val)) {
+                          setFormData({ ...formData, dept_ids: [...formData.dept_ids, val] });
+                        }
+                      }}
+                      options={flatDepts
+                        .filter((d) => !formData.dept_ids.includes(d.id))
+                        .map((d) => ({ value: d.id, label: d.name }))}
+                      placeholder="添加部门..."
+                      className="w-full"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">账号状态</label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        value="active"
-                        checked={formData.status === "active"}
-                        onChange={() => setFormData({ ...formData, status: "active" })}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-foreground">正常</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="status"
-                        value="inactive"
-                        checked={formData.status === "inactive"}
-                        onChange={() => setFormData({ ...formData, status: "inactive" })}
-                        className="text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm text-foreground">停用</span>
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
+                    <AdminSelect
+                      value={formData.role_id}
+                      onChange={(val) => setFormData({ ...formData, role_id: val })}
+                      options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">账号状态</label>
+                    <div className="flex h-10 w-full items-center gap-4 rounded-lg border border-input bg-background px-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="status"
+                          value="active"
+                          checked={formData.status === "active"}
+                          onChange={() => setFormData({ ...formData, status: "active" })}
+                          className="text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-foreground">正常</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="status"
+                          value="inactive"
+                          checked={formData.status === "inactive"}
+                          onChange={() => setFormData({ ...formData, status: "inactive" })}
+                          className="text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-foreground">停用</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>

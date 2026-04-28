@@ -8,6 +8,9 @@ import {
   BookOpen,
   FolderCheck,
   Factory,
+  ShoppingCart,
+  Building2,
+  FolderKanban,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -73,14 +76,14 @@ export function WorkspaceNavMenu() {
       icon: BookOpen,
     },
     {
-      href: "/docmgr",
-      label: t.sidebar.documentSpace,
-      icon: FolderCheck,
-    },
-    {
       href: "/knowledge-factory",
       label: t.sidebar.knowledgeFactory,
       icon: Factory,
+    },
+    {
+      href: "/procurement",
+      label: "采购管理",
+      icon: ShoppingCart,
     },
   ];
 
@@ -119,7 +122,6 @@ export function WorkspaceNavMenu() {
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => {

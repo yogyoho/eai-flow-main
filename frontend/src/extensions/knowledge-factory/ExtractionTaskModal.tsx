@@ -202,14 +202,14 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     key={report.id}
                     className={cn(
                       "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
-                      selectedReports.has(report.id) && "bg-indigo-50"
+                      selectedReports.has(report.id) && "bg-blue-50"
                     )}
                   >
                     <input
                       type="checkbox"
                       checked={selectedReports.has(report.id)}
                       onChange={() => toggleReport(report.id)}
-                      className="w-4 h-4 shrink-0 rounded border-zinc-300 focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-0"
+                      className="w-4 h-4 shrink-0 rounded border-zinc-300 focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-0"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{report.name}</p>
@@ -334,7 +334,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
             <button
               disabled={submitting || selectedReports.size === 0}
               onClick={handleSubmit}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {submitting ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> 创建中...</>

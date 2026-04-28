@@ -109,7 +109,7 @@ function TemplateSelector({
                     }}
                     className={cn(
                       "w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0",
-                      selectedId === template.id && "bg-indigo-50"
+                      selectedId === template.id && "bg-blue-50"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -117,7 +117,7 @@ function TemplateSelector({
                         {template.name}
                       </span>
                       {selectedId === template.id && (
-                        <Check className="w-4 h-4 text-indigo-600" />
+                        <Check className="w-4 h-4 text-blue-600" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -190,7 +190,7 @@ function SectionTree({
           className={cn(
             "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm",
             isSelected
-              ? "bg-indigo-50 text-indigo-700 font-medium"
+              ? "bg-blue-50 text-blue-700 font-medium"
               : "hover:bg-zinc-100 text-zinc-700"
           )}
           style={{ marginLeft: depth * 16 }}
@@ -224,10 +224,10 @@ function SectionTree({
                   e.stopPropagation();
                   onAdd(section.id, section.level + 1);
                 }}
-                className="p-1 hover:bg-indigo-100 rounded transition-colors"
+                className="p-1 hover:bg-blue-100 rounded transition-colors"
                 title="添加子章节"
               >
-                <Plus className="w-3 h-3 text-indigo-500" />
+                <Plus className="w-3 h-3 text-blue-500" />
               </button>
               <button
                 onClick={(e) => {
@@ -347,7 +347,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="搜索数据源..."
-                      className="w-full px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+                      className="w-full px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                       autoFocus
                     />
                   </div>
@@ -488,7 +488,7 @@ function VersionHistoryModal({
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200">
           <div className="flex items-center gap-3">
-            <History className="w-5 h-5 text-indigo-600" />
+            <History className="w-5 h-5 text-blue-600" />
             <div>
               <h2 className="text-lg font-bold text-zinc-900">版本历史</h2>
               <p className="text-sm text-zinc-500">{templateName}</p>
@@ -506,7 +506,7 @@ function VersionHistoryModal({
           <div className="w-64 border-r border-zinc-100 overflow-y-auto p-4 shrink-0">
             {loading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
               </div>
             ) : versions.length === 0 ? (
               <div className="text-center py-8 text-sm text-zinc-400">暂无版本历史</div>
@@ -526,7 +526,7 @@ function VersionHistoryModal({
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium text-zinc-900">v{version.version}</span>
                       {version.version === currentVersion && (
-                        <span className="text-xs px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
                           当前
                         </span>
                       )}
@@ -552,7 +552,7 @@ function VersionHistoryModal({
                     版本 {selectedVersion.version}
                   </h3>
                   {selectedVersion.version === currentVersion && (
-                    <span className="text-sm text-indigo-600 font-medium">当前使用中</span>
+                    <span className="text-sm text-blue-600 font-medium">当前使用中</span>
                   )}
                 </div>
 
@@ -583,7 +583,7 @@ function VersionHistoryModal({
                   </div>
                 )}
 
-                <button className="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                <button className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                   <Eye className="w-4 h-4" />
                   预览此版本
                 </button>
@@ -691,7 +691,7 @@ function SectionEditor({
               value={section.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm transition-all disabled:bg-zinc-50 disabled:text-zinc-500"
+              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50 disabled:text-zinc-500"
             />
           </div>
           <div className="space-y-2">
@@ -703,7 +703,7 @@ function SectionEditor({
                 onUpdate({ level: parseInt(e.target.value) });
               }}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm transition-all disabled:bg-zinc-50"
+              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
             >
               <option value="1">第1级</option>
               <option value="2">第2级</option>
@@ -736,14 +736,14 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写目的和主要内容..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
           />
         </div>
       </div>
 
       {/* Content Contract */}
       <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-indigo-600 border-b border-zinc-100 pb-2">
+        <div className="flex items-center gap-2 text-blue-600 border-b border-zinc-100 pb-2">
           <Info className="w-4 h-4" />
           <h4 className="font-bold text-sm uppercase tracking-wider">内容契约</h4>
         </div>
@@ -782,7 +782,7 @@ function SectionEditor({
               <button
                 onClick={handleAddKeyElement}
                 disabled={isReadOnly || !newKeyElement.trim()}
-                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded border border-dashed border-indigo-300 text-xs font-medium hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded border border-dashed border-blue-300 text-xs font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -806,7 +806,7 @@ function SectionEditor({
                 });
               }}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm transition-all disabled:bg-zinc-50"
+              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
             >
               <option value="narrative_text">叙述文本</option>
               <option value="table">表格数据</option>
@@ -830,7 +830,7 @@ function SectionEditor({
               }
               disabled={isReadOnly}
               min={0}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm transition-all disabled:bg-zinc-50"
+              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
             />
           </div>
         </div>
@@ -851,7 +851,7 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写风格要求，如：使用被动语态、客观陈述..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
           />
         </div>
 
@@ -891,7 +891,7 @@ function SectionEditor({
               <button
                 onClick={handleAddForbiddenPhrase}
                 disabled={isReadOnly || !newForbiddenPhrase.trim()}
-                className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline transition-colors disabled:opacity-50"
+                className="text-xs text-blue-600 hover:text-blue-700 hover:underline transition-colors disabled:opacity-50"
               >
                 + 添加
               </button>
@@ -996,7 +996,7 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={2}
             placeholder="AI 生成时的参考提示..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
           />
         </div>
         <div className="space-y-2">
@@ -1007,7 +1007,7 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={3}
             placeholder="本章的参考示例文本..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
           />
         </div>
       </div>
@@ -1257,7 +1257,7 @@ export default function TemplateEditor() {
       <div className="sticky top-0 z-10 p-4 border-b border-zinc-200 bg-white flex justify-between items-center shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-indigo-600" />
+            <Edit3 className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-zinc-900 tracking-tight">
               模板编辑器
             </h2>
@@ -1311,7 +1311,7 @@ export default function TemplateEditor() {
           <button
             onClick={handlePublish}
             disabled={saving || !template || isPublished}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1356,7 +1356,7 @@ export default function TemplateEditor() {
       <div className="flex-1 flex overflow-hidden">
         {templateLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
@@ -1372,7 +1372,7 @@ export default function TemplateEditor() {
               <p className="text-zinc-500 mb-4">请从上方选择一个模板进行编辑</p>
               <button
                 onClick={() => fetchTemplates({ status: "draft,published", limit: 50 })}
-                className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
               >
                 刷新模板列表
               </button>
@@ -1389,7 +1389,7 @@ export default function TemplateEditor() {
                 {!isPublished && (
                   <button
                     onClick={() => handleAddSection(null, 1)}
-                    className="p-1.5 hover:bg-zinc-200 rounded-lg text-zinc-500 hover:text-indigo-600 transition-colors"
+                    className="p-1.5 hover:bg-zinc-200 rounded-lg text-zinc-500 hover:text-blue-600 transition-colors"
                     title="添加一级章节"
                   >
                     <Plus className="w-4 h-4" />

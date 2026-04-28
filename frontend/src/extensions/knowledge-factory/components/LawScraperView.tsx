@@ -763,7 +763,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                     <button
                       onClick={handleImport}
                       disabled={createLawMutation.isPending}
-                      className="w-full py-2.5 bg-indigo-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-indigo-700 transition-colors"
+                      className="w-full py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-blue-700 transition-colors"
                     >
                       {createLawMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -891,7 +891,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                 )}
                 <button
                   onClick={() => setShowImportForm(true)}
-                  className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg flex items-center gap-1 hover:bg-indigo-700 transition-colors"
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   导入法规

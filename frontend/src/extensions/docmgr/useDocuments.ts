@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SetStateAction } from "react";
 
 import { docmgrApi } from "../api";
 import type { AIDocument, CreateAIDocumentRequest, UpdateAIDocumentRequest } from "../types";
@@ -21,17 +22,20 @@ export function useDocuments(initialFilter?: DocumentFilter) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE);
   const [folders, setFolders] = useState<string[]>([]);
-  const filterRef = useRef<DocumentFilter>(initialFilter ?? { folder: "默认文件夹" });
+  const [filter, setFilter] = useState<DocumentFilter>(initialFilter ?? { folder: "默认文件夹" });
 
-  const load = useCallback(async (currentPage: number, currentFilter: DocumentFilter) => {
+  const filterRef = useRef<DocumentFilter>(filter);
+  const pageRef = useRef<number>(page);
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await docmgrApi.list({
-        folder: currentFilter.folder,
-        starred: currentFilter.starred,
-        shared: currentFilter.shared,
-        q: currentFilter.q,
-        skip: (currentPage - 1) * PAGE_SIZE,
+        folder: filterRef.current.folder,
+        starred: filterRef.current.starred,
+        shared: filterRef.current.shared,
+        q: filterRef.current.q,
+        skip: (pageRef.current - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
       });
       setDocs(res.documents);
@@ -52,30 +56,27 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     }
   }, []);
 
-  // Reset to page 1 when filter changes; otherwise load current page
   useEffect(() => {
-    setPage((prev) => {
-      const nextPage = 1;
-      if (prev !== nextPage) return nextPage;
-      load(nextPage, filterRef.current);
-      return prev;
-    });
-  }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
+    filterRef.current = filter;
+  }, [filter]);
 
-  const setFilter = useCallback(
-    (newFilter: DocumentFilter) => {
-      filterRef.current = newFilter;
-      setPage(1);
-      load(1, newFilter);
-    },
-    [load]
-  );
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    load();
+  }, [filter, page, load]);
+
+  const handleSetFilter = useCallback((nextFilter: SetStateAction<DocumentFilter>) => {
+    setFilter((prev) => (typeof nextFilter === "function" ? nextFilter(prev) : nextFilter));
+    setPage(1);
+  }, []);
 
   const createDoc = useCallback(
     async (data: CreateAIDocumentRequest) => {
       const doc = await docmgrApi.create(data);
-      await load(1, filterRef.current);
-      setPage(1);
+      await load();
       return doc;
     },
     [load]
@@ -109,11 +110,8 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     loading,
     page,
     pageSize,
-    setPage: (p: number) => {
-      setPage(p);
-      load(p, filterRef.current);
-    },
-    setFilter,
+    setPage,
+    setFilter: handleSetFilter,
     folders,
     createDoc,
     deleteDoc,

@@ -292,7 +292,7 @@ export default function AdvancedUploadModal({
                     setShowKbDropdown(false);
                     setShowNewKbForm(true);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-indigo-600 transition-colors hover:bg-indigo-50"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-blue-600 transition-colors hover:bg-blue-50"
                 >
                   <Plus className="h-5 w-5" />
                   <span className="font-medium">创建新知识库</span>
@@ -351,7 +351,7 @@ export default function AdvancedUploadModal({
                   type="button"
                   onClick={handleCreateKb}
                   disabled={!newKbName.trim() || creatingKb}
-                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                 >
                   {creatingKb ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -378,7 +378,7 @@ export default function AdvancedUploadModal({
         </div>
         {/* 推荐配置开关 */}
         <label className="flex items-center gap-2 cursor-pointer">
-          <span className={cn("text-sm", useRecommended ? "text-indigo-600 font-medium" : "text-gray-500")}>
+          <span className={cn("text-sm", useRecommended ? "text-blue-600 font-medium" : "text-gray-500")}>
             推荐配置
           </span>
           <button
@@ -386,7 +386,7 @@ export default function AdvancedUploadModal({
             onClick={() => setUseRecommended(!useRecommended)}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              useRecommended ? "bg-indigo-600" : "bg-gray-300"
+              useRecommended ? "bg-blue-600" : "bg-gray-300"
             )}
           >
             <span
@@ -405,7 +405,7 @@ export default function AdvancedUploadModal({
             <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" />
             <div>
               <h5 className="font-medium text-indigo-700">推荐：工程报告分块配置</h5>
-              <p className="mt-1 text-sm text-indigo-600/80">
+              <p className="mt-1 text-sm text-blue-600/80">
                 自动按章节分块，识别 3 级标题，保留页码溯源，适合环评报告、技术方案等工程文档。
               </p>
             </div>
@@ -537,7 +537,7 @@ export default function AdvancedUploadModal({
                   }
                   className={cn(
                     "relative h-6 w-11 rounded-full transition-colors",
-                    (chunkConfig as any)[key] !== false ? "bg-indigo-600" : "bg-gray-300"
+                    (chunkConfig as any)[key] !== false ? "bg-blue-600" : "bg-gray-300"
                   )}
                 >
                   <span
@@ -626,7 +626,7 @@ export default function AdvancedUploadModal({
           </div>
           <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-indigo-600 transition-all duration-300"
+              className="h-full bg-blue-600 transition-all duration-300"
               style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
             />
           </div>
@@ -713,9 +713,9 @@ export default function AdvancedUploadModal({
                   className={cn(
                     "flex h-5 w-5 items-center justify-center rounded-full text-xs",
                     step === s.key
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-blue-600 text-white"
                       : currentStepIndex > i
-                        ? "bg-indigo-200 text-indigo-700"
+                        ? "bg-blue-200 text-blue-700"
                         : "bg-gray-200 text-gray-500"
                   )}
                 >
@@ -766,7 +766,7 @@ export default function AdvancedUploadModal({
                 type="button"
                 onClick={() => selectedKbId && setStep("config")}
                 disabled={!selectedKbId}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
               >
                 下一步
                 <ChevronRight className="h-4 w-4" />

@@ -43,9 +43,10 @@ services:
       - gateway
     networks:
       - deer-flow
+      - procurement-net
+      - asset-net
+      - project-net
     restart: unless-stopped
-
-  # ── Frontend: Next.js Production ───────────────────────────────────────────
   frontend:
     build:
       context: ../
@@ -63,6 +64,9 @@ services:
       - ../frontend/.env
     networks:
       - deer-flow
+      - procurement-net
+      - asset-net
+      - project-net
     restart: unless-stopped
 
   # ── Gateway API ────────────────────────────────────────────────────────────
@@ -114,6 +118,9 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - deer-flow
+      - procurement-net
+      - asset-net
+      - project-net
     restart: unless-stopped
 
   # ── LangGraph Server ───────────────────────────────────────────────────────
@@ -192,12 +199,203 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - deer-flow
+      - procurement-net
+      - asset-net
+      - project-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 10s
       timeout: 5s
       retries: 6
+
+  # ── Procurement Microservice Backend ──────────────────────────────────────────
+  procurement-backend:
+    build:
+      context: ../business/procurement-service/backend
+      dockerfile: Dockerfile
+    container_name: procurement-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3001 --workers 2
+    environment:
+      - DATABASE_URL=${PROCUREMENT_DATABASE_URL:-postgresql+asyncpg://procurement:procurement@procurement-db:5432/procurement}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - deer-flow
+      - procurement-net
+    restart: unless-stopped
+    depends_on:
+      - procurement-db
+
+  # ── Procurement Microservice Frontend ─────────────────────────────────────────
+  procurement-frontend:
+    build:
+      context: ../business/procurement-service/frontend-shadcn
+      dockerfile: Dockerfile
+    container_name: procurement-frontend
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=http://localhost:2026/procurement
+    networks:
+      - deer-flow
+      - procurement-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Procurement PostgreSQL Database ───────────────────────────────────────────
+  procurement-db:
+    image: postgres:16-alpine
+    container_name: procurement-db
+    environment:
+      - POSTGRES_USER=procurement
+      - POSTGRES_PASSWORD=${PROCUREMENT_DB_PASSWORD:-procurement}
+      - POSTGRES_DB=procurement
+    volumes:
+      - procurement-db-data:/var/lib/postgresql/data
+    networks:
+      - procurement-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U procurement -d procurement"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Asset Microservice Backend ─────────────────────────────────────────────
+  asset-backend:
+    build:
+      context: ../business/asset-service/backend
+      dockerfile: Dockerfile
+    container_name: asset-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3002 --workers 2
+    environment:
+      - DATABASE_URL=${ASSET_DATABASE_URL:-postgresql+asyncpg://asset:asset@asset-db:5432/asset}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - deer-flow
+      - asset-net
+    restart: unless-stopped
+    depends_on:
+      - asset-db
+
+  # ── Asset Microservice Frontend ────────────────────────────────────────────
+  asset-frontend:
+    build:
+      context: ../business/asset-service/frontend
+      dockerfile: Dockerfile
+    container_name: asset-frontend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=
+      - NEXT_PUBLIC_APP_BASE_URL=
+    networks:
+      - deer-flow
+      - asset-net
+    restart: unless-stopped
+
+  # ── Asset PostgreSQL Database ────────────────────────────────────────────────
+  asset-db:
+    image: postgres:16-alpine
+    container_name: asset-db
+    environment:
+      - POSTGRES_USER=asset
+      - POSTGRES_PASSWORD=${ASSET_DB_PASSWORD:-asset}
+      - POSTGRES_DB=asset
+    volumes:
+      - asset-db-data:/var/lib/postgresql/data
+    networks:
+      - asset-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asset -d asset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Project Microservice Backend ────────────────────────────────────────────
+  project-backend:
+    build:
+      context: ../business/project-service/backend
+      dockerfile: Dockerfile
+    container_name: project-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3003 --workers 2
+    environment:
+      - DATABASE_URL=${PROJECT_DATABASE_URL:-postgresql+asyncpg://project:project@project-db:5432/project}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - deer-flow
+      - project-net
+    restart: unless-stopped
+    depends_on:
+      - project-db
+
+  # ── Project Microservice Frontend ──────────────────────────────────────────
+  project-frontend:
+    build:
+      context: ../business/project-service/frontend
+      dockerfile: Dockerfile
+    container_name: project-frontend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=
+      - NEXT_PUBLIC_APP_BASE_URL=
+    networks:
+      - deer-flow
+      - project-net
+    restart: unless-stopped
+
+  # ── Project PostgreSQL Database ─────────────────────────────────────────────
+  project-db:
+    image: postgres:16-alpine
+    container_name: project-db
+    environment:
+      - POSTGRES_USER=project
+      - POSTGRES_PASSWORD=${PROJECT_DB_PASSWORD:-project}
+      - POSTGRES_DB=project
+    volumes:
+      - project-db-data:/var/lib/postgresql/data
+    networks:
+      - project-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project -d project"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  procurement-db-data:
+  asset-db-data:
+  project-db-data:
+
 networks:
   deer-flow:
+    driver: bridge
+
+  procurement-net:
+    driver: bridge
+
+  asset-net:
+    driver: bridge
+
+  project-net:
     driver: bridge

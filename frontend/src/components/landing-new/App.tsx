@@ -16,13 +16,43 @@ import {
   UserCircle,
   ArrowRight,
   Sparkles,
+  LogIn,
+  LogOutIcon,
+  Factory,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import React from "react";
+import React, { useCallback, useState } from "react";
 
 import "./index.css";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/extensions/hooks/useAuth";
 
 export default function LandingNew() {
+  const [mounted, setMounted] = useState(false);
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleNavClick = useCallback((path: string) => {
+    if (!user) {
+      const redirect = encodeURIComponent(path);
+      router.push(`/login?redirect=${redirect}`);
+    } else {
+      router.push(path);
+    }
+  }, [user, router]);
+
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
@@ -69,16 +99,61 @@ export default function LandingNew() {
         </div>
 
         <div className="hidden md:flex items-center space-x-2 text-gray-600 font-medium">
-          <Link href="/workspace/chats/new" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</Link>
-          <Link href="/knowledge-factory?tab=reports" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</Link>
-          <Link href="/docmgr" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</Link>
-          <a href="#" className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">设置</a>
+          <button onClick={() => handleNavClick("/workspace/chats/new")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</button>
+          <button onClick={() => handleNavClick("/knowledge-factory?tab=reports")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</button>
+          <button onClick={() => handleNavClick("/docmgr")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</button>
+          <button onClick={() => handleNavClick("/settings")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">设置</button>
         </div>
 
         <div className="flex items-center">
-          <button className="text-gray-600 hover:text-primary transition-colors">
-            <UserCircle className="w-7 h-7" strokeWidth={1.5} />
-          </button>
+          {!isLoading && (
+            user ? (
+              mounted ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 hover:bg-primary/20 text-gray-600 hover:text-primary transition-all duration-200">
+                      <UserCircle className="w-6 h-6" strokeWidth={1.5} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 rounded-xl" align="end" sideOffset={8}>
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                    <DropdownMenuGroup className="py-1">
+                      <DropdownMenuItem onClick={() => router.push("/knowledge")}>
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        知识库
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
+                        <Factory className="mr-2 h-4 w-4" />
+                        知识工厂
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push("/procurement")}>
+                        <Network className="mr-2 h-4 w-4" />
+                        采购管理
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
+                      <LogOutIcon className="mr-2 h-4 w-4" />
+                      退出登录
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-primary/10 animate-pulse" />
+              )
+            ) : (
+              <button
+                onClick={() => router.push("/login")}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-all duration-200 font-medium"
+              >
+                <LogIn className="w-4 h-4" />
+                登录
+              </button>
+            )
+          )}
         </div>
       </nav>
 
@@ -111,20 +186,20 @@ export default function LandingNew() {
             </motion.div>
 
             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
-              <Link
-                href="/workspace/chats/new"
+              <button
+                onClick={() => handleNavClick("/workspace/chats/new")}
                 className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
               >
                 <Rocket className="w-5 h-5" />
                 <span>开始写作</span>
-              </Link>
-              <Link
-                href="/knowledge-factory?tab=reports"
+              </button>
+              <button
+                onClick={() => handleNavClick("/knowledge-factory?tab=reports")}
                 className="flex items-center space-x-2 px-8 py-3.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 <FolderCog className="w-5 h-5" />
                 <span>知识加工</span>
-              </Link>
+              </button>
             </motion.div>
           </div>
 
@@ -196,12 +271,14 @@ export default function LandingNew() {
               path="/knowledge"
             />
             </Link>
+            <Link href="/procurement">
             <QuickAccessCard
               variants={itemVariants}
               icon={<Network className="w-6 h-6 text-primary" />}
-              title="知识图谱"
-              path="/graph"
+              title="采购管理"
+              path="/procurement"
             />
+            </Link>
             <QuickAccessCard
               variants={itemVariants}
               icon={<FileText className="w-6 h-6 text-primary" />}
