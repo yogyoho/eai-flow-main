@@ -3,6 +3,7 @@
 import abc
 import json
 import logging
+import re
 import threading
 import uuid
 from datetime import UTC, datetime
@@ -44,34 +45,52 @@ class MemoryStorage(abc.ABC):
     """Abstract base class for memory storage providers."""
 
     @abc.abstractmethod
-    def load(self, user_id: str | None = None) -> dict[str, Any]:
-        """Load memory data for the given user."""
+    def load(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
+        """Load memory data for the given agent and user.
+
+        Args:
+            agent_name: Optional agent name for per-agent memory.
+            user_id: Optional user ID for per-user data isolation.
+        """
         pass
 
     @abc.abstractmethod
-    def reload(self, user_id: str | None = None) -> dict[str, Any]:
-        """Force reload memory data for the given user."""
+    def reload(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
+        """Force reload memory data for the given agent and user.
+
+        Args:
+            agent_name: Optional agent name for per-agent memory.
+            user_id: Optional user ID for per-user data isolation.
+        """
         pass
 
     @abc.abstractmethod
-    def save(self, memory_data: dict[str, Any], user_id: str | None = None) -> bool:
-        """Save memory data for the given user."""
+    def save(self, memory_data: dict[str, Any], agent_name: str | None = None, *, user_id: str | None = None) -> bool:
+        """Save memory data for the given agent and user.
+
+        Args:
+            memory_data: The memory data to save.
+            agent_name: Optional agent name for per-agent memory.
+            user_id: Optional user ID for per-user data isolation.
+        """
         pass
 
 
 class FileMemoryStorage(MemoryStorage):
-    """File-based memory storage provider with per-user isolation support.
+    """File-based memory storage provider with per-user and per-agent isolation support.
 
     Memory files are stored as:
-    - Global: {base_dir}/.deer-flow/memory.json (when user_id is None)
-    - Per-user: {base_dir}/.deer-flow/memory_{user_id}.json (when user_id is provided)
+    - Global: {base_dir}/.deer-flow/memory.json (when user_id and agent_name are None)
+    - Per-user: {base_dir}/.deer-flow/memory_{user_id}.json (when user_id is provided, agent_name is None)
+    - Per-agent: {base_dir}/.deer-flow/memory_{agent_name}.json (when agent_name is provided, user_id is None)
+    - Per-user+agent: {base_dir}/.deer-flow/memory_{user_id}_{agent_name}.json
     """
 
     def __init__(self):
         """Initialize the file memory storage."""
-        # Per-user memory cache: keyed by user_id (None = global)
+        # Per-user/agent memory cache: keyed by (user_id, agent_name) tuple
         # Value: (memory_data, file_mtime)
-        self._memory_cache: dict[str | None, tuple[dict[str, Any], float | None]] = {}
+        self._memory_cache: dict[tuple[str | None, str | None], tuple[dict[str, Any], float | None]] = {}
         # Guards all reads and writes to _memory_cache across concurrent callers.
         self._cache_lock = threading.Lock()
 
@@ -83,19 +102,35 @@ class FileMemoryStorage(MemoryStorage):
         """
         if not user_id:
             raise ValueError("User ID must be a non-empty string.")
-        # Allow alphanumeric, hyphens, underscores (common in UUIDs and usernames)
-        import re
         if not re.match(r"^[A-Za-z0-9_-]+$", user_id):
             raise ValueError(f"Invalid user ID {user_id!r}: must contain only alphanumeric characters, hyphens, and underscores.")
 
-    def _get_memory_file_path(self, user_id: str | None = None) -> Path:
-        """Get the path to the memory file for a given user."""
+    def _validate_agent_name(self, agent_name: str) -> None:
+        """Validate that the agent name is safe to use in filesystem paths.
+
+        Uses the repository's established AGENT_NAME_PATTERN to ensure consistency
+        across the codebase and prevent path traversal or other problematic characters.
+        """
+        if not AGENT_NAME_PATTERN.match(agent_name):
+            raise ValueError(
+                f"Invalid agent name {agent_name!r}: must match pattern {AGENT_NAME_PATTERN.pattern}"
+            )
+
+    def _get_memory_file_path(self, agent_name: str | None = None, *, user_id: str | None = None) -> Path:
+        """Get the path to the memory file for a given agent and/or user.
+
+        Resolution order: user_id+agent_name > user_id > agent_name > global
+        """
         if user_id is not None:
             self._validate_user_id(user_id)
-            config = get_memory_config()
-            base_dir = get_paths().base_dir / ".deer-flow"
-            # Sanitize user_id for filename (already validated above)
-            return base_dir / f"memory_{user_id}.json"
+            if agent_name is not None:
+                self._validate_agent_name(agent_name)
+                return get_paths().user_agent_memory_file(user_id, agent_name)
+            return get_paths().user_memory_file(user_id)
+
+        if agent_name is not None:
+            self._validate_agent_name(agent_name)
+            return get_paths().agent_memory_file(agent_name)
 
         config = get_memory_config()
         if config.storage_path:
@@ -103,9 +138,9 @@ class FileMemoryStorage(MemoryStorage):
             return p if p.is_absolute() else get_paths().base_dir / p
         return get_paths().memory_file
 
-    def _load_memory_from_file(self, user_id: str | None = None) -> dict[str, Any]:
+    def _load_memory_from_file(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
         """Load memory data from file."""
-        file_path = self._get_memory_file_path(user_id)
+        file_path = self._get_memory_file_path(agent_name, user_id=user_id)
 
         if not file_path.exists():
             return create_empty_memory()
@@ -118,9 +153,15 @@ class FileMemoryStorage(MemoryStorage):
             logger.warning("Failed to load memory file: %s", e)
             return create_empty_memory()
 
-    def load(self, user_id: str | None = None) -> dict[str, Any]:
+    @staticmethod
+    def _cache_key(agent_name: str | None = None, *, user_id: str | None = None) -> tuple[str | None, str | None]:
+        """Build cache key from agent_name and user_id."""
+        return (user_id, agent_name)
+
+    def load(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
         """Load memory data (cached with file modification time check)."""
-        file_path = self._get_memory_file_path(user_id)
+        file_path = self._get_memory_file_path(agent_name, user_id=user_id)
+        cache_key = self._cache_key(agent_name, user_id=user_id)
 
         try:
             current_mtime = file_path.stat().st_mtime if file_path.exists() else None
@@ -128,21 +169,22 @@ class FileMemoryStorage(MemoryStorage):
             current_mtime = None
 
         with self._cache_lock:
-            cached = self._memory_cache.get(user_id)
+            cached = self._memory_cache.get(cache_key)
             if cached is not None and cached[1] == current_mtime:
                 return cached[0]
 
-        memory_data = self._load_memory_from_file(user_id)
+        memory_data = self._load_memory_from_file(agent_name, user_id=user_id)
 
         with self._cache_lock:
-            self._memory_cache[user_id] = (memory_data, current_mtime)
+            self._memory_cache[cache_key] = (memory_data, current_mtime)
 
         return memory_data
 
-    def reload(self, user_id: str | None = None) -> dict[str, Any]:
+    def reload(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
         """Reload memory data from file, forcing cache invalidation."""
-        file_path = self._get_memory_file_path(user_id)
-        memory_data = self._load_memory_from_file(user_id)
+        file_path = self._get_memory_file_path(agent_name, user_id=user_id)
+        memory_data = self._load_memory_from_file(agent_name, user_id=user_id)
+        cache_key = self._cache_key(agent_name, user_id=user_id)
 
         try:
             mtime = file_path.stat().st_mtime if file_path.exists() else None
@@ -150,12 +192,13 @@ class FileMemoryStorage(MemoryStorage):
             mtime = None
 
         with self._cache_lock:
-            self._memory_cache[user_id] = (memory_data, mtime)
+            self._memory_cache[cache_key] = (memory_data, mtime)
         return memory_data
 
-    def save(self, memory_data: dict[str, Any], user_id: str | None = None) -> bool:
+    def save(self, memory_data: dict[str, Any], agent_name: str | None = None, *, user_id: str | None = None) -> bool:
         """Save memory data to file and update cache."""
-        file_path = self._get_memory_file_path(user_id)
+        file_path = self._get_memory_file_path(agent_name, user_id=user_id)
+        cache_key = self._cache_key(agent_name, user_id=user_id)
 
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,8 +219,8 @@ class FileMemoryStorage(MemoryStorage):
                 mtime = None
 
             with self._cache_lock:
-                self._memory_cache[user_id] = (memory_data, mtime)
-            logger.info("Memory saved to %s (user_id=%s)", file_path, user_id or "global")
+                self._memory_cache[cache_key] = (memory_data, mtime)
+            logger.info("Memory saved to %s (user_id=%s, agent_name=%s)", file_path, user_id or "global", agent_name or "default")
             return True
         except OSError as e:
             logger.error("Failed to save memory file: %s", e)
@@ -208,7 +251,6 @@ def get_memory_storage() -> MemoryStorage:
             module = importlib.import_module(module_path)
             storage_class = getattr(module, class_name)
 
-            # Validate that the configured storage is a MemoryStorage implementation
             if not isinstance(storage_class, type):
                 raise TypeError(f"Configured memory storage '{storage_class_path}' is not a class: {storage_class!r}")
             if not issubclass(storage_class, MemoryStorage):

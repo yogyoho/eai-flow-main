@@ -1,0 +1,365 @@
+# EAIFlow Docker Compose - 连接到外部 Postgres 和 RAGFlow 服务
+#
+# 使用方式:
+#   docker-compose -f docker/docker-compose.external.yaml up --build -d
+#
+# 外部依赖:
+#   - eai-flow-postgres-ext: 外部 Postgres 数据库 (容器名, 端口 5432)
+#   - eai-flow-ragflow:      外部 RAGFlow 服务 (容器名, 端口 9380)
+#
+# 前提条件:
+#   1. 外部服务必须在 eai-docker_eai-flow-dev 网络中运行
+#   2. 使用以下命令将本网络连接到外部网络:
+#      docker network connect eai-docker_eai-flow-dev eai-flow-ext-net
+#
+# 服务:
+#   - nginx:       反向代理 (端口 2026)
+#   - frontend:    Next.js 前端 (端口 3000)
+#   - gateway:     FastAPI 网关 (端口 8001)
+#   - langgraph:   LangGraph 服务器 (端口 2024)
+#   - procurement-backend: 采购微服务后端 (端口 3001)
+#   - asset-backend:       资产管理微服务后端 (端口 3002)
+#   - project-backend:      项目管理微服务后端 (端口 3003)
+#
+# 访问: http://localhost:2026
+
+services:
+  # ── 反向代理 ──────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: eai-flow-nginx
+    ports:
+      - "${PORT:-2026}:2026"
+    volumes:
+      - ./nginx/nginx.external.conf:/etc/nginx/nginx.conf.template:ro
+    environment:
+      - GATEWAY_UPSTREAM=${GATEWAY_UPSTREAM:-gateway:8001}
+      - LANGGRAPH_UPSTREAM=${LANGGRAPH_UPSTREAM:-langgraph:2024}
+      - LANGGRAPH_REWRITE=${LANGGRAPH_REWRITE:-/}
+    command: >
+      sh -c "envsubst '$$GATEWAY_UPSTREAM $$LANGGRAPH_UPSTREAM $$LANGGRAPH_REWRITE'
+      < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+      && nginx -g 'daemon off;'"
+    depends_on:
+      - frontend
+      - gateway
+    networks:
+      - eai-flow-ext-net
+      - procurement-net
+      - asset-net
+      - project-net
+    restart: unless-stopped
+
+  # ── 前端 ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../
+      dockerfile: frontend/Dockerfile
+      target: prod
+      args:
+        PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+    container_name: eai-flow-frontend
+    environment:
+      - NODE_ENV=production
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
+      - DEER_FLOW_INTERNAL_LANGGRAPH_BASE_URL=http://langgraph:2024
+    env_file:
+      - ../frontend/.env
+    networks:
+      - eai-flow-ext-net
+      - procurement-net
+      - asset-net
+      - project-net
+    restart: unless-stopped
+
+  # ── Gateway API ──────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+      args:
+        APT_MIRROR: ${APT_MIRROR:-}
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.7.20}
+        UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-gateway
+    command: sh -c "cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
+    volumes:
+      - ${DEER_FLOW_CONFIG_PATH}:/app/backend/config.yaml:ro
+      - ${DEER_FLOW_EXTENSIONS_CONFIG_PATH}:/app/backend/extensions_config.json:ro
+      - ../skills:/app/skills:ro
+      - ${DEER_FLOW_HOME}:/app/backend/.deer-flow
+      # DooD: AioSandboxProvider starts sandbox containers via host Docker daemon
+      - ${DEER_FLOW_DOCKER_SOCKET}:/var/run/docker.sock
+      # CLI auth directories for auto-auth (Claude Code + Codex CLI)
+      - type: bind
+        source: ${HOME:?HOME must be set}/.claude
+        target: /root/.claude
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${HOME:?HOME must be set}/.codex
+        target: /root/.codex
+        read_only: true
+        bind:
+          create_host_path: true
+    working_dir: /app
+    environment:
+      - CI=true
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      - DEER_FLOW_CHANNELS_LANGGRAPH_URL=${DEER_FLOW_CHANNELS_LANGGRAPH_URL:-http://langgraph:2024}
+      - DEER_FLOW_CHANNELS_GATEWAY_URL=${DEER_FLOW_CHANNELS_GATEWAY_URL:-http://gateway:8001}
+      # DooD path/network translation
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_HOME}
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
+      - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+    env_file:
+      - ../.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - eai-flow-ext-net
+      - procurement-net
+      - asset-net
+      - project-net
+    restart: unless-stopped
+
+  # ── LangGraph Server ─────────────────────────────────────────────────
+  langgraph:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+      args:
+        APT_MIRROR: ${APT_MIRROR:-}
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.7.20}
+        UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-langgraph
+    command: sh -c 'cd /app/backend && args="--no-browser --no-reload --host 0.0.0.0 --port 2024 --n-jobs-per-worker $${LANGGRAPH_JOBS_PER_WORKER:-10}" && if [ "$${LANGGRAPH_ALLOW_BLOCKING:-0}" = "1" ]; then args="$$args --allow-blocking"; fi && uv run langgraph dev $$args'
+    volumes:
+      - ${DEER_FLOW_CONFIG_PATH}:/app/backend/config.yaml:ro
+      - ${DEER_FLOW_EXTENSIONS_CONFIG_PATH}:/app/backend/extensions_config.json:ro
+      - ${DEER_FLOW_HOME}:/app/backend/.deer-flow
+      - ../skills:/app/skills:ro
+      - ../backend/.langgraph_api:/app/backend/.langgraph_api
+      # DooD: same as gateway
+      - ${DEER_FLOW_DOCKER_SOCKET}:/var/run/docker.sock
+      # CLI auth directories for auto-auth (Claude Code + Codex CLI)
+      - type: bind
+        source: ${HOME:?HOME must be set}/.claude
+        target: /root/.claude
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${HOME:?HOME must be set}/.codex
+        target: /root/.codex
+        read_only: true
+        bind:
+          create_host_path: true
+    environment:
+      - CI=true
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_HOME}
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
+      - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+    env_file:
+      - ../.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - eai-flow-ext-net
+    restart: unless-stopped
+
+  # ── 采购微服务后端 ─────────────────────────────────────────────────
+  procurement-backend:
+    build:
+      context: ../business/procurement-service/backend
+      dockerfile: Dockerfile
+    container_name: procurement-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3001 --workers 2
+    environment:
+      - DATABASE_URL=${PROCUREMENT_DATABASE_URL:-postgresql+asyncpg://procurement:procurement@procurement-db:5432/procurement}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - eai-flow-ext-net
+      - procurement-net
+    restart: unless-stopped
+
+  # ── 采购微服务前端 ───────────────────────────────────────────────
+  procurement-frontend:
+    build:
+      context: ../business/procurement-service/frontend-shadcn
+      dockerfile: Dockerfile
+    container_name: procurement-frontend
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=http://localhost:2026/procurement
+    networks:
+      - eai-flow-ext-net
+      - procurement-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── 采购微服务 PostgreSQL 数据库 ──────────────────────────────────
+  procurement-db:
+    image: postgres:16-alpine
+    container_name: procurement-db
+    environment:
+      - POSTGRES_USER=procurement
+      - POSTGRES_PASSWORD=${PROCUREMENT_DB_PASSWORD:-procurement}
+      - POSTGRES_DB=procurement
+    volumes:
+      - procurement-db-data:/var/lib/postgresql/data
+    networks:
+      - procurement-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U procurement -d procurement"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 资产微服务后端 ──────────────────────────────────────────────
+  asset-backend:
+    build:
+      context: ../business/asset-service/backend
+      dockerfile: Dockerfile
+    container_name: asset-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3002 --workers 2
+    environment:
+      - DATABASE_URL=${ASSET_DATABASE_URL:-postgresql+asyncpg://asset:asset@asset-db:5432/asset}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - eai-flow-ext-net
+      - asset-net
+    restart: unless-stopped
+
+  # ── 资产微服务前端 ──────────────────────────────────────────────
+  asset-frontend:
+    build:
+      context: ../business/asset-service/frontend
+      dockerfile: Dockerfile
+    container_name: asset-frontend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=
+      - NEXT_PUBLIC_APP_BASE_URL=
+    networks:
+      - eai-flow-ext-net
+      - asset-net
+    restart: unless-stopped
+
+  # ── 资产微服务 PostgreSQL 数据库 ────────────────────────────────
+  asset-db:
+    image: postgres:16-alpine
+    container_name: asset-db
+    environment:
+      - POSTGRES_USER=asset
+      - POSTGRES_PASSWORD=${ASSET_DB_PASSWORD:-asset}
+      - POSTGRES_DB=asset
+    volumes:
+      - asset-db-data:/var/lib/postgresql/data
+    networks:
+      - asset-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asset -d asset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 项目微服务后端 ──────────────────────────────────────────────
+  project-backend:
+    build:
+      context: ../business/project-service/backend
+      dockerfile: Dockerfile
+    container_name: project-backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3003 --workers 2
+    environment:
+      - DATABASE_URL=${PROJECT_DATABASE_URL:-postgresql+asyncpg://project:project@project-db:5432/project}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - API_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - ../.env
+    networks:
+      - eai-flow-ext-net
+      - project-net
+    restart: unless-stopped
+
+  # ── 项目微服务前端 ──────────────────────────────────────────────
+  project-frontend:
+    build:
+      context: ../business/project-service/frontend
+      dockerfile: Dockerfile
+    container_name: project-frontend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=
+      - NEXT_PUBLIC_APP_BASE_URL=
+    networks:
+      - eai-flow-ext-net
+      - project-net
+    restart: unless-stopped
+
+  # ── 项目微服务 PostgreSQL 数据库 ───────────────────────────────
+  project-db:
+    image: postgres:16-alpine
+    container_name: project-db
+    environment:
+      - POSTGRES_USER=project
+      - POSTGRES_PASSWORD=${PROJECT_DB_PASSWORD:-project}
+      - POSTGRES_DB=project
+    volumes:
+      - project-db-data:/var/lib/postgresql/data
+    networks:
+      - project-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project -d project"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  procurement-db-data:
+  asset-db-data:
+  project-db-data:
+
+networks:
+  # 外部服务网络 (连接到外部 eai-docker_eai-flow-dev 网络)
+  eai-flow-ext-net:
+    external:
+      name: eai-docker_eai-flow-dev
+
+  # 内部网络
+  procurement-net:
+    driver: bridge
+
+  asset-net:
+    driver: bridge
+
+  project-net:
+    driver: bridge

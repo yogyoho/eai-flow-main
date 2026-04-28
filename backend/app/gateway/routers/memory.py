@@ -13,6 +13,7 @@ from deerflow.agents.memory.updater import (
     update_memory_fact,
 )
 from deerflow.config.memory_config import get_memory_config
+from deerflow.runtime.user_context import get_effective_user_id
 
 router = APIRouter(prefix="/api", tags=["memory"])
 
@@ -371,7 +372,7 @@ async def get_memory_status() -> MemoryStatusResponse:
         Combined memory configuration and current data.
     """
     config = get_memory_config()
-    memory_data = get_memory_data()
+    memory_data = get_memory_data(user_id=get_effective_user_id())
 
     return MemoryStatusResponse(
         config=MemoryConfigResponse(
