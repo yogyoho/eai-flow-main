@@ -29,6 +29,7 @@ export const enUS: Translations = {
     close: "Close",
     more: "More",
     search: "Search",
+    loadMore: "Load more",
     download: "Download",
     thinking: "Thinking",
     artifacts: "Artifacts",
@@ -49,7 +50,6 @@ export const enUS: Translations = {
     exportAsMarkdown: "Export as Markdown",
     exportAsJSON: "Export as JSON",
     exportSuccess: "Conversation exported",
-    logout: "Log out",
   },
 
   // Home
@@ -62,11 +62,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to EAIFlow, an super agent. With built-in and custom skills, EAIFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of EAIFlow. With customized skills,\EAIFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
   },
 
   // Clipboard
@@ -168,15 +168,11 @@ export const enUS: Translations = {
 
   // Sidebar
   sidebar: {
-    goHome: "Home",
     newChat: "New chat",
     chats: "Chats",
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
-    knowledge: "Knowledge Base",
-    documentSpace: "Document Space",
-    knowledgeFactory: "Knowledge Factory",
   },
 
   // Agents
@@ -213,13 +209,13 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. EAIFlow is generating and saving an initial version now.",
+      "Save requested. DeerFlow is generating and saving an initial version now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but EAIFlow could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but DeerFlow could not load it yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
@@ -234,13 +230,14 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "EAIFlow's official website",
-    githubTooltip: "EAIFlow on Github",
+    officialWebsite: "DeerFlow's official website",
+    githubTooltip: "DeerFlow on Github",
     settingsAndMore: "Settings and more",
-    visitGithub: "EAIFlow on GitHub",
+    visitGithub: "DeerFlow on GitHub",
     reportIssue: "Report a issue",
     contactUs: "Contact us",
-    about: "About EAIFlow",
+    about: "About DeerFlow",
+    logout: "Log out",
   },
 
   // Conversation
@@ -256,7 +253,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "EAIFlow",
+    appName: "DeerFlow",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -282,7 +279,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to EAIFlow",
+    skillInstallTooltip: "Install skill and make it available to DeerFlow",
   },
 
   // Subtasks
@@ -319,7 +316,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate EAIFlow faster with keyboard shortcuts.",
+      "Navigate DeerFlow faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -327,20 +324,20 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how EAIFlow looks and behaves for you.",
+    description: "Adjust how DeerFlow looks and behaves for you.",
     sections: {
+      account: "Account",
       appearance: "Appearance",
       memory: "Memory",
       tools: "Tools",
       skills: "Skills",
       notification: "Notification",
       about: "About",
-      basic: "Basic Settings",
     },
     memory: {
       title: "Memory",
       description:
-        "EAIFlow automatically learns from your conversations in the background. These memories help EAIFlow understand you better and deliver a more personalized experience.",
+        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -440,18 +437,18 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of EAIFlow.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
       emptyButton: "Create Your First Skill",
     },
     notification: {
       title: "Notification",
       description:
-        "EAIFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "EAIFlow",
+      testTitle: "DeerFlow",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",
@@ -459,61 +456,6 @@ export const enUS: Translations = {
     acknowledge: {
       emptyTitle: "Acknowledgements",
       emptyDescription: "Credits and acknowledgements will show here.",
-    },
-    basic: {
-      title: "Basic Settings",
-      description: "Configure basic system parameters.",
-      retrieval: {
-        title: "Retrieval Configuration",
-        description: "Configure default chat model, fast model, embedding model, and reranker model",
-        defaultModel: "Default Chat Model",
-        fastModel: "Fast Model",
-        embedModel: "Embedding Model",
-        reranker: "Reranker Model",
-        placeholder: "Select model",
-      },
-      contentGuard: {
-        title: "Content Guard Configuration",
-        description: "Configure content safety review features",
-        enable: "Enable Content Guard",
-        enableHint: "Enable content safety review for user input and AI output",
-        enableLLM: "Enable LLM Review",
-        enableLLMHint: "Use large language model for smarter content review",
-        model: "Content Guard Model",
-        modelPlaceholder: "Model for content review",
-      },
-      theme: {
-        title: "Theme Settings",
-        description: "Select system interface theme",
-        system: "Follow System",
-        light: "Light Mode",
-        dark: "Dark Mode",
-      },
-      services: {
-        title: "Service Links",
-        description: "Quickly access external services (replace localhost with actual IP address)",
-        docCenter: "Documentation Center",
-        docCenterDesc: "View system documentation and developer guides",
-        neo4j: "Neo4j Browser",
-        neo4jDesc: "Graph database management interface",
-        apiDocs: "API Documentation",
-        apiDocsDesc: "System API documentation and debugging tools",
-        minio: "MinIO Object Storage",
-        minioDesc: "File storage management console",
-        milvus: "Milvus WebUI",
-        milvusDesc: "Vector database management interface",
-      },
-      validateModel: "Validate",
-      validating: "Validating...",
-      validation: {
-        available: "Available",
-        unavailable: "Unavailable",
-        error: "Error",
-        message: "Validation message",
-      },
-      save: "Save Settings",
-      saveSuccess: "Saved successfully",
-      saveFailed: "Failed to save",
     },
   },
 };

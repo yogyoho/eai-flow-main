@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: 30_000,
 
   use: {
-    baseURL: "http://localhost:4026",
+    baseURL: "http://localhost:3000",
     trace: "on-first-retry",
   },
 
@@ -21,11 +21,14 @@ export default defineConfig({
     },
   ],
 
-  // Disable webServer — nginx is already running as daemon on port 4026
   webServer: {
-    command: "echo ready",
-    url: "http://localhost:4026",
-    reuseExistingServer: true,
-    timeout: 10000,
+    command: "pnpm build && pnpm start",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    env: {
+      SKIP_ENV_VALIDATION: "1",
+      DEER_FLOW_AUTH_DISABLED: "1",
+    },
   },
 });

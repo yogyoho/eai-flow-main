@@ -29,6 +29,7 @@ export const zhCN: Translations = {
     close: "关闭",
     more: "更多",
     search: "搜索",
+    loadMore: "加载更多",
     download: "下载",
     thinking: "思考",
     artifacts: "文件",
@@ -49,7 +50,6 @@ export const zhCN: Translations = {
     exportAsMarkdown: "导出为 Markdown",
     exportAsJSON: "导出为 JSON",
     exportSuccess: "对话已导出",
-    logout: "退出登录",
   },
 
   // Home
@@ -62,11 +62,11 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 EAIFlow，一个Harness驱动的超级智能体。通过内置和自定义的 Skills，\n EAIFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 🦌 DeerFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
-      "创建你的 Agent Skill 来释放 EAIFlow 的潜力。通过自定义技能，EAIFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+      "创建你的 Agent Skill 来释放 DeerFlow 的潜力。通过自定义技能，DeerFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
   },
 
   // Clipboard
@@ -162,15 +162,11 @@ export const zhCN: Translations = {
 
   // Sidebar
   sidebar: {
-    goHome: "首页",
     newChat: "新对话",
     chats: "对话",
-    recentChats: "对话记录",
+    recentChats: "最近的对话",
     demoChats: "演示对话",
     agents: "智能体",
-    knowledge: "知识库",
-    documentSpace: "文档空间",
-    knowledgeFactory: "知识工厂",
   },
 
   // Agents
@@ -222,13 +218,14 @@ export const zhCN: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "访问 EAIFlow 官方网站",
-    githubTooltip: "访问 EAIFlow 的 Github 仓库",
+    officialWebsite: "访问 DeerFlow 官方网站",
+    githubTooltip: "访问 DeerFlow 的 Github 仓库",
     settingsAndMore: "设置和更多",
-    visitGithub: "在 Github 上查看 EAIFlow",
+    visitGithub: "在 Github 上查看 DeerFlow",
     reportIssue: "报告问题",
     contactUs: "联系我们",
-    about: "关于 EAIFlow",
+    about: "关于 DeerFlow",
+    logout: "退出登录",
   },
 
   // Conversation
@@ -312,20 +309,20 @@ export const zhCN: Translations = {
   // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整AI工作台的界面和行为。",
+    description: "根据你的偏好调整 DeerFlow 的界面和行为。",
     sections: {
+      account: "账号",
       appearance: "外观",
       memory: "记忆",
       tools: "工具",
       skills: "技能",
       notification: "通知",
       about: "关于",
-      basic: "基本设置",
     },
     memory: {
       title: "记忆",
       description:
-        "AI智能体会在后台不断从你的对话中自动学习。这些记忆能帮助 EAIFlow 更好地理解你，并提供更个性化的体验。",
+        "DeerFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       exportButton: "导出记忆",
@@ -421,18 +418,18 @@ export const zhCN: Translations = {
       createSkill: "新建技能",
       emptyTitle: "还没有技能",
       emptyDescription:
-        "将你的 Agent Skill 文件夹放在 EAIFlow 根目录下的 `/skills/custom` 文件夹中。",
+        "将你的 Agent Skill 文件夹放在 DeerFlow 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
     },
     notification: {
       title: "通知",
       description:
-        "EAIFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+        "DeerFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
       requestPermission: "请求通知权限",
       deniedHint:
         "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
       testButton: "发送测试通知",
-      testTitle: "EAIFlow",
+      testTitle: "DeerFlow",
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",
@@ -440,61 +437,6 @@ export const zhCN: Translations = {
     acknowledge: {
       emptyTitle: "致谢",
       emptyDescription: "相关的致谢信息会展示在这里。",
-    },
-    basic: {
-      title: "系统设置",
-      description: "配置系统的基本功能参数。",
-      retrieval: {
-        title: "检索配置",
-        description: "配置默认对话模型、快速模型、Embedding 模型和重排序模型",
-        defaultModel: "默认对话模型",
-        fastModel: "快速模型",
-        embedModel: "Embedding 模型",
-        reranker: "重排序模型",
-        placeholder: "选择模型",
-      },
-      contentGuard: {
-        title: "内容审查配置",
-        description: "配置内容安全审查功能",
-        enable: "启用内容审查",
-        enableHint: "开启后将对用户输入和AI输出进行内容安全审查",
-        enableLLM: "启用 LLM 审查",
-        enableLLMHint: "使用大语言模型进行更智能的内容审查",
-        model: "内容审查模型",
-        modelPlaceholder: "用于内容审查的模型",
-      },
-      theme: {
-        title: "主题设置",
-        description: "选择系统界面主题",
-        system: "跟随系统",
-        light: "浅色模式",
-        dark: "深色模式",
-      },
-      services: {
-        title: "服务链接",
-        description: "快速访问系统相关的外部服务（需将 localhost 替换为实际 IP 地址）",
-        docCenter: "文档中心",
-        docCenterDesc: "查看系统使用文档和开发指南",
-        neo4j: "Neo4j 浏览器",
-        neo4jDesc: "图数据库管理界面",
-        apiDocs: "API 接口文档",
-        apiDocsDesc: "系统接口文档和调试工具",
-        minio: "MinIO 对象存储",
-        minioDesc: "文件存储管理控制台",
-        milvus: "Milvus WebUI",
-        milvusDesc: "向量数据库管理界面",
-      },
-      validateModel: "验证",
-      validating: "验证中...",
-      validation: {
-        available: "可用",
-        unavailable: "不可用",
-        error: "错误",
-        message: "验证信息",
-      },
-      save: "保存设置",
-      saveSuccess: "保存成功",
-      saveFailed: "保存失败",
     },
   },
 };
