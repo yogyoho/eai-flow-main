@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Load .env from project root (two levels up from this file: extensions/ -> app/ -> backend/)
 _env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-load_dotenv(_env_path, override=True)
+load_dotenv(_env_path, override=False)
 
 from pydantic import BaseModel, Field
 
@@ -53,10 +53,12 @@ class JWTConfig(BaseModel):
 
     @classmethod
     def from_env(cls) -> "JWTConfig":
+        import os as _os
+        secret = _os.getenv("JWT_SECRET", "") or _os.getenv("JWT_SECRET_KEY", "")
         return cls(
-            secret=os.getenv("JWT_SECRET", ""),
-            access_token_expire_minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "15")),
-            refresh_token_expire_days=int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7")),
+            secret=secret,
+            access_token_expire_minutes=int(_os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "15")),
+            refresh_token_expire_days=int(_os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7")),
         )
 
 

@@ -265,7 +265,7 @@ export default function RuleEngine({
 
           <div className="flex gap-2">
             <button
-              className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => {
                 setSelectedRuleId(null);
                 setShowCreatePanel(true);

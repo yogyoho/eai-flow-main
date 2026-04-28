@@ -311,7 +311,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
           </p>
           <button
             onClick={onOpenDraftBox}
-            className="px-3 py-1.5 text-sm border rounded-lg hover:bg-muted flex items-center gap-2"
+            className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted flex items-center gap-2"
           >
             <FolderOpen className="w-4 h-4" />
             草稿箱
@@ -321,7 +321,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
             className={cn(
               "p-2 rounded-lg transition-colors",
               showSettings
-                ? "bg-indigo-600 text-white"
+                ? "bg-blue-600 text-white"
                 : "hover:bg-muted"
             )}
           >
@@ -332,9 +332,9 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden bg-muted/30">
-        <div className="flex-1 flex m-6 rounded-2xl bg-card shadow-sm overflow-hidden">
+        <div className="flex-1 flex m-6 rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           {/* Left: Config */}
-          <div className="w-1/2 border-r flex flex-col">
+          <div className="w-1/2 border-r border-border flex flex-col">
             <div className="p-6 space-y-4">
               {/* URL */}
               <div className="space-y-2">
@@ -458,7 +458,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="border-t pt-3 text-sm text-muted-foreground">
+                    <div className="border-t border-border pt-3 text-sm text-muted-foreground">
                       <p>高级设置（代理、认证等）开发中...</p>
                     </div>
                   </motion.div>
@@ -480,7 +480,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                     <button
                       onClick={handleStart}
                       disabled={!url || loading}
-                      className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -550,7 +550,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
 
           {/* Right: Result */}
           <div className="w-1/2 flex flex-col bg-muted/30">
-            <div className="px-6 py-4 border-b bg-card flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-border bg-card flex items-center justify-between">
               <h3 className="font-medium flex items-center gap-2">
                 <FileText className="w-4 h-4 text-blue-500" />
                 提取结果{" "}
@@ -564,7 +564,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveToDraft}
-                    className="px-3 py-1.5 text-sm border rounded-lg flex items-center gap-1"
+                    className="px-3 py-1.5 text-sm border border-border rounded-lg flex items-center gap-1"
                   >
                     <Save className="w-3 h-3" />
                     存草稿
@@ -574,7 +574,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {result ? (
-                <div className="prose prose-sm max-w-none bg-card p-6 rounded-xl shadow-sm">
+                <div className="prose prose-sm max-w-none rounded-xl border border-border bg-card p-6 shadow-sm">
                   <ReactMarkdown>{result}</ReactMarkdown>
                 </div>
               ) : (

@@ -232,8 +232,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Primary: indigo-600 */
-  --primary: oklch(0.51 0.22 264);
+  /* Primary: #0746ff */
+  --primary: oklch(0.54 0.26 265.5);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -244,20 +244,20 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.88 0 0);
-  --ring: oklch(0.51 0.22 264);
-  --chart-1: oklch(0.646 0.222 41.116);
+  --ring: oklch(0.54 0.26 265.5);
+  --chart-1: oklch(0.54 0.26 265.5);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.98 0 0);
   --sidebar-foreground: oklch(0.385 0 0);
-  --sidebar-primary: oklch(0.51 0.22 264);
+  --sidebar-primary: oklch(0.54 0.26 265.5);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.96 0 0);
   --sidebar-accent-foreground: oklch(0.556 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.51 0.22 264);
+  --sidebar-ring: oklch(0.54 0.26 265.5);
   --success: oklch(0.627 0.194 154.44);
   --warning: oklch(0.769 0.188 70.08);
 }
@@ -269,8 +269,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0.0036 106.64);
   --popover-foreground: oklch(0.985 0 0);
-  /* Primary: indigo-500 in dark mode */
-  --primary: oklch(0.58 0.22 264);
+  /* Primary: #0746ff in dark mode */
+  --primary: oklch(0.58 0.26 265.5);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.3 0.0036 106.64);
   --secondary-foreground: oklch(0.985 0 0);
@@ -281,20 +281,20 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: oklch(0.488 0.243 264.376);
+  --ring: oklch(0.52 0.26 265.5);
+  --chart-1: oklch(0.52 0.26 265.5);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.245 0.0036 106.64);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.52 0.26 265.5);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.29 0.0036 106.64);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --sidebar-ring: oklch(0.52 0.26 265.5);
   --success: oklch(0.627 0.194 154.44);
   --warning: oklch(0.769 0.188 70.08);
   font-weight: 300;
@@ -416,7 +416,20 @@
   --container-width-lg: calc(var(--spacing) * 256);
 }
 
-/* XYFlow Panel 组件边框覆盖 - 移除黑色默认边框，使用边框变量色 */
+/* Resizable Panel 组件边框覆盖 - 移除黑色默认边框，使用边框变量色 */
+[data-slot="resizable-panel-group"],
+[data-slot="resizable-panel"],
+[data-slot="resizable-handle"] {
+  border-color: var(--border) !important;
+}
+
+/* react-resizable-panels 默认边框覆盖 */
+[data-panel-group],
+[data-panel] {
+  border-color: var(--border) !important;
+}
+
+/* XYFlow Panel 组件边框覆盖 */
 .react-flow__panel {
   border-color: var(--border) !important;
 }
@@ -489,7 +502,7 @@
 }
 
 .ProseMirror .selectedCell {
-  background: oklch(0.51 0.22 264 / 0.1);
+  background: oklch(0.54 0.26 265.5 / 0.1);
 }
 
 /* Dark mode table styles */
@@ -547,7 +560,7 @@
 
 /* Blockquote Styles */
 .ProseMirror blockquote {
-  border-left: 3px solid var(--primary, #6366f1) !important;
+  border-left: 3px solid var(--primary, #2563eb) !important;
   padding-left: 1rem !important;
   margin: 1rem 0 !important;
   color: var(--muted-foreground) !important;
@@ -635,7 +648,7 @@
   cursor: pointer !important;
   width: 1rem !important;
   height: 1rem !important;
-  accent-color: var(--primary, #6366f1) !important;
+  accent-color: var(--primary, #2563eb) !important;
 }
 
 .ProseMirror ul[data-type="taskList"] li > div {
@@ -668,14 +681,14 @@
 
 /* Link in editor */
 .ProseMirror a {
-  color: var(--primary, #6366f1) !important;
+  color: var(--primary, #2563eb) !important;
   text-decoration: underline !important;
   text-underline-offset: 2px !important;
   cursor: pointer !important;
 }
 
 .ProseMirror a:hover {
-  color: var(--primary, #4f46e5) !important;
+  color: var(--primary, #2563eb) !important;
 }
 
 /* Placeholder */

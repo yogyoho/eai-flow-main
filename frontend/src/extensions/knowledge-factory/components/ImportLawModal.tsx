@@ -597,7 +597,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
             <button
               onClick={handleSubmit}
               disabled={importMutation.isPending}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {importMutation.isPending && (
                 <Loader2 className="w-4 h-4 animate-spin" />

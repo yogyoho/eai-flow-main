@@ -25,7 +25,7 @@ export function Welcome({
     if (isUltra) {
       return ["#fef3c7", "#fde68a", "#fcd34d"];
     }
-    return ["#1f55e1", "#1f55e1", "#1f55e1"];
+    return ["#151616", "#151616", "#151616"];
   }, [isUltra]);
   useEffect(() => {
     waved = true;
@@ -45,7 +45,7 @@ export function Welcome({
             <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
               {isUltra ? "🚀" : <Bot className="size-7 text-primary" />}
             </div>
-            <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
+            <AuroraText className="font-normal" colors={colors}>{t.welcome.greeting}</AuroraText>
           </div>
         )}
       </div>

@@ -287,7 +287,7 @@ export default function SampleReports() {
   return (
     <div className="flex flex-col h-full">
       {/* 标题栏 */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card p-4">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-8 py-6">
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-5 w-5 shrink-0 text-primary" />
           <h2 className="truncate text-lg font-semibold tracking-tight text-foreground">样例报告库</h2>
@@ -295,7 +295,7 @@ export default function SampleReports() {
         <button
           type="button"
           onClick={() => setShowUploadModal(true)}
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:px-4"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:px-4"
         >
           <Upload className="h-4 w-4" />
           上传新报告
@@ -303,7 +303,7 @@ export default function SampleReports() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-card px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-card px-8 py-4">
         <div className="relative flex-1 min-w-[280px]">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none text-zinc-400" />
           <input
@@ -331,7 +331,7 @@ export default function SampleReports() {
         <button
           type="button"
           onClick={loadReports}
-          className="shrink-0 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+          className="shrink-0 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
           title="刷新"
         >
           <RefreshCw className="h-4 w-4" />
@@ -339,7 +339,7 @@ export default function SampleReports() {
       </div>
 
       {/* Report List — 与合规规则引擎等 tab 列表项垂直间距一致 (space-y-4) */}
-      <div className="flex-1 overflow-y-auto space-y-4 bg-muted/30 p-6">
+      <div className="flex-1 overflow-y-auto space-y-4 bg-muted/30 p-8">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

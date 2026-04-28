@@ -34,7 +34,7 @@ if _deer_flow_config_path:
 else:
     # Default to backend/.env (where langgraph.json expects it)
     _repo_root_for_env = Path(__file__).absolute().parents[4]
-load_dotenv(_repo_root_for_env / ".env", override=True)
+load_dotenv(_repo_root_for_env / ".env", override=False)
 
 logger = logging.getLogger(__name__)
 

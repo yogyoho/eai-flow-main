@@ -54,6 +54,8 @@ function collectDeptIds(dept: Department): string[] {
   }
   return ids;
 }
+const ROOT_DEPARTMENT_OPTION = "__root_department__";
+const UNSET_LEADER_OPTION = "__unset_leader__";
 
 interface TreeNodeProps {
   dept: Department;
@@ -489,10 +491,10 @@ export default function AdminDepartmentsPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">上级部门</label>
                   <AdminSelect
-                    value={createFormData.parent_id || ""}
-                    onChange={(val) => setCreateFormData({ ...createFormData, parent_id: val || undefined })}
+                    value={createFormData.parent_id ?? ROOT_DEPARTMENT_OPTION}
+                    onChange={(val) => setCreateFormData({ ...createFormData, parent_id: val === ROOT_DEPARTMENT_OPTION ? undefined : val })}
                     options={[
-                      { value: "", label: "无 (顶级部门)" },
+                      { value: ROOT_DEPARTMENT_OPTION, label: "无 (顶级部门)" },
                       ...flatList.map(({ dept, level }) => ({
                         value: dept.id,
                         label: "—".repeat(level) + dept.name,
@@ -524,10 +526,10 @@ export default function AdminDepartmentsPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">部门负责人</label>
                   <AdminSelect
-                    value={createFormData.leader_id || ""}
-                    onChange={(val) => setCreateFormData({ ...createFormData, leader_id: val || undefined })}
+                    value={createFormData.leader_id ?? UNSET_LEADER_OPTION}
+                    onChange={(val) => setCreateFormData({ ...createFormData, leader_id: val === UNSET_LEADER_OPTION ? undefined : val })}
                     options={[
-                      { value: "", label: "未设置" },
+                      { value: UNSET_LEADER_OPTION, label: "未设置" },
                       ...users.map((u) => ({ value: u.id, label: u.username })),
                     ]}
                   />
@@ -700,15 +702,60 @@ export default function AdminDepartmentsPage() {
                 </button>
               </div>
               <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">部门名称</label>
-                  <Input
-                    value={editFormData.name}
-                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                    placeholder="部门名称"
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-foreground mb-1">部门名称</label>
+                    <Input
+                      className="w-full"
+                      value={editFormData.name}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      placeholder="部门名称"
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-foreground mb-1">部门负责人</label>
+                    <AdminSelect
+                      className="w-full"
+                      value={editFormData.leader_id ?? UNSET_LEADER_OPTION}
+                      onChange={(val) => setEditFormData({ ...editFormData, leader_id: val === UNSET_LEADER_OPTION ? undefined : val })}
+                      options={[
+                        { value: UNSET_LEADER_OPTION, label: "未设置" },
+                        ...users.map((u) => ({ value: u.id, label: u.username })),
+                      ]}
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-foreground mb-1">排序</label>
+                    <Input
+                      className="w-full"
+                      type="number"
+                      value={editFormData.sort_order}
+                      onChange={(e) => setEditFormData({ ...editFormData, sort_order: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-foreground mb-1">部门编码</label>
+                    <Input
+                      className="w-full"
+                      value={editFormData.code ?? ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, code: e.target.value || undefined })}
+                      placeholder="如：DEPT001"
+                    />
+                  </div>
+                </div>
+                <div className="w-full">
+                  <label className="block text-sm font-medium text-foreground mb-1">状态</label>
+                  <AdminSelect
+                    className="w-full"
+                    value={editFormData.status || "active"}
+                    onChange={(val) => setEditFormData({ ...editFormData, status: val })}
+                    options={[
+                      { value: "active", label: "正常" },
+                      { value: "inactive", label: "停用" },
+                    ]}
                   />
                 </div>
-                <div>
+                <div className="w-full">
                   <label className="block text-sm font-medium text-foreground mb-1">部门描述</label>
                   <textarea
                     rows={3}
@@ -717,46 +764,6 @@ export default function AdminDepartmentsPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                     className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm resize-none"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">部门负责人</label>
-                  <AdminSelect
-                    value={editFormData.leader_id || ""}
-                    onChange={(val) => setEditFormData({ ...editFormData, leader_id: val || undefined })}
-                    options={[
-                      { value: "", label: "未设置" },
-                      ...users.map((u) => ({ value: u.id, label: u.username })),
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">排序</label>
-                  <Input
-                    type="number"
-                    value={editFormData.sort_order}
-                    onChange={(e) => setEditFormData({ ...editFormData, sort_order: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">部门编码</label>
-                    <Input
-                      value={editFormData.code ?? ""}
-                      onChange={(e) => setEditFormData({ ...editFormData, code: e.target.value || undefined })}
-                      placeholder="如：DEPT001"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">状态</label>
-                    <AdminSelect
-                      value={editFormData.status || "active"}
-                      onChange={(val) => setEditFormData({ ...editFormData, status: val })}
-                      options={[
-                        { value: "active", label: "正常" },
-                        { value: "inactive", label: "停用" },
-                      ]}
-                    />
-                  </div>
                 </div>
               </div>
               <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-3">

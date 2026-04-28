@@ -264,6 +264,7 @@ export interface Translations {
       skills: string;
       notification: string;
       about: string;
+      basic: string;
     };
     memory: {
       title: string;
@@ -376,6 +377,61 @@ export interface Translations {
     acknowledge: {
       emptyTitle: string;
       emptyDescription: string;
+    };
+    basic: {
+      title: string;
+      description: string;
+      retrieval: {
+        title: string;
+        description: string;
+        defaultModel: string;
+        fastModel: string;
+        embedModel: string;
+        reranker: string;
+        placeholder: string;
+      };
+      contentGuard: {
+        title: string;
+        description: string;
+        enable: string;
+        enableHint: string;
+        enableLLM: string;
+        enableLLMHint: string;
+        model: string;
+        modelPlaceholder: string;
+      };
+      theme: {
+        title: string;
+        description: string;
+        system: string;
+        light: string;
+        dark: string;
+      };
+      services: {
+        title: string;
+        description: string;
+        docCenter: string;
+        docCenterDesc: string;
+        neo4j: string;
+        neo4jDesc: string;
+        apiDocs: string;
+        apiDocsDesc: string;
+        minio: string;
+        minioDesc: string;
+        milvus: string;
+        milvusDesc: string;
+      };
+      validateModel: string;
+      validating: string;
+      validation: {
+        available: string;
+        unavailable: string;
+        error: string;
+        message: string;
+      };
+      save: string;
+      saveSuccess: string;
+      saveFailed: string;
     };
   };
 }

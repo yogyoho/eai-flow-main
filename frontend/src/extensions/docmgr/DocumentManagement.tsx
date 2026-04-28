@@ -17,7 +17,7 @@ import { docmgrApi } from "../api";
 import type { AIDocument } from "../types";
 
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
-import { useDocuments, type DocumentFilter } from "./useDocuments";
+import { useDocuments } from "./useDocuments";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
@@ -49,13 +49,17 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
 // ─── Document List ────────────────────────────────────────────────────────────
 
 function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void }) {
-  const [filter, setFilter] = useState<DocumentFilter>({ folder: "默认文件夹" });
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [activeNav, setActiveNav] = useState<"folder" | "starred" | "shared">("folder");
   const [folderOpen, setFolderOpen] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const menuButtonRef = useRef<{ [id: string]: HTMLButtonElement | null }>({});
   const debouncedSearch = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [currentFolder, setCurrentFolder] = useState("默认文件夹");
+  const { docs, total, loading, page, pageSize, setPage, folders, createDoc, deleteDoc, toggleStar, setFilter } =
+    useDocuments({ folder: currentFolder });
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -63,25 +67,41 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
     debouncedSearch.current = setTimeout(() => setFilter((f) => ({ ...f, q: v || undefined })), 400);
   };
 
-  const { docs, total, loading, page, pageSize, setPage, folders, createDoc, deleteDoc, toggleStar } = useDocuments(filter);
   const totalPages = Math.ceil(total / pageSize);
 
   const handleNavClick = (nav: "folder" | "starred" | "shared", folder?: string) => {
     setActiveNav(nav);
-    if (nav === "folder") setFilter({ folder: folder ?? "默认文件夹", q: search || undefined });
-    else if (nav === "starred") setFilter({ starred: true, q: search || undefined });
-    else setFilter({ shared: true, q: search || undefined });
+    if (nav === "folder") {
+      const nextFolder = folder ?? "默认文件夹";
+      setCurrentFolder(nextFolder);
+      setFilter({ folder: nextFolder, q: search || undefined });
+    } else if (nav === "starred") {
+      setFilter({ starred: true, q: search || undefined });
+    } else {
+      setFilter({ shared: true, q: search || undefined });
+    }
   };
 
   const handleCreate = async (title: string) => {
-    const doc = await createDoc({ title, content: "", folder: filter.folder ?? "默认文件夹" });
+    const doc = await createDoc({ title, content: "", folder: currentFolder });
     setShowNewModal(false);
     onSelectDoc(doc);
   };
 
+  const handleOpenMenu = (id: string) => {
+    const btn = menuButtonRef.current[id];
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setMenuAnchor({ x: rect.right, y: rect.top });
+    }
+    setOpenMenuId(id);
+  };
+
+  const handleCloseMenu = () => { setOpenMenuId(null); setMenuAnchor(null); };
+
   useEffect(() => {
     if (!openMenuId) return;
-    const handler = () => setOpenMenuId(null);
+    const handler = () => handleCloseMenu();
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [openMenuId]);
@@ -107,7 +127,7 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
               {folders.map((f) => (
                 <button key={f} onClick={() => handleNavClick("folder", f)}
                   className={cn("w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors",
-                    activeNav === "folder" && filter.folder === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
+                    activeNav === "folder" && currentFolder === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
                   {f}
                 </button>
               ))}
@@ -150,50 +170,72 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
             </div>
           ) : (
             <AnimatePresence>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {docs.map((doc) => (
                   <DocCard key={doc.id} doc={doc}
                     isMenuOpen={openMenuId === doc.id}
-                    onOpenMenu={(id) => setOpenMenuId(id)}
+                    onOpenMenu={handleOpenMenu}
+                    menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
                     onSelect={() => onSelectDoc(doc)}
                     onToggleStar={() => toggleStar(doc.id, doc.is_starred ?? false)}
-                    onDelete={async () => { if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }} />
+                    onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }} />
                 ))}
               </div>
             </AnimatePresence>
           )}
         </div>
-        {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+        {openMenuId && menuAnchor && (() => {
+          const doc = docs.find((d) => d.id === openMenuId);
+          if (!doc) return null;
+          return (
+            <div
+              className="fixed w-32 bg-background rounded-xl shadow-xl border border-border py-1.5 z-[100]"
+              style={{ left: menuAnchor.x, top: menuAnchor.y + 4 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Button
-                key={p}
-                variant={p === page ? "default" : "outline"}
-                size="icon"
-                onClick={() => setPage(p)}
-              >
-                {p}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
+              <button type="button" onClick={() => { handleCloseMenu(); onSelectDoc(doc); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
+                <PenLine className="w-3 h-3" /> 打开编辑
+              </button>
+              <div className="h-px bg-border my-1 mx-2" />
+              <button type="button" onClick={async () => { handleCloseMenu(); if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
+                <Trash2 className="w-3 h-3" /> 删除
+              </button>
+            </div>
+          );
+        })()}
       </div>
+      {totalPages > 1 && (
+        <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "outline"}
+              size="icon"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
       <AnimatePresence>
         {showNewModal && <NewDocModal isOpen={showNewModal} onClose={() => setShowNewModal(false)} onCreate={handleCreate} />}
       </AnimatePresence>
@@ -203,56 +245,35 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
 
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, isMenuOpen, onOpenMenu, onSelect, onToggleStar, onDelete }: {
+function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggleStar, onDelete }: {
   doc: AIDocument; isMenuOpen: boolean;
-  onOpenMenu: (id: string) => void; onSelect: () => void; onToggleStar: () => void; onDelete: () => void;
+  onOpenMenu: (id: string) => void; menuButtonRef: (el: HTMLButtonElement | null) => void;
+  onSelect: () => void; onToggleStar: () => void; onDelete: () => void;
 }) {
   const preview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim().slice(0, 120);
   const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) : "";
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-border shadow-sm hover:shadow-md cursor-pointer transition-all flex flex-col h-56 group">
-      <div onClick={onSelect} className="flex-1 p-4 overflow-hidden relative">
-        <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-primary/30 rounded-r-full" />
-        <p className="text-xs text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview || "（空文档）"}</p>
+      className="bg-background rounded-xl border border-zinc-200 p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-blue-300">
+      <div onClick={onSelect} className="flex-1 mb-4 relative overflow-hidden">
+        <div className="bg-zinc-50 rounded-lg p-4 h-full border border-zinc-100 relative overflow-hidden">
+          <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 rounded-r-full" />
+          <p className="text-sm text-zinc-500 leading-relaxed pl-3 line-clamp-4">{preview || "（空文档）"}</p>
+        </div>
       </div>
-      <div className="px-4 py-3 border-t border-border bg-muted/50 rounded-b-xl">
-        <h3 onClick={onSelect} className="font-semibold text-foreground text-sm line-clamp-1 mb-2 group-hover:text-primary transition-colors">
-          {doc.title || "无标题"}
-        </h3>
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">{updatedAt}</span>
-          <div className="flex items-center gap-1 relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}
-            >
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </Button>
-            {isMenuOpen && (
-              <div className="absolute right-0 bottom-7 w-32 bg-background rounded-xl shadow-xl border border-border py-1.5 z-30"
-                onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={onSelect} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
-                  <PenLine className="w-3 h-3" /> 打开编辑
-                </button>
-                <div className="h-px bg-border my-1 mx-2" />
-                <button type="button" onClick={onDelete} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
-                  <Trash2 className="w-3 h-3" /> 删除
-                </button>
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("h-7 w-7", doc.is_starred ? "text-warning" : "text-muted-foreground hover:text-warning hover:bg-warning/10")}
-              onClick={(e) => { e.stopPropagation(); onToggleStar(); }}
-            >
-              <Star className="w-3.5 h-3.5" fill={doc.is_starred ? "currentColor" : "none"} />
-            </Button>
-          </div>
+      <h3 onClick={onSelect} className="font-bold text-zinc-800 text-base line-clamp-1 mb-4 group-hover:text-blue-600 transition-colors">
+        {doc.title || "无标题"}
+      </h3>
+      <div className="flex items-center justify-between text-zinc-400 mt-auto">
+        <span className="text-xs">{updatedAt}</span>
+        <div className="flex items-center gap-3 text-xs">
+          <button ref={menuButtonRef} className="hover:text-zinc-600 transition-colors" onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}>
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          <button className={cn("transition-colors", doc.is_starred ? "text-amber-400" : "hover:text-zinc-600")} onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
+            <Star className="w-4 h-4" fill={doc.is_starred ? "currentColor" : "none"} />
+          </button>
         </div>
       </div>
     </motion.div>
