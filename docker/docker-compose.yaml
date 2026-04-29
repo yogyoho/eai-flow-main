@@ -35,8 +35,9 @@ services:
     depends_on:
       - frontend
       - gateway
+      - langgraph
     networks:
-      - deer-flow
+      - eai-flow-net
     restart: unless-stopped
 
   # ── Frontend: Next.js Production ───────────────────────────────────────────
@@ -55,7 +56,7 @@ services:
     env_file:
       - ../frontend/.env
     networks:
-      - deer-flow
+      - eai-flow-net
     restart: unless-stopped
 
   # ── Gateway API ────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - deer-flow
+      - eai-flow-net
     restart: unless-stopped
 
   # ── Sandbox Provisioner (optional, Kubernetes mode) ────────────────────────
@@ -134,13 +135,60 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - deer-flow
+      - eai-flow-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 10s
       timeout: 5s
       retries: 6
+
+  # ── LangGraph Server ─────────────────────────────────────────────────
+  langgraph:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+      args:
+        APT_MIRROR: ${APT_MIRROR:-}
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.7.20}
+        UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-langgraph
+    command: sh -c 'cd /app/backend && args="--no-browser --no-reload --host 0.0.0.0 --port 2024 --n-jobs-per-worker $${LANGGRAPH_JOBS_PER_WORKER:-10}" && if [ "$${LANGGRAPH_ALLOW_BLOCKING:-0}" = "1" ]; then args="$$args --allow-blocking"; fi && uv run langgraph dev $$args'
+    volumes:
+      - ${DEER_FLOW_CONFIG_PATH}:/app/backend/config.yaml:ro
+      - ${DEER_FLOW_EXTENSIONS_CONFIG_PATH}:/app/backend/extensions_config.json:ro
+      - ${DEER_FLOW_HOME}:/app/backend/.deer-flow
+      - ../skills:/app/skills:ro
+      - ../backend/.langgraph_api:/app/backend/.langgraph_api
+      - ${DEER_FLOW_DOCKER_SOCKET}:/var/run/docker.sock
+      - type: bind
+        source: ${HOME:?HOME must be set}/.claude
+        target: /root/.claude
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${HOME:?HOME must be set}/.codex
+        target: /root/.codex
+        read_only: true
+        bind:
+          create_host_path: true
+    environment:
+      - CI=true
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_HOME}
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
+      - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+    env_file:
+      - ../.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 networks:
-  deer-flow:
+  eai-flow-net:
     driver: bridge
