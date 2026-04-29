@@ -61,7 +61,8 @@ docker/
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| ragflow | 9380 | RAGFlow RAG 引擎 |
+| ragflow | 9380 | RAGFlow RAG 引擎 API |
+| ragflow-web | 9381 | RAGFlow Web 管理界面 |
 | ragflow-es | 9200 | Elasticsearch（文档索引）|
 | ragflow-mysql | 3306 | RAGFlow 元数据存储 |
 | ragflow-redis | 6379 | RAGFlow 缓存 |
@@ -73,17 +74,15 @@ docker/
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
+| business-db | 5432 | 业务统一 PostgreSQL（内建 procurement/asset/project 三个数据库）|
 | procurement-backend | 3001 | 采购服务后端 |
 | procurement-frontend | 3000 | 采购服务前端 |
-| procurement-db | 5432 | 采购数据库 |
 | asset-backend | 3002 | 资产服务后端 |
 | asset-frontend | 3000 | 资产服务前端 |
-| asset-db | 5432 | 资产数据库 |
 | project-backend | 3003 | 项目服务后端 |
 | project-frontend | 3000 | 项目服务前端 |
-| project-db | 5432 | 项目数据库 |
 
-依赖核心网络 `eai-flow-net`。
+3 个业务服务共享同一个 PostgreSQL 实例，通过 `initdb` 脚本在启动时自动创建 3 个独立数据库。依赖核心网络 `eai-flow-net`。
 
 ## 网络设计
 
@@ -96,19 +95,18 @@ eai-flow-net (bridge)
 ├── provisioner
 ├── postgres-ext
 ├── ragflow
+├── ragflow-web
 ├── ragflow-es
 ├── ragflow-mysql
 ├── ragflow-redis
 ├── ragflow-minio
+├── business-db          ← 统一 PostgreSQL（3 个数据库）
 ├── procurement-backend
 ├── procurement-frontend
-├── procurement-db
 ├── asset-backend
 ├── asset-frontend
-├── asset-db
 ├── project-backend
-├── project-frontend
-└── project-db
+└── project-frontend
 ```
 
 ## Nginx 路由设计
@@ -161,6 +159,16 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.extensions
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml -f docker/docker-compose.ragflow.yaml -f docker/docker-compose.business.yaml down
 ```
 
+## 数据库连接
+
+业务服务统一连接 `business-db`，通过不同的数据库名区分：
+
+```
+postgresql+asyncpg://business:business123@business-db:5432/procurement
+postgresql+asyncpg://business:business123@business-db:5432/asset
+postgresql+asyncpg://business:business123@business-db:5432/project
+```
+
 ## 环境变量
 
 统一使用 `docker/.env` 和 `docker/.env.docker`：
@@ -173,6 +181,10 @@ NETWORK_NAME=eai-flow-net
 POSTGRES_EXT_USER=agentflow
 POSTGRES_EXT_PASSWORD=agentflow123
 POSTGRES_EXT_DB=agentflow
+
+# PostgreSQL (业务统一)
+BUSINESS_DB_USER=business
+BUSINESS_DB_PASSWORD=business123
 
 # RAGFlow
 RAGFLOW_VERSION=latest
@@ -200,10 +212,8 @@ volumes:
   ragflow-es-data:
   ragflow-mysql-data:
   ragflow-minio-data:
-  # 业务
-  procurement-db-data:
-  asset-db-data:
-  project-db-data:
+  # 业务（统一 PostgreSQL）
+  business-db-data:
 ```
 
 ## 迁移步骤
