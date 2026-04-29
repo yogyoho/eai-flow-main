@@ -60,3 +60,8 @@ config.yaml.bak
 /frontend/playwright-report/
 .gstack/
 .worktrees
+# Added by code-review-graph
+.code-review-graph/
+
+# RAGFlow runtime data
+docker/ragflow/
