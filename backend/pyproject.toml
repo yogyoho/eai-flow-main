@@ -17,6 +17,7 @@ dependencies = [
     "langgraph-sdk>=0.1.51",
     "markdown-to-mrkdwn>=0.3.1",
     "wecom-aibot-python-sdk>=0.1.6",
+    "dingtalk-stream>=0.24.3",
     "langchain-ollama[ollama]>=1.1.0",
     "bcrypt>=4.2.0",
     "PyJWT>=2.9.0",
