@@ -1,9 +1,11 @@
 """Unified scraping service - Provider dispatch layer."""
 
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import AsyncGenerator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -11,35 +13,38 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProxyConfig:
     """Proxy configuration."""
+
     enabled: bool = False
     proxy_type: str = "http"
     host: str = ""
     port: int = 0
-    username: Optional[str] = None
-    password: Optional[str] = None
-    country: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
+    country: str | None = None
 
 
 @dataclass
 class AuthConfig:
     """Authentication configuration."""
+
     enabled: bool = False
     auth_type: str = "basic"
-    username: Optional[str] = None
-    password: Optional[str] = None
-    token: Optional[str] = None
-    cookies: Optional[dict] = None
-    headers: Optional[dict] = None
+    username: str | None = None
+    password: str | None = None
+    token: str | None = None
+    cookies: dict | None = None
+    headers: dict | None = None
 
 
 @dataclass
 class ScrapeConfig:
     """Scrape configuration."""
+
     url: str
     prompt: str = "Extract important information from the webpage, organize as Markdown."
     provider: str = "browser_use_local"
-    schema_name: Optional[str] = None
-    llm_model: Optional[str] = None
+    schema_name: str | None = None
+    llm_model: str | None = None
     timeout: int = 120
     proxy: ProxyConfig = field(default_factory=ProxyConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)
@@ -49,11 +54,12 @@ class ScrapeConfig:
 @dataclass
 class ScrapeResult:
     """Scrape result."""
+
     success: bool
-    content: Optional[str] = None
-    structured_data: Optional[dict] = None
+    content: str | None = None
+    structured_data: dict | None = None
     provider: str = ""
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict = field(default_factory=dict)
 
 
@@ -67,13 +73,13 @@ class BaseProvider(ABC):
     async def scrape(
         self,
         config: ScrapeConfig,
-        event_callback: Optional[callable] = None,
+        event_callback: callable | None = None,
     ) -> AsyncGenerator[dict, None]:
         """Execute web scraping."""
         pass
 
     @abstractmethod
-    def supports_schema(self, schema: Optional[str]) -> bool:
+    def supports_schema(self, schema: str | None) -> bool:
         """Check if provider supports the specified schema."""
         pass
 
@@ -90,20 +96,20 @@ class BrowserUseLocalProvider(BaseProvider):
     name = "browser_use_local"
     supports_structured = True
 
-    def supports_schema(self, schema: Optional[str]) -> bool:
+    def supports_schema(self, schema: str | None) -> bool:
         return True
 
     async def scrape(
         self,
         config: ScrapeConfig,
-        event_callback: Optional[callable] = None,
+        event_callback: callable | None = None,
     ) -> AsyncGenerator[dict, None]:
         yield self._create_event("log", "info", "Using Browser Use local (self-hosted)...")
 
         try:
+            import asyncio
             import os
             import shutil
-            import asyncio
 
             from browser_use import Agent, Browser
             from browser_use.browser import BrowserProfile
@@ -113,11 +119,10 @@ class BrowserUseLocalProvider(BaseProvider):
             schema_class = None
             if config.schema_name:
                 from app.extensions.web_scraper.predefined_schemas import get_schema_by_name
+
                 schema_class = get_schema_by_name(config.schema_name)
                 if schema_class:
-                    yield self._create_event(
-                        "log", "info", f"Applying structured schema: {config.schema_name}"
-                    )
+                    yield self._create_event("log", "info", f"Applying structured schema: {config.schema_name}")
 
             llm = self._create_llm(config.llm_model)
             if config.llm_model:
@@ -132,13 +137,14 @@ class BrowserUseLocalProvider(BaseProvider):
 
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    chromium_path, "--version",
+                    chromium_path,
+                    "--version",
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
                 try:
                     await asyncio.wait_for(proc.communicate(), timeout=2.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     proc.kill()
                     raise RuntimeError("Chrome startup timeout (--version not executed within 2 seconds)")
                 if proc.returncode != 0:
@@ -185,29 +191,18 @@ class BrowserUseLocalProvider(BaseProvider):
 
             if schema_class and hasattr(history_result, "structured_output") and history_result.structured_output:
                 content = self._to_markdown(history_result.structured_output)
-                yield self._create_event(
-                    "result", "success", "Scraping complete", content=content,
-                    structured_data=history_result.structured_output
-                )
+                yield self._create_event("result", "success", "Scraping complete", content=content, structured_data=history_result.structured_output)
                 return
 
             if hasattr(history_result, "all_results") and history_result.all_results:
-                errors_in_history = [
-                    r.error for r in history_result.all_results
-                    if r.error and "timed out" in str(r.error).lower()
-                ]
+                errors_in_history = [r.error for r in history_result.all_results if r.error and "timed out" in str(r.error).lower()]
                 if errors_in_history:
-                    timeout_hint = (
-                        "LLM call timed out (75s). Suggestions:\n"
-                        "1. Simplify prompt (e.g. only extract title and body)\n"
-                        "2. Check network and retry\n"
-                        "3. Switch to Jina / Firecrawl Provider"
-                    )
+                    timeout_hint = "LLM call timed out (75s). Suggestions:\n1. Simplify prompt (e.g. only extract title and body)\n2. Check network and retry\n3. Switch to Jina / Firecrawl Provider"
                     logger.warning(f"Browser Use timeout: {errors_in_history[0]}")
                     yield self._create_event("error", "error", timeout_hint)
                     raise TimeoutError("LLM call timed out")
 
-            extracted: Optional[str] = None
+            extracted: str | None = None
             if hasattr(history_result, "extracted_content"):
                 val = history_result.extracted_content
                 extracted = val() if callable(val) else val
@@ -224,10 +219,7 @@ class BrowserUseLocalProvider(BaseProvider):
                 if extracted:
                     yield self._create_event("result", "success", "Scraping complete (from history)", content=extracted)
                 else:
-                    yield self._create_event(
-                        "error", "error",
-                        "Agent returned no valid content. Try simplifying prompt or switching Provider."
-                    )
+                    yield self._create_event("error", "error", "Agent returned no valid content. Try simplifying prompt or switching Provider.")
                     raise ValueError("Agent returned no valid content")
 
             try:
@@ -240,11 +232,7 @@ class BrowserUseLocalProvider(BaseProvider):
 
         except ImportError as e:
             logger.exception("browser-use import failed")
-            hint = (
-                f"browser-use import failed: {e}. "
-                "Local dev: run uv sync or uv pip install browser-use in backend directory. "
-                "Docker: backend/requirements.txt must include browser-use, then docker compose build gateway and restart."
-            )
+            hint = f"browser-use import failed: {e}. Local dev: run uv sync or uv pip install browser-use in backend directory. Docker: backend/requirements.txt must include browser-use, then docker compose build gateway and restart."
             yield self._create_event("error", "error", hint)
             raise
         except Exception as e:
@@ -274,7 +262,7 @@ class BrowserUseLocalProvider(BaseProvider):
             yield self._create_event("error", "error", error_msg)
             raise
 
-    def _create_llm(self, model_name: Optional[str] = None):
+    def _create_llm(self, model_name: str | None = None):
         """Create LLM instance from config.yaml ModelConfig."""
         if not model_name:
             raise ValueError("No LLM model specified, please configure models in config.yaml and select from frontend.")
@@ -286,28 +274,34 @@ class BrowserUseLocalProvider(BaseProvider):
 
         model_config = get_gateway_config().get_model_config(model_name)
         if model_config is None:
-            raise ValueError(
-                f"Model '{model_name}' not configured in config.yaml. "
-                "Please add this model to the models list."
-            )
+            raise ValueError(f"Model '{model_name}' not configured in config.yaml. Please add this model to the models list.")
 
         cfg = model_config.model_dump(exclude_none=True)
         meta_fields = {
-            "name", "display_name", "description", "use",
-            "supports_thinking", "supports_reasoning_effort",
-            "when_thinking_enabled", "thinking", "supports_vision",
+            "name",
+            "display_name",
+            "description",
+            "use",
+            "supports_thinking",
+            "supports_reasoning_effort",
+            "when_thinking_enabled",
+            "thinking",
+            "supports_vision",
         }
         llm_kwargs = {k: v for k, v in cfg.items() if k not in meta_fields}
 
         use = model_config.use.lower()
         if "anthropic" in use or "claude" in use:
             from browser_use.llm.anthropic.chat import ChatAnthropic
+
             return ChatAnthropic(**llm_kwargs)
         elif "google" in use or "gemini" in use:
             from browser_use.llm.google.chat import ChatGoogle
+
             return ChatGoogle(**llm_kwargs)
         else:
             from browser_use.llm.openai.chat import ChatOpenAI
+
             if "max_tokens" in llm_kwargs:
                 llm_kwargs["max_completion_tokens"] = llm_kwargs.pop("max_tokens")
             if llm_kwargs.get("base_url"):
@@ -366,13 +360,17 @@ class BrowserUseLocalProvider(BaseProvider):
                 return "\n".join(lines[i:]).strip()
 
         noise_prefixes = (
-            "<url>", "<query>", "<result>", "<done>", "<error>",
-            "🔗", "✅", "❌", "⚠️",
+            "<url>",
+            "<query>",
+            "<result>",
+            "<done>",
+            "<error>",
+            "🔗",
+            "✅",
+            "❌",
+            "⚠️",
         )
-        cleaned = [
-            l for l in lines
-            if not l.strip().startswith(noise_prefixes) and l.strip()
-        ]
+        cleaned = [l for l in lines if not l.strip().startswith(noise_prefixes) and l.strip()]
         return "\n".join(cleaned[-50:]).strip()
 
     def _to_markdown(self, data) -> str:
@@ -402,20 +400,18 @@ class JinaProvider(BaseProvider):
     name = "jina"
     supports_structured = False
 
-    def supports_schema(self, schema: Optional[str]) -> bool:
+    def supports_schema(self, schema: str | None) -> bool:
         return False
 
     async def scrape(
         self,
         config: ScrapeConfig,
-        event_callback: Optional[callable] = None,
+        event_callback: callable | None = None,
     ) -> AsyncGenerator[dict, None]:
         yield self._create_event("log", "info", "Using Jina Provider (fallback mode)...")
 
         if config.schema_name:
-            yield self._create_event(
-                "log", "warning", "Jina does not support structured extraction, returning raw Markdown"
-            )
+            yield self._create_event("log", "warning", "Jina does not support structured extraction, returning raw Markdown")
 
         try:
             from app.extensions.community.jina_ai.jina_client import JinaClient
@@ -452,20 +448,18 @@ class FirecrawlProvider(BaseProvider):
     name = "firecrawl"
     supports_structured = False
 
-    def supports_schema(self, schema: Optional[str]) -> bool:
+    def supports_schema(self, schema: str | None) -> bool:
         return False
 
     async def scrape(
         self,
         config: ScrapeConfig,
-        event_callback: Optional[callable] = None,
+        event_callback: callable | None = None,
     ) -> AsyncGenerator[dict, None]:
         yield self._create_event("log", "info", "Using Firecrawl Provider (fallback mode)...")
 
         if config.schema_name:
-            yield self._create_event(
-                "log", "warning", "Firecrawl does not support structured extraction"
-            )
+            yield self._create_event("log", "warning", "Firecrawl does not support structured extraction")
 
         try:
             from app.extensions.community.firecrawl.tools import web_fetch_tool
@@ -526,9 +520,7 @@ class ScraperService:
                 continue
 
             if config.schema_name and not provider.supports_structured:
-                yield self._create_event(
-                    "log", "info", f"{provider.name} does not support structured extraction, skipping"
-                )
+                yield self._create_event("log", "info", f"{provider.name} does not support structured extraction, skipping")
                 continue
 
             yield self._create_event("log", "info", f"Trying {provider.name}...")
@@ -542,9 +534,7 @@ class ScraperService:
 
             except Exception as e:
                 last_error = e
-                yield self._create_event(
-                    "log", "warning", f"{provider.name} failed: {e}"
-                )
+                yield self._create_event("log", "warning", f"{provider.name} failed: {e}")
                 continue
 
         yield self._create_event("error", "error", f"All providers failed: {last_error}")
