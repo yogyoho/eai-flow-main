@@ -1,13 +1,14 @@
 """Predefined structured data schemas for law/standard documents."""
 
 from enum import Enum
-from typing import Optional, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
 class ScrapeProvider(str, Enum):
     """Scrape service providers."""
+
     BROWSER_USE_LOCAL = "browser_use_local"
     JINA = "jina"
     FIRECRAWL = "firecrawl"
@@ -21,15 +22,15 @@ class NationalStandard(BaseModel):
     category: Literal["国家标准", "强制性标准", "推荐性标准"] = Field(description="Standard category")
 
     issuing_authority: str = Field(description="Issuing authority/department")
-    issue_date: Optional[str] = Field(default=None, description="Issue date")
-    implementation_date: Optional[str] = Field(default=None, description="Implementation date")
+    issue_date: str | None = Field(default=None, description="Issue date")
+    implementation_date: str | None = Field(default=None, description="Implementation date")
 
-    scope: Optional[str] = Field(default=None, description="Scope of application")
-    main_content: Optional[str] = Field(default=None, description="Main content summary")
-    superseded_standard: Optional[str] = Field(default=None, description="Superseded standard number")
+    scope: str | None = Field(default=None, description="Scope of application")
+    main_content: str | None = Field(default=None, description="Main content summary")
+    superseded_standard: str | None = Field(default=None, description="Superseded standard number")
 
     has_pdf: bool = Field(default=False, description="Whether PDF is available")
-    pdf_url: Optional[str] = Field(default=None, description="PDF download link")
+    pdf_url: str | None = Field(default=None, description="PDF download link")
 
     keywords: list[str] = Field(default_factory=list, description="Keywords")
     department_tags: list[str] = Field(default_factory=list, description="Department tags")
@@ -43,12 +44,12 @@ class IndustryStandard(BaseModel):
     industry_code: str = Field(description="Industry code, e.g. HJ(environment), NB(energy), QB(light industry)")
 
     issuing_authority: str = Field(description="Issuing department")
-    issue_date: Optional[str] = Field(default=None, description="Issue date")
-    implementation_date: Optional[str] = Field(default=None, description="Implementation date")
-    filing_date: Optional[str] = Field(default=None, description="Filing date")
+    issue_date: str | None = Field(default=None, description="Issue date")
+    implementation_date: str | None = Field(default=None, description="Implementation date")
+    filing_date: str | None = Field(default=None, description="Filing date")
 
-    scope: Optional[str] = Field(default=None, description="Scope of application")
-    main_technical_content: Optional[str] = Field(default=None, description="Main technical content")
+    scope: str | None = Field(default=None, description="Scope of application")
+    main_technical_content: str | None = Field(default=None, description="Main technical content")
     referenced_standards: list[str] = Field(default_factory=list, description="Referenced standard numbers")
 
     has_pdf: bool = Field(default=False, description="Whether PDF is available")
@@ -62,25 +63,23 @@ class IndustryStandard(BaseModel):
 class Regulation(BaseModel):
     """Regulation/rule document structured extraction."""
 
-    regulation_type: Literal[
-        "法律", "行政法规", "部门规章", "地方性法规", "地方政府规章"
-    ] = Field(description="Regulation type")
+    regulation_type: Literal["法律", "行政法规", "部门规章", "地方性法规", "地方政府规章"] = Field(description="Regulation type")
     regulation_name: str = Field(description="Regulation name")
-    regulation_id: Optional[str] = Field(default=None, description="Document number")
+    regulation_id: str | None = Field(default=None, description="Document number")
 
     issuing_authority: str = Field(description="Issuing authority")
     issue_date: str = Field(description="Issue date")
     implementation_date: str = Field(description="Implementation date")
-    effective_date: Optional[str] = Field(default=None, description="Effective date")
+    effective_date: str | None = Field(default=None, description="Effective date")
 
     validity: Literal["现行有效", "已被修改", "已废止", "尚未生效"] = Field(description="Regulation validity")
-    modification_record: Optional[str] = Field(default=None, description="Modification history")
+    modification_record: str | None = Field(default=None, description="Modification history")
 
-    scope: Optional[str] = Field(default=None, description="Scope of application")
-    main_content: Optional[str] = Field(default=None, description="Main content summary")
+    scope: str | None = Field(default=None, description="Scope of application")
+    main_content: str | None = Field(default=None, description="Main content summary")
 
     has_pdf: bool = Field(default=False, description="Whether PDF is available")
-    pdf_url: Optional[str] = Field(default=None, description="PDF link")
+    pdf_url: str | None = Field(default=None, description="PDF link")
 
     related_regulations: list[str] = Field(default_factory=list, description="Related regulations")
     keywords: list[str] = Field(default_factory=list, description="Keywords")
@@ -91,17 +90,15 @@ class Specification(BaseModel):
 
     spec_id: str = Field(description="Specification number")
     spec_name: str = Field(description="Specification name")
-    spec_type: Literal[
-        "技术规范", "操作规程", "作业指导书", "管理办法", "实施细则"
-    ] = Field(description="Specification type")
+    spec_type: Literal["技术规范", "操作规程", "作业指导书", "管理办法", "实施细则"] = Field(description="Specification type")
 
     issuing_authority: str = Field(description="Issuing unit")
-    issue_date: Optional[str] = Field(default=None, description="Issue date")
+    issue_date: str | None = Field(default=None, description="Issue date")
     version: str = Field(default="V1.0", description="Version number")
 
-    scope: Optional[str] = Field(default=None, description="Scope of application")
+    scope: str | None = Field(default=None, description="Scope of application")
     main_chapters: list[str] = Field(default_factory=list, description="Main chapter titles")
-    core_requirements: Optional[str] = Field(default=None, description="Core requirements")
+    core_requirements: str | None = Field(default=None, description="Core requirements")
 
     has_appendix: bool = Field(default=False, description="Whether appendix is available")
     has_attachments: bool = Field(default=False, description="Whether attachments are available")
@@ -115,7 +112,7 @@ class PolicyDocument(BaseModel):
     """Policy document/notice structured extraction."""
 
     doc_title: str = Field(description="Document title")
-    doc_number: Optional[str] = Field(default=None, description="Document number")
+    doc_number: str | None = Field(default=None, description="Document number")
     doc_type: Literal["通知", "公告", "意见", "批复", "决定", "函"] = Field(description="Document type")
 
     issuing_authority: str = Field(description="Issuing authority")
@@ -123,7 +120,7 @@ class PolicyDocument(BaseModel):
 
     topic_categories: list[str] = Field(default_factory=list, description="Topic categories")
     industry_categories: list[str] = Field(default_factory=list, description="Industry categories")
-    main_content: Optional[str] = Field(default=None, description="Main content summary")
+    main_content: str | None = Field(default=None, description="Main content summary")
 
     related_docs: list[str] = Field(default_factory=list, description="Related documents")
     attachment_urls: list[str] = Field(default_factory=list, description="Attachment links")
@@ -133,16 +130,16 @@ class GeneralStandard(BaseModel):
     """General document structured extraction (fallback)."""
 
     title: str = Field(description="Document title")
-    doc_id: Optional[str] = Field(default=None, description="Document number")
+    doc_id: str | None = Field(default=None, description="Document number")
 
-    issuing_authority: Optional[str] = Field(default=None, description="Issuing authority")
-    issue_date: Optional[str] = Field(default=None, description="Issue date")
-    effective_date: Optional[str] = Field(default=None, description="Effective date")
+    issuing_authority: str | None = Field(default=None, description="Issuing authority")
+    issue_date: str | None = Field(default=None, description="Issue date")
+    effective_date: str | None = Field(default=None, description="Effective date")
 
-    scope: Optional[str] = Field(default=None, description="Scope of application")
-    summary: Optional[str] = Field(default=None, description="Content summary")
+    scope: str | None = Field(default=None, description="Scope of application")
+    summary: str | None = Field(default=None, description="Content summary")
 
-    doc_type: Optional[str] = Field(default=None, description="Document type")
+    doc_type: str | None = Field(default=None, description="Document type")
     keywords: list[str] = Field(default_factory=list, description="Keywords")
     attachments: list[str] = Field(default_factory=list, description="Attachment links")
 
@@ -315,23 +312,21 @@ def get_schema_prompt(name: str) -> str:
 
 def get_schemas_by_category(category: str) -> list[dict]:
     """Get all schemas in a category."""
-    return [
-        {"name": k, **v}
-        for k, v in PREDEFINED_SCHEMAS.items()
-        if v.get("category") == category
-    ]
+    return [{"name": k, **v} for k, v in PREDEFINED_SCHEMAS.items() if v.get("category") == category]
 
 
 def list_all_schemas() -> list[dict]:
     """List all schemas with their categories."""
     result = []
     for name, info in PREDEFINED_SCHEMAS.items():
-        result.append({
-            "name": name,
-            "display_name": info["name"],
-            "name_en": info.get("name_en", ""),
-            "description": info["description"],
-            "category": info.get("category", "通用"),
-            "supports_structured": info["schema"] is not None,
-        })
+        result.append(
+            {
+                "name": name,
+                "display_name": info["name"],
+                "name_en": info.get("name_en", ""),
+                "description": info["description"],
+                "category": info.get("category", "通用"),
+                "supports_structured": info["schema"] is not None,
+            }
+        )
     return result

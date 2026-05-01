@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-from typing import Optional
 
 import httpx
 
@@ -22,7 +21,7 @@ class RAGFlowClient:
 
     API_PREFIX = "/api/v1"
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, base_url: str | None = None):
         config = get_extensions_config()
         self.api_key = api_key or config.ragflow.api_key
         self.base_url = base_url or config.ragflow.base_url
@@ -34,13 +33,7 @@ class RAGFlowClient:
             "Content-Type": "application/json",
         }
 
-    async def _request_with_retry(
-        self,
-        method: str,
-        url: str,
-        max_retries: int = 3,
-        **kwargs
-    ) -> httpx.Response:
+    async def _request_with_retry(self, method: str, url: str, max_retries: int = 3, **kwargs) -> httpx.Response:
         """Send request with automatic retry."""
         retry_count = 0
         last_error = None
@@ -55,7 +48,7 @@ class RAGFlowClient:
                 last_error = e
                 retry_count += 1
                 if retry_count < max_retries:
-                    wait_time = 2 ** retry_count
+                    wait_time = 2**retry_count
                     logger.warning(f"Request failed (attempt {retry_count}/{max_retries}): {e}. Retrying in {wait_time}s...")
                     await asyncio.sleep(wait_time)
                 else:
@@ -63,12 +56,7 @@ class RAGFlowClient:
 
         raise last_error
 
-    async def create_dataset(
-        self,
-        name: str,
-        description: str = "",
-        embedding_model: Optional[str] = None
-    ) -> dict:
+    async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None) -> dict:
         """Create a new dataset in RAGFlow."""
         payload = {"name": name, "description": description}
         if embedding_model:
@@ -131,8 +119,8 @@ class RAGFlowClient:
 
     async def delete_dataset(self, dataset_id: str) -> None:
         """Delete a dataset from RAGFlow."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         url = f"{self.base_url}{self.API_PREFIX}/datasets"
         body = json.dumps({"ids": [dataset_id]}).encode()
@@ -160,12 +148,7 @@ class RAGFlowClient:
             logger.error(f"Failed to delete RAGFlow dataset {dataset_id}: {e}")
             raise
 
-    async def upload_document(
-        self,
-        dataset_id: str,
-        file_path: str,
-        file_name: str = None
-    ) -> dict:
+    async def upload_document(self, dataset_id: str, file_path: str, file_name: str = None) -> dict:
         """Upload a document to a dataset."""
         import os
 
@@ -218,8 +201,8 @@ class RAGFlowClient:
 
     async def delete_document(self, dataset_id: str, document_id: str) -> None:
         """Delete a document."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         url = f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents"
         body = json.dumps({"ids": [document_id]}).encode()
@@ -278,13 +261,7 @@ class RAGFlowClient:
                     return {"data": doc}
             return {"data": {}}
 
-    async def wait_for_parsing_complete(
-        self,
-        dataset_id: str,
-        document_id: str,
-        max_wait_seconds: int = 300,
-        poll_interval: int = 5
-    ) -> dict:
+    async def wait_for_parsing_complete(self, dataset_id: str, document_id: str, max_wait_seconds: int = 300, poll_interval: int = 5) -> dict:
         """Wait for document parsing to complete."""
         elapsed = 0
         while elapsed < max_wait_seconds:
@@ -308,14 +285,7 @@ class RAGFlowClient:
 
         raise TimeoutError(f"Document parsing timeout after {max_wait_seconds}s")
 
-    async def chat(
-        self,
-        dataset_id: str,
-        query: str,
-        top_k: int = 5,
-        similarity_threshold: float = 0.2,
-        vector_similarity_weight: float = 0.3
-    ) -> dict:
+    async def chat(self, dataset_id: str, query: str, top_k: int = 5, similarity_threshold: float = 0.2, vector_similarity_weight: float = 0.3) -> dict:
         """Retrieve chunks from a dataset (RAG query)."""
         async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
             response = await client.post(
@@ -355,7 +325,7 @@ class RAGFlowClient:
             response.raise_for_status()
             return response.json()
 
-    async def get_dataset_by_name(self, name: str) -> Optional[dict]:
+    async def get_dataset_by_name(self, name: str) -> dict | None:
         """Get dataset by name."""
         try:
             result = await self.list_datasets()
@@ -368,9 +338,7 @@ class RAGFlowClient:
             logger.error(f"Failed to get dataset by name {name}: {e}")
             return None
 
-    async def update_document_metadata(
-        self, dataset_id: str, document_id: str, metadata: dict
-    ) -> dict:
+    async def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict) -> dict:
         """Update document metadata."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.put(

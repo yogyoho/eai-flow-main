@@ -14,7 +14,7 @@ function DocMgrAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      const loginUrl = "/login?redirect=" + encodeURIComponent(pathname || "/docmgr");
+      const loginUrl = "/workspace/chats/new?redirect=" + encodeURIComponent(pathname || "/docmgr");
       router.replace(loginUrl);
     }
   }, [user, isLoading, router, pathname]);

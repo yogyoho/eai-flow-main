@@ -1,7 +1,9 @@
 """Start gateway using backend venv uv."""
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 env_path = Path(__file__).parent.parent / ".env"
@@ -17,9 +19,12 @@ if not venv_python.exists():
     print("ERROR: venv not found at", venv_python)
     sys.exit(1)
 
-os.execv(str(venv_python), [
+os.execv(
     str(venv_python),
-    "-c",
-    "import sys; sys.path.insert(0, '.'); exec(open('.venv\\Scripts\\activate_this.py').read()) if Path('.venv\\Scripts\\activate_this.py').exists() else None; "
-    "import uvicorn; uvicorn.run('app.gateway.app:app', host='0.0.0.0', port=4001, reload=True)"
-])
+    [
+        str(venv_python),
+        "-c",
+        "import sys; sys.path.insert(0, '.'); exec(open('.venv\\Scripts\\activate_this.py').read()) if Path('.venv\\Scripts\\activate_this.py').exists() else None; "
+        "import uvicorn; uvicorn.run('app.gateway.app:app', host='0.0.0.0', port=4001, reload=True)",
+    ],
+)

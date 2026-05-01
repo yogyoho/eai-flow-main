@@ -1,8 +1,7 @@
 """JWT authentication utilities."""
 
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
@@ -23,16 +22,12 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def generate_access_token(
-    user_id: str, username: str, role: Optional[str] = None, permissions: list[str] = None
-) -> tuple[str, int]:
+def generate_access_token(user_id: str, username: str, role: str | None = None, permissions: list[str] = None) -> tuple[str, int]:
     """Generate an access token."""
     config = get_extensions_config()
     permissions = permissions or []
 
-    exp = datetime.now(timezone.utc) + timedelta(
-        minutes=config.jwt.access_token_expire_minutes
-    )
+    exp = datetime.now(UTC) + timedelta(minutes=config.jwt.access_token_expire_minutes)
 
     payload = {
         "sub": user_id,
@@ -53,7 +48,7 @@ def generate_refresh_token(user_id: str) -> tuple[str, int]:
     """Generate a refresh token."""
     config = get_extensions_config()
 
-    exp = datetime.now(timezone.utc) + timedelta(days=config.jwt.refresh_token_expire_days)
+    exp = datetime.now(UTC) + timedelta(days=config.jwt.refresh_token_expire_days)
 
     payload = {
         "sub": user_id,
@@ -68,7 +63,7 @@ def generate_refresh_token(user_id: str) -> tuple[str, int]:
     return token, expires_in
 
 
-def verify_token(token: str, token_type: str = "access") -> Optional[TokenPayload]:
+def verify_token(token: str, token_type: str = "access") -> TokenPayload | None:
     """Verify a token and return the payload."""
     config = get_extensions_config()
 
@@ -93,7 +88,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[TokenPayloa
         return None
 
 
-def decode_token(token: str) -> Optional[dict]:
+def decode_token(token: str) -> dict | None:
     """Decode a token without verification (for debugging)."""
     config = get_extensions_config()
 

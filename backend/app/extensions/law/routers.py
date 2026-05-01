@@ -2,12 +2,9 @@
 
 import logging
 import os
-from pathlib import Path
-from typing import Annotated, Optional
-from uuid import UUID
+from typing import Annotated
 
-import aiofiles
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -17,12 +14,10 @@ from app.extensions.schemas import CurrentUser
 
 from .schemas import (
     FileParseResponse,
-    ImportProgress,
     LawCreate,
     LawListResponse,
     LawResponse,
     LawStatistics,
-    LawSyncStatus,
     LawTemplateRelationCreate,
     LawTemplateRelationResponse,
     LawUpdate,
@@ -44,9 +39,7 @@ def _can_access_kf(current_user: CurrentUser) -> bool:
     return "system:access" in getattr(current_user, "permissions", [])
 
 
-CurrentUserWithAccess = Annotated[
-    CurrentUser, Depends(require_permission("system:access"))
-]
+CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("system:access"))]
 
 
 # =============================================================================
@@ -56,9 +49,9 @@ CurrentUserWithAccess = Annotated[
 
 @router.get("", response_model=LawListResponse)
 async def list_laws(
-    law_type: Optional[str] = Query(None, description="法规类型"),
-    status: Optional[str] = Query(None, description="状态筛选"),
-    keyword: Optional[str] = Query(None, description="关键词搜索"),
+    law_type: str | None = Query(None, description="法规类型"),
+    status: str | None = Query(None, description="状态筛选"),
+    keyword: str | None = Query(None, description="关键词搜索"),
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
@@ -117,7 +110,7 @@ async def get_ragflow_status(
 
 @router.post("/init-ragflow", response_model=RAGFlowInitResponse)
 async def init_ragflow_knowledge_bases(
-    law_type: Optional[str] = Query(None, description="指定要初始化的类型，不指定则全部"),
+    law_type: str | None = Query(None, description="指定要初始化的类型，不指定则全部"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUserWithAccess = None,
 ):
@@ -129,9 +122,7 @@ async def init_ragflow_knowledge_bases(
     """
     config = get_extensions_config()
     if not config.ragflow.api_key:
-        raise HTTPException(
-            status_code=503, detail="RAGFlow服务未配置，请先配置RAGFlow API Key"
-        )
+        raise HTTPException(status_code=503, detail="RAGFlow服务未配置，请先配置RAGFlow API Key")
 
     from app.extensions.knowledge.client import RAGFlowClient
 
@@ -179,7 +170,7 @@ async def init_ragflow_knowledge_bases(
 
 @router.post("/sync-all")
 async def sync_all_laws_to_ragflow(
-    law_type: Optional[str] = Query(None, description="指定类型，不指定则全部"),
+    law_type: str | None = Query(None, description="指定类型，不指定则全部"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUserWithAccess = None,
 ):
@@ -202,7 +193,7 @@ async def sync_all_laws_to_ragflow(
             failed += 1
 
     return {
-        "message": f"同步完成",
+        "message": "同步完成",
         "synced": synced,
         "failed": failed,
         "skipped": skipped,
@@ -218,9 +209,7 @@ async def get_template_laws(
 ):
     """获取引用某模板的所有法规"""
     laws = await LawService.get_template_laws(db, template_id)
-    return LawListResponse(
-        laws=laws, total=len(laws), by_type={}, by_status={}
-    )
+    return LawListResponse(laws=laws, total=len(laws), by_type={}, by_status={})
 
 
 # =============================================================================
@@ -248,7 +237,8 @@ async def parse_law_file(
             detail=f"不支持的文件类型，仅支持: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
-    import tempfile, shutil
+    import shutil
+    import tempfile
 
     tmp_path = None
     try:
@@ -276,13 +266,13 @@ async def parse_law_file(
 @router.post("/import-with-file", response_model=LawResponse, status_code=status.HTTP_201_CREATED)
 async def import_law_with_file(
     title: str = Form(..., description="法规标题"),
-    law_number: Optional[str] = Form(None, description="法规编号"),
+    law_number: str | None = Form(None, description="法规编号"),
     law_type: str = Form(..., description="法规类型"),
-    department: Optional[str] = Form(None, description="发布部门"),
-    effective_date: Optional[str] = Form(None, description="生效日期"),
-    keywords: Optional[str] = Form(None, description="关键词，逗号分隔"),
-    referred_laws: Optional[str] = Form(None, description="被引用法规，逗号分隔"),
-    file: Optional[UploadFile] = Form(None, description="法规文件 PDF/Word/TXT"),
+    department: str | None = Form(None, description="发布部门"),
+    effective_date: str | None = Form(None, description="生效日期"),
+    keywords: str | None = Form(None, description="关键词，逗号分隔"),
+    referred_laws: str | None = Form(None, description="被引用法规，逗号分隔"),
+    file: UploadFile | None = Form(None, description="法规文件 PDF/Word/TXT"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUserWithAccess = None,
 ):
@@ -306,7 +296,8 @@ async def import_law_with_file(
                 detail=f"不支持的文件类型，仅支持: {', '.join(ALLOWED_EXTENSIONS)}",
             )
 
-        import tempfile as _tmp, shutil as _shutil
+        import shutil as _shutil
+        import tempfile as _tmp
 
         try:
             suffix = ext if ext in {".pdf", ".docx", ".doc"} else ".txt"

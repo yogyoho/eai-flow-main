@@ -1,7 +1,9 @@
 """Start gateway using backend venv uvicorn."""
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 env_path = Path(__file__).parent.parent / ".env"
@@ -14,14 +16,19 @@ uvicorn = Path(__file__).parent / ".venv" / "Scripts" / "uvicorn.exe"
 sys.path.insert(0, str(Path(__file__).parent))
 
 os.chdir(str(Path(__file__).parent))
-os.execv(str(uvicorn), [
+os.execv(
     str(uvicorn),
-    "app.gateway.app:app",
-    "--host", "0.0.0.0",
-    "--port", "4001",
-    "--reload",
-    "--reload-include=*.yaml",
-    "--reload-include=.env",
-    "--reload-exclude=*.pyc",
-    "--reload-exclude=__pycache__",
-])
+    [
+        str(uvicorn),
+        "app.gateway.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4001",
+        "--reload",
+        "--reload-include=*.yaml",
+        "--reload-include=.env",
+        "--reload-exclude=*.pyc",
+        "--reload-exclude=__pycache__",
+    ],
+)

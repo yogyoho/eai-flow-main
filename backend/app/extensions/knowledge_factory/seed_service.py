@@ -1,16 +1,14 @@
 """种子数据导入服务 - 将种子数据导入数据库"""
 
 import logging
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert
 
 from app.extensions.knowledge_factory.models import ComplianceRule
 from app.extensions.knowledge_factory.seed_loader import (
-    get_seed_loader,
     SeedLoaderService,
+    get_seed_loader,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +24,7 @@ class SeedImportResult:
         updated: int = 0,
         skipped: int = 0,
         errors: int = 0,
-        error_messages: Optional[list[str]] = None,
+        error_messages: list[str] | None = None,
     ):
         self.total = total
         self.created = created
@@ -54,10 +52,10 @@ class SeedImportResult:
 class SeedImportService:
     """种子数据导入服务"""
 
-    def __init__(self, seed_loader: Optional[SeedLoaderService] = None):
+    def __init__(self, seed_loader: SeedLoaderService | None = None):
         """
         初始化种子数据导入服务
-        
+
         Args:
             seed_loader: 种子数据加载器实例
         """
@@ -71,24 +69,24 @@ class SeedImportService:
     ) -> SeedImportResult:
         """
         将种子数据导入数据库
-        
+
         Args:
             session: 数据库会话
             force_update: 是否强制更新已存在的记录
             skip_existing: 是否跳过已存在的记录
-            
+
         Returns:
             SeedImportResult: 导入结果
         """
         result = SeedImportResult()
-        
+
         try:
             seed_data = self.seed_loader.load_seed_data()
             import_data = self.seed_loader.to_import_data()
             result.total = len(import_data)
-            
+
             logger.info(f"开始导入 {result.total} 条种子数据...")
-            
+
             for rule_data in import_data:
                 try:
                     await self._import_single_rule(
@@ -101,25 +99,19 @@ class SeedImportService:
                 except Exception as e:
                     await session.rollback()
                     result.errors += 1
-                    result.error_messages.append(
-                        f"导入规则 {rule_data.get('rule_id', 'unknown')} 失败: {str(e)}"
-                    )
+                    result.error_messages.append(f"导入规则 {rule_data.get('rule_id', 'unknown')} 失败: {str(e)}")
                     logger.error(f"导入规则失败: {e}")
-            
+
             await session.commit()
-            
-            logger.info(
-                f"种子数据导入完成: 总数={result.total}, "
-                f"新增={result.created}, 更新={result.updated}, "
-                f"跳过={result.skipped}, 错误={result.errors}"
-            )
-            
+
+            logger.info(f"种子数据导入完成: 总数={result.total}, 新增={result.created}, 更新={result.updated}, 跳过={result.skipped}, 错误={result.errors}")
+
         except Exception as e:
             await session.rollback()
             result.errors += 1
             result.error_messages.append(f"导入过程发生错误: {str(e)}")
             logger.error(f"导入种子数据失败: {e}")
-        
+
         return result
 
     async def _import_single_rule(
@@ -132,20 +124,20 @@ class SeedImportService:
     ) -> None:
         """导入单条规则"""
         rule_id = rule_data["rule_id"]
-        
+
         stmt = select(ComplianceRule).where(ComplianceRule.rule_id == rule_id)
         existing_rule = await session.scalar(stmt)
-        
+
         if existing_rule:
             if skip_existing and not force_update:
                 result.skipped += 1
                 logger.debug(f"跳过已存在的规则: {rule_id}")
                 return
-            
+
             for key, value in rule_data.items():
                 if hasattr(existing_rule, key):
                     setattr(existing_rule, key, value)
-            
+
             result.updated += 1
             logger.debug(f"更新规则: {rule_id}")
         else:
@@ -157,23 +149,23 @@ class SeedImportService:
     async def check_seed_status(self, session: AsyncSession) -> dict:
         """
         检查种子数据导入状态
-        
+
         Args:
             session: 数据库会话
-            
+
         Returns:
             状态信息字典
         """
         seed_loader = get_seed_loader()
         seed_data = seed_loader.load_seed_data()
-        
+
         stmt = select(ComplianceRule)
         all_rules = await session.scalars(stmt)
         all_rules_list = list(all_rules)
-        
+
         existing_rule_ids = {rule.rule_id for rule in all_rules_list}
         seed_rule_ids = {rule.rule_id for rule in seed_data.rules}
-        
+
         return {
             "seed_version": seed_data.version,
             "seed_total": len(seed_data.rules),
@@ -188,48 +180,48 @@ class SeedImportService:
     async def clear_seed_data(self, session: AsyncSession) -> int:
         """
         清除所有由种子数据创建的规则
-        
+
         Args:
             session: 数据库会话
-            
+
         Returns:
             删除的记录数
         """
         stmt = select(ComplianceRule).where(ComplianceRule.seed_version.isnot(None))
         rules = await session.scalars(stmt)
         rules_list = list(rules)
-        
+
         for rule in rules_list:
             await session.delete(rule)
-        
+
         await session.commit()
-        
+
         logger.info(f"已清除 {len(rules_list)} 条种子数据规则")
         return len(rules_list)
 
     async def get_rule_statistics(self, session: AsyncSession) -> dict:
         """
         获取规则统计信息
-        
+
         Args:
             session: 数据库会话
-            
+
         Returns:
             统计信息字典
         """
         stmt = select(ComplianceRule)
         all_rules = await session.scalars(stmt)
         all_rules_list = list(all_rules)
-        
+
         type_stats = {}
         severity_stats = {}
         industry_stats = {}
-        
+
         for rule in all_rules_list:
             type_stats[rule.type] = type_stats.get(rule.type, 0) + 1
             severity_stats[rule.severity] = severity_stats.get(rule.severity, 0) + 1
             industry_stats[rule.industry] = industry_stats.get(rule.industry, 0) + 1
-        
+
         return {
             "total": len(all_rules_list),
             "enabled": len([r for r in all_rules_list if r.enabled]),
@@ -248,12 +240,12 @@ async def import_seed_data(
 ) -> SeedImportResult:
     """
     便捷函数：导入种子数据
-    
+
     Args:
         session: 数据库会话
         force_update: 是否强制更新
         skip_existing: 是否跳过已存在
-        
+
     Returns:
         SeedImportResult: 导入结果
     """

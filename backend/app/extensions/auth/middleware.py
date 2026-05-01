@@ -1,111 +1,121 @@
-"""Authentication middleware for extensions module."""
+"""Authentication middleware for extensions module.
 
-from typing import Optional
+Delegates authentication to Gateway Auth (Cookie-based JWT) and bridges
+to the Extensions PostgreSQL user table via email matching.  On first
+access a corresponding Extensions User row is auto-created; admin users
+(Gateway ``system_role == "admin"``) are auto-assigned the ``superadmin``
+role when it exists.
+"""
+
+import logging
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.jwt import verify_token
 from app.extensions.database import get_db
 from app.extensions.models import Department, Role, User
 from app.extensions.schemas import CurrentUser
 
-security = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN_COOKIE = "access_token"
 
 
-def extract_token_from_request(request: Request) -> Optional[str]:
-    """Extract token from Authorization header or cookie."""
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        return auth_header[7:]
-    return request.cookies.get(ACCESS_TOKEN_COOKIE)
+async def _bridge_user(gw_user, db: AsyncSession) -> User:
+    """Look up or auto-create an Extensions User for the given Gateway user."""
+    stmt = select(User).where(User.email == gw_user.email)
+    result = await db.execute(stmt)
+    ext_user = result.scalar_one_or_none()
+
+    if ext_user is not None:
+        return ext_user
+
+    # First access — auto-create an Extensions User row.
+    ext_user = User(
+        username=gw_user.email.split("@")[0],
+        email=gw_user.email,
+        password_hash="",  # auth is handled by Gateway, not Extensions
+        full_name=gw_user.email.split("@")[0],
+        status="active",
+    )
+    db.add(ext_user)
+    await db.flush()
+
+    if gw_user.system_role == "admin":
+        role_stmt = select(Role).where(Role.code == "superadmin")
+        role_result = await db.execute(role_stmt)
+        admin_role = role_result.scalar_one_or_none()
+        if admin_role is not None:
+            ext_user.role_id = admin_role.id
+
+    await db.commit()
+    await db.refresh(ext_user)
+    logger.info("Auto-created Extensions user %s for Gateway user %s", ext_user.id, gw_user.id)
+    return ext_user
+
+
+async def _build_current_user(ext_user: User, db: AsyncSession) -> CurrentUser:
+    """Hydrate role and department display names for a CurrentUser response."""
+    role_name = None
+    if ext_user.role_id:
+        role = await db.get(Role, ext_user.role_id)
+        if role is not None:
+            role_name = role.name
+
+    dept_name = None
+    if ext_user.dept_id:
+        dept = await db.get(Department, ext_user.dept_id)
+        if dept is not None:
+            dept_name = dept.name
+
+    return CurrentUser(
+        id=ext_user.id,
+        username=ext_user.username,
+        email=ext_user.email,
+        full_name=ext_user.full_name,
+        role_id=ext_user.role_id,
+        role_name=role_name,
+        dept_id=ext_user.dept_id,
+        dept_name=dept_name,
+        status=ext_user.status,
+    )
 
 
 async def get_current_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> CurrentUser:
-    """Get current authenticated user from JWT token."""
-    token = extract_token_from_request(request)
+    """Authenticate via Gateway Auth cookie and return the bridged Extensions user.
 
-    if token is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    Raises HTTPException(401) when the request carries no valid Gateway session.
+    On first access for a given user an Extensions ``User`` row is auto-created.
+    """
+    from app.gateway.deps import get_current_user_from_request
 
-    payload = verify_token(token, "access")
-
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    from sqlalchemy import select
-
-    stmt = select(User).where(User.id == payload.sub)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-
-    if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not active",
-        )
-
-    role_name = None
-    dept_name = None
-
-    if user.role_id:
-        stmt_role = select(Role).where(Role.id == user.role_id)
-        result_role = await db.execute(stmt_role)
-        role = result_role.scalar_one_or_none()
-        if role:
-            role_name = role.name
-
-    if user.dept_id:
-        stmt_dept = select(Department).where(Department.id == user.dept_id)
-        result_dept = await db.execute(stmt_dept)
-        dept = result_dept.scalar_one_or_none()
-        if dept:
-            dept_name = dept.name
-
-    return CurrentUser(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        role_id=user.role_id,
-        role_name=role_name,
-        dept_id=user.dept_id,
-        dept_name=dept_name,
-        status=user.status,
-    )
+    gw_user = await get_current_user_from_request(request)
+    ext_user = await _bridge_user(gw_user, db)
+    return await _build_current_user(ext_user, db)
 
 
 async def get_current_user_optional(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
-) -> Optional[CurrentUser]:
-    """Get current user if authenticated, otherwise return None."""
-    try:
-        return await get_current_user(request, credentials, db)
-    except HTTPException:
+) -> CurrentUser | None:
+    """Return the bridged Extensions user, or ``None`` when unauthenticated."""
+    from app.gateway.deps import get_optional_user_from_request
+
+    gw_user = await get_optional_user_from_request(request)
+    if gw_user is None:
         return None
+
+    stmt = select(User).where(User.email == gw_user.email)
+    result = await db.execute(stmt)
+    ext_user = result.scalar_one_or_none()
+    if ext_user is None:
+        return None
+
+    return await _build_current_user(ext_user, db)
 
 
 def require_permission(permission: str):
@@ -121,12 +131,7 @@ def require_permission(permission: str):
                 detail="No role assigned. Please contact administrator.",
             )
 
-        from sqlalchemy import select
-
-        stmt = select(Role).where(Role.id == current_user.role_id)
-        result = await db.execute(stmt)
-        role = result.scalar_one_or_none()
-
+        role = await db.get(Role, current_user.role_id)
         if role is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -134,7 +139,6 @@ def require_permission(permission: str):
             )
 
         permissions = role.permissions or []
-
         if "*" in permissions or role.is_system:
             return current_user
 
@@ -159,7 +163,7 @@ def require_role(*roles: str):
             return current_user
 
         if "超级管理员" in roles or "admin" in roles:
-            if current_user.role_name == "超级管理员" or current_user.role_name == "admin":
+            if current_user.role_name in ("超级管理员", "admin"):
                 return current_user
 
         raise HTTPException(

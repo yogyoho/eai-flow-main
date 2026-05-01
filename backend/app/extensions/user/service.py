@@ -144,13 +144,9 @@ class UserService:
 
         if data.dept_ids:
             primary = data.dept_id or (data.dept_ids[0] if data.dept_ids else None)
-            await UserDepartmentService.update_user_departments(
-                db, user.id, data.dept_ids, primary
-            )
+            await UserDepartmentService.update_user_departments(db, user.id, data.dept_ids, primary)
         elif data.dept_id:
-            await UserDepartmentService.add_user_to_dept(
-                db, user.id, data.dept_id, is_primary=True
-            )
+            await UserDepartmentService.add_user_to_dept(db, user.id, data.dept_id, is_primary=True)
 
         await db.commit()
         await db.refresh(user)
@@ -182,9 +178,7 @@ class UserService:
 
         if data.dept_ids is not None:
             primary = data.dept_id or (data.dept_ids[0] if data.dept_ids else None)
-            await UserDepartmentService.update_user_departments(
-                db, user.id, data.dept_ids, primary
-            )
+            await UserDepartmentService.update_user_departments(db, user.id, data.dept_ids, primary)
 
         await db.commit()
         await db.refresh(user)

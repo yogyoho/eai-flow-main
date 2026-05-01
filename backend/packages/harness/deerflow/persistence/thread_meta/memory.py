@@ -8,6 +8,7 @@ router for thread records.
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 from langgraph.store.base import BaseStore
@@ -16,6 +17,20 @@ from deerflow.persistence.thread_meta.base import ThreadMetaStore
 from deerflow.runtime.user_context import AUTO, _AutoSentinel, resolve_user_id
 
 THREADS_NS: tuple[str, ...] = ("threads",)
+
+
+def _format_ts(ts: float | str | None) -> str:
+    """Convert a timestamp value to an ISO-8601 string.
+
+    Accepts a Unix-epoch float (from ``time.time()``), an existing ISO
+    string, or None/missing.  Always returns a valid ISO-8601 string so
+    JavaScript clients can safely parse it with ``new Date()``.
+    """
+    if isinstance(ts, (int, float)) and ts > 0:
+        return datetime.fromtimestamp(ts, tz=UTC).isoformat()
+    if isinstance(ts, str) and ts:
+        return ts
+    return datetime.now(UTC).isoformat()
 
 
 class MemoryThreadMetaStore(ThreadMetaStore):
@@ -61,10 +76,18 @@ class MemoryThreadMetaStore(ThreadMetaStore):
             "updated_at": now,
         }
         await self._store.aput(THREADS_NS, thread_id, record)
-        return record
+        result = dict(record)
+        result["created_at"] = _format_ts(now)
+        result["updated_at"] = _format_ts(now)
+        return result
 
     async def get(self, thread_id: str, *, user_id: str | None | _AutoSentinel = AUTO) -> dict | None:
-        return await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.get")
+        record = await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.get")
+        if record is None:
+            return None
+        record["created_at"] = _format_ts(record.get("created_at"))
+        record["updated_at"] = _format_ts(record.get("updated_at"))
+        return record
 
     async def search(
         self,
@@ -144,6 +167,6 @@ class MemoryThreadMetaStore(ThreadMetaStore):
             "display_name": val.get("display_name"),
             "status": val.get("status", "idle"),
             "metadata": val.get("metadata", {}),
-            "created_at": str(val.get("created_at", "")),
-            "updated_at": str(val.get("updated_at", "")),
+            "created_at": _format_ts(val.get("created_at")),
+            "updated_at": _format_ts(val.get("updated_at")),
         }

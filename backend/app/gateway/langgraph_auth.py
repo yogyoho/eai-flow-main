@@ -8,6 +8,12 @@ Two layers:
   1. @auth.authenticate — validates JWT cookie, extracts user_id,
      and enforces CSRF on state-changing methods (POST/PUT/DELETE/PATCH)
   2. @auth.on — returns metadata filter so each user only sees own threads
+
+The authorization layer follows the LangGraph SDK's recommended pattern:
+  - Default deny for unhandled operations
+  - Resource/action-specific handlers for threads (create/read/search/update/delete/create_run)
+  - Store operations scoped to user namespace
+  - Assistants and crons accepted without filtering (for now)
 """
 
 import secrets
@@ -91,16 +97,98 @@ async def authenticate(request):
     return payload.sub
 
 
-@auth.on
-async def add_owner_filter(ctx: Auth.types.AuthContext, value: dict):
-    """Inject user_id metadata on writes; filter by user_id on reads.
+# ---------------------------------------------------------------------------
+# Authorization handlers — LangGraph SDK recommended pattern
+# ---------------------------------------------------------------------------
 
-    Gateway stores thread ownership as ``metadata.user_id``.
-    This handler ensures LangGraph Server enforces the same isolation.
+
+@auth.on
+async def deny_all(ctx: Auth.types.AuthContext, value: dict) -> bool:
+    """Default deny: reject any operation without a specific handler."""
+    return False
+
+
+# -- Threads ----------------------------------------------------------------
+
+
+@auth.on.threads.create
+async def on_threads_create(ctx: Auth.types.AuthContext, value: dict):
+    """Stamp user_id on thread metadata; accept without filter.
+
+    The stamped metadata is persisted by the LangGraph runtime, so
+    subsequent read/search operations can filter by user_id.
     """
-    # On create/update: stamp user_id into metadata
     metadata = value.setdefault("metadata", {})
     metadata["user_id"] = ctx.user.identity
+    # Returns None → accept without applying a filter
 
-    # Return filter dict — LangGraph applies it to search/read/delete
+
+@auth.on.threads.read
+async def on_threads_read(ctx: Auth.types.AuthContext, value: dict):
+    """Only return threads owned by the authenticated user."""
     return {"user_id": ctx.user.identity}
+
+
+@auth.on.threads.search
+async def on_threads_search(ctx: Auth.types.AuthContext, value: dict):
+    """Only return threads owned by the authenticated user."""
+    return {"user_id": ctx.user.identity}
+
+
+@auth.on.threads.update
+async def on_threads_update(ctx: Auth.types.AuthContext, value: dict):
+    """Stamp user_id and filter by owner on update."""
+    metadata = value.setdefault("metadata", {})
+    metadata["user_id"] = ctx.user.identity
+    return {"user_id": ctx.user.identity}
+
+
+@auth.on.threads.delete
+async def on_threads_delete(ctx: Auth.types.AuthContext, value: dict):
+    """Only allow deletion of threads owned by the authenticated user."""
+    return {"user_id": ctx.user.identity}
+
+
+@auth.on.threads.create_run
+async def on_threads_create_run(ctx: Auth.types.AuthContext, value: dict):
+    """Stamp user_id on run metadata; filter by owner.
+
+    Ensures users can only create runs on their own threads.
+    """
+    metadata = value.setdefault("metadata", {})
+    metadata["user_id"] = ctx.user.identity
+    return {"user_id": ctx.user.identity}
+
+
+# -- Store ------------------------------------------------------------------
+
+
+@auth.on.store
+async def scope_store(ctx: Auth.types.AuthContext, value: dict):
+    """Scope all store operations to the authenticated user's namespace."""
+    namespace = tuple(value["namespace"]) if value.get("namespace") else ()
+    if not namespace or namespace[0] != ctx.user.identity:
+        namespace = (ctx.user.identity, *namespace)
+    value["namespace"] = namespace
+
+
+# -- Assistants -------------------------------------------------------------
+# Accept all assistant operations without user-level filtering for now.
+# If per-user assistant isolation is needed later, add owner-based filters.
+
+
+@auth.on.assistants
+async def allow_assistants(ctx: Auth.types.AuthContext, value: dict):
+    """Accept all assistant operations (no user-level filtering yet)."""
+    return None
+
+
+# -- Crons -------------------------------------------------------------------
+# Accept all cron operations without user-level filtering for now.
+# Crons are tied to threads which already enforce user isolation.
+
+
+@auth.on.crons
+async def allow_crons(ctx: Auth.types.AuthContext, value: dict):
+    """Accept all cron operations (filtered by thread ownership upstream)."""
+    return None

@@ -192,6 +192,68 @@ class TemplateVersionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TemplateRollbackRequest(BaseModel):
+    """模板回滚请求"""
+    version_id: UUID = Field(..., description="要回滚到的版本ID")
+    changelog: Optional[str] = Field(None, description="回滚说明")
+
+
+class TemplateRollbackResponse(BaseModel):
+    """模板回滚响应"""
+    success: bool
+    message: str
+    template_id: UUID
+    new_version: str
+    restored_version: str
+
+
+# ============== Quality Assessment ==============
+
+
+class QualityAssessmentDimension(BaseModel):
+    """质量评估维度"""
+    score: int = Field(..., ge=0, le=100, description="评分 0-100")
+    issues: list[str] = Field(default_factory=list, description="发现的问题列表")
+
+
+class QualityAssessmentResult(BaseModel):
+    """质量评估结果"""
+    overall_score: int = Field(..., ge=0, le=100, description="总体评分")
+    dimensions: dict[str, QualityAssessmentDimension] = Field(
+        ..., description="各维度评分"
+    )
+    suggestions: list[str] = Field(default_factory=list, description="改进建议")
+    quality_grade: str = Field(default="未知", description="质量等级")
+
+
+# ============== Version Compare ==============
+
+
+class VersionCompareRequest(BaseModel):
+    """版本对比请求"""
+    version_a_id: UUID = Field(..., description="版本A的ID")
+    version_b_id: UUID = Field(..., description="版本B的ID")
+
+
+class VersionDiffSection(BaseModel):
+    """章节差异"""
+    section_id: str
+    title: str
+    level: int
+    status: str = Field(..., description="added | removed | modified | unchanged")
+
+
+class VersionDiff(BaseModel):
+    """版本差异"""
+    version_a: str
+    version_b: str
+    added_count: int
+    removed_count: int
+    modified_count: int
+    unchanged_count: int
+    sections: list[VersionDiffSection] = Field(default_factory=list)
+
+
 # ============== Extraction Task Create ==============
 
 

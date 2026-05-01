@@ -1,8 +1,9 @@
 """Model validation logic."""
 
-from typing import Literal
-from pydantic import BaseModel
 from functools import lru_cache
+from typing import Literal
+
+from pydantic import BaseModel
 
 from deerflow.config import get_app_config
 
@@ -45,8 +46,9 @@ def check_model_exists(model_name: str) -> bool:
     return any(m.name == model_name for m in config.models)
 
 
-import time
 import asyncio
+import time
+
 from deerflow.models import create_chat_model
 
 
@@ -63,7 +65,7 @@ async def test_api_reachable(model_name: str) -> tuple[bool, float | None]:
         response = await model.ainvoke([("human", "Hi")])
         latency = (time.time() - start) * 1000
         return True, latency
-    except Exception as e:
+    except Exception:
         return False, None
 
 

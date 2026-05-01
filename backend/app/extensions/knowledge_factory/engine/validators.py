@@ -5,14 +5,13 @@
 """
 
 import re
-from typing import Any
 
 from .core import (
     BaseValidator,
     CheckContext,
     CheckResult,
-    ValidationIssue,
     SeverityLevel,
+    ValidationIssue,
     register_validator,
 )
 
@@ -31,11 +30,7 @@ class DataConsistencyValidator(BaseValidator):
             val = context.extracted_fields[f]
             if not isinstance(val, (int, float)):
                 continue
-            expected_sum = sum(
-                context.extracted_fields.get(ff, 0)
-                for ff in fields
-                if ff != f and isinstance(context.extracted_fields.get(ff), (int, float))
-            )
+            expected_sum = sum(context.extracted_fields.get(ff, 0) for ff in fields if ff != f and isinstance(context.extracted_fields.get(ff), (int, float)))
             if abs(val - expected_sum) / max(abs(val), 1) > threshold:
                 issues.append(
                     ValidationIssue(

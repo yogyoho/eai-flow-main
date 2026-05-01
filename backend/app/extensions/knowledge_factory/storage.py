@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from app.extensions.config import get_extensions_config
 
@@ -42,7 +41,7 @@ def load_snapshot(
     domain: str,
     template_name: str,
     version: str,
-) -> Optional[dict]:
+) -> dict | None:
     """从 JSON 文件加载模板快照。"""
     file_path = get_snapshot_dir(domain, template_name, version) / "template.json"
     if not file_path.exists():
@@ -68,6 +67,7 @@ def delete_snapshot(
 
     try:
         import shutil
+
         shutil.rmtree(dir_path)
         logger.info(f"Deleted template snapshot at {dir_path}")
         return True
@@ -80,7 +80,7 @@ def export_template_json(
     domain: str,
     template_name: str,
     version: str,
-) -> Optional[bytes]:
+) -> bytes | None:
     """导出模板为 JSON 字节串（用于下载）。"""
     data = load_snapshot(domain, template_name, version)
     if data is None:

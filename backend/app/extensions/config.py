@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -54,6 +53,7 @@ class JWTConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "JWTConfig":
         import os as _os
+
         secret = _os.getenv("JWT_SECRET", "") or _os.getenv("JWT_SECRET_KEY", "")
         return cls(
             secret=secret,
@@ -133,7 +133,7 @@ class ExtensionsConfig(BaseModel):
         )
 
 
-_extensions_config: Optional[ExtensionsConfig] = None
+_extensions_config: ExtensionsConfig | None = None
 
 
 def get_extensions_config() -> ExtensionsConfig:

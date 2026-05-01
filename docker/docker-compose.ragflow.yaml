@@ -2,37 +2,45 @@
 # Usage: docker compose -f docker-compose.yaml -f docker-compose.ragflow.yaml up -d
 #
 # Services:
-#   - ragflow:       RAGFlow API server (port 9380)
-#   - ragflow-web:   RAGFlow Web UI (port 9381)
+#   - ragflow:       RAGFlow (API + Web UI + task executor) via entrypoint.sh
 #   - ragflow-es:    Elasticsearch (port 9200)
 #   - ragflow-mysql: MySQL (port 3306)
 #   - ragflow-redis: Redis (port 6379)
 #   - ragflow-minio: MinIO (ports 9000/9001)
+#
+# RAGFlow is monolithic by design — entrypoint.sh manages nginx (web UI),
+# the API server, and task executors as a single process group. Splitting
+# into separate containers is not supported upstream.
 
 services:
-  # ── RAGFlow API ────────────────────────────────────────────────────────
+  # ── RAGFlow (API + Web UI + Task Executor) ─────────────────────────────
   ragflow:
     image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:latest}
     container_name: eai-flow-ragflow
-    command: >
-      bash -c "python3 -m ragflow.svr.api --host 0.0.0.0 --port 9380"
+    # Default entrypoint (no --disable-* flags): starts nginx + API + task executors
     environment:
-      - ES_HOSTS=http://ragflow-es:9200
-      - ES_USERNAME=elastic
-      - ES_PASSWORD=${ELASTIC_PASSWORD:-ragflow123}
+      # Must match service_conf.yaml.template variable names:
+      #   MYSQL_DBNAME (NOT MYSQL_DATABASE)
+      #   ES_HOST / ES_USER / ELASTIC_PASSWORD (NOT ES_HOSTS/ES_USERNAME/ES_PASSWORD)
+      #   MINIO_HOST (NOT MINIO_ENDPOINT)
       - MYSQL_HOST=ragflow-mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-ragflow123}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-ragflow}
+      - MYSQL_DBNAME=${MYSQL_DBNAME:-ragflow}
+      - ES_HOST=ragflow-es
+      - ES_USER=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-ragflow123}
       - REDIS_HOST=ragflow-redis
-      - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-ragflow123}
-      - MINIO_ENDPOINT=ragflow-minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_HOST=ragflow-minio
+      - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - ragflow-data:/ragflow
+    ports:
+      - "${RAGFLOW_PORT:-9380}:9380"      # API
+      - "${RAGFLOW_WEB_PORT:-9381}:80"    # Web UI (internal nginx)
     depends_on:
       ragflow-mysql:
         condition: service_healthy
@@ -42,22 +50,6 @@ services:
         condition: service_healthy
       ragflow-minio:
         condition: service_healthy
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
-
-  # ── RAGFlow Web UI ─────────────────────────────────────────────────────
-  ragflow-web:
-    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:latest}
-    container_name: eai-flow-ragflow-web
-    command: >
-      bash -c "python3 -m ragflow.svr.web --host 0.0.0.0 --port 9381"
-    environment:
-      - RAGFLOW_API_URL=http://ragflow:9380
-    ports:
-      - "${RAGFLOW_WEB_PORT:-9381}:9381"
-    depends_on:
-      - ragflow
     networks:
       - eai-flow-net
     restart: unless-stopped

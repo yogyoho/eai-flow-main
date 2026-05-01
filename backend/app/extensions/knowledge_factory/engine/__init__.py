@@ -20,9 +20,8 @@ from .core import (
     ValidatorRegistry,
     register_validator,
 )
-
-from .service import ComplianceEngine, get_engine
 from .execution_logger import RuleExecutionLogger
+from .service import ComplianceEngine, get_engine
 
 __all__ = [
     "BaseValidator",

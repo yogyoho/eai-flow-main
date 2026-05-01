@@ -184,6 +184,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             except Exception:
                 await session.rollback()
                 raise
+                break
+            except Exception:
+                await session.rollback()
+                raise
 
     config = get_extensions_config()
     fresh_engine = create_async_engine(
@@ -300,6 +304,9 @@ async def migrate_db() -> None:
         )
         await conn.execute(
             text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS parent_role_id UUID REFERENCES roles(id)")
+        )
+        await conn.execute(
+            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()")
         )
         await conn.execute(
             text("CREATE INDEX IF NOT EXISTS idx_roles_parent_role_id ON roles(parent_role_id)")
@@ -725,8 +732,8 @@ async def seed_db() -> None:
                 await session.execute(
                     text(
                         "INSERT INTO roles "
-                        "(id, name, code, permissions, is_system, level, created_at, updated_at) "
-                        "VALUES (:id, 'Super Admin', 'superadmin', :perms, true, 100, NOW(), NOW())"
+                        "(id, name, code, permissions, is_system, level, created_at) "
+                        "VALUES (:id, 'Super Admin', 'superadmin', :perms, true, 100, NOW())"
                     ),
                     {"id": role_id, "perms": ["*"]},
                 )
@@ -737,8 +744,8 @@ async def seed_db() -> None:
                 await session.execute(
                     text(
                         "INSERT INTO users "
-                        "(id, username, email, password_hash, full_name, role_id, status, created_at, updated_at) "
-                        "VALUES (:id, 'admin', 'admin@eai.local', :pw_hash, 'Administrator', :role_id, 'active', NOW(), NOW())"
+                        "(id, username, email, password_hash, full_name, role_id, status, is_deleted, created_at, updated_at) "
+                        "VALUES (:id, 'admin', 'admin@eai-flow.com', :pw_hash, 'Administrator', :role_id, 'active', false, NOW(), NOW())"
                     ),
                     {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": role_id},
                 )

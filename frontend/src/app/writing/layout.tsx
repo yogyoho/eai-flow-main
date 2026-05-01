@@ -14,7 +14,7 @@ function WritingAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      const loginUrl = "/login?redirect=" + encodeURIComponent(pathname || "/writing");
+      const loginUrl = "/workspace/chats/new?redirect=" + encodeURIComponent(pathname || "/writing");
       router.replace(loginUrl);
     }
   }, [user, isLoading, router, pathname]);

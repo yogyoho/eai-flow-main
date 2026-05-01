@@ -75,6 +75,80 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
     return chapters, total
 
 
+def _extract_keywords(title: str) -> list[str]:
+    """从标题中提取关键词，用于模糊匹配。
+
+    去除常见前缀（序号、章节词等），保留核心业务术语。
+    """
+    import re
+
+    # 去除常见前缀模式
+    patterns_to_remove = [
+        r"^\d+[\.、]\s*",  # "1. ", "1、 "
+        r"^第[一二三四五六七八九十百千\d]+[章节条款段]?\s*",  # "第一章", "第一节"
+        r"^[一二三四五六七八九十]+[\.、]\s*",  # 中文序号
+    ]
+
+    cleaned = title
+    for pattern in patterns_to_remove:
+        cleaned = re.sub(pattern, "", cleaned)
+
+    # 分割为词语（按空格和标点）
+    words = re.split(r"[\s,，。、；;：:（）()【】\[\]]+", cleaned)
+    # 过滤太短和无意义的词
+    keywords = [w for w in words if len(w) >= 2]
+    return keywords
+
+
+def _find_best_matching_paragraph(
+    content: str,
+    keywords: list[str],
+    max_chars: int = 4000,
+) -> str:
+    """在文档内容中找到包含关键词最多的段落。
+
+    策略：将文档按段落分割，统计每个段落中关键词出现次数，
+    返回包含关键词最多的段落。
+    """
+    import re
+
+    if not keywords:
+        return content[:max_chars]
+
+    # 按换行分割段落
+    paragraphs = re.split(r"\n\s*\n|\n(?=[^\s])", content)
+    best_paragraph = ""
+    best_score = 0
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # 计算关键词得分
+        score = 0
+        for kw in keywords:
+            # 精确匹配
+            if kw in para:
+                score += para.count(kw)
+            # 忽略大小写匹配
+            try:
+                score += len(re.findall(kw, para, re.IGNORECASE))
+            except re.error:
+                pass
+
+        if score > best_score:
+            best_score = score
+            best_paragraph = para
+
+    # 如果找到匹配段落且得分足够高，返回该段落
+    if best_score >= len(keywords):
+        return best_paragraph[:max_chars]
+
+    # 否则返回文档开头
+    return content[:max_chars]
+
+
 # Progress callback type
 StepCallback = Callable[[StepStatusSchema], Any]
 
@@ -416,7 +490,10 @@ class ExtractionPipeline:
     async def _step_extract_metadata(
         self, ctx: dict[str, Any], config: ExtractionConfig
     ) -> list[dict]:
-        """LLM 逐节抽取 content_contract 等元数据。"""
+        """LLM 逐节抽取 content_contract 等元数据。
+
+        改进：按章节标题匹配文档中的对应内容，而不是简单取第一份文档。
+        """
         doc_schemas = ctx.get("_doc_schemas", [])
         if not doc_schemas:
             return []
@@ -427,29 +504,86 @@ class ExtractionPipeline:
             return []
 
         documents = ctx.get("_documents", [])
-        doc_contents = {}
+        # 构建文档内容映射: {doc_id: {"name": doc_name, "content": full_content, "chunks": [...]}}
+        doc_contents: dict[str, dict] = {}
         for doc in documents:
+            doc_id = doc.get("id", "")
             chunks = doc.get("chunks", [])
             if chunks:
-                doc_contents[doc.get("id", "")] = "\n\n".join(
+                full_content = "\n\n".join(
                     c.get("content", "") for c in chunks if c.get("content")
                 )
+                doc_contents[doc_id] = {
+                    "name": doc.get("name", ""),
+                    "content": full_content,
+                    "chunks": chunks,
+                }
 
         loop = asyncio.get_event_loop()
+
+        def _find_section_content(
+            section_title: str,
+            section_level: int,
+            doc_contents: dict[str, dict],
+            max_chars: int = 4000,
+        ) -> str:
+            """根据章节标题在文档中查找对应的内容段落。
+
+            匹配策略：
+            1. 精确匹配章节标题
+            2. 模糊匹配（标题关键词）
+            3. 基于层级推断（如 "1.1" 匹配第一章第一节内容）
+            """
+            if not doc_contents:
+                return ""
+
+            # 清理标题用于匹配
+            clean_title = section_title.strip()
+
+            # 策略1: 在 chunks 中搜索包含该标题的内容块
+            for doc_id, doc_data in doc_contents.items():
+                chunks = doc_data.get("chunks", [])
+                for chunk in chunks:
+                    content = chunk.get("content", "")
+                    # 精确匹配标题（考虑可能带序号）
+                    if clean_title in content:
+                        return content[:max_chars]
+                    # 匹配无序号的标题
+                    title_without_num = clean_title.lstrip("0123456789.、 ")
+                    if title_without_num and title_without_num in content[:200]:
+                        # 标题出现在内容开头附近，认为是章节开头
+                        return content[:max_chars]
+
+            # 策略2: 模糊匹配 - 搜索关键短语的段落
+            keywords = _extract_keywords(clean_title)
+            if keywords:
+                for doc_id, doc_data in doc_contents.items():
+                    content = doc_data.get("content", "")
+                    # 找包含最多关键词的段落
+                    best_match = _find_best_matching_paragraph(content, keywords, max_chars)
+                    if best_match:
+                        return best_match
+
+            # 策略3: 降级处理 - 返回第一份文档的前 max_chars 字符
+            if doc_contents:
+                first_doc_content = next(iter(doc_contents.values())).get("content", "")
+                return first_doc_content[:max_chars]
+
+            return ""
 
         async def enrich(sec: dict) -> dict:
             sec_id = sec.get("id", "")
             title = sec.get("title", "")
             level = sec.get("level", 1)
             purpose = sec.get("purpose")
-            section_content = ""
-            if doc_contents:
-                section_content = next(iter(doc_contents.values()), "")[:3000]
+
+            # 查找与该章节匹配的内容
+            section_content = _find_section_content(title, level, doc_contents)
 
             try:
                 metadata = await loop.run_in_executor(
                     None,
-                    lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content: 
+                    lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content:
                         self.llm.extract_metadata(sid, t, lv, p, sc)
                 )
             except Exception as e:

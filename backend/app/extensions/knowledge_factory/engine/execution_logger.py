@@ -6,12 +6,11 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .core import ValidationIssue, CheckResult
+from .core import CheckResult, ValidationIssue
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +28,12 @@ class RuleExecutionLogger:
     async def log_execution(
         self,
         rule_id: UUID,
-        thread_id: Optional[UUID] = None,
-        document_id: Optional[str] = None,
+        thread_id: UUID | None = None,
+        document_id: str | None = None,
         check_result: str = "pass",
-        check_details: Optional[dict] = None,
-        error_info: Optional[str] = None,
-        executed_by: Optional[UUID] = None,
+        check_details: dict | None = None,
+        error_info: str | None = None,
+        executed_by: UUID | None = None,
     ) -> "ComplianceRuleLog":
         """
         记录单条规则执行结果
@@ -73,9 +72,9 @@ class RuleExecutionLogger:
     async def log_issues(
         self,
         issues: list[ValidationIssue],
-        thread_id: Optional[UUID] = None,
-        document_id: Optional[str] = None,
-        executed_by: Optional[UUID] = None,
+        thread_id: UUID | None = None,
+        document_id: str | None = None,
+        executed_by: UUID | None = None,
     ) -> int:
         """
         批量记录验证问题
@@ -90,15 +89,14 @@ class RuleExecutionLogger:
             int: 记录的日志数量
         """
         from sqlalchemy import select
+
         from ..models import ComplianceRule, ComplianceRuleLog
 
         count = 0
 
         for issue in issues:
             # 查找规则ID
-            stmt = select(ComplianceRule).where(
-                ComplianceRule.rule_id == issue.rule_id
-            )
+            stmt = select(ComplianceRule).where(ComplianceRule.rule_id == issue.rule_id)
             result = await self.db.execute(stmt)
             rule = result.scalar_one_or_none()
 
@@ -152,16 +150,11 @@ class RuleExecutionLogger:
         Returns:
             list[ComplianceRuleLog]: 日志列表
         """
-        from sqlalchemy import select, desc
+        from sqlalchemy import desc, select
+
         from ..models import ComplianceRuleLog
 
-        stmt = (
-            select(ComplianceRuleLog)
-            .where(ComplianceRuleLog.rule_id == rule_id)
-            .order_by(desc(ComplianceRuleLog.executed_at))
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = select(ComplianceRuleLog).where(ComplianceRuleLog.rule_id == rule_id).order_by(desc(ComplianceRuleLog.executed_at)).offset(offset).limit(limit)
 
         result = await self.db.execute(stmt)
         return result.scalars().all()
@@ -179,18 +172,16 @@ class RuleExecutionLogger:
         Returns:
             dict: 统计数据
         """
-        from sqlalchemy import select, func, and_
+        from sqlalchemy import and_, func, select
+
         from ..models import ComplianceRuleLog
 
         # 总执行次数
-        total_stmt = select(func.count()).where(
-            ComplianceRuleLog.rule_id == rule_id
-        )
+        total_stmt = select(func.count()).where(ComplianceRuleLog.rule_id == rule_id)
         total_result = await self.db.execute(total_stmt)
         total = total_result.scalar() or 0
 
         # 按结果分组统计
-        from sqlalchemy.dialects.postgresql import array
 
         stats = {
             "total_executions": total,
@@ -222,12 +213,7 @@ class RuleExecutionLogger:
                 stats[key] = count
 
         # 获取最近执行时间
-        latest_stmt = (
-            select(ComplianceRuleLog.executed_at)
-            .where(ComplianceRuleLog.rule_id == rule_id)
-            .order_by(desc(ComplianceRuleLog.executed_at))
-            .limit(1)
-        )
+        latest_stmt = select(ComplianceRuleLog.executed_at).where(ComplianceRuleLog.rule_id == rule_id).order_by(desc(ComplianceRuleLog.executed_at)).limit(1)
         latest_result = await self.db.execute(latest_stmt)
         latest = latest_result.scalar_one_or_none()
         if latest:
@@ -254,9 +240,9 @@ class RuleExecutionLogger:
 
     async def get_trigger_statistics(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        industry: Optional[str] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        industry: str | None = None,
     ) -> dict:
         """
         获取触发统计
@@ -269,7 +255,8 @@ class RuleExecutionLogger:
         Returns:
             dict: 触发统计数据
         """
-        from sqlalchemy import select, func, and_
+        from sqlalchemy import and_, func, select
+
         from ..models import ComplianceRule, ComplianceRuleLog
 
         # 基础查询
@@ -286,16 +273,14 @@ class RuleExecutionLogger:
 
         # 失败/警告次数
         blocked_stmt = (
-            select(func.count())
-            .where(
+            select(func.count()).where(
                 and_(
                     *conditions,
                     ComplianceRuleLog.check_result.in_(["fail", "warning"]),
                 )
-            ) if conditions else
-            select(func.count()).where(
-                ComplianceRuleLog.check_result.in_(["fail", "warning"])
             )
+            if conditions
+            else select(func.count()).where(ComplianceRuleLog.check_result.in_(["fail", "warning"]))
         )
         blocked_result = await self.db.execute(blocked_stmt)
         blocked_triggers = blocked_result.scalar() or 0
@@ -330,20 +315,19 @@ class RuleExecutionLogger:
             rule_result = await self.db.execute(rule_stmt)
             rule = rule_result.scalar_one_or_none()
 
-            top_rules.append({
-                "rule_id": rule.rule_id if rule else str(row.rule_id),
-                "rule_name": rule.name if rule else "未知规则",
-                "trigger_count": row.trigger_count,
-                "block_count": row.block_count or 0,
-            })
+            top_rules.append(
+                {
+                    "rule_id": rule.rule_id if rule else str(row.rule_id),
+                    "rule_name": rule.name if rule else "未知规则",
+                    "trigger_count": row.trigger_count,
+                    "block_count": row.block_count or 0,
+                }
+            )
 
         return {
             "total_triggers": total_triggers,
             "blocked_triggers": blocked_triggers,
-            "pass_rate": (
-                (total_triggers - blocked_triggers) / total_triggers * 100
-                if total_triggers > 0 else 100
-            ),
+            "pass_rate": ((total_triggers - blocked_triggers) / total_triggers * 100 if total_triggers > 0 else 100),
             "top_rules": top_rules,
             "start_date": start_date.isoformat() if start_date else None,
             "end_date": end_date.isoformat() if end_date else None,

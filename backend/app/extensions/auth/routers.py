@@ -61,9 +61,7 @@ async def login(request: LoginRequest, response: Response, db: AsyncSession = De
             role_code = role.code
             permissions = role.permissions or []
 
-    access_token, expires_in = generate_access_token(
-        str(user.id), user.username, role_code, permissions
-    )
+    access_token, expires_in = generate_access_token(str(user.id), user.username, role_code, permissions)
     refresh_token, _ = generate_refresh_token(str(user.id))
 
     user.last_login_at = datetime.utcnow()
@@ -129,9 +127,7 @@ async def refresh_token(request: RefreshTokenRequest, db: AsyncSession = Depends
             role_code = role.code
             permissions = role.permissions or []
 
-    access_token, expires_in = generate_access_token(
-        str(user.id), user.username, role_code, permissions
-    )
+    access_token, expires_in = generate_access_token(str(user.id), user.username, role_code, permissions)
     new_refresh_token, _ = generate_refresh_token(str(user.id))
 
     return LoginResponse(
