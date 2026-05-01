@@ -112,9 +112,7 @@ class FileMemoryStorage(MemoryStorage):
         across the codebase and prevent path traversal or other problematic characters.
         """
         if not AGENT_NAME_PATTERN.match(agent_name):
-            raise ValueError(
-                f"Invalid agent name {agent_name!r}: must match pattern {AGENT_NAME_PATTERN.pattern}"
-            )
+            raise ValueError(f"Invalid agent name {agent_name!r}: must match pattern {AGENT_NAME_PATTERN.pattern}")
 
     def _get_memory_file_path(self, agent_name: str | None = None, *, user_id: str | None = None) -> Path:
         """Get the path to the memory file for a given agent and/or user.

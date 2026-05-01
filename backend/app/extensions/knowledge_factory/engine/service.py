@@ -6,29 +6,16 @@
 
 import logging
 import time
-from datetime import datetime
-from typing import Optional
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .core import (
-    BaseValidator,
     CheckContext,
     CheckResult,
     CheckResultSummary,
     SeverityLevel,
     ValidationIssue,
     ValidatorRegistry,
-)
-from .validators import (
-    DataConsistencyValidator,
-    StandardCheckValidator,
-    RequirementCheckValidator,
-    SpatialCheckValidator,
-    ReferenceCheckValidator,
-    EngineeringCheckValidator,
-    ComplianceCheckValidator,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,8 +42,8 @@ class ComplianceEngine:
     async def check(
         self,
         context: CheckContext,
-        rule_ids: Optional[list[str]] = None,
-        db: Optional[AsyncSession] = None,
+        rule_ids: list[str] | None = None,
+        db: AsyncSession | None = None,
     ) -> CheckResultSummary:
         """
         执行合规性检查
@@ -94,16 +81,11 @@ class ComplianceEngine:
 
                 except Exception as e:
                     self.logger.exception(f"执行规则 {rule.get('rule_id')} 时出错")
-                    all_issues.append(ValidationIssue(
-                        rule_id=rule.get("rule_id", ""),
-                        rule_name=rule.get("name", ""),
-                        severity=SeverityLevel.WARNING,
-                        check_result=CheckResult.ERROR,
-                        message=f"规则执行异常: {str(e)}",
-                        details={"exception": str(e)}
-                    ))
+                    all_issues.append(
+                        ValidationIssue(rule_id=rule.get("rule_id", ""), rule_name=rule.get("name", ""), severity=SeverityLevel.WARNING, check_result=CheckResult.ERROR, message=f"规则执行异常: {str(e)}", details={"exception": str(e)})
+                    )
 
-        except Exception as e:
+        except Exception:
             self.logger.exception("执行合规性检查时出错")
             raise
 
@@ -124,26 +106,13 @@ class ComplianceEngine:
         if db is not None and (failed > 0 or warnings > 0):
             await self._log_execution(db, all_issues, context)
 
-        return CheckResultSummary(
-            total_rules=total_rules,
-            passed=passed,
-            failed=failed,
-            warnings=warnings,
-            errors=errors,
-            skipped=skipped,
-            duration_ms=duration_ms,
-            issues=all_issues
-        )
+        return CheckResultSummary(total_rules=total_rules, passed=passed, failed=failed, warnings=warnings, errors=errors, skipped=skipped, duration_ms=duration_ms, issues=all_issues)
 
-    async def _get_rules(
-        self,
-        rule_ids: Optional[list[str]],
-        context: CheckContext,
-        db: Optional[AsyncSession]
-    ) -> list[dict]:
+    async def _get_rules(self, rule_ids: list[str] | None, context: CheckContext, db: AsyncSession | None) -> list[dict]:
         """获取要执行的规则"""
-        from ..models import ComplianceRule
         from sqlalchemy import select
+
+        from ..models import ComplianceRule
 
         if db is None:
             # 如果没有数据库会话，返回内存中的种子数据
@@ -161,7 +130,6 @@ class ComplianceEngine:
 
         if context.report_type:
             # 报告类型筛选（使用 PostgreSQL 数组包含）
-            from sqlalchemy.dialects.postgresql import ARRAY
             stmt = stmt.where(ComplianceRule.report_types.contains([context.report_type]))
 
         result = await db.execute(stmt)
@@ -169,11 +137,7 @@ class ComplianceEngine:
 
         return [self._rule_to_dict(rule) for rule in rules]
 
-    def _get_rules_from_seed(
-        self,
-        rule_ids: Optional[list[str]],
-        context: CheckContext
-    ) -> list[dict]:
+    def _get_rules_from_seed(self, rule_ids: list[str] | None, context: CheckContext) -> list[dict]:
         """从种子数据获取规则"""
         from ..seed_loader import get_seed_loader
 
@@ -223,11 +187,7 @@ class ComplianceEngine:
             "auto_fix_suggestion": rule.auto_fix_suggestion,
         }
 
-    async def _execute_rule(
-        self,
-        context: CheckContext,
-        rule: dict
-    ) -> list[ValidationIssue]:
+    async def _execute_rule(self, context: CheckContext, rule: dict) -> list[ValidationIssue]:
         """执行单条规则"""
         rule_type = rule.get("type", "")
         validator_class = ValidatorRegistry.get_validator(rule_type)
@@ -245,26 +205,13 @@ class ComplianceEngine:
 
             # 为没有问题的规则添加 PASS 状态
             if not issues:
-                issues.append(ValidationIssue(
-                    rule_id=rule.get("rule_id", ""),
-                    rule_name=rule.get("name", ""),
-                    severity=SeverityLevel.INFO,
-                    check_result=CheckResult.PASS,
-                    message="检查通过"
-                ))
+                issues.append(ValidationIssue(rule_id=rule.get("rule_id", ""), rule_name=rule.get("name", ""), severity=SeverityLevel.INFO, check_result=CheckResult.PASS, message="检查通过"))
 
             return issues
 
         except Exception as e:
             self.logger.exception(f"验证器执行失败: {e}")
-            return [ValidationIssue(
-                rule_id=rule.get("rule_id", ""),
-                rule_name=rule.get("name", ""),
-                severity=SeverityLevel.WARNING,
-                check_result=CheckResult.ERROR,
-                message=f"验证器执行失败: {str(e)}",
-                details={"exception": str(e)}
-            )]
+            return [ValidationIssue(rule_id=rule.get("rule_id", ""), rule_name=rule.get("name", ""), severity=SeverityLevel.WARNING, check_result=CheckResult.ERROR, message=f"验证器执行失败: {str(e)}", details={"exception": str(e)})]
 
     async def _log_execution(
         self,
@@ -274,8 +221,9 @@ class ComplianceEngine:
     ) -> None:
         """记录执行日志"""
         try:
-            from ..models import ComplianceRule, ComplianceRuleLog
             from sqlalchemy import select
+
+            from ..models import ComplianceRule, ComplianceRuleLog
 
             for issue in issues:
                 # 跳过 PASS 状态
@@ -283,9 +231,7 @@ class ComplianceEngine:
                     continue
 
                 # 查找规则
-                stmt = select(ComplianceRule).where(
-                    ComplianceRule.rule_id == issue.rule_id
-                )
+                stmt = select(ComplianceRule).where(ComplianceRule.rule_id == issue.rule_id)
                 result = await db.execute(stmt)
                 rule = result.scalar_one_or_none()
 
@@ -320,7 +266,7 @@ class ComplianceEngine:
 
 
 # 全局引擎实例
-_engine: Optional[ComplianceEngine] = None
+_engine: ComplianceEngine | None = None
 
 
 def get_engine() -> ComplianceEngine:

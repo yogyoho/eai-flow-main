@@ -3,7 +3,6 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import delete as sql_delete
@@ -32,7 +31,7 @@ class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
 
     @staticmethod
-    def _get_ragflow_client() -> Optional[RAGFlowClient]:
+    def _get_ragflow_client() -> RAGFlowClient | None:
         """Get RAGFlow client if configured."""
         config = get_extensions_config()
         if not config.ragflow.api_key:
@@ -41,27 +40,18 @@ class KnowledgeBaseService:
         return RAGFlowClient()
 
     @staticmethod
-    async def get_kb_by_id(db: AsyncSession, kb_id: UUID) -> Optional[KnowledgeBase]:
+    async def get_kb_by_id(db: AsyncSession, kb_id: UUID) -> KnowledgeBase | None:
         stmt = select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(KnowledgeBase.id == kb_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
     async def list_kbs(db: AsyncSession, owner_id: UUID, skip: int = 0, limit: int = 100) -> tuple[list[KnowledgeBase], int]:
-        query = (
-            select(KnowledgeBase)
-            .options(joinedload(KnowledgeBase.owner))
-            .where(or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public"))
-            .offset(skip)
-            .limit(limit)
-            .order_by(KnowledgeBase.created_at.desc())
-        )
+        query = select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public")).offset(skip).limit(limit).order_by(KnowledgeBase.created_at.desc())
         result = await db.execute(query)
         kbs = result.scalars().all()
 
-        count_query = select(func.count(KnowledgeBase.id)).where(
-            or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public")
-        )
+        count_query = select(func.count(KnowledgeBase.id)).where(or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public"))
         count_result = await db.execute(count_query)
         total = count_result.scalar() or 0
 
@@ -212,7 +202,7 @@ class DocumentService:
     """Document service with RAGFlow integration."""
 
     @staticmethod
-    def _get_ragflow_client() -> Optional[RAGFlowClient]:
+    def _get_ragflow_client() -> RAGFlowClient | None:
         """Get RAGFlow client if configured."""
         config = get_extensions_config()
         if not config.ragflow.api_key:
@@ -220,23 +210,18 @@ class DocumentService:
         return RAGFlowClient()
 
     @staticmethod
-    async def get_doc_by_id(db: AsyncSession, doc_id: UUID) -> Optional[Document]:
+    async def get_doc_by_id(db: AsyncSession, doc_id: UUID) -> Document | None:
         from sqlalchemy import select
+
         stmt = select(Document).where(Document.id == doc_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
     async def list_docs(db: AsyncSession, kb_id: UUID, skip: int = 0, limit: int = 100) -> tuple[list[Document], int]:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
 
-        query = (
-            select(Document)
-            .where(Document.knowledge_base_id == kb_id)
-            .offset(skip)
-            .limit(limit)
-            .order_by(Document.created_at.desc())
-        )
+        query = select(Document).where(Document.knowledge_base_id == kb_id).offset(skip).limit(limit).order_by(Document.created_at.desc())
         result = await db.execute(query)
         docs = result.scalars().all()
 

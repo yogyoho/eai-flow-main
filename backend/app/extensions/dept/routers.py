@@ -3,19 +3,17 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.database import get_db
 from app.extensions.dept.service import DepartmentService
-from app.extensions.models import Department
 from app.extensions.schemas import (
     CurrentUser,
     DepartmentCreate,
     DepartmentListResponse,
     DepartmentResponse,
-    DepartmentTreeResponse,
     DepartmentUpdate,
     MessageResponse,
 )

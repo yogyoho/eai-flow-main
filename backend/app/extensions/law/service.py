@@ -4,24 +4,20 @@ import logging
 import os
 import tempfile
 from datetime import datetime
-from typing import Optional
-from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.extensions.config import get_extensions_config
 from app.extensions.knowledge.client import RAGFlowClient
-
 from app.extensions.models import Law, LawTemplateRelation
+
 from .schemas import (
     LawCreate,
-    LawListResponse,
     LawMetadata,
     LawResponse,
     LawStatistics,
-    LawSyncStatus,
     LawTemplateRelationCreate,
     LawUpdate,
     RAGFlowKBStatus,
@@ -60,7 +56,7 @@ class LawService:
             return LawService._parse_docx(file_path)
         else:
             # txt / md
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
 
     @staticmethod
@@ -94,9 +90,7 @@ class LawService:
         return RAGFLOW_KB_MAPPING.get(law_type, "ragflow-laws-default")
 
     @staticmethod
-    async def ensure_ragflow_kb_exists(
-        rf_client: RAGFlowClient, law_type: str
-    ) -> Optional[str]:
+    async def ensure_ragflow_kb_exists(rf_client: RAGFlowClient, law_type: str) -> str | None:
         """确保指定类型的RAGFlow知识库存在，返回dataset_id"""
         kb_name = LawService.get_ragflow_dataset_id(law_type)
 
@@ -134,11 +128,7 @@ class LawService:
         source_url = metadata.get("source_url")
 
         # 获取关联的模板
-        linked_templates = [
-            str(rel.template_id)
-            for rel in (law.__dict__.get("template_relations") or [])
-            if rel.template_id
-        ]
+        linked_templates = [str(rel.template_id) for rel in (law.__dict__.get("template_relations") or []) if rel.template_id]
 
         return LawResponse(
             id=law.id,
@@ -193,9 +183,9 @@ class LawService:
     @staticmethod
     async def list_laws(
         db: AsyncSession,
-        law_type: Optional[str] = None,
-        status: Optional[str] = None,
-        keyword: Optional[str] = None,
+        law_type: str | None = None,
+        status: str | None = None,
+        keyword: str | None = None,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[Law], int]:
@@ -207,10 +197,7 @@ class LawService:
         if status:
             query = query.where(Law.status == status)
         if keyword:
-            query = query.where(
-                Law.title.ilike(f"%{keyword}%")
-                | Law.law_number.ilike(f"%{keyword}%")
-            )
+            query = query.where(Law.title.ilike(f"%{keyword}%") | Law.law_number.ilike(f"%{keyword}%"))
 
         # 统计总数
         count_query = select(func.count()).select_from(query.subquery())
@@ -234,33 +221,23 @@ class LawService:
         total_count = total_result.scalar() or 0
 
         # 现行有效
-        active_result = await db.execute(
-            select(func.count(Law.id)).where(Law.status == "active")
-        )
+        active_result = await db.execute(select(func.count(Law.id)).where(Law.status == "active"))
         active_count = active_result.scalar() or 0
 
         # 已废止
-        deprecated_result = await db.execute(
-            select(func.count(Law.id)).where(Law.status == "deprecated")
-        )
+        deprecated_result = await db.execute(select(func.count(Law.id)).where(Law.status == "deprecated"))
         deprecated_count = deprecated_result.scalar() or 0
 
         # 已同步
-        synced_result = await db.execute(
-            select(func.count(Law.id)).where(Law.is_synced == "synced")
-        )
+        synced_result = await db.execute(select(func.count(Law.id)).where(Law.is_synced == "synced"))
         synced_count = synced_result.scalar() or 0
 
         # 待同步
-        pending_result = await db.execute(
-            select(func.count(Law.id)).where(Law.is_synced == "pending")
-        )
+        pending_result = await db.execute(select(func.count(Law.id)).where(Law.is_synced == "pending"))
         pending_sync_count = pending_result.scalar() or 0
 
         # 同步失败
-        failed_result = await db.execute(
-            select(func.count(Law.id)).where(Law.is_synced == "failed")
-        )
+        failed_result = await db.execute(select(func.count(Law.id)).where(Law.is_synced == "failed"))
         failed_sync_count = failed_result.scalar() or 0
 
         return LawStatistics(
@@ -275,25 +252,19 @@ class LawService:
     @staticmethod
     async def get_by_type_counts(db: AsyncSession) -> dict[str, int]:
         """获取按类型统计的数量"""
-        result = await db.execute(
-            select(Law.law_type, func.count(Law.id)).group_by(Law.law_type)
-        )
+        result = await db.execute(select(Law.law_type, func.count(Law.id)).group_by(Law.law_type))
         return {row[0]: row[1] for row in result.all()}
 
     @staticmethod
     async def get_by_status_counts(db: AsyncSession) -> dict[str, int]:
         """获取按状态统计的数量"""
-        result = await db.execute(
-            select(Law.status, func.count(Law.id)).group_by(Law.status)
-        )
+        result = await db.execute(select(Law.status, func.count(Law.id)).group_by(Law.status))
         return {row[0]: row[1] for row in result.all()}
 
     @staticmethod
-    async def get_law(db: AsyncSession, law_id: str) -> Optional[Law]:
+    async def get_law(db: AsyncSession, law_id: str) -> Law | None:
         """获取单个法规"""
-        query = select(Law).options(joinedload(Law.template_relations)).where(
-            Law.id == law_id
-        )
+        query = select(Law).options(joinedload(Law.template_relations)).where(Law.id == law_id)
         result = await db.execute(query)
         return result.unique().scalar_one_or_none()
 
@@ -329,9 +300,7 @@ class LawService:
         return law
 
     @staticmethod
-    async def update_law(
-        db: AsyncSession, law: Law, data: LawUpdate
-    ) -> Law:
+    async def update_law(db: AsyncSession, law: Law, data: LawUpdate) -> Law:
         """更新法规"""
         if data.title is not None:
             law.title = data.title
@@ -428,11 +397,7 @@ class LawService:
             metadata = law.metadata_json or {}
             law_metadata = LawMetadata(
                 law_number=law.law_number,
-                effective_date=(
-                    law.effective_date.strftime("%Y-%m-%d")
-                    if law.effective_date
-                    else None
-                ),
+                effective_date=(law.effective_date.strftime("%Y-%m-%d") if law.effective_date else None),
                 issuing_authority=law.department,
                 keywords=metadata.get("keywords", []),
                 referred_laws=metadata.get("referred_laws", []),
@@ -626,9 +591,7 @@ class LawService:
         return relation
 
     @staticmethod
-    async def unlink_template(
-        db: AsyncSession, law: Law, template_id: str
-    ) -> bool:
+    async def unlink_template(db: AsyncSession, law: Law, template_id: str) -> bool:
         """取消关联模板"""
         result = await db.execute(
             select(LawTemplateRelation).where(
@@ -649,9 +612,7 @@ class LawService:
     @staticmethod
     async def get_law_templates(db: AsyncSession, law_id: str) -> list[dict]:
         """获取法规关联的所有模板"""
-        result = await db.execute(
-            select(LawTemplateRelation).where(LawTemplateRelation.law_id == law_id)
-        )
+        result = await db.execute(select(LawTemplateRelation).where(LawTemplateRelation.law_id == law_id))
         relations = result.scalars().all()
 
         return [
@@ -666,15 +627,8 @@ class LawService:
         ]
 
     @staticmethod
-    async def get_template_laws(
-        db: AsyncSession, template_id: str
-    ) -> list[LawResponse]:
+    async def get_template_laws(db: AsyncSession, template_id: str) -> list[LawResponse]:
         """获取引用某模板的所有法规"""
-        result = await db.execute(
-            select(Law)
-            .options(joinedload(Law.template_relations))
-            .join(LawTemplateRelation, LawTemplateRelation.law_id == Law.id)
-            .where(LawTemplateRelation.template_id == template_id)
-        )
+        result = await db.execute(select(Law).options(joinedload(Law.template_relations)).join(LawTemplateRelation, LawTemplateRelation.law_id == Law.id).where(LawTemplateRelation.template_id == template_id))
         laws = list(result.scalars().unique().all())
         return [LawService._law_to_response(law) for law in laws]

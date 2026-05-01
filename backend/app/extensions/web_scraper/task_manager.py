@@ -3,10 +3,10 @@
 import asyncio
 import json
 import logging
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import AsyncGenerator, Optional
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class TaskStatus(str, Enum):
     """Task status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -24,21 +25,22 @@ class TaskStatus(str, Enum):
 @dataclass
 class ScrapTask:
     """Scrape task."""
+
     task_id: str
     url: str
     prompt: str
     provider: str = "browser_use_local"
-    schema_name: Optional[str] = None
+    schema_name: str | None = None
     proxy_enabled: bool = False
     auth_enabled: bool = False
     status: TaskStatus = TaskStatus.PENDING
-    result: Optional[str] = None
-    structured_data: Optional[dict] = None
-    error: Optional[str] = None
-    provider_used: Optional[str] = None
+    result: str | None = None
+    structured_data: dict | None = None
+    error: str | None = None
+    provider_used: str | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class TaskManager:
@@ -83,13 +85,13 @@ class TaskManager:
                 if event.get("type") in ("result", "error"):
                     break
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': datetime.utcnow().isoformat()})}\n\n"
             except Exception as e:
                 logger.error(f"SSE stream error: {e}")
                 break
 
-    def get(self, task_id: str) -> Optional[ScrapTask]:
+    def get(self, task_id: str) -> ScrapTask | None:
         """Get a task."""
         return self._tasks.get(task_id)
 
@@ -156,11 +158,7 @@ class TaskManager:
     def _cleanup(self) -> None:
         """Clean up tasks older than 24 hours."""
         now = datetime.utcnow()
-        to_delete = [
-            tid
-            for tid, task in self._tasks.items()
-            if (now - task.created_at).total_seconds() > 86400
-        ]
+        to_delete = [tid for tid, task in self._tasks.items() if (now - task.created_at).total_seconds() > 86400]
         for tid in to_delete:
             del self._tasks[tid]
             self._queues.pop(tid, None)

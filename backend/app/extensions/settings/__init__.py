@@ -1,9 +1,9 @@
 """Settings extension module."""
 
 from app.extensions.settings.validator import (
+    ModelValidationDetails,
     ModelValidationRequest,
     ModelValidationResult,
-    ModelValidationDetails,
     validate_models,
 )
 

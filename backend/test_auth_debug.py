@@ -1,18 +1,22 @@
 import sys
-import os
+
 sys.path.insert(0, r"D:\eai\eai-flow-main\backend")
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
+
 load_dotenv(Path(r"D:\eai\eai-flow-main\.env"), override=True)
 
 import asyncio
+
 from sqlalchemy import select
 
-from app.extensions.database import get_db_context
 from app.extensions.auth.jwt import verify_token
-from app.extensions.models import User, Role
+from app.extensions.database import get_db_context
+from app.extensions.models import Role, User
 
 TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwicGVybWlzc2lvbnMiOlsiKiJdLCJleHAiOjE3NzY2NTE2NTYsInR5cGUiOiJhY2Nlc3MifQ.cF4tWbhnpB8ZmAbG0TxsmcGPBGjHsQ4B4_8LVCRvM7g"
+
 
 async def test_auth():
     print(f"Token: {TOKEN[:50]}...")
@@ -44,6 +48,7 @@ async def test_auth():
                 print("Role not found!")
         else:
             print("User has no role_id!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_auth())

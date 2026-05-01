@@ -21,10 +21,13 @@ class ThreadMetaRepository(ThreadMetaStore):
     def _row_to_dict(row: ThreadMetaRow) -> dict[str, Any]:
         d = row.to_dict()
         d["metadata"] = d.pop("metadata_json", {})
+        now = datetime.now(UTC).isoformat()
         for key in ("created_at", "updated_at"):
             val = d.get(key)
             if isinstance(val, datetime):
                 d[key] = val.isoformat()
+            elif not val:
+                d[key] = now
         return d
 
     async def create(

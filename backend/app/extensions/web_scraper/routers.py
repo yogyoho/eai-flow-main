@@ -3,29 +3,28 @@
 import logging
 import os
 from uuid import UUID
-from typing import Optional
 
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
+from app.extensions.web_scraper.predefined_schemas import list_all_schemas
 from app.extensions.web_scraper.schemas import (
+    ImportResultResponse,
+    ScrapDraftCreate,
+    ScrapDraftDetailResponse,
+    ScrapDraftImport,
+    ScrapDraftListResponse,
+    ScrapDraftResponse,
+    ScrapDraftUpdate,
     ScrapeRequest,
     ScrapeResponse,
     ScrapeResultResponse,
-    ScrapDraftCreate,
-    ScrapDraftUpdate,
-    ScrapDraftImport,
-    ScrapDraftResponse,
-    ScrapDraftDetailResponse,
-    ScrapDraftListResponse,
-    ImportResultResponse,
 )
-from app.extensions.web_scraper.service import scraper_service, ScrapeConfig, ProxyConfig, AuthConfig
-from app.extensions.web_scraper.task_manager import task_manager, TaskStatus
-from app.extensions.web_scraper.predefined_schemas import list_all_schemas
+from app.extensions.web_scraper.service import AuthConfig, ProxyConfig, ScrapeConfig, scraper_service
 from app.extensions.web_scraper.services.draft_service import ScrapDraftService
+from app.extensions.web_scraper.task_manager import TaskStatus, task_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/web-scraper", tags=["Web Scraper"])
@@ -241,7 +240,6 @@ async def create_draft(
     current_user=Depends(require_permission("kb:read")),
 ):
     """Create a scrape draft."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.create_draft(
         db=db,
@@ -253,7 +251,7 @@ async def create_draft(
 
 @router.get("/drafts", response_model=ScrapDraftListResponse)
 async def list_drafts(
-    status_filter: Optional[str] = Query(None, alias="status", description="Status filter: draft/imported/deleted"),
+    status_filter: str | None = Query(None, alias="status", description="Status filter: draft/imported/deleted"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -283,7 +281,6 @@ async def get_draft(
     current_user=Depends(require_permission("kb:read")),
 ):
     """Get draft detail."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.get_draft(db, draft_id, current_user.id)
     if not draft:
@@ -302,7 +299,6 @@ async def update_draft(
     current_user=Depends(require_permission("kb:read")),
 ):
     """Update draft."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.get_draft(db, draft_id, current_user.id)
     if not draft:
@@ -323,7 +319,6 @@ async def delete_draft(
     current_user=Depends(require_permission("kb:read")),
 ):
     """Delete draft (soft delete)."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.get_draft(db, draft_id, current_user.id)
     if not draft:
@@ -341,7 +336,6 @@ async def import_draft(
     current_user=Depends(require_permission("kb:upload")),
 ):
     """Import draft to knowledge base."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.get_draft(db, draft_id, current_user.id)
     if not draft:
@@ -376,7 +370,6 @@ async def preview_draft(
     current_user=Depends(require_permission("kb:read")),
 ):
     """Preview draft content."""
-    from app.extensions.schemas import CurrentUser
 
     draft = await ScrapDraftService.get_draft(db, draft_id, current_user.id)
     if not draft:

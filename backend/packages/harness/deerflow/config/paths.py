@@ -137,10 +137,10 @@ class Paths:
 
     def agent_dir(self, name: str, user_id: str | None = None) -> Path:
         """Directory for a specific agent.
-        
+
         If user_id is provided, agents are stored under per-user subdirectories:
         `{base_dir}/agents/{user_id}/{name}/`
-        
+
         If user_id is None, agents are stored in the global location (backward compatible):
         `{base_dir}/agents/{name}/`
         """
@@ -150,7 +150,7 @@ class Paths:
 
     def agent_memory_file(self, name: str, user_id: str | None = None) -> Path:
         """Per-agent memory file.
-        
+
         With user_id: `{base_dir}/agents/{user_id}/{name}/memory.json`
         Without user_id: `{base_dir}/agents/{name}/memory.json`
         """

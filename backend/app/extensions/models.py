@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,34 +24,22 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    dept_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
-    )
-    role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True
-    )
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dept_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True)
+    role_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    emp_no: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    hire_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    emp_no: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
-    department: Mapped[Optional["Department"]] = relationship(
-        "Department", back_populates="users", foreign_keys=[dept_id]
-    )
+    department: Mapped[Optional["Department"]] = relationship("Department", back_populates="users", foreign_keys=[dept_id])
     role: Mapped[Optional["Role"]] = relationship("Role", back_populates="users")
-    user_departments: Mapped[list["UserDepartment"]] = relationship(
-        "UserDepartment", back_populates="user", cascade="all, delete-orphan"
-    )
+    user_departments: Mapped[list["UserDepartment"]] = relationship("UserDepartment", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username})>"
@@ -71,23 +59,15 @@ class Role(Base):
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     permissions: Mapped[list] = mapped_column(ARRAY(String), default=[])
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     level: Mapped[int] = mapped_column(Integer, default=10)
-    parent_role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
+    parent_role_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships
     users: Mapped[list["User"]] = relationship("User", back_populates="role")
-    parent_role: Mapped[Optional["Role"]] = relationship(
-        "Role", remote_side=[id], back_populates="child_roles"
-    )
-    child_roles: Mapped[list["Role"]] = relationship(
-        "Role", back_populates="parent_role"
-    )
+    parent_role: Mapped[Optional["Role"]] = relationship("Role", remote_side=[id], back_populates="child_roles")
+    child_roles: Mapped[list["Role"]] = relationship("Role", back_populates="parent_role")
 
     def __repr__(self) -> str:
         return f"<Role(id={self.id}, name={self.name})>"
@@ -103,34 +83,20 @@ class Department(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
-    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
-    leader_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    leader_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships
-    parent: Mapped[Optional["Department"]] = relationship(
-        "Department", back_populates="children", remote_side=[id]
-    )
-    children: Mapped[list["Department"]] = relationship(
-        "Department", back_populates="parent"
-    )
-    users: Mapped[list["User"]] = relationship(
-        "User", back_populates="department", foreign_keys="User.dept_id"
-    )
-    user_departments: Mapped[list["UserDepartment"]] = relationship(
-        "UserDepartment", back_populates="department", cascade="all, delete-orphan"
-    )
+    parent: Mapped[Optional["Department"]] = relationship("Department", back_populates="children", remote_side=[id])
+    children: Mapped[list["Department"]] = relationship("Department", back_populates="parent")
+    users: Mapped[list["User"]] = relationship("User", back_populates="department", foreign_keys="User.dept_id")
+    user_departments: Mapped[list["UserDepartment"]] = relationship("UserDepartment", back_populates="department", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Department(id={self.id}, name={self.name})>"
@@ -177,20 +143,16 @@ class KnowledgeBase(Base):
         default=uuid.uuid4,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    ragflow_dataset_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ragflow_dataset_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     access_type: Mapped[str] = mapped_column(String(20), default="private")
     kb_type: Mapped[str] = mapped_column(String(50), default="ragflow")
-    allowed_depts: Mapped[Optional[list]] = mapped_column(ARRAY(UUID), nullable=True)
-    embedding_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    allowed_depts: Mapped[list | None] = mapped_column(ARRAY(UUID), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     chunk_method: Mapped[str] = mapped_column(String(50), default="naive")
     status: Mapped[str] = mapped_column(String(20), default="active")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships
     owner: Mapped["User"] = relationship("User", backref="knowledge_bases")
@@ -209,33 +171,25 @@ class Document(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    knowledge_base_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("knowledge_bases.id"), nullable=False
-    )
+    knowledge_base_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, default=0)
-    file_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    ragflow_document_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    file_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    ragflow_document_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships
-    knowledge_base: Mapped["KnowledgeBase"] = relationship(
-        "KnowledgeBase", back_populates="documents"
-    )
+    knowledge_base: Mapped["KnowledgeBase"] = relationship("KnowledgeBase", back_populates="documents")
 
     def __repr__(self) -> str:
         return f"<Document(id={self.id}, name={self.name})>"
 
 
 # Add back-populates for KnowledgeBase
-KnowledgeBase.documents: Mapped[list[Document]] = relationship(
-    "Document", back_populates="knowledge_base"
-)
+KnowledgeBase.documents: Mapped[list[Document]] = relationship("Document", back_populates="knowledge_base")
 
 
 class AIDocument(Base):
@@ -243,27 +197,17 @@ class AIDocument(Base):
 
     __tablename__ = "ai_documents"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
-    source_thread_id: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    source_thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     folder: Mapped[str] = mapped_column(String(255), default="默认文件夹", nullable=False)
     is_starred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="ai_documents")
 
@@ -293,14 +237,10 @@ class Conversation(Base):
         nullable=False,
         index=True,
     )
-    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="conversations")
 
@@ -308,13 +248,9 @@ class Conversation(Base):
         return f"<Conversation(id={self.id}, thread_id={self.thread_id}, user_id={self.user_id})>"
 
 
-User.conversations: Mapped[list[Conversation]] = relationship(
-    "Conversation", back_populates="user"
-)
+User.conversations: Mapped[list[Conversation]] = relationship("Conversation", back_populates="user")
 
-User.ai_documents: Mapped[list[AIDocument]] = relationship(
-    "AIDocument", back_populates="user"
-)
+User.ai_documents: Mapped[list[AIDocument]] = relationship("AIDocument", back_populates="user")
 
 
 class UserMemory(Base):
@@ -336,12 +272,8 @@ class UserMemory(Base):
     )
     memory_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     version: Mapped[str] = mapped_column(String(10), nullable=False, default="1.0")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="user_memories")
 
@@ -349,9 +281,7 @@ class UserMemory(Base):
         return f"<UserMemory(user_id={self.user_id})>"
 
 
-User.user_memories: Mapped[list[UserMemory]] = relationship(
-    "UserMemory", back_populates="user"
-)
+User.user_memories: Mapped[list[UserMemory]] = relationship("UserMemory", back_populates="user")
 
 
 class ScrapDraft(Base):
@@ -373,14 +303,14 @@ class ScrapDraft(Base):
     )
 
     source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
-    source_title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    source_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     schema_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    schema_display_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    raw_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    structured_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    schema_display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    raw_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    structured_data: Mapped[str | None] = mapped_column(Text, nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     tags: Mapped[list] = mapped_column(ARRAY(String), default=[])
-    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source_provider: Mapped[str] = mapped_column(String(50), default="browser_use_local")
     scrape_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     status: Mapped[str] = mapped_column(
@@ -389,12 +319,12 @@ class ScrapDraft(Base):
         nullable=False,
         index=True,
     )
-    knowledge_base_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    knowledge_base_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("knowledge_bases.id"),
         nullable=True,
     )
-    document_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    document_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -432,27 +362,25 @@ class Law(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
-    law_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    law_number: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     law_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    department: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    effective_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    update_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    department: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    effective_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    update_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ref_count: Mapped[int] = mapped_column(Integer, default=0)
     view_count: Mapped[int] = mapped_column(Integer, default=0)
-    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    ragflow_dataset_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    ragflow_document_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ragflow_dataset_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ragflow_document_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_synced: Mapped[str] = mapped_column(String(10), default="pending")
-    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    metadata_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    template_relations: Mapped[list["LawTemplateRelation"]] = relationship(
-        "LawTemplateRelation", back_populates="law", cascade="all, delete-orphan"
-    )
+    template_relations: Mapped[list["LawTemplateRelation"]] = relationship("LawTemplateRelation", back_populates="law", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Law(id={self.id}, title={self.title}, type={self.law_type})>"
@@ -466,8 +394,8 @@ class LawTemplateRelation(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     law_id: Mapped[str] = mapped_column(String(36), ForeignKey("laws.id", ondelete="CASCADE"), index=True, nullable=False)
     template_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
-    section_title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    section_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     law: Mapped["Law"] = relationship("Law", back_populates="template_relations")

@@ -1,7 +1,4 @@
 import type {
-  LoginRequest,
-  LoginResponse,
-  CurrentUser,
   User,
   UserListResponse,
   CreateUserRequest,
@@ -61,10 +58,8 @@ export class ApiError extends Error {
 }
 
 async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("access_token");
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -73,6 +68,7 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
     response = await fetch(`${KF_API_BASE}${path}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
@@ -96,14 +92,7 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
         if (text) message = text.slice(0, 200);
       }
     } catch {
-      message =
-        response.status === 401
-          ? "Invalid username or password"
-          : response.statusText || `Error ${response.status}`;
-    }
-    if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = `/login?redirect=${redirect}`;
+      message = response.statusText || `Error ${response.status}`;
     }
     throw new ApiError(response.status, message);
   }
@@ -112,10 +101,8 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("access_token");
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -124,6 +111,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     response = await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
@@ -147,15 +135,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         if (text) message = text.slice(0, 200);
       }
     } catch {
-      message =
-        response.status === 401
-          ? "Invalid username or password"
-          : response.statusText || `Error ${response.status}`;
-    }
-    // 401 unauthenticated, redirect to login page
-    if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = `/login?redirect=${redirect}`;
+      message = response.statusText || `Error ${response.status}`;
     }
     throw new ApiError(response.status, message);
   }
@@ -163,26 +143,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
-// ===== Auth API =====
-
-export const authApi = {
-  login: (data: LoginRequest) =>
-    request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
-
-  logout: () =>
-    request<MessageResponse>("/auth/logout", { method: "POST" }),
-
-  refresh: (refresh_token: string) =>
-    request<LoginResponse>("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refresh_token }),
-    }),
-
-  me: () => request<CurrentUser>("/auth/me"),
-
-  register: (data: CreateUserRequest) =>
-    request<User>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
-};
+// Auth is now handled by Gateway Auth (HttpOnly cookie, sent via credentials: "include").
+// The Extensions /api/extensions/auth/* endpoints have been removed.
 
 // ===== User API =====
 
@@ -305,7 +267,6 @@ export const kbApi = {
   },
 
   uploadDoc: (kbId: string, file: File, chunkConfig?: ChunkConfig) => {
-    const token = localStorage.getItem("access_token");
     const formData = new FormData();
     formData.append("file", file);
     if (chunkConfig) {
@@ -313,7 +274,7 @@ export const kbApi = {
     }
     return fetch(`${API_BASE}/knowledge-bases/${kbId}/documents`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {
@@ -407,9 +368,8 @@ export const docmgrApi = {
   listFolders: () => request<FolderListResponse>("/docmgr/folders"),
 
   export: (id: string, format: "md" | "txt" | "docx" = "md") => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
     return fetch(`${API_BASE}/docmgr/documents/${id}/export?format=${format}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
     });
   },
 
@@ -435,10 +395,8 @@ interface ModelInfo {
 }
 
 async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("access_token");
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
   let response: Response;
@@ -446,6 +404,7 @@ async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> 
     response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL || ""}${path}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch {
     throw new ApiError(0, "Network connection failed");
@@ -642,7 +601,6 @@ export const kfApi = {
   },
 
   uploadDoc: (kbId: string, file: File, chunkConfig?: ChunkConfig) => {
-    const token = localStorage.getItem("access_token");
     const formData = new FormData();
     formData.append("file", file);
     if (chunkConfig) {
@@ -650,7 +608,7 @@ export const kfApi = {
     }
     return fetch(`${API_BASE}/knowledge-bases/${kbId}/documents`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {

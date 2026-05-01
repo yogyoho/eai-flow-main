@@ -8,18 +8,14 @@ This module validates that the merged code correctly combines:
 5. feature branch knowledge factory router in threads.py
 """
 
-import asyncio
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # 1. Memory Storage: agent_name + user_id dual isolation
 # ---------------------------------------------------------------------------
-
 from deerflow.agents.memory.storage import FileMemoryStorage, create_empty_memory
 
 
@@ -85,7 +81,9 @@ class TestStorageAgentAndUserIsolation:
             # Directly write new content to the file (simulating external modification)
             file_path = paths.user_memory_file("alice")
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text('{"version":"1.0","user":{"workContext":{"summary":"Modified externally","updatedAt":""},"personalContext":{"summary":"","updatedAt":""},"topOfMind":{"summary":"","updatedAt":""}},"history":{"recentMonths":{"summary":"","updatedAt":""},"earlierContext":{"summary":"","updatedAt":""},"longTermBackground":{"summary":"","updatedAt":""}},"facts":[],"lastUpdated":""}')
+            file_path.write_text(
+                '{"version":"1.0","user":{"workContext":{"summary":"Modified externally","updatedAt":""},"personalContext":{"summary":"","updatedAt":""},"topOfMind":{"summary":"","updatedAt":""}},"history":{"recentMonths":{"summary":"","updatedAt":""},"earlierContext":{"summary":"","updatedAt":""},"longTermBackground":{"summary":"","updatedAt":""}},"facts":[],"lastUpdated":""}'
+            )
 
             # reload() should return the externally modified version
             reloaded = storage.reload(user_id="alice")
@@ -114,15 +112,12 @@ class TestStorageAgentAndUserIsolation:
 
 from deerflow.agents.memory.updater import (
     MemoryUpdater,
-    _save_memory_to_file,
     clear_memory_data,
     create_memory_fact,
     delete_memory_fact,
     get_memory_data,
     import_memory_data,
-    reload_memory_data,
     update_memory_fact,
-    update_memory_from_conversation,
 )
 
 
@@ -207,6 +202,7 @@ class TestUpdaterMergedSignatures:
         updater = MemoryUpdater()
         # Verify signature allows agent_name and user_id kwargs
         import inspect
+
         sig = inspect.signature(updater.update_memory)
         params = list(sig.parameters.keys())
         assert "agent_name" in params, "update_memory should have agent_name param"
@@ -239,16 +235,6 @@ class TestMemoryUpdaterCorrectionSignals:
 # 3. Gateway Memory Router: user isolation via effective_user_id
 # ---------------------------------------------------------------------------
 
-from deerflow.agents.memory.updater import (
-    get_memory_data as real_get_memory_data,
-    reload_memory_data as real_reload_memory_data,
-    clear_memory_data as real_clear_memory_data,
-    create_memory_fact as real_create_memory_fact,
-    delete_memory_fact as real_delete_memory_fact,
-    update_memory_fact as real_update_memory_fact,
-    import_memory_data as real_import_memory_data,
-)
-
 
 class TestGatewayMemoryRouterIntegration:
     """Validate that gateway memory router uses effective_user_id correctly."""
@@ -264,10 +250,10 @@ class TestGatewayMemoryRouterIntegration:
 
     def test_memory_router_endpoints_have_user_id_query_param(self):
         """All memory endpoints should accept user_id query parameter."""
-        from app.gateway.routers import memory
-
         # Check that the router functions have user_id parameters
         import inspect
+
+        from app.gateway.routers import memory
 
         sig = inspect.signature(memory.get_memory)
         assert "user_id" in sig.parameters
@@ -307,6 +293,7 @@ class TestSuggestionsMerged:
     def test_model_name_from_body(self):
         """create_chat_model should use body.model_name (not request.model_name)."""
         import inspect
+
         sig = inspect.signature(suggestions.create_chat_model)
         assert "name" in sig.parameters
 
@@ -328,6 +315,7 @@ class TestSuggestionsMerged:
     def test_timeout_used_in_generate_suggestions(self):
         """generate_suggestions should use asyncio.wait_for with timeout."""
         import inspect
+
         source = inspect.getsource(suggestions.generate_suggestions)
         assert "asyncio.wait_for" in source or "timeout=" in source
 
@@ -335,6 +323,7 @@ class TestSuggestionsMerged:
 # ---------------------------------------------------------------------------
 # 5. Gateway App: extension routers + auth middleware registration
 # ---------------------------------------------------------------------------
+
 
 class TestGatewayAppRouterRegistration:
     """Validate that all extension routers are registered in create_app()."""
@@ -389,6 +378,7 @@ class TestGatewayAppRouterRegistration:
 # 6. Thread Store API: 2.0-rc thread_store.get/create vs feature references
 # ---------------------------------------------------------------------------
 
+
 class TestThreadStoreCompatibility:
     """Validate that thread_store API matches 2.0-rc implementation."""
 
@@ -413,7 +403,7 @@ class TestThreadStoreCompatibility:
 
     def test_threads_router_has_strip_reserved_metadata(self):
         """_strip_reserved_metadata should be defined and functional."""
-        from app.gateway.routers.threads import _strip_reserved_metadata, _SERVER_RESERVED_METADATA_KEYS
+        from app.gateway.routers.threads import _strip_reserved_metadata
 
         # Should strip owner_id and user_id
         result = _strip_reserved_metadata({"foo": "bar", "owner_id": "evil", "user_id": "bad"})
@@ -425,6 +415,7 @@ class TestThreadStoreCompatibility:
 # ---------------------------------------------------------------------------
 # 7. Channels Manager: EAIFlow port configuration preserved
 # ---------------------------------------------------------------------------
+
 
 class TestChannelsManagerConfig:
     """Validate channels manager uses EAIFlow port configuration."""
@@ -452,6 +443,7 @@ class TestChannelsManagerConfig:
 # ---------------------------------------------------------------------------
 # 8. Dependency Injection: no broken imports after merge
 # ---------------------------------------------------------------------------
+
 
 class TestImportIntegrity:
     """Validate that critical imports still work after merge."""
@@ -509,6 +501,7 @@ class TestImportIntegrity:
 # 9. Config reload: 2.0-rc AppConfig.from_file compatibility
 # ---------------------------------------------------------------------------
 
+
 class TestAppConfigReload:
     """Validate AppConfig class is accessible after merge."""
 
@@ -525,6 +518,7 @@ class TestAppConfigReload:
 # 10. Persistence layer: 2.0-rc auth persistence (non-destructive)
 # ---------------------------------------------------------------------------
 
+
 class TestPersistenceModule:
     """Validate that 2.0-rc persistence module exists and is importable."""
 
@@ -532,6 +526,7 @@ class TestPersistenceModule:
         """deerflow.persistence.engine should be importable."""
         try:
             from deerflow.persistence.engine import get_session_factory
+
             assert callable(get_session_factory)
         except ImportError as e:
             pytest.skip(f"Persistence module not available: {e}")
@@ -540,6 +535,7 @@ class TestPersistenceModule:
         """deerflow.persistence.user should be importable."""
         try:
             from deerflow.persistence.user.model import UserRow
+
             assert UserRow is not None
         except ImportError as e:
             pytest.skip(f"Auth persistence module not available: {e}")
@@ -548,6 +544,7 @@ class TestPersistenceModule:
 # ---------------------------------------------------------------------------
 # 11. Upload sentence stripping (2.0-rc feature preserved)
 # ---------------------------------------------------------------------------
+
 
 class TestUploadSentenceStripping:
     """Validate that upload mentions are stripped from memory summaries."""
@@ -585,6 +582,7 @@ class TestUploadSentenceStripping:
 # ---------------------------------------------------------------------------
 # 12. Run async update sync (2.0-rc feature preserved)
 # ---------------------------------------------------------------------------
+
 
 class TestRunAsyncUpdateSync:
     """Validate _run_async_update_sync handles nested event loops."""

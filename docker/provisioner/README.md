@@ -7,8 +7,8 @@ The **Sandbox Provisioner** is a FastAPI service that dynamically manages sandbo
 ```
 ┌────────────┐  HTTP  ┌─────────────┐  K8s API  ┌──────────────┐
 │  Backend   │ ─────▸ │ Provisioner │ ────────▸ │  Host K8s    │
-│  (gateway/ │        │   :8002     │           │  API Server  │
-│ langgraph) │        └─────────────┘           └──────┬───────┘
+│  (gateway) │        │   :8002     │           │  API Server  │
+│            │        └─────────────┘           └──────┬───────┘
 └────────────┘                                          │ creates
                                                         │
                           ┌─────────────┐         ┌────▼─────┐
@@ -230,7 +230,7 @@ docker exec deer-flow-provisioner curl -X DELETE http://localhost:8002/api/sandb
 
 ### Verify from Backend Containers
 
-Once a sandbox is created, the backend containers (gateway, langgraph) can access it:
+Once a sandbox is created, the backend container (gateway, with embedded LangGraph runtime) can access it:
 
 ```bash
 # Get sandbox URL from provisioner

@@ -6,7 +6,6 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-
 _DICTIONARY_FILE = Path(__file__).parent / "data" / "rule_dictionaries.json"
 
 

@@ -1,17 +1,14 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
-import { authApi, ApiError } from "../api";
-import type { CurrentUser, LoginRequest } from "../types";
+import type { CurrentUser } from "../types";
 
 interface AuthContextType {
   user: CurrentUser | null;
   isLoading: boolean;
-  accessToken: string | null;
-  login: (data: LoginRequest) => Promise<void>;
+  login: () => void;
   logout: () => void;
-  refreshToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,81 +16,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    setAccessToken(token);
-    if (token) {
-      authApi
-        .me()
-        .then((u) => {
-          localStorage.setItem("user_id", u.id);
+    fetch("/api/extensions/users/me", { credentials: "include" })
+      .then(async (res) => {
+        if (res.ok) {
+          const u: CurrentUser = await res.json();
           setUser(u);
-        })
-        .catch(() => {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user_id");
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
+        }
+      })
+      .catch(() => {
+        // Not authenticated — Gateway Auth will handle the login flow.
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (data: LoginRequest) => {
-    const response = await authApi.login(data);
-    localStorage.setItem("access_token", response.access_token);
-    localStorage.setItem("refresh_token", response.refresh_token);
-    setAccessToken(response.access_token);
-    const u = await authApi.me();
-    localStorage.setItem("user_id", u.id);
-    setUser(u);
+  const login = () => {
+    const redirect = encodeURIComponent(
+      typeof window !== "undefined" ? window.location.pathname + window.location.search : "/docmgr"
+    );
+    window.location.href = `/login?redirect=${redirect}`;
   };
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_id");
-    setAccessToken(null);
-    setUser(null);
-    if (typeof window !== "undefined") {
-      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = `/login?redirect=${redirect}`;
-    }
+    fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" })
+      .finally(() => {
+        setUser(null);
+        window.location.href = "/";
+      });
   };
 
-  const refreshToken = useCallback(async () => {
-    const refresh_token = localStorage.getItem("refresh_token");
-    if (!refresh_token) {
-      return;
-    }
-    try {
-      const response = await authApi.refresh(refresh_token);
-      localStorage.setItem("access_token", response.access_token);
-      localStorage.setItem("refresh_token", response.refresh_token);
-      setAccessToken(response.access_token);
-      const u = await authApi.me();
-      localStorage.setItem("user_id", u.id);
-    } catch {
-      console.warn("Token refresh failed, will retry on next request");
-    }
-  }, []);
-
-  useEffect(() => {
-    const refreshInterval = 50 * 60 * 1000;
-    const intervalId = setInterval(() => {
-      if (localStorage.getItem("refresh_token")) {
-        refreshToken().catch(console.warn);
-      }
-    }, refreshInterval);
-
-    return () => clearInterval(intervalId);
-  }, [refreshToken]);
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, accessToken, login, logout, refreshToken }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

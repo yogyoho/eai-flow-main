@@ -1,7 +1,7 @@
 """Pydantic schemas for law management."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -10,46 +10,47 @@ class LawBase(BaseModel):
     """Law base schema."""
 
     title: str = Field(..., description="Law title")
-    law_number: Optional[str] = Field(None, description="Law number, e.g. GB 3095-2012")
+    law_number: str | None = Field(None, description="Law number, e.g. GB 3095-2012")
     law_type: str = Field(..., description="Law type")
-    status: Optional[str] = Field("active", description="Status: active, deprecated, updating")
-    department: Optional[str] = Field(None, description="Issuing department")
-    effective_date: Optional[datetime] = Field(None, description="Effective date")
-    update_date: Optional[datetime] = Field(None, description="Update date")
-    content: Optional[str] = Field(None, description="Law body content")
-    summary: Optional[str] = Field(None, description="Summary")
-    keywords: Optional[list[str]] = Field(None, description="Keywords")
-    referred_laws: Optional[list[str]] = Field(None, description="Referenced laws")
-    sector: Optional[str] = Field(None, description="Applicable industry")
-    version: Optional[str] = Field(None, description="Version number")
-    supersedes: Optional[str] = Field(None, description="Superseded old law")
-    superseded_by: Optional[str] = Field(None, description="Superseded by")
-    source_url: Optional[str] = Field(None, description="Source URL")
+    status: str | None = Field("active", description="Status: active, deprecated, updating")
+    department: str | None = Field(None, description="Issuing department")
+    effective_date: datetime | None = Field(None, description="Effective date")
+    update_date: datetime | None = Field(None, description="Update date")
+    content: str | None = Field(None, description="Law body content")
+    summary: str | None = Field(None, description="Summary")
+    keywords: list[str] | None = Field(None, description="Keywords")
+    referred_laws: list[str] | None = Field(None, description="Referenced laws")
+    sector: str | None = Field(None, description="Applicable industry")
+    version: str | None = Field(None, description="Version number")
+    supersedes: str | None = Field(None, description="Superseded old law")
+    superseded_by: str | None = Field(None, description="Superseded by")
+    source_url: str | None = Field(None, description="Source URL")
 
 
 class LawCreate(LawBase):
     """Create law request."""
+
     pass
 
 
 class LawUpdate(BaseModel):
     """Update law request."""
 
-    title: Optional[str] = None
-    law_number: Optional[str] = None
-    law_type: Optional[str] = None
-    status: Optional[str] = None
-    department: Optional[str] = None
-    effective_date: Optional[datetime] = None
-    update_date: Optional[datetime] = None
-    content: Optional[str] = None
-    summary: Optional[str] = None
-    keywords: Optional[list[str]] = None
-    referred_laws: Optional[list[str]] = None
-    sector: Optional[str] = None
-    supersedes: Optional[str] = None
-    superseded_by: Optional[str] = None
-    source_url: Optional[str] = None
+    title: str | None = None
+    law_number: str | None = None
+    law_type: str | None = None
+    status: str | None = None
+    department: str | None = None
+    effective_date: datetime | None = None
+    update_date: datetime | None = None
+    content: str | None = None
+    summary: str | None = None
+    keywords: list[str] | None = None
+    referred_laws: list[str] | None = None
+    sector: str | None = None
+    supersedes: str | None = None
+    superseded_by: str | None = None
+    source_url: str | None = None
 
 
 class LawMetadata(BaseModel):
@@ -57,14 +58,14 @@ class LawMetadata(BaseModel):
 
     keywords: list[str] = Field(default_factory=list)
     referred_laws: list[str] = Field(default_factory=list)
-    sector: Optional[str] = None
-    version: Optional[str] = None
-    law_number: Optional[str] = None
-    effective_date: Optional[str] = None
-    issuing_authority: Optional[str] = None
-    supersedes: Optional[str] = None
-    superseded_by: Optional[str] = None
-    source_url: Optional[str] = None
+    sector: str | None = None
+    version: str | None = None
+    law_number: str | None = None
+    effective_date: str | None = None
+    issuing_authority: str | None = None
+    supersedes: str | None = None
+    superseded_by: str | None = None
+    source_url: str | None = None
 
 
 class LawResponse(LawBase):
@@ -73,14 +74,14 @@ class LawResponse(LawBase):
     id: str
     ref_count: int = 0
     view_count: int = 0
-    ragflow_dataset_id: Optional[str] = None
-    ragflow_document_id: Optional[str] = None
+    ragflow_dataset_id: str | None = None
+    ragflow_document_id: str | None = None
     is_synced: str = "pending"
-    last_sync_at: Optional[datetime] = None
-    metadata: Optional[LawMetadata] = None
+    last_sync_at: datetime | None = None
+    metadata: LawMetadata | None = None
     linked_templates: list[str] = Field(default_factory=list)
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -113,7 +114,7 @@ class RAGFlowKBStatus(BaseModel):
     type: str = Field(alias="law_type")
     kb_name: str
     exists: bool = False
-    dataset_id: Optional[str] = None
+    dataset_id: str | None = None
     document_count: int = 0
     status: str = "unknown"
 
@@ -138,9 +139,9 @@ class LawSyncStatus(BaseModel):
     law_title: str
     law_type: str
     is_synced: str
-    last_sync_at: Optional[datetime] = None
-    ragflow_document_id: Optional[str] = None
-    error_message: Optional[str] = None
+    last_sync_at: datetime | None = None
+    ragflow_document_id: str | None = None
+    error_message: str | None = None
 
 
 class RAGFlowInitResponse(BaseModel):
@@ -158,8 +159,8 @@ class LawTemplateRelationCreate(BaseModel):
 
     law_id: str
     template_id: str
-    section_title: Optional[str] = Field(None, description="Linked section title")
-    metadata: Optional[dict[str, Any]] = None
+    section_title: str | None = Field(None, description="Linked section title")
+    metadata: dict[str, Any] | None = None
 
 
 class LawTemplateRelationResponse(BaseModel):
@@ -170,8 +171,8 @@ class LawTemplateRelationResponse(BaseModel):
     law_title: str
     template_id: str
     template_name: str
-    section_title: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    section_title: str | None = None
+    metadata: dict[str, Any] | None = None
     created_at: datetime
 
     class Config:
@@ -185,7 +186,7 @@ class FileParseResponse(BaseModel):
     content: str = ""
     char_count: int = 0
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class ImportProgress(BaseModel):
@@ -199,7 +200,7 @@ class ImportProgress(BaseModel):
     failed_count: int = 0
     errors: list[str] = Field(default_factory=list)
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class LawBatchSyncRequest(BaseModel):

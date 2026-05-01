@@ -5,7 +5,6 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from minio import Minio
@@ -35,8 +34,8 @@ def _parse_s3_uri(uri: str) -> tuple[str, str]:
 @dataclass
 class StoredObject:
     uri: str
-    bucket: Optional[str] = None
-    key: Optional[str] = None
+    bucket: str | None = None
+    key: str | None = None
 
 
 class StorageProvider:
@@ -48,7 +47,7 @@ class StorageProvider:
         owner_id: str,
         kb_id: str,
         filename: str,
-        content_type: Optional[str] = None,
+        content_type: str | None = None,
     ) -> StoredObject:
         raise NotImplementedError
 
@@ -65,7 +64,7 @@ class LocalStorageProvider(StorageProvider):
         owner_id: str,
         kb_id: str,
         filename: str,
-        content_type: Optional[str] = None,
+        content_type: str | None = None,
     ) -> StoredObject:
         return StoredObject(uri=local_path)
 
@@ -111,7 +110,7 @@ class MinioStorageProvider(StorageProvider):
         owner_id: str,
         kb_id: str,
         filename: str,
-        content_type: Optional[str] = None,
+        content_type: str | None = None,
     ) -> StoredObject:
         object_name = self._build_object_name(owner_id, kb_id, filename)
         await asyncio.to_thread(self._ensure_bucket)
@@ -130,7 +129,7 @@ class MinioStorageProvider(StorageProvider):
         await asyncio.to_thread(self._client.remove_object, bucket, key)
 
 
-_provider: Optional[StorageProvider] = None
+_provider: StorageProvider | None = None
 
 
 def get_storage_provider() -> StorageProvider:

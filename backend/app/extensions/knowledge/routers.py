@@ -12,10 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
-from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
-from app.extensions.schemas import to_doc_status
-from app.extensions.models import KnowledgeBase
 from app.extensions.knowledge.client import RAGFlowClient
+from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
+from app.extensions.models import KnowledgeBase
 from app.extensions.schemas import (
     CurrentUser,
     DocumentListResponse,
@@ -28,6 +27,7 @@ from app.extensions.schemas import (
     RAGChatRequest,
     RAGFederatedSearchRequest,
     RAGFederatedSearchResponse,
+    to_doc_status,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,7 @@ def _can_access_kb(kb: KnowledgeBase, current_user: CurrentUser) -> bool:
     if kb.access_type == "public":
         return True
     if kb.access_type == "dept":
-        return bool(
-            current_user.dept_id
-            and kb.allowed_depts
-            and current_user.dept_id in kb.allowed_depts
-        )
+        return bool(current_user.dept_id and kb.allowed_depts and current_user.dept_id in kb.allowed_depts)
     return False
 
 

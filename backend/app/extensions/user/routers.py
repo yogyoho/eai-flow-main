@@ -52,9 +52,7 @@ async def list_users(
         else:
             dept_id = None
 
-    users, total = await UserService.list_users(
-        db, skip=skip, limit=limit, dept_id=dept_id, role_id=role_id, status=status
-    )
+    users, total = await UserService.list_users(db, skip=skip, limit=limit, dept_id=dept_id, role_id=role_id, status=status)
     return UserListResponse(
         users=[await UserService.to_response(db, u) for u in users],
         total=total,
@@ -103,6 +101,21 @@ async def create_user(
         )
 
     user = await UserService.create_user(db, data)
+    return await UserService.to_response(db, user)
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Get current authenticated user info (bridged from Gateway Auth)."""
+    user = await UserService.get_user_by_id(db, current_user.id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
     return await UserService.to_response(db, user)
 
 

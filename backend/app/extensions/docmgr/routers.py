@@ -130,6 +130,7 @@ async def list_folders(
 
 # ─── AI Operations ────────────────────────────────────────────────────────────
 
+
 class AIEditRequest(BaseModel):
     """AI edit request schema (inline, mirrors source code)."""
 
@@ -145,22 +146,10 @@ class AIEditResponse(BaseModel):
 
 
 OPERATION_PROMPTS: dict[str, str] = {
-    "polish": (
-        "你是一位专业的文字编辑。请对以下文本进行润色，使其更加流畅、专业，保持原意不变。"
-        "只输出润色后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"
-    ),
-    "expand": (
-        "你是一位专业的写作助手。请对以下文本进行扩写，增加更多细节、论据或说明，使内容更加丰富详实。"
-        "只输出扩写后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"
-    ),
-    "condense": (
-        "你是一位专业的文字编辑。请对以下文本进行精简，去除冗余内容，保留核心信息，使表达更加简洁有力。"
-        "只输出精简后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"
-    ),
-    "brainstorm": (
-        "你是一位创意写作助手。请基于以下文本进行头脑风暴，提供3-5个相关的扩展思路或角度，每条思路用「- 」开头。"
-        "只输出思路列表，不要添加任何解释或前缀。\n\n文本：\n{text}"
-    ),
+    "polish": ("你是一位专业的文字编辑。请对以下文本进行润色，使其更加流畅、专业，保持原意不变。只输出润色后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
+    "expand": ("你是一位专业的写作助手。请对以下文本进行扩写，增加更多细节、论据或说明，使内容更加丰富详实。只输出扩写后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
+    "condense": ("你是一位专业的文字编辑。请对以下文本进行精简，去除冗余内容，保留核心信息，使表达更加简洁有力。只输出精简后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
+    "brainstorm": ("你是一位创意写作助手。请基于以下文本进行头脑风暴，提供3-5个相关的扩展思路或角度，每条思路用「- 」开头。只输出思路列表，不要添加任何解释或前缀。\n\n文本：\n{text}"),
 }
 
 # Timeout for AI edit operations (seconds)
@@ -215,7 +204,7 @@ async def ai_edit_text(
         )
         result = _extract_ai_response_text(response.content).strip()
         return AIEditResponse(result=result)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("AI edit timed out: operation=%s model=%s", request.operation, model_name)
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,

@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api", tags=["memory"])
 
 def _get_user_id_from_request(user_id: str | None = None) -> str | None:
     """Extract user_id for data isolation.
-    
+
     Currently returns the provided user_id parameter.
     In the future, this could be extracted from auth headers/tokens.
     """
@@ -170,7 +170,7 @@ async def reload_memory(user_id: str | None = Query(None, description="User ID f
 )
 async def clear_memory(user_id: str | None = Query(None, description="User ID for data isolation")) -> MemoryResponse:
     """Clear all persisted memory data for a user or global memory.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """
@@ -195,7 +195,7 @@ async def create_memory_fact_endpoint(
     user_id: str | None = Query(None, description="User ID for data isolation"),
 ) -> MemoryResponse:
     """Create a single fact manually.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """
@@ -227,7 +227,7 @@ async def delete_memory_fact_endpoint(
     user_id: str | None = Query(None, description="User ID for data isolation"),
 ) -> MemoryResponse:
     """Delete a single fact from memory by fact id.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """
@@ -255,7 +255,7 @@ async def update_memory_fact_endpoint(
     user_id: str | None = Query(None, description="User ID for data isolation"),
 ) -> MemoryResponse:
     """Partially update a single fact manually.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """
@@ -287,7 +287,7 @@ async def update_memory_fact_endpoint(
 )
 async def export_memory(user_id: str | None = Query(None, description="User ID for data isolation")) -> MemoryResponse:
     """Export the current memory data.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """
@@ -308,7 +308,7 @@ async def import_memory(
     user_id: str | None = Query(None, description="User ID for data isolation"),
 ) -> MemoryResponse:
     """Import and persist memory data.
-    
+
     Args:
         user_id: Optional user ID for per-user data isolation.
     """

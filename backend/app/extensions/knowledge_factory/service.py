@@ -195,6 +195,105 @@ class TemplateService:
         return template
 
     @staticmethod
+    async def rollback_template(
+        db: AsyncSession,
+        template: ExtractionTemplate,
+        version_id: UUID,
+        changelog: Optional[str] = None,
+        user_id: Optional[UUID] = None,
+    ) -> ExtractionTemplate:
+        """回滚模板到指定版本。
+
+        回滚逻辑：
+        1. 查找指定版本的历史快照
+        2. 恢复模板的 sections 和 cross_section_rules
+        3. 创建新版本快照（标记为回滚）
+        4. 自动递增版本号（patch + 1）
+        """
+        from sqlalchemy import select
+
+        # 查找目标版本
+        result = await db.execute(
+            select(ExtractionTemplateVersion).where(
+                ExtractionTemplateVersion.id == version_id,
+                ExtractionTemplateVersion.template_id == template.id,
+            )
+        )
+        target_version = result.scalar_one_or_none()
+
+        if not target_version:
+            raise ValueError(f"版本 {version_id} 不存在或不属于此模板")
+
+        snapshot = target_version.snapshot_json or {}
+        sections = snapshot.get("sections", [])
+        cross_rules = snapshot.get("cross_section_rules", [])
+
+        # 计算新版本号（semver patch + 1）
+        current_version = template.version.lstrip("v")
+        parts = current_version.split(".")
+        if len(parts) >= 3:
+            patch = int(parts[2]) + 1
+            new_version = f"v{parts[0]}.{parts[1]}.{patch}"
+        else:
+            new_version = f"{current_version}.1"
+
+        # 更新模板内容
+        template.root_sections_json = {"sections": sections}
+        template.cross_section_rules = {"rules": cross_rules}
+        template.version = new_version
+        template.status = "draft"  # 回滚后变为草稿状态
+
+        # 重新计算完整度评分
+        if sections:
+            scored_sections = [
+                s for s in _flatten_sections_list(sections)
+                if s.get("completeness_score")
+            ]
+            if scored_sections:
+                avg_score = sum(s.get("completeness_score", 0) for s in scored_sections) // len(scored_sections)
+                template.completeness_score = avg_score
+
+        # 创建新版本快照（回滚记录）
+        rollback_note = f"回滚到 v{target_version.version}" + (f"：{changelog}" if changelog else "")
+        new_version_record = ExtractionTemplateVersion(
+            template_id=template.id,
+            version=new_version,
+            changelog=rollback_note,
+            snapshot_json={"sections": sections, "cross_section_rules": cross_rules},
+            published_by=user_id,
+        )
+        db.add(new_version_record)
+
+        # 保存新版本的 JSON 快照
+        save_snapshot(
+            domain=template.domain,
+            template_name=template.name,
+            version=new_version,
+            template_data={"sections": sections, "cross_section_rules": cross_rules},
+        )
+
+        await db.commit()
+        await db.refresh(template)
+        return template
+
+    @staticmethod
+    async def get_version_by_id(
+        db: AsyncSession,
+        template_id: UUID,
+        version_id: UUID,
+    ) -> Optional[ExtractionTemplateVersion]:
+        """根据ID获取特定版本"""
+        from sqlalchemy import select
+
+        result = await db.execute(
+            select(ExtractionTemplateVersion).where(
+                ExtractionTemplateVersion.id == version_id,
+                ExtractionTemplateVersion.template_id == template_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def delete_template(db: AsyncSession, template: ExtractionTemplate) -> None:
         # 删除 JSON 快照
         delete_snapshot(
@@ -333,7 +432,148 @@ class TaskService:
             await db.commit()
 
 
+# ============== Quality Assessment Service ==============
+
+
+class QualityService:
+    """模板质量评估服务"""
+
+    @staticmethod
+    def assess_template_quality(template_data: dict) -> dict:
+        """使用 AI 评估模板质量。
+
+        Args:
+            template_data: 包含模板信息的字典
+
+        Returns:
+            质量评估结果
+        """
+        from .quality import QualityAssessmentClient
+
+        client = QualityAssessmentClient()
+        return client.assess(template_data)
+
+    @staticmethod
+    def build_template_data_for_assessment(template: ExtractionTemplate) -> dict:
+        """构建用于评估的模板数据"""
+        sections_json = template.root_sections_json or {}
+        sec_list = sections_json.get("sections", [])
+        rules = (template.cross_section_rules or {}).get("rules", [])
+
+        return {
+            "name": template.name,
+            "domain": template.domain,
+            "version": template.version,
+            "status": template.status,
+            "root_sections": sec_list,
+            "cross_section_rules": rules,
+        }
+
+
+# ============== Version Compare Service ==============
+
+
+class VersionCompareService:
+    """版本对比服务"""
+
+    @staticmethod
+    def compare_versions(
+        version_a_sections: list[dict],
+        version_b_sections: list[dict],
+        version_a: str,
+        version_b: str,
+    ) -> dict:
+        """对比两个版本的章节结构差异。
+
+        Args:
+            version_a_sections: 版本A的章节列表
+            version_b_sections: 版本B的章节列表
+            version_a: 版本A的版本号
+            version_b: 版本B的版本号
+
+        Returns:
+            差异结果
+        """
+        # 构建 ID -> 章节的映射
+        section_map_a = {s.get("id"): s for s in _flatten_sections_list(version_a_sections)}
+        section_map_b = {s.get("id"): s for s in _flatten_sections_list(version_b_sections)}
+
+        ids_a = set(section_map_a.keys())
+        ids_b = set(section_map_b.keys())
+
+        added_ids = ids_b - ids_a
+        removed_ids = ids_a - ids_b
+        common_ids = ids_a & ids_b
+
+        diffs = []
+
+        # 新增的章节
+        for sec_id in added_ids:
+            sec = section_map_b[sec_id]
+            diffs.append({
+                "section_id": sec_id,
+                "title": sec.get("title", ""),
+                "level": sec.get("level", 1),
+                "status": "added",
+            })
+
+        # 删除的章节
+        for sec_id in removed_ids:
+            sec = section_map_a[sec_id]
+            diffs.append({
+                "section_id": sec_id,
+                "title": sec.get("title", ""),
+                "level": sec.get("level", 1),
+                "status": "removed",
+            })
+
+        # 修改/不变的章节
+        for sec_id in common_ids:
+            sec_a = section_map_a[sec_id]
+            sec_b = section_map_b[sec_id]
+
+            # 检查是否有修改
+            is_modified = (
+                sec_a.get("title") != sec_b.get("title") or
+                sec_a.get("required") != sec_b.get("required") or
+                sec_a.get("purpose") != sec_b.get("purpose") or
+                sec_a.get("content_contract") != sec_b.get("content_contract")
+            )
+
+            diffs.append({
+                "section_id": sec_id,
+                "title": sec_b.get("title", ""),
+                "level": sec_b.get("level", 1),
+                "status": "modified" if is_modified else "unchanged",
+            })
+
+        # 按状态和层级排序
+        status_order = {"removed": 0, "added": 1, "modified": 2, "unchanged": 3}
+        diffs.sort(key=lambda x: (status_order.get(x["status"], 4), x["level"], x["title"]))
+
+        return {
+            "version_a": version_a,
+            "version_b": version_b,
+            "added_count": len(added_ids),
+            "removed_count": len(removed_ids),
+            "modified_count": sum(1 for d in diffs if d["status"] == "modified"),
+            "unchanged_count": sum(1 for d in diffs if d["status"] == "unchanged"),
+            "sections": diffs,
+        }
+
+
 # ============== Helpers ==============
+
+
+def _flatten_sections_list(sections: list[dict]) -> list[dict]:
+    """将嵌套的章节树扁平化为列表"""
+    flat = []
+    for sec in sections:
+        flat.append(sec)
+        children = sec.get("children") or []
+        if children:
+            flat.extend(_flatten_sections_list(children))
+    return flat
 
 
 def _parse_section(data: dict) -> TemplateSection:

@@ -3,16 +3,15 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import and_, select, func
+from sqlalchemy import and_, func, select
 
 from app.extensions.config import get_extensions_config
 from app.extensions.database import AsyncSession
-from app.extensions.models import ScrapDraft, KnowledgeBase
-from app.extensions.web_scraper.schemas import ScrapDraftResponse, ScrapDraftDetailResponse
 from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
+from app.extensions.models import ScrapDraft
+from app.extensions.web_scraper.schemas import ScrapDraftDetailResponse, ScrapDraftResponse
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class ScrapDraftService:
         data: "ScrapDraftCreate",
     ) -> ScrapDraft:
         """Create a new draft."""
-        from app.extensions.web_scraper.schemas import ScrapDraftCreate
 
         draft = ScrapDraft(
             user_id=user_id,
@@ -53,7 +51,7 @@ class ScrapDraftService:
     async def list_drafts(
         db: AsyncSession,
         user_id: UUID,
-        status_filter: Optional[str] = None,
+        status_filter: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[ScrapDraft], int]:
@@ -67,13 +65,7 @@ class ScrapDraftService:
         total = count_result.scalar() or 0
 
         offset = (page - 1) * page_size
-        query = (
-            select(ScrapDraft)
-            .where(and_(*conditions))
-            .order_by(ScrapDraft.updated_at.desc())
-            .offset(offset)
-            .limit(page_size)
-        )
+        query = select(ScrapDraft).where(and_(*conditions)).order_by(ScrapDraft.updated_at.desc()).offset(offset).limit(page_size)
         result = await db.execute(query)
         drafts = result.scalars().all()
 
@@ -84,11 +76,9 @@ class ScrapDraftService:
         db: AsyncSession,
         draft_id: UUID,
         user_id: UUID,
-    ) -> Optional[ScrapDraft]:
+    ) -> ScrapDraft | None:
         """Get draft detail."""
-        query = select(ScrapDraft).where(
-            and_(ScrapDraft.id == draft_id, ScrapDraft.user_id == user_id)
-        )
+        query = select(ScrapDraft).where(and_(ScrapDraft.id == draft_id, ScrapDraft.user_id == user_id))
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
@@ -99,7 +89,6 @@ class ScrapDraftService:
         data: "ScrapDraftUpdate",
     ) -> ScrapDraft:
         """Update draft."""
-        from app.extensions.web_scraper.schemas import ScrapDraftUpdate
 
         if data.title is not None:
             draft.title = data.title

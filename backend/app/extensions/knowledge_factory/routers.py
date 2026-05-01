@@ -34,6 +34,40 @@ from .schemas import (
     ExtractionTaskCreate,
     ExtractionTaskListResponse,
     ExtractionTaskResponse,
+    FieldMapping,
+    FieldMappingResponse,
+    FieldMappingListResponse,
+    FieldMappingCreate,
+    FieldMappingUpdate,
+    FieldMappingBatchUpdate,
+    FieldMappingImportResponse,
+    KnowledgeBaseResponse,
+    KnowledgeBaseCreate,
+    KnowledgeBaseUpdate,
+    KnowledgeBaseListResponse,
+    MetadataExtractorCreate,
+    MetadataExtractorResponse,
+    MetadataExtractorListResponse,
+    MetadataExtractorUpdate,
+    MetadataExtractorBatchUpdate,
+    MetadataExtractorImportResponse,
+    MetadataExtractorTestResponse,
+    QualityAssessmentResult,
+    RuleDictionariesResponse,
+    SourceReportResponse,
+    SourceReportListResponse,
+    SourceReportCreate,
+    SourceReportUpdate,
+    SourceReportBatchDelete,
+    SourceReportUploadResponse,
+    SourceReportUploadStatusResponse,
+    SourceReportDocumentResponse,
+    StandardLawReferenceResponse,
+    StandardLawReferenceListResponse,
+    StandardLawReferenceCreate,
+    StandardLawReferenceUpdate,
+    StandardLawReferenceBatchUpdate,
+    StandardLawReferenceImportResponse,
     StructureType,
     TemplateDocument,
     TemplateListItem,
@@ -42,13 +76,36 @@ from .schemas import (
     TemplateSection,
     TemplateUpdate,
     TemplateVersionResponse,
+    TemplateRollbackRequest,
+    TemplateRollbackResponse,
     StepStatusSchema,
+    VersionCompareRequest,
+    VersionDiff,
 )
-from .dictionary_loader import load_rule_dictionaries
-from .service import DomainService, TaskService, TemplateService
-from .seed_service import SeedImportService
-from .seed_loader import get_seed_loader
-from .storage import export_template_json
+from .service import (
+    ComplianceRuleService,
+    DomainService,
+    FieldMappingService,
+    KnowledgeBaseService,
+    MetadataExtractorService,
+    QualityService,
+    StandardLawReferenceService,
+    TaskService,
+    TemplateService,
+    VersionCompareService,
+)
+from .models import (
+    ComplianceRule,
+    Document,
+    ExtractionTemplate,
+    ExtractionTemplateVersion,
+    FieldMapping as FieldMappingModel,
+    KnowledgeBase,
+    MetadataExtractor,
+    SourceReport,
+    StandardLawReference,
+    Task as ExtractionTask,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -566,6 +623,159 @@ async def get_template_versions(
             published_at=v.published_at,
         ))
     return result
+
+
+@router.post("/templates/{template_id}/rollback", response_model=TemplateRollbackResponse)
+async def rollback_template(
+    template_id: UUID,
+    request: TemplateRollbackRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """回滚模板到指定版本。
+
+    回滚后将：
+    1. 从历史快照恢复章节结构和交叉规则
+    2. 自动递增版本号
+    3. 模板状态变为草稿
+    """
+    template = await TemplateService.get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    # 验证版本存在
+    target_version = await TemplateService.get_version_by_id(db, template_id, request.version_id)
+    if not target_version:
+        raise HTTPException(status_code=404, detail="指定的版本不存在")
+
+    try:
+        updated = await TemplateService.rollback_template(
+            db=db,
+            template=template,
+            version_id=request.version_id,
+            changelog=request.changelog,
+            user_id=current_user.id,
+        )
+        return TemplateRollbackResponse(
+            success=True,
+            message=f"成功回滚到版本 {target_version.version}",
+            template_id=updated.id,
+            new_version=updated.version,
+            restored_version=target_version.version,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/templates/{template_id}/versions/{version_id}", response_model=TemplateVersionResponse)
+async def get_template_version_detail(
+    template_id: UUID,
+    version_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """获取特定版本的详细信息（包括快照内容）"""
+    template = await TemplateService.get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    version = await TemplateService.get_version_by_id(db, template_id, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="版本不存在")
+
+    published_by_name = None
+    if version.published_by:
+        r = await db.execute(select(User).where(User.id == version.published_by))
+        u = r.scalar_one_or_none()
+        if u:
+            published_by_name = u.username
+
+    return TemplateVersionResponse(
+        id=version.id,
+        version=version.version,
+        changelog=version.changelog,
+        published_by=published_by_name,
+        published_at=version.published_at,
+    )
+
+
+@router.post("/templates/{template_id}/assess-quality", response_model=QualityAssessmentResult)
+async def assess_template_quality(
+    template_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """AI 评估模板质量。
+
+    对模板进行多维度质量评估：
+    - completeness（完整性）
+    - accuracy（准确性）
+    - consistency（一致性）
+    - compliance（合规性）
+    - freshness（时效性）
+    """
+    template = await TemplateService.get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    # 构建用于评估的模板数据
+    template_data = QualityService.build_template_data_for_assessment(template)
+
+    # 调用 AI 评估服务
+    result = QualityService.assess_template_quality(template_data)
+
+    return QualityAssessmentResult(**result)
+
+
+@router.post("/templates/compare", response_model=VersionDiff)
+async def compare_template_versions(
+    request: VersionCompareRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """对比两个模板版本的差异。
+
+    返回新增、删除、修改的章节列表。
+    """
+    # 获取版本A
+    stmt_a = select(ExtractionTemplateVersion).where(
+        ExtractionTemplateVersion.id == request.version_a_id
+    )
+    result_a = await db.execute(stmt_a)
+    version_a = result_a.scalar_one_or_none()
+    if not version_a:
+        raise HTTPException(status_code=404, detail="版本A不存在")
+
+    # 获取版本B
+    stmt_b = select(ExtractionTemplateVersion).where(
+        ExtractionTemplateVersion.id == request.version_b_id
+    )
+    result_b = await db.execute(stmt_b)
+    version_b = result_b.scalar_one_or_none()
+    if not version_b:
+        raise HTTPException(status_code=404, detail="版本B不存在")
+
+    # 获取主模板以获取章节数据
+    template_a = await TemplateService.get_template(db, version_a.template_id)
+    template_b = await TemplateService.get_template(db, version_b.template_id)
+    if not template_a or not template_b:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    # 从快照中提取章节列表
+    snapshot_a = version_a.snapshot_json or {}
+    snapshot_b = version_b.snapshot_json or {}
+    sections_a = snapshot_a.get("sections", template_a.root_sections_json or {}).get("sections", [])
+    sections_b = snapshot_b.get("sections", template_b.root_sections_json or {}).get("sections", [])
+
+    # 调用版本对比服务
+    diff_result = VersionCompareService.compare_versions(
+        version_a_sections=sections_a,
+        version_b_sections=sections_b,
+        version_a=version_a.version,
+        version_b=version_b.version,
+    )
+
+    return VersionDiff(**diff_result)
 
 
 # ============== Helpers ==============

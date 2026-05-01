@@ -2,6 +2,10 @@
 
 Validates that the LangGraph auth layer enforces the same rules as Gateway:
   cookie → JWT decode → DB lookup → token_version check → owner filter
+
+Following the LangGraph SDK's recommended pattern:
+  - Default deny via global handler
+  - Resource/action-specific handlers for threads, store, assistants, crons
 """
 
 import asyncio
@@ -21,7 +25,19 @@ from langgraph_sdk import Auth
 from app.gateway.auth.config import AuthConfig, set_auth_config
 from app.gateway.auth.jwt import create_access_token, decode_token
 from app.gateway.auth.models import User
-from app.gateway.langgraph_auth import add_owner_filter, authenticate
+from app.gateway.langgraph_auth import (
+    allow_assistants,
+    allow_crons,
+    authenticate,
+    deny_all,
+    on_threads_create,
+    on_threads_create_run,
+    on_threads_delete,
+    on_threads_read,
+    on_threads_search,
+    on_threads_update,
+    scope_store,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -156,7 +172,7 @@ def test_wrong_secret_raises_401():
     assert exc.value.status_code == 401
 
 
-# ── @auth.on (owner filter) ──────────────────────────────────────────────
+# ── Authorization helpers ──────────────────────────────────────────────────
 
 
 class _FakeUser:
@@ -168,53 +184,132 @@ class _FakeUser:
         self.display_name = identity
 
 
-def _make_ctx(user_id):
-    return Auth.types.AuthContext(resource="threads", action="create", user=_FakeUser(user_id), permissions=[])
+def _make_ctx(user_id, resource="threads", action="create"):
+    return Auth.types.AuthContext(resource=resource, action=action, user=_FakeUser(user_id), permissions=[])
 
 
-def test_filter_injects_user_id():
+# ── Default deny ─────────────────────────────────────────────────────────
+
+
+def test_deny_all_returns_false():
+    result = asyncio.run(deny_all(_make_ctx("user-a"), {}))
+    assert result is False
+
+
+# ── Threads: create ──────────────────────────────────────────────────────
+
+
+def test_threads_create_stamps_user_id():
     value = {}
-    asyncio.run(add_owner_filter(_make_ctx("user-a"), value))
+    result = asyncio.run(on_threads_create(_make_ctx("user-a"), value))
     assert value["metadata"]["user_id"] == "user-a"
+    # Create returns None (accept without filter)
+    assert result is None
 
 
-def test_filter_preserves_existing_metadata():
+def test_threads_create_preserves_existing_metadata():
     value = {"metadata": {"title": "hello"}}
-    asyncio.run(add_owner_filter(_make_ctx("user-a"), value))
+    result = asyncio.run(on_threads_create(_make_ctx("user-a"), value))
     assert value["metadata"]["user_id"] == "user-a"
     assert value["metadata"]["title"] == "hello"
+    assert result is None
 
 
-def test_filter_returns_user_id_dict():
-    result = asyncio.run(add_owner_filter(_make_ctx("user-x"), {}))
-    assert result == {"user_id": "user-x"}
-
-
-def test_filter_read_write_consistency():
-    value = {}
-    filter_dict = asyncio.run(add_owner_filter(_make_ctx("user-1"), value))
-    assert value["metadata"]["user_id"] == filter_dict["user_id"]
-
-
-def test_different_users_different_filters():
-    f_a = asyncio.run(add_owner_filter(_make_ctx("a"), {}))
-    f_b = asyncio.run(add_owner_filter(_make_ctx("b"), {}))
-    assert f_a["user_id"] != f_b["user_id"]
-
-
-def test_filter_overrides_conflicting_user_id():
+def test_threads_create_overrides_conflicting_user_id():
     """If value already has a different user_id in metadata, it gets overwritten."""
     value = {"metadata": {"user_id": "attacker"}}
-    asyncio.run(add_owner_filter(_make_ctx("real-owner"), value))
+    asyncio.run(on_threads_create(_make_ctx("real-owner"), value))
     assert value["metadata"]["user_id"] == "real-owner"
 
 
-def test_filter_with_empty_metadata():
-    """Explicit empty metadata dict is fine."""
-    value = {"metadata": {}}
-    result = asyncio.run(add_owner_filter(_make_ctx("user-z"), value))
-    assert value["metadata"]["user_id"] == "user-z"
-    assert result == {"user_id": "user-z"}
+# ── Threads: read ────────────────────────────────────────────────────────
+
+
+def test_threads_read_returns_filter():
+    result = asyncio.run(on_threads_read(_make_ctx("user-a", action="read"), {}))
+    assert result == {"user_id": "user-a"}
+
+
+def test_threads_read_different_users_different_filters():
+    f_a = asyncio.run(on_threads_read(_make_ctx("user-a", action="read"), {}))
+    f_b = asyncio.run(on_threads_read(_make_ctx("user-b", action="read"), {}))
+    assert f_a["user_id"] != f_b["user_id"]
+
+
+# ── Threads: search ──────────────────────────────────────────────────────
+
+
+def test_threads_search_returns_filter():
+    result = asyncio.run(on_threads_search(_make_ctx("user-a", action="search"), {}))
+    assert result == {"user_id": "user-a"}
+
+
+# ── Threads: update ──────────────────────────────────────────────────────
+
+
+def test_threads_update_stamps_and_filters():
+    value = {}
+    result = asyncio.run(on_threads_update(_make_ctx("user-a", action="update"), value))
+    assert value["metadata"]["user_id"] == "user-a"
+    assert result == {"user_id": "user-a"}
+
+
+# ── Threads: delete ──────────────────────────────────────────────────────
+
+
+def test_threads_delete_returns_filter():
+    result = asyncio.run(on_threads_delete(_make_ctx("user-a", action="delete"), {}))
+    assert result == {"user_id": "user-a"}
+
+
+# ── Threads: create_run ──────────────────────────────────────────────────
+
+
+def test_threads_create_run_stamps_and_filters():
+    value = {}
+    result = asyncio.run(on_threads_create_run(_make_ctx("user-a", action="create_run"), value))
+    assert value["metadata"]["user_id"] == "user-a"
+    assert result == {"user_id": "user-a"}
+
+
+# ── Store ────────────────────────────────────────────────────────────────
+
+
+def test_store_scopes_namespace():
+    value = {"namespace": ["shared"]}
+    asyncio.run(scope_store(_make_ctx("user-a", resource="store", action="put"), value))
+    assert value["namespace"] == ("user-a", "shared")
+
+
+def test_store_empty_namespace():
+    value = {"namespace": []}
+    asyncio.run(scope_store(_make_ctx("user-a", resource="store", action="get"), value))
+    assert value["namespace"] == ("user-a",)
+
+
+def test_store_no_namespace_key():
+    value = {}
+    asyncio.run(scope_store(_make_ctx("user-a", resource="store", action="search"), value))
+    assert value["namespace"] == ("user-a",)
+
+
+def test_store_already_scoped():
+    value = {"namespace": ["user-a", "data"]}
+    asyncio.run(scope_store(_make_ctx("user-a", resource="store", action="put"), value))
+    assert value["namespace"] == ("user-a", "data")
+
+
+# ── Assistants / Crons ───────────────────────────────────────────────────
+
+
+def test_assistants_accepts_all():
+    result = asyncio.run(allow_assistants(_make_ctx("user-a", resource="assistants", action="create"), {}))
+    assert result is None
+
+
+def test_crons_accepts_all():
+    result = asyncio.run(allow_crons(_make_ctx("user-a", resource="crons", action="create"), {}))
+    assert result is None
 
 
 # ── Gateway parity ───────────────────────────────────────────────────────
@@ -238,11 +333,15 @@ def test_langgraph_json_has_auth_path():
     assert "langgraph_auth" in config["auth"]["path"]
 
 
-def test_auth_handler_has_both_layers():
+def test_auth_handler_has_all_layers():
+    """Verify authenticate + default deny + resource-specific handlers."""
     from app.gateway.langgraph_auth import auth
 
     assert auth._authenticate_handler is not None
+    # Default deny global handler
     assert len(auth._global_handlers) == 1
+    # Resource/action-specific handlers: threads(6) + assistants(1) + crons(1) + store(1) = 9
+    assert len(auth._handlers) == 9
 
 
 # ── CSRF in LangGraph auth ──────────────────────────────────────────────

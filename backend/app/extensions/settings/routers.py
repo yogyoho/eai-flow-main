@@ -2,10 +2,9 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 # Load .env from project root
@@ -16,13 +15,13 @@ load_dotenv(_env_path, override=False)
 class SystemConfig(BaseModel):
     """System configuration model."""
 
-    default_model: Optional[str] = None
-    fast_model: Optional[str] = None
-    embed_model: Optional[str] = None
-    reranker: Optional[str] = None
+    default_model: str | None = None
+    fast_model: str | None = None
+    embed_model: str | None = None
+    reranker: str | None = None
     enable_content_guard: bool = False
     enable_content_guard_llm: bool = False
-    content_guard_llm_model: Optional[str] = None
+    content_guard_llm_model: str | None = None
     theme: str = "system"
 
 
@@ -30,8 +29,8 @@ class EmbedModelChoice(BaseModel):
     """Embedding model choice with status."""
 
     name: str
-    status: Optional[str] = None
-    message: Optional[str] = None
+    status: str | None = None
+    message: str | None = None
 
 
 class ModelChoicesResponse(BaseModel):

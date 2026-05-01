@@ -6,19 +6,10 @@ Uses the project's existing `create_chat_model` factory.
 
 import json
 import logging
-from typing import Any, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.outputs import ChatGeneration
 
 from packages.harness.deerflow.models.factory import create_chat_model
-
-from .schemas import (
-    ContentContract,
-    ExtractionConfig,
-    StructureType,
-    TemplateSection,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +193,7 @@ class ExtractionLLMClient:
     and section merging.
     """
 
-    def __init__(self, model_name: Optional[str] = None, max_content_chars: int = 5000):
+    def __init__(self, model_name: str | None = None, max_content_chars: int = 5000):
         """
         Args:
             model_name: Override the model name. Defaults to config's first model.
@@ -253,15 +244,15 @@ class ExtractionLLMClient:
         try:
             raw = self._invoke([system, user])
             logger.info(f"[infer_schema] LLM raw response for '{doc_name}': {raw[:500]}...")
-            
+
             # 尝试解析为 JSON
             result = self._extract_json(raw)
-            
+
             # 处理 LLM 返回列表而非字典的情况
             if isinstance(result, list):
-                logger.info(f"[infer_schema] LLM returned a list, wrapping in dict with 'sections' key")
+                logger.info("[infer_schema] LLM returned a list, wrapping in dict with 'sections' key")
                 return {"sections": result}
-            
+
             # 正常情况：返回字典
             logger.info(f"[infer_schema] Parsed sections count: {len(result.get('sections', []))}")
             return result
@@ -277,7 +268,7 @@ class ExtractionLLMClient:
         section_id: str,
         section_title: str,
         level: int,
-        purpose: Optional[str],
+        purpose: str | None,
         section_content: str,
     ) -> dict:
         """Extract content contract for a single section.
@@ -371,7 +362,7 @@ class ExtractionLLMClient:
     # ---- Utility ----
 
     @staticmethod
-    def _extract_json(raw: str, key: Optional[str] = None) -> dict:
+    def _extract_json(raw: str, key: str | None = None) -> dict:
         """Extract JSON from LLM response.
 
         Tries:

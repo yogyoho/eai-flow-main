@@ -143,7 +143,7 @@ async def generate_suggestions(
         cleaned = [s.replace("\n", " ").strip() for s in suggestions if s.strip()]
         cleaned = cleaned[:n]
         return SuggestionsResponse(suggestions=cleaned)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Suggestions generation timed out: thread_id=%s", thread_id)
         return SuggestionsResponse(suggestions=[])
     except Exception as exc:

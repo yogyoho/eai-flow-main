@@ -126,12 +126,7 @@ class UserDepartmentService:
         limit: int = 100,
     ) -> tuple[list[User], int]:
         """Get all users in a department (direct associations only)."""
-        stmt = (
-            select(UserDepartment)
-            .where(UserDepartment.dept_id == dept_id)
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(UserDepartment).where(UserDepartment.dept_id == dept_id).offset(skip).limit(limit)
         result = await db.execute(stmt)
         associations = result.scalars().all()
 

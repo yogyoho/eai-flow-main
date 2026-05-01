@@ -1,8 +1,8 @@
 """Tests for model validation functionality."""
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from app.extensions.settings.routers import router
 
 

@@ -107,9 +107,7 @@ class DepartmentService:
     @staticmethod
     async def get_department_tree(db: AsyncSession) -> list[DepartmentTreeResponse]:
         """Get hierarchical department tree."""
-        stmt = select(Department).options(selectinload(Department.children)).where(Department.parent_id == None).order_by(
-            Department.sort_order, Department.name
-        )
+        stmt = select(Department).options(selectinload(Department.children)).where(Department.parent_id == None).order_by(Department.sort_order, Department.name)
         result = await db.execute(stmt)
         root_departments = result.scalars().all()
 

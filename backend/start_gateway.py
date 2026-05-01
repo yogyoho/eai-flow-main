@@ -1,7 +1,9 @@
 """Start gateway with correct environment variables."""
-import sys
+
 import os
+import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load .env with override to ensure correct values
@@ -18,10 +20,7 @@ import subprocess
 env = os.environ.copy()
 
 result = subprocess.run(
-    [sys.executable, "-m", "uvicorn", "app.gateway.app:app",
-     "--host", "0.0.0.0", "--port", "4001",
-     "--reload", "--reload-include=*.yaml", "--reload-include=.env",
-     "--reload-exclude=*.pyc", "--reload-exclude=__pycache__"],
+    [sys.executable, "-m", "uvicorn", "app.gateway.app:app", "--host", "0.0.0.0", "--port", "4001", "--reload", "--reload-include=*.yaml", "--reload-include=.env", "--reload-exclude=*.pyc", "--reload-exclude=__pycache__"],
     cwd=str(Path(__file__).parent),
     env=env,
 )
