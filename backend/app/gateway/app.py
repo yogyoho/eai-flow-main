@@ -40,9 +40,13 @@ from app.extensions.web_scraper import web_scraper_router
 from app.extensions.law import router as law_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
 from app.extensions.settings.routers import router as settings_router
-from deerflow.config.app_config import get_app_config
+from deerflow.config import app_config as deerflow_app_config
+from deerflow.config.app_config import apply_logging_level
 
-# Configure logging
+AppConfig = deerflow_app_config.AppConfig
+get_app_config = deerflow_app_config.get_app_config
+
+# Default logging; lifespan overrides from config.yaml log_level.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -173,6 +177,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Load config and check necessary environment variables at startup
     try:
         app.state.config = get_app_config()
+        apply_logging_level(app.state.config.log_level)
         logger.info("Configuration loaded successfully")
     except Exception as e:
         error_msg = f"Failed to load configuration during gateway startup: {e}"
