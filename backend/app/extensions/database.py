@@ -3,15 +3,15 @@
 import asyncio
 import logging
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import asyncpg
 from fastapi import HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text
 
 from app.extensions.config import get_extensions_config
 
@@ -59,7 +59,7 @@ async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
                     await asyncio.wait_for(conn.execute(text("SELECT 1")), timeout=5)
                 logger.info("Database engine created and connected successfully")
                 return engine
-            except (Exception, asyncio.TimeoutError) as e:
+            except (TimeoutError, Exception) as e:
                 last_error = e
                 logger.warning(
                     "Database engine created but connection test failed (attempt %d/%d): %s",
@@ -244,7 +244,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
     """Get database session as context manager."""
     # Always create a fresh engine and session for each request
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
     from app.extensions.config import get_extensions_config
 
     config = get_extensions_config()
@@ -697,11 +698,12 @@ async def close_db() -> None:
 
 async def seed_db() -> None:
     """Seed initial data: create admin user and role if they don't exist."""
-    from .auth.jwt import hash_password
-
     # Create a fresh engine for seed_db
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
     from app.extensions.config import get_extensions_config
+
+    from .auth.jwt import hash_password
 
     config = get_extensions_config()
     engine = create_async_engine(
@@ -720,7 +722,7 @@ async def seed_db() -> None:
 
     try:
         async with factory() as session:
-            # Check if admin role exists
+            # Check if seed data already exists
             result = await session.execute(
                 text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
             )
@@ -750,8 +752,36 @@ async def seed_db() -> None:
                     {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": role_id},
                 )
                 logger.info("Created admin user (username: admin, password: admin123)")
+
+                # Create default user role for auto-bridged regular users
+                user_role_id = str(uuid.uuid4())
+                await session.execute(
+                    text(
+                        "INSERT INTO roles "
+                        "(id, name, code, permissions, is_system, level, created_at) "
+                        "VALUES (:id, '普通用户', 'user', :perms, false, 1, NOW())"
+                    ),
+                    {"id": user_role_id, "perms": ["kb:read", "kb:create", "kb:upload"]},
+                )
+                logger.info("Created default user role")
+
                 await session.commit()
             else:
-                logger.info("Seed data already exists, skipping")
+                # Existing installations: ensure the 'user' role exists
+                result2 = await session.execute(
+                    text("SELECT id FROM roles WHERE code = 'user' LIMIT 1")
+                )
+                if result2.fetchone() is None:
+                    user_role_id = str(uuid.uuid4())
+                    await session.execute(
+                        text(
+                            "INSERT INTO roles "
+                            "(id, name, code, permissions, is_system, level, created_at) "
+                            "VALUES (:id, '普通用户', 'user', :perms, false, 1, NOW())"
+                        ),
+                        {"id": user_role_id, "perms": ["kb:read", "kb:create", "kb:upload"]},
+                    )
+                    await session.commit()
+                    logger.info("Created default user role for existing installation")
     finally:
         await engine.dispose()

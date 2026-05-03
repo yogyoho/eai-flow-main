@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from deerflow.config import get_app_config
+
 # Load .env from project root
 _env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 load_dotenv(_env_path, override=False)
@@ -33,11 +35,26 @@ class EmbedModelChoice(BaseModel):
     message: str | None = None
 
 
+class ChatModelChoice(BaseModel):
+    """A single chat model for selection."""
+
+    name: str
+    display_name: str
+
+
+class ChatModelGroup(BaseModel):
+    """Group of chat models from the same provider."""
+
+    provider: str
+    models: list[ChatModelChoice]
+
+
 class ModelChoicesResponse(BaseModel):
     """Response model for model choices."""
 
     embed_models: list[EmbedModelChoice] = []
     rerankers: list[str] = []
+    chat_models: list[ChatModelGroup] = []
 
 
 router = APIRouter(prefix="/api/extensions", tags=["settings"])
@@ -101,12 +118,59 @@ async def update_config(config: SystemConfig) -> SystemConfig:
     return SystemConfig(**_config_cache)
 
 
+def _get_provider(name: str) -> str:
+    """Extract provider from model name."""
+    known_prefixes = ["siliconflow", "ollama", "openai", "anthropic", "google", "deepseek", "glm"]
+    for prefix in known_prefixes:
+        if name.startswith(f"{prefix}-") or name == prefix:
+            return prefix
+    return "other"
+
+
+_PROVIDER_NAMES: dict[str, str] = {
+    "siliconflow": "SiliconFlow",
+    "ollama": "Ollama",
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "google": "Google",
+    "deepseek": "DeepSeek",
+    "glm": "GLM / 本地",
+    "other": "其他",
+}
+
+
+def _load_chat_model_choices() -> list[ChatModelGroup]:
+    """Load available chat models grouped by provider."""
+    try:
+        app_config = get_app_config()
+    except Exception:
+        return []
+
+    groups: dict[str, list[ChatModelChoice]] = {}
+    for model in app_config.models:
+        provider = _get_provider(model.name)
+        choice = ChatModelChoice(
+            name=model.name,
+            display_name=model.display_name or model.name,
+        )
+        groups.setdefault(provider, []).append(choice)
+
+    return [
+        ChatModelGroup(
+            provider=_PROVIDER_NAMES.get(key, key),
+            models=value,
+        )
+        for key, value in groups.items()
+    ]
+
+
 @router.get("/models/choices", response_model=ModelChoicesResponse)
 async def get_model_choices() -> ModelChoicesResponse:
     """Get available model choices for selection."""
     return ModelChoicesResponse(
         embed_models=_load_embed_model_choices(),
         rerankers=_load_reranker_choices(),
+        chat_models=_load_chat_model_choices(),
     )
 
 

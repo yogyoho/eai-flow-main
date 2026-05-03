@@ -355,7 +355,6 @@ class MemoryUpdater:
         self,
         messages: list[Any],
         agent_name: str | None,
-        user_id: str | None,
         correction_detected: bool,
         reinforcement_detected: bool,
         user_id: str | None = None,
@@ -407,7 +406,6 @@ class MemoryUpdater:
         thread_id: str | None = None,
         agent_name: str | None = None,
         *,
-        user_id: str | None = None,
         correction_detected: bool = False,
         reinforcement_detected: bool = False,
         user_id: str | None = None,
@@ -451,7 +449,6 @@ class MemoryUpdater:
             prepared = self._prepare_update_prompt(
                 messages=messages,
                 agent_name=agent_name,
-                user_id=user_id,
                 correction_detected=correction_detected,
                 reinforcement_detected=reinforcement_detected,
                 user_id=user_id,

@@ -153,4 +153,4 @@ volumes:
 networks:
   eai-flow-net:
     external: true
-    name: docker_eai-flow-net
+    name: eai-docker_eai-flow-net

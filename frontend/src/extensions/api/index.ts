@@ -57,11 +57,30 @@ export class ApiError extends Error {
   }
 }
 
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+const CSRF_HEADER = "X-CSRF-Token";
+const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
+
+function withCsrf(headers: HeadersInit, method?: string): HeadersInit {
+  if (method && STATE_CHANGING_METHODS.has(method)) {
+    const token = getCsrfToken();
+    if (token) {
+      return { ...headers, [CSRF_HEADER]: token };
+    }
+  }
+  return headers;
+}
+
 async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: HeadersInit = withCsrf({
     "Content-Type": "application/json",
     ...options.headers,
-  };
+  }, options.method);
 
   let response: Response;
   try {
@@ -101,10 +120,10 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: HeadersInit = withCsrf({
     "Content-Type": "application/json",
     ...options.headers,
-  };
+  }, options.method);
 
   let response: Response;
   try {
@@ -275,6 +294,7 @@ export const kbApi = {
     return fetch(`${API_BASE}/knowledge-bases/${kbId}/documents`, {
       method: "POST",
       credentials: "include",
+      headers: withCsrf({}, "POST"),
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {
@@ -395,10 +415,10 @@ interface ModelInfo {
 }
 
 async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: HeadersInit = withCsrf({
     "Content-Type": "application/json",
     ...options.headers,
-  };
+  }, options.method);
   let response: Response;
   try {
     response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL || ""}${path}`, {
@@ -609,6 +629,7 @@ export const kfApi = {
     return fetch(`${API_BASE}/knowledge-bases/${kbId}/documents`, {
       method: "POST",
       credentials: "include",
+      headers: withCsrf({}, "POST"),
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {
