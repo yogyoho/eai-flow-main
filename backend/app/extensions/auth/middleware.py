@@ -8,6 +8,7 @@ role when it exists.
 """
 
 import logging
+import uuid
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -21,6 +22,37 @@ logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN_COOKIE = "access_token"
 
+# Role definitions for on-demand creation when seed_db hasn't run yet.
+_ROLE_DEFAULTS = {
+    "user": {"name": "普通用户", "permissions": ["kb:read", "kb:create", "kb:upload"], "level": 1},
+    "superadmin": {"name": "Super Admin", "permissions": ["*"], "is_system": True, "level": 100},
+}
+
+
+async def _ensure_role(db: AsyncSession, code: str) -> Role | None:
+    """Look up a role by code, creating it on-the-fly if missing."""
+    result = await db.execute(select(Role).where(Role.code == code))
+    role = result.scalar_one_or_none()
+    if role is not None:
+        return role
+
+    defaults = _ROLE_DEFAULTS.get(code)
+    if defaults is None:
+        return None
+
+    role = Role(
+        id=uuid.uuid4(),
+        code=code,
+        name=defaults["name"],
+        permissions=defaults["permissions"],
+        is_system=defaults.get("is_system", False),
+        level=defaults.get("level", 10),
+    )
+    db.add(role)
+    await db.flush()
+    logger.info("Auto-created role '%s' (code=%s)", defaults["name"], code)
+    return role
+
 
 async def _bridge_user(gw_user, db: AsyncSession) -> User:
     """Look up or auto-create an Extensions User for the given Gateway user."""
@@ -29,9 +61,15 @@ async def _bridge_user(gw_user, db: AsyncSession) -> User:
     ext_user = result.scalar_one_or_none()
 
     if ext_user is not None:
+        if ext_user.role_id is None:
+            role_code = "superadmin" if gw_user.system_role == "admin" else "user"
+            role = await _ensure_role(db, role_code)
+            if role is not None:
+                ext_user.role_id = role.id
+                await db.commit()
+                await db.refresh(ext_user)
         return ext_user
 
-    # First access — auto-create an Extensions User row.
     ext_user = User(
         username=gw_user.email.split("@")[0],
         email=gw_user.email,
@@ -42,12 +80,10 @@ async def _bridge_user(gw_user, db: AsyncSession) -> User:
     db.add(ext_user)
     await db.flush()
 
-    if gw_user.system_role == "admin":
-        role_stmt = select(Role).where(Role.code == "superadmin")
-        role_result = await db.execute(role_stmt)
-        admin_role = role_result.scalar_one_or_none()
-        if admin_role is not None:
-            ext_user.role_id = admin_role.id
+    role_code = "superadmin" if gw_user.system_role == "admin" else "user"
+    role = await _ensure_role(db, role_code)
+    if role is not None:
+        ext_user.role_id = role.id
 
     await db.commit()
     await db.refresh(ext_user)
@@ -95,7 +131,13 @@ async def get_current_user(
 
     gw_user = await get_current_user_from_request(request)
     ext_user = await _bridge_user(gw_user, db)
-    return await _build_current_user(ext_user, db)
+    current_user = await _build_current_user(ext_user, db)
+    logger.debug(
+        "Bridged user: gw_id=%s email=%s system_role=%s → ext_id=%s role_id=%s role_name=%s",
+        gw_user.id, gw_user.email, gw_user.system_role,
+        current_user.id, current_user.role_id, current_user.role_name,
+    )
+    return current_user
 
 
 async def get_current_user_optional(
@@ -126,6 +168,10 @@ def require_permission(permission: str):
         db: AsyncSession = Depends(get_db),
     ) -> CurrentUser:
         if current_user.role_id is None:
+            logger.warning(
+                "Permission check failed: user=%s (%s) has no role assigned",
+                current_user.id, current_user.username,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No role assigned. Please contact administrator.",
@@ -133,6 +179,10 @@ def require_permission(permission: str):
 
         role = await db.get(Role, current_user.role_id)
         if role is None:
+            logger.warning(
+                "Permission check failed: user=%s role_id=%s not found in DB",
+                current_user.id, current_user.role_id,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Role not found",
@@ -143,6 +193,10 @@ def require_permission(permission: str):
             return current_user
 
         if permission not in permissions and f"{permission.split(':')[0]}:*" not in permissions:
+            logger.warning(
+                "Permission check failed: user=%s role=%s permissions=%s lacks '%s'",
+                current_user.id, role.code, permissions, permission,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission denied: {permission}",

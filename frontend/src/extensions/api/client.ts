@@ -7,18 +7,37 @@
 
 const API_BASE = "/api/extensions";
 
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+const CSRF_HEADER = "X-CSRF-Token";
+const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
+
+function withCsrf(headers: Record<string, string>, method?: string): Record<string, string> {
+  if (method && STATE_CHANGING_METHODS.has(method)) {
+    const token = getCsrfToken();
+    if (token) {
+      return { ...headers, [CSRF_HEADER]: token };
+    }
+  }
+  return headers;
+}
+
 /**
- * Fetch wrapper that sends the Gateway Auth session cookie automatically.
+ * Fetch wrapper that sends the Gateway Auth session cookie and CSRF token.
  */
 export async function authFetch<T>(
   url: string,
   options: RequestInit = {},
   baseUrl: string = API_BASE
 ): Promise<T> {
-  const headers: Record<string, string> = {
+  const headers: Record<string, string> = withCsrf({
     "Content-Type": "application/json",
     ...((options.headers as Record<string, string>) || {}),
-  };
+  }, options.method);
 
   const response = await fetch(`${baseUrl}${url}`, {
     ...options,
@@ -65,6 +84,7 @@ export async function authFormFetch<T>(
   const response = await fetch(`${baseUrl}${url}`, {
     method: "POST",
     credentials: "include",
+    headers: withCsrf({}, "POST"),
     body: formData,
   });
 
