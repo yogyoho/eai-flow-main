@@ -7,30 +7,16 @@ router for thread records.
 
 from __future__ import annotations
 
-import time
-from datetime import UTC, datetime
 from typing import Any
 
 from langgraph.store.base import BaseStore
 
 from deerflow.persistence.thread_meta.base import ThreadMetaStore
 from deerflow.runtime.user_context import AUTO, _AutoSentinel, resolve_user_id
+from deerflow.utils.time import coerce_iso, now_iso
 
 THREADS_NS: tuple[str, ...] = ("threads",)
 
-
-def _format_ts(ts: float | str | None) -> str:
-    """Convert a timestamp value to an ISO-8601 string.
-
-    Accepts a Unix-epoch float (from ``time.time()``), an existing ISO
-    string, or None/missing.  Always returns a valid ISO-8601 string so
-    JavaScript clients can safely parse it with ``new Date()``.
-    """
-    if isinstance(ts, (int, float)) and ts > 0:
-        return datetime.fromtimestamp(ts, tz=UTC).isoformat()
-    if isinstance(ts, str) and ts:
-        return ts
-    return datetime.now(UTC).isoformat()
 
 
 class MemoryThreadMetaStore(ThreadMetaStore):
@@ -63,7 +49,7 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         metadata: dict | None = None,
     ) -> dict:
         resolved_user_id = resolve_user_id(user_id, method_name="MemoryThreadMetaStore.create")
-        now = time.time()
+        now = now_iso()
         record: dict[str, Any] = {
             "thread_id": thread_id,
             "assistant_id": assistant_id,
@@ -77,16 +63,16 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         }
         await self._store.aput(THREADS_NS, thread_id, record)
         result = dict(record)
-        result["created_at"] = _format_ts(now)
-        result["updated_at"] = _format_ts(now)
+        result["created_at"] = coerce_iso(now)
+        result["updated_at"] = coerce_iso(now)
         return result
 
     async def get(self, thread_id: str, *, user_id: str | None | _AutoSentinel = AUTO) -> dict | None:
         record = await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.get")
         if record is None:
             return None
-        record["created_at"] = _format_ts(record.get("created_at"))
-        record["updated_at"] = _format_ts(record.get("updated_at"))
+        record["created_at"] = coerce_iso(record.get("created_at"))
+        record["updated_at"] = coerce_iso(record.get("updated_at"))
         return record
 
     async def search(
@@ -129,7 +115,7 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         if record is None:
             return
         record["display_name"] = display_name
-        record["updated_at"] = time.time()
+        record["updated_at"] = now_iso()
         await self._store.aput(THREADS_NS, thread_id, record)
 
     async def update_status(self, thread_id: str, status: str, *, user_id: str | None | _AutoSentinel = AUTO) -> None:
@@ -137,7 +123,7 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         if record is None:
             return
         record["status"] = status
-        record["updated_at"] = time.time()
+        record["updated_at"] = now_iso()
         await self._store.aput(THREADS_NS, thread_id, record)
 
     async def update_metadata(self, thread_id: str, metadata: dict, *, user_id: str | None | _AutoSentinel = AUTO) -> None:
@@ -147,7 +133,7 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         merged = dict(record.get("metadata") or {})
         merged.update(metadata)
         record["metadata"] = merged
-        record["updated_at"] = time.time()
+        record["updated_at"] = now_iso()
         await self._store.aput(THREADS_NS, thread_id, record)
 
     async def delete(self, thread_id: str, *, user_id: str | None | _AutoSentinel = AUTO) -> None:
@@ -167,6 +153,8 @@ class MemoryThreadMetaStore(ThreadMetaStore):
             "display_name": val.get("display_name"),
             "status": val.get("status", "idle"),
             "metadata": val.get("metadata", {}),
-            "created_at": _format_ts(val.get("created_at")),
-            "updated_at": _format_ts(val.get("updated_at")),
+            # ``coerce_iso`` heals legacy unix-second values written by
+            # earlier Gateway versions that called ``str(time.time())``.
+            "created_at": coerce_iso(val.get("created_at", "")),
+            "updated_at": coerce_iso(val.get("updated_at", "")),
         }
