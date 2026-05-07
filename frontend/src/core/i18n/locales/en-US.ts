@@ -487,6 +487,10 @@ export const enUS: Translations = {
         light: "Light",
         dark: "Dark",
       },
+      language: {
+        title: "Language",
+        description: "Switch between different languages.",
+      },
       services: {
         title: "External Services",
         description: "Manage external services connected to EAIFlow.",
@@ -500,6 +504,8 @@ export const enUS: Translations = {
         minioDesc: "Manage files and media assets.",
         milvus: "Milvus Vector Database",
         milvusDesc: "Store and retrieve vector embedding data.",
+        ragflow: "RAGFlow Knowledge Base",
+        ragflowDesc: "Store and retrieve reports, regulations, standards, etc.",
       },
       validateModel: "Validate Model",
       validating: "Validating...",

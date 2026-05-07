@@ -122,20 +122,20 @@ function FeedbackButtons({
 
 export function MessageListItem({
   className,
-  threadId,
   message,
   isLoading,
-  tokenUsageEnabled = false,
   feedback,
   runId,
+  threadId,
+  showCopyButton = true,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
   threadId: string;
-  tokenUsageEnabled?: boolean;
   feedback?: FeedbackData | null;
   runId?: string;
+  showCopyButton?: boolean;
 }) {
   const isHuman = message.type === "human";
   return (
@@ -148,16 +148,17 @@ export function MessageListItem({
         message={message}
         isLoading={isLoading}
         threadId={threadId}
-        tokenUsageEnabled={tokenUsageEnabled}
       />
-      {!isLoading && (
+      {!isLoading && showCopyButton && (
         <MessageToolbar
           className={cn(
-            isHuman ? "-bottom-9 justify-end" : "-bottom-8",
-            "absolute right-0 left-0 z-20",
+            isHuman
+              ? "absolute right-0 -bottom-9 left-0 justify-end"
+              : "absolute right-0 bottom-0 left-0",
+            "z-20 opacity-0 transition-opacity delay-200 duration-300 group-hover/conversation-message:opacity-100",
           )}
         >
-          <div className="flex gap-1">
+          <div className="pointer-events-auto flex gap-1">
             {!isHuman && extractContentFromMessage(message) && (
               <SaveToDocButton
                 content={extractContentFromMessage(message) ?? ""}
@@ -220,13 +221,11 @@ function MessageContent_({
   message,
   isLoading = false,
   threadId,
-  tokenUsageEnabled = false,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
   threadId: string;
-  tokenUsageEnabled?: boolean;
 }) {
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const isHuman = message.type === "human";
@@ -304,11 +303,6 @@ function MessageContent_({
           <ReasoningTrigger />
           <ReasoningContent>{reasoningContent}</ReasoningContent>
         </Reasoning>
-        <MessageTokenUsage
-          enabled={tokenUsageEnabled}
-          isLoading={isLoading}
-          message={message}
-        />
       </AIElementMessageContent>
     );
   }
@@ -345,11 +339,6 @@ function MessageContent_({
         rehypePlugins={[...rehypePlugins, [rehypeKatex, { output: "html" }]]}
         className="my-3"
         components={components}
-      />
-      <MessageTokenUsage
-        enabled={tokenUsageEnabled}
-        isLoading={isLoading}
-        message={message}
       />
     </AIElementMessageContent>
   );

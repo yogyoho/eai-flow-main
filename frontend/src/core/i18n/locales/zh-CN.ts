@@ -50,6 +50,7 @@ export const zhCN: Translations = {
     exportAsMarkdown: "导出为 Markdown",
     exportAsJSON: "导出为 JSON",
     exportSuccess: "对话已导出",
+    logout: "退出登录",
   },
 
   // Home
@@ -440,10 +441,10 @@ export const zhCN: Translations = {
       disableNotification: "关闭通知",
     },
     basic: {
-      title: "基础设置",
+      title: "基本设置",
       description: "配置模型、内容审核、主题等基础设置。",
       retrieval: {
-        title: "检索配置",
+        title: "LLM配置",
         description: "配置模型提供商和模型用于检索任务。",
         defaultModel: "默认模型",
         fastModel: "快速模型",
@@ -468,6 +469,10 @@ export const zhCN: Translations = {
         light: "浅色",
         dark: "深色",
       },
+      language: {
+        title: "语言",
+        description: "在不同语言之间切换。",
+      },
       services: {
         title: "外部服务",
         description: "管理连接到 EAIFlow 的外部服务。",
@@ -481,6 +486,8 @@ export const zhCN: Translations = {
         minioDesc: "管理文件和媒体资源。",
         milvus: "Milvus 向量数据库",
         milvusDesc: "存储和检索向量嵌入数据。",
+        ragflow: "RAGFlow 知识库",
+        ragflowDesc: "存储和检索各类报告、法规标准等",
       },
       validateModel: "验证模型",
       validating: "验证中...",
