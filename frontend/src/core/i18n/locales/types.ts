@@ -410,6 +410,10 @@ export interface Translations {
         light: string;
         dark: string;
       };
+      language: {
+        title: string;
+        description: string;
+      };
       services: {
         title: string;
         description: string;
@@ -423,6 +427,8 @@ export interface Translations {
         minioDesc: string;
         milvus: string;
         milvusDesc: string;
+        ragflow: string;
+        ragflowDesc: string;
       };
       validateModel: string;
       validating: string;
