@@ -362,7 +362,7 @@ task(description="Oracle Cloud analysis", prompt="...", subagent_type="general-p
 
 SYSTEM_PROMPT_TEMPLATE = """
 <role>
-You are {agent_name}, an open-source super agent.
+You are {agent_name}, an enterprise-grade super agent.
 </role>
 
 {soul}
@@ -494,7 +494,7 @@ Recent breakthroughs in language models have also accelerated progress
 ```markdown
 ## Executive Summary
 
-DeerFlow is an open-source AI agent framework that gained significant traction in early 2026
+DeerFlow is an enterprise-grade AI agent framework that gained significant traction in early 2026
 [citation:GitHub Repository](https://github.com/bytedance/deer-flow). The project focuses on
 providing a production-ready agent system with sandbox execution and memory management
 [citation:DeerFlow Documentation](https://deer-flow.dev/docs).
