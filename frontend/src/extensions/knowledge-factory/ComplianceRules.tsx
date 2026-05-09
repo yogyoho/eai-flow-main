@@ -314,7 +314,7 @@ export function ComplianceRules({
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">启用</span>
-                    <span className="text-xl font-bold text-emerald-600">
+                    <span className="text-xl font-bold text-emerald-500">
                       {statistics.enabled}
                     </span>
                   </div>

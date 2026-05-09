@@ -1,16 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useI18n } from "@/core/i18n/hooks";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Globe, Loader2, Save } from "lucide-react";
+import { useTheme } from "next-themes";
+import {
+  Globe,
+  Loader2,
+  MonitorSmartphoneIcon,
+  MoonIcon,
+  Save,
+  SunIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { GroupedModelSelect, type ChatModelGroup } from "@/components/workspace/settings/grouped-model-select";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  GroupedModelSelect,
+  type ChatModelGroup,
+} from "@/components/workspace/settings/grouped-model-select";
+import { SettingsSection } from "@/components/workspace/settings/settings-section";
+import { enUS, isLocale, zhCN, type Locale } from "@/core/i18n";
+import { useI18n } from "@/core/i18n/hooks";
+import { fetch } from "@/core/api/fetcher";
+import { cn } from "@/lib/utils";
 
 interface SystemConfig {
   default_model?: string;
@@ -57,7 +73,7 @@ interface ModelValidationResult {
 }
 
 export function BasicSettings() {
-  const { t } = useI18n();
+  const { t, locale, changeLocale } = useI18n();
   const [config, setConfig] = useState<SystemConfig>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,7 +81,35 @@ export function BasicSettings() {
   const [rerankerChoices, setRerankerChoices] = useState<string[]>([]);
   const [chatModelGroups, setChatModelGroups] = useState<ChatModelGroup[]>([]);
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
-const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set());
+  const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set());
+  const { theme, setTheme, systemTheme } = useTheme();
+  const currentTheme = (theme ?? "system") as "system" | "light" | "dark";
+
+  const languageOptions: { value: Locale; label: string }[] = [
+    { value: "en-US", label: enUS.locale.localName },
+    { value: "zh-CN", label: zhCN.locale.localName },
+  ];
+
+  const themeOptions = [
+    {
+      id: "system",
+      label: t.settings.basic.theme.system,
+      description: t.settings.appearance.systemDescription,
+      icon: MonitorSmartphoneIcon,
+    },
+    {
+      id: "light",
+      label: t.settings.basic.theme.light,
+      description: t.settings.appearance.lightDescription,
+      icon: SunIcon,
+    },
+    {
+      id: "dark",
+      label: t.settings.basic.theme.dark,
+      description: t.settings.appearance.darkDescription,
+      icon: MoonIcon,
+    },
+  ];
 
   useEffect(() => {
     loadConfig();
@@ -74,7 +118,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
 
   const loadConfig = async () => {
     try {
-      const response = await fetch("/api/extensions/config");
+      const response = await fetch("/api/extensions/config", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         setConfig(data);
@@ -88,7 +132,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
 
   const loadModelChoices = async () => {
     try {
-      const response = await fetch("/api/extensions/models/choices");
+      const response = await fetch("/api/extensions/models/choices", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         setEmbedModelChoices(data.embed_models || []);
@@ -107,6 +151,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
+        credentials: "include",
       });
       if (response.ok) {
         toast.success(t.settings.basic.saveSuccess);
@@ -129,6 +174,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ models: [modelName] }),
+        credentials: "include",
       });
       if (response.ok) {
         const data = (await response.json()) as ModelValidationResponse;
@@ -182,8 +228,8 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
           <CardDescription>{t.settings.basic.retrieval.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 w-full">
               <Label htmlFor="default_model">{t.settings.basic.retrieval.defaultModel}</Label>
               <GroupedModelSelect
                 value={config.default_model || ""}
@@ -195,7 +241,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
                 onValidate={handleValidateModel}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
               <Label htmlFor="fast_model">{t.settings.basic.retrieval.fastModel}</Label>
               <GroupedModelSelect
                 value={config.fast_model || ""}
@@ -208,14 +254,14 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 w-full">
               <Label htmlFor="embed_model">{t.settings.basic.retrieval.embedModel}</Label>
               <Select
                 value={config.embed_model || ""}
                 onValueChange={(value) => handleChange("embed_model", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.settings.basic.retrieval.placeholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,7 +270,7 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
                     const statusColor = embStatus?.status === "available" ? "text-green-500"
                       : embStatus?.status === "unavailable" ? "text-red-500"
                       : embStatus?.status === "error" ? "text-yellow-500"
-                      : "text-gray-400";
+                      : "text-muted-foreground";
                     const statusIcon = embStatus?.status === "available" ? "✓"
                       : embStatus?.status === "unavailable" ? "✗"
                       : embStatus?.status === "error" ? "⚠"
@@ -241,13 +287,13 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
               <Label htmlFor="reranker">{t.settings.basic.retrieval.reranker}</Label>
               <Select
                 value={config.reranker || ""}
                 onValueChange={(value) => handleChange("reranker", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder={t.settings.basic.retrieval.placeholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -318,26 +364,55 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
         </CardContent>
       </Card>
 
-      {/* 主题设置 */}
+      {/* 主题与外观设置 */}
       <Card>
-        <CardHeader>
-          <CardTitle>{t.settings.basic.theme.title}</CardTitle>
-          <CardDescription>{t.settings.basic.theme.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select
-            value={config.theme || "system"}
-            onValueChange={(value) => handleChange("theme", value)}
+        <CardContent className="space-y-6">
+          <SettingsSection
+            title={t.settings.appearance.themeTitle}
+            description={t.settings.appearance.themeDescription}
           >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder={t.settings.basic.theme.system} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="system">{t.settings.basic.theme.system}</SelectItem>
-              <SelectItem value="light">{t.settings.basic.theme.light}</SelectItem>
-              <SelectItem value="dark">{t.settings.basic.theme.dark}</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="grid gap-3 lg:grid-cols-3">
+              {themeOptions.map((option) => (
+                <ThemePreviewCard
+                  key={option.id}
+                  icon={option.icon}
+                  label={option.label}
+                  description={option.description}
+                  active={currentTheme === option.id}
+                  mode={option.id as "system" | "light" | "dark"}
+                  systemTheme={systemTheme}
+                  onSelect={(value) => setTheme(value)}
+                />
+              ))}
+            </div>
+          </SettingsSection>
+
+          <Separator />
+
+          <SettingsSection
+            title={t.settings.basic.language.title}
+            description={t.settings.basic.language.description}
+          >
+            <Select
+              value={locale}
+              onValueChange={(value) => {
+                if (isLocale(value)) {
+                  changeLocale(value);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {languageOptions.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsSection>
         </CardContent>
       </Card>
 
@@ -374,6 +449,11 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
               description={t.settings.basic.services.milvusDesc}
               href="http://localhost:9091/webui/"
             />
+            <ServiceLinkCard
+              title={t.settings.basic.services.ragflow}
+              description={t.settings.basic.services.ragflowDesc}
+              href="http://localhost:9381/"
+            />
           </div>
         </CardContent>
       </Card>
@@ -386,6 +466,90 @@ const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set())
         </Button>
       </div>
     </div>
+  );
+}
+
+function ThemePreviewCard({
+  icon: Icon,
+  label,
+  description,
+  active,
+  mode,
+  systemTheme,
+  onSelect,
+}: {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
+  description: string;
+  active: boolean;
+  mode: "system" | "light" | "dark";
+  systemTheme?: string;
+  onSelect: (mode: "system" | "light" | "dark") => void;
+}) {
+  const previewMode =
+    mode === "system" ? (systemTheme === "dark" ? "dark" : "light") : mode;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(mode)}
+      className={cn(
+        "group flex h-full flex-col gap-3 rounded-lg border p-4 text-left transition-all",
+        active
+          ? "border-primary ring-primary/30 shadow-sm ring-2"
+          : "hover:border-border hover:shadow-sm",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="bg-muted rounded-md p-2">
+          <Icon className="size-4" />
+        </div>
+        <div className="space-y-1">
+          <div className="text-sm leading-none font-semibold">{label}</div>
+          <p className="text-muted-foreground text-xs leading-snug">
+            {description}
+          </p>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-md border text-xs transition-colors",
+          previewMode === "dark"
+            ? "border-neutral-800 bg-neutral-900 text-neutral-200"
+            : "border-slate-200 bg-white text-slate-900",
+        )}
+      >
+        <div className="border-border/50 flex items-center gap-2 border-b px-3 py-2">
+          <div
+            className={cn(
+              "h-2 w-2 rounded-full",
+              previewMode === "dark" ? "bg-emerald-400" : "bg-emerald-500",
+            )}
+          />
+          <div className="h-2 w-10 rounded-full bg-current/20" />
+          <div className="h-2 w-6 rounded-full bg-current/15" />
+        </div>
+        <div className="grid grid-cols-[1fr_240px] gap-3 px-3 py-3">
+          <div className="space-y-2">
+            <div className="h-3 w-3/4 rounded-full bg-current/15" />
+            <div className="h-3 w-1/2 rounded-full bg-current/10" />
+            <div className="h-[90px] rounded-md border border-current/10 bg-current/5" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-md bg-current/10" />
+              <div className="space-y-2">
+                <div className="h-2 w-14 rounded-full bg-current/15" />
+                <div className="h-2 w-10 rounded-full bg-current/10" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1 rounded-md border border-dashed border-current/15 p-2">
+              <div className="h-2 w-3/5 rounded-full bg-current/15" />
+              <div className="h-2 w-2/5 rounded-full bg-current/10" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
 

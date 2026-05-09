@@ -378,7 +378,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     {/* File info */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <File className="w-8 h-8 text-indigo-500 shrink-0" />
+                        <File className="w-8 h-8 text-primary shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
                             {selectedFile.name}
@@ -412,7 +412,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     )}
 
                     {parseError && (
-                      <div className="flex items-center gap-2 text-sm text-red-600">
+                      <div className="flex items-center gap-2 text-sm text-red-500">
                         <AlertCircle className="w-4 h-4" />
                         {parseError}
                       </div>
@@ -421,7 +421,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     {/* Content preview */}
                     {parsedPreview && (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-emerald-600">
+                        <div className="flex items-center gap-2 text-sm text-emerald-500">
                           <CheckCircle2 className="w-4 h-4" />
                           文件解析成功，已提取正文
                         </div>
@@ -533,7 +533,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
+                <div className="flex items-center gap-2 text-red-500 text-sm">
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </div>
@@ -557,8 +557,8 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
           {step === "completed" && (
             <div className="flex flex-col items-center py-12">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
+                <FileText className="w-6 h-6 text-emerald-500" />
               </div>
               <p className="text-lg font-medium text-foreground">导入成功</p>
               <p className="text-sm text-muted-foreground mt-2">
@@ -570,11 +570,11 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
           {step === "error" && (
             <div className="flex flex-col items-center py-12">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+              <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-6 h-6 text-red-500" />
               </div>
               <p className="text-lg font-medium text-foreground">导入失败</p>
-              <p className="text-sm text-red-600 mt-2">{error}</p>
+              <p className="text-sm text-red-500 mt-2">{error}</p>
               <button
                 onClick={() => setStep("form")}
                 className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -597,7 +597,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
             <button
               onClick={handleSubmit}
               disabled={importMutation.isPending}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {importMutation.isPending && (
                 <Loader2 className="w-4 h-4 animate-spin" />

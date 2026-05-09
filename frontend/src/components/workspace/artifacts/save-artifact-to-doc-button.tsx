@@ -90,12 +90,12 @@ export function SaveArtifactToDocButton({
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-md border text-xs transition-colors",
           state === "done"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
             : state === "exists"
-              ? "border-amber-200 bg-amber-50 text-amber-600"
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-500"
               : state === "error"
-                ? "border-red-200 bg-red-50 text-red-600"
-                : "border-zinc-200 bg-white text-zinc-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600",
+                ? "border-red-500/20 bg-red-500/10 text-red-500"
+                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary",
           (state === "saving" || state === "checking") && "cursor-not-allowed opacity-60"
         )}
       >
@@ -122,12 +122,12 @@ export function SaveArtifactToDocButton({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
         state === "done"
-          ? "text-emerald-600 bg-emerald-50"
+          ? "text-emerald-500 bg-emerald-500/10"
           : state === "exists"
-            ? "text-amber-600 bg-amber-50"
+            ? "text-amber-500 bg-amber-500/10"
             : state === "error"
-              ? "text-red-600 bg-red-50"
-              : "text-zinc-600 hover:bg-zinc-100",
+              ? "text-red-500 bg-red-500/10"
+              : "text-muted-foreground hover:bg-muted",
         (state === "saving" || state === "checking") && "cursor-not-allowed opacity-60"
       )}
     >

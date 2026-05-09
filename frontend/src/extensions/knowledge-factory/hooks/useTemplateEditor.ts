@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from "react";
 import { kfApi } from "../../api";
 import type {
   TemplateDocument,
+  TemplateSection,
   TemplateListItem,
   TemplateListResponse,
   EditorSection,
@@ -12,6 +13,32 @@ import type {
   EditorContentContract,
   TemplateUpdatePayload,
 } from "@/extensions/knowledge-factory/types";
+
+/** 将后端 TemplateSection（snake_case API 响应）转换为前端 EditorSection（camelCase） */
+function apiSectionToEditor(sec: TemplateSection): EditorSection {
+  return {
+    id: sec.id,
+    title: sec.title,
+    level: sec.level,
+    required: sec.required,
+    purpose: sec.purpose,
+    children: sec.children?.map(apiSectionToEditor),
+    contentContract: sec.content_contract
+      ? {
+          keyElements: sec.content_contract.key_elements,
+          structureType: sec.content_contract.structure_type,
+          styleRules: sec.content_contract.style_rules ?? "",
+          minWordCount: sec.content_contract.min_word_count ?? 0,
+          forbiddenPhrases: sec.content_contract.forbidden_phrases ?? [],
+        }
+      : undefined,
+    complianceRules: sec.compliance_rules,
+    ragSources: sec.rag_sources,
+    generationHint: sec.generation_hint,
+    exampleSnippet: sec.example_snippet,
+    completenessScore: sec.completeness_score,
+  };
+}
 
 /** 将后端 TemplateDocument 转换为前端 EditorTemplate */
 function toEditorTemplate(doc: TemplateDocument): EditorTemplate {
@@ -22,34 +49,34 @@ function toEditorTemplate(doc: TemplateDocument): EditorTemplate {
     domain: doc.domain,
     status: doc.status,
     completenessScore: doc.completeness_score,
-    sections: doc.root_sections || [],
+    sections: (doc.root_sections || []).map(apiSectionToEditor),
     isDirty: false,
   };
 }
 
-/** 将前端 EditorSection 转换为后端格式 */
-function sectionToBackend(section: EditorSection): EditorSection {
+/** 将前端 EditorSection（camelCase）转换为后端 snake_case 格式 */
+function sectionToBackend(section: EditorSection): Record<string, unknown> {
   return {
     id: section.id,
     title: section.title,
     level: section.level,
     required: section.required,
-    purpose: section.purpose,
-    children: section.children?.map(sectionToBackend),
-    contentContract: section.contentContract
+    purpose: section.purpose ?? null,
+    children: section.children?.length ? section.children.map(sectionToBackend) : [],
+    content_contract: section.contentContract
       ? {
-          keyElements: section.contentContract.keyElements,
-          structureType: section.contentContract.structureType,
-          styleRules: section.contentContract.styleRules,
-          minWordCount: section.contentContract.minWordCount,
-          forbiddenPhrases: section.contentContract.forbiddenPhrases,
+          key_elements: section.contentContract.keyElements,
+          structure_type: section.contentContract.structureType,
+          style_rules: section.contentContract.styleRules || null,
+          min_word_count: section.contentContract.minWordCount || null,
+          forbidden_phrases: section.contentContract.forbiddenPhrases ?? [],
         }
-      : undefined,
-    complianceRules: section.complianceRules,
-    ragSources: section.ragSources,
-    generationHint: section.generationHint,
-    exampleSnippet: section.exampleSnippet,
-    completenessScore: section.completenessScore,
+      : null,
+    compliance_rules: section.complianceRules ?? null,
+    rag_sources: section.ragSources ?? null,
+    generation_hint: section.generationHint ?? null,
+    example_snippet: section.exampleSnippet ?? null,
+    completeness_score: section.completenessScore ?? null,
   };
 }
 
@@ -478,7 +505,7 @@ export function useTemplateEditor(templateId: string | null) {
         },
       };
 
-      await kfApi.updateTemplate(templateId, payload as unknown as TemplateDocument);
+      await kfApi.updateTemplate(templateId, payload);
 
       setTemplate((prev) =>
         prev

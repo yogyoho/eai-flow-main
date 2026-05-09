@@ -70,82 +70,82 @@ services:
       - eai-flow-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
 
   # ── Asset Backend ──────────────────────────────────────────────────────
-  asset-backend:
-    build:
-      context: ../business/asset-service/backend
-      dockerfile: Dockerfile
-    container_name: eai-flow-asset-backend
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3002 --workers 2
-    environment:
-      - DATABASE_URL=${ASSET_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/asset}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - API_PREFIX=/api/v1
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - ../.env
-    depends_on:
-      business-db:
-        condition: service_healthy
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
+  # asset-backend:
+  #   build:
+  #     context: ../business/asset-service/backend
+  #     dockerfile: Dockerfile
+  #   container_name: eai-flow-asset-backend
+  #   command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3002 --workers 2
+  #   environment:
+  #     - DATABASE_URL=${ASSET_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/asset}
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - JWT_ALGORITHM=HS256
+  #     - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+  #     - API_PREFIX=/api/v1
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   env_file:
+  #     - ../.env
+  #   depends_on:
+  #     business-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - eai-flow-net
+  #   restart: unless-stopped
 
   # ── Asset Frontend ─────────────────────────────────────────────────────
-  asset-frontend:
-    build:
-      context: ../business/asset-service/frontend
-      dockerfile: Dockerfile
-    container_name: eai-flow-asset-frontend
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=
-      - NEXT_PUBLIC_APP_BASE_URL=
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
+  # asset-frontend:
+  #   build:
+  #     context: ../business/asset-service/frontend
+  #     dockerfile: Dockerfile
+  #   container_name: eai-flow-asset-frontend
+  #   environment:
+  #     - NEXT_PUBLIC_API_BASE_URL=
+  #     - NEXT_PUBLIC_APP_BASE_URL=
+  #   networks:
+  #     - eai-flow-net
+  #   restart: unless-stopped
 
   # ── Project Backend ────────────────────────────────────────────────────
-  project-backend:
-    build:
-      context: ../business/project-service/backend
-      dockerfile: Dockerfile
-    container_name: eai-flow-project-backend
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3003 --workers 2
-    environment:
-      - DATABASE_URL=${PROJECT_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/project}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - API_PREFIX=/api/v1
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - ../.env
-    depends_on:
-      business-db:
-        condition: service_healthy
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
+  # project-backend:
+  #   build:
+  #     context: ../business/project-service/backend
+  #     dockerfile: Dockerfile
+  #   container_name: eai-flow-project-backend
+  #   command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3003 --workers 2
+  #   environment:
+  #     - DATABASE_URL=${PROJECT_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/project}
+  #     - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+  #     - JWT_ALGORITHM=HS256
+  #     - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+  #     - API_PREFIX=/api/v1
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   env_file:
+  #     - ../.env
+  #   depends_on:
+  #     business-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - eai-flow-net
+  #   restart: unless-stopped
 
   # ── Project Frontend ───────────────────────────────────────────────────
-  project-frontend:
-    build:
-      context: ../business/project-service/frontend
-      dockerfile: Dockerfile
-    container_name: eai-flow-project-frontend
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=
-      - NEXT_PUBLIC_APP_BASE_URL=
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
+  # project-frontend:
+  #   build:
+  #     context: ../business/project-service/frontend
+  #     dockerfile: Dockerfile
+  #   container_name: eai-flow-project-frontend
+  #   environment:
+  #     - NEXT_PUBLIC_API_BASE_URL=
+  #     - NEXT_PUBLIC_APP_BASE_URL=
+  #   networks:
+  #     - eai-flow-net
+  #   restart: unless-stopped
 
 volumes:
   business-db-data:

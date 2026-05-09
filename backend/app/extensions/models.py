@@ -402,3 +402,15 @@ class LawTemplateRelation(Base):
 
     def __repr__(self) -> str:
         return f"<LawTemplateRelation(law_id={self.law_id}, template_id={self.template_id})>"
+
+
+class SystemConfigEntry(Base):
+    """Key-value store for system configuration."""
+
+    __tablename__ = "system_config"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )

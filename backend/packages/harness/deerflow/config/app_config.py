@@ -92,6 +92,10 @@ class AppConfig(BaseModel):
     """Config for the DeerFlow application"""
 
     log_level: str = Field(default="info", description="Logging level for deerflow and app modules (debug/info/warning/error); third-party libraries are not affected")
+    run_timeout_seconds: int | None = Field(
+        default=180,
+        description="Maximum wall-clock seconds for a top-level agent run. Set to null or <=0 to disable.",
+    )
     token_usage: TokenUsageConfig = Field(default_factory=TokenUsageConfig, description="Token usage tracking configuration")
     models: list[ModelConfig] = Field(default_factory=list, description="Available models")
     sandbox: SandboxConfig = Field(description="Sandbox configuration")

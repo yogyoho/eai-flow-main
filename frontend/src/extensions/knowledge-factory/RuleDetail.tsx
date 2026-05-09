@@ -190,7 +190,7 @@ export function RuleDetail({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center p-6 bg-slate-900/45 z-[1000]"
+      className="fixed inset-0 flex items-center justify-center p-6 bg-black/50 z-[1000]"
       onClick={onClose}
     >
       <div
@@ -262,7 +262,7 @@ export function RuleDetail({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="inline-flex items-center max-w-full px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center max-w-full px-3 py-1.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20">
                     {typeLabel}
                   </span>
                 )}
@@ -522,12 +522,12 @@ export function RuleDetail({
                   <div
                     className="p-2.5 rounded-lg border"
                     style={{
-                      backgroundColor: "#fef2f2",
-                      borderColor: "#fecaca",
-                      boxShadow: "inset 3px 0 0 0 #ef4444",
+                      backgroundColor: "var(--destructive)",
+                      borderColor: "color-mix(in srgb, var(--destructive) 30%, transparent)",
+                      boxShadow: "inset 3px 0 0 0 color-mix(in srgb, var(--destructive) 60%, transparent)",
                     }}
                   >
-                    <p className="text-sm text-red-800 leading-relaxed whitespace-pre-wrap break-words m-0">
+                    <p className="text-sm text-red-500 leading-relaxed whitespace-pre-wrap break-words m-0">
                       {editedRule.errorMessage ?? "无"}
                     </p>
                   </div>
@@ -546,12 +546,12 @@ export function RuleDetail({
                   <div
                     className="p-2.5 rounded-lg border"
                     style={{
-                      backgroundColor: "#f0fdf4",
-                      borderColor: "#bbf7d0",
-                      boxShadow: "inset 3px 0 0 0 #22c55e",
+                      backgroundColor: "color-mix(in srgb, var(--emerald-500, #10b981) 8%, transparent)",
+                      borderColor: "color-mix(in srgb, var(--emerald-500, #10b981) 30%, transparent)",
+                      boxShadow: "inset 3px 0 0 0 var(--emerald-500, #10b981)",
                     }}
                   >
-                    <p className="text-sm text-green-800 leading-relaxed whitespace-pre-wrap break-words m-0">
+                    <p className="text-sm text-emerald-500 leading-relaxed whitespace-pre-wrap break-words m-0">
                       {editedRule.autoFixSuggestion ?? "无"}
                     </p>
                   </div>

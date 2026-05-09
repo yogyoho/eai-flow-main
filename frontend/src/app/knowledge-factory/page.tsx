@@ -73,7 +73,7 @@ function KnowledgeFactoryLayoutContent({ children }: { children: React.ReactNode
         </header>
 
         {/* 主内容区 */}
-        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-white">{children}</div>
+        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-background">{children}</div>
       </div>
     </ShellLayout>
   );
@@ -86,7 +86,7 @@ function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNod
         <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
         </header>
-        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-white">{children}</div>
+        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-background">{children}</div>
       </div>
     </ShellLayout>
   );

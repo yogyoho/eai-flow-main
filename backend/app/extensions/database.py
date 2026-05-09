@@ -685,6 +685,15 @@ async def migrate_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"
         ))
 
+        # --- System configuration table ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS system_config (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+
 
 async def close_db() -> None:
     """Close database connections."""

@@ -111,7 +111,7 @@ export default function LawLibrary() {
           <Library className="w-5 h-5 text-primary" />
           法规标准库
           {hasMissingKBs && (
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               未初始化
             </span>
@@ -148,13 +148,13 @@ export default function LawLibrary() {
           </button>
           <button
             onClick={() => setActiveView("scraper")}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm text-sm"
           >
             <Globe className="w-4 h-4" /> 爬取新法规
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm"
           >
             <Plus className="w-4 h-4" /> 导入新法规
           </button>
@@ -314,12 +314,12 @@ function LawListView({
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-            <span className="text-red-700">{error.message}</span>
+            <span className="text-red-500">{error.message}</span>
             <button
               onClick={() => refetch()}
-              className="ml-auto text-sm text-red-600 hover:underline"
+              className="ml-auto text-sm text-red-500 hover:underline"
             >
               重试
             </button>
@@ -466,19 +466,19 @@ function LawListItem({
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-500">
             <CheckCircle className="w-3 h-3" /> 现行
           </span>
         );
       case "deprecated":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
             已废止
           </span>
         );
       case "updating":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-500">
             <Loader2 className="w-3 h-3" /> 修订中
           </span>
         );
@@ -491,19 +491,19 @@ function LawListItem({
     switch (isSynced) {
       case "synced":
         return (
-          <span className="text-xs text-green-600" title="已同步到RAGFlow">
+          <span className="text-xs text-emerald-500" title="已同步到RAGFlow">
             已同步
           </span>
         );
       case "pending":
         return (
-          <span className="text-xs text-amber-600" title="待同步">
+          <span className="text-xs text-amber-500" title="待同步">
             待同步
           </span>
         );
       case "failed":
         return (
-          <span className="text-xs text-red-600" title="同步失败">
+          <span className="text-xs text-red-500" title="同步失败">
             同步失败
           </span>
         );
@@ -546,7 +546,7 @@ function LawListItem({
               <span>生效: {new Date(law.effective_date).toLocaleDateString()}</span>
             )}
             {law.ref_count > 0 && (
-              <span className="text-amber-600">引用 {law.ref_count} 次</span>
+              <span className="text-amber-500">引用 {law.ref_count} 次</span>
             )}
             {(law.view_count ?? 0) > 0 && <span>查看 {law.view_count} 次</span>}
           </div>

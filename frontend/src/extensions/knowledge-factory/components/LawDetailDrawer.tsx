@@ -41,19 +41,19 @@ export default function LawDetailDrawer({ law, onClose, onEdit }: LawDetailDrawe
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-green-100 text-green-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-emerald-500/10 text-emerald-500">
             <CheckCircle className="w-4 h-4" /> 现行有效
           </span>
         );
       case "deprecated":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-gray-100 text-gray-600">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-muted text-muted-foreground">
             已废止
           </span>
         );
       case "updating":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-amber-100 text-amber-700">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-amber-500/10 text-amber-500">
             <Loader2 className="w-4 h-4 animate-spin" /> 正在修订
           </span>
         );
@@ -66,19 +66,19 @@ export default function LawDetailDrawer({ law, onClose, onEdit }: LawDetailDrawe
     switch (isSynced) {
       case "synced":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-green-600">
+          <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
             <CheckCircle className="w-4 h-4" /> 已同步到RAGFlow
           </span>
         );
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-amber-600">
+          <span className="inline-flex items-center gap-1 text-sm text-amber-500">
             <AlertCircle className="w-4 h-4" /> 待同步
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-red-600">
+          <span className="inline-flex items-center gap-1 text-sm text-red-500">
             <AlertCircle className="w-4 h-4" /> 同步失败
           </span>
         );
@@ -215,7 +215,7 @@ export default function LawDetailDrawer({ law, onClose, onEdit }: LawDetailDrawe
                 {law.referred_laws.map((refLaw, i) => (
                   <span
                     key={i}
-                    className="px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-lg"
+                    className="px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-lg"
                   >
                     {refLaw}
                   </span>

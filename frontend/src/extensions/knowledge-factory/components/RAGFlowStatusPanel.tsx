@@ -67,23 +67,23 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                 </div>
                 <div className="text-sm text-muted-foreground">知识库总数</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="bg-emerald-500/10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-emerald-500">
                   {data.healthy_kbs}
                 </div>
-                <div className="text-sm text-green-600">正常</div>
+                <div className="text-sm text-emerald-500">正常</div>
               </div>
-              <div className="bg-amber-50 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-amber-600">
+              <div className="bg-amber-500/10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-amber-500">
                   {data.missing_kbs}
                 </div>
-                <div className="text-sm text-amber-600">未创建</div>
+                <div className="text-sm text-amber-500">未创建</div>
               </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-red-600">
+              <div className="bg-red-500/10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-red-500">
                   {data.error_kbs}
                 </div>
-                <div className="text-sm text-red-600">错误</div>
+                <div className="text-sm text-red-500">错误</div>
               </div>
             </div>
           )}
@@ -97,9 +97,9 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-              <span className="text-red-700">{error.message}</span>
+              <span className="text-red-500">{error.message}</span>
             </div>
           )}
 
@@ -120,10 +120,10 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                       className={cn(
                         "flex items-center justify-between p-4 rounded-lg border",
                         isHealthy
-                          ? "bg-green-50 border-green-200"
+                          ? "bg-emerald-500/10 border-emerald-500/20"
                           : isError
-                            ? "bg-red-50 border-red-200"
-                            : "bg-amber-50 border-amber-200"
+                            ? "bg-red-500/10 border-red-500/20"
+                            : "bg-amber-500/10 border-amber-500/20"
                       )}
                     >
                       <div className="flex items-center gap-3">
@@ -152,21 +152,21 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                         )}
 
                         {isHealthy && (
-                          <div className="flex items-center gap-1 text-green-600">
+                          <div className="flex items-center gap-1 text-emerald-500">
                             <CheckCircle className="w-5 h-5" />
                             <span className="text-sm font-medium">正常</span>
                           </div>
                         )}
 
                         {isMissing && (
-                          <div className="flex items-center gap-1 text-amber-600">
+                          <div className="flex items-center gap-1 text-amber-500">
                             <AlertCircle className="w-5 h-5" />
                             <span className="text-sm font-medium">未创建</span>
                           </div>
                         )}
 
                         {isError && (
-                          <div className="flex items-center gap-1 text-red-600">
+                          <div className="flex items-center gap-1 text-red-500">
                             <AlertCircle className="w-5 h-5" />
                             <span className="text-sm font-medium">
                               {status?.error_message ?? "错误"}
@@ -220,7 +220,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
             <button
               onClick={handleInit}
               disabled={initMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {initMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -247,8 +247,8 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
 
         {/* Init Result */}
         {initMutation.data && (
-          <div className="p-4 border-t border-border bg-green-50">
-            <div className="text-sm text-green-700">
+          <div className="p-4 border-t border-border bg-emerald-500/10">
+            <div className="text-sm text-emerald-500">
               <strong>初始化结果：</strong>
               {initMutation.data.created?.length > 0 && (
                 <span>已创建 {initMutation.data.created.length} 个知识库</span>
@@ -257,7 +257,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                 <span>，{initMutation.data.already_exists.length} 个已存在</span>
               )}
               {initMutation.data.failed?.length > 0 && (
-                <span className="text-red-600">
+                <span className="text-red-500">
                   ，{initMutation.data.failed.length} 个失败
                 </span>
               )}

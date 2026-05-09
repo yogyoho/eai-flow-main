@@ -229,21 +229,6 @@ async def change_password(
     return MessageResponse(message="Password changed successfully")
 
 
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """Get current user information."""
-    user = await UserService.get_user_by_id(db, current_user.id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-    return await UserService.to_response(db, user)
-
-
 @router.put("/me", response_model=UserResponse)
 async def update_current_user(
     body: UserUpdate,

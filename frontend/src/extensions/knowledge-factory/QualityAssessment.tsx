@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart3, TrendingUp, AlertTriangle, Info } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   RadarChart,
   PolarGrid,
@@ -12,6 +12,20 @@ import {
 } from "recharts";
 
 import { cn } from "@/lib/utils";
+
+function useColorScheme() {
+  const [colorScheme, setColorScheme] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains("dark");
+    setColorScheme(isDark ? "dark" : "light");
+    const observer = new MutationObserver(() => {
+      setColorScheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return colorScheme;
+}
 
 const DIMENSIONS = [
   { name: "完整性", score: 92, status: "通过", color: "bg-emerald-500" },
@@ -57,6 +71,11 @@ const ISSUES = [
 ];
 
 export default function QualityAssessment() {
+  const colorScheme = useColorScheme();
+  const gridColor = colorScheme === "dark" ? "#404040" : "#e4e4e7";
+  const axisColor = colorScheme === "dark" ? "#a1a1aa" : "#a1a1aa";
+  const radarColor = "#6366f1";
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -66,7 +85,7 @@ export default function QualityAssessment() {
           知识质量评估
         </h2>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm">
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm">
             <TrendingUp className="w-4 h-4" /> 生成报告
           </button>
         </div>
@@ -94,7 +113,7 @@ export default function QualityAssessment() {
                 <div className="text-sm text-muted-foreground font-bold">/ 5.0</div>
               </div>
             </div>
-            <div className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-4 py-1 rounded-full font-medium text-sm">
+            <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-4 py-1 rounded-full font-medium text-sm">
               优秀
             </div>
             <p className="text-sm text-muted-foreground">
@@ -111,17 +130,17 @@ export default function QualityAssessment() {
               <div className="h-48 w-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={RADAR_DATA}>
-                    <PolarGrid stroke="#e4e4e7" />
+                    <PolarGrid stroke={gridColor} />
                     <PolarAngleAxis
                       dataKey="subject"
-                      tick={{ fill: "#a1a1aa", fontSize: 10 }}
+                      tick={{ fill: axisColor, fontSize: 10 }}
                     />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} />
                     <Radar
                       name="Score"
                       dataKey="A"
-                      stroke="#4f46e5"
-                      fill="#4f46e5"
+                      stroke={radarColor}
+                      fill={radarColor}
                       fillOpacity={0.2}
                     />
                   </RadarChart>
@@ -171,8 +190,8 @@ export default function QualityAssessment() {
                     className={cn(
                       "w-10 h-10 rounded-lg flex items-center justify-center",
                       issue.type === "warning"
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-blue-50 text-blue-600"
+                        ? "bg-amber-500/10 text-amber-500"
+                        : "bg-primary/10 text-primary"
                     )}
                   >
                     {issue.type === "warning" ? (

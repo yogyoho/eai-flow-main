@@ -29,7 +29,7 @@ export function WorkspaceHeader({ className }: { className?: string }) {
       >
         {state === "collapsed" ? (
           <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="block pt-1 text-black group-hover/workspace-header:hidden">
+            <div className="block pt-1 text-foreground group-hover/workspace-header:hidden">
               <Bot className="size-5" />
             </div>
             <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
@@ -38,13 +38,13 @@ export function WorkspaceHeader({ className }: { className?: string }) {
           <div className="flex items-center justify-between gap-2">
             {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
               <Link href="/" className="ml-2 flex items-center gap-1.5">
-                <Bot className="size-5 text-black" />
-                <span className="font-sans text-base font-semibold text-black">AI智能体</span>
+                <Bot className="size-5 text-foreground" />
+                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
               </Link>
             ) : (
               <div className="ml-2 flex cursor-default items-center gap-1.5">
-                <Bot className="size-5 text-black" />
-                <span className="font-sans text-base font-semibold text-black">AI智能体</span>
+                <Bot className="size-5 text-foreground" />
+                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
               </div>
             )}
             <SidebarTrigger />

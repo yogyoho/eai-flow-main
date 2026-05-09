@@ -74,7 +74,7 @@ export function RuleCard({
     rule.severity === "critical"
       ? "bg-destructive/10 text-destructive border-destructive/20"
       : rule.severity === "warning"
-      ? "bg-amber-50 text-amber-600 border-amber-200"
+      ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
       : "bg-muted text-muted-foreground border-transparent";
 
   return (
@@ -120,7 +120,7 @@ export function RuleCard({
                 rule.severity === "critical"
                   ? "bg-destructive/10 text-destructive"
                   : rule.severity === "warning"
-                  ? "bg-amber-50 text-amber-600"
+                  ? "bg-amber-500/10 text-amber-500"
                   : "bg-muted text-muted-foreground"
               )}
             >
@@ -164,7 +164,7 @@ export function RuleCard({
             {industryLabel}
           </Badge>
           {rule.nationalLevel && (
-            <Badge variant="outline" className="text-xs border-amber-200 bg-amber-50 text-amber-600">
+            <Badge variant="outline" className="text-xs border-amber-500/20 bg-amber-500/10 text-amber-500">
               国家标准
             </Badge>
           )}
@@ -212,7 +212,7 @@ export function RuleCard({
               className={cn(
                 "h-7 text-xs",
                 rule.enabled
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10"
                   : "border-border bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
@@ -223,7 +223,7 @@ export function RuleCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                rule.enabled ? "text-emerald-600" : "text-muted-foreground"
+                rule.enabled ? "text-emerald-500" : "text-muted-foreground"
               )}
             >
               {rule.enabled ? "启用" : "禁用"}

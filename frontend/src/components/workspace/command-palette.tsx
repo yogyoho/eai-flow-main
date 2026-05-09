@@ -35,6 +35,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDefaultSection, setSettingsDefaultSection] = useState<"account" | "memory" | "tools" | "skills" | "notification">("skills");
   const [isMac, setIsMac] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -45,6 +46,7 @@ export function CommandPalette() {
 
   const handleOpenSettings = useCallback(() => {
     setOpen(false);
+    setSettingsDefaultSection("skills");
     setSettingsOpen(true);
   }, []);
 
@@ -79,7 +81,7 @@ export function CommandPalette() {
 
   return (
     <>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} defaultSection={settingsDefaultSection} />
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder={t.shortcuts.searchActions} />
         <CommandList>

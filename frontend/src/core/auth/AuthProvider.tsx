@@ -97,9 +97,10 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       // Still redirect even if logout request fails
     }
 
-    // Redirect to home page
-    router.push("/");
-  }, [router]);
+    // Full page reload so the root layout's AuthProvider re-mounts
+    // and re-checks auth status, rather than keeping stale state.
+    window.location.href = "/";
+  }, []);
 
   /**
    * Handle visibility change - refresh user when tab becomes visible again.

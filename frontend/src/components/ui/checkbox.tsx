@@ -27,7 +27,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           "focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "checked:bg-primary checked:border-primary checked:text-primary-foreground",
-          "hover:border-zinc-300",
+          "hover:border-primary/50",
           className,
         )}
         {...props}

@@ -460,13 +460,13 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
   const getLogColor = (level?: string) => {
     switch (level) {
       case "success":
-        return "text-emerald-400";
+        return "text-emerald-500";
       case "error":
-        return "text-red-400";
+        return "text-red-500";
       case "warning":
-        return "text-amber-400";
+        return "text-amber-500";
       default:
-        return "text-emerald-400";
+        return "text-emerald-500";
     }
   };
 
@@ -483,7 +483,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
             返回列表
           </button>
           <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground tracking-tight">
-            <Globe className="w-5 h-5 text-blue-500" />
+            <Globe className="w-5 h-5 text-primary" />
             爬取新法规
           </h2>
         </div>
@@ -634,7 +634,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                 isScraping ? (
                   <button
                     onClick={handleStop}
-                    className="flex-1 py-2.5 bg-red-600 text-white rounded-lg flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-red-500 text-red-50 rounded-lg flex items-center justify-center gap-2"
                   >
                     <X className="w-4 h-4" />
                     停止
@@ -643,7 +643,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                   <button
                     onClick={handleStart}
                     disabled={!url || loading}
-                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                    className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/90 transition-colors"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -676,7 +676,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                 >
                   <div className="pt-4 space-y-3 border-t">
                     <h4 className="font-medium flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                      <Sparkles className="w-4 h-4 text-primary" />
                       导入信息
                     </h4>
                     <div>
@@ -763,7 +763,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                     <button
                       onClick={handleImport}
                       disabled={createLawMutation.isPending}
-                      className="w-full py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                      className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/90 transition-colors"
                     >
                       {createLawMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -793,8 +793,8 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                 </span>
               )}
               {isScraping && (
-                <span className="ml-1 flex items-center gap-1.5 text-xs text-emerald-400/90">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                <span className="ml-1 flex items-center gap-1.5 text-xs text-emerald-500/90">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                   运行中
                 </span>
               )}
@@ -805,7 +805,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                     e.stopPropagation();
                     setLogDrawerExpanded(!logDrawerExpanded);
                   }}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
                 >
                   {logDrawerExpanded ? (
                     <>
@@ -841,14 +841,14 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                         animate={{ opacity: 1 }}
                         className={getLogColor(log.level)}
                       >
-                        <span className="text-zinc-600">
+                        <span className="text-muted-foreground/50">
                           [{new Date().toLocaleTimeString()}]
                         </span>{" "}
                         {log.message}
                       </motion.div>
                     ))}
                     {error && (
-                      <div className="text-red-400 flex items-center gap-2">
+                      <div className="text-red-500 flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 shrink-0" />
                         {error}
                       </div>
@@ -865,10 +865,10 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
         <div className="flex-1 min-h-0 flex flex-col bg-card rounded-2xl border shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b shrink-0 flex items-center justify-between">
             <h3 className="font-medium flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" />
+              <FileText className="w-4 h-4 text-primary" />
               爬取结果
               {selectedSchema && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                   {selectedSchema.display_name}
                 </span>
               )}
@@ -891,7 +891,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
                 )}
                 <button
                   onClick={() => setShowImportForm(true)}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg flex items-center gap-1 hover:bg-blue-700 transition-colors"
+                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg flex items-center gap-1 hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   导入法规
@@ -916,7 +916,7 @@ export default function LawScraperView({ onBack, onImportSuccess }: LawScraperVi
               >
                 <EditorContent
                   editor={editor}
-                  className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-y-auto [&_.tiptap]:prose prose-sm dark:prose-invert max-w-none [&_.tiptap]:px-4 [&_.tiptap]:py-3 [&_.tiptap]:leading-relaxed [&_.tiptap_p]:my-2 [&_.tiptap_p]:text-sm [&_.tiptap_h1]:text-xl [&_.tiptap_h1]:font-bold [&_.tiptap_h1]:mt-4 [&_.tiptap_h1]:mb-2 [&_.tiptap_h2]:text-lg [&_.tiptap_h2]:font-semibold [&_.tiptap_h2]:mt-3 [&_.tiptap_h2]:mb-2 [&_.tiptap_h3]:text-base [&_.tiptap_h3]:font-medium [&_.tiptap_a]:text-blue-600 [&_.tiptap_a:hover]:underline [&_.tiptap_code]:bg-muted [&_.tiptap_code]:px-1 [&_.tiptap_code]:rounded [&_.tiptap_code]:font-mono [&_.tiptap_pre]:bg-muted [&_.tiptap_pre]:rounded [&_.tiptap_pre]:p-2 [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-muted-foreground [&_.tiptap_blockquote]:pl-4 [&_.tiptap_blockquote]:italic [&_.tiptap_hr]:border-muted [&_.tiptap_hr]:my-4 [&_.tiptap_table]:border-collapse [&_.tiptap_table]:w-full [&_.tiptap_th]:border [&_.tiptap_th]:border-muted [&_.tiptap_th]:p-2 [&_.tiptap_th]:bg-muted [&_.tiptap_td]:border [&_.tiptap_td]:border-muted [&_.tiptap_td]:p-2"
+                  className="h-full [&_.tiptap]:h-full [&_.tiptap]:overflow-y-auto [&_.tiptap]:prose prose-sm dark:prose-invert max-w-none [&_.tiptap]:px-4 [&_.tiptap]:py-3 [&_.tiptap]:leading-relaxed [&_.tiptap_p]:my-2 [&_.tiptap_p]:text-sm [&_.tiptap_h1]:text-xl [&_.tiptap_h1]:font-bold [&_.tiptap_h1]:mt-4 [&_.tiptap_h1]:mb-2 [&_.tiptap_h2]:text-lg [&_.tiptap_h2]:font-semibold [&_.tiptap_h2]:mt-3 [&_.tiptap_h2]:mb-2 [&_.tiptap_h3]:text-base [&_.tiptap_h3]:font-medium [&_.tiptap_a]:text-primary [&_.tiptap_a:hover]:underline [&_.tiptap_code]:bg-muted [&_.tiptap_code]:px-1 [&_.tiptap_code]:rounded [&_.tiptap_code]:font-mono [&_.tiptap_pre]:bg-muted [&_.tiptap_pre]:rounded [&_.tiptap_pre]:p-2 [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-muted-foreground [&_.tiptap_blockquote]:pl-4 [&_.tiptap_blockquote]:italic [&_.tiptap_hr]:border-muted [&_.tiptap_hr]:my-4 [&_.tiptap_table]:border-collapse [&_.tiptap_table]:w-full [&_.tiptap_th]:border [&_.tiptap_th]:border-muted [&_.tiptap_th]:p-2 [&_.tiptap_th]:bg-muted [&_.tiptap_td]:border [&_.tiptap_td]:border-muted [&_.tiptap_td]:p-2"
                 />
               </div>
             ) : (

@@ -1,4 +1,13 @@
-/* 知识工厂 / 上传弹窗 — 范围滑块（与 UI 规范 indigo + zinc 轨道一致） */
+/* 知识工厂 / 上传弹窗 — 范围滑块 */
+:root {
+  --slider-track: #e4e4e7;
+  --slider-fill: var(--primary);
+  --slider-thumb-bg: #fff;
+}
+
+.dark {
+  --slider-track: #404040;
+}
 
 .slider {
   --slider-pct: 50%;
@@ -26,12 +35,11 @@
   border-radius: 9999px;
   background: linear-gradient(
     to right,
-    #4f46e5 0%,
-    #4f46e5 var(--slider-pct),
-    #e4e4e7 var(--slider-pct),
-    #e4e4e7 100%
+    var(--slider-fill) 0%,
+    var(--slider-fill) var(--slider-pct),
+    var(--slider-track) var(--slider-pct),
+    var(--slider-track) 100%
   );
-  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.06);
 }
 
 /* WebKit 滑块 */
@@ -42,8 +50,8 @@
   height: 1.125rem;
   margin-top: calc(0.25rem - 0.5625rem);
   border-radius: 9999px;
-  background: #fff;
-  border: 2px solid #4f46e5;
+  background: var(--slider-thumb-bg);
+  border: 2px solid var(--slider-fill);
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
     0 0 0 1px rgb(79 70 229 / 0.12);
@@ -71,22 +79,21 @@
 .slider::-moz-range-track {
   height: 0.5rem;
   border-radius: 9999px;
-  background: #e4e4e7;
-  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.06);
+  background: var(--slider-track);
 }
 
 .slider::-moz-range-progress {
   height: 0.5rem;
   border-radius: 9999px;
-  background: #4f46e5;
+  background: var(--slider-fill);
 }
 
 .slider::-moz-range-thumb {
   width: 1.125rem;
   height: 1.125rem;
   border-radius: 9999px;
-  background: #fff;
-  border: 2px solid #4f46e5;
+  background: var(--slider-thumb-bg);
+  border: 2px solid var(--slider-fill);
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
     0 0 0 1px rgb(79 70 229 / 0.12);
