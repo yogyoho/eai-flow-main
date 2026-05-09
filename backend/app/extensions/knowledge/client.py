@@ -74,28 +74,22 @@ class RAGFlowClient:
             return result
 
     async def get_dataset(self, dataset_id: str) -> dict:
-        """Get dataset details by listing and filtering."""
+        """Get dataset details."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/v1/kb/list",
+            response = await client.get(
+                f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}",
                 headers=self._get_headers(),
-                json={"page": 1, "size": 100},
             )
             response.raise_for_status()
-            result = response.json()
-            kbs = result.get("data", {}).get("kbs", []) or []
-            for ds in kbs:
-                if ds.get("id") == dataset_id:
-                    return {"data": ds}
-            return {"data": None}
+            return response.json()
 
     async def list_datasets(self, page: int = 1, size: int = 100) -> dict:
         """List all datasets."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/v1/kb/list",
+            response = await client.get(
+                f"{self.base_url}{self.API_PREFIX}/datasets",
                 headers=self._get_headers(),
-                json={"page": page, "size": size},
+                params={"page": page, "size": size},
             )
             response.raise_for_status()
             return response.json()
@@ -148,8 +142,8 @@ class RAGFlowClient:
             logger.error(f"Failed to delete RAGFlow dataset {dataset_id}: {e}")
             raise
 
-    async def upload_document(self, dataset_id: str, file_path: str, file_name: str = None) -> dict:
-        """Upload a document to a dataset."""
+    async def upload_document(self, dataset_id: str, file_path: str, file_name: str = None, parser_id: str = None, parser_config: dict = None) -> dict:
+        """Upload a document to a dataset with optional parser configuration."""
         import os
 
         if file_name is None:
@@ -159,17 +153,24 @@ class RAGFlowClient:
             with open(file_path, "rb") as f:
                 files = {"file": (file_name, f)}
                 headers = {"Authorization": f"Bearer {self.api_key}"}
+                data = {}
+                if parser_id:
+                    data["parser_id"] = parser_id
+                if parser_config:
+                    data["parser_config"] = json.dumps(parser_config)
+
                 response = await client.post(
                     f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
                     files=files,
+                    data=data,
                     headers=headers,
                 )
             response.raise_for_status()
             result = response.json()
-            data = result.get("data", [])
-            if isinstance(data, list) and data:
-                result = {"data": data[0]}
-            logger.info(f"Uploaded document to RAGFlow dataset {dataset_id}: {file_name}")
+            data_result = result.get("data", [])
+            if isinstance(data_result, list) and data_result:
+                result = {"data": data_result[0]}
+            logger.info(f"Uploaded document to RAGFlow dataset {dataset_id}: {file_name} (parser_id={parser_id})")
             return result
 
     async def get_document(self, dataset_id: str, document_id: str) -> dict:
@@ -329,7 +330,7 @@ class RAGFlowClient:
         """Get dataset by name."""
         try:
             result = await self.list_datasets()
-            kbs = result.get("data", {}).get("kbs", []) or result.get("data", [])
+            kbs = result.get("data", [])
             for kb in kbs:
                 if kb.get("name") == name:
                     return kb
@@ -337,6 +338,26 @@ class RAGFlowClient:
         except Exception as e:
             logger.error(f"Failed to get dataset by name {name}: {e}")
             return None
+
+    async def list_available_embedding_models(self) -> list[str]:
+        """List available embedding model identifiers (formatted as <name>@<factory>)."""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/v1/llm/list",
+                    headers=self._get_headers(),
+                )
+                response.raise_for_status()
+                result = response.json()
+                models = []
+                for factory_name, factory_models in (result.get("data") or {}).items():
+                    for m in factory_models:
+                        if m.get("model_type") == "embedding" and m.get("available"):
+                            models.append(f"{m['llm_name']}@{factory_name}")
+                return models
+        except Exception as e:
+            logger.warning(f"Failed to list RAGFlow embedding models: {e}")
+            return []
 
     async def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict) -> dict:
         """Update document metadata."""

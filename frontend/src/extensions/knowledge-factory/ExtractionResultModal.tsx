@@ -35,9 +35,9 @@ function SectionNode({ section, depth = 0 }: { section: TemplateSection; depth?:
 
   const scoreColor = (score?: number) => {
     if (!score) return "text-muted-foreground";
-    if (score >= 85) return "text-emerald-600";
-    if (score >= 60) return "text-amber-600";
-    return "text-red-600";
+    if (score >= 85) return "text-emerald-500";
+    if (score >= 60) return "text-amber-500";
+    return "text-red-500";
   };
 
   return (
@@ -121,7 +121,7 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-border shrink-0">
           <div>
@@ -146,7 +146,7 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
                 <button
                   disabled={publishing}
                   onClick={handlePublish}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   发布
@@ -186,8 +186,8 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
                 <div className="text-center">
                   <div className={cn(
                     "text-2xl font-bold",
-                    (result?.completeness_score || 0) >= 85 ? "text-emerald-600" :
-                    (result?.completeness_score || 0) >= 60 ? "text-amber-600" : "text-red-600"
+                    (result?.completeness_score || 0) >= 85 ? "text-emerald-500" :
+                    (result?.completeness_score || 0) >= 60 ? "text-amber-500" : "text-red-500"
                   )}>
                     {result?.completeness_score || 0}%
                   </div>
@@ -197,8 +197,8 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
                   <span className={cn(
                     "px-2 py-1 rounded-full text-xs font-medium border",
                     template.status === "published"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                   )}>
                     {template.status === "published" ? "已发布" : "草稿"}
                   </span>
@@ -218,9 +218,9 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground">跨章节规则</h4>
                   {template.cross_section_rules.map((rule) => (
-                    <div key={rule.rule_id} className="p-3 bg-amber-50 border border-amber-100 rounded-lg text-sm">
-                      <span className="font-medium text-amber-800">{rule.description}</span>
-                      <div className="text-xs text-amber-600 mt-1">
+                    <div key={rule.rule_id} className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
+                      <span className="font-medium text-amber-500">{rule.description}</span>
+                      <div className="text-xs text-amber-500/70 mt-1">
                         涉及章节: {rule.source_sections.join(", ")} → {rule.target_sections.join(", ")}
                       </div>
                     </div>

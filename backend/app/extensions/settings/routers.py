@@ -4,9 +4,17 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.database import get_db
+from app.extensions.settings.service import SystemConfigService
+from app.extensions.settings.validator import (
+    ModelValidationRequest,
+    ModelValidationResult,
+    validate_models,
+)
 from deerflow.config import get_app_config
 
 # Load .env from project root
@@ -59,10 +67,6 @@ class ModelChoicesResponse(BaseModel):
 
 router = APIRouter(prefix="/api/extensions", tags=["settings"])
 
-# In-memory config storage (for demo - in production, use database or config file)
-_config_cache: dict = {}
-
-
 def _load_config_from_env() -> SystemConfig:
     """Load configuration from environment variables."""
     return SystemConfig(
@@ -99,23 +103,58 @@ def _load_reranker_choices() -> list[str]:
     return ["bge-reranker-base", "bge-reranker-large", "cohere-reranker"]
 
 
+def _pydantic_to_flat_dict(config: SystemConfig) -> dict[str, str]:
+    """Convert SystemConfig to flat dict for DB storage, skipping None."""
+    flat: dict[str, str] = {}
+    for field_name, value in config.model_dump().items():
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            flat[field_name] = "true" if value else "false"
+        else:
+            flat[field_name] = str(value)
+    return flat
+
+
+def _dict_to_system_config(data: dict[str, str]) -> SystemConfig:
+    """Convert a flat dict back to a SystemConfig Pydantic model."""
+    return SystemConfig(
+        default_model=data.get("default_model") or None,
+        fast_model=data.get("fast_model") or None,
+        embed_model=data.get("embed_model") or None,
+        reranker=data.get("reranker") or None,
+        enable_content_guard=data.get("enable_content_guard", "false").lower() == "true",
+        enable_content_guard_llm=data.get("enable_content_guard_llm", "false").lower() == "true",
+        content_guard_llm_model=data.get("content_guard_llm_model") or None,
+        theme=data.get("theme", "system"),
+    )
+
+
 @router.get("/config", response_model=SystemConfig)
-async def get_config() -> SystemConfig:
-    """Get system configuration."""
-    if _config_cache:
-        return SystemConfig(**_config_cache)
-    return _load_config_from_env()
+async def get_config(db: AsyncSession = Depends(get_db)) -> SystemConfig:
+    """Get system configuration from database."""
+    data = await SystemConfigService.get_all(db)
+    if not data:
+        env_config = _load_config_from_env()
+        env_dict = _pydantic_to_flat_dict(env_config)
+        if env_dict:
+            await SystemConfigService.upsert_many(db, env_dict)
+            await db.commit()
+            data = env_dict
+    return _dict_to_system_config(data)
 
 
 @router.put("/config", response_model=SystemConfig)
-async def update_config(config: SystemConfig) -> SystemConfig:
+async def update_config(
+    config: SystemConfig,
+    db: AsyncSession = Depends(get_db),
+) -> SystemConfig:
     """Update system configuration."""
-    global _config_cache
-    _config_cache = config.model_dump(exclude_none=True)
-
-    # In production, you would save this to a config file or database
-    # For now, we just update the in-memory cache
-    return SystemConfig(**_config_cache)
+    flat = _pydantic_to_flat_dict(config)
+    await SystemConfigService.upsert_many(db, flat)
+    await db.commit()
+    data = await SystemConfigService.get_all(db)
+    return _dict_to_system_config(data)
 
 
 def _get_provider(name: str) -> str:
@@ -172,13 +211,6 @@ async def get_model_choices() -> ModelChoicesResponse:
         rerankers=_load_reranker_choices(),
         chat_models=_load_chat_model_choices(),
     )
-
-
-from app.extensions.settings.validator import (
-    ModelValidationRequest,
-    ModelValidationResult,
-    validate_models,
-)
 
 
 class ModelValidationResponse(BaseModel):

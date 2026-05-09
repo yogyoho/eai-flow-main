@@ -2,7 +2,7 @@
 
 import { Bot } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
@@ -21,12 +21,29 @@ export function Welcome({
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const isUltra = useMemo(() => mode === "ultra", [mode]);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const colors = useMemo(() => {
     if (isUltra) {
       return ["#fef3c7", "#fde68a", "#fcd34d"];
     }
-    return ["#151616", "#151616", "#151616"];
-  }, [isUltra]);
+    return isDark
+      ? ["#ffffff", "#ffffff", "#ffffff"]
+      : ["#151616", "#151616", "#151616"];
+  }, [isUltra, isDark]);
   useEffect(() => {
     waved = true;
   }, []);

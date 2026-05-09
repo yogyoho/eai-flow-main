@@ -287,13 +287,13 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
   const getLogColor = (level?: string) => {
     switch (level) {
       case "success":
-        return "text-emerald-400";
+        return "text-emerald-500";
       case "error":
-        return "text-red-400";
+        return "text-red-500";
       case "warning":
-        return "text-amber-400";
+        return "text-amber-500";
       default:
-        return "text-emerald-400";
+        return "text-emerald-500";
     }
   };
 
@@ -321,7 +321,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
             className={cn(
               "p-2 rounded-lg transition-colors",
               showSettings
-                ? "bg-blue-600 text-white"
+                ? "bg-primary text-primary-foreground"
                 : "hover:bg-muted"
             )}
           >
@@ -471,7 +471,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                   isScraping ? (
                     <button
                       onClick={handleStop}
-                      className="flex-1 py-2.5 bg-red-600 text-white rounded-lg flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 bg-red-500 text-red-50 rounded-lg flex items-center justify-center gap-2"
                     >
                       <X className="w-4 h-4" />
                       停止
@@ -480,7 +480,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                     <button
                       onClick={handleStart}
                       disabled={!url || loading}
-                      className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -494,7 +494,7 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                   <>
                     <button
                       onClick={handleSaveToDraft}
-                      className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg flex items-center justify-center gap-2"
                     >
                       <Save className="w-4 h-4" />
                       保存草稿
@@ -518,12 +518,12 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                 <span>Execution Logs</span>
                 {isScraping && (
                   <span className="ml-auto text-xs flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                     Running
                   </span>
                 )}
               </div>
-              <div className="flex-1 overflow-y-auto space-y-1 text-emerald-400">
+              <div className="flex-1 overflow-y-auto space-y-1 text-emerald-500">
                 {logs.map((log, i) => (
                   <motion.div
                     key={i}
@@ -531,14 +531,14 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
                     animate={{ opacity: 1 }}
                     className={getLogColor(log.level)}
                   >
-                    <span className="text-zinc-600">
+                    <span className="text-muted-foreground/50">
                       [{new Date().toLocaleTimeString()}]
                     </span>{" "}
                     {log.message}
                   </motion.div>
                 ))}
                 {error && (
-                  <div className="text-red-400 flex items-center gap-2">
+                  <div className="text-red-500 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
                     {error}
                   </div>
@@ -552,10 +552,10 @@ export default function WebScraper({ onSave, onOpenDraftBox }: WebScraperProps) 
           <div className="w-1/2 flex flex-col bg-muted/30">
             <div className="px-6 py-4 border-b border-border bg-card flex items-center justify-between">
               <h3 className="font-medium flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-500" />
+                <FileText className="w-4 h-4 text-primary" />
                 提取结果{" "}
                 {selectedSchema && (
-                  <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
                     {selectedSchema.display_name}
                   </span>
                 )}

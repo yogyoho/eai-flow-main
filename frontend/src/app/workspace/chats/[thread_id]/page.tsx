@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
+import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import {
   ChatBox,
@@ -45,6 +46,7 @@ export default function ChatPage() {
   const [localSettings, setLocalSettings] = useLocalSettings();
   const { tokenUsageEnabled } = useModels();
   const mountedRef = useRef(false);
+  const [pageReady, setPageReady] = useState(false);
   useSpecificChatMode();
 
   useEffect(() => {
@@ -102,6 +104,12 @@ export default function ChatPage() {
     },
   });
 
+  useEffect(() => {
+    if (isHistoryLoading) return;
+    const timer = setTimeout(() => setPageReady(true), 300);
+    return () => clearTimeout(timer);
+  }, [isHistoryLoading]);
+
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       void sendMessage(threadId, message);
@@ -119,6 +127,10 @@ export default function ChatPage() {
   const tokenUsageInlineMode = tokenUsageEnabled
     ? localSettings.tokenUsage.inlineMode
     : "off";
+
+  if (!pageReady) {
+    return <PageLoadingOverlay text="加载对话中..." />;
+  }
 
   return (
     <ThreadContext.Provider value={{ thread, isMock }}>

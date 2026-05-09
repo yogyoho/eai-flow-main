@@ -1,5 +1,6 @@
 """FastAPI routers for knowledge factory extraction."""
 
+import asyncio
 import logging
 from typing import Annotated, Optional
 from uuid import UUID
@@ -34,40 +35,7 @@ from .schemas import (
     ExtractionTaskCreate,
     ExtractionTaskListResponse,
     ExtractionTaskResponse,
-    FieldMapping,
-    FieldMappingResponse,
-    FieldMappingListResponse,
-    FieldMappingCreate,
-    FieldMappingUpdate,
-    FieldMappingBatchUpdate,
-    FieldMappingImportResponse,
-    KnowledgeBaseResponse,
-    KnowledgeBaseCreate,
-    KnowledgeBaseUpdate,
-    KnowledgeBaseListResponse,
-    MetadataExtractorCreate,
-    MetadataExtractorResponse,
-    MetadataExtractorListResponse,
-    MetadataExtractorUpdate,
-    MetadataExtractorBatchUpdate,
-    MetadataExtractorImportResponse,
-    MetadataExtractorTestResponse,
     QualityAssessmentResult,
-    RuleDictionariesResponse,
-    SourceReportResponse,
-    SourceReportListResponse,
-    SourceReportCreate,
-    SourceReportUpdate,
-    SourceReportBatchDelete,
-    SourceReportUploadResponse,
-    SourceReportUploadStatusResponse,
-    SourceReportDocumentResponse,
-    StandardLawReferenceResponse,
-    StandardLawReferenceListResponse,
-    StandardLawReferenceCreate,
-    StandardLawReferenceUpdate,
-    StandardLawReferenceBatchUpdate,
-    StandardLawReferenceImportResponse,
     StructureType,
     TemplateDocument,
     TemplateListItem,
@@ -82,34 +50,27 @@ from .schemas import (
     VersionCompareRequest,
     VersionDiff,
 )
+from app.extensions.settings.service import SystemConfigService
 from .service import (
-    ComplianceRuleService,
     DomainService,
-    FieldMappingService,
-    KnowledgeBaseService,
-    MetadataExtractorService,
     QualityService,
-    StandardLawReferenceService,
     TaskService,
     TemplateService,
     VersionCompareService,
 )
 from .models import (
     ComplianceRule,
-    Document,
     ExtractionTemplate,
     ExtractionTemplateVersion,
-    FieldMapping as FieldMappingModel,
-    KnowledgeBase,
-    MetadataExtractor,
-    SourceReport,
-    StandardLawReference,
-    Task as ExtractionTask,
+    ExtractionTask,
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/kf", tags=["knowledge-factory"])
+
+# 跟踪正在运行的流水线 asyncio.Task，用于暂停/取消时真正中断执行
+_pipeline_tasks: dict[str, asyncio.Task] = {}
 
 CurrentUser = Annotated[CurrentUserSchema, Depends(require_permission("system:access"))]
 OptionalUser = Annotated[Optional[CurrentUserSchema], Depends(get_current_user_optional)]
@@ -167,9 +128,9 @@ async def create_task(
     )
 
     # 异步启动流水线（不阻塞 HTTP 请求）
-    import asyncio
     from app.extensions.database import get_session_factory
-    asyncio.create_task(run_pipeline_background(task.id, data, get_session_factory()))
+    bg_task = asyncio.create_task(run_pipeline_background(str(task.id), data, get_session_factory()))
+    _pipeline_tasks[str(task.id)] = bg_task
 
     from .schemas import StepStatus as SS
 
@@ -193,61 +154,98 @@ async def create_task(
 
 
 async def run_pipeline_background(
-    task_id: UUID,
+    task_id: str,
     data: ExtractionTaskCreate,
     session_factory,
 ):
     """后台运行抽取流水线（使用传入的 session factory）"""
-    async with session_factory() as db:
-        task = await TaskService.get_task(db, task_id)
-        if not task:
-            return
+    tid = UUID(task_id)
+    try:
+        async with session_factory() as db:
+            task = await TaskService.get_task(db, tid)
+            if not task:
+                return
 
-        await TaskService.set_task_running(db, task)
+            await TaskService.set_task_running(db, task)
 
-        config = data.config or ExtractionConfig()
+            config = data.config or ExtractionConfig()
 
-        # 收集文档信息（id, name, kb_id）
-        report_docs = []
-        for report_id in data.source_report_ids:
-            result = await db.execute(
-                select(Document, KnowledgeBase)
-                .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
-                .where(Document.id == report_id)
+            # 收集文档信息
+            report_docs = []
+            for report_id in data.source_report_ids:
+                result = await db.execute(
+                    select(Document, KnowledgeBase)
+                    .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
+                    .where(Document.id == report_id)
+                )
+                row = result.first()
+                if row:
+                    doc, kb = row
+                    report_docs.append({
+                        "id": str(doc.id),
+                        "name": doc.name,
+                        "kb_id": str(kb.id),
+                        "ragflow_document_id": doc.ragflow_document_id,
+                        "ragflow_dataset_id": kb.ragflow_dataset_id,
+                    })
+
+            # 解析 LLM 模型：优先使用系统基本设置中的默认模型
+            system_config = await SystemConfigService.get_all(db)
+            system_default_model = system_config.get("default_model") or None
+            effective_model = system_default_model or config.llm_model or None
+            logger.info(f"[Task {task_id}] Resolved LLM model: system_default={system_default_model!r}, config_llm_model={config.llm_model!r}, effective={effective_model!r}")
+
+            pipeline = ExtractionPipeline(
+                llm_model=effective_model,
             )
-            row = result.first()
-            if row:
-                doc, kb = row
-                report_docs.append({
-                    "id": str(doc.id),
-                    "name": doc.name,
-                    "kb_id": str(kb.id),
-                })
 
-        pipeline = ExtractionPipeline()
+            # 5 个流水线阶段名称，由 pipeline 的 _emit 回调按名称精准更新
+            _PIPELINE_STEP_NAMES = ["文档解析", "章节推断", "元数据抽取", "模板融合", "合规校验"]
 
-        # 用于接收每步完成的进度更新
-        async def on_step(step_schema: StepStatusSchema):
-            steps = task.steps or []
-            steps.append(step_schema.model_dump())
-            # 计算进度
-            completed = sum(1 for s in steps if s.get("status") == "completed")
-            task.progress = int((completed / 5) * 100) if steps else 0
-            await TaskService.update_task_steps(db, task, steps)
+            # 用于接收每步完成的进度更新
+            async def on_step(step_schema: StepStatusSchema):
+                await db.refresh(task)
+                steps = list(task.steps or [])
+                new_status = step_schema.status.value if hasattr(step_schema.status, "value") else str(step_schema.status)
+                # 按名称精准更新已有步骤（waiting → running → completed），避免重复追加
+                updated = False
+                for s in steps:
+                    if s.get("name") == step_schema.name:
+                        s["status"] = new_status
+                        s["duration"] = step_schema.duration
+                        s["detail"] = step_schema.detail
+                        updated = True
+                        break
+                if not updated:
+                    steps.append(step_schema.model_dump())
+                logger.info(
+                    f"[Task {task_id}] on_step: name={step_schema.name!r}, status={new_status!r}, "
+                    f"duration={step_schema.duration!r}, detail={step_schema.detail!r}, "
+                    f"updated={updated}, total_steps={len(steps)}"
+                )
+                # 进度 = 5 个流水线阶段中已完成的数量 / 5
+                pipeline_steps = [s for s in steps if s.get("name") in _PIPELINE_STEP_NAMES]
+                completed = sum(1 for s in pipeline_steps if s.get("status") == "completed")
+                task.progress = int((completed / 5) * 100) if pipeline_steps else 0
+                await TaskService.update_task_steps(db, task, steps)
 
-        try:
             result = await pipeline.run(
-                str(task_id),
+                task_id,
                 report_docs,
                 config,
                 domain=data.domain,
                 progress_callback=on_step,
             )
 
-            # 流水线完成 → 使用真实结果创建模板记录
+            await db.refresh(task)
+            # 检查是否被暂停/取消中断
+            if task.status in ("paused", "failed"):
+                logger.info(f"Pipeline for task {task_id} was paused/cancelled, skipping template creation")
+                _pipeline_tasks.pop(task_id, None)
+                return
+
             from .models import ExtractionTemplate
 
-            # 检查是否已存在同名模板（处理唯一约束冲突）
             existing = await db.execute(
                 select(ExtractionTemplate).where(
                     ExtractionTemplate.domain == data.domain,
@@ -256,16 +254,14 @@ async def run_pipeline_background(
                 )
             )
             template = existing.scalar_one_or_none()
-            
+
             if template:
-                # 更新现有模板
                 logger.info(f"Updating existing template {template.id}")
                 template.root_sections_json = {"sections": result.sections}
                 template.cross_section_rules = {"rules": result.cross_section_rules}
                 template.completeness_score = result.completeness_score
                 template.source_report_ids = [str(r) for r in data.source_report_ids]
             else:
-                # 创建新模板
                 template = ExtractionTemplate(
                     domain=data.domain,
                     name=data.target_template_name,
@@ -278,7 +274,7 @@ async def run_pipeline_background(
                     created_by=task.created_by,
                 )
                 db.add(template)
-            
+
             await db.commit()
             await db.refresh(template)
 
@@ -301,11 +297,30 @@ async def run_pipeline_background(
                 f"score {result.completeness_score}%"
             )
 
-        except Exception as e:
-            logger.exception(f"Pipeline failed for task {task_id}")
-            # 需要先回滚失败的 transaction，才能执行 set_task_failed
-            await db.rollback()
-            await TaskService.set_task_failed(db, task, str(e))
+    except asyncio.CancelledError:
+        logger.info(f"Pipeline for task {task_id} was cancelled via asyncio")
+        try:
+            async with session_factory() as db:
+                task = await TaskService.get_task(db, tid)
+                if task and task.status not in ("completed", "failed"):
+                    task.status = "failed"
+                    task.error_message = "任务已被取消"
+                    task.completed_at = None
+                    await db.commit()
+        except Exception:
+            pass
+    except Exception as e:
+        logger.exception(f"Pipeline failed for task {task_id}")
+        try:
+            async with session_factory() as db:
+                task = await TaskService.get_task(db, tid)
+                if task:
+                    await db.rollback()
+                    await TaskService.set_task_failed(db, task, str(e))
+        except Exception:
+            pass
+    finally:
+        _pipeline_tasks.pop(task_id, None)
 
 
 @router.get("/extraction/tasks", response_model=ExtractionTaskListResponse)
@@ -403,11 +418,15 @@ async def pause_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    """暂停任务"""
+    """暂停任务（中断正在运行的流水线）"""
     task = await TaskService.get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     await TaskService.pause_task(db, task)
+    # 取消后台 asyncio 任务
+    bg = _pipeline_tasks.pop(str(task_id), None)
+    if bg and not bg.done():
+        bg.cancel()
     return {"message": "任务已暂停"}
 
 
@@ -417,11 +436,28 @@ async def resume_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    """恢复任务"""
+    """恢复任务（重新创建流水线）"""
     task = await TaskService.get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "paused":
+        raise HTTPException(status_code=400, detail="只有已暂停的任务可以恢复")
+
     await TaskService.resume_task(db, task)
+
+    # 重建流水线配置并重新启动
+    config_dict = task.config or {}
+    config = ExtractionConfig(**config_dict) if config_dict else ExtractionConfig()
+    new_data = ExtractionTaskCreate(
+        name=task.name or "",
+        domain=task.domain or "default",
+        source_report_ids=[UUID(str(rid)) for rid in (task.source_report_ids or [])],
+        target_template_name=task.name or "Template",
+        config=config,
+    )
+    from app.extensions.database import get_session_factory
+    bg_task = asyncio.create_task(run_pipeline_background(str(task.id), new_data, get_session_factory()))
+    _pipeline_tasks[str(task.id)] = bg_task
     return {"message": "任务已恢复"}
 
 
@@ -431,11 +467,15 @@ async def cancel_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    """取消任务"""
+    """取消任务（中断正在运行的流水线）"""
     task = await TaskService.get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     await TaskService.cancel_task(db, task)
+    # 取消后台 asyncio 任务
+    bg = _pipeline_tasks.pop(str(task_id), None)
+    if bg and not bg.done():
+        bg.cancel()
     return {"message": "任务已取消"}
 
 
@@ -450,10 +490,11 @@ async def rerun_task(
     if not old_task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
-    # 用原任务配置创建新任务
+    # 清理旧的后台任务
+    _pipeline_tasks.pop(str(task_id), None)
+
     from .schemas import ExtractionTaskCreate as ETC
 
-    # 处理 asyncpg.pgproto.UUID 类型，转换为字符串后再构造 UUID
     def to_uuid_str(rid):
         if hasattr(rid, '__str__'):
             return str(rid)

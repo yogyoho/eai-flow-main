@@ -11,11 +11,13 @@ import type {
   ExtractionTaskResponse,
   ExtractionTaskCreate,
   ExtractionConfig,
-  SampleReport,
+  ExtractionDomain,
+  MergeMode,
+  TemplateListItem,
 } from "@/extensions/knowledge-factory/types";
+import { MERGE_MODE_OPTIONS } from "@/extensions/knowledge-factory/types";
 import type { KnowledgeBase } from "@/extensions/types";
 import { isDocumentReady } from "@/extensions/types";
-
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -37,84 +39,113 @@ const CHUNK_STRATEGY_OPTIONS = [
   { value: "fixed", label: "固定长度" },
 ];
 
+interface ReportItem {
+  id: string;
+  name: string;
+  kb_name: string;
+  kb_id: string;
+}
+
 export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Props) {
   const [name, setName] = useState(() => `模板抽取-${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}`);
-  const [selectedDomain, setSelectedDomain] = useState("");
-  const [reports, setReports] = useState<SampleReport[]>([]);
+  const [domains, setDomains] = useState<ExtractionDomain[]>([]);
+  const [selectedDomain, setSelectedDomain] = useState("default");
+  const [selectedKb, setSelectedKb] = useState("__all__");
+  const [reportItems, setReportItems] = useState<ReportItem[]>([]);
   const [kbList, setKbList] = useState<KnowledgeBase[]>([]);
   const [selectedReports, setSelectedReports] = useState<Set<string>>(new Set());
   const [config, setConfig] = useState<ExtractionConfig>(DEFAULT_CONFIG);
+  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("__new__");
+  const [mergeMode, setMergeMode] = useState<MergeMode>("merge");
   const [submitting, setSubmitting] = useState(false);
-  const [loadingReports, setLoadingReports] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loadingModels, setLoadingModels] = useState(true);
 
-  // 知识库变化时自动过滤报告列表（统一字符串比较，避免 UUID 格式差异）
-  const filteredReports = selectedDomain
-    ? reports.filter((r) => String(r.knowledge_base_id ?? "") === String(selectedDomain))
-    : reports;
-
-  // 加载知识库列表、样例报告和模型列表
+  // 当领域变化时，加载该领域下的模板列表
   useEffect(() => {
-    const loadReports = async () => {
-      setLoadingReports(true);
-      try {
-        // 加载知识库列表
-        const kbRes = await kbApi.list({ limit: 100 });
-        setKbList(kbRes.knowledge_bases);
+    let cancelled = false;
+    kfApi.listTemplates({ domain: selectedDomain, limit: 50 }).then((res) => {
+      if (!cancelled) setTemplates(res.templates);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedDomain]);
 
-        // 并行加载所有已完成的文档
-        const readyReports: SampleReport[] = [];
-        await Promise.allSettled(
-          kbRes.knowledge_bases.map(async (kb) => {
-            try {
-              const docRes = await kfApi.listDocs(kb.id, { limit: 100 });
-              for (const doc of docRes.documents) {
-                if (isDocumentReady(doc.status)) {
-                  readyReports.push({
-                    ...doc,
-                    knowledge_base_id: doc.knowledge_base_id,
-                    knowledge_base_name: kb.name,
-                  } as unknown as SampleReport);
+  // 加载领域、知识库、报告、模型
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      setLoadingData(true);
+      try {
+        // 并行加载
+        const [domRes, kbRes, modelsRes] = await Promise.allSettled([
+          kfApi.listDomains(),
+          kbApi.list({ limit: 100 }),
+          loadModels(),
+        ]);
+
+        if (cancelled) return;
+
+        // 领域
+        if (domRes.status === "fulfilled" && domRes.value.domains.length > 0) {
+          setDomains(domRes.value.domains);
+          setSelectedDomain(domRes.value.domains[0]!.id);
+        }
+
+        // 知识库
+        if (kbRes.status === "fulfilled") {
+          const kbs = kbRes.value.knowledge_bases;
+          setKbList(kbs);
+
+          // 并行加载每个KB的已解析文档
+          const items: ReportItem[] = [];
+          await Promise.allSettled(
+            kbs.map(async (kb) => {
+              try {
+                const docRes = await kfApi.listDocs(kb.id, { limit: 200 });
+                for (const doc of docRes.documents) {
+                  if (isDocumentReady(doc.status)) {
+                    items.push({ id: doc.id, name: doc.name, kb_name: kb.name, kb_id: kb.id });
+                  }
                 }
-              }
-            } catch { /* skip */ }
-          })
-        );
-        setReports(readyReports);
-      } catch { /* ignore */ }
-      setLoadingReports(false);
-    };
+              } catch { /* skip */ }
+            })
+          );
+          if (!cancelled) setReportItems(items);
+        }
 
-    const loadModelsList = async () => {
-      setLoadingModels(true);
-      try {
-        const response = await loadModels();
-        const options = response.models.map((m) => ({
-          value: m.name,
-          label: m.display_name || m.name,
-        }));
-        setModelOptions(options);
-        // 如果默认值为空且有模型，设置为第一个
-        if (!config.llm_model && options.length > 0) {
-          setConfig((c) => ({ ...c, llm_model: options.at(0)?.value ?? "" }));
+        // 模型
+        if (modelsRes.status === "fulfilled") {
+          const options = modelsRes.value.models.map((m) => ({
+            value: m.name,
+            label: m.display_name || m.name,
+          }));
+          setModelOptions(options);
+          if (!config.llm_model && options.length > 0) {
+            setConfig((c) => ({ ...c, llm_model: options[0]!.value }));
+          }
         }
       } catch { /* ignore */ }
-      setLoadingModels(false);
+      if (!cancelled) setLoadingData(false);
     };
-
-    loadReports();
-    loadModelsList();
+    void init();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const filteredReports = selectedKb === "__all__"
+    ? reportItems
+    : reportItems.filter((r) => r.kb_id === selectedKb);
 
   const toggleReport = (id: string) => {
     setSelectedReports((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
+
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   const handleSubmit = async () => {
     if (!name.trim()) { onToast("请输入任务名称", "error"); return; }
@@ -122,11 +153,14 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
 
     setSubmitting(true);
     try {
+      const isExisting = selectedTemplateId !== "__new__";
       const data: ExtractionTaskCreate = {
         name: name.trim(),
-        domain: selectedDomain || "default",
+        domain: selectedDomain,
         source_report_ids: Array.from(selectedReports),
-        target_template_name: name.trim(),
+        target_template_name: isExisting ? (selectedTemplate?.name || name.trim()) : name.trim(),
+        target_template_id: isExisting ? selectedTemplateId : undefined,
+        merge_mode: isExisting ? mergeMode : undefined,
         config,
       };
       const task = await kfApi.createTask(data);
@@ -142,9 +176,9 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
   return (
     <TooltipProvider>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-y-auto">
+        <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-y-auto">
           {/* Header */}
-          <div className="flex justify-between items-center px-6 py-4 border-b border-border shrink-0 sticky top-0 bg-white z-10">
+          <div className="flex justify-between items-center px-6 py-4 border-b border-border shrink-0 sticky top-0 bg-background z-10">
             <h3 className="text-lg font-semibold text-foreground">新建模板抽取任务</h3>
             <button onClick={onClose} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
               <X className="w-5 h-5 text-muted-foreground" />
@@ -165,65 +199,150 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
               />
             </div>
 
-            {/* 知识库选择 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">选择知识库</label>
-              <AdminSelect
-                value={selectedDomain}
-                onChange={setSelectedDomain}
-                options={[
-                  { value: "", label: "全部知识库" },
-                  ...kbList.map((kb) => ({ value: kb.id, label: kb.name })),
-                ]}
-                placeholder="全部知识库"
-              />
+            {/* 领域 + 知识库筛选 并排 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">业务领域</label>
+                <AdminSelect
+                  value={selectedDomain}
+                  onChange={setSelectedDomain}
+                  options={
+                    domains.length > 0
+                      ? domains.map((d) => ({ value: d.id, label: d.name }))
+                      : [{ value: "default", label: "默认领域" }]
+                  }
+                  placeholder="选择领域"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">知识库筛选</label>
+                <AdminSelect
+                  value={selectedKb}
+                  onChange={setSelectedKb}
+                  options={[
+                    { value: "__all__", label: "全部知识库" },
+                    ...kbList.map((kb) => ({ value: kb.id, label: kb.name })),
+                  ]}
+                  placeholder="全部知识库"
+                />
+              </div>
             </div>
+
+            {/* 目标模板选择 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">目标模板</label>
+              <AdminSelect
+                value={selectedTemplateId}
+                onChange={setSelectedTemplateId}
+                options={[
+                  { value: "__new__", label: "+ 创建新模板" },
+                  ...templates.map((t) => ({
+                    value: t.id,
+                    label: `${t.name} (v${t.version})`,
+                  })),
+                ]}
+                placeholder="选择目标模板"
+              />
+              {templates.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  该领域下暂无已有模板，将自动创建新模板
+                </p>
+              )}
+            </div>
+
+            {/* 合并模式（仅选择已有模板时显示） */}
+            {selectedTemplateId !== "__new__" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">合并模式</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {MERGE_MODE_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={cn(
+                        "flex flex-col items-center gap-1 p-3 rounded-lg border-2 cursor-pointer transition-all",
+                        mergeMode === opt.value
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-accent/50"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="mergeMode"
+                        value={opt.value}
+                        checked={mergeMode === opt.value}
+                        onChange={() => setMergeMode(opt.value)}
+                        className="sr-only"
+                      />
+                      <span className={cn(
+                        "text-sm font-semibold",
+                        mergeMode === opt.value ? "text-primary" : "text-foreground"
+                      )}>
+                        {opt.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                        {opt.description}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 源报告选择 */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-sm font-medium text-foreground">源报告选择（至少 1 份）</label>
-                <span className="text-xs text-muted-foreground">
-                  已选 {selectedReports.size} 份
-                </span>
+                <span className="text-xs text-muted-foreground">已选 {selectedReports.size} 份</span>
               </div>
               <div className="border border-border rounded-lg divide-y divide-border max-h-52 overflow-y-auto">
-              {loadingReports ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" /> 加载报告中...
-                </div>
-              ) : filteredReports.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  暂无已解析的报告，请先在「样例报告」上传并等待解析完成
-                </div>
-              ) : (
-                filteredReports.map((report) => (
-                  <label
-                    key={report.id}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
-                      selectedReports.has(report.id) && "bg-blue-50"
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedReports.has(report.id)}
-                      onChange={() => toggleReport(report.id)}
-                      className="w-4 h-4 shrink-0 rounded border-zinc-300 focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{report.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {(report as SampleReport & { knowledge_base_name?: string }).knowledge_base_name || ""}
-                      </p>
-                    </div>
-                    <CheckCircle2 className={cn(
-                      "w-4 h-4 shrink-0",
-                      selectedReports.has(report.id) ? "text-primary" : "text-transparent"
-                    )} />
-                  </label>
-                ))
-              )}
+                {loadingData ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> 加载报告中...
+                  </div>
+                ) : filteredReports.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                    暂无已解析的报告
+                  </div>
+                ) : (
+                  filteredReports.map((r) => (
+                    <label
+                      key={r.id}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors group",
+                        selectedReports.has(r.id) && "bg-primary/5"
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedReports.has(r.id)}
+                          onChange={() => toggleReport(r.id)}
+                          className="sr-only"
+                        />
+                        <div className={cn(
+                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200",
+                          "group-hover:border-primary/60",
+                          selectedReports.has(r.id)
+                            ? "bg-primary border-primary"
+                            : "border-input bg-background"
+                        )}>
+                          <CheckCircle2 className={cn(
+                            "w-3.5 h-3.5 text-primary-foreground transition-all duration-200",
+                            selectedReports.has(r.id) ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                          )} />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{r.kb_name}</p>
+                      </div>
+                      <CheckCircle2 className={cn(
+                        "w-4 h-4 shrink-0",
+                        selectedReports.has(r.id) ? "text-primary" : "text-transparent"
+                      )} />
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
@@ -237,8 +356,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     value={config.llm_model}
                     onChange={(value) => setConfig((c) => ({ ...c, llm_model: value }))}
                     options={modelOptions}
-                    placeholder={loadingModels ? "加载中..." : "选择模型"}
-                    disabled={loadingModels}
+                    placeholder="选择模型"
                   />
                 </div>
                 <div className="space-y-1">
@@ -246,7 +364,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     <span className="text-xs text-muted-foreground">分段策略</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="w-3 h-3 text-zinc-400 cursor-help" />
+                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
                         <p className="font-medium mb-1">分段策略</p>
@@ -279,12 +397,11 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     <span className="text-xs text-muted-foreground">融合阈值 ({config.merge_threshold})</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="w-3 h-3 text-zinc-400 cursor-help" />
+                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
                         <p className="font-medium mb-1">融合阈值</p>
                         <p className="text-muted-foreground text-xs">配合语义切分使用。当切分后的段落语义相似度高于此阈值时，会自动合并成一个 chunk。</p>
-                        <p className="text-muted-foreground text-xs mt-1">例如：0.85 表示相似度超过 85% 的段落会被合并，避免产生过多碎片化的小段落。</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -303,12 +420,11 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     <span className="text-xs text-muted-foreground">最小章节字数</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="w-3 h-3 text-zinc-400 cursor-help" />
+                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
                         <p className="font-medium mb-1">最小章节字数</p>
-                        <p className="text-muted-foreground text-xs">过滤过短的碎片段落。如果某个章节字数低于此值，会被丢弃或合并到相邻章节。</p>
-                        <p className="text-muted-foreground text-xs mt-1">默认值 100 字符，可避免 LLM 分析没有意义的短文本（如签名、日期、页眉页脚等）。</p>
+                        <p className="text-muted-foreground text-xs">过滤过短的碎片段落。低于此值的章节会被丢弃或合并到相邻章节。</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -324,7 +440,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-border shrink-0 sticky bottom-0 bg-white z-10">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-border shrink-0 sticky bottom-0 bg-background z-10">
             <button
               onClick={onClose}
               className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
@@ -334,7 +450,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
             <button
               disabled={submitting || selectedReports.size === 0}
               onClick={handleSubmit}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {submitting ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> 创建中...</>

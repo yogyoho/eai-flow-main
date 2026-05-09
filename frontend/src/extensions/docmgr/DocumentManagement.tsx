@@ -255,23 +255,23 @@ function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggl
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-zinc-200 p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-blue-300">
+      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-primary/50">
       <div onClick={onSelect} className="flex-1 mb-4 relative overflow-hidden">
-        <div className="bg-zinc-50 rounded-lg p-4 h-full border border-zinc-100 relative overflow-hidden">
-          <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 rounded-r-full" />
-          <p className="text-sm text-zinc-500 leading-relaxed pl-3 line-clamp-4">{preview || "（空文档）"}</p>
+        <div className="bg-muted/50 rounded-lg p-4 h-full border border-border relative overflow-hidden">
+          <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 dark:bg-purple-500/50 rounded-r-full" />
+          <p className="text-sm text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview || "（空文档）"}</p>
         </div>
       </div>
-      <h3 onClick={onSelect} className="font-bold text-zinc-800 text-base line-clamp-1 mb-4 group-hover:text-blue-600 transition-colors">
+      <h3 onClick={onSelect} className="font-bold text-foreground text-base line-clamp-1 mb-4 group-hover:text-primary transition-colors">
         {doc.title || "无标题"}
       </h3>
-      <div className="flex items-center justify-between text-zinc-400 mt-auto">
+      <div className="flex items-center justify-between text-muted-foreground mt-auto">
         <span className="text-xs">{updatedAt}</span>
         <div className="flex items-center gap-3 text-xs">
-          <button ref={menuButtonRef} className="hover:text-zinc-600 transition-colors" onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}>
+          <button ref={menuButtonRef} className="hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}>
             <MoreHorizontal className="w-4 h-4" />
           </button>
-          <button className={cn("transition-colors", doc.is_starred ? "text-amber-400" : "hover:text-zinc-600")} onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
+          <button className={cn("transition-colors", doc.is_starred ? "text-amber-400" : "hover:text-foreground")} onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
             <Star className="w-4 h-4" fill={doc.is_starred ? "currentColor" : "none"} />
           </button>
         </div>

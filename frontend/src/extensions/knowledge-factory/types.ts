@@ -58,8 +58,21 @@ export interface ExtractionTaskCreate {
   domain: string;
   source_report_ids: string[];
   target_template_name: string;
+  /** 已有模板 ID，填写则向已有模板合并，不填则创建新模板 */
+  target_template_id?: string;
+  /** 合并模式：overwrite=覆盖替换，merge=合并差分，append=内容追加 */
+  merge_mode?: MergeMode;
   config?: ExtractionConfig;
 }
+
+/** 模板合并模式 */
+export type MergeMode = "overwrite" | "merge" | "append";
+
+export const MERGE_MODE_OPTIONS: { value: MergeMode; label: string; description: string }[] = [
+  { value: "overwrite", label: "覆盖替换", description: "用提取结果完全替换目标模板的所有章节和内容" },
+  { value: "merge", label: "合并差分", description: "逐章节对比，同标题章节合并内容，新增章节追加，已有章节保留" },
+  { value: "append", label: "内容追加", description: "仅追加目标模板中不存在的章节，已有章节不受影响" },
+];
 
 // ============== Template Editor Types ==============
 
@@ -172,7 +185,7 @@ export interface EditorTemplate {
 
 export interface TemplateUpdatePayload {
   name?: string;
-  root_sections_json?: { sections: EditorSection[] };
+  root_sections_json?: { sections: Record<string, unknown>[] };
   cross_section_rules?: CrossSectionRule[];
   completeness_score?: number;
 }

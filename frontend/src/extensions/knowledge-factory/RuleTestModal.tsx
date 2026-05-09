@@ -63,7 +63,7 @@ export function RuleTestModal({
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-[700px] max-h-[90vh] flex flex-col bg-white rounded-xl shadow-xl overflow-hidden"
+        className="w-full max-w-[700px] max-h-[90vh] flex flex-col bg-background rounded-xl shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-6 py-4 border-b">

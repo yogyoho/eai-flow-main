@@ -24,19 +24,20 @@ import {
   Loader2,
   Settings,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import React, {
   useState,
   useEffect,
   useRef,
   useCallback,
   useMemo,
+  Suspense,
 } from "react";
 
+import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { kbApi } from "@/extensions/api";
 import type {
   KnowledgeBase,
@@ -44,6 +45,7 @@ import type {
   CreateKnowledgeBaseRequest,
   UpdateKnowledgeBaseRequest,
 } from "@/extensions/types";
+import { cn } from "@/lib/utils";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -1232,9 +1234,9 @@ function KnowledgeBaseDetail({
 
 // ─── KnowledgeBaseManagement ─────────────────────────────────────────────────
 
-function KnowledgeBaseManagement() {
+function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: string }) {
   const { toasts, show: toast, remove } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [typeFilter, setTypeFilter] = useState("all");
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1900,10 +1902,18 @@ function KnowledgeBaseManagement() {
 
 // ─── Page export ─────────────────────────────────────────────────────────────
 
+function KnowledgePageInner() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  return <KnowledgeBaseManagement initialSearch={initialSearch} />;
+}
+
 export default function KnowledgePage() {
   return (
     <SimpleShellLayout>
-      <KnowledgeBaseManagement />
+      <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <KnowledgePageInner />
+      </Suspense>
     </SimpleShellLayout>
   );
 }

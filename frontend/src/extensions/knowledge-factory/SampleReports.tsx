@@ -4,22 +4,35 @@ import {
   Search,
   Upload,
   FileText,
-  MoreHorizontal,
   CheckCircle2,
   Clock,
   RefreshCw,
-  Star,
   AlertCircle,
   Loader2,
+  Calendar,
+  HardDrive,
+  Database,
+  Trash2,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { Fragment, useState, useEffect, useCallback, useRef, useMemo } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { kfApi, kbApi } from "@/extensions/api";
+import AdvancedUploadModal from "@/extensions/knowledge-factory/components/AdvancedUploadModal";
 import type { SampleReport, KnowledgeBase } from "@/extensions/types";
 import { isDocumentReady, DocumentStatus } from "@/extensions/types";
-
-import AdvancedUploadModal from "@/extensions/knowledge-factory/components/AdvancedUploadModal";
 import { cn } from "@/lib/utils";
 
 type ToastType = "success" | "error" | "info";
@@ -36,11 +49,13 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("zh-CN", {
+function formatDateTime(dateString: string): string {
+  return new Date(dateString).toLocaleString("zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -52,9 +67,9 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
           key={t.id}
           className={cn(
             "flex items-center gap-3 rounded-xl border px-4 py-3 font-medium shadow-lg",
-            t.type === "success" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-            t.type === "error" && "border-red-200 bg-red-50 text-red-800",
-            t.type === "info" && "border-blue-200 bg-blue-50 text-blue-800"
+            t.type === "success" && "border-success/20 bg-success/10 text-success",
+            t.type === "error" && "border-red-500/20 bg-red-500/10 text-red-500 dark:bg-red-500/20",
+            t.type === "info" && "border-primary/20 bg-primary/10 text-primary"
           )}
         >
           {t.type === "success" && <CheckCircle2 className="h-4 w-4 shrink-0" />}
@@ -91,6 +106,7 @@ function useToast() {
 }
 
 export default function SampleReports() {
+  const router = useRouter();
   const { toasts, show, remove } = useToast();
 
   const [reports, setReports] = useState<SampleReport[]>([]);
@@ -102,6 +118,9 @@ export default function SampleReports() {
   const [search, setSearch] = useState("");
 
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  type ConfirmAction = { type: "delete" | "cancel"; report: SampleReport } | null;
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -216,17 +235,19 @@ export default function SampleReports() {
     };
   }, [reports, loadReports]);
 
-  // 处理删除
-  const handleDelete = async (report: SampleReport) => {
-    if (!confirm(`确定要删除 "${report.name}" 吗？`)) return;
+  // 确认对话框 - 执行删除
+  const executeConfirmAction = useCallback(async () => {
+    if (!confirmAction) return;
+    const { type, report } = confirmAction;
+    setConfirmAction(null);
     try {
       await kfApi.deleteDoc(report.knowledge_base_id, report.id);
       setReports((prev) => prev.filter((r) => r.id !== report.id));
-      show("报告已删除", "success");
+      show(type === "delete" ? "报告已删除" : "已取消并删除", "success");
     } catch (e) {
-      show("删除失败", "error");
+      show(type === "delete" ? "删除失败" : "取消失败", "error");
     }
-  };
+  }, [confirmAction, show]);
 
   // 处理上传成功
   const handleUploadSuccess = (newReports: SampleReport[]) => {
@@ -274,10 +295,10 @@ export default function SampleReports() {
   };
 
   const statItems = [
-    { label: "总数", value: stats.total, color: "text-zinc-900" },
-    { label: "已完成", value: stats.completed, color: "text-emerald-600" },
-    { label: "解析中", value: stats.parsing, color: "text-blue-600" },
-    { label: "待处理", value: stats.pending, color: "text-amber-600" },
+    { label: "总数", value: stats.total, color: "text-foreground" },
+    { label: "已完成", value: stats.completed, color: "text-success" },
+    { label: "解析中", value: stats.parsing, color: "text-primary" },
+    { label: "待处理", value: stats.pending, color: "text-amber-500" },
   ];
 
   // 只有搜索或状态筛选时才显示当前页条数（翻页本身不需要提示）
@@ -295,7 +316,7 @@ export default function SampleReports() {
         <button
           type="button"
           onClick={() => setShowUploadModal(true)}
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:px-4"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 sm:px-4"
         >
           <Upload className="h-4 w-4" />
           上传新报告
@@ -303,15 +324,15 @@ export default function SampleReports() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-card px-8 py-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-8 py-4">
         <div className="relative flex-1 min-w-[280px]">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none text-zinc-400" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           <input
             type="text"
             placeholder="搜索报告名称..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 pl-8 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full rounded-md border border-border bg-muted px-3 py-1.5 pl-8 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <AdminSelect
@@ -331,159 +352,186 @@ export default function SampleReports() {
         <button
           type="button"
           onClick={loadReports}
-          className="shrink-0 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
           title="刷新"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Report List — 与合规规则引擎等 tab 列表项垂直间距一致 (space-y-4) */}
-      <div className="flex-1 overflow-y-auto space-y-4 bg-muted/30 p-8">
+      {/* Report Cards Grid */}
+      <div className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6 lg:p-8">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col rounded-xl border border-border/60 bg-card p-5 shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                </div>
+                <div className="mt-4 border-t border-border/60 pt-3">
+                  <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredReports.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>暂无报告</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-5 rounded-2xl bg-muted p-4">
+              <FileText className="h-10 w-10 text-muted-foreground/60" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">暂无报告</h3>
+            <p className="mt-1 max-w-xs text-[13px] text-muted-foreground">
+              上传样例文档后，系统将自动解析并生成结构化报告
+            </p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="mt-4 text-primary hover:underline"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
             >
+              <Upload className="h-4 w-4" />
               上传第一份报告
             </button>
           </div>
         ) : (
-          filteredReports.map((report) => (
-            <div
-              key={report.id}
-              className="group rounded-lg border border-border bg-card p-3 shadow-sm transition-all hover:shadow"
-            >
-              <div className="flex items-start gap-2.5">
-                <div className="shrink-0 rounded-md bg-secondary p-2 text-primary">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="line-clamp-2 font-medium leading-snug text-foreground group-hover:text-primary transition-colors">
-                      {report.name}
-                    </h3>
-                    <button
-                      type="button"
-                      className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs leading-tight text-muted-foreground md:grid-cols-4">
-                    <div>上传时间: {formatDate(report.created_at)}</div>
-                    <div>大小: {formatFileSize(report.file_size)}</div>
-                    {report.knowledge_base_name && (
-                      <div className="min-w-0 truncate">知识库: {report.knowledge_base_name}</div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span>状态:</span>
-                      {isDocumentReady(report.status) ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
-                          <CheckCircle2 className="h-3 w-3 shrink-0" /> 已解析
-                        </span>
-                      ) : report.status === "parsing" || report.status === "uploading" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
-                          <Clock className="h-3 w-3 shrink-0 animate-spin" /> 解析中
-                          {report.parse_progress ? ` ${report.parse_progress}%` : ""}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-700">
-                          <Clock className="h-3 w-3 shrink-0" /> 待处理
-                        </span>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredReports.map((report) => {
+              const isReady = isDocumentReady(report.status);
+              const isProcessing = report.status === "parsing" || report.status === "uploading";
+              const progress = report.parse_progress ?? (isReady ? 100 : isProcessing ? 50 : 0);
+              return (
+                <div
+                  key={report.id}
+                  className="group flex flex-col rounded-xl border border-border/60 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+                >
+                  {/* Header: Icon + Title + Status */}
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                        isReady
+                          ? "bg-success/10 text-success"
+                          : isProcessing
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground",
                       )}
+                    >
+                      <FileText className="h-5 w-5" />
                     </div>
-                  </div>
-
-                  {isDocumentReady(report.status) ? (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-1.5 text-xs">
-                      {report.quality_score && (
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          质量评分:
-                          <div className="flex items-center gap-0.5 text-amber-400">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={cn(
-                                  "h-3 w-3 fill-current",
-                                  i >= Math.floor(report.quality_score || 0) && "text-zinc-200"
-                                )}
-                              />
-                            ))}
-                          </div>
-                          <span className="font-medium text-foreground">
-                            {report.quality_score}/5
+                    <div className="min-w-0 flex-1">
+                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors duration-200 group-hover:text-primary">
+                        {report.name}
+                      </h3>
+                      <div className="mt-1.5">
+                        {isReady ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+                            <CheckCircle2 className="h-3 w-3" />
+                            已解析
                           </span>
-                        </div>
-                      )}
-                      {report.chapters && (
-                        <div className="text-muted-foreground">
-                          章节数: {report.chapters}
-                        </div>
-                      )}
-                      {report.sections && (
-                        <div className="text-muted-foreground">
-                          节数: {report.sections}
-                        </div>
-                      )}
-                      {report.template_version && (
-                        <div className="text-primary font-medium">
-                          模板: {report.template_version}
-                        </div>
-                      )}
+                        ) : isProcessing ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            解析中
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
+                            <Clock className="h-3 w-3" />
+                            待处理
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : null}
+                  </div>
 
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 pt-1.5">
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
-                    >
-                      查看详情
-                    </button>
-                    {isDocumentReady(report.status) ? (
+                  {/* Progress bar for parsing items */}
+                  {isProcessing && (
+                    <div className="mt-3">
+                      <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>解析进度</span>
+                        <span className="tabular-nums font-medium">{progress}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Metadata */}
+                  <div className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                      <span>{formatDateTime(report.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <HardDrive className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                      <span>{formatFileSize(report.file_size)}</span>
+                    </div>
+                    {report.knowledge_base_name && (
+                      <div className="flex items-center gap-1.5">
+                        <Database className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/knowledge?search=${encodeURIComponent(report.knowledge_base_name!)}`)}
+                          className="truncate text-left transition-colors hover:text-primary hover:underline"
+                          title={`查看知识库: ${report.knowledge_base_name}`}
+                        >
+                          {report.knowledge_base_name}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer: actions */}
+                  <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 pt-3">
+                    {isReady ? (
                       <>
+                        <span className="text-[11px] text-muted-foreground/60">已就绪</span>
                         <button
                           type="button"
-                          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                          onClick={() => setConfirmAction({ type: "delete", report })}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-destructive transition-colors hover:bg-destructive/10"
                         >
-                          重新解析
-                        </button>
-                        <button
-                          type="button"
-                          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          下载模板
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(report)}
-                          className="text-xs text-destructive transition-colors hover:text-destructive/80"
-                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                           删除
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        className="text-xs text-destructive transition-colors hover:text-destructive/80"
-                      >
-                        取消
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmAction({ type: "cancel", report })}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-amber-600 transition-colors hover:bg-amber-500/10"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          取消
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmAction({ type: "delete", report })}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          删除
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
-          ))
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -496,23 +544,23 @@ export default function SampleReports() {
           {statItems.map((s, i) => (
             <Fragment key={s.label}>
               {i > 0 && (
-                <span className="mx-1.5 select-none text-zinc-300 sm:mx-2" aria-hidden>
+                <span className="mx-1.5 select-none text-muted-foreground/40 sm:mx-2" aria-hidden>
                   ·
                 </span>
               )}
               <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-                <span className="text-zinc-500">{s.label}</span>
+                <span className="text-muted-foreground">{s.label}</span>
                 <span className={cn("font-semibold tabular-nums", s.color)}>{s.value}</span>
               </span>
             </Fragment>
           ))}
           {listFiltered && (
             <>
-              <span className="mx-1.5 select-none text-zinc-300 sm:mx-2" aria-hidden>
+              <span className="mx-1.5 select-none text-muted-foreground/40 sm:mx-2" aria-hidden>
                 ·
               </span>
-              <span className="text-zinc-500">
-                当前页 <span className="font-semibold tabular-nums text-zinc-700">{reports.length}</span> 条
+              <span className="text-muted-foreground">
+                当前页 <span className="font-semibold tabular-nums text-foreground">{reports.length}</span> 条
               </span>
             </>
           )}
@@ -545,6 +593,41 @@ export default function SampleReports() {
           </button>
         </div>
       </div>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              {confirmAction?.type === "cancel" ? (
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              ) : (
+                <Trash2 className="h-6 w-6 text-destructive" />
+              )}
+            </div>
+            <DialogTitle className="text-center">
+              {confirmAction?.type === "cancel" ? "取消上传" : "确认删除"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {confirmAction?.type === "cancel"
+                ? `确定要取消 "${confirmAction?.report.name}" 的上传吗？已处理的部分将丢失。`
+                : `确定要删除 "${confirmAction?.report.name}" 吗？此操作不可撤销。`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              取消
+            </Button>
+            <Button
+              variant={confirmAction?.type === "cancel" ? "default" : "destructive"}
+              onClick={executeConfirmAction}
+              className={confirmAction?.type === "cancel" ? "bg-amber-600 hover:bg-amber-700" : ""}
+            >
+              {confirmAction?.type === "cancel" ? "确认取消" : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Upload Modal */}
       {showUploadModal && (

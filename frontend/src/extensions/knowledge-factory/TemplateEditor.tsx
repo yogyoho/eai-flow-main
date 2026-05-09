@@ -31,8 +31,9 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { kfApi } from "@/extensions/api";
 
 import { useTemplateList, useTemplateEditor } from "./hooks";
-import type { EditorSection, EditorTemplate, TemplateVersionResponse } from "@/extensions/knowledge-factory/types";
+import type { EditorSection, EditorTemplate, TemplateVersionResponse, ExtractionDomain } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
+import { AdminSelect } from "@/components/ui/admin-select";
 
 // ============== Template Selector ==============
 
@@ -58,16 +59,16 @@ function TemplateSelector({
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors text-sm"
+        className="flex items-center gap-2 px-3 py-1.5 bg-secondary hover:bg-accent rounded-lg transition-colors text-sm"
       >
-        <FileText className="w-4 h-4 text-zinc-500" />
-        <span className="font-medium text-zinc-700 max-w-[200px] truncate">
+        <FileText className="w-4 h-4 text-muted-foreground" />
+        <span className="font-medium text-foreground max-w-[200px] truncate">
           {selected?.name || "选择模板"}
         </span>
         {selected && (
-          <span className="text-xs text-zinc-400">v{selected.version}</span>
+          <span className="text-xs text-muted-foreground">v{selected.version}</span>
         )}
-        <ChevronDown className="w-4 h-4 text-zinc-400" />
+        <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </button>
 
       {showDropdown && (
@@ -76,9 +77,9 @@ function TemplateSelector({
             className="fixed inset-0 z-10"
             onClick={() => setShowDropdown(false)}
           />
-          <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl border border-zinc-200 shadow-lg z-20 overflow-hidden">
-            <div className="p-3 border-b border-zinc-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+          <div className="absolute top-full left-0 mt-2 w-72 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 选择模板
               </span>
               <button
@@ -86,17 +87,17 @@ function TemplateSelector({
                   e.stopPropagation();
                   onRefresh();
                 }}
-                className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                className="p-1 hover:bg-accent rounded transition-colors"
                 disabled={loading}
               >
                 <RefreshCw
-                  className={cn("w-3.5 h-3.5 text-zinc-400", loading && "animate-spin")}
+                  className={cn("w-3.5 h-3.5 text-muted-foreground", loading && "animate-spin")}
                 />
               </button>
             </div>
             <div className="max-h-64 overflow-y-auto">
               {templates.length === 0 ? (
-                <div className="p-4 text-center text-sm text-zinc-500">
+                <div className="p-4 text-center text-sm text-muted-foreground">
                   暂无可用模板
                 </div>
               ) : (
@@ -108,30 +109,30 @@ function TemplateSelector({
                       setShowDropdown(false);
                     }}
                     className={cn(
-                      "w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0",
-                      selectedId === template.id && "bg-blue-50"
+                      "w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b border-border last:border-0",
+                      selectedId === template.id && "bg-accent"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm text-zinc-900">
+                      <span className="font-medium text-sm text-foreground">
                         {template.name}
                       </span>
                       {selectedId === template.id && (
-                        <Check className="w-4 h-4 text-blue-600" />
+                        <Check className="w-4 h-4 text-primary" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-muted-foreground">
                         v{template.version}
                       </span>
                       <span
                         className={cn(
                           "text-xs px-1.5 py-0.5 rounded-full",
                           template.status === "published"
-                            ? "bg-emerald-50 text-emerald-600"
+                            ? "bg-emerald-500/10 text-emerald-500"
                             : template.status === "draft"
-                            ? "bg-amber-50 text-amber-600"
-                            : "bg-zinc-100 text-zinc-500"
+                            ? "bg-amber-500/10 text-amber-500"
+                            : "bg-muted text-muted-foreground"
                         )}
                       >
                         {template.status === "published"
@@ -140,7 +141,7 @@ function TemplateSelector({
                           ? "草稿"
                           : "已废弃"}
                       </span>
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-muted-foreground">
                         {template.completenessScore}% 完整
                       </span>
                     </div>
@@ -190,8 +191,8 @@ function SectionTree({
           className={cn(
             "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm",
             isSelected
-              ? "bg-blue-50 text-blue-700 font-medium"
-              : "hover:bg-zinc-100 text-zinc-700"
+              ? "bg-primary/10 text-primary font-medium"
+              : "hover:bg-accent text-foreground"
           )}
           style={{ marginLeft: depth * 16 }}
           onClick={() => onSelect(section.id)}
@@ -201,13 +202,13 @@ function SectionTree({
               e.stopPropagation();
               if (hasChildren) onToggleExpand(section.id);
             }}
-            className="p-0.5 hover:bg-zinc-200 rounded transition-colors"
+            className="p-0.5 hover:bg-accent rounded transition-colors"
           >
             {hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-zinc-400" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-zinc-400" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               )
             ) : (
               <div className="w-4" />
@@ -215,7 +216,7 @@ function SectionTree({
           </button>
           <span className="flex-1 truncate">{section.title}</span>
           {section.required && (
-            <span className="text-[10px] text-red-400">必</span>
+            <span className="text-[10px] text-red-500">必</span>
           )}
           {canDelete && (
             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
@@ -224,26 +225,26 @@ function SectionTree({
                   e.stopPropagation();
                   onAdd(section.id, section.level + 1);
                 }}
-                className="p-1 hover:bg-blue-100 rounded transition-colors"
+                className="p-1 hover:bg-accent rounded transition-colors"
                 title="添加子章节"
               >
-                <Plus className="w-3 h-3 text-blue-500" />
+                <Plus className="w-3 h-3 text-primary" />
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(section.id);
                 }}
-                className="p-1 hover:bg-red-50 rounded transition-colors"
+                className="p-1 hover:bg-red-500/10 rounded transition-colors"
                 title="删除章节"
               >
-                <Trash2 className="w-3 h-3 text-red-400" />
+                <Trash2 className="w-3 h-3 text-red-500" />
               </button>
             </div>
           )}
         </div>
         {hasChildren && isExpanded && (
-          <div className="border-l border-zinc-200 ml-2 mt-1">
+          <div className="border-l border-border ml-2 mt-1">
             {section.children!.map((child) => renderSection(child, depth + 1))}
           </div>
         )}
@@ -254,7 +255,7 @@ function SectionTree({
   return (
     <div className="space-y-1">
       {sections.length === 0 ? (
-        <div className="text-center py-8 text-sm text-zinc-400">
+        <div className="text-center py-8 text-sm text-muted-foreground">
           暂无章节
         </div>
       ) : (
@@ -308,7 +309,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
           return (
             <span
               key={name}
-              className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-100 text-xs font-medium flex items-center gap-2"
+              className="bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/20 dark:border-amber-500/30 text-xs font-medium flex items-center gap-2"
             >
               {source?.type === "法规" && <ShieldCheck className="w-3 h-3" />}
               {source?.type === "标准" && <FileJson className="w-3 h-3" />}
@@ -317,7 +318,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
               <button
                 onClick={() => handleRemove(name)}
                 disabled={isReadOnly}
-                className="hover:text-amber-900 transition-colors disabled:opacity-50"
+                className="hover:text-amber-500 transition-colors disabled:opacity-50"
               >
                 <X className="w-3 h-3 cursor-pointer" />
               </button>
@@ -329,7 +330,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-8 h-8 rounded-full border border-dashed border-amber-300 flex items-center justify-center text-amber-400 hover:bg-amber-50 transition-colors"
+              className="w-8 h-8 rounded-full border border-dashed border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-colors"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -340,20 +341,20 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
                   className="fixed inset-0 z-10"
                   onClick={() => setShowDropdown(false)}
                 />
-                <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl border border-zinc-200 shadow-lg z-20 overflow-hidden">
-                  <div className="p-3 border-b border-zinc-100">
+                <div className="absolute top-full left-0 mt-2 w-72 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
+                  <div className="p-3 border-b border-border">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="搜索数据源..."
-                      className="w-full px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                      className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       autoFocus
                     />
                   </div>
                   <div className="max-h-48 overflow-y-auto">
                     {filteredSources.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-zinc-400">
+                      <div className="p-4 text-center text-sm text-muted-foreground">
                         没有更多可添加的数据源
                       </div>
                     ) : (
@@ -361,12 +362,12 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
                         <button
                           key={source.id}
                           onClick={() => handleAdd(source.name)}
-                          className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0"
+                          className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b border-border last:border-0"
                         >
-                          <div className="font-medium text-sm text-zinc-900">
+                          <div className="font-medium text-sm text-foreground">
                             {source.name}
                           </div>
-                          <div className="text-xs text-zinc-400 mt-0.5">
+                          <div className="text-xs text-muted-foreground mt-0.5">
                             {source.description}
                           </div>
                         </button>
@@ -381,7 +382,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
       </div>
 
       {selected.length === 0 && (
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-muted-foreground">
           提示：选择 RAG 数据源后，AI 生成内容时会自动参考这些知识库。
         </p>
       )}
@@ -410,13 +411,13 @@ function ComplianceRuleTemplates({ onSelect }: ComplianceRuleTemplatesProps) {
     <div>
       <button
         onClick={() => setShowTemplates(!showTemplates)}
-        className="text-xs text-emerald-600 hover:text-emerald-700 hover:underline transition-colors"
+        className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
       >
         从模板选择...
       </button>
 
       {showTemplates && (
-        <div className="mt-2 p-3 bg-emerald-50/50 rounded-lg border border-emerald-100 max-h-48 overflow-y-auto">
+        <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border max-h-48 overflow-y-auto">
           {COMPLIANCE_RULE_TEMPLATES.map((template) => (
             <button
               key={template.id}
@@ -424,10 +425,10 @@ function ComplianceRuleTemplates({ onSelect }: ComplianceRuleTemplatesProps) {
                 onSelect(template.rule);
                 setShowTemplates(false);
               }}
-              className="w-full text-left p-2 hover:bg-white rounded transition-colors mb-1 last:mb-0"
+              className="w-full text-left p-2 hover:bg-accent rounded transition-colors mb-1 last:mb-0"
             >
-              <div className="text-xs font-medium text-zinc-700">{template.name}</div>
-              <div className="text-xs text-emerald-600 mt-0.5">{template.rule}</div>
+              <div className="text-xs font-medium text-foreground">{template.name}</div>
+              <div className="text-xs text-primary mt-0.5">{template.rule}</div>
             </button>
           ))}
         </div>
@@ -485,31 +486,31 @@ function VersionHistoryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200">
+      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <History className="w-5 h-5 text-blue-600" />
+            <History className="w-5 h-5 text-primary" />
             <div>
-              <h2 className="text-lg font-bold text-zinc-900">版本历史</h2>
-              <p className="text-sm text-zinc-500">{templateName}</p>
+              <h2 className="text-lg font-bold text-foreground">版本历史</h2>
+              <p className="text-sm text-muted-foreground">{templateName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-hidden flex">
-          <div className="w-64 border-r border-zinc-100 overflow-y-auto p-4 shrink-0">
+          <div className="w-64 border-r border-border overflow-y-auto p-4 shrink-0">
             {loading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             ) : versions.length === 0 ? (
-              <div className="text-center py-8 text-sm text-zinc-400">暂无版本历史</div>
+              <div className="text-center py-8 text-sm text-muted-foreground">暂无版本历史</div>
             ) : (
               <div className="space-y-2">
                 {versions.map((version) => (
@@ -519,21 +520,21 @@ function VersionHistoryModal({
                     className={cn(
                       "w-full text-left p-3 rounded-lg border transition-all",
                       selectedVersion?.id === version.id
-                        ? "bg-indigo-50 border-indigo-200"
-                        : "bg-white border-zinc-200 hover:border-zinc-300"
+                        ? "bg-primary/5 border-primary/20"
+                        : "bg-card border-border hover:border-primary/30"
                     )}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-zinc-900">v{version.version}</span>
+                      <span className="font-medium text-foreground">v{version.version}</span>
                       {version.version === currentVersion && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">
+                        <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
                           当前
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-zinc-500">{formatDate(version.published_at)}</div>
+                    <div className="text-xs text-muted-foreground">{formatDate(version.published_at)}</div>
                     {version.published_by && (
-                      <div className="flex items-center gap-1 mt-1 text-xs text-zinc-400">
+                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                         <User className="w-3 h-3" />
                         {version.published_by}
                       </div>
@@ -548,25 +549,25 @@ function VersionHistoryModal({
             {selectedVersion ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-zinc-900">
+                  <h3 className="text-lg font-bold text-foreground">
                     版本 {selectedVersion.version}
                   </h3>
                   {selectedVersion.version === currentVersion && (
-                    <span className="text-sm text-blue-600 font-medium">当前使用中</span>
+                    <span className="text-sm text-primary font-medium">当前使用中</span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-zinc-50 rounded-lg">
-                    <div className="text-xs text-zinc-400 mb-1">发布时间</div>
-                    <div className="text-sm font-medium text-zinc-900">
+                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                    <div className="text-xs text-muted-foreground mb-1">发布时间</div>
+                    <div className="text-sm font-medium text-foreground">
                       {formatDate(selectedVersion.published_at)}
                     </div>
                   </div>
                   {selectedVersion.published_by && (
-                    <div className="p-4 bg-zinc-50 rounded-lg">
-                      <div className="text-xs text-zinc-400 mb-1">发布者</div>
-                      <div className="text-sm font-medium text-zinc-900 flex items-center gap-1">
+                    <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                      <div className="text-xs text-muted-foreground mb-1">发布者</div>
+                      <div className="text-sm font-medium text-foreground flex items-center gap-1">
                         <User className="w-4 h-4" />
                         {selectedVersion.published_by}
                       </div>
@@ -575,21 +576,21 @@ function VersionHistoryModal({
                 </div>
 
                 {selectedVersion.changelog && (
-                  <div className="p-4 bg-zinc-50 rounded-lg">
-                    <div className="text-xs text-zinc-400 mb-2">更新说明</div>
-                    <div className="text-sm text-zinc-700 whitespace-pre-wrap">
+                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                    <div className="text-xs text-muted-foreground mb-2">更新说明</div>
+                    <div className="text-sm text-foreground whitespace-pre-wrap">
                       {selectedVersion.changelog}
                     </div>
                   </div>
                 )}
 
-                <button className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <button className="flex items-center gap-2 px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors">
                   <Eye className="w-4 h-4" />
                   预览此版本
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-zinc-400">
+              <div className="flex items-center justify-center h-full text-muted-foreground">
                 选择一个版本查看详情
               </div>
             )}
@@ -657,33 +658,33 @@ function SectionEditor({
 
   if (!section) {
     return (
-      <div className="flex items-center justify-center h-64 text-zinc-400">
-        <div className="text-center">
-          <FileJson className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-          <p className="text-sm">请从左侧选择一个章节进行编辑</p>
-        </div>
-      </div>
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                <div className="text-center">
+                  <FileJson className="w-12 h-12 mx-auto mb-3 text-muted opacity-50" />
+                  <p className="text-sm">请从左侧选择一个章节进行编辑</p>
+                </div>
+              </div>
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-6">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-6">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-foreground">
               章节ID
             </label>
             <input
               type="text"
               value={section.id}
               readOnly
-              className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-500 text-sm"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground text-sm"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-foreground">
               章节标题 <span className="text-red-500">*</span>
             </label>
             <input
@@ -691,79 +692,94 @@ function SectionEditor({
               value={section.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50 disabled:text-zinc-500"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all disabled:bg-muted disabled:text-muted-foreground"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">层级</label>
-            <select
+            <label className="text-sm font-medium text-foreground">层级</label>
+            <AdminSelect
               value={sectionLevel}
-              onChange={(e) => {
-                setSectionLevel(e.target.value);
-                onUpdate({ level: parseInt(e.target.value) });
+              onValueChange={(v) => {
+                setSectionLevel(v);
+                onUpdate({ level: parseInt(v) });
               }}
+              options={[
+                { value: "1", label: "第1级" },
+                { value: "2", label: "第2级" },
+                { value: "3", label: "第3级" },
+              ]}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
-            >
-              <option value="1">第1级</option>
-              <option value="2">第2级</option>
-              <option value="3">第3级</option>
-            </select>
+              className="w-full"
+            />
           </div>
           <div className="flex items-center gap-2 pt-6">
-            <input
-              type="checkbox"
-              id="required"
-              checked={section.required}
-              onChange={(e) => onUpdate({ required: e.target.checked })}
-              disabled={isReadOnly}
-              className="w-4 h-4 shrink-0 rounded border-zinc-300 focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-0 disabled:opacity-50"
-            />
-            <label
-              htmlFor="required"
-              className="text-sm font-medium text-zinc-700"
-            >
-              必选章节
+            <label className="relative flex items-center gap-2.5 cursor-pointer select-none group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={section.required}
+                  onChange={(e) => onUpdate({ required: e.target.checked })}
+                  disabled={isReadOnly}
+                  className="peer sr-only"
+                />
+                <div className={cn(
+                  "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200",
+                  "peer-checked:bg-primary peer-checked:border-primary",
+                  "peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30 peer-focus-visible:ring-offset-2",
+                  "group-hover:border-primary/60",
+                  isReadOnly
+                    ? "border-muted bg-muted cursor-not-allowed opacity-50"
+                    : section.required
+                      ? "border-primary bg-primary"
+                      : "border-input bg-background"
+                )}>
+                  <Check className={cn(
+                    "w-3.5 h-3.5 text-primary-foreground transition-all duration-200",
+                    section.required ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                  )} />
+                </div>
+              </div>
+              <span className="text-sm font-medium text-foreground">必选章节</span>
             </label>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">编写目的</label>
+          <label className="text-sm font-medium text-foreground">编写目的</label>
           <textarea
             value={section.purpose || ""}
             onChange={(e) => onUpdate({ purpose: e.target.value })}
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写目的和主要内容..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
           />
         </div>
       </div>
 
       {/* Content Contract */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-blue-600 border-b border-zinc-100 pb-2">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
           <Info className="w-4 h-4" />
           <h4 className="font-bold text-sm uppercase tracking-wider">内容契约</h4>
         </div>
 
         {/* Key Elements */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">
+          <label className="text-sm font-medium text-foreground">
             关键要素 (每行一个)
           </label>
-          <div className="border border-zinc-200 rounded-lg p-3 space-y-2">
+          <div className="border border-border rounded-lg p-3 space-y-2">
             {(section.contentContract?.keyElements || []).map((item, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between bg-zinc-50 px-3 py-1.5 rounded border border-zinc-200 text-sm"
+                className="flex items-center justify-between bg-muted/50 px-3 py-1.5 rounded border border-border text-sm"
               >
-                <span className="text-zinc-700">• {item}</span>
+                <span className="text-foreground">• {item}</span>
                 <button
                   onClick={() => onRemoveKeyElement(i)}
                   disabled={isReadOnly}
-                  className="text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -777,12 +793,12 @@ function SectionEditor({
                 onKeyDown={(e) => e.key === "Enter" && handleAddKeyElement()}
                 disabled={isReadOnly}
                 placeholder="输入后按回车添加"
-                className="flex-1 px-2 py-1.5 text-sm border border-dashed border-zinc-300 rounded focus:outline-none focus:border-indigo-400 transition-colors disabled:opacity-50"
+                className="flex-1 px-2 py-1.5 text-sm border border-dashed border-border rounded focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
               />
               <button
                 onClick={handleAddKeyElement}
                 disabled={isReadOnly || !newKeyElement.trim()}
-                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded border border-dashed border-blue-300 text-xs font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-primary/10 text-primary rounded border border-dashed border-primary/30 text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -793,30 +809,31 @@ function SectionEditor({
         {/* Structure Type & Min Word Count */}
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">结构类型</label>
-            <select
+            <label className="text-sm font-medium text-foreground">结构类型</label>
+            <AdminSelect
               value={structureType}
-              onChange={(e) => {
-                setStructureType(e.target.value);
+              onValueChange={(v) => {
+                setStructureType(v);
                 onUpdate({
                   contentContract: {
                     ...section.contentContract,
-                    structureType: e.target.value as "narrative_text" | "table" | "formula" | "diagram" | "mixed",
+                    structureType: v as "narrative_text" | "table" | "formula" | "diagram" | "mixed",
                   } as EditorSection["contentContract"],
                 });
               }}
+              options={[
+                { value: "narrative_text", label: "叙述文本" },
+                { value: "table", label: "表格数据" },
+                { value: "formula", label: "公式计算" },
+                { value: "diagram", label: "流程图/示意图" },
+                { value: "mixed", label: "混合类型" },
+              ]}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
-            >
-              <option value="narrative_text">叙述文本</option>
-              <option value="table">表格数据</option>
-              <option value="formula">公式计算</option>
-              <option value="diagram">流程图/示意图</option>
-              <option value="mixed">混合类型</option>
-            </select>
+              className="w-full"
+            />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">最小字数</label>
+            <label className="text-sm font-medium text-foreground">最小字数</label>
             <input
               type="number"
               value={section.contentContract?.minWordCount || 0}
@@ -830,14 +847,14 @@ function SectionEditor({
               }
               disabled={isReadOnly}
               min={0}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm transition-all disabled:bg-zinc-50"
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all disabled:bg-muted"
             />
           </div>
         </div>
 
         {/* Style Rules */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">编写规范</label>
+          <label className="text-sm font-medium text-foreground">编写规范</label>
           <textarea
             value={section.contentContract?.styleRules || ""}
             onChange={(e) =>
@@ -851,26 +868,26 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写风格要求，如：使用被动语态、客观陈述..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
           />
         </div>
 
         {/* Forbidden Phrases */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">
+          <label className="text-sm font-medium text-foreground">
             禁用短语 (检测到会警告)
           </label>
           <div className="flex flex-wrap gap-2">
             {(section.contentContract?.forbiddenPhrases || []).map((phrase, i) => (
               <span
                 key={i}
-                className="bg-red-50 text-red-600 px-2 py-1 rounded border border-red-200 text-xs flex items-center gap-1"
+                className="bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20 text-xs flex items-center gap-1"
               >
                 {phrase}
                 <button
                   onClick={() => onRemoveForbiddenPhrase(i)}
                   disabled={isReadOnly}
-                  className="hover:text-red-700 transition-colors disabled:opacity-50"
+                  className="hover:text-red-500 transition-colors disabled:opacity-50"
                 >
                   <X className="w-3 h-3 cursor-pointer" />
                 </button>
@@ -886,12 +903,12 @@ function SectionEditor({
                 }
                 disabled={isReadOnly}
                 placeholder="添加禁用短语"
-                className="w-32 px-2 py-1 text-xs border border-dashed border-zinc-300 rounded focus:outline-none focus:border-red-400 transition-colors disabled:opacity-50"
+                className="w-32 px-2 py-1 text-xs border border-dashed border-border rounded focus:outline-none focus:border-red-500 transition-colors disabled:opacity-50"
               />
               <button
                 onClick={handleAddForbiddenPhrase}
                 disabled={isReadOnly || !newForbiddenPhrase.trim()}
-                className="text-xs text-blue-600 hover:text-blue-700 hover:underline transition-colors disabled:opacity-50"
+                className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors disabled:opacity-50"
               >
                 + 添加
               </button>
@@ -901,8 +918,8 @@ function SectionEditor({
       </div>
 
       {/* Compliance Rules */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-emerald-600 border-b border-zinc-100 pb-2">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
           <ShieldCheck className="w-4 h-4" />
           <h4 className="font-bold text-sm uppercase tracking-wider">合规规则</h4>
         </div>
@@ -910,9 +927,9 @@ function SectionEditor({
           {(section.complianceRules || []).map((rule, i) => (
             <div
               key={i}
-              className="flex items-center justify-between bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-sm"
+              className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border border-primary/10 text-sm"
             >
-              <span className="text-emerald-800">{rule}</span>
+              <span className="text-foreground">{rule}</span>
               <button
                 onClick={() => {
                   const newRules = [...(section.complianceRules || [])];
@@ -920,7 +937,7 @@ function SectionEditor({
                   onUpdate({ complianceRules: newRules });
                 }}
                 disabled={isReadOnly}
-                className="text-emerald-500 hover:text-red-500 transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -944,7 +961,7 @@ function SectionEditor({
               }}
               disabled={isReadOnly}
               placeholder="添加合规规则，如：必须引用XX法规第X条"
-              className="flex-1 px-3 py-2 text-sm border border-dashed border-zinc-300 rounded-lg focus:outline-none focus:border-emerald-400 transition-colors disabled:opacity-50"
+              className="flex-1 px-3 py-2 text-sm border border-dashed border-border rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
             />
             <button
               onClick={() => {
@@ -959,7 +976,7 @@ function SectionEditor({
                 }
               }}
               disabled={isReadOnly || !newComplianceRule.trim()}
-              className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg border border-dashed border-emerald-300 text-xs font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-primary/10 text-primary rounded-lg border border-dashed border-primary/30 text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -968,11 +985,11 @@ function SectionEditor({
       </div>
 
       {/* RAG Sources */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-amber-600 border-b border-zinc-100 pb-2">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
           <Link className="w-4 h-4" />
           <h4 className="font-bold text-sm uppercase tracking-wider">RAG 数据源</h4>
-          <span className="text-xs text-amber-400 font-normal ml-auto">AI 生成时的参考知识库</span>
+          <span className="text-xs text-muted-foreground font-normal ml-auto">AI 生成时的参考知识库</span>
         </div>
         
         {/* 可用的 RAG 数据源 */}
@@ -984,30 +1001,30 @@ function SectionEditor({
       </div>
 
       {/* Generation Hint & Example */}
-      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm space-y-4">
-        <h4 className="font-bold text-sm text-zinc-700 uppercase tracking-wider">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
+        <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
           生成辅助
         </h4>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">生成提示</label>
+          <label className="text-sm font-medium text-foreground">生成提示</label>
           <textarea
             value={section.generationHint || ""}
             onChange={(e) => onUpdate({ generationHint: e.target.value })}
             disabled={isReadOnly}
             rows={2}
             placeholder="AI 生成时的参考提示..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">示例片段</label>
+          <label className="text-sm font-medium text-foreground">示例片段</label>
           <textarea
             value={section.exampleSnippet || ""}
             onChange={(e) => onUpdate({ exampleSnippet: e.target.value })}
             disabled={isReadOnly}
             rows={3}
             placeholder="本章的参考示例文本..."
-            className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm resize-none transition-all disabled:bg-zinc-50"
+            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
           />
         </div>
       </div>
@@ -1034,6 +1051,47 @@ export default function TemplateEditor() {
 
   // 版本历史弹窗状态
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  // 新建模板弹窗
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDomain, setNewTemplateDomain] = useState("");
+  const [domains, setDomains] = useState<ExtractionDomain[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  // 加载领域列表（用于新建模板）
+  useEffect(() => {
+    kfApi.listDomains().then((res) => {
+      if (res.domains.length > 0) {
+        setDomains(res.domains);
+        setNewTemplateDomain(res.domains[0]!.id);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // 创建新模板
+  const handleCreateTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      showNotification("error", "请输入模板名称");
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await kfApi.createTemplate({
+        name: newTemplateName.trim(),
+        domain: newTemplateDomain,
+      });
+      setShowCreateDialog(false);
+      setNewTemplateName("");
+      await fetchTemplates({ status: "draft,published", limit: 50 });
+      setSelectedTemplateId(res.template_id);
+      showNotification("success", "模板创建成功");
+    } catch (e) {
+      showNotification("error", e instanceof Error ? e.message : "创建失败");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   // 撤销功能 - 保存原始状态的快照
   const [originalSnapshot, setOriginalSnapshot] = useState<EditorTemplate | null>(null);
@@ -1254,11 +1312,11 @@ export default function TemplateEditor() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 p-4 border-b border-zinc-200 bg-white flex justify-between items-center shrink-0">
+      <div className="sticky top-0 z-10 p-4 border-b border-border bg-background flex justify-between items-center shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-zinc-900 tracking-tight">
+            <Edit3 className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground tracking-tight">
               模板编辑器
             </h2>
           </div>
@@ -1269,8 +1327,15 @@ export default function TemplateEditor() {
             onRefresh={() => fetchTemplates({ status: "draft,published", limit: 50 })}
             loading={listLoading}
           />
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 border border-dashed border-primary/30 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            新建模板
+          </button>
           {template?.isDirty && (
-            <span className="text-xs text-amber-500 bg-amber-50 px-2 py-1 rounded-full">
+            <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
               有未保存的更改
             </span>
           )}
@@ -1280,7 +1345,7 @@ export default function TemplateEditor() {
           <button
             onClick={() => setShowVersionHistory(true)}
             disabled={!template}
-            className="px-3 py-2 text-zinc-700 bg-white border border-zinc-300 rounded-lg flex items-center gap-2 hover:bg-zinc-50 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <History className="w-4 h-4" />
             版本历史
@@ -1290,7 +1355,7 @@ export default function TemplateEditor() {
           <button
             onClick={handleExport}
             disabled={!template}
-            className="px-3 py-2 text-zinc-700 bg-white border border-zinc-300 rounded-lg flex items-center gap-2 hover:bg-zinc-50 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             导出
@@ -1299,7 +1364,7 @@ export default function TemplateEditor() {
           <button
             onClick={handleSaveDraft}
             disabled={saving || !template || !template.isDirty || isPublished}
-            className="px-4 py-2 text-zinc-700 bg-white border border-zinc-300 rounded-lg flex items-center gap-2 hover:bg-zinc-50 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1311,7 +1376,7 @@ export default function TemplateEditor() {
           <button
             onClick={handlePublish}
             disabled={saving || !template || isPublished}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-primary text-white rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1329,8 +1394,8 @@ export default function TemplateEditor() {
           className={cn(
             "fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right",
             notification.type === "success"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 dark:bg-emerald-500/20"
+              : "bg-red-500/10 text-red-500 border border-red-500/20 dark:bg-red-500/20"
           )}
         >
           {notification.type === "success" ? (
@@ -1352,27 +1417,96 @@ export default function TemplateEditor() {
         />
       )}
 
+      {/* Create Template Dialog */}
+      {showCreateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-foreground">新建模板</h3>
+              <button
+                onClick={() => setShowCreateDialog(false)}
+                className="p-1.5 hover:bg-accent rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">模板名称</label>
+                <input
+                  type="text"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateTemplate()}
+                  placeholder="例如：消防设计专篇标准模板"
+                  className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">业务领域</label>
+                {domains.length > 0 ? (
+                  <AdminSelect
+                    value={newTemplateDomain}
+                    onValueChange={setNewTemplateDomain}
+                    options={domains.map((d) => ({ value: d.id, label: d.name }))}
+                    placeholder="选择领域"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={newTemplateDomain}
+                    onChange={(e) => setNewTemplateDomain(e.target.value)}
+                    placeholder="输入领域标识"
+                    className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowCreateDialog(false)}
+                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+              >
+                取消
+              </button>
+              <button
+                disabled={creating || !newTemplateName.trim()}
+                onClick={handleCreateTemplate}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {creating ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> 创建中...</>
+                ) : (
+                  "创建"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {templateLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
-              <p className="text-red-600">{error}</p>
+              <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-500" />
+              <p className="text-red-500">{error}</p>
             </div>
           </div>
         ) : !template ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <FileJson className="w-16 h-16 mx-auto mb-4 text-zinc-300" />
-              <p className="text-zinc-500 mb-4">请从上方选择一个模板进行编辑</p>
+              <FileJson className="w-16 h-16 mx-auto mb-4 text-muted opacity-30" />
+              <p className="text-muted-foreground mb-4">请从上方选择一个模板进行编辑</p>
               <button
                 onClick={() => fetchTemplates({ status: "draft,published", limit: 50 })}
-                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                className="text-sm text-primary hover:text-primary/80 hover:underline"
               >
                 刷新模板列表
               </button>
@@ -1381,15 +1515,15 @@ export default function TemplateEditor() {
         ) : (
           <>
             {/* Sidebar Tree */}
-            <div className="w-72 border-r border-zinc-200 bg-zinc-50/50 overflow-y-auto p-4 shrink-0">
+            <div className="w-72 border-r border-border bg-muted/50 overflow-y-auto p-4 shrink-0">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                   <FileJson className="w-3 h-3" /> 章节树
                 </h3>
                 {!isPublished && (
                   <button
                     onClick={() => handleAddSection(null, 1)}
-                    className="p-1.5 hover:bg-zinc-200 rounded-lg text-zinc-500 hover:text-blue-600 transition-colors"
+                    className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-primary transition-colors"
                     title="添加一级章节"
                   >
                     <Plus className="w-4 h-4" />
@@ -1409,26 +1543,26 @@ export default function TemplateEditor() {
             </div>
 
             {/* Editor Area */}
-            <div className="flex-1 overflow-y-auto bg-zinc-50/30 p-8">
+            <div className="flex-1 overflow-y-auto bg-muted/30 p-8">
               <div className="max-w-4xl mx-auto">
                 {/* Section Navigation */}
-                <div className="flex items-center justify-between mb-4 bg-white rounded-lg border border-zinc-200 px-4 py-2">
+                <div className="flex items-center justify-between mb-4 bg-card rounded-lg border border-border px-4 py-2">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={goToPrevSection}
                       disabled={currentSectionIndex <= 0}
-                      className="p-1.5 hover:bg-zinc-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 hover:bg-accent rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       title="上一章节"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-sm text-zinc-500">
+                    <span className="text-sm text-muted-foreground">
                       第 {currentSectionIndex + 1} / {allSections.length} 章节
                     </span>
                     <button
                       onClick={goToNextSection}
                       disabled={currentSectionIndex >= allSections.length - 1}
-                      className="p-1.5 hover:bg-zinc-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 hover:bg-accent rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       title="下一章节"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1438,14 +1572,14 @@ export default function TemplateEditor() {
                     {template?.isDirty && (
                       <button
                         onClick={handleRevert}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:bg-amber-500/10 rounded transition-colors"
                       >
                         <Undo2 className="w-3 h-3" />
                         撤销更改
                       </button>
                     )}
                     {selectedSection && (
-                      <span className="text-xs text-zinc-400 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         最后修改: {template.lastSaved ? new Date(template.lastSaved).toLocaleTimeString() : '未保存'}
                       </span>

@@ -14,6 +14,7 @@ from app.extensions.schemas import (
     UserStatistics,
     UserUpdate,
 )
+from app.extensions.user import sync as user_sync
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +151,22 @@ class UserService:
 
         await db.commit()
         await db.refresh(user)
+
+        await user_sync.sync_user_created(
+            db=db,
+            email=data.email,
+            password=data.password,
+            role_id=data.role_id,
+        )
+
         return user
 
     @staticmethod
     async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
         """Update an existing user."""
+        old_email = user.email
+        old_status = user.status
+
         if data.email is not None:
             user.email = data.email
         if data.full_name is not None:
@@ -182,6 +194,12 @@ class UserService:
 
         await db.commit()
         await db.refresh(user)
+
+        if data.email is not None and data.email != old_email:
+            await user_sync.sync_email_changed(old_email, data.email)
+        if data.status is not None and data.status == "inactive" and old_status != "inactive":
+            await user_sync.sync_user_disabled(user.email)
+
         return user
 
     @staticmethod
@@ -189,6 +207,7 @@ class UserService:
         """Soft delete a user."""
         user.is_deleted = True
         await db.commit()
+        await user_sync.sync_user_deleted(user.email)
 
     @staticmethod
     async def change_password(db: AsyncSession, user: User, old_password: str, new_password: str) -> bool:
@@ -197,6 +216,7 @@ class UserService:
             return False
         user.password_hash = hash_password(new_password)
         await db.commit()
+        await user_sync.sync_password_changed(user.email, new_password)
         return True
 
     @staticmethod
@@ -204,6 +224,7 @@ class UserService:
         """Reset user password (admin operation)."""
         user.password_hash = hash_password(new_password)
         await db.commit()
+        await user_sync.sync_password_changed(user.email, new_password)
 
     @staticmethod
     async def batch_operation(
@@ -214,6 +235,7 @@ class UserService:
         """Batch operation on users. Returns (success_ids, failed_list)."""
         success = []
         failed = []
+        emails_to_sync: list[str] = []
 
         for user_id in user_ids:
             try:
@@ -226,7 +248,9 @@ class UserService:
                     user.status = "active"
                 elif operation == "disable":
                     user.status = "inactive"
+                    emails_to_sync.append(user.email)
                 elif operation == "delete":
+                    emails_to_sync.append(user.email)
                     await db.delete(user)
 
                 success.append(user_id)
@@ -235,6 +259,12 @@ class UserService:
 
         if success:
             await db.commit()
+
+        for email in emails_to_sync:
+            if operation == "disable":
+                await user_sync.sync_user_disabled(email)
+            elif operation == "delete":
+                await user_sync.sync_user_deleted(email)
 
         return success, failed
 

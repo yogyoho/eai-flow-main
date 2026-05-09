@@ -330,13 +330,18 @@ function MessageContent_({
     );
   }
 
+  const markdownRehypePlugins = useMemo(
+    () => [...rehypePlugins, [rehypeKatex, { output: "html" }]] as any[],
+    [rehypePlugins],
+  );
+
   return (
     <AIElementMessageContent className={className}>
       {filesList}
       <MarkdownContent
         content={contentToDisplay}
         isLoading={isLoading}
-        rehypePlugins={[...rehypePlugins, [rehypeKatex, { output: "html" }]]}
+        rehypePlugins={markdownRehypePlugins}
         className="my-3"
         components={components}
       />

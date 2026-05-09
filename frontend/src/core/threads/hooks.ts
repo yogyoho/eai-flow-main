@@ -2,7 +2,7 @@ import type { AIMessage, Message, Run } from "@langchain/langgraph-sdk";
 import type { ThreadsClient } from "@langchain/langgraph-sdk/client";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
@@ -163,6 +163,7 @@ export function useThreadStream({
     assistantId: "lead_agent",
     threadId: onStreamThreadId,
     reconnectOnMount: true,
+    throttle: true,
     fetchStateHistory: { limit: 1 },
     onCreated(meta) {
       handleStreamStart(meta.thread_id, meta.run_id);
@@ -526,18 +527,17 @@ export function useThreadStream({
     messagesRef.current = thread.messages;
   }
 
-  const mergedMessages = mergeMessages(
-    history,
-    thread.messages,
-    optimisticMessages,
+  const mergedMessages = useMemo(
+    () => mergeMessages(history, thread.messages, optimisticMessages),
+    [history, thread.messages, optimisticMessages],
   );
 
   // Merge history, live stream, and optimistic messages for display
   // History messages may overlap with thread.messages; thread.messages take precedence
-  const mergedThread = {
-    ...thread,
-    messages: mergedMessages,
-  } as typeof thread;
+  const mergedThread = useMemo(
+    () => ({ ...thread, messages: mergedMessages }) as typeof thread,
+    [thread, mergedMessages],
+  );
 
   return {
     thread: mergedThread,

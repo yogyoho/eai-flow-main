@@ -390,7 +390,7 @@ export default function ProgressiveSkillsAnimation() {
         {/* Left: File Tree */}
         <div className="flex flex-1 flex-col">
           <motion.div
-            className="mb-4 font-mono text-sm text-zinc-500"
+            className="mb-4 font-mono text-sm dark:text-zinc-500 text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
@@ -407,10 +407,10 @@ export default function ProgressiveSkillsAnimation() {
                     : item.dragging
                       ? "translate-x-8 scale-105 text-blue-400"
                       : item.active
-                        ? "text-white"
-                        : item.highlight
+                          ? "text-foreground"
+                          : item.highlight
                           ? "text-purple-400"
-                          : "text-zinc-600"
+                          : "text-foreground"
                 }`}
                 style={{ paddingLeft: `${item.indent * 24}px` }}
                 animate={
@@ -456,12 +456,12 @@ export default function ProgressiveSkillsAnimation() {
         </div>
 
         {/* Right: Chat Interface */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border dark:border-zinc-800 bg-muted/30 dark:bg-zinc-900/50">
           {/* Chat Header */}
-          <div className="border-b border-zinc-800 p-4">
+          <div className="border-border dark:border-zinc-800 border-b p-4">
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-green-500" />
-              <span className="text-sm text-zinc-400">DeerFlow Agent</span>
+              <span className="text-sm dark:text-zinc-400 text-muted-foreground">DeerFlow Agent</span>
             </div>
           </div>
 
@@ -508,7 +508,7 @@ export default function ProgressiveSkillsAnimation() {
                     "deploying",
                     "done",
                   ].includes(phase) && (
-                    <div className="text-base text-zinc-300">
+                    <div className="text-base dark:text-zinc-300 text-foreground">
                       <span className="text-purple-400">✨</span> Found 3 skills
                     </div>
                   )}
@@ -525,8 +525,8 @@ export default function ProgressiveSkillsAnimation() {
                     "done",
                   ].includes(phase) && (
                     <div className="mt-4">
-                      <hr className="mb-3 border-zinc-700" />
-                      <div className="mb-3 text-zinc-300">
+                      <hr className="dark:border-zinc-700 border-border mb-3" />
+                      <div className="mb-3 dark:text-zinc-300 text-foreground">
                         🔬 Researching...
                       </div>
                       <div className="mb-3 space-y-2">
@@ -541,7 +541,7 @@ export default function ProgressiveSkillsAnimation() {
                           "deploying",
                           "done",
                         ].includes(phase) && (
-                          <div className="flex items-center gap-2 pl-4 text-zinc-400">
+                          <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
                             <FileText size={16} />
                             <span>Loading deep-search/SKILL.md...</span>
                           </div>
@@ -556,7 +556,7 @@ export default function ProgressiveSkillsAnimation() {
                           "deploying",
                           "done",
                         ].includes(phase) && (
-                          <div className="flex items-center gap-2 pl-4 text-zinc-400">
+                          <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
                             <FileText size={16} />
                             <span>
                               Found biotech related topic, loading
@@ -573,7 +573,7 @@ export default function ProgressiveSkillsAnimation() {
                               key={i}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-2 text-sm text-zinc-500"
+                              className="flex items-center gap-2 text-sm dark:text-zinc-500 text-muted-foreground"
                             >
                               {step.type === "search" ? (
                                 <Search size={14} className="text-blue-400" />
@@ -598,7 +598,7 @@ export default function ProgressiveSkillsAnimation() {
                               key={i}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-2 text-sm text-zinc-500"
+                              className="flex items-center gap-2 text-sm dark:text-zinc-500 text-muted-foreground"
                             >
                               {step.type === "search" ? (
                                 <Search size={14} className="text-blue-400" />
@@ -622,9 +622,9 @@ export default function ProgressiveSkillsAnimation() {
                       animate={{ opacity: 1 }}
                       className="mt-4"
                     >
-                      <hr className="mb-3 border-zinc-700" />
-                      <div className="mb-3 text-zinc-300">🔨 Building...</div>
-                      <div className="mb-3 flex items-center gap-2 pl-4 text-zinc-400">
+                      <hr className="dark:border-zinc-700 border-border mb-3" />
+                      <div className="mb-3 dark:text-zinc-300 text-foreground">🔨 Building...</div>
+                      <div className="mb-3 flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
                         <FileText size={16} />
                         <span>Loading frontend-design/SKILL.md...</span>
                       </div>
@@ -652,10 +652,10 @@ export default function ProgressiveSkillsAnimation() {
                       animate={{ opacity: 1 }}
                       className="mt-4"
                     >
-                      <hr className="mb-3 border-zinc-700" />
-                      <div className="mb-3 text-zinc-300">🚀 Deploying...</div>
+                      <hr className="dark:border-zinc-700 border-border mb-3" />
+                      <div className="mb-3 dark:text-zinc-300 text-foreground">🚀 Deploying...</div>
                       <div className="mb-3 space-y-2">
-                        <div className="flex items-center gap-2 pl-4 text-zinc-400">
+                        <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
                           <FileText size={16} />
                           <span>Loading deploy/SKILL.md...</span>
                         </div>
@@ -663,7 +663,7 @@ export default function ProgressiveSkillsAnimation() {
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex items-center gap-2 pl-4 text-zinc-400"
+                            className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground"
                           >
                             <Terminal size={16} />
                             <span>Executing scripts/deploy.sh</span>
@@ -689,8 +689,8 @@ export default function ProgressiveSkillsAnimation() {
           </div>
 
           {/* Chat Input (decorative) */}
-          <div className="border-t border-zinc-800 p-4">
-            <div className="rounded-xl bg-zinc-800 px-4 py-3 text-sm text-zinc-500">
+          <div className="border-border dark:border-zinc-800 border-t p-4">
+            <div className="rounded-xl dark:bg-zinc-800 bg-muted px-4 py-3 text-sm dark:text-zinc-500 text-muted-foreground">
               Ask DeerFlow anything...
             </div>
           </div>

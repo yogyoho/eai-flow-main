@@ -186,6 +186,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --animate-aurora: aurora 8s ease-in-out infinite alternate;
   @keyframes aurora {
@@ -258,7 +259,8 @@
   --sidebar-accent-foreground: oklch(0.556 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.54 0.26 265.5);
-  --success: oklch(0.627 0.194 154.44);
+  --success: oklch(0.55 0.15 160);
+  --success-foreground: oklch(1 0 0);
   --warning: oklch(0.769 0.188 70.08);
 }
 
@@ -295,7 +297,8 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.52 0.26 265.5);
-  --success: oklch(0.627 0.194 154.44);
+  --success: oklch(0.62 0.13 160);
+  --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.769 0.188 70.08);
   font-weight: 300;
 }

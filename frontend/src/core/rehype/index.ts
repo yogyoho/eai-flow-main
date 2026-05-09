@@ -6,8 +6,11 @@ import type { BuildVisitor } from "unist-util-visit";
 const CJK_TEXT_RE =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 
+let _segmenter: Intl.Segmenter | undefined;
+
 export function rehypeSplitWordsIntoSpans() {
   return (tree: Root) => {
+    const segmenter = (_segmenter ??= new Intl.Segmenter("zh", { granularity: "word" }));
     visit(tree, "element", ((node: Element) => {
       if (
         ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "strong"].includes(
@@ -22,7 +25,6 @@ export function rehypeSplitWordsIntoSpans() {
               newChildren.push(child);
               return;
             }
-            const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
             const segments = segmenter.segment(child.value);
             const words = Array.from(segments)
               .map((segment) => segment.segment)

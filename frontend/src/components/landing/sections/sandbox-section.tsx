@@ -27,7 +27,7 @@ export function SandboxSection({ className }: { className?: string }) {
           <Terminal className="h-[360px] w-full">
             {/* Scene 1: Build a Game */}
             <TypingAnimation>$ cat requirements.txt</TypingAnimation>
-            <AnimatedSpan delay={800} className="text-zinc-400">
+            <AnimatedSpan delay={800} className="dark:text-zinc-400 text-muted-foreground">
               pygame==2.5.0
             </AnimatedSpan>
 
@@ -62,7 +62,7 @@ export function SandboxSection({ className }: { className?: string }) {
             <TypingAnimation delay={5400}>
               $ curl -O sales-2024.csv
             </TypingAnimation>
-            <AnimatedSpan delay={6200} className="text-zinc-400">
+            <AnimatedSpan delay={6200} className="dark:text-zinc-400 text-muted-foreground">
               Downloaded 12.4 MB
             </AnimatedSpan>
           </Terminal>
@@ -85,7 +85,7 @@ export function SandboxSection({ className }: { className?: string }) {
             </h2>
           </div>
 
-          <div className="space-y-4 text-lg text-zinc-400">
+          <div className="space-y-4 text-lg text-muted-foreground">
             <p>
               We recommend using{" "}
               <a
@@ -103,19 +103,19 @@ export function SandboxSection({ className }: { className?: string }) {
 
           {/* Feature Tags */}
           <div className="flex flex-wrap gap-3 pt-4">
-            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
+            <span className="rounded-full border border-border bg-muted dark:border-zinc-800 dark:bg-zinc-900 px-4 py-2 text-sm dark:text-zinc-300 text-foreground">
               Isolated
             </span>
-            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
+            <span className="rounded-full border border-border bg-muted dark:border-zinc-800 dark:bg-zinc-900 px-4 py-2 text-sm dark:text-zinc-300 text-foreground">
               Safe
             </span>
-            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
+            <span className="rounded-full border border-border bg-muted dark:border-zinc-800 dark:bg-zinc-900 px-4 py-2 text-sm dark:text-zinc-300 text-foreground">
               Persistent
             </span>
-            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
+            <span className="rounded-full border border-border bg-muted dark:border-zinc-800 dark:bg-zinc-900 px-4 py-2 text-sm dark:text-zinc-300 text-foreground">
               Mountable FS
             </span>
-            <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
+            <span className="rounded-full border border-border bg-muted dark:border-zinc-800 dark:bg-zinc-900 px-4 py-2 text-sm dark:text-zinc-300 text-foreground">
               Long-running
             </span>
           </div>

@@ -8,7 +8,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider>
       <AuthProvider>
-        <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="flex h-screen bg-background dark:bg-background">
           <ExtensionsSidebar />
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             <main className="flex-1 overflow-y-auto">{children}</main>

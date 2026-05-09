@@ -130,13 +130,13 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-500/10 text-amber-500";
       case "imported":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-500/10 text-emerald-500";
       case "deleted":
-        return "bg-gray-100 text-gray-500";
+        return "bg-muted text-muted-foreground";
       default:
-        return "bg-gray-100 text-gray-600";
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -157,16 +157,16 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
     <>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="p-4 border-b bg-white">
+        <div className="p-4 border-b bg-background">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
               <FileText className="w-5 h-5" />
               草稿箱 ({filteredDrafts.length})
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={loadDrafts}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-accent rounded-lg"
                 title="刷新"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -174,7 +174,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
               {onClose && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-accent rounded-lg"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -185,19 +185,19 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
           {/* 搜索和筛选 */}
           <div className="flex gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="搜索草稿..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background"
               />
             </div>
             <select
               value={statusFilter || ""}
               onChange={(e) => setStatusFilter(e.target.value || null)}
-              className="px-3 py-2 border rounded-lg"
+              className="px-3 py-2 border border-border rounded-lg bg-background"
             >
               <option value="">全部状态</option>
               <option value="draft">草稿</option>
@@ -211,11 +211,11 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredDrafts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <FileText className="w-12 h-12 mb-3 text-gray-300" />
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <FileText className="w-12 h-12 mb-3 text-muted-foreground/30" />
               <p>暂无草稿</p>
               <p className="text-sm">爬取网页后将自动保存到草稿箱</p>
             </div>
@@ -226,7 +226,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                   key={draft.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-4 hover:bg-gray-50 cursor-pointer group"
+                  className="p-4 hover:bg-accent cursor-pointer group"
                   onClick={() => handlePreview(draft)}
                 >
                   <div className="flex items-start justify-between">
@@ -243,7 +243,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
                         <span className="flex items-center gap-1">
                           <Tag className="w-3 h-3" />
                           {draft.schema_display_name || draft.schema_name}
@@ -260,7 +260,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                          className="text-sm text-primary hover:underline flex items-center gap-1"
                         >
                           <ExternalLink className="w-3 h-3" />
                           {draft.source_title || draft.source_url}
@@ -272,13 +272,13 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           {draft.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                              className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded"
                             >
                               {tag}
                             </span>
                           ))}
                           {draft.tags.length > 3 && (
-                            <span className="text-gray-400 text-xs">
+                            <span className="text-muted-foreground/60 text-xs">
                               +{draft.tags.length - 3}
                             </span>
                           )}
@@ -295,7 +295,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                               e.stopPropagation();
                               onEdit?.(draft);
                             }}
-                            className="p-2 hover:bg-gray-200 rounded-lg"
+                            className="p-2 hover:bg-accent rounded-lg"
                             title="编辑"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -305,7 +305,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                               e.stopPropagation();
                               handleOpenImport(draft);
                             }}
-                            className="p-2 hover:bg-gray-200 rounded-lg text-blue-600"
+                            className="p-2 hover:bg-accent rounded-lg text-primary"
                             title="导入知识库"
                           >
                             <Upload className="w-4 h-4" />
@@ -317,7 +317,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           e.stopPropagation();
                           handleDelete(draft.id);
                         }}
-                        className="p-2 hover:bg-red-100 rounded-lg text-red-600"
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-red-500"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -344,13 +344,13 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-2xl max-w-4xl w-full max-h-full overflow-hidden flex flex-col"
+              className="bg-background rounded-2xl max-w-4xl w-full max-h-full overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">{selectedDraft.title}</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="text-xl font-semibold text-foreground">{selectedDraft.title}</h2>
+                  <p className="text-sm text-muted-foreground">
                     {selectedDraft.schema_display_name} •{" "}
                     {new Date(selectedDraft.created_at).toLocaleDateString()}
                   </p>
@@ -362,16 +362,16 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                         setShowPreview(false);
                         handleOpenImport(selectedDraft);
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2"
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg flex items-center gap-2"
                     >
                       <Upload className="w-4 h-4" /> 存入知识库
                     </button>
                   )}
                   <button
                     onClick={() => setShowPreview(false)}
-                    className="px-4 py-2 border rounded-lg"
+                    className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    关闭
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -400,13 +400,13 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-2xl w-full max-w-md p-6"
+              className="bg-background rounded-2xl w-full max-w-md p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-xl font-semibold mb-4">选择目标知识库</h2>
 
               {knowledgeBases.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   暂无可用知识库，请先创建知识库
                 </div>
               ) : (
@@ -415,11 +415,11 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                     <button
                       key={kb.id}
                       onClick={() => handleImport(kb.id)}
-                      className="w-full p-4 border rounded-lg hover:bg-gray-50 text-left"
+                      className="w-full p-4 border border-border rounded-lg hover:bg-accent text-left"
                     >
-                      <div className="font-medium">{kb.name}</div>
+                      <div className="font-medium text-foreground">{kb.name}</div>
                       {kb.description && (
-                        <div className="text-sm text-gray-500">{kb.description}</div>
+                        <div className="text-sm text-muted-foreground">{kb.description}</div>
                       )}
                     </button>
                   ))}
@@ -429,7 +429,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 border rounded-lg"
+                  className="px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
                 >
                   取消
                 </button>

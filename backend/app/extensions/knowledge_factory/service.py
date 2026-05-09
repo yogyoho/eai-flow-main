@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import attributes
 
 from app.extensions.database import get_db_context
 from app.extensions.models import Document, KnowledgeBase
@@ -344,6 +345,13 @@ class TaskService:
             config=config_dict,
             status="pending",
             progress=0,
+            steps=[
+                {"name": "文档解析", "status": "waiting", "duration": None, "detail": ""},
+                {"name": "章节推断", "status": "waiting", "duration": None, "detail": ""},
+                {"name": "元数据抽取", "status": "waiting", "duration": None, "detail": ""},
+                {"name": "模板融合", "status": "waiting", "duration": None, "detail": ""},
+                {"name": "合规校验", "status": "waiting", "duration": None, "detail": ""},
+            ],
             created_by=user_id,
         )
         db.add(task)
@@ -382,9 +390,7 @@ class TaskService:
         db: AsyncSession, task: ExtractionTask, steps: list[dict]
     ) -> None:
         task.steps = steps
-        # 计算进度
-        completed = sum(1 for s in steps if s.get("status") == "completed")
-        task.progress = int((completed / 5) * 100) if steps else 0
+        attributes.flag_modified(task, "steps")
         await db.commit()
 
     @staticmethod
@@ -577,15 +583,30 @@ def _flatten_sections_list(sections: list[dict]) -> list[dict]:
 
 
 def _parse_section(data: dict) -> TemplateSection:
-    """将 dict 解析为 TemplateSection"""
-    content = data.get("content_contract") or {}
+    """将 dict 解析为 TemplateSection。
+
+    兼容两种格式：
+    - snake_case（后端标准格式）
+    - camelCase（旧版前端保存的格式）
+    """
+
+    def _get(data: dict, *keys: str) -> any:
+        """Try multiple keys in order, return the first non-None value."""
+        for k in keys:
+            val = data.get(k)
+            if val is not None:
+                return val
+        return None
+
+    # 解析 content_contract（兼容 contentContract 旧格式）
+    content = _get(data, "content_contract", "contentContract") or {}
     if isinstance(content, dict):
         content = ContentContract(
-            key_elements=content.get("key_elements", []),
-            structure_type=StructureType(content.get("structure_type", "narrative_text")),
-            style_rules=content.get("style_rules"),
-            min_word_count=content.get("min_word_count"),
-            forbidden_phrases=content.get("forbidden_phrases", []),
+            key_elements=_get(content, "key_elements", "keyElements") or [],
+            structure_type=StructureType(_get(content, "structure_type", "structureType") or "narrative_text"),
+            style_rules=_get(content, "style_rules", "styleRules"),
+            min_word_count=_get(content, "min_word_count", "minWordCount"),
+            forbidden_phrases=_get(content, "forbidden_phrases", "forbiddenPhrases") or [],
         )
     children = [_parse_section(c) for c in data.get("children") or []]
     return TemplateSection(
@@ -596,9 +617,9 @@ def _parse_section(data: dict) -> TemplateSection:
         purpose=data.get("purpose"),
         children=children if children else None,
         content_contract=content,
-        compliance_rules=data.get("compliance_rules"),
-        rag_sources=data.get("rag_sources"),
-        generation_hint=data.get("generation_hint"),
-        example_snippet=data.get("example_snippet"),
-        completeness_score=data.get("completeness_score"),
+        compliance_rules=_get(data, "compliance_rules", "complianceRules"),
+        rag_sources=_get(data, "rag_sources", "ragSources"),
+        generation_hint=_get(data, "generation_hint", "generationHint"),
+        example_snippet=_get(data, "example_snippet", "exampleSnippet"),
+        completeness_score=_get(data, "completeness_score", "completenessScore"),
     )

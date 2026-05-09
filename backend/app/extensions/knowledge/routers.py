@@ -1,12 +1,13 @@
 """Knowledge base routers for extensions module."""
 
 import asyncio
+import json
 import logging
 from pathlib import Path
 from uuid import UUID
 
 import aiofiles
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -124,12 +125,20 @@ async def delete_knowledge_base(
 async def upload_document(
     kb_id: UUID,
     file: UploadFile = File(...),
+    chunk_config: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:upload")),
 ):
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+
+    chunk_cfg = None
+    if chunk_config:
+        try:
+            chunk_cfg = json.loads(chunk_config)
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid chunk_config JSON: {chunk_config}")
 
     config = get_extensions_config()
     upload_dir = Path(config.storage.base_path) / str(current_user.id) / "knowledge" / str(kb.id)
@@ -147,6 +156,7 @@ async def upload_document(
         str(file_path),
         file.size,
         content_type=file.content_type,
+        chunk_config=chunk_cfg,
     )
     return DocumentService.to_response(doc)
 
@@ -264,11 +274,19 @@ async def chat_with_knowledge_base(
             vector_similarity_weight=request.vector_similarity_weight,
         )
 
-        data = result.get("data", {})
+        # RAGFlow returns code != 0 on error with data=null
+        if result.get("code") != 0:
+            msg = result.get("message", "RAGFlow retrieval failed")
+            logger.error(f"RAGFlow chat error (code={result.get('code')}): {msg}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+
+        data = result.get("data") or {}
         return {
             "answer": data.get("answer", ""),
             "sources": data.get("chunks", []),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"RAGFlow chat error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -321,7 +339,7 @@ async def federated_search(
             failures += 1
             logger.warning(f"Federated search failed for kb={kb.id}: {res}")
             continue
-        data = res.get("data", {})
+        data = res.get("data") or {}
         for chunk in data.get("chunks", []) or []:
             item = dict(chunk)
             item["kb_id"] = str(kb.id)

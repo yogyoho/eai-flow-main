@@ -74,10 +74,18 @@ class KnowledgeBaseService:
         if rf_client:
             try:
                 if await rf_client.is_available():
+                    embed_model = data.embedding_model
+                    if not embed_model and data.kb_type == "ragflow":
+                        available = await rf_client.list_available_embedding_models()
+                        if available:
+                            embed_model = available[0]
+                            kb.embedding_model = embed_model
+                            logger.info(f"Auto-selected embedding model: {embed_model}")
+
                     rf_result = await rf_client.create_dataset(
                         name=data.name,
                         description=data.description or "",
-                        embedding_model=data.embedding_model,
+                        embedding_model=embed_model,
                     )
                     rf_dataset_id = rf_result.get("data", {}).get("id")
                     if rf_dataset_id:
@@ -231,6 +239,33 @@ class DocumentService:
 
         return list(docs), total
 
+    # Map our chunk_method to RAGFlow parser_id
+    _CHUNK_METHOD_TO_PARSER: dict[str, str] = {
+        "naive": "naive",
+        "report": "manual",
+        "laws": "laws",
+        "paper": "paper",
+        "book": "book",
+        "qa": "qa",
+    }
+
+    @staticmethod
+    def _build_parser_config(chunk_config: dict | None) -> tuple[str | None, dict | None]:
+        """Map frontend chunk config to RAGFlow parser_id and parser_config."""
+        if not chunk_config:
+            return None, None
+
+        chunk_method = chunk_config.get("chunk_method", "naive")
+        parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(chunk_method, "naive")
+
+        parser_config: dict = {}
+        if "chunk_token_num" in chunk_config:
+            parser_config["chunk_token_count"] = chunk_config["chunk_token_num"]
+        if chunk_config.get("ocr_enabled") or chunk_config.get("preserve_tables"):
+            parser_config["layout_recognize"] = True
+
+        return parser_id, parser_config if parser_config else None
+
     @staticmethod
     async def create_doc(
         db: AsyncSession,
@@ -240,6 +275,7 @@ class DocumentService:
         file_size: int,
         auto_parse: bool = True,
         content_type: str | None = None,
+        chunk_config: dict | None = None,
     ) -> Document:
         """Create a document and optionally upload to RAGFlow."""
         file_ext = Path(file_name).suffix.lower().lstrip(".")
@@ -256,16 +292,25 @@ class DocumentService:
             rf_client = DocumentService._get_ragflow_client()
             if rf_client:
                 try:
+                    parser_id, parser_config = DocumentService._build_parser_config(chunk_config)
+                    if not parser_id:
+                        parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method, "naive")
+
                     rf_result = await rf_client.upload_document(
                         dataset_id=kb.ragflow_dataset_id,
                         file_path=file_path,
                         file_name=file_name,
+                        parser_id=parser_id,
+                        parser_config=parser_config,
                     )
                     rf_doc_id = rf_result.get("data", {}).get("id")
                     if rf_doc_id:
                         doc.ragflow_document_id = rf_doc_id
                         doc.status = DocumentStatus.UPLOADING.value
-                        logger.info(f"Uploaded document to RAGFlow: {rf_doc_id}")
+                        logger.info(f"Uploaded document to RAGFlow: {rf_doc_id} (parser_id={parser_id})")
+
+                        if chunk_config and chunk_config.get("chunk_method"):
+                            kb.chunk_method = chunk_config["chunk_method"]
 
                         if auto_parse:
                             try:

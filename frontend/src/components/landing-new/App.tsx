@@ -74,7 +74,7 @@ export default function LandingNew() {
   };
 
   return (
-    <div className="min-h-screen relative bg-slate-50 overflow-hidden font-sans"> 
+    <div className="min-h-screen relative bg-background dark:bg-[#0a0a0a] overflow-hidden font-sans"> 
       {/* 科技感背景：网格与柔和光晕 */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-grid-pattern opacity-60"></div>
@@ -85,7 +85,7 @@ export default function LandingNew() {
       </div>
 
       {/* 顶部导航栏 */}
-      <nav className="relative z-10 flex items-center justify-between px-8 py-4 bg-white/70 backdrop-blur-md border-b border-slate-200/50">
+      <nav className="relative z-10 flex items-center justify-between px-8 py-4 bg-card/70 dark:bg-card/70 backdrop-blur-md border-b border-border dark:border-border">
         <div className="flex items-center space-x-3">
           {/* Logo */}
           <img
@@ -98,7 +98,7 @@ export default function LandingNew() {
           </span>
         </div>
 
-        <div className="hidden md:flex items-center space-x-2 text-gray-600 font-medium">
+        <div className="hidden md:flex items-center space-x-2 text-muted-foreground dark:text-muted-foreground font-medium">
           <button onClick={() => handleNavClick("/workspace/chats/new")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</button>
           <button onClick={() => handleNavClick("/knowledge-factory?tab=reports")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</button>
           <button onClick={() => handleNavClick("/docmgr")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</button>
@@ -111,14 +111,14 @@ export default function LandingNew() {
               mounted ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 hover:bg-primary/20 text-gray-600 hover:text-primary transition-all duration-200">
+                    <button className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 hover:bg-primary/20 text-muted-foreground dark:text-muted-foreground hover:text-primary transition-all duration-200">
                       <UserCircle className="w-6 h-6" strokeWidth={1.5} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-64 rounded-xl" align="end" sideOffset={8}>
-                    <div className="px-3 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{user.username}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+                    <div className="px-3 py-2 border-b border-border dark:border-border">
+                      <p className="text-sm font-medium text-foreground dark:text-foreground">{user.username}</p>
+                      <p className="text-xs text-muted-foreground dark:text-muted-foreground">{user.email}</p>
                     </div>
                     <DropdownMenuGroup className="py-1">
                       <DropdownMenuItem onClick={() => router.push("/knowledge")}>
@@ -135,7 +135,7 @@ export default function LandingNew() {
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
+                    <DropdownMenuItem onClick={logout} className="text-red-500 dark:text-red-400 focus:text-red-500 dark:focus:text-red-400">
                       <LogOutIcon className="mr-2 h-4 w-4" />
                       退出登录
                     </DropdownMenuItem>
@@ -175,12 +175,12 @@ export default function LandingNew() {
             </motion.div>
 
             <motion.div variants={itemVariants} className="space-y-6">
-              <h1 className="text-3xl md:text-6xl font-extrabold text-gray-900 leading-[1.15] tracking-tight">
+              <h1 className="text-3xl md:text-6xl font-extrabold text-foreground dark:text-white leading-[1.15] tracking-tight">
                 华宇工程: 煤矿设计领域智能应用平台
               </h1>
               {/* 渐变装饰线 */}
               <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/70 to-teal-400 rounded-full"></div>
-              <p className="text-xl text-gray-600 font-medium">
+              <p className="text-xl text-muted-foreground dark:text-muted-foreground font-medium">
                 Harness驱动的智能体平台
               </p>
             </motion.div>
@@ -188,14 +188,14 @@ export default function LandingNew() {
             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
               <button
                 onClick={() => handleNavClick("/workspace/chats/new")}
-                className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
+                className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
               >
                 <Rocket className="w-5 h-5" />
                 <span>开始写作</span>
               </button>
               <button
                 onClick={() => handleNavClick("/knowledge-factory?tab=reports")}
-                className="flex items-center space-x-2 px-8 py-3.5 bg-white hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
+                className="flex items-center space-x-2 px-8 py-3.5 bg-card dark:bg-card hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 <FolderCog className="w-5 h-5" />
                 <span>知识加工</span>
@@ -248,10 +248,10 @@ export default function LandingNew() {
           className="mt-32"
         >
           <div className="text-center mb-12 space-y-3">
-            <motion.h2 variants={itemVariants} className="text-3xl font-bold text-gray-900">
+            <motion.h2 variants={itemVariants} className="text-3xl font-bold text-foreground dark:text-white">
               快速访问
             </motion.h2>
-            <motion.p variants={itemVariants} className="text-gray-600">
+            <motion.p variants={itemVariants} className="text-muted-foreground dark:text-muted-foreground">
               探索平台核心功能模块
             </motion.p>
           </div>
@@ -296,7 +296,7 @@ export default function LandingNew() {
       </main>
 
       {/* 底部版权 */}
-      <footer className="relative z-10 bg-[#1a1a1a] text-gray-400 py-8 text-center text-sm">
+      <footer className="relative z-10 bg-[#1a1a1a] dark:bg-[#1a1a1a] text-muted-foreground dark:text-muted-foreground py-8 text-center text-sm">
         <p>© 北京华宇工程有限公司 2026 v0.5.0</p>
       </footer>
     </div>
@@ -326,9 +326,9 @@ function StatsCard({
         {icon}
       </div>
       <div>
-        <h3 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">{number}</h3>
-        <p className="text-sm font-bold text-gray-600 mb-1">{title}</p>
-        <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+        <h3 className="text-4xl font-black text-foreground dark:text-white mb-2 tracking-tight">{number}</h3>
+        <p className="text-sm font-bold text-muted-foreground dark:text-muted-foreground mb-1">{title}</p>
+        <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed">{desc}</p>
       </div>
     </motion.div>
   );
@@ -349,18 +349,18 @@ function QuickAccessCard({
     <motion.div
       variants={variants}
       whileHover={{ y: -4 }}
-      className="group relative bg-white rounded-2xl p-6 flex items-center justify-between cursor-pointer transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-lg hover:shadow-primary/10 border border-transparent hover:border-primary/40 overflow-hidden"
+      className="group relative bg-card dark:bg-card rounded-2xl p-6 flex items-center justify-between cursor-pointer transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-lg hover:shadow-primary/10 border border-transparent hover:border-primary/40 overflow-hidden"
     >
       {/* Hover时的左侧浅灰色粗边框 */}
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300 dark:bg-gray-600"></div>
+      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground/30 dark:bg-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
       <div className="flex items-center space-x-4 relative z-10">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
           {icon}
         </div>
         <div>
-          <h4 className="text-lg font-bold text-gray-900 mb-0.5">{title}</h4>
-          <p className="text-sm text-gray-500 font-mono">{path}</p>
+          <h4 className="text-lg font-bold text-foreground dark:text-white mb-0.5">{title}</h4>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground font-mono">{path}</p>
         </div>
       </div>
 

@@ -15,6 +15,7 @@ Step 5: 合规校验 ← 规则引擎
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
@@ -75,12 +76,95 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
     return chapters, total
 
 
+# Patterns for detecting chapter/section headings in Chinese documents
+_CHAPTER_PATTERNS = [
+    # 第一章 / 第二节 / 第三条
+    (re.compile(r"^第[一二三四五六七八九十百千\d]+[章节条款段]\s*[\.、\s]?\s*(.+)"), 1),
+    # 1. / 1、 / 1.1 / 1.1.1
+    (re.compile(r"^(\d+(?:[\.]\d+)*)\s*[\.、\s]\s*(.+)"), 1),
+    # 一、 / 二、 / 十二、
+    (re.compile(r"^[一二三四五六七八九十]+[、\.\s]\s*(.+)"), 1),
+    # (一) / (1)
+    (re.compile(r"^[（(][一二三四五六七八九十\d]+[）)]\s*(.+)"), 2),
+]
+
+def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
+    """扫描所有 chunks，提取章节标题行。
+
+    返回 [{title, line_number, chunk_index, level_guess}, ...]
+    """
+    headings = []
+    line_no = 0
+    for ci, chunk in enumerate(chunks):
+        content = chunk.get("content", "")
+        for line in content.split("\n"):
+            line = line.strip()
+            if not line or len(line) > 80:
+                line_no += 1
+                continue
+            for pattern, default_level in _CHAPTER_PATTERNS:
+                m = pattern.match(line)
+                if m:
+                    headings.append({
+                        "title": line,
+                        "line_number": line_no,
+                        "chunk_index": ci,
+                        "level_guess": default_level,
+                    })
+                    break
+            line_no += 1
+    return headings
+
+def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
+    """从文档 chunks 构建结构提示，发给 LLM 辅助章节推断。
+
+    策略：
+    1. 首先扫描所有 chunks，提取章节标题行
+    2. 如果有章节标题，构建"目录+摘要"式的内容
+    3. 如果没有，返回文档开头部分内容
+    """
+    headings = _scan_chapter_headings(chunks)
+
+    if not headings:
+        # 无章节标题：返回文档开头内容
+        full = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
+        return full[:max_chars]
+
+    # 收集所有 chunks 的完整内容
+    full_content = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
+
+    # 构建结构提示：目录 + 每个章节的摘要
+    parts = ["## 文档章节目录（自动识别）\n"]
+    for h in headings:
+        indent = "  " * (h["level_guess"] - 1)
+        parts.append(f"{indent}- {h['title']}")
+
+    parts.append("\n## 各章节内容摘要（每章节前200字）\n")
+
+    # 为每个章节标题提取附近内容
+    for h in headings:
+        title = h["title"]
+        # 在完整内容中查找该标题的位置
+        idx = full_content.find(title)
+        if idx >= 0:
+            snippet = full_content[idx:idx + 300]
+            parts.append(f"### {title}\n{snippet}\n")
+        else:
+            parts.append(f"### {title}\n（内容未找到）\n")
+
+    result = "\n".join(parts)
+    # 限制总长度
+    if len(result) > max_chars:
+        result = result[:max_chars] + "\n...(内容已截断)"
+
+    return result
+
+
 def _extract_keywords(title: str) -> list[str]:
     """从标题中提取关键词，用于模糊匹配。
 
     去除常见前缀（序号、章节词等），保留核心业务术语。
     """
-    import re
 
     # 去除常见前缀模式
     patterns_to_remove = [
@@ -110,7 +194,6 @@ def _find_best_matching_paragraph(
     策略：将文档按段落分割，统计每个段落中关键词出现次数，
     返回包含关键词最多的段落。
     """
-    import re
 
     if not keywords:
         return content[:max_chars]
@@ -164,15 +247,18 @@ class ExtractionPipeline:
         self,
         llm_client: Optional[ExtractionLLMClient] = None,
         max_content_chars: int = 5000,
+        llm_model: Optional[str] = None,
     ):
         self._llm_client = llm_client
         self._max_content_chars = max_content_chars
+        self._llm_model = llm_model
         self._llm: Optional[ExtractionLLMClient] = None
 
     @property
     def llm(self) -> ExtractionLLMClient:
         if self._llm is None:
             self._llm = self._llm_client or ExtractionLLMClient(
+                model_name=self._llm_model or None,
                 max_content_chars=self._max_content_chars,
             )
         return self._llm
@@ -266,6 +352,8 @@ class ExtractionPipeline:
         await _emit("元数据抽取", StepStatus.RUNNING, _fmt(t2 - start_time), "处理中...")
         try:
             enriched = await self._step_extract_metadata(ctx, config)
+            # 将 enriched 存入 ctx，使后续步骤（融合、校验）能使用带元数据的章节
+            ctx["_enriched_sections"] = enriched
         except Exception as e:
             await _emit("元数据抽取", StepStatus.FAILED, _fmt(time.time() - t2), f"错误: {e}")
             raise
@@ -308,12 +396,26 @@ class ExtractionPipeline:
 
         # 检查是否有有效内容，如果没有则报错
         if total == 0:
-            await _emit("完成", StepStatus.FAILED, _fmt(time.time() - start_time), "未能从文档中提取任何章节，请检查：(1)文档是否在RAGFlow中解析完成，(2)文档是否有文本内容，(3)LLM调用是否成功")
+            # 收集诊断信息，帮助用户定位具体原因
+            doc_diagnostics = []
+            for doc in ctx.get("_documents", []):
+                skip_reason = doc.get("_skip_reason", "")
+                chunks = doc.get("chunk_count", 0)
+                doc_name = doc.get("name", "?")
+                if skip_reason:
+                    doc_diagnostics.append(f"  - {doc_name}: {skip_reason}")
+                elif chunks == 0:
+                    doc_diagnostics.append(f"  - {doc_name}: 已连接 RAGFlow 但无文本块（解析可能未完成）")
+                else:
+                    doc_diagnostics.append(f"  - {doc_name}: {chunks} chunks 已获取，但 LLM 未推断出章节")
+            schemas_info = ctx.get("_doc_schemas", [])
+            schema_diag = f", schemas_inferred: {len(schemas_info)}"
+
+            detail = "; ".join(doc_diagnostics) if doc_diagnostics else "未知原因"
+            await _emit("完成", StepStatus.FAILED, _fmt(time.time() - start_time), f"未能从文档中提取任何章节。诊断: {detail}")
             raise ValueError(
                 f"Pipeline failed: no sections extracted. "
-                f"Possibilities: (1) documents not parsed in RAGFlow, "
-                f"(2) documents have no text chunks, "
-                f"(3) LLM failed to infer schema. "
+                f"Diagnostics: {detail}{schema_diag}. "
                 f"Task ID: {task_id}, docs: {len(report_documents)}"
             )
 
@@ -358,37 +460,37 @@ class ExtractionPipeline:
                 continue
 
             try:
-                kb = None
-                doc_obj = None
-                
-                # 查询知识库和文档详细信息
-                async with get_db_context() as db:
-                    result = await db.execute(
-                        select(KnowledgeBase, Document)
-                        .join(Document, Document.knowledge_base_id == KnowledgeBase.id)
-                        .where(Document.id == doc_id)
-                    )
-                    row = result.first()
-                    
-                    if row:
-                        kb, doc_obj = row
-                    else:
-                        # 尝试只查知识库
-                        result = await db.execute(
-                            select(KnowledgeBase).where(KnowledgeBase.id == kb_id)
-                        )
-                        kb = result.scalar_one_or_none()
-                
-                if not kb:
-                    logger.warning(f"知识库 {kb_id} 不存在，跳过文档 {doc_name}")
-                    enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": f"知识库 {kb_id} 不存在"})
-                    continue
+                # 优先使用调用方传入的 RAGFlow ID，避免冗余 DB 查询
+                rf_doc_id = doc.get("ragflow_document_id")
+                rf_dataset_id = doc.get("ragflow_dataset_id")
 
-                # 获取 RAGFlow 文档 ID（优先使用 ragflow_document_id）
-                rf_doc_id = doc.get("ragflow_document_id") or (doc_obj.ragflow_document_id if doc_obj else None)
-                
-                if not kb.ragflow_dataset_id:
-                    logger.warning(f"知识库 {kb.name} (id={kb_id}) 没有配置 ragflow_dataset_id，无法获取 chunks")
+                # 如果调用方未传入，则查询 DB 作为回退
+                if not rf_doc_id or not rf_dataset_id:
+                    kb = None
+                    doc_obj = None
+                    async with get_db_context() as db:
+                        result = await db.execute(
+                            select(KnowledgeBase, Document)
+                            .join(Document, Document.knowledge_base_id == KnowledgeBase.id)
+                            .where(Document.id == doc_id)
+                        )
+                        row = result.first()
+                        if row:
+                            kb, doc_obj = row
+                        else:
+                            result = await db.execute(
+                                select(KnowledgeBase).where(KnowledgeBase.id == kb_id)
+                            )
+                            kb = result.scalar_one_or_none()
+                    if not kb:
+                        logger.warning(f"知识库 {kb_id} 不存在，跳过文档 {doc_name}")
+                        enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": f"知识库 {kb_id} 不存在"})
+                        continue
+                    rf_doc_id = rf_doc_id or (doc_obj.ragflow_document_id if doc_obj else None)
+                    rf_dataset_id = rf_dataset_id or kb.ragflow_dataset_id
+
+                if not rf_dataset_id:
+                    logger.warning(f"知识库 (id={kb_id}) 没有配置 ragflow_dataset_id，无法获取 chunks")
                     enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": "知识库未配置 RAGFlow"})
                     continue
 
@@ -397,17 +499,17 @@ class ExtractionPipeline:
                     enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": "文档未上传到 RAGFlow"})
                     continue
 
-                logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] 调用 RAGFlow API 获取 chunks: dataset={kb.ragflow_dataset_id}, doc={rf_doc_id}")
+                logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] 调用 RAGFlow API 获取 chunks: dataset={rf_dataset_id}, doc={rf_doc_id}")
                 rf = RAGFlowClient()
                 chunks_resp = await rf.list_chunks(
-                    dataset_id=kb.ragflow_dataset_id,
+                    dataset_id=rf_dataset_id,
                     document_id=rf_doc_id,
                     page=1,
                     size=1000,
                 )
                 chunks = chunks_resp.get("data", {}).get("chunks", [])
                 logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] RAGFlow 返回 {len(chunks)} 个 chunks for doc {doc_name}")
-                
+
                 total_chunks += len(chunks)
                 if not chunks:
                     logger.warning(f"文档 {doc_name} 在 RAGFlow 中没有 chunks - 报告可能尚未解析完成")
@@ -452,9 +554,8 @@ class ExtractionPipeline:
                 continue
 
             if chunks:
-                content = "\n\n".join(
-                    c.get("content", "") for c in chunks if c.get("content")
-                )
+                # 构建结构提示，帮助 LLM 识别章节
+                content = _build_structure_hint(chunks, self._max_content_chars)
             else:
                 content = doc.get("content", "")
 
@@ -473,6 +574,33 @@ class ExtractionPipeline:
                 logger.info(f"[Task {task_id}] Step 1: LLM infer_schema 返回")
                 sections = schema.get("sections", [])
                 logger.info(f"[Task {task_id}] Step 1: 从 '{doc_name}' 推断出 {len(sections)} 个章节")
+
+                # Fallback: 若 LLM 未能推断出章节，尝试用自动识别的标题构建章节树
+                if not sections and content.strip():
+                    logger.warning(f"[Task {task_id}] Step 1: LLM 返回空章节，尝试自动识别标题")
+                    auto_headings = _scan_chapter_headings(chunks)
+                    if auto_headings:
+                        # 用自动识别的标题构建章节
+                        sections = []
+                        for i, h in enumerate(auto_headings):
+                            sections.append({
+                                "id": f"sec_{i + 1:02d}",
+                                "title": h["title"],
+                                "level": h["level_guess"],
+                                "required": True,
+                                "purpose": f"从{doc_name}自动识别",
+                            })
+                        logger.info(f"[Task {task_id}] Step 1: 自动识别出 {len(sections)} 个章节")
+                    else:
+                        logger.warning(f"[Task {task_id}] Step 1: 无自动识别标题，回退为整文档单章节")
+                        sections = [{
+                            "id": "sec_01",
+                            "title": doc_name,
+                            "level": 1,
+                            "required": True,
+                            "purpose": f"从{doc_name}提取的完整内容",
+                        }]
+
                 all_doc_schemas.append({
                     "doc_id": doc_id,
                     "doc_name": doc_name,
@@ -480,6 +608,34 @@ class ExtractionPipeline:
                 })
             except Exception as e:
                 logger.error(f"[Task {task_id}] Step 1: 文档 '{doc_name}' 章节推断失败: {e}")
+                # 即使 LLM 调用异常，也尝试用自动识别的标题构建章节树
+                if content.strip():
+                    auto_headings = _scan_chapter_headings(chunks)
+                    if auto_headings:
+                        sections = []
+                        for i, h in enumerate(auto_headings):
+                            sections.append({
+                                "id": f"sec_{i + 1:02d}",
+                                "title": h["title"],
+                                "level": h["level_guess"],
+                                "required": True,
+                                "purpose": f"从{doc_name}自动识别",
+                            })
+                        logger.info(f"[Task {task_id}] Step 1: LLM 异常，自动识别出 {len(sections)} 个章节")
+                    else:
+                        logger.warning(f"[Task {task_id}] Step 1: LLM 异常且无自动识别标题，回退为单章节")
+                        sections = [{
+                            "id": "sec_01",
+                            "title": doc_name,
+                            "level": 1,
+                            "required": True,
+                            "purpose": f"从{doc_name}提取的完整内容",
+                        }]
+                    all_doc_schemas.append({
+                        "doc_id": doc_id,
+                        "doc_name": doc_name,
+                        "sections": sections,
+                    })
                 continue
 
         logger.info(f"[Task {task_id}] Step 1: 完成，共处理 {len(all_doc_schemas)} 份文档")
@@ -498,8 +654,13 @@ class ExtractionPipeline:
         if not doc_schemas:
             return []
 
-        # Use first doc's sections as the base tree
-        sections = doc_schemas[0].get("sections", [])
+        # 取第一个有章节的文档作为基础树
+        sections = []
+        for ds in doc_schemas:
+            secs = ds.get("sections", [])
+            if secs:
+                sections = secs
+                break
         if not sections:
             return []
 
@@ -633,18 +794,33 @@ class ExtractionPipeline:
         config: ExtractionConfig,
         domain: Optional[str],
     ) -> dict:
-        """多报告章节去重合并。"""
+        """多报告章节去重合并。
+
+        优先使用 Step 2 产出的 enriched 章节（带元数据），
+        回退到 Step 1 的原始章节结构（仅有骨架）。
+        """
         doc_schemas = ctx.get("_doc_schemas", [])
+        enriched_sections = ctx.get("_enriched_sections")
 
         if len(doc_schemas) <= 1:
-            # Single doc: just use inferred schema
-            sections = doc_schemas[0].get("sections", []) if doc_schemas else []
+            # Single doc: use enriched sections (with metadata), fallback to raw sections
+            sections = enriched_sections if enriched_sections else (
+                doc_schemas[0].get("sections", []) if doc_schemas else []
+            )
+            logger.info(
+                f"Single doc merge: using {'enriched' if enriched_sections else 'raw'} sections, "
+                f"{len(sections)} top-level sections"
+            )
             return {"sections": sections, "cross_section_rules": []}
 
-        sections_list = [
-            {"doc_name": ds.get("doc_name", "未知"), "sections": ds.get("sections", [])}
-            for ds in doc_schemas
-        ]
+        # Multi-doc: use enriched sections for the first doc, raw for others
+        sections_list = []
+        for i, ds in enumerate(doc_schemas):
+            sections = enriched_sections if (i == 0 and enriched_sections) else ds.get("sections", [])
+            sections_list.append({
+                "doc_name": ds.get("doc_name", "未知"),
+                "sections": sections,
+            })
 
         try:
             loop = asyncio.get_event_loop()
@@ -656,8 +832,11 @@ class ExtractionPipeline:
             return merged
         except Exception as e:
             logger.warning(f"Section merge failed: {e}, falling back to first doc")
+            fallback = enriched_sections if enriched_sections else (
+                doc_schemas[0].get("sections", []) if doc_schemas else []
+            )
             return {
-                "sections": doc_schemas[0].get("sections", []) if doc_schemas else [],
+                "sections": fallback,
                 "cross_section_rules": [],
             }
 

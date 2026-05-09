@@ -65,7 +65,7 @@ export default function VersionControl() {
           模板版本管理
         </h2>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm">
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm">
             <Plus className="w-4 h-4" /> 新建分支
           </button>
         </div>
@@ -89,13 +89,13 @@ export default function VersionControl() {
                       "absolute left-0 top-1.5 w-6 h-6 rounded-full border-2 bg-card z-10 flex items-center justify-center",
                       item.isHead
                         ? "border-primary"
-                        : item.isStable
-                          ? "border-emerald-600"
+                        :                       item.isStable
+                          ? "border-emerald-500/30"
                           : "border-muted-foreground"
                     )}
                   >
                     {item.isStable ? (
-                      <Tag className="w-3 h-3 text-emerald-600" />
+                      <Tag className="w-3 h-3 text-emerald-500" />
                     ) : (
                       <GitCommit
                         className={cn(
@@ -163,19 +163,19 @@ export default function VersionControl() {
                 name: "main",
                 label: "生产分支",
                 version: "v3.2",
-                color: "text-emerald-600",
+                color: "text-emerald-500",
               },
               {
                 name: "dev",
                 label: "开发分支",
                 version: "v3.3-beta",
-                color: "text-blue-600",
+                color: "text-primary",
               },
               {
                 name: "feature-ai",
                 label: "新功能测试",
                 version: "v3.3-ai",
-                color: "text-purple-600",
+                color: "text-purple-500",
               },
             ].map((branch, i) => (
               <div

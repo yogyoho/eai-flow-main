@@ -739,6 +739,9 @@ export const kfApi = {
     return kfRequest<TemplateListResponse>(`/templates?${query}`);
   },
 
+  createTemplate: (data: { name: string; domain: string }) =>
+    kfRequest<{ template_id: string; message: string }>("/templates", { method: "POST", body: JSON.stringify(data) }),
+
   getTemplate: (templateId: string) =>
     kfRequest<TemplateDocument>(`/templates/${templateId}`),
 

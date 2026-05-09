@@ -205,9 +205,18 @@ class ExtractionLLMClient:
 
     @property
     def model(self):
-        """Lazy-load the chat model."""
+        """Lazy-load the chat model.
+
+        Model resolution order:
+        1. Explicit model_name passed to __init__
+        2. DEFAULT_MODEL environment variable (from system basic settings)
+        3. config.yaml first model (via create_chat_model default)
+        """
         if self._model is None:
-            self._model = create_chat_model(name=self._model_name, thinking_enabled=False)
+            import os
+
+            effective_name = self._model_name or os.getenv("DEFAULT_MODEL") or None
+            self._model = create_chat_model(name=effective_name, thinking_enabled=False)
         return self._model
 
     def _invoke(self, messages: list, **kwargs) -> str:
@@ -241,9 +250,10 @@ class ExtractionLLMClient:
             )
         )
 
+        raw = ""
         try:
             raw = self._invoke([system, user])
-            logger.info(f"[infer_schema] LLM raw response for '{doc_name}': {raw[:500]}...")
+            logger.info(f"[infer_schema] LLM raw response for '{doc_name}' ({len(raw)} chars): {raw[:300]}...")
 
             # 尝试解析为 JSON
             result = self._extract_json(raw)
@@ -254,11 +264,20 @@ class ExtractionLLMClient:
                 return {"sections": result}
 
             # 正常情况：返回字典
-            logger.info(f"[infer_schema] Parsed sections count: {len(result.get('sections', []))}")
+            sections = result.get("sections", [])
+            if not sections:
+                logger.warning(
+                    f"[infer_schema] LLM returned empty sections for '{doc_name}'. "
+                    f"Raw response (first 500 chars): {raw[:500]}"
+                )
+            logger.info(f"[infer_schema] Parsed sections count: {len(sections)}")
             return result
         except Exception as e:
-            logger.error(f"[infer_schema] Schema inference failed for '{doc_name}': {e}")
-            logger.exception("Full exception details:")
+            logger.error(
+                f"[infer_schema] Schema inference failed for '{doc_name}': {e}. "
+                f"Raw response: {raw[:500] if raw else 'LLM invoke failed'}"
+            )
+            logger.exception("Full traceback:")
             return {"sections": []}
 
     # ---- Metadata Extraction ----
@@ -365,27 +384,122 @@ class ExtractionLLMClient:
     def _extract_json(raw: str, key: str | None = None) -> dict:
         """Extract JSON from LLM response.
 
-        Tries:
-        1. Inline code block ```json ... ```
-        2. Bare JSON object
+        Tries multiple strategies (ordered by reliability):
+        1. ```json ... ``` code block
+        2. ``` ... ``` code block
+        3. Direct json.loads on full text
+        4. Bracket matching for outermost balanced { ... }
+        5. Bracket matching for outermost balanced [ ... ]
+        6. Remove <｜end▁of▁thinking｜>/thinking wrapper tags, then retry strategy 4
         """
         text = raw.strip()
 
-        # Try code block first
+        # Strategy 1: Extract from ```json ... ``` code block.
         if "```json" in text:
             start = text.find("```json") + 7
-            end = text.rfind("```")
-            text = text[start:end].strip()
+            rest = text[start:]
+            end_inner = rest.find("```")
+            if end_inner > 0:
+                text = rest[:end_inner].strip()
         elif "```" in text:
             start = text.find("```") + 3
-            end = text.rfind("```")
-            text = text[start:end].strip()
+            rest = text[start:]
+            end_inner = rest.find("```")
+            if end_inner > 0:
+                text = rest[:end_inner].strip()
 
-        result = json.loads(text)
+        # Strategy 2: Try direct json.loads
+        try:
+            result = json.loads(text)
+            if key:
+                return result.get(key, {})
+            return result
+        except (json.JSONDecodeError, ValueError):
+            pass
 
-        if key:
-            return result.get(key, {})
-        return result
+        # Strategy 3: Find the first balanced { ... } via bracket counting
+        brace_start = text.find("{")
+        if brace_start >= 0:
+            depth = 0
+            for i in range(brace_start, len(text)):
+                ch = text[i]
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            result = json.loads(text[brace_start : i + 1])
+                            if key:
+                                return result.get(key, {})
+                            return result
+                        except (json.JSONDecodeError, ValueError):
+                            break
+                        break
+
+        # Strategy 4: Fallback — try to find a JSON array [...]
+        bracket_start = text.find("[")
+        if bracket_start >= 0:
+            depth = 0
+            in_string = False
+            escape = False
+            for i in range(bracket_start, len(text)):
+                ch = text[i]
+                if escape:
+                    escape = False
+                    continue
+                if ch == "\\":
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch in "{[(":
+                    depth += 1
+                elif ch in "}])":
+                    depth -= 1
+                    if depth < 0:
+                        try:
+                            result = json.loads(text[bracket_start : i + 1])
+                            if isinstance(result, list):
+                                if key:
+                                    return result.get(key, {})
+                                return result
+                        except (json.JSONDecodeError, ValueError):
+                            break
+                        break
+
+        # Strategy 5: Strip common LLM wrapper patterns (e.g. 思考/回答 tags)
+        # Some Chinese reasoning models wrap output in  思考.../思考 or similar tags
+        import re as _re
+        cleaned = _re.sub(r"<[^>]+>", "", raw)
+        cleaned = _re.sub(r"【[^】]+】", "", cleaned)
+        cleaned = cleaned.strip()
+        if cleaned != raw:
+            brace_start = cleaned.find("{")
+            if brace_start >= 0:
+                depth = 0
+                for i in range(brace_start, len(cleaned)):
+                    ch = cleaned[i]
+                    if ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            try:
+                                result = json.loads(cleaned[brace_start : i + 1])
+                                if key:
+                                    return result.get(key, {})
+                                return result
+                            except (json.JSONDecodeError, ValueError):
+                                break
+
+        raise ValueError(
+            f"Could not extract JSON from LLM response. "
+            f"First 500 chars: {raw[:500]}"
+        )
 
     def close(self):
         """Close the LLM client (no-op for LangChain)."""
