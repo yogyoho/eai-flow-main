@@ -258,6 +258,12 @@ def _build_middlewares(
     resolved_app_config = app_config or get_app_config()
     middlewares = build_lead_runtime_middlewares(app_config=resolved_app_config, lazy_init=True)
 
+    # Always inject current date (and optionally memory) as <system-reminder> into the
+    # first HumanMessage to keep the system prompt fully static for prefix-cache reuse.
+    from deerflow.agents.middlewares.dynamic_context_middleware import DynamicContextMiddleware
+
+    middlewares.append(DynamicContextMiddleware(agent_name=agent_name, app_config=resolved_app_config))
+
     # Add summarization middleware if enabled
     summarization_middleware = _create_summarization_middleware(app_config=resolved_app_config)
     if summarization_middleware is not None:
@@ -299,7 +305,9 @@ def _build_middlewares(
         middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
 
     # LoopDetectionMiddleware — detect and break repetitive tool call loops
-    middlewares.append(LoopDetectionMiddleware())
+    loop_detection_config = resolved_app_config.loop_detection
+    if loop_detection_config.enabled:
+        middlewares.append(LoopDetectionMiddleware.from_config(loop_detection_config))
 
     # Inject custom middlewares before ClarificationMiddleware
     if custom_middlewares:
