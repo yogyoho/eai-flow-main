@@ -6,6 +6,17 @@ export interface ExtractionDomain {
   description?: string;
   parent_domain?: string;
   standard_chapters?: Record<string, unknown>;
+  industry?: string;
+  report_type?: string;
+  created_at: string;
+}
+
+export interface DictItemResponse {
+  id: string;
+  category: string;
+  label: string;
+  sort_order: number;
+  enabled: boolean;
   created_at: string;
 }
 
@@ -37,6 +48,8 @@ export interface ExtractionTaskResponse {
   id: string;
   name?: string;
   domain?: string;
+  industry?: string;
+  report_type?: string;
   source_reports: string[];
   status: "pending" | "running" | "completed" | "failed" | "paused";
   progress: number;
@@ -56,6 +69,8 @@ export interface ExtractionTaskListResponse {
 export interface ExtractionTaskCreate {
   name: string;
   domain: string;
+  industry?: string;
+  report_type?: string;
   source_report_ids: string[];
   target_template_name: string;
   /** 已有模板 ID，填写则向已有模板合并，不填则创建新模板 */
@@ -147,6 +162,43 @@ export interface TemplateVersionResponse {
 }
 
 // ============== Template Editor Frontend Types ==============
+
+export interface QualityAssessmentDimension {
+  score: number;
+  issues: string[];
+}
+
+export interface QualityAssessmentResult {
+  overall_score: number;
+  dimensions: Record<string, QualityAssessmentDimension>;
+  suggestions: string[];
+  quality_grade: string;
+}
+
+export interface VersionDiffSection {
+  section_id: string;
+  title: string;
+  level: number;
+  status: "added" | "removed" | "modified" | "unchanged";
+}
+
+export interface VersionCompareResult {
+  version_a: string;
+  version_b: string;
+  added_count: number;
+  removed_count: number;
+  modified_count: number;
+  unchanged_count: number;
+  sections: VersionDiffSection[];
+}
+
+export interface TemplateRollbackResponse {
+  success: boolean;
+  message: string;
+  template_id: string;
+  new_version: string;
+  restored_version: string;
+}
 
 export interface EditorSection {
   id: string;
@@ -429,22 +481,24 @@ export interface RuleDictionaries {
   industries: RuleDictionaryOption[];
   reportTypes: RuleDictionaryOption[];
   regions: RuleDictionaryOption[];
+  ruleTypes: RuleDictionaryOption[];
+  severityLevels: RuleDictionaryOption[];
 }
 
 export const RULE_TYPES = [
-  { value: "standard_check", label: "Standard Compliance Check" },
-  { value: "requirement_check", label: "Requirement Check" },
-  { value: "spatial_check", label: "Spatial Distance Check" },
-  { value: "data_consistency", label: "Data Consistency Check" },
-  { value: "reference_check", label: "Reference Standard Check" },
-  { value: "engineering_check", label: "Engineering Check" },
-  { value: "compliance_check", label: "Compliance Check" },
+  { value: "standard_check", label: "标准合规检查" },
+  { value: "requirement_check", label: "要求符合性检查" },
+  { value: "spatial_check", label: "空间距离检查" },
+  { value: "data_consistency", label: "数据一致性检查" },
+  { value: "reference_check", label: "引用标准检查" },
+  { value: "engineering_check", label: "工程规范检查" },
+  { value: "compliance_check", label: "合规性检查" },
 ] as const;
 
 export const SEVERITY_LEVELS = [
-  { value: "critical", label: "Critical", color: "#dc2626" },
-  { value: "warning", label: "Warning", color: "#f59e0b" },
-  { value: "info", label: "Info", color: "#3b82f6" },
+  { value: "critical", label: "严重", color: "#dc2626" },
+  { value: "warning", label: "警告", color: "#f59e0b" },
+  { value: "info", label: "提示", color: "#3b82f6" },
 ] as const;
 
 export const INDUSTRIES = [
@@ -600,6 +654,89 @@ export type TabId =
   | "rules"
   | "version"
   | "quality"
-  | "scraper";
+  | "scraper"
+  | "dictionaries";
 
 export type LawViewType = "list" | "scraper";
+
+// ==================== Scraper Sub-Tab Types ====================
+
+export type ScraperSubTab = "task-center" | "new-scrape" | "source-manager" | "draft-box";
+
+export interface ScrapTaskItem {
+  task_id: string;
+  url: string;
+  provider: string;
+  schema_name?: string;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
+  error?: string;
+  provider_used?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export interface ScrapTaskDetail extends ScrapTaskItem {
+  prompt?: string;
+  result?: string;
+  structured_data?: Record<string, unknown>;
+  logs: ScrapLogEntry[];
+  draft_id?: string;
+}
+
+export interface ScrapLogEntry {
+  type: "log" | "result" | "error" | "heartbeat" | "cancelled";
+  level?: "info" | "success" | "error" | "warning";
+  message?: string;
+  content?: string;
+  provider_used?: string;
+}
+
+export interface TaskListResponse {
+  tasks: ScrapTaskItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ScrapSource {
+  id: string;
+  name: string;
+  url_pattern: string;
+  category?: string;
+  default_schema?: string;
+  default_provider?: string;
+  is_enabled: boolean;
+  last_scraped_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScrapSourceDetail extends ScrapSource {
+  description?: string;
+  auth_config?: Record<string, unknown>;
+  proxy_config?: Record<string, unknown>;
+  cron_expression?: string;
+}
+
+export interface ScrapSourceCreate {
+  name: string;
+  description?: string;
+  url_pattern: string;
+  category?: string;
+  default_schema?: string;
+  default_provider?: string;
+  auth_config?: Record<string, unknown>;
+  proxy_config?: Record<string, unknown>;
+  cron_expression?: string;
+  is_enabled?: boolean;
+}
+
+export type ScrapSourceUpdate = Partial<ScrapSourceCreate>;
+
+export interface ScrapSourceListResponse {
+  sources: ScrapSource[];
+  total: number;
+  page: number;
+  page_size: number;
+}

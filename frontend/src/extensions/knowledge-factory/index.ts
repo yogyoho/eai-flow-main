@@ -12,8 +12,10 @@ export { RuleLogsViewer } from "./RuleLogsViewer";
 export { RuleTestModal } from "./RuleTestModal";
 export { default as VersionControl } from "./VersionControl";
 export { default as QualityAssessment } from "./QualityAssessment";
-export { default as WebScraper } from "./WebScraper";
+export { default as WebScraper } from "./ScraperPage";
+export { default as ScraperPage } from "./ScraperPage";
 export { default as DraftBox } from "./DraftBox";
+export { default as BusinessDictionary } from "./BusinessDictionary";
 
 export type { TabId } from "@/extensions/knowledge-factory/types";
 export * from "./hooks";

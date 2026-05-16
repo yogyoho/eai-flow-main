@@ -43,17 +43,16 @@ async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
             engine = create_async_engine(
                 config.database.url,
                 echo=False,
-                pool_size=10,
-                max_overflow=20,
+                pool_size=20,
+                max_overflow=40,
                 pool_pre_ping=True,
-                pool_recycle=300,
+                pool_recycle=900,
                 connect_args={
                     "server_settings": {"jit": "off"},
                     "timeout": 30,
-                    "command_timeout": 60,
+                    "command_timeout": 120,
                 },
             )
-            # Quick test connection
             try:
                 async with engine.connect() as conn:
                     await asyncio.wait_for(conn.execute(text("SELECT 1")), timeout=5)
@@ -88,14 +87,14 @@ async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
     engine = create_async_engine(
         config.database.url,
         echo=False,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=20,
+        max_overflow=40,
         pool_pre_ping=True,
-        pool_recycle=300,
+        pool_recycle=900,
         connect_args={
             "server_settings": {"jit": "off"},
             "timeout": 30,
-            "command_timeout": 60,
+            "command_timeout": 120,
         },
     )
     return engine
@@ -139,14 +138,17 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session (dependency for FastAPI)."""
+    """Get database session (dependency for FastAPI).
+
+    Uses the shared engine pool (pool_pre_ping handles stale connections).
+    No per-request SELECT 1 — pool_pre_ping already validates on checkout.
+    """
     global _engine, _session_factory
 
     # Ensure engine is initialized
     if _engine is None or _session_factory is None:
         await init_engine()
 
-    last_connection_error = None
     connection_error_types = (
         OperationalError,
         InterfaceError,
@@ -155,114 +157,36 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         ConnectionError,
     )
 
-    for attempt in range(2):
-        factory = get_session_factory()
-        async with factory() as session:
-            try:
-                # Validate the pooled connection before handing the session to handlers.
-                await session.execute(text("SELECT 1"))
-                yield session
-                await session.commit()
-                return
-            except HTTPException:
-                await session.rollback()
-                raise
-            except connection_error_types as exc:
-                await session.rollback()
-                last_connection_error = exc
-                logger.warning(
-                    "Extensions database session failed on attempt %d/2, refreshing engine: %s",
-                    attempt + 1,
-                    exc,
-                )
-                await close_db()
-                if attempt == 0:
-                    await init_engine()
-                    continue
-                logger.exception("Extensions database request failed after engine refresh: %s", exc)
-                break
-            except Exception:
-                await session.rollback()
-                raise
-                break
-            except Exception:
-                await session.rollback()
-                raise
-
-    config = get_extensions_config()
-    fresh_engine = create_async_engine(
-        config.database.url,
-        echo=False,
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        connect_args={
-            "server_settings": {"jit": "off"},
-            "timeout": 30,
-            "command_timeout": 60,
-        },
-    )
-    fresh_factory = async_sessionmaker(
-        bind=fresh_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
-    try:
-        async with fresh_factory() as session:
-            try:
-                logger.warning("Falling back to a fresh per-request extensions database engine")
-                await session.execute(text("SELECT 1"))
-                yield session
-                await session.commit()
-                return
-            except HTTPException:
-                await session.rollback()
-                raise
-            except connection_error_types as exc:
-                await session.rollback()
-                logger.exception("Fresh per-request extensions database engine also failed: %s", exc)
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Extensions database is unavailable",
-                ) from exc
-            except Exception:
-                await session.rollback()
-                raise
-    finally:
-        await fresh_engine.dispose()
-
-    if last_connection_error is not None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Extensions database is unavailable",
-        ) from last_connection_error
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except HTTPException:
+            await session.rollback()
+            raise
+        except connection_error_types as exc:
+            await session.rollback()
+            logger.warning("Extensions database session failed, refreshing engine: %s", exc)
+            await close_db()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Extensions database is unavailable",
+            ) from exc
+        except Exception:
+            await session.rollback()
+            raise
 
 
 @asynccontextmanager
 async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session as context manager."""
-    # Always create a fresh engine and session for each request
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    """Get database session as context manager (reuses shared engine pool)."""
+    global _engine, _session_factory
 
-    from app.extensions.config import get_extensions_config
+    if _engine is None or _session_factory is None:
+        await init_engine()
 
-    config = get_extensions_config()
-    engine = create_async_engine(
-        config.database.url,
-        echo=False,
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True,
-        connect_args={"server_settings": {"jit": "off"}},
-    )
-    factory = async_sessionmaker(
-        bind=engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
+    factory = get_session_factory()
     async with factory() as session:
         try:
             yield session
@@ -270,8 +194,6 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await engine.dispose()
 
 
 async def init_db() -> None:
@@ -448,7 +370,7 @@ async def migrate_db() -> None:
                 title VARCHAR(500) NOT NULL,
                 tags TEXT[] DEFAULT '{}',
                 category VARCHAR(100),
-                source_provider VARCHAR(50) DEFAULT 'browser_use_local',
+                source_provider VARCHAR(50) DEFAULT 'firecrawl',
                 scrape_date TIMESTAMP DEFAULT NOW(),
                 status VARCHAR(20) NOT NULL DEFAULT 'draft',
                 knowledge_base_id UUID REFERENCES knowledge_bases(id),
@@ -464,6 +386,86 @@ async def migrate_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_scrap_drafts_status ON scrap_drafts(status)"
         ))
 
+        # Create scrap_tasks table for task history persistence
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS scrap_tasks (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL REFERENCES users(id),
+                task_id VARCHAR(32) NOT NULL,
+                url VARCHAR(2048) NOT NULL,
+                prompt TEXT,
+                provider VARCHAR(50) DEFAULT 'firecrawl',
+                schema_name VARCHAR(100),
+                llm_model VARCHAR(255),
+                proxy_enabled BOOLEAN DEFAULT FALSE,
+                auth_enabled BOOLEAN DEFAULT FALSE,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                result TEXT,
+                structured_data JSONB,
+                error TEXT,
+                provider_used VARCHAR(50),
+                logs JSONB DEFAULT '[]',
+                draft_id UUID REFERENCES scrap_drafts(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                started_at TIMESTAMPTZ,
+                completed_at TIMESTAMPTZ
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_user_id ON scrap_tasks(user_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_task_id ON scrap_tasks(task_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_status ON scrap_tasks(status)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_created_at ON scrap_tasks(created_at)"
+        ))
+
+        # Create scrap_sources table for data source management
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS scrap_sources (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL REFERENCES users(id),
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                url_pattern VARCHAR(2048) NOT NULL,
+                category VARCHAR(100),
+                default_schema VARCHAR(100),
+                default_provider VARCHAR(50),
+                auth_config JSONB,
+                proxy_config JSONB,
+                cron_expression VARCHAR(100),
+                is_enabled BOOLEAN DEFAULT TRUE,
+                last_scraped_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_sources_user_id ON scrap_sources(user_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_scrap_sources_category ON scrap_sources(category)"
+        ))
+
+        # --- Knowledge Factory: business dictionaries ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS business_dictionaries (
+                id VARCHAR(100) PRIMARY KEY,
+                category VARCHAR(50) NOT NULL,
+                label VARCHAR(200) NOT NULL,
+                sort_order INT NOT NULL DEFAULT 0,
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_bd_category ON business_dictionaries(category)"
+        ))
+
         # --- Knowledge Factory: extraction domains ---
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS extraction_domains (
@@ -475,6 +477,13 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+
+        await conn.execute(text(
+            "ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"
+        ))
 
         # --- Knowledge Factory: extraction templates ---
         await conn.execute(text("""
@@ -540,6 +549,12 @@ async def migrate_db() -> None:
         ))
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_extraction_tasks_created_by ON extraction_tasks(created_by)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"
         ))
 
         # --- Knowledge Factory: template sections ---
@@ -792,5 +807,14 @@ async def seed_db() -> None:
                     )
                     await session.commit()
                     logger.info("Created default user role for existing installation")
+
+            # Seed business dictionaries from JSON if table is empty
+            try:
+                from app.extensions.knowledge_factory.service import DictionaryService, DomainService
+
+                await DictionaryService.init_seed_data(session)
+                await DomainService.init_default_domains(session)
+            except Exception as e:
+                logger.warning(f"Failed to seed dictionary data: {e}")
     finally:
         await engine.dispose()

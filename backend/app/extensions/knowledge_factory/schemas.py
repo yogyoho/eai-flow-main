@@ -49,6 +49,8 @@ class DomainCreate(BaseModel):
     description: Optional[str] = None
     parent_domain: Optional[str] = None
     standard_chapters: Optional[dict] = None
+    industry: Optional[str] = None
+    report_type: Optional[str] = None
 
 
 class DomainResponse(BaseModel):
@@ -57,6 +59,8 @@ class DomainResponse(BaseModel):
     description: Optional[str]
     parent_domain: Optional[str]
     standard_chapters: Optional[dict]
+    industry: Optional[str]
+    report_type: Optional[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -65,6 +69,54 @@ class DomainResponse(BaseModel):
 class DomainListResponse(BaseModel):
     domains: list[DomainResponse]
     total: int
+
+
+class DomainUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    parent_domain: Optional[str] = None
+    standard_chapters: Optional[dict] = None
+    industry: Optional[str] = None
+    report_type: Optional[str] = None
+
+
+# ============== Business Dictionaries ==============
+
+
+class DictItemCreate(BaseModel):
+    id: str = Field(..., min_length=1, max_length=100)
+    category: str = Field(..., min_length=1, max_length=50)
+    label: str = Field(..., min_length=1, max_length=200)
+    sort_order: int = 0
+    enabled: bool = True
+
+
+class DictItemUpdate(BaseModel):
+    label: Optional[str] = Field(None, min_length=1, max_length=200)
+    sort_order: Optional[int] = None
+    enabled: Optional[bool] = None
+
+
+class DictItemResponse(BaseModel):
+    id: str
+    category: str
+    label: str
+    sort_order: int
+    enabled: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DictItemListResponse(BaseModel):
+    items: list[DictItemResponse]
+    total: int
+
+
+class DictCategoryResponse(BaseModel):
+    category: str
+    label: str
+    count: int
 
 
 # ============== Extraction Config ==============
@@ -260,8 +312,12 @@ class VersionDiff(BaseModel):
 class ExtractionTaskCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     domain: str = Field(default="default", max_length=100)
+    industry: Optional[str] = Field(default=None, max_length=100)
+    report_type: Optional[str] = Field(default=None, max_length=100)
     source_report_ids: list[UUID]
     target_template_name: str = Field(..., min_length=1, max_length=200)
+    target_template_id: Optional[UUID] = None
+    merge_mode: Optional[str] = None
     config: Optional[ExtractionConfig] = None
 
 
@@ -272,6 +328,8 @@ class ExtractionTaskResponse(BaseModel):
     id: UUID
     name: Optional[str]
     domain: Optional[str]
+    industry: Optional[str] = None
+    report_type: Optional[str] = None
     source_reports: list[str] = Field(default_factory=list)
     status: TaskStatus
     progress: int
@@ -369,6 +427,19 @@ class ComplianceRuleListResponse(BaseModel):
     limit: int = 20
 
 
+class ComplianceRuleBatchCreate(BaseModel):
+    """批量创建合规规则"""
+    rules: list[ComplianceRuleCreate] = Field(..., min_length=1, max_length=100)
+
+
+class ComplianceRuleBatchResponse(BaseModel):
+    """批量创建合规规则响应"""
+    created: int
+    skipped: int
+    errors: list[str] = Field(default_factory=list)
+    created_rules: list[ComplianceRuleResponse] = Field(default_factory=list)
+
+
 class ComplianceRuleImportResponse(BaseModel):
     """种子数据导入响应"""
     success: bool
@@ -419,6 +490,8 @@ class RuleDictionariesResponse(BaseModel):
     industries: list[RuleDictionaryOptionResponse] = Field(default_factory=list)
     report_types: list[RuleDictionaryOptionResponse] = Field(default_factory=list)
     regions: list[RuleDictionaryOptionResponse] = Field(default_factory=list)
+    rule_types: list[RuleDictionaryOptionResponse] = Field(default_factory=list)
+    severity_levels: list[RuleDictionaryOptionResponse] = Field(default_factory=list)
 
 
 # ============== Compliance Check ==============

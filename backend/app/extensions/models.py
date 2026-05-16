@@ -311,7 +311,7 @@ class ScrapDraft(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     tags: Mapped[list] = mapped_column(ARRAY(String), default=[])
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    source_provider: Mapped[str] = mapped_column(String(50), default="browser_use_local")
+    source_provider: Mapped[str] = mapped_column(String(50), default="firecrawl")
     scrape_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     status: Mapped[str] = mapped_column(
         String(20),
@@ -352,6 +352,79 @@ User.scrap_drafts: Mapped[list["ScrapDraft"]] = relationship(
 KnowledgeBase.scrap_drafts: Mapped[list["ScrapDraft"]] = relationship(
     "ScrapDraft",
     back_populates="knowledge_base",
+)
+
+
+class ScrapTaskRecord(Base):
+    """Scrape task history record for persistence."""
+
+    __tablename__ = "scrap_tasks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    task_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider: Mapped[str] = mapped_column(String(50), default="firecrawl")
+    schema_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    llm_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    proxy_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    auth_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    structured_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_used: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    logs: Mapped[list | None] = mapped_column(JSONB, default=[])
+    draft_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("scrap_drafts.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="scrap_task_records")
+    draft: Mapped[Optional["ScrapDraft"]] = relationship("ScrapDraft", back_populates="task_records")
+
+    def __repr__(self) -> str:
+        return f"<ScrapTaskRecord(task_id={self.task_id}, status={self.status})>"
+
+
+User.scrap_task_records: Mapped[list["ScrapTaskRecord"]] = relationship(
+    "ScrapTaskRecord", back_populates="user", cascade="all, delete-orphan"
+)
+ScrapDraft.task_records: Mapped[list["ScrapTaskRecord"]] = relationship(
+    "ScrapTaskRecord", back_populates="draft"
+)
+
+
+class ScrapSource(Base):
+    """Scrape data source configuration."""
+
+    __tablename__ = "scrap_sources"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url_pattern: Mapped[str] = mapped_column(String(2048), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    default_schema: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    default_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    auth_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    proxy_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    cron_expression: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="scrap_sources")
+
+    def __repr__(self) -> str:
+        return f"<ScrapSource(id={self.id}, name={self.name})>"
+
+
+User.scrap_sources: Mapped[list["ScrapSource"]] = relationship(
+    "ScrapSource", back_populates="user", cascade="all, delete-orphan"
 )
 
 

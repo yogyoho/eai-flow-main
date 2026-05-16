@@ -169,7 +169,7 @@ export default function LawDetailDrawer({ law, onClose, onEdit }: LawDetailDrawe
               </div>
 
               {/* Statistics */}
-              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
+              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border text-sm">
                 <div>
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Eye className="w-4 h-4" /> 查看次数

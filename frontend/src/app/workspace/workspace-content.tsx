@@ -29,7 +29,7 @@ export async function WorkspaceContent({
         <SidebarInset className="min-w-0">{children}</SidebarInset>
       </SidebarProvider>
       <CommandPalette />
-      <Toaster position="top-center" />
+      <Toaster position="bottom-right" richColors closeButton />
     </QueryClientProvider>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Loader2, CheckCircle2, Info } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import type {
   ExtractionTaskCreate,
   ExtractionConfig,
   ExtractionDomain,
+  DictItemResponse,
   MergeMode,
   TemplateListItem,
 } from "@/extensions/knowledge-factory/types";
@@ -46,10 +47,50 @@ interface ReportItem {
   kb_id: string;
 }
 
+function formatDateTime(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const M = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const h = String(now.getHours()).padStart(2, "0");
+  const m = String(now.getMinutes()).padStart(2, "0");
+  return `模板抽取-${y}-${M}-${d}-${h}${m}`;
+}
+
 export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Props) {
-  const [name, setName] = useState(() => `模板抽取-${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}`);
+  const [name, setName] = useState(formatDateTime);
+  const [templateName, setTemplateName] = useState("");
+  const templateNameManuallyEdited = useRef(false);
   const [domains, setDomains] = useState<ExtractionDomain[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("default");
+  const [industryOptions, setIndustryOptions] = useState<{ value: string; label: string }[]>([]);
+  const [reportTypeOptions, setReportTypeOptions] = useState<{ value: string; label: string }[]>([]);
+  const [selectedIndustry, setSelectedIndustry] = useState("");
+  const [selectedReportType, setSelectedReportType] = useState("");
+
+  // 自动生成模板名称：业务领域_报告类型_模板
+  const updateAutoTemplateName = (industryValue: string, reportTypeValue: string) => {
+    if (templateNameManuallyEdited.current) return;
+    const indLabel = industryOptions.find((o) => o.value === industryValue)?.label ?? "";
+    const rtLabel = reportTypeOptions.find((o) => o.value === reportTypeValue)?.label ?? "";
+    const parts = [indLabel, rtLabel, "模板"].filter(Boolean);
+    setTemplateName(parts.length > 1 ? parts.join("_") : "");
+  };
+
+  const handleIndustryChange = (val: string) => {
+    setSelectedIndustry(val);
+    updateAutoTemplateName(val, selectedReportType);
+  };
+
+  const handleReportTypeChange = (val: string) => {
+    setSelectedReportType(val);
+    updateAutoTemplateName(selectedIndustry, val);
+  };
+
+  const handleTemplateNameChange = (val: string) => {
+    templateNameManuallyEdited.current = true;
+    setTemplateName(val);
+  };
   const [selectedKb, setSelectedKb] = useState("__all__");
   const [reportItems, setReportItems] = useState<ReportItem[]>([]);
   const [kbList, setKbList] = useState<KnowledgeBase[]>([]);
@@ -78,10 +119,12 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
       setLoadingData(true);
       try {
         // 并行加载
-        const [domRes, kbRes, modelsRes] = await Promise.allSettled([
+        const [domRes, kbRes, modelsRes, indRes, rtRes] = await Promise.allSettled([
           kfApi.listDomains(),
           kbApi.list({ limit: 100 }),
           loadModels(),
+          kfApi.listDictItems("industry", { limit: 100 }),
+          kfApi.listDictItems("report_type", { limit: 100 }),
         ]);
 
         if (cancelled) return;
@@ -90,6 +133,16 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
         if (domRes.status === "fulfilled" && domRes.value.domains.length > 0) {
           setDomains(domRes.value.domains);
           setSelectedDomain(domRes.value.domains[0]!.id);
+        }
+
+        // 业务领域下拉选项
+        if (indRes.status === "fulfilled") {
+          setIndustryOptions(indRes.value.items.map((d: DictItemResponse) => ({ value: d.id, label: d.label })));
+        }
+
+        // 报告类型下拉选项
+        if (rtRes.status === "fulfilled") {
+          setReportTypeOptions(rtRes.value.items.map((d: DictItemResponse) => ({ value: d.id, label: d.label })));
         }
 
         // 知识库
@@ -154,11 +207,16 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
     setSubmitting(true);
     try {
       const isExisting = selectedTemplateId !== "__new__";
+      const finalTemplateName = isExisting
+        ? (selectedTemplate?.name || name.trim())
+        : (templateName.trim() || name.trim());
       const data: ExtractionTaskCreate = {
         name: name.trim(),
         domain: selectedDomain,
+        industry: selectedIndustry || undefined,
+        report_type: selectedReportType || undefined,
         source_report_ids: Array.from(selectedReports),
-        target_template_name: isExisting ? (selectedTemplate?.name || name.trim()) : name.trim(),
+        target_template_name: finalTemplateName,
         target_template_id: isExisting ? selectedTemplateId : undefined,
         merge_mode: isExisting ? mergeMode : undefined,
         config,
@@ -187,31 +245,68 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
 
           {/* Body */}
           <div className="flex-1 px-6 py-5 space-y-5">
-            {/* 任务名称 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">任务名称</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="请输入任务名称"
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-              />
+            {/* 任务名称 + 模板名称 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">任务名称</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="请输入任务名称"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">模板名称</label>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => handleTemplateNameChange(e.target.value)}
+                  placeholder="选择业务领域和报告类型后自动生成"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+              </div>
             </div>
 
-            {/* 领域 + 知识库筛选 并排 */}
+            {/* 业务领域 + 报告类型 */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">业务领域</label>
+                <AdminSelect
+                  value={selectedIndustry}
+                  onChange={handleIndustryChange}
+                  options={industryOptions}
+                  placeholder="选择领域"
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">报告类型</label>
+                <AdminSelect
+                  value={selectedReportType}
+                  onChange={handleReportTypeChange}
+                  options={reportTypeOptions}
+                  placeholder="选择类型"
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {/* 报告大纲 + 知识库筛选 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">报告大纲</label>
                 <AdminSelect
                   value={selectedDomain}
                   onChange={setSelectedDomain}
                   options={
                     domains.length > 0
                       ? domains.map((d) => ({ value: d.id, label: d.name }))
-                      : [{ value: "default", label: "默认领域" }]
+                      : [{ value: "default", label: "默认" }]
                   }
-                  placeholder="选择领域"
+                  placeholder="选择大纲"
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -224,6 +319,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     ...kbList.map((kb) => ({ value: kb.id, label: kb.name })),
                   ]}
                   placeholder="全部知识库"
+                  className="w-full"
                 />
               </div>
             </div>
@@ -238,10 +334,11 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                   { value: "__new__", label: "+ 创建新模板" },
                   ...templates.map((t) => ({
                     value: t.id,
-                    label: `${t.name} (v${t.version})`,
+                    label: `${t.name} (${t.version})`,
                   })),
                 ]}
                 placeholder="选择目标模板"
+                className="w-full"
               />
               {templates.length === 0 && (
                 <p className="text-xs text-muted-foreground">
@@ -357,6 +454,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     onChange={(value) => setConfig((c) => ({ ...c, llm_model: value }))}
                     options={modelOptions}
                     placeholder="选择模型"
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-1">
@@ -390,30 +488,53 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
                     onChange={(value) => setConfig((c) => ({ ...c, chunk_strategy: value as "semantic" | "fixed" | "section" }))}
                     options={CHUNK_STRATEGY_OPTIONS}
                     placeholder="选择策略"
+                    className="w-full"
                   />
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">融合阈值 ({config.merge_threshold})</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="font-medium mb-1">融合阈值</p>
-                        <p className="text-muted-foreground text-xs">配合语义切分使用。当切分后的段落语义相似度高于此阈值时，会自动合并成一个 chunk。</p>
-                      </TooltipContent>
-                    </Tooltip>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">融合阈值</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="font-medium mb-1">融合阈值</p>
+                          <p className="text-muted-foreground text-xs">配合语义切分使用。当切分后的段落语义相似度高于此阈值时，会自动合并成一个 chunk。</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <span className="text-xs font-semibold tabular-nums text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      {config.merge_threshold.toFixed(2)}
+                    </span>
                   </div>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={1}
-                    step={0.05}
-                    value={config.merge_threshold}
-                    onChange={(e) => setConfig((c) => ({ ...c, merge_threshold: parseFloat(e.target.value) }))}
-                    className="w-full accent-primary"
-                  />
+                  <div className="relative pt-1 pb-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 mb-1 px-0.5">
+                      <span>0.50</span>
+                      <span>0.75</span>
+                      <span>1.00</span>
+                    </div>
+                    <div className="relative h-2 rounded-full bg-muted">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-150"
+                        style={{ width: `${((config.merge_threshold - 0.5) / 0.5) * 100}%` }}
+                      />
+                      <input
+                        type="range"
+                        min={0.5}
+                        max={1}
+                        step={0.05}
+                        value={config.merge_threshold}
+                        onChange={(e) => setConfig((c) => ({ ...c, merge_threshold: parseFloat(e.target.value) }))}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-primary shadow-md transition-all duration-150 pointer-events-none"
+                        style={{ left: `calc(${((config.merge_threshold - 0.5) / 0.5) * 100}% - 8px)` }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">

@@ -38,9 +38,9 @@ class ScrapeRequest(BaseModel):
         default="Extract all important information from the webpage, organize as Markdown.",
         description="Extraction instruction",
     )
-    provider: Literal["browser_use_local", "jina", "firecrawl"] = Field(
-        default="browser_use_local",
-        description="Scrape Provider: browser_use_local, jina, firecrawl",
+    provider: Literal["firecrawl", "jina"] = Field(
+        default="firecrawl",
+        description="Scrape Provider: firecrawl, jina",
     )
     schema_name: str | None = Field(
         default=None,
@@ -172,3 +172,114 @@ class ImportResultResponse(BaseModel):
     document_id: str
     knowledge_base_id: UUID
     message: str
+
+
+# ==================== Task History Schemas ====================
+
+
+class TaskHistoryItem(BaseModel):
+    """Task history list item."""
+
+    task_id: str
+    url: str
+    provider: str
+    schema_name: str | None = None
+    status: str
+    error: str | None = None
+    provider_used: str | None = None
+    created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
+class TaskListResponse(BaseModel):
+    """Task history list response."""
+
+    tasks: list[TaskHistoryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class TaskDetailResponse(TaskHistoryItem):
+    """Task detail with full result and logs."""
+
+    prompt: str | None = None
+    result: str | None = None
+    structured_data: dict | None = None
+    logs: list[dict] = []
+    draft_id: str | None = None
+
+
+class RerunTaskRequest(BaseModel):
+    """Re-run task with optional overrides."""
+
+    provider: str | None = None
+    schema_name: str | None = None
+    llm_model: str | None = None
+
+
+# ==================== Data Source Schemas ====================
+
+
+class ScrapSourceCreate(BaseModel):
+    """Create data source request."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    url_pattern: str = Field(..., min_length=1, max_length=2048)
+    category: str | None = None
+    default_schema: str | None = None
+    default_provider: str | None = None
+    auth_config: dict | None = None
+    proxy_config: dict | None = None
+    cron_expression: str | None = None
+    is_enabled: bool = True
+
+
+class ScrapSourceUpdate(BaseModel):
+    """Update data source request."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    url_pattern: str | None = Field(None, min_length=1, max_length=2048)
+    category: str | None = None
+    default_schema: str | None = None
+    default_provider: str | None = None
+    auth_config: dict | None = None
+    proxy_config: dict | None = None
+    cron_expression: str | None = None
+    is_enabled: bool | None = None
+
+
+class ScrapSourceResponse(BaseModel):
+    """Data source response."""
+
+    id: UUID
+    name: str
+    url_pattern: str
+    category: str | None
+    default_schema: str | None
+    default_provider: str | None
+    is_enabled: bool
+    last_scraped_at: str | None
+    created_at: str
+    updated_at: str
+
+
+class ScrapSourceDetailResponse(ScrapSourceResponse):
+    """Data source detail with auth/proxy config."""
+
+    description: str | None = None
+    auth_config: dict | None = None
+    proxy_config: dict | None = None
+    cron_expression: str | None = None
+
+
+class ScrapSourceListResponse(BaseModel):
+    """Data source list response."""
+
+    sources: list[ScrapSourceResponse]
+    total: int
+    page: int
+    page_size: int

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   RefreshCw,
   Download,
+  Trash2,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
@@ -40,9 +41,9 @@ const STATUS_TABS = [
 
 function StepRow({ step }: { step: StepStatus }) {
   return (
-    <tr>
-      <td className="py-2.5 font-medium text-foreground text-sm">{step.name}</td>
-      <td className="py-2.5">
+    <tr className="align-middle">
+      <td className="py-2.5 font-medium text-foreground text-sm align-middle">{step.name}</td>
+      <td className="py-2.5 align-middle">
         {step.status === "completed" ? (
           <span className="inline-flex items-center gap-1 text-emerald-500 text-xs">
             <CheckCircle2 className="w-3.5 h-3.5" /> 完成
@@ -61,8 +62,8 @@ function StepRow({ step }: { step: StepStatus }) {
           </span>
         )}
       </td>
-      <td className="py-2.5 text-muted-foreground tabular-nums text-xs">{step.duration ?? "-"}</td>
-      <td className="py-2.5 text-muted-foreground text-xs">{step.detail || "-"}</td>
+      <td className="py-2.5 text-muted-foreground tabular-nums text-xs align-middle">{step.duration ?? "-"}</td>
+      <td className="py-2.5 text-muted-foreground text-xs align-middle">{step.detail || "-"}</td>
     </tr>
   );
 }
@@ -82,6 +83,7 @@ export default function TemplateExtraction() {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ action: () => Promise<void>; title: string; message: string } | null>(null);
   const [toasts, setToasts] = useState<{ id: number; msg: string; type: "success" | "error" | "info" }[]>([]);
   const toastId = useRef(0);
   const tasksRef = useRef<ExtractionTaskResponse[]>([]);
@@ -183,17 +185,22 @@ export default function TemplateExtraction() {
   };
 
   const handleCancel = async (task: ExtractionTaskResponse) => {
-    if (!confirm(`确定取消任务"${task.name}"吗？`)) return;
-    setActionLoading(task.id);
-    try {
-      await kfApi.cancelTask(task.id);
-      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: "failed" as const } : t));
-      showToast("任务已取消", "success");
-    } catch {
-      showToast("取消失败", "error");
-    } finally {
-      setActionLoading(null);
-    }
+    setConfirmTarget({
+      title: "确认取消",
+      message: `确定取消任务"${task.name}"吗？`,
+      action: async () => {
+        setActionLoading(task.id);
+        try {
+          await kfApi.cancelTask(task.id);
+          setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: "failed" as const } : t));
+          showToast("任务已取消", "success");
+        } catch {
+          showToast("取消失败", "error");
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
   };
 
   const handleRerun = async (task: ExtractionTaskResponse) => {
@@ -207,6 +214,51 @@ export default function TemplateExtraction() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleDelete = async (task: ExtractionTaskResponse) => {
+    setConfirmTarget({
+      title: "确认删除",
+      message: `确定删除任务"${task.name ?? "未命名任务"}"吗？此操作不可撤销。`,
+      action: async () => {
+        setActionLoading(task.id);
+        try {
+          await kfApi.deleteTask(task.id);
+          setTasks((prev) => prev.filter((t) => t.id !== task.id));
+          setTotal((prev) => Math.max(0, prev - 1));
+          showToast("任务已删除", "success");
+        } catch {
+          showToast("删除失败", "error");
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
+  };
+
+  const handleClearHistory = async () => {
+    const terminalTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed");
+    if (terminalTasks.length === 0) {
+      showToast("没有可清除的历史任务", "info");
+      return;
+    }
+    setConfirmTarget({
+      title: "确认清除",
+      message: "确定清除所有已完成和失败的任务吗？此操作不可撤销。",
+      action: async () => {
+        setActionLoading("__clear__");
+        try {
+          const res = await kfApi.clearTasks();
+          showToast(res.message, "success");
+          void loadTasks(1, statusFilter);
+          setPage(1);
+        } catch {
+          showToast("清除失败", "error");
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
   };
 
   const handleViewResult = (task: ExtractionTaskResponse) => {
@@ -276,19 +328,29 @@ export default function TemplateExtraction() {
       {/* Header */}
       <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground tracking-tight">
+          <h2 className="text-lg font-medium flex items-center gap-2 text-foreground tracking-tight">
             <Settings className="w-5 h-5 text-primary" />
             模板抽取任务
           </h2>
           <span className="text-sm text-muted-foreground">共 {total} 个任务</span>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          新建抽取任务
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleClearHistory}
+            disabled={actionLoading === "__clear__"}
+            className="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-lg hover:text-destructive hover:border-destructive/50 hover:bg-destructive/5 transition-colors text-sm disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            {actionLoading === "__clear__" ? "清除中..." : "清除历史"}
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            新建抽取任务
+          </button>
+        </div>
       </div>
 
       {/* Status filter tabs */}
@@ -329,18 +391,26 @@ export default function TemplateExtraction() {
             const stepsExpanded = expandedSteps.has(task.id) || !isTerminal;
 
             return (
-              <div key={task.id} className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+              <div key={task.id} className={cn(
+                "bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden border-l-[3px] transition-shadow hover:shadow-md",
+                task.status === "completed" && "border-l-emerald-500/60",
+                (task.status === "running" || task.status === "pending") && "border-l-primary/60",
+                task.status === "paused" && "border-l-amber-500/60",
+                task.status === "failed" && "border-l-red-500/60"
+              )}>
                 {/* Card top: info + actions */}
                 <div className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono text-muted-foreground">{task.id.slice(0, 8)}...</span>
+                        <h4 className="font-medium text-sm text-foreground truncate">{task.name ?? "未命名任务"}</h4>
                         {statusBadge(task.status)}
+                        <span className="text-[10px] font-mono text-muted-foreground/50">{task.id.slice(0, 8)}</span>
                       </div>
-                      <h4 className="font-medium text-sm text-foreground truncate">{task.name ?? "未命名任务"}</h4>
                       <p className="text-xs text-muted-foreground truncate">
-                        源报告: {task.source_reports?.join(" + ") ?? "-"}
+                        源报告: {task.source_reports && task.source_reports.length > 0
+                          ? task.source_reports.join(" + ")
+                          : "-"}
                       </p>
                       {task.error && (
                         <p className="text-xs text-red-500 flex items-center gap-1">
@@ -389,30 +459,56 @@ export default function TemplateExtraction() {
                           >
                             <X className="w-4 h-4" />
                           </button>
+                          <button
+                            disabled={actionLoading === task.id}
+                            onClick={() => handleDelete(task)}
+                            title="删除"
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </>
                       )}
                       {task.status === "failed" && (
-                        <button
-                          disabled={actionLoading === task.id}
-                          onClick={() => handleRerun(task)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-50"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> 重新运行
-                        </button>
+                        <>
+                          <button
+                            disabled={actionLoading === task.id}
+                            onClick={() => handleRerun(task)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> 重新运行
+                          </button>
+                          <button
+                            disabled={actionLoading === task.id}
+                            onClick={() => handleDelete(task)}
+                            title="删除"
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                       {task.status === "completed" && task.result && (
                         <>
                           <button
                             onClick={() => handleViewResult(task)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                           >
-                            查看结果 <ChevronRight className="w-3.5 h-3.5" />
+                            <ChevronRight className="w-3.5 h-3.5" /> 查看结果
                           </button>
                           <button
                             onClick={() => handleExport(task)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                           >
                             <Download className="w-3.5 h-3.5" /> 导出
+                          </button>
+                          <button
+                            disabled={actionLoading === task.id}
+                            onClick={() => handleDelete(task)}
+                            title="删除"
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -427,7 +523,7 @@ export default function TemplateExtraction() {
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
                         <div
-                          className="h-2 rounded-full bg-primary transition-all duration-500"
+                          className="h-2 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
                           style={{ width: `${task.progress}%` }}
                         />
                       </div>
@@ -462,11 +558,11 @@ export default function TemplateExtraction() {
                       <div className="px-4 pb-3">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-muted-foreground border-b border-border text-left">
-                              <th className="pb-2 font-medium text-xs">阶段</th>
-                              <th className="pb-2 font-medium text-xs">状态</th>
-                              <th className="pb-2 font-medium text-xs">耗时</th>
-                              <th className="pb-2 font-medium text-xs">详情</th>
+                            <tr className="text-muted-foreground border-b border-border text-left align-middle">
+                              <th className="pb-2 font-medium text-xs align-middle">阶段</th>
+                              <th className="pb-2 font-medium text-xs align-middle">状态</th>
+                              <th className="pb-2 font-medium text-xs align-middle">耗时</th>
+                              <th className="pb-2 font-medium text-xs align-middle">详情</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-border">
@@ -481,7 +577,7 @@ export default function TemplateExtraction() {
                 )}
 
                 {/* Time footer */}
-                <div className="px-4 py-2 bg-muted/30 border-t border-border flex justify-between text-xs text-muted-foreground">
+                <div className="px-4 py-2 bg-gradient-to-r from-muted/40 to-muted/20 border-t border-border/40 flex justify-between text-xs text-muted-foreground">
                   <span>创建: {new Date(task.created_at).toLocaleString("zh-CN")}</span>
                   {task.completed_at && (
                     <span>完成: {new Date(task.completed_at).toLocaleString("zh-CN")}</span>
@@ -535,16 +631,49 @@ export default function TemplateExtraction() {
         />
       )}
 
+      {/* Confirmation Modal */}
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+            <div className="px-6 py-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <h3 className="text-base font-medium text-foreground mb-1">{confirmTarget.title}</h3>
+              <p className="text-sm text-muted-foreground">{confirmTarget.message}</p>
+            </div>
+            <div className="flex justify-center gap-3 px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setConfirmTarget(null)}
+                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  const action = confirmTarget.action;
+                  setConfirmTarget(null);
+                  await action();
+                }}
+                className="px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast notifications */}
       <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg",
-              t.type === "success" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
-              t.type === "error" && "border-red-500/20 bg-red-500/10 text-red-500",
-              t.type === "info" && "border-primary/20 bg-primary/10 text-primary"
+              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
+              t.type === "success" && "border-emerald-500/20 bg-emerald-500/90 text-white",
+              t.type === "error" && "border-red-500/20 bg-red-500/90 text-white",
+              t.type === "info" && "border-primary/20 bg-primary/90 text-primary-foreground"
             )}
           >
             {t.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0" />}

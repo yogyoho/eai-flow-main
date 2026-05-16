@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select, update, or_
+from sqlalchemy import delete, func, select, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import attributes
 
@@ -15,6 +15,7 @@ from app.extensions.database import get_db_context
 from app.extensions.models import Document, KnowledgeBase
 
 from .models import (
+    BusinessDictionary,
     ExtractionDomain,
     ExtractionTask,
     ExtractionTemplate,
@@ -99,6 +100,169 @@ class DomainService:
             if not existing:
                 db.add(d)
         await db.commit()
+
+    @staticmethod
+    async def update_domain(db: AsyncSession, domain: ExtractionDomain, data) -> None:
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            if hasattr(domain, key):
+                setattr(domain, key, value)
+        await db.commit()
+        await db.refresh(domain)
+
+    @staticmethod
+    async def delete_domain(db: AsyncSession, domain: ExtractionDomain) -> None:
+        await db.delete(domain)
+        await db.commit()
+
+
+# ============== Dictionary Service ==============
+
+DICT_CATEGORY_LABELS = {
+    "industry": "行业类型",
+    "report_type": "报告类型",
+    "region": "适用地区",
+}
+
+
+class DictionaryService:
+    """通用业务字典服务"""
+
+    @staticmethod
+    async def list_items(
+        db: AsyncSession, category: str, page: int = 1, limit: int = 50,
+    ) -> tuple[list[BusinessDictionary], int]:
+        query = select(BusinessDictionary).where(BusinessDictionary.category == category)
+        count_result = await db.execute(select(func.count()).select_from(query.subquery()))
+        total = count_result.scalar() or 0
+        query = query.order_by(BusinessDictionary.sort_order, BusinessDictionary.id)
+        query = query.offset((page - 1) * limit).limit(limit)
+        result = await db.execute(query)
+        return list(result.scalars().all()), total
+
+    @staticmethod
+    async def get_item(db: AsyncSession, item_id: str) -> Optional[BusinessDictionary]:
+        result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.id == item_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create_item(db: AsyncSession, data) -> BusinessDictionary:
+        item = BusinessDictionary(
+            id=data.id,
+            category=data.category,
+            label=data.label,
+            sort_order=data.sort_order,
+            enabled=data.enabled,
+        )
+        db.add(item)
+        await db.commit()
+        await db.refresh(item)
+        return item
+
+    @staticmethod
+    async def update_item(db: AsyncSession, item: BusinessDictionary, data) -> None:
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            if hasattr(item, key):
+                setattr(item, key, value)
+        await db.commit()
+        await db.refresh(item)
+
+    @staticmethod
+    async def delete_item(db: AsyncSession, item: BusinessDictionary) -> None:
+        await db.delete(item)
+        await db.commit()
+
+    @staticmethod
+    async def list_categories(db: AsyncSession) -> list[dict]:
+        """列出所有字典分类及其条目数量"""
+        stmt = (
+            select(BusinessDictionary.category, func.count())
+            .group_by(BusinessDictionary.category)
+        )
+        result = await db.execute(stmt)
+        counts = dict(result.all())
+        categories = []
+        for cat, label in DICT_CATEGORY_LABELS.items():
+            categories.append({"category": cat, "label": label, "count": counts.get(cat, 0)})
+        return categories
+
+    @staticmethod
+    async def init_seed_data(db: AsyncSession) -> None:
+        """从 rule_dictionaries.json 导入初始数据"""
+        from .dictionary_loader import load_rule_dictionaries_from_file
+        data = load_rule_dictionaries_from_file()
+
+        existing = await db.execute(select(func.count()).select_from(BusinessDictionary))
+        is_empty = (existing.scalar() or 0) == 0
+
+        if is_empty:
+            mapping = {
+                "industries": "industry",
+                "report_types": "report_type",
+                "regions": "region",
+            }
+            for json_key, category in mapping.items():
+                for idx, item in enumerate(data.get(json_key, [])):
+                    db.add(BusinessDictionary(
+                        id=item["value"],
+                        category=category,
+                        label=item["label"],
+                        sort_order=idx,
+                    ))
+            await db.commit()
+        else:
+            # 已有数据：清除并重建 industry 和 report_type，保留 region 不变
+            for category in ("industry", "report_type"):
+                await db.execute(delete(BusinessDictionary).where(BusinessDictionary.category == category))
+            json_key_map = {"industry": "industries", "report_type": "report_types"}
+            for category, json_key in json_key_map.items():
+                for idx, item in enumerate(data.get(json_key, [])):
+                    db.add(BusinessDictionary(
+                        id=item["value"],
+                        category=category,
+                        label=item["label"],
+                        sort_order=idx,
+                    ))
+            await db.commit()
+
+    @staticmethod
+    async def _ensure_items(db: AsyncSession, category: str, items: list[dict]) -> None:
+        """确保指定分类中包含给定条目，缺失则补充"""
+        existing_ids = set(
+            (await db.execute(
+                select(BusinessDictionary.id).where(BusinessDictionary.category == category)
+            )).scalars().all()
+        )
+        max_order = (await db.execute(
+            select(func.coalesce(func.max(BusinessDictionary.sort_order), -1)).where(BusinessDictionary.category == category)
+        )).scalar() or 0
+        added = False
+        for item in items:
+            if item["value"] not in existing_ids:
+                max_order += 1
+                db.add(BusinessDictionary(
+                    id=item["value"],
+                    category=category,
+                    label=item["label"],
+                    sort_order=max_order,
+                ))
+                added = True
+        if added:
+            await db.commit()
+
+    @staticmethod
+    async def load_all_as_dict(db: AsyncSession) -> dict[str, list[dict[str, str]]]:
+        """加载所有字典数据（用于替代 JSON 文件数据源）"""
+        result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.enabled.is_(True)).order_by(BusinessDictionary.sort_order))
+        items = result.scalars().all()
+        data: dict[str, list[dict[str, str]]] = {"industries": [], "report_types": [], "regions": []}
+        cat_map = {"industry": "industries", "report_type": "report_types", "region": "regions"}
+        for item in items:
+            key = cat_map.get(item.category)
+            if key:
+                data[key].append({"value": item.id, "label": item.label})
+        return data
 
 
 # ============== Template Service ==============
@@ -236,7 +400,7 @@ class TemplateService:
             patch = int(parts[2]) + 1
             new_version = f"v{parts[0]}.{parts[1]}.{patch}"
         else:
-            new_version = f"{current_version}.1"
+            new_version = f"v{current_version}.1"
 
         # 更新模板内容
         template.root_sections_json = {"sections": sections}
@@ -296,6 +460,15 @@ class TemplateService:
 
     @staticmethod
     async def delete_template(db: AsyncSession, template: ExtractionTemplate) -> None:
+        # 清除关联任务的 FK 引用
+        from sqlalchemy import update
+
+        await db.execute(
+            update(ExtractionTask)
+            .where(ExtractionTask.target_template_id == template.id)
+            .values(target_template_id=None)
+        )
+
         # 删除 JSON 快照
         delete_snapshot(
             domain=template.domain,
@@ -341,6 +514,8 @@ class TaskService:
         task = ExtractionTask(
             name=data.name,
             domain=data.domain,
+            industry=data.industry,
+            report_type=data.report_type,
             source_report_ids=[str(s) for s in data.source_report_ids],
             config=config_dict,
             status="pending",
@@ -436,6 +611,20 @@ class TaskService:
             task.error_message = "用户取消"
             task.completed_at = datetime.utcnow()
             await db.commit()
+
+    @staticmethod
+    async def delete_task(db: AsyncSession, task: ExtractionTask) -> None:
+        await db.delete(task)
+        await db.commit()
+
+    @staticmethod
+    async def clear_tasks(db: AsyncSession, statuses: list[str] | None = None) -> int:
+        """删除指定状态的任务，返回删除数量。默认清除已完成和失败的任务。"""
+        target_statuses = statuses or ["completed", "failed"]
+        stmt = delete(ExtractionTask).where(ExtractionTask.status.in_(target_statuses))
+        result = await db.execute(stmt)
+        await db.commit()
+        return result.rowcount
 
 
 # ============== Quality Assessment Service ==============

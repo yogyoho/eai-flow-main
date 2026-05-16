@@ -13,6 +13,7 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Sprout,
   Terminal,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import { AdminSelect } from "@/components/ui/admin-select";
 
 import { useRuleDictionaries } from "@/extensions/knowledge-factory/hooks/use-rule-dictionaries";
 import { useRuleEngineData } from "@/extensions/knowledge-factory/hooks/use-rule-engine-data";
+import AiRuleExtractModal from "@/extensions/knowledge-factory/AiRuleExtractModal";
 import { getDictionaryLabel } from "./rule-dictionary-utils";
 import {
   areAllRulesSelected,
@@ -59,6 +61,8 @@ export default function RuleEngine({
   initialFilters,
 }: RuleEngineProps) {
   const dictionaries = useRuleDictionaries();
+  const ruleTypes = dictionaries.ruleTypes?.length ? dictionaries.ruleTypes : RULE_TYPES;
+  const severityLevels = dictionaries.severityLevels?.length ? dictionaries.severityLevels : SEVERITY_LEVELS;
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [selectedRules, setSelectedRules] = useState<string[]>(initialSelectedRules);
@@ -69,6 +73,7 @@ export default function RuleEngine({
   const [logsModalRule, setLogsModalRule] = useState<ComplianceRule | null>(null);
   const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAiExtract, setShowAiExtract] = useState(false);
 
   const {
     rules,
@@ -253,7 +258,7 @@ export default function RuleEngine({
       <div className="shrink-0 border-b border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+            <h2 className="flex items-center gap-2 text-lg font-medium tracking-tight text-foreground">
               <ShieldCheck className="h-5 w-5 text-primary" />
               合规规则引擎
             </h2>
@@ -276,6 +281,17 @@ export default function RuleEngine({
               <Plus className="h-4 w-4" />
               新建规则
             </button>
+
+            {showManagement && (
+              <button
+                className="flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setShowAiExtract(true)}
+                disabled={readOnly}
+              >
+                <Sparkles className="h-4 w-4" />
+                AI提取规则
+              </button>
+            )}
 
             {showManagement && (
               <button
@@ -340,8 +356,8 @@ export default function RuleEngine({
 
       <div className="flex-1 space-y-6 overflow-y-auto bg-muted/30 p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 text-muted-foreground">
               <LayoutList className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -349,8 +365,8 @@ export default function RuleEngine({
               <div className="text-2xl font-bold text-foreground">{statistics?.total ?? "-"}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-card to-emerald-500/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 text-emerald-500">
               <BadgeCheck className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -358,8 +374,8 @@ export default function RuleEngine({
               <div className="text-2xl font-bold text-emerald-500">{statistics?.enabled ?? "-"}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+          <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
               <Activity className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -369,8 +385,8 @@ export default function RuleEngine({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+          <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-gradient-to-br from-card to-destructive/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive">
               <ShieldAlert className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -378,8 +394,8 @@ export default function RuleEngine({
               <div className="text-2xl font-bold text-destructive">{triggerStats?.monthBlocked ?? "-"}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+          <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-gradient-to-br from-card to-amber-500/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500">
               <Sprout className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -390,19 +406,19 @@ export default function RuleEngine({
         </div>
 
         {industrySummary.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-4 text-sm text-muted-foreground shadow-sm">
             行业分布: {industrySummary.join(" | ")}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-4 shadow-sm">
           <div className="flex gap-4">
             <AdminSelect
               value={filters.type ?? "all"}
               onChange={(value) => handleFilterChange("type", value === "all" ? undefined : value)}
               options={[
                 { value: "all", label: "全部规则分类" },
-                ...RULE_TYPES.map((item) => ({ value: item.value, label: item.label })),
+                ...ruleTypes.map((item) => ({ value: item.value, label: item.label })),
               ]}
               className="w-40"
             />
@@ -423,7 +439,7 @@ export default function RuleEngine({
               onChange={(value) => handleFilterChange("severity", value === "all" ? undefined : value)}
               options={[
                 { value: "all", label: "全部严重级别" },
-                ...SEVERITY_LEVELS.map((item) => ({ value: item.value, label: item.label })),
+                ...severityLevels.map((item) => ({ value: item.value, label: item.label })),
               ]}
               className="w-36"
             />
@@ -551,7 +567,10 @@ export default function RuleEngine({
                 <div
                   key={rule.id}
                   className={cn(
-                    "overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all group hover:border-primary/30 hover:shadow-md",
+                    "overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-all group hover:border-primary/30 hover:shadow-md border-l-[3px]",
+                    rule.severity === "critical" && "border-l-destructive/60",
+                    rule.severity === "warning" && "border-l-amber-500/60",
+                    (rule.severity !== "critical" && rule.severity !== "warning") && "border-l-primary/40",
                     effectiveSelectionMode && selectedRules.includes(rule.id) && "border-primary/40 ring-2 ring-primary/30"
                   )}
                   onClick={() => {
@@ -580,10 +599,10 @@ export default function RuleEngine({
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-lg",
                           rule.severity === "critical"
-                            ? "bg-destructive/10 text-destructive"
+                            ? "bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive"
                             : rule.severity === "warning"
-                              ? "bg-amber-500/10 text-amber-500"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500"
+                              : "bg-gradient-to-br from-muted/50 to-muted/20 text-muted-foreground"
                         )}
                       >
                         <AlertCircle className="h-6 w-6" />
@@ -795,6 +814,14 @@ export default function RuleEngine({
           ruleId={testModalRule.ruleId}
           ruleName={testModalRule.name}
           onClose={handleCloseTest}
+        />
+      )}
+
+      {showAiExtract && (
+        <AiRuleExtractModal
+          onClose={() => setShowAiExtract(false)}
+          onImported={refresh}
+          dictionaries={dictionaries}
         />
       )}
     </div>

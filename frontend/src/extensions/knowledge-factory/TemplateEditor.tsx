@@ -66,7 +66,7 @@ function TemplateSelector({
           {selected?.name || "选择模板"}
         </span>
         {selected && (
-          <span className="text-xs text-muted-foreground">v{selected.version}</span>
+          <span className="text-xs text-muted-foreground">{selected.version}</span>
         )}
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </button>
@@ -123,7 +123,7 @@ function TemplateSelector({
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-muted-foreground">
-                        v{template.version}
+                        {template.version}
                       </span>
                       <span
                         className={cn(
@@ -491,7 +491,7 @@ function VersionHistoryModal({
           <div className="flex items-center gap-3">
             <History className="w-5 h-5 text-primary" />
             <div>
-              <h2 className="text-lg font-bold text-foreground">版本历史</h2>
+              <h2 className="text-lg font-medium text-foreground">版本历史</h2>
               <p className="text-sm text-muted-foreground">{templateName}</p>
             </div>
           </div>
@@ -525,7 +525,7 @@ function VersionHistoryModal({
                     )}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-foreground">v{version.version}</span>
+                      <span className="font-medium text-foreground">{version.version}</span>
                       {version.version === currentVersion && (
                         <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
                           当前
@@ -1048,6 +1048,7 @@ export default function TemplateEditor() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ action: () => Promise<void>; title: string; message: string } | null>(null);
 
   // 版本历史弹窗状态
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -1217,26 +1218,20 @@ export default function TemplateEditor() {
   };
 
   // 发布模板
-  const handlePublish = async () => {
+  const handlePublish = () => {
     if (!template) return;
-
-    if (
-      !window.confirm(
-        `确定要发布模板「${template.name}」吗？发布后将无法直接修改。`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await publishTemplate();
-      showNotification("success", "模板发布成功");
-    } catch (e) {
-      showNotification(
-        "error",
-        e instanceof Error ? e.message : "发布失败"
-      );
-    }
+    setConfirmAction({
+      title: "确认发布",
+      message: `确定要发布模板「${template.name}」吗？发布后将无法直接修改。`,
+      action: async () => {
+        try {
+          await publishTemplate();
+          showNotification("success", "模板发布成功");
+        } catch (e) {
+          showNotification("error", e instanceof Error ? e.message : "发布失败");
+        }
+      },
+    });
   };
 
   // 导出模板
@@ -1246,12 +1241,31 @@ export default function TemplateEditor() {
     const exportUrl = kfApi.exportTemplate(selectedTemplateId);
     const link = document.createElement("a");
     link.href = exportUrl;
-    link.download = `${template.name}_v${template.version}.json`;
+    link.download = `${template.name}_${template.version}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     showNotification("success", "模板导出成功");
   }, [template, selectedTemplateId, showNotification]);
+
+  // 删除模板
+  const handleDeleteTemplate = () => {
+    if (!template || !selectedTemplateId) return;
+    setConfirmAction({
+      title: "确认删除",
+      message: `确定要删除模板「${template.name}」吗？此操作不可撤销。`,
+      action: async () => {
+        try {
+          await kfApi.deleteTemplate(selectedTemplateId);
+          setSelectedTemplateId("");
+          await fetchTemplates({ status: "draft,published", limit: 50 });
+          showNotification("success", "模板已删除");
+        } catch (e) {
+          showNotification("error", e instanceof Error ? e.message : "删除失败");
+        }
+      },
+    });
+  };
 
   // 撤销更改 - 使用快照恢复
   const handleRevert = useCallback(() => {
@@ -1316,7 +1330,7 @@ export default function TemplateEditor() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Edit3 className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground tracking-tight">
+            <h2 className="text-lg font-medium text-foreground tracking-tight">
               模板编辑器
             </h2>
           </div>
@@ -1360,6 +1374,16 @@ export default function TemplateEditor() {
             <Download className="w-4 h-4" />
             导出
           </button>
+
+          {/* 删除 */}
+          <button
+            onClick={handleDeleteTemplate}
+            disabled={!template}
+            className="px-3 py-2 text-destructive bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-destructive/10 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-4 h-4" />
+            删除
+          </button>
           
           <button
             onClick={handleSaveDraft}
@@ -1392,10 +1416,10 @@ export default function TemplateEditor() {
       {notification && (
         <div
           className={cn(
-            "fixed top-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right",
+            "fixed right-6 bottom-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 backdrop-blur-sm animate-in slide-in-from-right",
             notification.type === "success"
-              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 dark:bg-emerald-500/20"
-              : "bg-red-500/10 text-red-500 border border-red-500/20 dark:bg-red-500/20"
+              ? "bg-emerald-500/90 text-white border border-emerald-500/20"
+              : "bg-red-500/90 text-white border border-red-500/20"
           )}
         >
           {notification.type === "success" ? (
@@ -1404,6 +1428,39 @@ export default function TemplateEditor() {
             <AlertCircle className="w-4 h-4" />
           )}
           {notification.message}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+            <div className="px-6 py-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <h3 className="text-base font-medium text-foreground mb-1">{confirmAction.title}</h3>
+              <p className="text-sm text-muted-foreground">{confirmAction.message}</p>
+            </div>
+            <div className="flex justify-center gap-3 px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  const action = confirmAction.action;
+                  setConfirmAction(null);
+                  await action();
+                }}
+                className="px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors"
+              >
+                确认
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1501,9 +1558,9 @@ export default function TemplateEditor() {
           </div>
         ) : !template ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <FileJson className="w-16 h-16 mx-auto mb-4 text-muted opacity-30" />
-              <p className="text-muted-foreground mb-4">请从上方选择一个模板进行编辑</p>
+            <div className="flex flex-col items-center">
+              <FileJson className="w-16 h-16 text-muted-foreground/20 mb-4" />
+              <p className="text-foreground font-medium mb-1">请从上方选择一个模板进行编辑</p>
               <button
                 onClick={() => fetchTemplates({ status: "draft,published", limit: 50 })}
                 className="text-sm text-primary hover:text-primary/80 hover:underline"

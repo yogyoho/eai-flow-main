@@ -87,6 +87,9 @@ async def create_law(
 ):
     """创建法规"""
     law = await LawService.create_law(db, data)
+    synced, _ = await LawService.sync_to_ragflow(db, law)
+    if not synced:
+        logger.warning("Law created but RAGFlow sync failed: %s", law.id)
     return LawService._law_to_response(law)
 
 
@@ -117,8 +120,8 @@ async def init_ragflow_knowledge_bases(
     """
     初始化RAGFlow知识库
 
-    - 不指定type: 创建所有7个知识库
-    - 指定type: 只创建指定类型的知识库
+    - 不指定type: 创建所有2个知识库（ragflow-laws-legal + ragflow-laws-standards）
+    - 指定type: 只创建该类型所属的知识库
     """
     config = get_extensions_config()
     if not config.ragflow.api_key:
@@ -137,30 +140,32 @@ async def init_ragflow_knowledge_bases(
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"RAGFlow连接失败: {str(e)}")
 
-    from .service import RAGFLOW_KB_MAPPING
+    from .service import RAGFLOW_DATASET_GROUPS, RAGFLOW_KB_MAPPING
 
-    types_to_init = [law_type] if law_type else list(RAGFLOW_KB_MAPPING.keys())
+    # 确定需要初始化的知识库名称（去重）
+    if law_type:
+        kb_name = RAGFLOW_KB_MAPPING.get(law_type)
+        if not kb_name:
+            raise HTTPException(status_code=400, detail=f"未知的法规类型: {law_type}")
+        datasets_to_init = {kb_name: RAGFLOW_DATASET_GROUPS[kb_name]}
+    else:
+        datasets_to_init = dict(RAGFLOW_DATASET_GROUPS)
 
     results = {"created": [], "already_exists": [], "failed": []}
 
-    for lt in types_to_init:
-        kb_name = RAGFLOW_KB_MAPPING.get(lt)
-        if not kb_name:
-            continue
-
+    for kb_name, chunk_method in datasets_to_init.items():
         try:
-            # 检查是否已存在
             existing = await rf_client.get_dataset_by_name(kb_name)
             if existing:
                 results["already_exists"].append(kb_name)
             else:
-                # 创建新知识库
                 result = await rf_client.create_dataset(
                     name=kb_name,
-                    description=f"法规标准库 - {lt}",
+                    description=f"法规标准库 - {kb_name}",
+                    chunk_method=chunk_method,
                 )
                 results["created"].append(kb_name)
-                logger.info(f"创建RAGFlow知识库成功: {kb_name}")
+                logger.info(f"创建RAGFlow知识库成功: {kb_name} (chunk_method={chunk_method})")
         except Exception as e:
             results["failed"].append({"kb": kb_name, "error": str(e)})
             logger.error(f"创建RAGFlow知识库失败: {kb_name} - {e}")
@@ -186,7 +191,7 @@ async def sync_all_laws_to_ragflow(
             skipped += 1
             continue
 
-        success = await LawService.sync_to_ragflow(db, law)
+        success, _ = await LawService.sync_to_ragflow(db, law)
         if success:
             synced += 1
         else:
@@ -335,17 +340,16 @@ async def import_law_with_file(
     try:
         law = await LawService.create_law(db, data)
 
-        if file and tmp_path:
-            synced = await LawService.sync_to_ragflow(
-                db,
-                law,
-                file_path=tmp_path,
-                file_name=original_file_name,
-            )
-            if not synced:
-                logger.warning("Law imported but RAGFlow sync failed: %s", law.id)
-                if hasattr(db, "refresh"):
-                    await db.refresh(law)
+        synced, sync_err = await LawService.sync_to_ragflow(
+            db,
+            law,
+            file_path=tmp_path,
+            file_name=original_file_name,
+        )
+        if not synced:
+            logger.warning("Law imported but RAGFlow sync failed: %s, reason: %s", law.id, sync_err)
+            if hasattr(db, "refresh"):
+                await db.refresh(law)
 
         return LawService._law_to_response(law)
     finally:
@@ -417,7 +421,7 @@ async def sync_law_to_ragflow(
     if not law:
         raise HTTPException(status_code=404, detail="法规不存在")
 
-    success = await LawService.sync_to_ragflow(db, law)
+    success, err_msg = await LawService.sync_to_ragflow(db, law)
 
     if success:
         return {
@@ -427,7 +431,7 @@ async def sync_law_to_ragflow(
             "ragflow_document_id": law.ragflow_document_id,
         }
     else:
-        raise HTTPException(status_code=500, detail="同步失败，请检查RAGFlow配置")
+        raise HTTPException(status_code=500, detail=err_msg or "同步失败，请检查RAGFlow配置")
 
 
 @router.post("/{law_id}/templates", response_model=LawTemplateRelationResponse)

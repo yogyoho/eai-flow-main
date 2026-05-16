@@ -29,7 +29,7 @@ class ScrapTask:
     task_id: str
     url: str
     prompt: str
-    provider: str = "browser_use_local"
+    provider: str = "firecrawl"
     schema_name: str | None = None
     proxy_enabled: bool = False
     auth_enabled: bool = False
