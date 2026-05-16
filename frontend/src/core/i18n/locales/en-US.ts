@@ -209,7 +209,7 @@ export const enUS: Translations = {
       "Network request failed — check your network or backend connection",
     nameStepCheckError: "Could not verify name availability — please try again",
     nameStepBootstrapMessage:
-      "The new custom agent name is {name}. Let's bootstrap it's **SOUL**.",
+      "The new custom agent name is {name}. Help me design its purpose, behavior, and SOUL.md before saving it.",
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
@@ -311,6 +311,28 @@ export const enUS: Translations = {
     unavailable:
       "No token usage yet. Usage appears only after a successful model response when the provider returns usage_metadata.",
     unavailableShort: "No usage returned",
+    note: "Header totals use persisted thread usage, plus visible in-flight usage while a run is still streaming. Per-turn and debug usage come from currently visible messages only. Totals may differ from provider billing pages.",
+    presets: {
+      off: "Off",
+      summary: "Summary",
+      perTurn: "Per turn",
+      debug: "Debug",
+    },
+    presetDescriptions: {
+      off: "Hide token usage in the header and conversation.",
+      summary: "Show only the current conversation total in the header.",
+      perTurn:
+        "Show the header total and one token summary per assistant turn.",
+      debug: "Show the header total and step-level token debugging details.",
+    },
+    finalAnswer: "Final answer",
+    stepTotal: "Step total",
+    sharedAttribution: "Shared across multiple actions in this step",
+    subagent: (description: string) => `Subagent: ${description}`,
+    startTodo: (content: string) => `Start To-do: ${content}`,
+    completeTodo: (content: string) => `Complete To-do: ${content}`,
+    updateTodo: (content: string) => `Update To-do: ${content}`,
+    removeTodo: (content: string) => `Remove To-do: ${content}`,
   },
 
   // Shortcuts
