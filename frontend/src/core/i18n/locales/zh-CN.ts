@@ -198,7 +198,7 @@ export const zhCN: Translations = {
     nameStepNetworkError: "网络请求失败，请检查网络或后端连接",
     nameStepCheckError: "无法验证名称可用性，请稍后重试",
     nameStepBootstrapMessage:
-      "新智能体的名称是 {name}，现在开始为它生成 **SOUL**。",
+      "新智能体的名称是 {name}。请先帮我设计它的用途、行为方式和 SOUL.md，再保存它。",
     save: "保存智能体",
     saving: "正在保存智能体...",
     saveRequested:
@@ -298,6 +298,27 @@ export const zhCN: Translations = {
     unavailable:
       "暂无 Token 用量。只有模型成功返回且供应商提供 usage_metadata 时才会显示。",
     unavailableShort: "未返回用量",
+    note: "顶部总量优先使用后端持久化的线程用量；当当前回复仍在流式返回时，还会叠加可见的进行中用量。每轮和调试用量只来自当前可见消息，可能与平台账单页不完全一致。",
+    presets: {
+      off: "关闭",
+      summary: "总览",
+      perTurn: "每轮",
+      debug: "调试",
+    },
+    presetDescriptions: {
+      off: "隐藏顶部和会话内的 token 展示。",
+      summary: "只在顶部显示当前对话累计 token。",
+      perTurn: "显示顶部累计，并为每轮 assistant 回复显示一条汇总 token。",
+      debug: "显示顶部累计，并展示按步骤归类的 token 调试信息。",
+    },
+    finalAnswer: "最终回复",
+    stepTotal: "步骤总计",
+    sharedAttribution: "该 token 由此步骤中的多个动作共同消耗",
+    subagent: (description: string) => `子任务：${description}`,
+    startTodo: (content: string) => `开始 To-do：${content}`,
+    completeTodo: (content: string) => `完成 To-do：${content}`,
+    updateTodo: (content: string) => `更新 To-do：${content}`,
+    removeTodo: (content: string) => `移除 To-do：${content}`,
   },
 
   // Shortcuts

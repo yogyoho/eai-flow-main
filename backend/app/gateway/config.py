@@ -7,8 +7,7 @@ class GatewayConfig(BaseModel):
     """Configuration for the API Gateway."""
 
     host: str = Field(default="0.0.0.0", description="Host to bind the gateway server")
-    port: int = Field(default=4001, description="Port to bind the gateway server")
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:4000"], description="Allowed CORS origins")
+    port: int = Field(default=8001, description="Port to bind the gateway server")
     enable_docs: bool = Field(default=True, description="Enable Swagger/ReDoc/OpenAPI endpoints")
 
 
@@ -19,11 +18,9 @@ def get_gateway_config() -> GatewayConfig:
     """Get gateway config, loading from environment if available."""
     global _gateway_config
     if _gateway_config is None:
-        cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:4000")
         _gateway_config = GatewayConfig(
             host=os.getenv("GATEWAY_HOST", "0.0.0.0"),
-            port=int(os.getenv("GATEWAY_PORT", "4001")),
-            cors_origins=cors_origins_str.split(","),
+            port=int(os.getenv("GATEWAY_PORT", "8001")),
             enable_docs=os.getenv("GATEWAY_ENABLE_DOCS", "true").lower() == "true",
         )
     return _gateway_config
