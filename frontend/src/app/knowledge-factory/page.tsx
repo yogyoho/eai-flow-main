@@ -15,6 +15,7 @@ import {
   VersionControl,
   QualityAssessment,
   WebScraper,
+  BusinessDictionary,
 } from "@/extensions/knowledge-factory";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ const NAV_ITEMS: { id: TabId; label: string }[] = [
   { id: "version", label: "版本管理" },
   { id: "quality", label: "质量评估" },
   { id: "scraper", label: "网页爬取" },
+  { id: "dictionaries", label: "业务字典" },
 ];
 
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
@@ -38,6 +40,7 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   version: VersionControl,
   quality: QualityAssessment,
   scraper: WebScraper,
+  dictionaries: BusinessDictionary,
 };
 
 function KnowledgeFactoryLayoutContent({ children }: { children: React.ReactNode }) {

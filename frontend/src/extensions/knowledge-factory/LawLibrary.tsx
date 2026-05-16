@@ -11,17 +11,23 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Globe,
+  Trash2,
 } from "lucide-react";
 import React, { useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Import components
 import ImportLawModal from "@/extensions/knowledge-factory/components/ImportLawModal";
 import LawDetailDrawer from "@/extensions/knowledge-factory/components/LawDetailDrawer";
-import LawScraperView from "@/extensions/knowledge-factory/components/LawScraperView";
 import RAGFlowStatusPanel from "@/extensions/knowledge-factory/components/RAGFlowStatusPanel";
 import { getCategoryColor } from "@/extensions/knowledge-factory/config/lawCategories";
 import { LAW_CATEGORIES, LAW_TYPE_OPTIONS, getCategoryByCode } from "@/extensions/knowledge-factory/config/lawCategories";
@@ -31,14 +37,12 @@ import {
   useRAGFlowStatus,
   useSyncAllLaws,
   useInitRAGFlow,
+  useDeleteLaw,
 } from "@/extensions/knowledge-factory/hooks/useLawLibrary";
-import type { LawItem, LawType, LawViewType } from "@/extensions/knowledge-factory/types";
+import type { LawItem, LawType } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
 export default function LawLibrary() {
-  // View state: list view or scraper view
-  const [activeView, setActiveView] = useState<LawViewType>("list");
-
   // Filter states
   const [filterType, setFilterType] = useState<LawType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<string>("active");
@@ -50,6 +54,7 @@ export default function LawLibrary() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showRAGFlowStatus, setShowRAGFlowStatus] = useState(false);
   const [selectedLaw, setSelectedLaw] = useState<LawItem | null>(null);
+  const [deletingLaw, setDeletingLaw] = useState<LawItem | null>(null);
 
   // Debounce keyword search
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -69,6 +74,7 @@ export default function LawLibrary() {
   // Mutations
   const syncAllMutation = useSyncAllLaws();
   const initRAGFlowMutation = useInitRAGFlow();
+  const deleteMutation = useDeleteLaw();
 
   // Handle keyword search (debounced)
   const handleKeywordChange = (value: string) => {
@@ -99,7 +105,6 @@ export default function LawLibrary() {
 
   // Handle import success
   const handleImportSuccess = () => {
-    setActiveView("list");
     refetch();
   };
 
@@ -107,7 +112,7 @@ export default function LawLibrary() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-border bg-card shrink-0">
-        <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground tracking-tight">
+        <h2 className="text-lg font-medium flex items-center gap-2 text-foreground tracking-tight">
           <Library className="w-5 h-5 text-primary" />
           法规标准库
           {hasMissingKBs && (
@@ -147,12 +152,6 @@ export default function LawLibrary() {
             同步更新
           </button>
           <button
-            onClick={() => setActiveView("scraper")}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm text-sm"
-          >
-            <Globe className="w-4 h-4" /> 爬取新法规
-          </button>
-          <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm"
           >
@@ -163,13 +162,7 @@ export default function LawLibrary() {
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 overflow-hidden bg-muted/30">
-        {activeView === "scraper" ? (
-          <LawScraperView
-            onBack={() => setActiveView("list")}
-            onImportSuccess={handleImportSuccess}
-          />
-        ) : (
-          <LawListView
+        <LawListView
             data={data}
             isLoading={isLoading}
             error={error}
@@ -190,8 +183,8 @@ export default function LawLibrary() {
             selectedLaw={selectedLaw}
             setSelectedLaw={setSelectedLaw}
             setShowImportModal={setShowImportModal}
+            onDeleteLaw={setDeletingLaw}
           />
-        )}
       </div>
 
       {/* Modals */}
@@ -209,6 +202,67 @@ export default function LawLibrary() {
       {selectedLaw && (
         <LawDetailDrawer law={selectedLaw} onClose={() => setSelectedLaw(null)} />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingLaw} onOpenChange={(open) => { if (!open) setDeletingLaw(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除法规</DialogTitle>
+            <DialogDescription>
+              确定要删除以下法规吗？此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="flex items-start gap-2">
+              <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-foreground">{deletingLaw?.title}</p>
+                {deletingLaw?.law_number && (
+                  <p className="text-sm text-muted-foreground">标准号: {deletingLaw.law_number}</p>
+                )}
+              </div>
+            </div>
+            {deletingLaw?.is_synced === "synced" && (
+              <div className="flex items-start gap-2 text-amber-500 text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>该法规已同步到 RAGFlow 知识库，将同时删除知识库中的文档。</span>
+              </div>
+            )}
+            {deleteMutation.isError && (
+              <div className="flex items-start gap-2 text-red-500 text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "删除失败"}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setDeletingLaw(null)}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={() => {
+                if (deletingLaw) {
+                  deleteMutation.mutate(deletingLaw.id, {
+                    onSuccess: () => {
+                      setDeletingLaw(null);
+                      void refetch();
+                    },
+                  });
+                }
+              }}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              确认删除
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -246,6 +300,7 @@ interface LawListViewProps {
   selectedLaw: LawItem | null;
   setSelectedLaw: (law: LawItem | null) => void;
   setShowImportModal: (show: boolean) => void;
+  onDeleteLaw: (law: LawItem) => void;
 }
 
 function LawListView({
@@ -269,12 +324,13 @@ function LawListView({
   selectedLaw,
   setSelectedLaw,
   setShowImportModal,
+  onDeleteLaw,
 }: LawListViewProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
         {/* Search & Filter */}
-        <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-wrap gap-4 items-center">
+        <div className="bg-gradient-to-br from-card to-card/80 p-4 rounded-xl border border-border/50 shadow-sm flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -343,10 +399,10 @@ function LawListView({
                     setPage(1);
                   }}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md",
+                    "flex cursor-pointer items-center gap-3 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-5 shadow-sm transition-all hover:shadow-md border-l-[3px]",
                     isActive
-                      ? "border-primary ring-2 ring-primary/20"
-                      : "hover:border-primary/30"
+                      ? "border-primary ring-2 ring-primary/20 border-l-primary"
+                      : "border-l-transparent hover:border-primary/30 hover:border-l-primary/30"
                   )}
                 >
                   <div
@@ -393,6 +449,7 @@ function LawListView({
                   key={law.id}
                   law={law}
                   onView={() => setSelectedLaw(law)}
+                  onDelete={() => onDeleteLaw(law)}
                 />
               ))}
             </div>
@@ -455,9 +512,11 @@ function LawListView({
 function LawListItem({
   law,
   onView,
+  onDelete,
 }: {
   law: LawItem;
   onView: () => void;
+  onDelete: () => void;
 }) {
   const { color, bgColor } = getCategoryColor(law.law_type);
   const category = getCategoryByCode(law.law_type);
@@ -513,31 +572,32 @@ function LawListItem({
   };
 
   return (
-    <div className="bg-card p-4 rounded-xl border border-border shadow-sm hover:border-primary/30 hover:shadow-md transition-all">
+    <div className={cn(
+      "bg-card p-4 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all border-l-[3px]",
+      color.replace("text-", "border-l-") + "/60"
+    )}>
       <div className="flex items-start gap-4">
         {/* Category Icon */}
-        <div className={cn("w-10 h-10 shrink-0 rounded-lg flex items-center justify-center", bgColor)}>
+        <div className={cn("w-10 h-10 shrink-0 rounded-lg flex items-center justify-center", bgColor.replace("/10", "/20"))}>
           {category && <category.icon className={cn("w-5 h-5", color)} />}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h4
                 className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
                 onClick={onView}
               >
                 {law.title}
               </h4>
-              {law.law_number && (
-                <p className="text-sm text-muted-foreground mt-0.5">{law.law_number}</p>
-              )}
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
               {getStatusBadge(law.status)}
               {getSyncBadge(law.is_synced)}
             </div>
+            {law.law_number && (
+              <p className="text-sm text-muted-foreground mt-0.5">{law.law_number}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-6 text-sm text-muted-foreground mt-2">
@@ -576,6 +636,13 @@ function LawListItem({
             className="text-sm text-primary hover:text-primary/70 hover:underline flex items-center gap-1 transition-colors"
           >
             详情 <ExternalLink className="w-3 h-3" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            title="删除法规"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>

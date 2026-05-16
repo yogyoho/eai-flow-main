@@ -21,10 +21,28 @@ class ExtractionDomain(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     parent_domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
     standard_chapters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    report_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
 
     def __repr__(self) -> str:
         return f"<ExtractionDomain(id={self.id}, name={self.name})>"
+
+
+class BusinessDictionary(Base):
+    """通用业务字典表"""
+
+    __tablename__ = "business_dictionaries"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<BusinessDictionary(id={self.id}, category={self.category}, label={self.label})>"
 
 
 class ExtractionTemplate(Base):
@@ -88,6 +106,8 @@ class ExtractionTask(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    report_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     source_report_ids: Mapped[list] = mapped_column(ARRAY(UUID), nullable=False, default=list)
     target_template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("extraction_templates.id"), nullable=True)

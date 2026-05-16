@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -12,18 +13,28 @@ from app.extensions.database import get_db
 from app.extensions.web_scraper.predefined_schemas import list_all_schemas
 from app.extensions.web_scraper.schemas import (
     ImportResultResponse,
+    RerunTaskRequest,
     ScrapDraftCreate,
     ScrapDraftDetailResponse,
     ScrapDraftImport,
     ScrapDraftListResponse,
     ScrapDraftResponse,
     ScrapDraftUpdate,
+    ScrapSourceCreate,
+    ScrapSourceDetailResponse,
+    ScrapSourceListResponse,
+    ScrapSourceResponse,
+    ScrapSourceUpdate,
     ScrapeRequest,
     ScrapeResponse,
     ScrapeResultResponse,
+    TaskDetailResponse,
+    TaskListResponse,
 )
 from app.extensions.web_scraper.service import AuthConfig, ProxyConfig, ScrapeConfig, scraper_service
 from app.extensions.web_scraper.services.draft_service import ScrapDraftService
+from app.extensions.web_scraper.services.source_service import ScrapSourceService
+from app.extensions.web_scraper.services.task_service import ScrapTaskService
 from app.extensions.web_scraper.task_manager import TaskStatus, task_manager
 
 logger = logging.getLogger(__name__)
@@ -34,6 +45,7 @@ router = APIRouter(prefix="/api/extensions/web-scraper", tags=["Web Scraper"])
 async def create_scrape_task(
     request: ScrapeRequest,
     background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("kb:read")),
 ):
     """Create a web scraping task."""
@@ -81,6 +93,23 @@ async def create_scrape_task(
         auth_enabled=request.auth.enabled if request.auth else False,
     )
 
+    # Persist task record to DB
+    try:
+        await ScrapTaskService.create_task(
+            db=db,
+            user_id=current_user.id,
+            task_id=task_id,
+            url=str(request.url),
+            prompt=request.prompt,
+            provider=request.provider,
+            schema_name=request.schema_name,
+            llm_model=request.llm_model,
+            proxy_enabled=request.proxy.enabled if request.proxy else False,
+            auth_enabled=request.auth.enabled if request.auth else False,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to persist task record: {e}")
+
     background_tasks.add_task(_run_scrape_task, task_id, config)
 
     return ScrapeResponse(
@@ -91,10 +120,21 @@ async def create_scrape_task(
 
 
 async def _run_scrape_task(task_id: str, config: ScrapeConfig):
-    """Run scrape task in background."""
+    """Run scrape task in background with DB persistence."""
+    from app.extensions.database import get_session_factory
+
     await task_manager.update(task_id, status=TaskStatus.RUNNING)
 
+    # Persist running status
+    try:
+        async with get_session_factory()() as db:
+            await ScrapTaskService.update_task(db, task_id, status="running", started_at=datetime.utcnow())
+    except Exception as e:
+        logger.warning(f"Failed to update task status in DB: {e}")
+
+    collected_logs: list[dict] = []
     async for event in scraper_service.scrape(config, auto_fallback=True):
+        collected_logs.append(event)
         await task_manager.emit(task_id, event)
 
         if event["type"] == "result":
@@ -104,12 +144,45 @@ async def _run_scrape_task(task_id: str, config: ScrapeConfig):
                 result=event.get("content"),
                 provider_used=event.get("provider_used"),
             )
-        elif event["type"] == "error":
+            # Persist completion
+            try:
+                async with get_session_factory()() as db:
+                    await ScrapTaskService.update_task(
+                        db,
+                        task_id,
+                        status="completed",
+                        result=event.get("content"),
+                        structured_data=event.get("structured_data"),
+                        provider_used=event.get("provider_used"),
+                        logs=collected_logs,
+                        completed_at=datetime.utcnow(),
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to persist task completion: {e}")
+
+        elif event["type"] == "error" and event.get("final"):
             await task_manager.update(
                 task_id,
                 status=TaskStatus.FAILED,
                 error=event.get("message"),
             )
+            # Persist failure
+            try:
+                async with get_session_factory()() as db:
+                    await ScrapTaskService.update_task(
+                        db,
+                        task_id,
+                        status="failed",
+                        error=event.get("message"),
+                        logs=collected_logs,
+                        completed_at=datetime.utcnow(),
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to persist task failure: {e}")
+        elif event["type"] == "error":
+            # Intermediate provider error — fallback will try next provider.
+            # Still emit to SSE stream so frontend can show progress.
+            logger.info(f"Intermediate provider error for task {task_id}: {event.get('message')}")
 
 
 @router.get("/stream/{task_id}")
@@ -383,3 +456,173 @@ async def preview_draft(
         "source_url": draft.source_url,
         "schema_name": draft.schema_name,
     }
+
+
+# ==================== Task History APIs ====================
+
+
+@router.get("/tasks", response_model=TaskListResponse)
+async def list_task_history(
+    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """List task history with optional status filter."""
+    records, total = await ScrapTaskService.list_tasks(
+        db=db,
+        user_id=current_user.id,
+        status_filter=status_filter,
+        page=page,
+        page_size=page_size,
+    )
+    return ScrapTaskService.to_list_response(records, total, page, page_size)
+
+
+@router.get("/tasks/{task_id}", response_model=TaskDetailResponse)
+async def get_task_detail(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Get task detail including result and logs."""
+    record = await ScrapTaskService.get_task(db, task_id, current_user.id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return ScrapTaskService.to_detail_response(record)
+
+
+@router.post("/tasks/{task_id}/rerun", response_model=ScrapeResponse)
+async def rerun_task(
+    task_id: str,
+    request: RerunTaskRequest | None = None,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Re-run a completed/failed task with optional parameter overrides."""
+    record = await ScrapTaskService.get_task(db, task_id, current_user.id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    overrides = request or RerunTaskRequest()
+
+    url = record.url
+    provider = overrides.provider or record.provider
+    schema_name = overrides.schema_name or record.schema_name
+    llm_model = overrides.llm_model or record.llm_model
+    prompt = record.prompt or "Extract all important information from the webpage, organize as Markdown."
+
+    config = ScrapeConfig(
+        url=url,
+        prompt=prompt,
+        provider=provider,
+        schema_name=schema_name,
+        llm_model=llm_model,
+    )
+
+    new_task_id, _ = task_manager.create(
+        url=url,
+        prompt=prompt,
+        provider=provider,
+        schema_name=schema_name,
+    )
+
+    # Persist new task record
+    try:
+        await ScrapTaskService.create_task(
+            db=db,
+            user_id=current_user.id,
+            task_id=new_task_id,
+            url=url,
+            prompt=prompt,
+            provider=provider,
+            schema_name=schema_name,
+            llm_model=llm_model,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to persist rerun task record: {e}")
+
+    background_tasks.add_task(_run_scrape_task, new_task_id, config)
+
+    return ScrapeResponse(
+        task_id=new_task_id,
+        status="pending",
+        message=f"Re-run created from task {task_id}",
+    )
+
+
+# ==================== Data Source APIs ====================
+
+
+@router.post("/sources", response_model=ScrapSourceResponse, status_code=status.HTTP_201_CREATED)
+async def create_source(
+    data: ScrapSourceCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Create a new data source."""
+    source = await ScrapSourceService.create_source(db, current_user.id, data)
+    return ScrapSourceService.to_response(source)
+
+
+@router.get("/sources", response_model=ScrapSourceListResponse)
+async def list_sources(
+    category: str | None = Query(None, description="Filter by category"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """List data sources."""
+    sources, total = await ScrapSourceService.list_sources(
+        db=db,
+        user_id=current_user.id,
+        category=category,
+        page=page,
+        page_size=page_size,
+    )
+    return ScrapSourceService.to_list_response(sources, total, page, page_size)
+
+
+@router.get("/sources/{source_id}", response_model=ScrapSourceDetailResponse)
+async def get_source(
+    source_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Get data source detail."""
+    source = await ScrapSourceService.get_source(db, source_id, current_user.id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    return ScrapSourceService.to_detail_response(source)
+
+
+@router.put("/sources/{source_id}", response_model=ScrapSourceResponse)
+async def update_source(
+    source_id: UUID,
+    data: ScrapSourceUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Update data source."""
+    source = await ScrapSourceService.get_source(db, source_id, current_user.id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    updated = await ScrapSourceService.update_source(db, source, data)
+    return ScrapSourceService.to_response(updated)
+
+
+@router.delete("/sources/{source_id}")
+async def delete_source(
+    source_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("kb:read")),
+):
+    """Delete data source."""
+    source = await ScrapSourceService.get_source(db, source_id, current_user.id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    await ScrapSourceService.delete_source(db, source)
+    return {"message": "Data source deleted", "success": True}

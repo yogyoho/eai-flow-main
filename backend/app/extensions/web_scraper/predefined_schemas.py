@@ -9,9 +9,8 @@ from pydantic import BaseModel, Field
 class ScrapeProvider(str, Enum):
     """Scrape service providers."""
 
-    BROWSER_USE_LOCAL = "browser_use_local"
-    JINA = "jina"
     FIRECRAWL = "firecrawl"
+    JINA = "jina"
 
 
 class NationalStandard(BaseModel):

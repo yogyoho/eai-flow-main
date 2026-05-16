@@ -15,7 +15,7 @@
 services:
   # ── RAGFlow (API + Web UI + Task Executor) ─────────────────────────────
   ragflow:
-    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:latest}
+    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.25.3}
     container_name: eai-flow-ragflow
     # Default entrypoint (no --disable-* flags): starts nginx + API + task executors
     environment:

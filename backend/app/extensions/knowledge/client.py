@@ -56,11 +56,15 @@ class RAGFlowClient:
 
         raise last_error
 
-    async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None) -> dict:
-        """Create a new dataset in RAGFlow."""
+    async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None, chunk_method: str | None = None, parser_config: dict | None = None) -> dict:
+        """Create a new dataset in RAGFlow with optional chunking configuration."""
         payload = {"name": name, "description": description}
         if embedding_model:
             payload["embedding_model"] = embedding_model
+        if chunk_method:
+            payload["chunk_method"] = chunk_method
+        if parser_config:
+            payload["parser_config"] = parser_config
 
         async with httpx.AsyncClient(timeout=self.timeout * 20) as client:
             response = await client.post(
@@ -70,7 +74,12 @@ class RAGFlowClient:
             )
             response.raise_for_status()
             result = response.json()
-            logger.info(f"Created RAGFlow dataset: {name} (id: {result.get('data', {}).get('id')})")
+            code = result.get("code", -1)
+            if code != 0:
+                msg = result.get("message", "Unknown RAGFlow error")
+                raise RuntimeError(f"RAGFlow create_dataset failed (code={code}): {msg}")
+            dataset_id = result.get("data", {}).get("id")
+            logger.info(f"Created RAGFlow dataset: {name} (id={dataset_id}, chunk_method={chunk_method})")
             return result
 
     async def get_dataset(self, dataset_id: str) -> dict:
@@ -89,7 +98,6 @@ class RAGFlowClient:
             response = await client.get(
                 f"{self.base_url}{self.API_PREFIX}/datasets",
                 headers=self._get_headers(),
-                params={"page": page, "size": size},
             )
             response.raise_for_status()
             return response.json()
@@ -286,19 +294,41 @@ class RAGFlowClient:
 
         raise TimeoutError(f"Document parsing timeout after {max_wait_seconds}s")
 
-    async def chat(self, dataset_id: str, query: str, top_k: int = 5, similarity_threshold: float = 0.2, vector_similarity_weight: float = 0.3) -> dict:
-        """Retrieve chunks from a dataset (RAG query)."""
+    async def chat(
+        self,
+        dataset_id: str | list[str],
+        query: str,
+        top_k: int = 5,
+        similarity_threshold: float = 0.2,
+        vector_similarity_weight: float = 0.3,
+        doc_ids: list[str] | None = None,
+    ) -> dict:
+        """Retrieve chunks from dataset(s) (RAG query).
+
+        Args:
+            dataset_id: Single dataset ID or list of dataset IDs for cross-dataset retrieval.
+            query: Search question.
+            top_k: Number of top results.
+            similarity_threshold: Minimum similarity score.
+            vector_similarity_weight: Weight for vector vs keyword matching.
+            doc_ids: Optional list of document IDs to filter results.
+        """
+        ids = [dataset_id] if isinstance(dataset_id, str) else dataset_id
+        payload = {
+            "question": query,
+            "dataset_ids": ids,
+            "top_k": top_k,
+            "similarity_threshold": similarity_threshold,
+            "vector_similarity_weight": vector_similarity_weight,
+        }
+        if doc_ids:
+            payload["doc_ids"] = doc_ids
+
         async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
             response = await client.post(
                 f"{self.base_url}{self.API_PREFIX}/retrieval",
                 headers=self._get_headers(),
-                json={
-                    "question": query,
-                    "dataset_ids": [dataset_id],
-                    "top_k": top_k,
-                    "similarity_threshold": similarity_threshold,
-                    "vector_similarity_weight": vector_similarity_weight,
-                },
+                json=payload,
             )
             response.raise_for_status()
             return response.json()

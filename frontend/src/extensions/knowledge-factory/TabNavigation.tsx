@@ -9,6 +9,7 @@ import {
   GitBranch,
   BarChart3,
   Globe,
+  BookOpen,
 } from "lucide-react";
 import React from "react";
 
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "version", label: "版本管理", icon: GitBranch },
   { id: "quality", label: "质量评估", icon: BarChart3 },
   { id: "scraper", label: "网页爬取", icon: Globe },
+  { id: "dictionaries", label: "业务字典", icon: BookOpen },
 ];
 
 interface TabNavigationProps {
@@ -55,13 +57,13 @@ export default function TabNavigation({
             className={cn(
               "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative",
               activeTab === item.id
-                ? "bg-secondary text-primary font-medium"
+                ? "bg-secondary text-primary font-normal"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             <item.icon className="w-5 h-5 shrink-0" />
             {!collapsed && (
-              <span className="text-sm font-medium whitespace-nowrap">
+              <span className="text-sm font-normal whitespace-nowrap">
                 {item.label}
               </span>
             )}

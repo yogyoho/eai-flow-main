@@ -25,12 +25,16 @@ export async function fetchRuleDictionaries(): Promise<RuleDictionaries> {
     industries?: { value: string; label: string }[];
     report_types?: { value: string; label: string }[];
     regions?: { value: string; label: string }[];
+    rule_types?: { value: string; label: string }[];
+    severity_levels?: { value: string; label: string }[];
   }>(url, undefined, "");
 
   return {
     industries: (data.industries as RuleDictionaries["industries"]) ?? [],
     reportTypes: (data.report_types as RuleDictionaries["reportTypes"]) ?? [],
     regions: (data.regions as RuleDictionaries["regions"]) ?? [],
+    ruleTypes: (data.rule_types as RuleDictionaries["ruleTypes"]) ?? [],
+    severityLevels: (data.severity_levels as RuleDictionaries["severityLevels"]) ?? [],
   };
 }
 

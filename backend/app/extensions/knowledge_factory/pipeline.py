@@ -269,6 +269,7 @@ class ExtractionPipeline:
         report_documents: list[dict],
         config: ExtractionConfig,
         domain: Optional[str] = None,
+        reference_chapters: Optional[dict] = None,
         progress_callback: Optional[StepCallback] = None,
     ) -> PipelineResult:
         """Run the 5-stage pipeline.
@@ -278,6 +279,8 @@ class ExtractionPipeline:
             report_documents: List of dicts with keys: id, name, kb_id, chunks.
             config: Extraction configuration.
             domain: Domain identifier.
+            reference_chapters: Optional pre-defined chapter structure from
+                the domain's standard_chapters field, used as LLM guidance.
             progress_callback: Optional callback invoked after each step
                 completes (for real-time progress updates in the UI).
 
@@ -307,6 +310,7 @@ class ExtractionPipeline:
             "documents": report_documents,
             "_doc_schemas": [],  # Per-doc inferred schemas
             "_task_id": task_id,  # For logging
+            "_reference_chapters": reference_chapters,  # Domain's standard chapters
         }
         
         logger.info(f"[Task {task_id}] Starting extraction pipeline for {len(report_documents)} documents")
@@ -529,7 +533,11 @@ class ExtractionPipeline:
     async def _step_infer_schema(
         self, ctx: dict[str, Any], config: ExtractionConfig
     ) -> None:
-        """LLM 从文档内容推断章节树，动态适配不同报告类型。"""
+        """LLM 从文档内容推断章节树，动态适配不同报告类型。
+
+        If the domain has reference_chapters, they are passed to the LLM
+        as structural guidance alongside the document content.
+        """
         documents = ctx.get("_documents", [])
         if not documents:
             logger.warning(f"[Task {ctx.get('_task_id', 'unknown')}] Step 1: 没有文档，跳过")
@@ -567,9 +575,10 @@ class ExtractionPipeline:
 
             try:
                 logger.info(f"[Task {task_id}] Step 1: 调用 LLM infer_schema...")
+                ref_chapters = ctx.get("_reference_chapters")
                 schema = await loop.run_in_executor(
                     None,
-                    lambda d=doc_name, c=content: self.llm.infer_schema(d, c)
+                    lambda d=doc_name, c=content, r=ref_chapters: self.llm.infer_schema(d, c, reference_chapters=r)
                 )
                 logger.info(f"[Task {task_id}] Step 1: LLM infer_schema 返回")
                 sections = schema.get("sections", [])
@@ -824,9 +833,10 @@ class ExtractionPipeline:
 
         try:
             loop = asyncio.get_event_loop()
+            ref_chapters = ctx.get("_reference_chapters")
             merged = await loop.run_in_executor(
                 None,
-                lambda: self.llm.merge_sections(domain or "unknown", sections_list)
+                lambda: self.llm.merge_sections(domain or "unknown", sections_list, reference_chapters=ref_chapters)
             )
             logger.info(f"Merged {len(doc_schemas)} docs into {len(merged.get('sections', []))} sections")
             return merged

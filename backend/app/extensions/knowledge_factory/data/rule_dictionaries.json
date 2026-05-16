@@ -1,21 +1,32 @@
 {
   "industries": [
-    { "value": "environmental", "label": "环境保护" },
-    { "value": "safety_assessment", "label": "安全评价" },
-    { "value": "energy_assessment", "label": "能源评估" },
-    { "value": "fire_safety", "label": "消防安全" },
-    { "value": "occupational_health", "label": "职业卫生" }
+    { "value": "coal_mining", "label": "煤炭挖掘" },
+    { "value": "mineral_exploration", "label": "矿产勘查" },
+    { "value": "procurement", "label": "采购管理" },
+    { "value": "public_utilities", "label": "公用工程" }
   ],
   "report_types": [
-    { "value": "coal_mining_planning_eia", "label": "煤矿矿区总体规划环评" },
-    { "value": "coal_mining_project_eia", "label": "煤矿项目环评" },
-    { "value": "industrial_planning_eia", "label": "工业规划环评" },
-    { "value": "construction_project_eia", "label": "建设项目环评" },
-    { "value": "retrospective_evaluation", "label": "回顾性评价" }
+    { "value": "eia_report", "label": "环境影响评价报告" },
+    { "value": "fire_protection_design", "label": "消防设计专篇" },
+    { "value": "solid_mineral_geological_report", "label": "固体矿产地质勘查报告" }
   ],
   "regions": [
     { "value": "nationwide", "label": "全国" },
     { "value": "jilin", "label": "吉林" },
     { "value": "heilongjiang", "label": "黑龙江" }
+  ],
+  "rule_types": [
+    { "value": "standard_check", "label": "标准合规检查" },
+    { "value": "requirement_check", "label": "要求符合性检查" },
+    { "value": "spatial_check", "label": "空间距离检查" },
+    { "value": "data_consistency", "label": "数据一致性检查" },
+    { "value": "reference_check", "label": "引用标准检查" },
+    { "value": "engineering_check", "label": "工程规范检查" },
+    { "value": "compliance_check", "label": "合规性检查" }
+  ],
+  "severity_levels": [
+    { "value": "critical", "label": "严重" },
+    { "value": "warning", "label": "警告" },
+    { "value": "info", "label": "提示" }
   ]
 }

@@ -102,11 +102,11 @@ function ToastContainer({
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg",
+              "pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
               t.type === "success" &&
-                "border-success/20 bg-success/10 text-success",
-              t.type === "error" && "border-destructive/20 bg-destructive/10 text-destructive",
-              t.type === "info" && "border-primary/20 bg-primary/10 text-primary",
+                "border-green-200 bg-green-600 text-white",
+              t.type === "error" && "border-red-200 bg-red-600 text-white",
+              t.type === "info" && "border-blue-200 bg-blue-600 text-white",
             )}
           >
             {t.type === "success" && (

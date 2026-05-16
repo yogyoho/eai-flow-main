@@ -2,10 +2,12 @@
 
 import asyncio
 import logging
+import tempfile
+from pathlib import Path
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,15 +24,23 @@ from .schemas import (
     ComplianceRuleCreate,
     ComplianceRuleUpdate,
     ComplianceRuleImportResponse,
+    ComplianceRuleBatchCreate,
+    ComplianceRuleBatchResponse,
     ComplianceRuleOverviewResponse,
     RuleDictionariesResponse,
     ComplianceRuleStatusResponse,
     ComplianceRuleStatisticsResponse,
     ContentContract,
     CrossSectionRule,
+    DictCategoryResponse,
+    DictItemCreate,
+    DictItemUpdate,
+    DictItemResponse,
+    DictItemListResponse,
     DomainCreate,
     DomainListResponse,
     DomainResponse,
+    DomainUpdate,
     ExtractionConfig,
     ExtractionTaskCreate,
     ExtractionTaskListResponse,
@@ -51,7 +61,10 @@ from .schemas import (
     VersionDiff,
 )
 from app.extensions.settings.service import SystemConfigService
+from .dictionary_loader import load_rule_dictionaries
+from .seed_service import SeedImportService
 from .service import (
+    DictionaryService,
     DomainService,
     QualityService,
     TaskService,
@@ -103,6 +116,179 @@ async def list_domains(
     return DomainListResponse(domains=domains, total=len(domains))
 
 
+@router.put("/domains/{domain_id}", response_model=DomainResponse)
+async def update_domain(
+    domain_id: str,
+    data: DomainUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """更新领域"""
+    domain = await DomainService.get_domain(db, domain_id)
+    if not domain:
+        raise HTTPException(status_code=404, detail="领域不存在")
+    await DomainService.update_domain(db, domain, data)
+    await db.refresh(domain)
+    return domain
+
+
+@router.delete("/domains/{domain_id}")
+async def delete_domain(
+    domain_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """删除领域"""
+    domain = await DomainService.get_domain(db, domain_id)
+    if not domain:
+        raise HTTPException(status_code=404, detail="领域不存在")
+    await DomainService.delete_domain(db, domain)
+    return {"message": "领域已删除"}
+
+
+_ALLOWED_INFER_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt", ".md"}
+
+
+@router.post("/domains/infer-chapters")
+async def infer_chapters(
+    file: UploadFile = File(...),
+    max_depth: int = Form(3),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    _current_user: CurrentUser = None,
+):
+    """上传参考文档，AI 自动提取章节结构"""
+    max_depth = max(1, min(6, max_depth))  # clamp to 1-6
+    filename = file.filename or "unknown"
+    ext = Path(filename).suffix.lower()
+    if ext not in _ALLOWED_INFER_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}，支持: {', '.join(sorted(_ALLOWED_INFER_EXTENSIONS))}")
+
+    # 保存到临时文件
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:  # 20MB 限制
+        raise HTTPException(status_code=400, detail="文件大小不能超过 20MB")
+
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        # 解析文档为文本
+        text = await asyncio.to_thread(_parse_document, tmp_path, ext)
+        if not text.strip():
+            raise HTTPException(status_code=422, detail="无法从文档中提取文本内容")
+
+        # 解析 LLM 模型：优先使用系统基本设置中的默认模型
+        system_config = await SystemConfigService.get_all(db) if db else {}
+        system_default_model = system_config.get("default_model") or None
+
+        # LLM 推断章节结构
+        from .llm import ExtractionLLMClient
+
+        llm = ExtractionLLMClient(model_name=system_default_model, max_content_chars=10000)
+        try:
+            result = await asyncio.to_thread(llm.infer_schema, filename, text, max_depth)
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        if not result.get("sections"):
+            raise HTTPException(status_code=422, detail="AI 未能识别出文档的章节结构，请检查文档内容是否包含章节标题")
+        return result
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+def _parse_document(file_path: str, ext: str) -> str:
+    """根据文件类型解析文档为纯文本"""
+    path = Path(file_path)
+    if ext == ".pdf":
+        from markitdown import MarkItDown
+
+        md = MarkItDown()
+        return md.convert(str(path)).text_content or ""
+    elif ext in (".doc", ".docx"):
+        try:
+            import docx
+
+            doc = docx.Document(str(path))
+            paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            return "\n\n".join(paragraphs)
+        except ImportError:
+            from markitdown import MarkItDown
+
+            md = MarkItDown()
+            return md.convert(str(path)).text_content or ""
+    else:
+        return path.read_text(encoding="utf-8", errors="ignore")
+
+
+# ============== Dictionary APIs ==============
+
+
+@router.get("/dictionaries/categories", response_model=list[DictCategoryResponse])
+async def list_dict_categories(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """列出所有字典分类"""
+    return await DictionaryService.list_categories(db)
+
+
+@router.get("/dictionaries/{category}", response_model=DictItemListResponse)
+async def list_dict_items(
+    category: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """按分类列出字典项"""
+    items, total = await DictionaryService.list_items(db, category, page, limit)
+    return DictItemListResponse(items=items, total=total)
+
+
+@router.post("/dictionaries", response_model=DictItemResponse, status_code=status.HTTP_201_CREATED)
+async def create_dict_item(
+    data: DictItemCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """创建字典项"""
+    existing = await DictionaryService.get_item(db, data.id)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"字典项 {data.id} 已存在")
+    return await DictionaryService.create_item(db, data)
+
+
+@router.put("/dictionaries/{item_id}", response_model=DictItemResponse)
+async def update_dict_item(
+    item_id: str,
+    data: DictItemUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """更新字典项"""
+    item = await DictionaryService.get_item(db, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="字典项不存在")
+    await DictionaryService.update_item(db, item, data)
+    await db.refresh(item)
+    return item
+
+
+@router.delete("/dictionaries/{item_id}")
+async def delete_dict_item(
+    item_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """删除字典项"""
+    item = await DictionaryService.get_item(db, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="字典项不存在")
+    await DictionaryService.delete_item(db, item)
+    return {"message": "字典项已删除"}
+
+
 # ============== Task APIs ==============
 
 
@@ -143,6 +329,8 @@ async def create_task(
         id=task.id,
         name=task.name,
         domain=task.domain,
+        industry=task.industry,
+        report_type=task.report_type,
         source_reports=report_names,
         status="pending",
         progress=0,
@@ -229,11 +417,20 @@ async def run_pipeline_background(
                 task.progress = int((completed / 5) * 100) if pipeline_steps else 0
                 await TaskService.update_task_steps(db, task, steps)
 
+            # 获取领域的标准章节作为参考结构
+            reference_chapters = None
+            if data.domain:
+                domain_obj = await DomainService.get_domain(db, data.domain)
+                if domain_obj and domain_obj.standard_chapters:
+                    reference_chapters = domain_obj.standard_chapters
+                    logger.info(f"[Task {task_id}] Loaded reference chapters from domain '{data.domain}': {len(reference_chapters.get('sections', []))} sections")
+
             result = await pipeline.run(
                 task_id,
                 report_docs,
                 config,
                 domain=data.domain,
+                reference_chapters=reference_chapters,
                 progress_callback=on_step,
             )
 
@@ -397,6 +594,8 @@ async def get_task(
         id=task.id,
         name=task.name,
         domain=task.domain,
+        industry=task.industry,
+        report_type=task.report_type,
         source_reports=report_names,
         status=task.status,
         progress=task.progress,
@@ -510,6 +709,39 @@ async def rerun_task(
         config=config,
     )
     return await create_task(new_data, db, current_user)
+
+
+@router.delete("/extraction/tasks/{task_id}")
+async def delete_task(
+    task_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """删除单个任务（仅限已完成/失败/已暂停的任务）"""
+    task = await TaskService.get_task(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status in ("pending", "running"):
+        raise HTTPException(status_code=400, detail="运行中的任务不能删除，请先暂停或取消")
+    # 清理后台任务引用
+    _pipeline_tasks.pop(str(task_id), None)
+    await TaskService.delete_task(db, task)
+    return {"message": "任务已删除"}
+
+
+@router.delete("/extraction/tasks")
+async def clear_tasks(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+    statuses: Optional[str] = Query(None, description="要清除的状态，逗号分隔，默认 completed,failed"),
+):
+    """批量清除历史任务"""
+    status_list = [s.strip() for s in statuses.split(",")] if statuses else ["completed", "failed"]
+    for s in status_list:
+        if s in ("pending", "running"):
+            raise HTTPException(status_code=400, detail=f"不能清除运行中的任务（状态: {s}）")
+    count = await TaskService.clear_tasks(db, statuses=status_list)
+    return {"message": f"已清除 {count} 个任务", "deleted_count": count}
 
 
 # ============== Template APIs ==============
@@ -945,7 +1177,12 @@ async def _get_trigger_statistics_payload(
 async def get_rule_dictionaries(
     current_user: CurrentUser,
 ):
-    """Return read-only dictionaries for rule filters and editors."""
+    """Return dictionaries for rule filters and editors (prefers DB)."""
+    from .dictionary_loader import load_rule_dictionaries_from_db, load_rule_dictionaries
+
+    db_data = await load_rule_dictionaries_from_db()
+    if db_data is not None:
+        return RuleDictionariesResponse(**db_data)
     return RuleDictionariesResponse(**load_rule_dictionaries())
 
 
@@ -1031,6 +1268,109 @@ async def create_compliance_rule(
     await db.refresh(rule)
     
     return _build_rule_response(rule)
+
+
+@router.post("/rules/extract")
+async def extract_rules_from_document(
+    file: UploadFile = File(...),
+    industry: str = Form(""),
+    report_types: str = Form(""),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    _current_user: CurrentUser = None,
+):
+    """上传法规文档，AI 自动提取合规校验规则"""
+    filename = file.filename or "unknown"
+    ext = Path(filename).suffix.lower()
+    if ext not in _ALLOWED_INFER_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
+
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件大小不能超过 20MB")
+
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        text = await asyncio.to_thread(_parse_document, tmp_path, ext)
+        if not text.strip():
+            raise HTTPException(status_code=422, detail="无法从文档中提取文本内容")
+
+        system_config = await SystemConfigService.get_all(db) if db else {}
+        system_default_model = system_config.get("default_model") or None
+
+        from .llm import ExtractionLLMClient
+
+        llm = ExtractionLLMClient(model_name=system_default_model, max_content_chars=15000)
+        try:
+            rt_list = [r.strip() for r in report_types.split(",") if r.strip()] if report_types else None
+            rules = await asyncio.to_thread(
+                llm.extract_compliance_rules, filename, text, industry, rt_list
+            )
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        return {"rules": rules, "total": len(rules)}
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+@router.post("/rules/batch", response_model=ComplianceRuleBatchResponse)
+async def batch_create_rules(
+    data: ComplianceRuleBatchCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """批量创建合规规则"""
+    created_rules = []
+    skipped = 0
+    errors = []
+
+    for i, rule_data in enumerate(data.rules):
+        try:
+            existing = await db.execute(
+                select(ComplianceRule).where(ComplianceRule.rule_id == rule_data.rule_id)
+            )
+            if existing.scalar_one_or_none():
+                skipped += 1
+                continue
+
+            rule = ComplianceRule(
+                rule_id=rule_data.rule_id,
+                name=rule_data.name,
+                type=rule_data.type,
+                type_name=rule_data.type_name,
+                severity=rule_data.severity,
+                severity_name=rule_data.severity_name,
+                enabled=rule_data.enabled,
+                description=rule_data.description,
+                industry=rule_data.industry,
+                industry_name=rule_data.industry_name,
+                report_types=rule_data.report_types,
+                applicable_regions=rule_data.applicable_regions,
+                national_level=rule_data.national_level,
+                source_sections=rule_data.source_sections,
+                target_sections=rule_data.target_sections,
+                validation_config=rule_data.validation_config,
+                error_message=rule_data.error_message,
+                auto_fix_suggestion=rule_data.auto_fix_suggestion,
+                created_by=current_user.id,
+            )
+            db.add(rule)
+            await db.flush()
+            created_rules.append(_build_rule_response(rule))
+        except Exception as e:
+            errors.append(f"规则 {rule_data.rule_id}: {e}")
+
+    await db.commit()
+
+    return ComplianceRuleBatchResponse(
+        created=len(created_rules),
+        skipped=skipped,
+        errors=errors,
+        created_rules=created_rules,
+    )
 
 
 @router.put("/rules/{rule_id}", response_model=ComplianceRuleResponse)

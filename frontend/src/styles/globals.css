@@ -320,12 +320,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--muted-foreground);
-    opacity: 0.35;
+    background: rgba(0, 0, 0, 0.08);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    opacity: 0.55;
+    background: rgba(0, 0, 0, 0.16);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
   }
 
   .container-md {

@@ -15,14 +15,13 @@ import {
   VersionControl,
   QualityAssessment,
   WebScraper,
+  BusinessDictionary,
   TabNavigation,
 } from "@/extensions/knowledge-factory/index";
-import DraftBox from "./DraftBox";
 
 export default function KnowledgeFactoryPage() {
   const [activeTab, setActiveTab] = useState<TabId>("reports");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showDraftBox, setShowDraftBox] = useState(false);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -41,16 +40,9 @@ export default function KnowledgeFactoryPage() {
       case "quality":
         return <QualityAssessment />;
       case "scraper":
-        return (
-          <div className="relative h-full">
-            <WebScraper onOpenDraftBox={() => setShowDraftBox(true)} />
-            {showDraftBox && (
-              <div className="absolute inset-0 bg-background z-10">
-                <DraftBox onClose={() => setShowDraftBox(false)} />
-              </div>
-            )}
-          </div>
-        );
+        return <WebScraper />;
+      case "dictionaries":
+        return <BusinessDictionary />;
       default:
         return <SampleReports />;
     }

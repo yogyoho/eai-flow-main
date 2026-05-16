@@ -35,7 +35,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-primary",
     bgColor: "bg-primary/10",
     description: "全国人大及常委会制定",
-    ragflowKbName: "ragflow-laws-national",
+    ragflowKbName: "ragflow-laws-legal",
   },
   {
     icon: BookOpen,
@@ -44,7 +44,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-purple-500",
     bgColor: "bg-purple-500/10",
     description: "国务院制定",
-    ragflowKbName: "ragflow-laws-regulation",
+    ragflowKbName: "ragflow-laws-legal",
   },
   {
     icon: FileText,
@@ -53,7 +53,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
     description: "各部委（生态环境部等）",
-    ragflowKbName: "ragflow-laws-rules",
+    ragflowKbName: "ragflow-laws-legal",
   },
   {
     icon: Shield,
@@ -62,7 +62,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-red-500",
     bgColor: "bg-red-500/10",
     description: "GB系列（如GB 3095空气质量标准）",
-    ragflowKbName: "ragflow-laws-national-std",
+    ragflowKbName: "ragflow-laws-standards",
   },
   {
     icon: Factory,
@@ -71,7 +71,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-amber-500",
     bgColor: "bg-amber-500/10",
     description: "HJ、SY、NB等系列",
-    ragflowKbName: "ragflow-laws-industry-std",
+    ragflowKbName: "ragflow-laws-standards",
   },
   {
     icon: Globe,
@@ -80,7 +80,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-cyan-500",
     bgColor: "bg-cyan-500/10",
     description: "各省市地方标准",
-    ragflowKbName: "ragflow-laws-local-std",
+    ragflowKbName: "ragflow-laws-standards",
   },
   {
     icon: Ruler,
@@ -89,7 +89,7 @@ export const LAW_CATEGORIES: LawCategory[] = [
     color: "text-green-500",
     bgColor: "bg-green-500/10",
     description: "环评技术导则、方法指南",
-    ragflowKbName: "ragflow-laws-technical",
+    ragflowKbName: "ragflow-laws-standards",
   },
 ];
 

@@ -45,6 +45,10 @@ import type {
   TemplateListResponse,
   TemplateDocument,
   TemplateVersionResponse,
+  QualityAssessmentResult,
+  VersionCompareResult,
+  TemplateRollbackResponse,
+  DictItemResponse,
 } from "../knowledge-factory/types";
 
 const API_BASE = "/api/extensions";
@@ -77,8 +81,10 @@ function withCsrf(headers: HeadersInit, method?: string): HeadersInit {
 }
 
 async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData;
+  const baseHeaders: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
   const headers: HeadersInit = withCsrf({
-    "Content-Type": "application/json",
+    ...baseHeaders,
     ...options.headers,
   }, options.method);
 
@@ -86,6 +92,7 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
   try {
     response = await fetch(`${KF_API_BASE}${path}`, {
       ...options,
+      body: isFormData ? options.body : options.body,
       headers,
       credentials: "include",
     });
@@ -595,6 +602,130 @@ export const scraperApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Task History
+  listTasks: (params?: { status?: string; page?: number; page_size?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.page !== undefined) query.set("page", String(params.page));
+    if (params?.page_size !== undefined) query.set("page_size", String(params.page_size));
+    return request<{
+      tasks: {
+        task_id: string;
+        url: string;
+        provider: string;
+        schema_name?: string;
+        status: string;
+        error?: string;
+        provider_used?: string;
+        created_at: string;
+        started_at?: string;
+        completed_at?: string;
+      }[];
+      total: number;
+      page: number;
+      page_size: number;
+    }>(`/web-scraper/tasks?${query}`);
+  },
+
+  getTaskDetail: (taskId: string) =>
+    request<{
+      task_id: string;
+      url: string;
+      provider: string;
+      schema_name?: string;
+      status: string;
+      error?: string;
+      provider_used?: string;
+      created_at: string;
+      started_at?: string;
+      completed_at?: string;
+      prompt?: string;
+      result?: string;
+      structured_data?: Record<string, unknown>;
+      logs: { type: string; level?: string; message?: string; content?: string }[];
+      draft_id?: string;
+    }>(`/web-scraper/tasks/${taskId}`),
+
+  rerunTask: (taskId: string, overrides?: { provider?: string; schema_name?: string; llm_model?: string }) =>
+    request<{ task_id: string; status: string; message: string }>(`/web-scraper/tasks/${taskId}/rerun`, {
+      method: "POST",
+      body: JSON.stringify(overrides || {}),
+    }),
+
+  // Data Sources
+  listSources: (params?: { category?: string; page?: number; page_size?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.set("category", params.category);
+    if (params?.page !== undefined) query.set("page", String(params.page));
+    if (params?.page_size !== undefined) query.set("page_size", String(params.page_size));
+    return request<{
+      sources: {
+        id: string;
+        name: string;
+        url_pattern: string;
+        category?: string;
+        default_schema?: string;
+        default_provider?: string;
+        is_enabled: boolean;
+        last_scraped_at?: string;
+        created_at: string;
+        updated_at: string;
+      }[];
+      total: number;
+      page: number;
+      page_size: number;
+    }>(`/web-scraper/sources?${query}`);
+  },
+
+  createSource: (data: {
+    name: string;
+    url_pattern: string;
+    description?: string;
+    category?: string;
+    default_schema?: string;
+    default_provider?: string;
+    auth_config?: Record<string, unknown>;
+    proxy_config?: Record<string, unknown>;
+    cron_expression?: string;
+    is_enabled?: boolean;
+  }) =>
+    request<{
+      id: string;
+      name: string;
+      url_pattern: string;
+      [key: string]: unknown;
+    }>("/web-scraper/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getSource: (id: string) =>
+    request<{
+      id: string;
+      name: string;
+      url_pattern: string;
+      description?: string;
+      category?: string;
+      default_schema?: string;
+      default_provider?: string;
+      is_enabled: boolean;
+      auth_config?: Record<string, unknown>;
+      proxy_config?: Record<string, unknown>;
+      cron_expression?: string;
+      last_scraped_at?: string;
+      created_at: string;
+      updated_at: string;
+    }>(`/web-scraper/sources/${id}`),
+
+  updateSource: (id: string, data: Record<string, unknown>) =>
+    request<{ id: string; name: string; [key: string]: unknown }>(`/web-scraper/sources/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteSource: (id: string) =>
+    request<{ message: string; success: boolean }>(`/web-scraper/sources/${id}`, { method: "DELETE" }),
 };
 
 // ===== Knowledge Factory API =====
@@ -697,6 +828,45 @@ export const kfApi = {
   listDomains: () =>
     kfRequest<{ domains: ExtractionDomain[]; total: number }>("/domains"),
 
+  updateDomain: (domainId: string, data: { name?: string; description?: string; parent_domain?: string; standard_chapters?: Record<string, unknown>; industry?: string; report_type?: string }) =>
+    kfRequest<ExtractionDomain>(`/domains/${domainId}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  deleteDomain: (domainId: string) =>
+    kfRequest<{ message: string }>(`/domains/${domainId}`, { method: "DELETE" }),
+
+  createDomain: (data: { id: string; name: string; description?: string; standard_chapters?: Record<string, unknown>; industry?: string; report_type?: string }) =>
+    kfRequest<ExtractionDomain>("/domains", { method: "POST", body: JSON.stringify(data) }),
+
+  inferChapters: (file: File, maxDepth: number = 3) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("max_depth", String(maxDepth));
+    return kfRequest<{ sections: Array<{ id: string; title: string; level?: number; required?: boolean; purpose?: string; children?: unknown[] }> }>(
+      "/domains/infer-chapters",
+      { method: "POST", body: formData },
+    );
+  },
+
+  // Dictionaries
+  listDictCategories: () =>
+    kfRequest<{ category: string; label: string; count: number }[]>("/dictionaries/categories"),
+
+  listDictItems: (category: string, params?: { page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.limit) query.set("limit", String(params.limit));
+    return kfRequest<{ items: DictItemResponse[]; total: number }>(`/dictionaries/${category}?${query}`);
+  },
+
+  createDictItem: (data: { id: string; category: string; label: string; sort_order?: number; enabled?: boolean }) =>
+    kfRequest<DictItemResponse>("/dictionaries", { method: "POST", body: JSON.stringify(data) }),
+
+  updateDictItem: (itemId: string, data: { label?: string; sort_order?: number; enabled?: boolean }) =>
+    kfRequest<DictItemResponse>(`/dictionaries/${itemId}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  deleteDictItem: (itemId: string) =>
+    kfRequest<{ message: string }>(`/dictionaries/${itemId}`, { method: "DELETE" }),
+
   // Extraction tasks
   createTask: (data: ExtractionTaskCreate) =>
     kfRequest<ExtractionTaskResponse>("/extraction/tasks", { method: "POST", body: JSON.stringify(data) }),
@@ -723,6 +893,14 @@ export const kfApi = {
 
   rerunTask: (taskId: string) =>
     kfRequest<ExtractionTaskResponse>(`/extraction/tasks/${taskId}/rerun`, { method: "POST" }),
+
+  deleteTask: (taskId: string) =>
+    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}`, { method: "DELETE" }),
+
+  clearTasks: (statuses?: string[]) => {
+    const params = statuses ? `?statuses=${statuses.join(",")}` : "";
+    return kfRequest<{ message: string; deleted_count: number }>(`/extraction/tasks${params}`, { method: "DELETE" });
+  },
 
   // Template management
   listTemplates: (params?: {
@@ -758,4 +936,19 @@ export const kfApi = {
 
   getTemplateVersions: (templateId: string) =>
     kfRequest<TemplateVersionResponse[]>(`/templates/${templateId}/versions`),
+
+  rollbackTemplate: (templateId: string, versionId: string, changelog?: string) =>
+    kfRequest<TemplateRollbackResponse>(`/templates/${templateId}/rollback`, {
+      method: "POST",
+      body: JSON.stringify({ version_id: versionId, changelog }),
+    }),
+
+  compareVersions: (versionAId: string, versionBId: string) =>
+    kfRequest<VersionCompareResult>("/templates/compare", {
+      method: "POST",
+      body: JSON.stringify({ version_a_id: versionAId, version_b_id: versionBId }),
+    }),
+
+  assessQuality: (templateId: string) =>
+    kfRequest<QualityAssessmentResult>(`/templates/${templateId}/assess-quality`, { method: "POST" }),
 };

@@ -66,10 +66,10 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
         <div
           key={t.id}
           className={cn(
-            "flex items-center gap-3 rounded-xl border px-4 py-3 font-medium shadow-lg",
-            t.type === "success" && "border-success/20 bg-success/10 text-success",
-            t.type === "error" && "border-red-500/20 bg-red-500/10 text-red-500 dark:bg-red-500/20",
-            t.type === "info" && "border-primary/20 bg-primary/10 text-primary"
+            "flex items-center gap-3 rounded-xl border px-4 py-3 font-medium shadow-lg backdrop-blur-sm",
+            t.type === "success" && "border-emerald-500/20 bg-emerald-500/90 text-white",
+            t.type === "error" && "border-red-500/20 bg-red-500/90 text-white",
+            t.type === "info" && "border-blue-500/20 bg-blue-500/90 text-white"
           )}
         >
           {t.type === "success" && <CheckCircle2 className="h-4 w-4 shrink-0" />}
@@ -311,7 +311,7 @@ export default function SampleReports() {
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-8 py-6">
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-5 w-5 shrink-0 text-primary" />
-          <h2 className="truncate text-lg font-semibold tracking-tight text-foreground">样例报告库</h2>
+          <h2 className="truncate text-lg font-medium tracking-tight text-foreground">样例报告库</h2>
         </div>
         <button
           type="button"
@@ -428,7 +428,7 @@ export default function SampleReports() {
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors duration-200 group-hover:text-primary">
+                      <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors duration-200 group-hover:text-primary">
                         {report.name}
                       </h3>
                       <div className="mt-1.5">

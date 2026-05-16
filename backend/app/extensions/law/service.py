@@ -27,15 +27,39 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 
-# RAGFlow知识库映射
+# RAGFlow知识库映射 — 按分块策略分为2个逻辑隔离的知识库：
+# - ragflow-laws-legal: 法律/法规/规章 → laws parser（识别条/款/项结构）
+# - ragflow-laws-standards: 各类标准/规范 → manual parser（按章/节标题边界分块）
+# 各 law_type 通过元数据（law_type 字段）实现逻辑隔离，无需物理隔离
 RAGFLOW_KB_MAPPING = {
-    "law": "ragflow-laws-national",
-    "regulation": "ragflow-laws-regulation",
-    "rule": "ragflow-laws-rules",
-    "national": "ragflow-laws-national-std",
-    "industry": "ragflow-laws-industry-std",
-    "local": "ragflow-laws-local-std",
-    "technical": "ragflow-laws-technical",
+    "law": "ragflow-laws-legal",
+    "regulation": "ragflow-laws-legal",
+    "rule": "ragflow-laws-legal",
+    "national": "ragflow-laws-standards",
+    "industry": "ragflow-laws-standards",
+    "local": "ragflow-laws-standards",
+    "technical": "ragflow-laws-standards",
+}
+
+# 去重后的唯一知识库名称及其对应的分块策略
+RAGFLOW_DATASET_GROUPS = {
+    "ragflow-laws-legal": "laws",
+    "ragflow-laws-standards": "manual",
+}
+
+# RAGFlow分块策略映射: law_type -> chunk_method (parser_id)
+# 法律/法规/规章 → laws parser（识别条/款/项结构）
+# 标准/规范 → manual parser（按章/节标题边界分块）
+# parser_config 不在此处设置，由 RAGFlow 使用其默认值
+# (chunk_token_num=512, delimiter="\n!?。；！？", layout_recognize="DeepDOC")
+_LAW_CHUNK_METHOD: dict[str, str] = {
+    "law": "laws",
+    "regulation": "laws",
+    "rule": "laws",
+    "national": "manual",
+    "industry": "manual",
+    "local": "manual",
+    "technical": "manual",
 }
 
 
@@ -90,6 +114,11 @@ class LawService:
         return RAGFLOW_KB_MAPPING.get(law_type, "ragflow-laws-default")
 
     @staticmethod
+    def get_chunk_method(law_type: str) -> str | None:
+        """根据法规类型获取 RAGFlow chunk_method（parser_id）。"""
+        return _LAW_CHUNK_METHOD.get(law_type)
+
+    @staticmethod
     async def ensure_ragflow_kb_exists(rf_client: RAGFlowClient, law_type: str) -> str | None:
         """确保指定类型的RAGFlow知识库存在，返回dataset_id"""
         kb_name = LawService.get_ragflow_dataset_id(law_type)
@@ -104,10 +133,11 @@ class LawService:
 
         # 不存在则创建
         try:
+            chunk_method = LawService.get_chunk_method(law_type)
             result = await rf_client.create_dataset(
                 name=kb_name,
                 description=f"法规标准库 - {law_type}",
-                embedding_model="text-embedding-3-large",
+                chunk_method=chunk_method,
             )
             return result.get("data", {}).get("id")
         except Exception as e:
@@ -355,7 +385,17 @@ class LawService:
 
     @staticmethod
     async def delete_law(db: AsyncSession, law: Law) -> None:
-        """删除法规"""
+        """删除法规，若已同步则先删除 RAGFlow 文档"""
+        if law.is_synced == "synced" and law.ragflow_document_id and law.ragflow_dataset_id:
+            config = get_extensions_config()
+            if config.ragflow.api_key:
+                rf_client = RAGFlowClient()
+                try:
+                    await rf_client.delete_document(law.ragflow_dataset_id, law.ragflow_document_id)
+                    logger.info("Deleted RAGFlow document %s for law %s", law.ragflow_document_id, law.id)
+                except Exception as e:
+                    logger.error("Failed to delete RAGFlow document %s for law %s: %s", law.ragflow_document_id, law.id, e)
+                    raise
         await db.delete(law)
         await db.commit()
 
@@ -377,19 +417,22 @@ class LawService:
         law: Law,
         file_path: str = None,
         file_name: str | None = None,
-    ) -> bool:
-        """????? RAGFlow?"""
+    ) -> tuple[bool, str]:
+        """同步法规到 RAGFlow，返回 (成功, 错误信息)"""
         config = get_extensions_config()
         if not config.ragflow.api_key:
-            logger.warning("RAGFlow API key not configured")
-            return False
+            msg = "RAGFlow API Key 未配置，请在扩展设置中配置 RAGFlow"
+            logger.warning(msg)
+            return False, msg
 
         rf_client = RAGFlowClient()
         dataset_id = await LawService.ensure_ragflow_kb_exists(rf_client, law.law_type)
         if not dataset_id:
+            msg = f"RAGFlow 知识库不存在且创建失败 (law_type={law.law_type})，请先调用 init-ragflow 初始化知识库"
+            logger.warning(msg)
             law.is_synced = "failed"
             await db.commit()
-            return False
+            return False, msg
 
         temp_upload_path: str | None = None
 
@@ -421,10 +464,12 @@ class LawService:
                 upload_name = f"{law.law_number or law.id}.txt"
 
             if upload_path and law.ragflow_document_id is None:
+                parser_id = LawService.get_chunk_method(law.law_type)
                 result = await rf_client.upload_document(
                     dataset_id=dataset_id,
                     file_path=upload_path,
                     file_name=upload_name or os.path.basename(upload_path),
+                    parser_id=parser_id,
                 )
                 ragflow_doc_id = result.get("data", {}).get("id")
                 if ragflow_doc_id:
@@ -442,22 +487,24 @@ class LawService:
                     metadata=law_metadata.model_dump(exclude_none=True),
                 )
             else:
+                msg = "法规无正文内容且无上传文件，无法同步到 RAGFlow"
                 logger.warning("No file or content available for law sync: %s", law.id)
                 law.is_synced = "failed"
                 await db.commit()
-                return False
+                return False, msg
 
             law.ragflow_dataset_id = dataset_id
             law.is_synced = "synced"
             law.last_sync_at = datetime.utcnow()
             await db.commit()
-            return True
+            return True, ""
 
         except Exception as e:
-            logger.error(f"????? RAGFlow ??: {e}")
+            msg = f"RAGFlow 同步异常: {e}"
+            logger.error(f"同步法规到 RAGFlow 失败: {e}")
             law.is_synced = "failed"
             await db.commit()
-            return False
+            return False, msg
         finally:
             if temp_upload_path and os.path.exists(temp_upload_path):
                 os.unlink(temp_upload_path)
@@ -480,9 +527,9 @@ class LawService:
             ]
             return RAGFlowStatusResponse(
                 statuses=statuses,
-                total_kbs=len(RAGFLOW_KB_MAPPING),
+                total_kbs=len(RAGFLOW_DATASET_GROUPS),
                 healthy_kbs=0,
-                missing_kbs=len(RAGFLOW_KB_MAPPING),
+                missing_kbs=len(RAGFLOW_DATASET_GROUPS),
                 error_kbs=0,
             )
 
@@ -492,56 +539,59 @@ class LawService:
         missing = 0
         errors = 0
 
-        for law_type, kb_name in RAGFLOW_KB_MAPPING.items():
+        # 按唯一dataset查询（避免重复查询同一知识库）
+        dataset_cache: dict[str, dict] = {}
+
+        for kb_name in RAGFLOW_DATASET_GROUPS:
             try:
                 existing = await rf_client.get_dataset_by_name(kb_name)
                 if existing:
                     dataset_id = existing.get("id")
-                    # 获取文档数量
                     doc_count = 0
                     try:
                         docs = await rf_client.list_documents(dataset_id)
                         doc_count = len(docs.get("data", {}).get("docs", []))
                     except Exception:
                         pass
-
-                    statuses.append(
-                        RAGFlowKBStatus(
-                            type=law_type,
-                            kb_name=kb_name,
-                            exists=True,
-                            dataset_id=dataset_id,
-                            document_count=doc_count,
-                            status="healthy",
-                        )
-                    )
+                    dataset_cache[kb_name] = {
+                        "exists": True,
+                        "dataset_id": dataset_id,
+                        "doc_count": doc_count,
+                        "status": "healthy",
+                    }
                     healthy += 1
                 else:
-                    statuses.append(
-                        RAGFlowKBStatus(
-                            type=law_type,
-                            kb_name=kb_name,
-                            exists=False,
-                            status="missing",
-                        )
-                    )
+                    dataset_cache[kb_name] = {
+                        "exists": False,
+                        "status": "missing",
+                    }
                     missing += 1
-
             except Exception as e:
-                statuses.append(
-                    RAGFlowKBStatus(
-                        type=law_type,
-                        kb_name=kb_name,
-                        exists=False,
-                        status="error",
-                        error_message=str(e),
-                    )
-                )
+                dataset_cache[kb_name] = {
+                    "exists": False,
+                    "status": "error",
+                    "error_message": str(e),
+                }
                 errors += 1
+
+        # 按每个 law_type 展开状态（多个 type 共享同一 dataset）
+        for law_type, kb_name in RAGFLOW_KB_MAPPING.items():
+            cached = dataset_cache.get(kb_name, {})
+            statuses.append(
+                RAGFlowKBStatus(
+                    type=law_type,
+                    kb_name=kb_name,
+                    exists=cached.get("exists", False),
+                    dataset_id=cached.get("dataset_id"),
+                    document_count=cached.get("doc_count", 0),
+                    status=cached.get("status", "unknown"),
+                    error_message=cached.get("error_message"),
+                )
+            )
 
         return RAGFlowStatusResponse(
             statuses=statuses,
-            total_kbs=len(RAGFLOW_KB_MAPPING),
+            total_kbs=len(RAGFLOW_DATASET_GROUPS),
             healthy_kbs=healthy,
             missing_kbs=missing,
             error_kbs=errors,
