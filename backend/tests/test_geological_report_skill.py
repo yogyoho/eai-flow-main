@@ -276,6 +276,16 @@ class TestContentDepth:
         assert "第一章" in self.content
         assert "1.1" in self.content
 
+    def test_exploration_type_table_has_all_types(self):
+        """Technical requirements must list all exploration types (I, II, III, I-II, II-III)."""
+        for type_code in ["Ⅰ", "Ⅱ", "Ⅲ"]:
+            assert type_code in self.content, f"Exploration type {type_code} not found"
+
+    def test_stage_mapping_scales(self):
+        """Each stage must specify geological mapping scale ranges."""
+        assert "1:25000" in self.content or "1:5000" in self.content
+        assert "1:10000" in self.content or "1:2000" in self.content
+
 
 # ---------------------------------------------------------------------------
 # Group 4: Skill loading integration
