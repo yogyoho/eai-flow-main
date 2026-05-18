@@ -8,7 +8,7 @@
 
 ### 1.1 目标
 
-为 DeerFlow 智能体系统创建一个地质勘查报告制作技能，支持生成符合中国国家标准的固体矿产地质勘查报告。技能以 SKILL.md 形式存在于 `skills/public/geological-report/`，通过系统提示词注入引导智能体完成报告编写全流程。
+为 DeerFlow 智能体系统创建一个地质勘查报告制作技能，支持生成符合中国国家标准的固体矿产地质勘查报告。技能以 SKILL.md 形式存在于 `skills/custom/geological-report/`，通过系统提示词注入引导智能体完成报告编写全流程。放置在 `custom/` 目录下，便于用户编辑和迭代，部署时需注意 custom 目录的持久化（该目录默认被 gitignore）。
 
 ### 1.2 适用标准
 
@@ -40,9 +40,15 @@
 ### 2.1 文件位置
 
 ```
-skills/public/geological-report/
+skills/custom/geological-report/
 └── SKILL.md
 ```
+
+> **注意**: `skills/custom/` 目录默认被 `.gitignore` 排除。技能放置在此目录后会被系统自动发现（`SkillCategory.CUSTOM`），但需要在 `extensions_config.json` 中手动启用：
+> ```json
+> { "skills": { "geological-report": { "enabled": true } } }
+> ```
+> 部署时需确保 custom 目录的持久化存储。
 
 ### 2.2 SKILL.md Frontmatter
 
