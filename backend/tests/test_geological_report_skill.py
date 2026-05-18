@@ -111,3 +111,62 @@ class TestFrontmatter:
         assert skill.license is not None
         assert skill.allowed_tools is not None
         assert len(skill.allowed_tools) > 0
+
+
+# ---------------------------------------------------------------------------
+# Group 2: Structural sections
+# ---------------------------------------------------------------------------
+
+
+class TestStructuralSections:
+    """Verify SKILL.md contains all required content sections (design spec §2.3)."""
+
+    @pytest.fixture(autouse=True)
+    def _load_content(self):
+        self.content = _read_skill_content()
+
+    def test_has_workflow_protocol_section(self):
+        """Must contain workflow protocol section."""
+        assert "工作流协议" in self.content or "## 工作流" in self.content
+
+    def test_has_stage_templates_section(self):
+        """Must contain report stage templates section."""
+        assert "附录A" in self.content or "普查" in self.content
+        assert "附录B" in self.content or "详查" in self.content
+        assert "附录C" in self.content or "勘探" in self.content
+
+    def test_has_technical_requirements_section(self):
+        """Must contain technical requirements section (GB/T 13908-2020)."""
+        assert "勘查类型" in self.content
+        assert "工程间距" in self.content
+
+    def test_has_resource_classification_section(self):
+        """Must contain resource classification section (TD/KZ/TM/KX/ZS)."""
+        for code in ["TD", "KZ", "TM", "KX", "ZS"]:
+            assert code in self.content, f"Resource classification code {code} not found"
+
+    def test_has_quality_checklist_section(self):
+        """Must contain quality checklist section."""
+        assert "质量校验" in self.content or "质量自检" in self.content or "质量检查" in self.content
+
+    def test_has_mineral_adaptation_section(self):
+        """Must contain mineral-type adaptation section."""
+        assert "矿种适配" in self.content or "矿种" in self.content
+        assert "煤" in self.content
+        assert "铜" in self.content
+
+    def test_has_output_specification_section(self):
+        """Must contain output specification section."""
+        assert "输出规范" in self.content or "输出格式" in self.content
+        assert "/mnt/user-data/outputs" in self.content
+
+    def test_has_dual_mode_workflow(self):
+        """Must describe both auto-parse and conversational guidance modes."""
+        assert "自动解析" in self.content or "解析模式" in self.content
+        assert "对话引导" in self.content or "引导模式" in self.content
+
+    def test_has_conversational_question_sequence(self):
+        """Must define the information collection question sequence."""
+        assert "矿种" in self.content
+        assert "勘查阶段" in self.content
+        assert "资源量估算" in self.content
