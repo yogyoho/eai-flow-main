@@ -1,14 +1,16 @@
 "use client";
 
-import { BookmarkIcon, CheckIcon, Loader2Icon, AlertCircleIcon } from "lucide-react";
+import { BookmarkIcon, CheckIcon, Loader2Icon, AlertCircleIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { urlOfArtifact } from "@/core/artifacts/utils";
 import { getFileName } from "@/core/utils/files";
 import { docmgrApi } from "@/extensions/api";
-import { cn } from "@/lib/utils";
 
-/** Check if a document with the same title and source_thread_id already exists */
+import { Tooltip } from "../tooltip";
+
 async function checkDocExists(title: string, threadId: string): Promise<boolean> {
   try {
     const result = await docmgrApi.list({ q: title });
@@ -20,7 +22,6 @@ async function checkDocExists(title: string, threadId: string): Promise<boolean>
   }
 }
 
-/** Fetch artifact content and save it to the document space. */
 export function SaveArtifactToDocButton({
   filepath,
   threadId,
@@ -39,7 +40,6 @@ export function SaveArtifactToDocButton({
 
     const title = getFileName(filepath).replace(/\.[^.]+$/, "") || "未命名文档";
 
-    // Check if document already exists
     setState("checking");
     try {
       const exists = await checkDocExists(title, threadId);
@@ -73,7 +73,7 @@ export function SaveArtifactToDocButton({
     }
   }, [filepath, threadId, state]);
 
-  const title =
+  const tooltip =
     state === "done" ? "已保存到文档空间" :
     state === "exists" ? "文档已存在" :
     state === "error" ? "保存失败，请重试" :
@@ -81,74 +81,110 @@ export function SaveArtifactToDocButton({
     state === "saving" ? "保存中..." :
     "保存到文档空间";
 
+  const icon =
+    state === "saving" || state === "checking" ? (
+      <Loader2Icon className="animate-spin" size={12} />
+    ) : state === "done" ? (
+      <CheckIcon className="text-green-500" size={12} />
+    ) : state === "exists" ? (
+      <AlertCircleIcon className="text-amber-500" size={12} />
+    ) : state === "error" ? (
+      <AlertCircleIcon className="text-red-500" size={12} />
+    ) : (
+      <BookmarkIcon size={12} />
+    );
+
   if (variant === "icon") {
     return (
-      <button
-        onClick={handleSave}
-        disabled={state === "saving" || state === "done" || state === "checking" || state === "exists"}
-        title={title}
-        className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-md border text-xs transition-colors",
-          state === "done"
-            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-            : state === "exists"
-              ? "border-amber-500/20 bg-amber-500/10 text-amber-500"
-              : state === "error"
-                ? "border-red-500/20 bg-red-500/10 text-red-500"
-                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary",
-          (state === "saving" || state === "checking") && "cursor-not-allowed opacity-60"
-        )}
-      >
-        {state === "saving" || state === "checking" ? (
-          <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
-        ) : state === "done" ? (
-          <CheckIcon className="w-3.5 h-3.5" />
-        ) : state === "exists" ? (
-          <AlertCircleIcon className="w-3.5 h-3.5" />
-        ) : state === "error" ? (
-          <AlertCircleIcon className="w-3.5 h-3.5" />
-        ) : (
-          <BookmarkIcon className="w-3.5 h-3.5" />
-        )}
-      </button>
+      <Tooltip content={tooltip}>
+        <Button
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+          onClick={handleSave}
+          disabled={state === "saving" || state === "done" || state === "checking" || state === "exists"}
+        >
+          {icon}
+        </Button>
+      </Tooltip>
     );
   }
 
   return (
-    <button
-      onClick={handleSave}
-      disabled={state === "saving" || state === "done" || state === "checking" || state === "exists"}
-      title={title}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-        state === "done"
-          ? "text-emerald-500 bg-emerald-500/10"
-          : state === "exists"
-            ? "text-amber-500 bg-amber-500/10"
-            : state === "error"
-              ? "text-red-500 bg-red-500/10"
-              : "text-muted-foreground hover:bg-muted",
-        (state === "saving" || state === "checking") && "cursor-not-allowed opacity-60"
-      )}
-    >
-      {state === "saving" || state === "checking" ? (
-        <Loader2Icon className="w-4 h-4 animate-spin" />
-      ) : state === "done" ? (
-        <CheckIcon className="w-4 h-4" />
-      ) : state === "exists" ? (
-        <AlertCircleIcon className="w-4 h-4" />
-      ) : state === "error" ? (
-        <AlertCircleIcon className="w-4 h-4" />
-      ) : (
-        <BookmarkIcon className="w-4 h-4" />
-      )}
-      {state === "done" ? "已保存" : state === "exists" ? "已存在" : state === "error" ? "失败" : "保存"}
-    </button>
+    <Tooltip content={tooltip}>
+      <Button
+        size="sm"
+        type="button"
+        variant="ghost"
+        onClick={handleSave}
+        disabled={state === "saving" || state === "done" || state === "checking" || state === "exists"}
+        className="gap-1.5"
+      >
+        {icon}
+        {state === "done" ? "已保存" : state === "exists" ? "已存在" : state === "error" ? "失败" : "保存"}
+      </Button>
+    </Tooltip>
   );
 }
 
-/** Only show for text-based files that make sense to save as documents */
 export function isSavableToDoc(filepath: string): boolean {
   const ext = filepath.split(".").pop()?.toLowerCase() ?? "";
   return ["md", "txt", "markdown", "rst", "html"].includes(ext);
+}
+
+export function SyncToDocSpaceButton({
+  threadId,
+}: {
+  threadId: string;
+}) {
+  const [state, setState] = useState<"idle" | "syncing" | "done" | "error">("idle");
+
+  const handleSync = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (state !== "idle") return;
+
+    setState("syncing");
+    try {
+      const result = await docmgrApi.syncThreadFiles(threadId);
+      const total = result.synced + result.skipped;
+      toast.success(`已同步 ${total} 个文件`);
+      setState("done");
+      setTimeout(() => setState("idle"), 3000);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 2000);
+    }
+  }, [threadId, state]);
+
+  const tooltip =
+    state === "done" ? "已同步" :
+    state === "error" ? "同步失败，请重试" :
+    state === "syncing" ? "同步中..." :
+    "同步到文档空间";
+
+  const icon =
+    state === "syncing" ? (
+      <RefreshCwIcon className="animate-spin" size={12} />
+    ) : state === "done" ? (
+      <CheckIcon className="text-green-500" size={12} />
+    ) : state === "error" ? (
+      <AlertCircleIcon className="text-red-500" size={12} />
+    ) : (
+      <RefreshCwIcon size={12} />
+    );
+
+  return (
+    <Tooltip content={tooltip}>
+      <Button
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+        onClick={handleSync}
+        disabled={state === "syncing" || state === "done"}
+      >
+        {icon}
+      </Button>
+    </Tooltip>
+  );
 }
