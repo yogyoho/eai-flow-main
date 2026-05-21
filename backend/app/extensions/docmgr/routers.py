@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
 from app.extensions.docmgr.service import AIDocumentService
+from app.extensions.docmgr.share_schemas import ShareCreateRequest, ShareResponse
+from app.extensions.docmgr.share_service import ShareService
 from app.extensions.schemas import (
     AIDocumentCreate,
     AIDocumentListResponse,
@@ -311,4 +313,66 @@ async def sync_thread_files(
         thread_id=request.thread_id,
         sandbox_dir=str(user_data_dir),
     )
+    return result
+
+
+# ─── Document Sharing ────────────────────────────────────────────────────────
+
+
+@router.post("/documents/{doc_id}/share", response_model=ShareResponse)
+async def share_document(
+    doc_id: UUID,
+    data: ShareCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Share a document."""
+    try:
+        return await ShareService.create_share(db, current_user.id, doc_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/documents/{doc_id}/shares", response_model=list[ShareResponse])
+async def list_document_shares(
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """List all shares for a document."""
+    return await ShareService.list_shares(db, doc_id, current_user.id)
+
+
+@router.delete("/shares/{share_id}", response_model=MessageResponse)
+async def revoke_share(
+    share_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Revoke a share."""
+    revoked = await ShareService.revoke_share(db, share_id, current_user.id)
+    if not revoked:
+        raise HTTPException(status_code=404, detail="Share not found")
+    return MessageResponse(message="Share revoked successfully")
+
+
+@router.get("/shared-with-me")
+async def shared_with_me(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """List documents shared with the current user."""
+    return await ShareService.list_shared_with_me(db, current_user.id)
+
+
+@router.get("/shared/{token}")
+async def access_shared_document(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Access a shared document via link token."""
+    result = await ShareService.get_shared_document(db, token)
+    if not result:
+        raise HTTPException(status_code=404, detail="Shared document not found or link invalid")
     return result
