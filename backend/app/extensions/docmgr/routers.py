@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/docmgr", tags=["AI Documents"])
 
 
+class SyncThreadFilesRequest(BaseModel):
+    thread_id: str = Field(..., min_length=1, max_length=100)
+
+
 @router.get("/documents", response_model=AIDocumentListResponse)
 async def list_documents(
     folder: str | None = Query(None, description="Filter by folder name"),
@@ -155,9 +159,6 @@ OPERATION_PROMPTS: dict[str, str] = {
 # Timeout for AI edit operations (seconds)
 AI_EDIT_TIMEOUT_SECONDS = 120
 
-# Default model for AI edit operations (faster than glm-4.7-cloud)
-DEFAULT_AI_EDIT_MODEL = "siliconflow-deepseek"
-
 
 def _extract_ai_response_text(content: object) -> str:
     """Extract text from AI model response content."""
@@ -192,12 +193,12 @@ async def ai_edit_text(
         )
 
     prompt = prompt_template.format(text=request.text)
-    model_name = request.model_name or DEFAULT_AI_EDIT_MODEL
 
     try:
         from deerflow.models import create_chat_model
 
-        model = create_chat_model(name=model_name, thinking_enabled=False)
+        model = create_chat_model(name=request.model_name, thinking_enabled=False)
+        model_name = request.model_name or "default"
         response = await asyncio.wait_for(
             model.ainvoke(prompt),
             timeout=AI_EDIT_TIMEOUT_SECONDS,
@@ -216,3 +217,23 @@ async def ai_edit_text(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="AI processing failed, please try again",
         )
+
+
+@router.post("/sync-thread-files")
+async def sync_thread_files(
+    request: SyncThreadFilesRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Sync sandbox files from a thread into document space."""
+    from deerflow.config.paths import Paths
+
+    paths = Paths()
+    user_data_dir = paths.sandbox_user_data_dir(thread_id=request.thread_id, user_id=str(current_user.id))
+    result = await AIDocumentService.sync_thread_files(
+        db=db,
+        user_id=current_user.id,
+        thread_id=request.thread_id,
+        sandbox_dir=str(user_data_dir),
+    )
+    return result
