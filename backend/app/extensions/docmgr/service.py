@@ -77,6 +77,10 @@ class AIDocumentService:
             content=data.content,
             folder=data.folder,
             source_thread_id=data.source_thread_id,
+            doc_type=data.doc_type,
+            file_ref_path=data.file_ref_path,
+            file_size=data.file_size,
+            file_mime=data.file_mime,
         )
         db.add(document)
         await db.commit()
@@ -130,6 +134,10 @@ class AIDocumentService:
             is_starred=doc.is_starred,
             is_shared=doc.is_shared,
             status=doc.status,
+            doc_type=doc.doc_type,
+            file_ref_path=doc.file_ref_path,
+            file_size=doc.file_size,
+            file_mime=doc.file_mime,
             created_at=doc.created_at,
             updated_at=doc.updated_at,
         )

@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -206,6 +206,10 @@ class AIDocument(Base):
     is_starred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    doc_type: Mapped[str] = mapped_column(String(20), default="document", nullable=False)
+    file_ref_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    file_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    file_mime: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 

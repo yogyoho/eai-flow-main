@@ -700,6 +700,12 @@ async def migrate_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"
         ))
 
+        # --- AIDocument: doc_type and file reference fields ---
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS doc_type VARCHAR(20) DEFAULT 'document' NOT NULL"))
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_ref_path VARCHAR(500)"))
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_size BIGINT"))
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_mime VARCHAR(100)"))
+
         # --- System configuration table ---
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS system_config (

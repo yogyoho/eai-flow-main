@@ -551,6 +551,10 @@ class AIDocumentCreate(BaseModel):
     content: str | None = None
     folder: str = Field(default="默认文件夹", max_length=255)
     source_thread_id: str | None = Field(None, max_length=100)
+    doc_type: str = Field(default="document", max_length=20)
+    file_ref_path: str | None = Field(None, max_length=500)
+    file_size: int | None = None
+    file_mime: str | None = Field(None, max_length=100)
 
 
 class AIDocumentUpdate(BaseModel):
@@ -562,6 +566,10 @@ class AIDocumentUpdate(BaseModel):
     is_starred: bool | None = None
     is_shared: bool | None = None
     status: str | None = None
+    doc_type: str | None = Field(None, max_length=20)
+    file_ref_path: str | None = Field(None, max_length=500)
+    file_size: int | None = None
+    file_mime: str | None = Field(None, max_length=100)
 
 
 class AIDocumentResponse(BaseModel):
@@ -578,6 +586,10 @@ class AIDocumentResponse(BaseModel):
     is_starred: bool
     is_shared: bool
     status: str
+    doc_type: str = "document"
+    file_ref_path: str | None = None
+    file_size: int | None = None
+    file_mime: str | None = None
     created_at: datetime
     updated_at: datetime
 
