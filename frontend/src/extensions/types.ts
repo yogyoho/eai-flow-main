@@ -284,6 +284,10 @@ export interface AIDocument {
   status: string;
   created_at: string;
   updated_at: string;
+  doc_type?: "document" | "file_ref";
+  file_ref_path?: string | null;
+  file_size?: number | null;
+  file_mime?: string | null;
 }
 
 export interface AIDocumentListResponse {
