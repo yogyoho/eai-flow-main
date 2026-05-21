@@ -10,6 +10,7 @@ export interface DocumentFilter {
   folder?: string;
   starred?: boolean;
   shared?: boolean;
+  doc_type?: "document" | "file_ref";
   q?: string;
 }
 
@@ -34,6 +35,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
         folder: filterRef.current.folder,
         starred: filterRef.current.starred,
         shared: filterRef.current.shared,
+        doc_type: filterRef.current.doc_type,
         q: filterRef.current.q,
         skip: (pageRef.current - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
@@ -104,6 +106,41 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     [updateDoc]
   );
 
+  const syncThreadFiles = useCallback(async (threadId: string) => {
+    const result = await docmgrApi.syncThreadFiles(threadId);
+    await load();
+    return result;
+  }, [load]);
+
+  const moveToDocuments = useCallback(async (id: string) => {
+    const updated = await docmgrApi.moveDocument(id, { toDocuments: true });
+    setDocs((prev) => prev.filter((d) => d.id !== id));
+    setTotal((prev) => prev - 1);
+    return updated;
+  }, []);
+
+  const moveToFolder = useCallback(async (id: string, folder: string) => {
+    const updated = await docmgrApi.moveDocument(id, { folder });
+    setDocs((prev) => prev.map((d) => (d.id === id ? updated : d)));
+    return updated;
+  }, []);
+
+  const renameDoc = useCallback(async (id: string, title: string) => {
+    const updated = await docmgrApi.renameDocument(id, title);
+    setDocs((prev) => prev.map((d) => (d.id === id ? updated : d)));
+    return updated;
+  }, []);
+
+  const batchDeleteDocs = useCallback(async (ids: string[]) => {
+    await docmgrApi.batchDelete(ids);
+    setDocs((prev) => prev.filter((d) => !ids.includes(d.id)));
+    setTotal((prev) => prev - ids.length);
+  }, []);
+
+  const previewDoc = useCallback(async (id: string) => {
+    return docmgrApi.previewDocument(id);
+  }, []);
+
   return {
     docs,
     total,
@@ -114,7 +151,14 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     setFilter: handleSetFilter,
     folders,
     createDoc,
+    updateDoc,
     deleteDoc,
     toggleStar,
+    syncThreadFiles,
+    moveToDocuments,
+    moveToFolder,
+    renameDoc,
+    batchDeleteDocs,
+    previewDoc,
   };
 }
