@@ -1,6 +1,8 @@
 """AI Document service for extensions module."""
 
 import logging
+import mimetypes
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -154,3 +156,74 @@ class AIDocumentService:
     async def to_detail_response(doc: AIDocument) -> AIDocumentResponse:
         """Convert document model to detailed response (includes content)."""
         return await AIDocumentService.to_response(doc)
+
+    @staticmethod
+    async def _get_thread_title(db: AsyncSession, thread_id: str) -> str:
+        """Get thread display name from threads_meta table."""
+        from deerflow.persistence.thread_meta.model import ThreadMetaRow
+
+        try:
+            stmt = select(ThreadMetaRow.display_name).where(ThreadMetaRow.thread_id == thread_id)
+            result = await db.execute(stmt)
+            row = result.scalar_one_or_none()
+            return row or thread_id[:8]
+        except Exception:
+            return thread_id[:8]
+
+    @staticmethod
+    async def sync_thread_files(
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        sandbox_dir: str,
+    ) -> dict:
+        """Sync sandbox files for a thread into document space as file_ref records."""
+        folder_name = await AIDocumentService._get_thread_title(db, thread_id)
+        synced = 0
+        skipped = 0
+        max_per_sync = 100
+
+        sandbox_path = Path(sandbox_dir)
+        if not sandbox_path.exists():
+            return {"synced": 0, "skipped": 0}
+
+        for filepath in sandbox_path.rglob("*"):
+            if not filepath.is_file():
+                continue
+            if synced >= max_per_sync:
+                break
+
+            abs_path = str(filepath)
+            file_size = filepath.stat().st_size
+            mime_type, _ = mimetypes.guess_type(filepath.name)
+            if mime_type is None:
+                mime_type = "application/octet-stream"
+
+            # Check for existing file_ref with same path and thread
+            existing = await db.execute(
+                select(AIDocument).where(
+                    AIDocument.user_id == user_id,
+                    AIDocument.file_ref_path == abs_path,
+                    AIDocument.source_thread_id == thread_id,
+                )
+            )
+            if existing.scalar_one_or_none():
+                skipped += 1
+                continue
+
+            doc = AIDocument(
+                user_id=user_id,
+                title=filepath.name,
+                folder=folder_name,
+                source_thread_id=thread_id,
+                doc_type="file_ref",
+                file_ref_path=abs_path,
+                file_size=file_size,
+                file_mime=mime_type,
+                status="active",
+            )
+            db.add(doc)
+            synced += 1
+
+        await db.commit()
+        return {"synced": synced, "skipped": skipped}
