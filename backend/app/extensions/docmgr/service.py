@@ -102,6 +102,14 @@ class AIDocumentService:
             doc.is_shared = data.is_shared
         if data.status is not None:
             doc.status = data.status
+        if data.doc_type is not None:
+            doc.doc_type = data.doc_type
+        if data.file_ref_path is not None:
+            doc.file_ref_path = data.file_ref_path
+        if data.file_size is not None:
+            doc.file_size = data.file_size
+        if data.file_mime is not None:
+            doc.file_mime = data.file_mime
 
         await db.commit()
         await db.refresh(doc)
