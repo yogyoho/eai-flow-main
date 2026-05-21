@@ -30,11 +30,25 @@ class SyncThreadFilesRequest(BaseModel):
     thread_id: str = Field(..., min_length=1, max_length=100)
 
 
+class MoveRequest(BaseModel):
+    folder: str | None = Field(None, max_length=255)
+    to_documents: bool = False
+
+
+class RenameRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+
+
+class BatchDeleteRequest(BaseModel):
+    ids: list[UUID] = Field(..., min_length=1, max_length=50)
+
+
 @router.get("/documents", response_model=AIDocumentListResponse)
 async def list_documents(
     folder: str | None = Query(None, description="Filter by folder name"),
     starred: bool | None = Query(None, description="Filter by starred status"),
     shared: bool | None = Query(None, description="Filter by shared status"),
+    doc_type: str | None = Query(None, description="Filter by doc_type: document or file_ref"),
     q: str | None = Query(None, description="Search query for title"),
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=100),
@@ -48,6 +62,7 @@ async def list_documents(
         folder=folder,
         starred=starred,
         shared=shared,
+        doc_type=doc_type,
         q=q,
         skip=skip,
         limit=limit,
@@ -120,6 +135,66 @@ async def delete_document(
 
     await AIDocumentService.delete(db, document)
     return MessageResponse(message="Document deleted successfully")
+
+
+@router.put("/documents/{doc_id}/move", response_model=AIDocumentResponse)
+async def move_document(
+    doc_id: UUID,
+    request: MoveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Move document to a folder or to My Documents."""
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if request.to_documents:
+        doc = await AIDocumentService.move_to_documents(db, doc)
+    if request.folder:
+        doc = await AIDocumentService.update(db, doc, AIDocumentUpdate(folder=request.folder))
+    return await AIDocumentService.to_response(doc)
+
+
+@router.put("/documents/{doc_id}/rename", response_model=AIDocumentResponse)
+async def rename_document(
+    doc_id: UUID,
+    request: RenameRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Rename a document."""
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    doc = await AIDocumentService.rename(db, doc, request.title)
+    return await AIDocumentService.to_response(doc)
+
+
+@router.delete("/documents/batch", response_model=MessageResponse)
+async def batch_delete_documents(
+    request: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Batch delete documents."""
+    count = await AIDocumentService.batch_delete(db, current_user.id, request.ids)
+    return MessageResponse(message=f"Deleted {count} documents")
+
+
+@router.get("/documents/{doc_id}/preview")
+async def preview_document(
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Read file content for preview."""
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.doc_type != "file_ref":
+        return {"content": doc.content, "doc_type": doc.doc_type}
+    content = await AIDocumentService.read_file_content(doc)
+    return {"content": content, "doc_type": doc.doc_type, "file_mime": doc.file_mime, "file_size": doc.file_size}
 
 
 @router.get("/folders", response_model=FolderListResponse)

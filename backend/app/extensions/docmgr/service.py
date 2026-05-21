@@ -1,7 +1,9 @@
 """AI Document service for extensions module."""
 
+import json
 import logging
 import mimetypes
+import os
 from pathlib import Path
 from uuid import UUID
 
@@ -28,6 +30,7 @@ class AIDocumentService:
         folder: str | None = None,
         starred: bool | None = None,
         shared: bool | None = None,
+        doc_type: str | None = None,
         q: str | None = None,
         skip: int = 0,
         limit: int = 12,
@@ -47,6 +50,10 @@ class AIDocumentService:
         if shared is not None:
             query = query.where(AIDocument.is_shared == shared)
             count_query = count_query.where(AIDocument.is_shared == shared)
+
+        if doc_type is not None:
+            query = query.where(AIDocument.doc_type == doc_type)
+            count_query = count_query.where(AIDocument.doc_type == doc_type)
 
         if q is not None:
             search_filter = AIDocument.title.ilike(f"%{q}%")
@@ -156,6 +163,71 @@ class AIDocumentService:
     async def to_detail_response(doc: AIDocument) -> AIDocumentResponse:
         """Convert document model to detailed response (includes content)."""
         return await AIDocumentService.to_response(doc)
+
+    @staticmethod
+    async def move_to_documents(db: AsyncSession, doc: AIDocument) -> AIDocument:
+        """Move a file_ref document to '我的文档' by reading file content into DB."""
+        if doc.doc_type != "file_ref":
+            return doc
+        if doc.file_ref_path and os.path.exists(doc.file_ref_path):
+            text_mimes = {"text/markdown", "text/plain", "text/html", "text/x-rst"}
+            if doc.file_mime in text_mimes:
+                with open(doc.file_ref_path, "r", encoding="utf-8", errors="replace") as f:
+                    doc.content = f.read()
+            else:
+                doc.content = json.dumps({"type": "binary_ref", "file_ref_path": doc.file_ref_path, "file_mime": doc.file_mime})
+        else:
+            doc.content = json.dumps({"type": "file_missing", "file_ref_path": doc.file_ref_path})
+
+        doc.doc_type = "document"
+        await db.commit()
+        await db.refresh(doc)
+        return doc
+
+    @staticmethod
+    async def batch_delete(db: AsyncSession, user_id: UUID, doc_ids: list[UUID]) -> int:
+        """Delete multiple documents. Returns count deleted."""
+        if not doc_ids:
+            return 0
+        if len(doc_ids) > 50:
+            raise ValueError("Batch delete limited to 50 documents")
+        stmt = select(AIDocument).where(
+            AIDocument.user_id == user_id,
+            AIDocument.id.in_(doc_ids),
+        )
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
+        count = 0
+        for doc in docs:
+            await db.delete(doc)
+            count += 1
+        await db.commit()
+        return count
+
+    @staticmethod
+    async def rename(db: AsyncSession, doc: AIDocument, new_title: str) -> AIDocument:
+        """Rename a document. For file_ref, also rename physical file."""
+        if doc.doc_type == "file_ref" and doc.file_ref_path:
+            old_path = Path(doc.file_ref_path)
+            if old_path.exists():
+                new_path = old_path.parent / new_title
+                old_path.rename(new_path)
+                doc.file_ref_path = str(new_path)
+        doc.title = new_title
+        await db.commit()
+        await db.refresh(doc)
+        return doc
+
+    @staticmethod
+    async def read_file_content(doc: AIDocument) -> str | None:
+        """Read file content for preview. Returns None for missing files."""
+        if not doc.file_ref_path or not os.path.exists(doc.file_ref_path):
+            return None
+        file_size = os.path.getsize(doc.file_ref_path)
+        if file_size > 10 * 1024 * 1024:  # 10MB limit
+            return None
+        with open(doc.file_ref_path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read()
 
     @staticmethod
     async def _get_thread_title(db: AsyncSession, thread_id: str) -> str:
