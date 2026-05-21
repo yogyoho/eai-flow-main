@@ -49,6 +49,7 @@ import type {
   VersionCompareResult,
   TemplateRollbackResponse,
   DictItemResponse,
+  RAGSourceConfig,
 } from "../knowledge-factory/types";
 
 const API_BASE = "/api/extensions";
@@ -368,6 +369,7 @@ export const docmgrApi = {
     starred?: boolean;
     shared?: boolean;
     q?: string;
+    doc_type?: string;
     skip?: number;
     limit?: number;
   }) => {
@@ -376,6 +378,7 @@ export const docmgrApi = {
     if (params?.starred !== undefined) query.set("starred", String(params.starred));
     if (params?.shared !== undefined) query.set("shared", String(params.shared));
     if (params?.q) query.set("q", params.q);
+    if (params?.doc_type) query.set("doc_type", params.doc_type);
     if (params?.skip !== undefined) query.set("skip", String(params.skip));
     if (params?.limit !== undefined) query.set("limit", String(params.limit));
     return request<AIDocumentListResponse>(`/docmgr/documents?${query}`);
@@ -409,6 +412,61 @@ export const docmgrApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  syncThreadFiles: async (threadId: string): Promise<{ synced: number; skipped: number }> => {
+    return request("/docmgr/sync-thread-files", {
+      method: "POST",
+      body: JSON.stringify({ thread_id: threadId }),
+    });
+  },
+
+  moveDocument: async (id: string, data: { folder?: string; toDocuments?: boolean }): Promise<AIDocument> => {
+    return request(`/docmgr/documents/${id}/move`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  renameDocument: async (id: string, title: string): Promise<AIDocument> => {
+    return request(`/docmgr/documents/${id}/rename`, {
+      method: "PUT",
+      body: JSON.stringify({ title }),
+    });
+  },
+
+  batchDelete: async (ids: string[]): Promise<{ message: string }> => {
+    return request("/docmgr/documents/batch", {
+      method: "DELETE",
+      body: JSON.stringify({ ids }),
+    });
+  },
+
+  previewDocument: async (id: string): Promise<{ content: string | null; doc_type: string; file_mime?: string; file_size?: number }> => {
+    return request(`/docmgr/documents/${id}/preview`);
+  },
+
+  shareDocument: async (docId: string, data: { share_type: string; share_target_id?: string; permission: string }): Promise<any> => {
+    return request(`/docmgr/documents/${docId}/share`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  listShares: async (docId: string): Promise<any[]> => {
+    return request(`/docmgr/documents/${docId}/shares`);
+  },
+
+  revokeShare: async (shareId: string): Promise<{ message: string }> => {
+    return request(`/docmgr/shares/${shareId}`, { method: "DELETE" });
+  },
+
+  sharedWithMe: async (): Promise<any[]> => {
+    return request("/docmgr/shared-with-me");
+  },
+
+  accessSharedDocument: async (token: string): Promise<any> => {
+    return request(`/docmgr/shared/${token}`);
+  },
 };
 
 // ===== Models API (direct gateway, not under /api/extensions) =====
@@ -951,4 +1009,7 @@ export const kfApi = {
 
   assessQuality: (templateId: string) =>
     kfRequest<QualityAssessmentResult>(`/templates/${templateId}/assess-quality`, { method: "POST" }),
+
+  suggestRagSources: (templateId: string, sectionId: string) =>
+    kfRequest<{ suggestions: RAGSourceConfig[] }>(`/templates/${templateId}/sections/${sectionId}/suggest-rag-sources`, { method: "POST" }),
 };

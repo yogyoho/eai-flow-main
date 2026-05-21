@@ -153,6 +153,7 @@ export interface Translations {
     saveHint: string;
     saveCommandMessage: string;
     agentCreatedPendingRefresh: string;
+    nameStepApiDisabledError: string;
     more: string;
     agentCreated: string;
     startChatting: string;
@@ -242,6 +243,28 @@ export interface Translations {
     total: string;
     unavailable: string;
     unavailableShort: string;
+    note: string;
+    presets: {
+      off: string;
+      summary: string;
+      perTurn: string;
+      debug: string;
+    };
+    presetDescriptions: {
+      off: string;
+      summary: string;
+      perTurn: string;
+      debug: string;
+    };
+    finalAnswer: string;
+    stepTotal: string;
+    sharedAttribution: string;
+    view: string;
+    subagent: (description: string) => string;
+    startTodo: (content: string) => string;
+    completeTodo: (content: string) => string;
+    updateTodo: (content: string) => string;
+    removeTodo: (content: string) => string;
   };
 
   // Shortcuts
@@ -377,9 +400,56 @@ export interface Translations {
       notSupported: string;
       disableNotification: string;
     };
+    account: {
+      profileTitle: string;
+      email: string;
+      role: string;
+      changePasswordTitle: string;
+      changePasswordDescription: string;
+      currentPassword: string;
+      newPassword: string;
+      confirmNewPassword: string;
+      updatePassword: string;
+      updating: string;
+      passwordChangedSuccess: string;
+      passwordMismatch: string;
+      passwordTooShort: string;
+      networkError: string;
+      signOut: string;
+    };
     acknowledge: {
       emptyTitle: string;
       emptyDescription: string;
+    };
+    docSpace: {
+      myDocuments: string;
+      myFavorites: string;
+      myShares: string;
+      aiTaskArchive: string;
+      myFolders: string;
+      syncToDocSpace: string;
+      syncSuccess: string;
+      viewInDocSpace: string;
+      moveToDocuments: string;
+      moveToFolder: string;
+      rename: string;
+      batchDelete: string;
+      share: string;
+      shareToUser: string;
+      shareViaLink: string;
+      sharePermission: string;
+      readPermission: string;
+      editPermission: string;
+      copyLink: string;
+      manageShares: string;
+      revokeShare: string;
+      linkCopied: string;
+      selectTarget: string;
+      newFolder: string;
+      fileMissing: string;
+      preview: string;
+      noFiles: string;
+      syncedCount: string;
     };
     basic: {
       title: string;
