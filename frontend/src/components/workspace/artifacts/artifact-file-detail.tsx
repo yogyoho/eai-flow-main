@@ -43,7 +43,7 @@ import { useThread } from "../messages/context";
 import { Tooltip } from "../tooltip";
 
 import { useArtifacts } from "./context";
-import { SaveArtifactToDocButton, isSavableToDoc } from "./save-artifact-to-doc-button";
+import { SaveArtifactToDocButton, SyncToDocSpaceButton, isSavableToDoc } from "./save-artifact-to-doc-button";
 
 export function ArtifactFileDetail({
   className,
@@ -240,13 +240,14 @@ export function ArtifactFileDetail({
                 }}
               />
             )}
-            {!isWriteFile && isSavableToDoc(filepath) && (
+            {isSavableToDoc(filepath) && (
               <SaveArtifactToDocButton
                 filepath={filepath}
                 threadId={threadId}
                 variant="icon"
               />
             )}
+            <SyncToDocSpaceButton threadId={threadId} />
             <ArtifactAction
               icon={XIcon}
               label={t.common.close}
