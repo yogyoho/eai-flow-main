@@ -357,3 +357,223 @@ async def test_list_docs_doc_type_filter():
 
     # Verify db.execute was called (once for docs, once for count)
     assert db.execute.await_count == 2
+
+
+# ─── Task 4: Document Shares ────────────────────────────────────────────────
+
+
+def test_document_share_model_columns():
+    """DocumentShare model should have all expected columns."""
+    from app.extensions.docmgr.share_models import DocumentShare
+
+    col_names = {c.name for c in DocumentShare.__table__.columns}
+    for col in ("id", "document_id", "share_type", "share_target_id", "share_token", "permission", "created_by", "created_at"):
+        assert col in col_names, f"Missing column: {col}"
+
+
+def test_share_create_request_validation():
+    """ShareCreateRequest should validate share_type and permission patterns."""
+    from app.extensions.docmgr.share_schemas import ShareCreateRequest
+    from pydantic import ValidationError
+
+    # Valid user share
+    req = ShareCreateRequest(share_type="user", share_target_id="user-uuid-here", permission="read")
+    assert req.share_type == "user"
+    assert req.permission == "read"
+
+    # Valid link share
+    req = ShareCreateRequest(share_type="link", permission="edit")
+    assert req.share_type == "link"
+    assert req.share_target_id is None
+
+    # Invalid share_type
+    try:
+        ShareCreateRequest(share_type="invalid")
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
+
+    # Invalid permission
+    try:
+        ShareCreateRequest(share_type="user", permission="admin")
+        assert False, "Should have raised ValidationError"
+    except ValidationError:
+        pass
+
+
+def test_share_response_model():
+    """ShareResponse should have all expected fields."""
+    from app.extensions.docmgr.share_schemas import ShareResponse
+
+    fields = set(ShareResponse.model_fields.keys())
+    for f in ("id", "document_id", "share_type", "share_target_id", "share_token", "permission", "created_by", "created_at"):
+        assert f in fields, f"Missing field: {f}"
+
+
+@pytest.mark.asyncio
+async def test_create_share_verify_ownership():
+    """create_share should raise ValueError when document not found or not owned."""
+    from app.extensions.docmgr.share_service import ShareService
+    from app.extensions.docmgr.share_schemas import ShareCreateRequest
+
+    db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None  # document not found
+    db.execute = AsyncMock(return_value=mock_result)
+
+    user_id = UUID("12345678-1234-1234-1234-123456789012")
+    doc_id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+    data = ShareCreateRequest(share_type="user", share_target_id=str(user_id))
+
+    with pytest.raises(ValueError, match="Document not found"):
+        await ShareService.create_share(db, user_id, doc_id, data)
+
+
+@pytest.mark.asyncio
+async def test_create_share_link_generates_token():
+    """create_share for link type should generate a share_token."""
+    from app.extensions.docmgr.share_service import ShareService
+    from app.extensions.docmgr.share_schemas import ShareCreateRequest
+
+    db = AsyncMock()
+    db.commit = AsyncMock()
+    db.refresh = AsyncMock()
+    db.add = MagicMock()
+
+    # First execute: ownership check returns a document
+    mock_doc = MagicMock()
+    # Second execute: mark as shared
+    mock_doc_obj = MagicMock()
+    mock_doc_obj.is_shared = False
+    # Third execute (refresh): return the share object
+    mock_share = MagicMock()
+    mock_share.id = UUID("cccccccc-3333-3333-3333-333333333333")
+    mock_share.document_id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+    mock_share.share_type = "link"
+    mock_share.share_target_id = None
+    mock_share.share_token = "some-token-value"
+    mock_share.permission = "read"
+    mock_share.created_by = UUID("12345678-1234-1234-1234-123456789012")
+    mock_share.created_at = "2026-01-01T00:00:00"
+
+    call_count = 0
+
+    async def fake_execute(stmt):
+        nonlocal call_count
+        call_count += 1
+        result = MagicMock()
+        if call_count == 1:
+            result.scalar_one_or_none.return_value = mock_doc
+        elif call_count == 2:
+            result.scalar_one_or_none.return_value = mock_doc_obj
+        return result
+
+    db.execute = AsyncMock(side_effect=fake_execute)
+
+    async def fake_refresh(obj):
+        for attr in ("id", "document_id", "share_type", "share_target_id", "share_token", "permission", "created_by", "created_at"):
+            if not hasattr(obj, attr) or getattr(obj, attr) is None:
+                setattr(obj, attr, getattr(mock_share, attr))
+
+    db.refresh = AsyncMock(side_effect=fake_refresh)
+
+    user_id = UUID("12345678-1234-1234-1234-123456789012")
+    doc_id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+    data = ShareCreateRequest(share_type="link")
+
+    response = await ShareService.create_share(db, user_id, doc_id, data)
+    assert response.share_type == "link"
+    assert response.share_token is not None
+    assert mock_doc_obj.is_shared is True
+
+
+@pytest.mark.asyncio
+async def test_list_shares():
+    """list_shares should return all shares for a document."""
+    from app.extensions.docmgr.share_service import ShareService
+
+    db = AsyncMock()
+    mock_share = MagicMock()
+    mock_share.id = UUID("cccccccc-3333-3333-3333-333333333333")
+    mock_share.document_id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+    mock_share.share_type = "user"
+    mock_share.share_target_id = "target-uuid"
+    mock_share.share_token = None
+    mock_share.permission = "read"
+    mock_share.created_by = UUID("12345678-1234-1234-1234-123456789012")
+    mock_share.created_at = "2026-01-01T00:00:00"
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [mock_share]
+    db.execute = AsyncMock(return_value=mock_result)
+
+    user_id = UUID("12345678-1234-1234-1234-123456789012")
+    doc_id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+
+    shares = await ShareService.list_shares(db, doc_id, user_id)
+    assert len(shares) == 1
+    assert shares[0].share_type == "user"
+
+
+@pytest.mark.asyncio
+async def test_revoke_share_not_found():
+    """revoke_share should return False when share not found."""
+    from app.extensions.docmgr.share_service import ShareService
+
+    db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=mock_result)
+
+    user_id = UUID("12345678-1234-1234-1234-123456789012")
+    share_id = UUID("cccccccc-3333-3333-3333-333333333333")
+
+    result = await ShareService.revoke_share(db, share_id, user_id)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_get_shared_document_not_found():
+    """get_shared_document should return None for invalid token."""
+    from app.extensions.docmgr.share_service import ShareService
+
+    db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=mock_result)
+
+    result = await ShareService.get_shared_document(db, "invalid-token")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_list_shared_with_me():
+    """list_shared_with_me should return documents shared with user."""
+    from app.extensions.docmgr.share_service import ShareService
+
+    db = AsyncMock()
+
+    mock_share = MagicMock()
+    mock_share.permission = "read"
+    mock_share.share_type = "user"
+    mock_share.created_by = UUID("99999999-9999-9999-9999-999999999999")
+    mock_share.created_at = MagicMock()
+
+    mock_doc = MagicMock()
+    mock_doc.id = UUID("aaaaaaaa-1111-1111-1111-111111111111")
+    mock_doc.title = "Shared Doc"
+    mock_doc.content = "content"
+    mock_doc.doc_type = "document"
+    mock_doc.folder = "默认文件夹"
+    mock_doc.updated_at = MagicMock()
+    mock_doc.updated_at.isoformat.return_value = "2026-01-01T00:00:00"
+
+    mock_result = MagicMock()
+    mock_result.all.return_value = [(mock_share, mock_doc)]
+    db.execute = AsyncMock(return_value=mock_result)
+
+    user_id = UUID("12345678-1234-1234-1234-123456789012")
+    result = await ShareService.list_shared_with_me(db, user_id)
+    assert len(result) == 1
+    assert result[0]["document"]["title"] == "Shared Doc"
+    assert result[0]["permission"] == "read"

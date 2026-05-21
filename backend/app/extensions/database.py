@@ -715,6 +715,29 @@ async def migrate_db() -> None:
             )
         """))
 
+        # --- Document shares table ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS document_shares (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                document_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
+                share_type VARCHAR(20) NOT NULL,
+                share_target_id VARCHAR(100),
+                share_token VARCHAR(64) UNIQUE,
+                permission VARCHAR(10) NOT NULL DEFAULT 'read',
+                created_by UUID NOT NULL REFERENCES users(id),
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON document_shares(document_id)")
+        )
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_document_shares_share_token ON document_shares(share_token)")
+        )
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_document_shares_created_by ON document_shares(created_by)")
+        )
+
 
 async def close_db() -> None:
     """Close database connections."""
