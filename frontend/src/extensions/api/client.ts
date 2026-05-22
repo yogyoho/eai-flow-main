@@ -9,7 +9,7 @@ const API_BASE = "/api/extensions";
 
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  const match = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
@@ -68,6 +68,10 @@ export async function authFetch<T>(
     const err = new Error(message) as Error & { status: number };
     err.status = response.status;
     throw err;
+  }
+
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
+    return undefined as T;
   }
 
   return await response.json();

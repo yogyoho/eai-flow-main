@@ -55,7 +55,7 @@ interface MemberListProps {
 export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newMember, setNewMember] = useState({ userId: "", role: "member" as string });
+  const [newMember, setNewMember] = useState({ userId: "", role: "manager" as string });
   const [adding, setAdding] = useState(false);
 
   const grouped = (() => {
@@ -99,7 +99,7 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
       await projectApi.addMember(projectId, trimmedUserId, newMember.role);
       toast.success("成员添加成功");
       setShowAddDialog(false);
-      setNewMember({ userId: "", role: "member" });
+      setNewMember({ userId: "", role: "manager" });
       onUpdate();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "添加成员失败";
