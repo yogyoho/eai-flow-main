@@ -43,7 +43,7 @@ function flattenChapters(items: ReportOutline[]): ReportOutline[] {
   const result: ReportOutline[] = [];
   for (const item of items) {
     result.push(item);
-    if (item.children.length > 0) {
+    if (item.children?.length > 0) {
       result.push(...flattenChapters(item.children));
     }
   }

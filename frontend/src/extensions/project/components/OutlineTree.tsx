@@ -32,7 +32,7 @@ interface TreeNodeProps {
 
 function TreeNode({ item, onChapterClick, depth }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(depth < 1);
-  const hasChildren = item.children.length > 0;
+  const hasChildren = item.children?.length > 0;
   const progress =
     item.wordCountTarget > 0
       ? Math.round((item.wordCountCurrent / item.wordCountTarget) * 100)
