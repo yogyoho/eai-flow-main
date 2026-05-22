@@ -1,6 +1,11 @@
 import { expect, test, describe } from "vitest";
 
-import { DATA_SOURCE_TYPE_LABELS, CONNECTION_STATUS_LABELS } from "@/extensions/data-source/types";
+import {
+  DATA_SOURCE_TYPE_LABELS,
+  CONNECTION_STATUS_LABELS,
+  AUTH_TYPE_LABELS,
+  SYNC_MODE_LABELS,
+} from "@/extensions/data-source/types";
 
 describe("Data source type labels", () => {
   test("DATA_SOURCE_TYPE_LABELS has all types", () => {
@@ -26,5 +31,23 @@ describe("Data source type labels", () => {
     for (const t of types) {
       expect(DATA_SOURCE_TYPE_LABELS[t as keyof typeof DATA_SOURCE_TYPE_LABELS]).toBeDefined();
     }
+  });
+
+  test("AUTH_TYPE_LABELS has all auth types", () => {
+    expect(AUTH_TYPE_LABELS).toEqual({
+      none: "无认证",
+      basic: "基本认证",
+      oauth: "OAuth",
+      api_key: "API密钥",
+      certificate: "证书",
+    });
+  });
+
+  test("SYNC_MODE_LABELS has all sync modes", () => {
+    expect(SYNC_MODE_LABELS).toEqual({
+      manual: "手动",
+      scheduled: "定时",
+      event: "事件驱动",
+    });
   });
 });

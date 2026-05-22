@@ -1,9 +1,25 @@
 "use client";
 
-import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
+import { Loader2, Trash2, UserPlus } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { projectApi } from "@/extensions/project/api";
 import {
   MEMBER_ROLE_LABELS,
@@ -11,6 +27,7 @@ import {
   type ProjectMember,
 } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const ROLE_ORDER: MemberRole[] = [
   "manager",
@@ -37,6 +54,9 @@ interface MemberListProps {
 
 export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newMember, setNewMember] = useState({ userId: "", role: "member" as string });
+  const [adding, setAdding] = useState(false);
 
   const grouped = (() => {
     const map = new Map<MemberRole, ProjectMember[]>();
@@ -64,15 +84,87 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
     [projectId, onUpdate],
   );
 
+  const handleAddMember = useCallback(async () => {
+    const trimmedUserId = newMember.userId.trim();
+    if (!trimmedUserId) {
+      toast.error("请输入用户ID");
+      return;
+    }
+    if (!newMember.role) {
+      toast.error("请选择角色");
+      return;
+    }
+    setAdding(true);
+    try {
+      await projectApi.addMember(projectId, trimmedUserId, newMember.role);
+      toast.success("成员添加成功");
+      setShowAddDialog(false);
+      setNewMember({ userId: "", role: "member" });
+      onUpdate();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "添加成员失败";
+      toast.error(message);
+    } finally {
+      setAdding(false);
+    }
+  }, [projectId, newMember, onUpdate]);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Add member button */}
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowAddDialog(true)}>
           <UserPlus className="h-4 w-4" />
           添加成员
         </Button>
       </div>
+
+      {/* Add member dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>添加项目成员</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="member-userId">用户ID</Label>
+              <Input
+                id="member-userId"
+                placeholder="请输入用户ID"
+                value={newMember.userId}
+                onChange={(e) => setNewMember((prev) => ({ ...prev, userId: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="member-role">角色</Label>
+              <Select
+                value={newMember.role}
+                onValueChange={(value) => setNewMember((prev) => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger id="member-role">
+                  <SelectValue placeholder="请选择角色" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_ORDER.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {MEMBER_ROLE_LABELS[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={adding}>
+              取消
+            </Button>
+            <Button onClick={handleAddMember} disabled={adding}>
+              {adding && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+              确认添加
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Role groups */}
       {ROLE_ORDER.map((role) => {

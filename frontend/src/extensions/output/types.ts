@@ -100,6 +100,16 @@ export interface GenerateOutputResult {
   fileName?: string;
 }
 
+export interface HistoryEntry {
+  taskId: string;
+  projectId: string;
+  format: string;
+  status: GenerateOutputResult["status"];
+  fileName?: string;
+  downloadUrl?: string;
+  createdAt: string;
+}
+
 export const WATERMARK_LABELS: Record<WatermarkType, string> = {
   draft: "初稿",
   review: "送审稿",

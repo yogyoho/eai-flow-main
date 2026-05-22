@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ import {
   type ReportProject,
 } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type TabId = "overview" | "kanban" | "outline" | "members" | "approval";
 
@@ -67,6 +68,7 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const params = useSearchParams();
+  const router = useRouter();
   const currentTab = (params.get("tab") ?? "overview") as TabId;
 
   const [project, setProject] = useState<ReportProject | null>(null);
@@ -100,10 +102,37 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     loadProject();
   }, [loadProject]);
 
-  const handleChapterClick = useCallback((chapterId: string) => {
-    // TODO: navigate to chapter editor in Task 8
-    console.log("Chapter clicked:", chapterId);
+  const handleEditProject = useCallback(() => {
+    toast.info("编辑功能开发中");
   }, []);
+
+  const handleArchiveProject = useCallback(async () => {
+    try {
+      await projectApi.update(projectId, { status: "archived" });
+      toast.success("项目已归档");
+      loadProject();
+    } catch {
+      toast.error("归档失败");
+    }
+  }, [projectId, loadProject]);
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!confirm("确定要删除该项目吗？此操作不可撤销。")) return;
+    try {
+      await projectApi.delete(projectId);
+      toast.success("项目已删除");
+      router.push("/projects");
+    } catch {
+      toast.error("删除失败");
+    }
+  }, [projectId, router]);
+
+  const handleChapterClick = useCallback(
+    (chapterId: string) => {
+      router.push(`/projects/${projectId}/chapter/${chapterId}`);
+    },
+    [router, projectId],
+  );
 
   if (loading) {
     return (
@@ -164,15 +193,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleEditProject}>
                 <Edit className="h-4 w-4 mr-2" />
                 编辑项目
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleArchiveProject}>
                 <Archive className="h-4 w-4 mr-2" />
                 归档项目
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={handleDeleteProject}
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 删除项目
               </DropdownMenuItem>
@@ -338,7 +370,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               <ApprovalPanel
                 projectId={project.id}
                 reportType={project.reportType}
-                currentUserId=""
               />
             </div>
           )}

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -288,6 +289,7 @@ function CreateProjectModal({
 // ─── Main ProjectList ─────────────────────────────────────────────────────────
 
 export function ProjectList() {
+  const router = useRouter();
   const { toasts, show: toast, remove } = useToast();
   const [projects, setProjects] = useState<import("@/extensions/project/types").ReportProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -333,13 +335,11 @@ export function ProjectList() {
 
   const handleEdit = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Full edit modal will be implemented in Task 5
-    toast("编辑功能开发中", "info");
+    router.push(`/projects/${id}`);
   };
 
   const handleClick = (project: import("@/extensions/project/types").ReportProject) => {
-    // Navigation to detail page will be implemented in Task 6
-    toast("项目详情页开发中", "info");
+    router.push(`/projects/${project.id}`);
   };
 
   return (
