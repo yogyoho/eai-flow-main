@@ -2,7 +2,7 @@ import { authFetch } from "@/extensions/api/client";
 
 import type { DataSource, CreateDataSourceRequest, TestConnectionResult } from "./types";
 
-const API_BASE = "/api/data-sources";
+const API_BASE = "/data-sources";
 
 function transformDataSource(data: Record<string, unknown>): DataSource {
   return {

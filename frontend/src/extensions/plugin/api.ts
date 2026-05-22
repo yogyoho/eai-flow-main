@@ -2,7 +2,7 @@ import { authFetch } from "@/extensions/api/client";
 
 import type { Plugin, PluginInstance, ApiKey, CreateApiKeyRequest } from "./types";
 
-const API_BASE = "/api/plugins";
+const API_BASE = "/plugins";
 
 export const pluginApi = {
   listPlugins: async (): Promise<Plugin[]> => {

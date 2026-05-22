@@ -7,7 +7,7 @@ import type {
   ApprovalActionRequest,
 } from "./types";
 
-const API_BASE = "/api/approval";
+const API_BASE = "/approval";
 
 export const approvalApi = {
   getWorkflow: async (reportType: string): Promise<ApprovalWorkflow | null> => {
