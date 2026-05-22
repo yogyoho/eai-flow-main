@@ -392,12 +392,8 @@ class ScrapTaskRecord(Base):
         return f"<ScrapTaskRecord(task_id={self.task_id}, status={self.status})>"
 
 
-User.scrap_task_records: Mapped[list["ScrapTaskRecord"]] = relationship(
-    "ScrapTaskRecord", back_populates="user", cascade="all, delete-orphan"
-)
-ScrapDraft.task_records: Mapped[list["ScrapTaskRecord"]] = relationship(
-    "ScrapTaskRecord", back_populates="draft"
-)
+User.scrap_task_records: Mapped[list["ScrapTaskRecord"]] = relationship("ScrapTaskRecord", back_populates="user", cascade="all, delete-orphan")
+ScrapDraft.task_records: Mapped[list["ScrapTaskRecord"]] = relationship("ScrapTaskRecord", back_populates="draft")
 
 
 class ScrapSource(Base):
@@ -427,9 +423,7 @@ class ScrapSource(Base):
         return f"<ScrapSource(id={self.id}, name={self.name})>"
 
 
-User.scrap_sources: Mapped[list["ScrapSource"]] = relationship(
-    "ScrapSource", back_populates="user", cascade="all, delete-orphan"
-)
+User.scrap_sources: Mapped[list["ScrapSource"]] = relationship("ScrapSource", back_populates="user", cascade="all, delete-orphan")
 
 
 class Law(Base):
@@ -488,6 +482,180 @@ class SystemConfigEntry(Base):
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+
+# ── Report Project Management ──
+
+
+class ReportProject(Base):
+    """Report project — tracks a single report through the writing workflow."""
+
+    __tablename__ = "report_projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    report_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("extraction_templates.id"),
+        nullable=True,
     )
+    status: Mapped[str] = mapped_column(String(20), default="setup")
+    current_stage: Mapped[int] = mapped_column(Integer, default=1)
+    thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    chapters: Mapped[list["ProjectChapter"]] = relationship(
+        "ProjectChapter",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    members: Mapped[list["ProjectMember"]] = relationship(
+        "ProjectMember",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    approval_workflows: Mapped[list["ApprovalWorkflow"]] = relationship(
+        "ApprovalWorkflow",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportProject(id={self.id}, name={self.name})>"
+
+
+class ProjectChapter(Base):
+    """Chapter within a report project — hierarchical via parent_id."""
+
+    __tablename__ = "project_chapters"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("project_chapters.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+    word_count_target: Mapped[int] = mapped_column(Integer, default=3000)
+    word_count_current: Mapped[int] = mapped_column(Integer, default=0)
+    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generation_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    project: Mapped["ReportProject"] = relationship("ReportProject", back_populates="chapters")
+    parent: Mapped[Optional["ProjectChapter"]] = relationship("ProjectChapter", remote_side=[id], back_populates="children")
+    children: Mapped[list["ProjectChapter"]] = relationship(
+        "ProjectChapter",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProjectChapter(id={self.id}, title={self.title})>"
+
+
+class ProjectMember(Base):
+    """Member of a report project."""
+
+    __tablename__ = "project_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(50), default="editor")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+    project: Mapped["ReportProject"] = relationship("ReportProject", back_populates="members")
+
+    def __repr__(self) -> str:
+        return f"<ProjectMember(project_id={self.project_id}, user_id={self.user_id})>"
+
+
+class ApprovalWorkflow(Base):
+    """Approval workflow steps for a project."""
+
+    __tablename__ = "approval_workflows"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    role_required: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+    project: Mapped["ReportProject"] = relationship("ReportProject", back_populates="approval_workflows")
+    records: Mapped[list["ApprovalRecord"]] = relationship(
+        "ApprovalRecord",
+        back_populates="workflow",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApprovalWorkflow(id={self.id}, step_name={self.step_name})>"
+
+
+class ApprovalRecord(Base):
+    """Approval action record."""
+
+    __tablename__ = "approval_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("approval_workflows.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    chapter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("project_chapters.id"),
+        nullable=True,
+    )
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+    workflow: Mapped["ApprovalWorkflow"] = relationship("ApprovalWorkflow", back_populates="records")
+
+    def __repr__(self) -> str:
+        return f"<ApprovalRecord(id={self.id}, action={self.action})>"
