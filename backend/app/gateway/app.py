@@ -40,6 +40,7 @@ from app.extensions.law import router as law_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
 from app.extensions.settings.routers import router as settings_router
 from app.extensions.project import router as project_router
+from app.extensions.approval import router as approval_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -444,6 +445,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Project management API is mounted at /api/extensions/project
     app.include_router(project_router)
+
+    # Approval workflow API is mounted at /api/extensions/approval
+    app.include_router(approval_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
