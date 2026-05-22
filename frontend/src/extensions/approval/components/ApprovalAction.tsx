@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Check, RotateCcw, MessageSquare, Loader2 } from "lucide-react";
+import { useState } from "react";
+
+import { cn } from "@/lib/utils";
 
 interface ApprovalActionProps {
   onAction: (action: "approve" | "reject" | "comment", comment: string) => void;

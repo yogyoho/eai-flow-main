@@ -2,9 +2,9 @@
 
 import { Suspense } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
-import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 import { Toaster } from "@/components/ui/sonner";
+import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
+import { ShellLayout } from "@/extensions/shell";
 
 export default function PluginsPage() {
   return (

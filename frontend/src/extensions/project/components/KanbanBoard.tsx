@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 import {
   CHAPTER_STATUS_LABELS,
   type ChapterStatus,
   type ReportOutline,
 } from "@/extensions/project/types";
+import { cn } from "@/lib/utils";
 
 const STATUS_ORDER: ChapterStatus[] = [
   "not_started",

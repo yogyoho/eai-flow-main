@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vitest";
+
 import { DATA_SOURCE_TYPE_LABELS, CONNECTION_STATUS_LABELS } from "@/extensions/data-source/types";
 
 describe("Data source type labels", () => {

@@ -2,9 +2,9 @@
 
 import { Suspense } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
 import { Toaster } from "@/components/ui/sonner";
 import { OutputManager } from "@/extensions/output/OutputManager";
+import { ShellLayout } from "@/extensions/shell";
 
 function OutputLayoutFallback({ children }: { children: React.ReactNode }) {
   return (

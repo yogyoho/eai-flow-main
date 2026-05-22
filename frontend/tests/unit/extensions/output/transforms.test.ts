@@ -1,7 +1,7 @@
 import { expect, test, describe } from "vitest";
 
-import type { LayoutTemplate } from "@/extensions/output/types";
 import { transformTemplate } from "@/extensions/output/transforms";
+import type { LayoutTemplate } from "@/extensions/output/types";
 
 describe("transformTemplate", () => {
   test("converts snake_case fields to camelCase", () => {

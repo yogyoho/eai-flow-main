@@ -2,12 +2,12 @@
 
 import { CheckCircle2, Clock, Loader2, AlertCircle } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import {
   MILESTONE_STATUS_LABELS,
   type Milestone,
   type MilestoneStatus,
 } from "@/extensions/project/types";
+import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<
   MilestoneStatus,

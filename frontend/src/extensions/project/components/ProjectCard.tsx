@@ -5,9 +5,9 @@ import { Edit, Trash2 } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { ReportProject } from "@/extensions/project/types";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
+import { cn } from "@/lib/utils";
 
 import { StatusBadge } from "./StatusBadge";
 

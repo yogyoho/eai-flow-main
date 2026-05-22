@@ -1,10 +1,10 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { Suspense } from "react";
 
 import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
 import { ShellLayout } from "@/extensions/shell";
-import { Loader2 } from "lucide-react";
 
 export default function DataSourcesPage() {
   return (

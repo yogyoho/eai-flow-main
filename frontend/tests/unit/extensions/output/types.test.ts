@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vitest";
+
 import { WATERMARK_LABELS } from "@/extensions/output/types";
 
 describe("Output type labels", () => {

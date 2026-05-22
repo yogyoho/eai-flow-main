@@ -1,6 +1,7 @@
 import { authFetch } from "@/extensions/api/client";
-import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";
+
 import { transformTemplate } from "./transforms";
+import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";
 
 const API_BASE = "/api/output";
 

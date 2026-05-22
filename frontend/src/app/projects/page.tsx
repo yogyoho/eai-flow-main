@@ -2,8 +2,8 @@
 
 import { Suspense } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
 import { ProjectList } from "@/extensions/project/ProjectList";
+import { ShellLayout } from "@/extensions/shell";
 
 export default function ProjectsPage() {
   return (
