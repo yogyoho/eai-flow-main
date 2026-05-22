@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { ApprovalPanel } from "@/extensions/approval/ApprovalPanel";
+import { useAuth } from "@/extensions/hooks/useAuth";
 import { projectApi } from "@/extensions/project/api";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard";
 import { MemberList } from "@/extensions/project/components/MemberList";
@@ -55,7 +56,7 @@ function flattenChapters(items: ReportOutline[]): ReportOutline[] {
   const result: ReportOutline[] = [];
   for (const item of items) {
     result.push(item);
-    if (item.children.length > 0) {
+    if (item.children?.length > 0) {
       result.push(...flattenChapters(item.children));
     }
   }
@@ -69,6 +70,7 @@ interface ProjectDetailProps {
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const params = useSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const currentTab = (params.get("tab") ?? "overview") as TabId;
 
   const [project, setProject] = useState<ReportProject | null>(null);
@@ -370,6 +372,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               <ApprovalPanel
                 projectId={project.id}
                 reportType={project.reportType}
+                currentUserId={user?.id}
               />
             </div>
           )}
