@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
 import { projectApi } from "./api";
 import {
   REPORT_TYPE_LABELS,
@@ -523,7 +524,7 @@ export default function ProjectCreateWizard({
 
   // Step 3: Outline
   const [outline, setOutline] = useState<OutlineItem[]>(
-    DEFAULT_OUTLINES["environmental_impact"] ?? BLANK_OUTLINE,
+    DEFAULT_OUTLINES.environmental_impact ?? BLANK_OUTLINE,
   );
 
   // Step 4: Members
@@ -612,7 +613,7 @@ export default function ProjectCreateWizard({
     setClient("");
     setTargetStandard("");
     setTemplateId("tpl_env");
-    setOutline(DEFAULT_OUTLINES["environmental_impact"] ?? BLANK_OUTLINE);
+    setOutline(DEFAULT_OUTLINES.environmental_impact ?? BLANK_OUTLINE);
     setMembersByRole(emptyMembers);
     setSubmitting(false);
     onClose();

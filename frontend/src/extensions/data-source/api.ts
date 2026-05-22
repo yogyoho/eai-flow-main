@@ -1,4 +1,5 @@
 import { authFetch } from "@/extensions/api/client";
+
 import type { DataSource, CreateDataSourceRequest, TestConnectionResult } from "./types";
 
 const API_BASE = "/api/data-sources";

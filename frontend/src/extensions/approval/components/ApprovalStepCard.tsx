@@ -1,7 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Check, Loader2, XCircle, Circle } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import type { ApprovalStep } from "../types";
 
 interface ApprovalStepCardProps {

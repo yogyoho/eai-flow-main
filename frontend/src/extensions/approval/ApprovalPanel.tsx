@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { cn } from "@/lib/utils";
 import { Loader2, Send, Clock } from "lucide-react";
-import { ApprovalTimeline } from "./components/ApprovalTimeline";
-import { ApprovalAction } from "./components/ApprovalAction";
+import { useState, useEffect, useMemo } from "react";
+
+import { cn } from "@/lib/utils";
+
 import { approvalApi } from "./api";
+import { ApprovalAction } from "./components/ApprovalAction";
+import { ApprovalTimeline } from "./components/ApprovalTimeline";
 import type { ApprovalStep, ApprovalRecord } from "./types";
 
 interface ApprovalPanelProps {

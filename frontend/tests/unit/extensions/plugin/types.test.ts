@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vitest";
+
 import { PLUGIN_TYPE_LABELS, PLUGIN_STATUS_LABELS } from "@/extensions/plugin/types";
 
 describe("Plugin type labels", () => {

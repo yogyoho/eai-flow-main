@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
-import { ApprovalStepCard } from "./ApprovalStepCard";
+import { useMemo } from "react";
+
+import { cn } from "@/lib/utils";
+
 import type { ApprovalStep, ApprovalRecord } from "../types";
+
+import { ApprovalStepCard } from "./ApprovalStepCard";
 
 interface ApprovalTimelineProps {
   steps: ApprovalStep[];

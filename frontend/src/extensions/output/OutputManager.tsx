@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
+
 import { outputApi } from "./api";
 import { LayoutTemplateCard } from "./components/LayoutTemplateCard";
 import { OutputConfigPanel } from "./components/OutputConfigPanel";

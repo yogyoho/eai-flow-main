@@ -23,8 +23,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { ApprovalPanel } from "@/extensions/approval/ApprovalPanel";
 import { projectApi } from "@/extensions/project/api";
+import { KanbanBoard } from "@/extensions/project/components/KanbanBoard";
+import { MemberList } from "@/extensions/project/components/MemberList";
+import { MilestoneTimeline } from "@/extensions/project/components/MilestoneTimeline";
+import { OutlineTree } from "@/extensions/project/components/OutlineTree";
+import { StatusBadge } from "@/extensions/project/components/StatusBadge";
 import {
   CHAPTER_STATUS_LABELS,
   MEMBER_ROLE_LABELS,
@@ -33,12 +38,7 @@ import {
   type ReportOutline,
   type ReportProject,
 } from "@/extensions/project/types";
-import { KanbanBoard } from "@/extensions/project/components/KanbanBoard";
-import { MemberList } from "@/extensions/project/components/MemberList";
-import { MilestoneTimeline } from "@/extensions/project/components/MilestoneTimeline";
-import { OutlineTree } from "@/extensions/project/components/OutlineTree";
-import { StatusBadge } from "@/extensions/project/components/StatusBadge";
-import { ApprovalPanel } from "@/extensions/approval/ApprovalPanel";
+import { cn } from "@/lib/utils";
 
 type TabId = "overview" | "kanban" | "outline" | "members" | "approval";
 

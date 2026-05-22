@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Store,
@@ -12,8 +11,10 @@ import {
   PowerOff,
   Loader2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,6 @@ import { PluginCard } from "@/extensions/plugin/components/PluginCard";
 import { PluginConfigForm } from "@/extensions/plugin/components/PluginConfigForm";
 import type { Plugin, PluginInstance } from "@/extensions/plugin/types";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 type TabId = "market" | "installed" | "apikeys";
 

@@ -4,13 +4,13 @@ import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { projectApi } from "@/extensions/project/api";
 import {
   MEMBER_ROLE_LABELS,
   type MemberRole,
   type ProjectMember,
 } from "@/extensions/project/types";
+import { cn } from "@/lib/utils";
 
 const ROLE_ORDER: MemberRole[] = [
   "manager",

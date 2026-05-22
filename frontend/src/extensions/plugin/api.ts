@@ -1,4 +1,5 @@
 import { authFetch } from "@/extensions/api/client";
+
 import type { Plugin, PluginInstance, ApiKey, CreateApiKeyRequest } from "./types";
 
 const API_BASE = "/api/plugins";

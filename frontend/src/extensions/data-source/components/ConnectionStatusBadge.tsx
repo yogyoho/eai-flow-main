@@ -5,6 +5,7 @@ import React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
 import type { ConnectionStatus } from "../types";
 import { CONNECTION_STATUS_LABELS } from "../types";
 

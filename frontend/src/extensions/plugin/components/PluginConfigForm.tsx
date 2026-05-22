@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, CheckCircle2 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";

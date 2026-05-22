@@ -2,8 +2,8 @@
 
 import { use } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
 import { ChapterEditor } from "@/extensions/project/ChapterEditor";
+import { ShellLayout } from "@/extensions/shell";
 
 export default function ChapterEditorPage({
   params,

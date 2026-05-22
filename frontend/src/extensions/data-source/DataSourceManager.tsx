@@ -13,11 +13,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
 import { dataSourceApi } from "./api";
+import { DataSourceCard } from "./components/DataSourceCard";
 import { DataSourceForm } from "./components/DataSourceForm";
 import type { CreateDataSourceRequest, DataSource } from "./types";
 
-import { DataSourceCard } from "./components/DataSourceCard";
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 

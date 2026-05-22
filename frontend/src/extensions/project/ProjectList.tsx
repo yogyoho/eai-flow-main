@@ -17,10 +17,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { projectApi } from "@/extensions/project/api";
 import type { CreateProjectRequest, ReportType } from "@/extensions/project/types";
 import { REPORT_TYPE_LABELS, PROJECT_STATUS_LABELS } from "@/extensions/project/types";
+import { cn } from "@/lib/utils";
 
 import { ProjectCard } from "./components/ProjectCard";
 

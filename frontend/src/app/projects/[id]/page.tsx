@@ -2,8 +2,8 @@
 
 import { Suspense, use } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
 import { ProjectDetail } from "@/extensions/project/ProjectDetail";
+import { ShellLayout } from "@/extensions/shell";
 
 export default function ProjectDetailPage({
   params,

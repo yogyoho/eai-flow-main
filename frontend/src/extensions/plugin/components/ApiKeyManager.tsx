@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Copy,
@@ -10,8 +11,8 @@ import {
   X,
   Clock,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { pluginApi } from "@/extensions/plugin/api";
 import type { ApiKey, CreateApiKeyRequest } from "@/extensions/plugin/types";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 const SCOPE_OPTIONS: { value: string; label: string }[] = [
   { value: "read", label: "读取" },

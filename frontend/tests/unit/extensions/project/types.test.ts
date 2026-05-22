@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vitest";
+
 import {
   REPORT_TYPE_LABELS,
   PROJECT_STATUS_LABELS,

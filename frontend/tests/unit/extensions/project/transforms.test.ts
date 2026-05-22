@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vitest";
+
 import { toCamelCase, toSnakeCase } from "@/extensions/project/transforms";
 
 describe("toCamelCase", () => {
