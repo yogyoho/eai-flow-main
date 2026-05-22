@@ -48,11 +48,6 @@ interface OutlineItem {
   children: OutlineItem[];
 }
 
-interface MockUser {
-  id: string;
-  name: string;
-}
-
 type WizardStep = 1 | 2 | 3 | 4;
 
 // ─── Constants ───────────────────────────────────────────────────────────────────
@@ -68,7 +63,8 @@ const REPORT_TYPE_OPTIONS: SelectOption[] = Object.entries(REPORT_TYPE_LABELS).m
   ([value, label]) => ({ value, label }),
 );
 
-const MOCK_TEMPLATES = [
+// Built-in template presets — no backend template API yet
+const BUILTIN_TEMPLATES = [
   {
     id: "tpl_env",
     name: "环境影响评价报告模板",
@@ -89,12 +85,6 @@ const MOCK_TEMPLATES = [
     name: "空白模板",
     description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
   },
-];
-
-const MOCK_USERS: MockUser[] = [
-  { id: "u1", name: "张三" },
-  { id: "u2", name: "李四" },
-  { id: "u3", name: "王五" },
 ];
 
 const MEMBER_ROLES: MemberRole[] = ["manager", "writer", "reviewer", "issuer"];
@@ -391,69 +381,46 @@ function MemberRoleSection({
   onRemove,
 }: {
   role: MemberRole;
-  members: MockUser[];
-  onAdd: (user: MockUser) => void;
+  members: string[];
+  onAdd: (userId: string) => void;
   onRemove: (userId: string) => void;
 }) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [inputValue, setInputValue] = useState("");
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const availableUsers = MOCK_USERS.filter(
-    (u) => !members.some((m) => m.id === u.id),
-  );
+  const handleAdd = () => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+    if (members.includes(trimmed)) {
+      toast.error("该成员已添加");
+      return;
+    }
+    onAdd(trimmed);
+    setInputValue("");
+  };
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">
-          {MEMBER_ROLE_LABELS[role]}
-        </span>
-        <div ref={ref} className="relative">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="h-7 gap-1 text-xs text-muted-foreground"
-          >
-            <Plus className="h-3 w-3" />
-            添加成员
-          </Button>
-          <AnimatePresence>
-            {dropdownOpen && availableUsers.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full z-50 mt-1 min-w-[120px] overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5"
-              >
-                {availableUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => {
-                      onAdd(u);
-                      setDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
-                  >
-                    <UserCircle className="h-4 w-4 text-muted-foreground" />
-                    {u.name}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      <span className="text-sm font-medium text-foreground">
+        {MEMBER_ROLE_LABELS[role]}
+      </span>
+
+      <div className="flex gap-2">
+        <Input
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="输入用户 ID"
+          className="h-8 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="h-8 gap-1 text-xs shrink-0">
+          <Plus className="h-3 w-3" />
+          添加
+        </Button>
       </div>
 
       {members.length === 0 ? (
@@ -463,16 +430,16 @@ function MemberRoleSection({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {members.map((m) => (
+          {members.map((userId) => (
             <span
-              key={m.id}
+              key={userId}
               className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
             >
               <UserCircle className="h-3.5 w-3.5" />
-              {m.name}
+              {userId}
               <button
                 type="button"
-                onClick={() => onRemove(m.id)}
+                onClick={() => onRemove(userId)}
                 className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20"
               >
                 <X className="h-3 w-3" />
@@ -528,14 +495,14 @@ export default function ProjectCreateWizard({
   );
 
   // Step 4: Members
-  const emptyMembers: Record<MemberRole, MockUser[]> = {
+  const emptyMembers: Record<MemberRole, string[]> = {
     manager: [],
     writer: [],
     reviewer: [],
     approver: [],
     issuer: [],
   };
-  const [membersByRole, setMembersByRole] = useState<Record<MemberRole, MockUser[]>>(emptyMembers);
+  const [membersByRole, setMembersByRole] = useState<Record<MemberRole, string[]>>(emptyMembers);
 
   // Submitting
   const [submitting, setSubmitting] = useState(false);
@@ -581,8 +548,8 @@ export default function ProjectCreateWizard({
   const handleCreate = async () => {
     setSubmitting(true);
     try {
-      const memberList = Object.entries(membersByRole).flatMap(([role, users]) =>
-        users.map((u) => ({ userId: u.id, role: role as MemberRole })),
+      const memberList = Object.entries(membersByRole).flatMap(([role, userIds]) =>
+        userIds.map((userId) => ({ userId, role: role as MemberRole })),
       );
 
       const project = await projectApi.create({
@@ -620,23 +587,23 @@ export default function ProjectCreateWizard({
   };
 
   // Member operations
-  const addMember = (role: MemberRole, user: MockUser) => {
+  const addMember = (role: MemberRole, userId: string) => {
     setMembersByRole((prev) => ({
       ...prev,
-      [role]: [...prev[role], user],
+      [role]: [...prev[role], userId],
     }));
   };
 
   const removeMember = (role: MemberRole, userId: string) => {
     setMembersByRole((prev) => ({
       ...prev,
-      [role]: prev[role].filter((u) => u.id !== userId),
+      [role]: prev[role].filter((id) => id !== userId),
     }));
   };
 
   if (!open) return null;
 
-  const selectedTemplate = MOCK_TEMPLATES.find((t) => t.id === templateId);
+  const selectedTemplate = BUILTIN_TEMPLATES.find((t) => t.id === templateId);
 
   return (
     <AnimatePresence>
@@ -761,7 +728,7 @@ export default function ProjectCreateWizard({
                       选择一个模板作为报告的基础结构
                     </p>
                     <div className="space-y-2">
-                      {MOCK_TEMPLATES.map((tpl) => (
+                      {BUILTIN_TEMPLATES.map((tpl) => (
                         <label
                           key={tpl.id}
                           className={cn(
@@ -870,7 +837,7 @@ export default function ProjectCreateWizard({
                         key={role}
                         role={role}
                         members={membersByRole[role]}
-                        onAdd={(user) => addMember(role, user)}
+                        onAdd={(userId) => addMember(role, userId)}
                         onRemove={(userId) => removeMember(role, userId)}
                       />
                     ))}
