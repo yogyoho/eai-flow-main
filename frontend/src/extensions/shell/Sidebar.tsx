@@ -9,6 +9,10 @@ import {
   LogOut,
   UserCircle,
   FolderCheck,
+  ClipboardList,
+  Database,
+  Puzzle,
+  FileOutput,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,9 +36,13 @@ import { cn } from "@/lib/utils";
 
 const navItems: { href: string; label: string; icon: React.ElementType }[] = [
   { href: "/writing", label: "智能写作", icon: Bot },
+  { href: "/projects", label: "报告项目", icon: ClipboardList },
   { href: "/docmgr", label: "文档空间", icon: FolderCheck },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory },
   { href: "/knowledge", label: "知识库", icon: BookOpen },
+  { href: "/data-sources", label: "数据源", icon: Database },
+  { href: "/plugins", label: "插件", icon: Puzzle },
+  { href: "/output", label: "报告输出", icon: FileOutput },
   { href: "/admin", label: "系统管理", icon: Settings2 },
 ];
 
@@ -102,11 +110,11 @@ export function ExtensionsSidebar() {
         </div>
 
         {/* Main navigation */}
-        <nav className="flex flex-col items-center py-4 gap-4 flex-1">
+        <nav className="flex flex-col items-center py-4 gap-2 flex-1">
           {navItems.map(({ href, label, icon }) => {
             const isActive =
               pathname === href ||
-              (href === "/admin" && pathname.startsWith("/admin"));
+              (href !== "/" && pathname.startsWith(href));
             return (
               <NavIcon
                 key={href}
@@ -120,7 +128,7 @@ export function ExtensionsSidebar() {
         </nav>
 
         {/* Bottom navigation (settings) */}
-        <nav className="flex flex-col items-center py-2 gap-2 mt-auto mb-2">
+        <nav className="flex flex-col items-center gap-2 mt-auto">
           {bottomNavItems.map(({ href, label, icon }) => {
             const isActive = pathname === href;
             return (
