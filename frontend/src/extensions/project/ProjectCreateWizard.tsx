@@ -352,7 +352,7 @@ function OutlineTree({
               </button>
             )}
           </div>
-          {item.children.length > 0 && (
+          {item.children?.length > 0 && (
             <OutlineTree
               items={item.children}
               onChange={(children) => updateChildren(index, children)}
