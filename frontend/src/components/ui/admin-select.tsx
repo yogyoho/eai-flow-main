@@ -30,8 +30,9 @@ function AdminSelect({
   className,
   disabled = false,
 }: AdminSelectProps) {
+    const rootValue = value === "" ? undefined : value;
     return (
-      <SelectPrimitive.Root value={value} onValueChange={(v) => { onChange?.(v); onValueChange?.(v); }} disabled={disabled}>
+      <SelectPrimitive.Root value={rootValue} onValueChange={(v) => { onChange?.(v); onValueChange?.(v); }} disabled={disabled}>
       <SelectPrimitive.Trigger
         className={cn(
           "flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors",
