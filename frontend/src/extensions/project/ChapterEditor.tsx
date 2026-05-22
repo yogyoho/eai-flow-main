@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   FileText,
   Lock,
+  Loader2,
   Send,
   Unlock,
   User,
@@ -22,17 +23,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { projectApi } from "@/extensions/project/api";
+import type { ReportOutline } from "@/extensions/project/types";
 
 interface ChapterEditorProps {
   projectId: string;
   chapterId: string;
-}
-
-interface ChapterOutline {
-  id: string;
-  title: string;
-  wordCountCurrent: number;
-  wordCountTarget: number;
 }
 
 interface AiMessage {
@@ -41,45 +37,27 @@ interface AiMessage {
   content: string;
 }
 
-const MOCK_CHAPTERS: ChapterOutline[] = [
-  { id: "ch-1", title: "第一章 概述", wordCountCurrent: 1200, wordCountTarget: 2000 },
-  { id: "ch-2", title: "第二章 工程分析", wordCountCurrent: 3500, wordCountTarget: 5000 },
-  { id: "ch-3", title: "第三章 环境质量现状", wordCountCurrent: 800, wordCountTarget: 4000 },
-  { id: "ch-4", title: "第四章 环境影响预测", wordCountCurrent: 0, wordCountTarget: 6000 },
-  { id: "ch-5", title: "第五章 环保措施", wordCountCurrent: 2100, wordCountTarget: 3000 },
-  { id: "ch-6", title: "第六章 结论与建议", wordCountCurrent: 0, wordCountTarget: 2000 },
-];
-
-const MOCK_AI_MESSAGES: AiMessage[] = [
-  {
-    id: "m1",
-    role: "assistant",
-    content: "你好！我是 AI 写作助手。我可以帮你润色文字、扩展段落、检查规范引用，或回答关于报告编写的任何问题。",
-  },
-  {
-    id: "m2",
-    role: "user",
-    content: "请帮我检查“工程分析”这一章是否涵盖了环境影响评价技术导则要求的主要分析内容。",
-  },
-  {
-    id: "m3",
-    role: "assistant",
-    content: "根据 HJ 2.4-2009 技术导则，工程分析章节应包含：\n1. 建设项目概况\n2. 工艺流程及产污环节分析\n3. 污染源强核算\n4. 清洁生产水平分析\n\n你当前的第二章已涵盖前两项，建议补充污染源强核算和清洁生产水平分析。",
-  },
-];
-
 export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
-  const [chapters] = useState<ChapterOutline[]>(MOCK_CHAPTERS);
+  const [outline, setOutline] = useState<ReportOutline[]>([]);
   const [content, setContent] = useState("");
   const [chapterTitle, setChapterTitle] = useState("");
   const [lastSaved, setLastSaved] = useState<string>("尚未保存");
-  const [aiMessages, setAiMessages] = useState<AiMessage[]>(MOCK_AI_MESSAGES);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "你好！我是 AI 写作助手。我可以帮你润色文字、扩展段落、检查规范引用，或回答关于报告编写的任何问题。",
+    },
+  ]);
   const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentChapter = useMemo(
-    () => chapters.find((c) => c.id === chapterId),
-    [chapters, chapterId],
+    () => outline.find((c) => c.id === chapterId),
+    [outline, chapterId],
   );
 
   const wordCount = useMemo(() => content.length, [content]);
@@ -89,24 +67,53 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
     [wordCount, wordTarget],
   );
 
-  // Set chapter title from mock data
+  // Load outline from API
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const data = await projectApi.getOutline(projectId);
+        if (!cancelled) setOutline(data);
+      } catch {
+        // Backend not available — keep empty outline
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  // Set chapter title from outline data
   useEffect(() => {
     if (currentChapter) {
       setChapterTitle(currentChapter.title);
     }
   }, [currentChapter]);
 
-  // Auto-save with debounce (3 seconds)
+  // Auto-save with debounce (3 seconds) via updateOutline
   const triggerAutoSave = useCallback(() => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
-    saveTimerRef.current = setTimeout(() => {
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-      setLastSaved(`自动保存于 ${timeStr}`);
+    saveTimerRef.current = setTimeout(async () => {
+      if (!currentChapter) return;
+      setSaving(true);
+      try {
+        await projectApi.updateOutline(projectId, chapterId, {
+          wordCountCurrent: content.length,
+        });
+        const now = new Date();
+        const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+        setLastSaved(`自动保存于 ${timeStr}`);
+      } catch {
+        setLastSaved("保存失败");
+      } finally {
+        setSaving(false);
+      }
     }, 3000);
-  }, []);
+  }, [projectId, chapterId, content.length, currentChapter]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -127,14 +134,24 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
 
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setChapterTitle(e.target.value);
+      const newTitle = e.target.value;
+      setChapterTitle(newTitle);
+      // Debounced title save
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        try {
+          await projectApi.updateOutline(projectId, chapterId, { title: newTitle });
+        } catch {
+          // Title save failed silently
+        }
+      }, 3000);
     },
-    [],
+    [projectId, chapterId],
   );
 
   const handleAiSend = useCallback(() => {
     const trimmed = aiInput.trim();
-    if (!trimmed) return;
+    if (!trimmed || aiLoading) return;
     const userMsg: AiMessage = {
       id: `m-${Date.now()}`,
       role: "user",
@@ -142,7 +159,20 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
     };
     setAiMessages((prev) => [...prev, userMsg]);
     setAiInput("");
-  }, [aiInput]);
+    setAiLoading(true);
+
+    // TODO: Replace with real AI API streaming call
+    // For now, show a placeholder response after a short delay
+    setTimeout(() => {
+      const aiResponse: AiMessage = {
+        id: `m-${Date.now()}-resp`,
+        role: "assistant",
+        content: "此功能需要接入 AI 后端服务，目前为占位回复。连接 AI 服务后，我将能帮你润色文字、检查规范引用等。",
+      };
+      setAiMessages((prev) => [...prev, aiResponse]);
+      setAiLoading(false);
+    }, 1000);
+  }, [aiInput, aiLoading]);
 
   const handleAiKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -154,9 +184,14 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
     [handleAiSend],
   );
 
-  // Mock: the first chapter is locked by current user, others by other users
-  const isLockedByMe = chapterId === "ch-2";
-  const lockedByUser = isLockedByMe ? null : "张三";
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground text-sm gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        加载章节内容...
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -175,30 +210,18 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
             className="h-8 border-0 shadow-none bg-transparent text-base font-medium hover:bg-muted/50 focus-visible:bg-muted/50 px-1 max-w-xs"
           />
 
-          {/* Lock status */}
+          {/* Status area */}
           <div className="ml-auto flex items-center gap-2">
-            {isLockedByMe ? (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Lock className="h-4 w-4 text-green-600" />
-                </TooltipTrigger>
-                <TooltipContent>你正在编辑此章节</TooltipContent>
-              </Tooltip>
-            ) : lockedByUser ? (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Lock className="h-4 w-4 text-destructive" />
-                </TooltipTrigger>
-                <TooltipContent>{lockedByUser} 正在编辑此章节</TooltipContent>
-              </Tooltip>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Unlock className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>无人锁定，可自由编辑</TooltipContent>
-              </Tooltip>
+            {saving && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
             )}
+
+            <Tooltip>
+              <TooltipTrigger>
+                <Unlock className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>编辑功能已就绪</TooltipContent>
+            </Tooltip>
 
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               已写 {wordCount} / 目标 {wordTarget} 字
@@ -214,7 +237,7 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
               章节目录
             </div>
             <div className="flex flex-col gap-0.5">
-              {chapters.map((ch) => (
+              {outline.map((ch) => (
                 <Link
                   key={ch.id}
                   href={`/projects/${projectId}/chapter/${ch.id}`}
@@ -229,6 +252,11 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
                   <span className="truncate">{ch.title}</span>
                 </Link>
               ))}
+              {outline.length === 0 && (
+                <span className="text-xs text-muted-foreground px-2 py-4">
+                  暂无章节大纲
+                </span>
+              )}
             </div>
           </aside>
 
@@ -285,6 +313,17 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
                   )}
                 </div>
               ))}
+              {aiLoading && (
+                <div className="flex gap-2 justify-start">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="rounded-lg px-3 py-2 text-sm bg-background border border-border text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                    思考中...
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* AI input */}
@@ -296,7 +335,7 @@ export function ChapterEditor({ projectId, chapterId }: ChapterEditorProps) {
                 placeholder="提问或指令..."
                 className="text-sm"
               />
-              <Button size="icon" onClick={handleAiSend} disabled={!aiInput.trim()}>
+              <Button size="icon" onClick={handleAiSend} disabled={!aiInput.trim() || aiLoading}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
