@@ -304,7 +304,9 @@ export function ProjectList() {
       const data = await projectApi.list();
       setProjects(data);
     } catch (e: any) {
-      toast(e?.message ?? "加载项目失败", "error");
+      if (e?.status !== 404) {
+        toast(e?.message ?? "加载项目失败", "error");
+      }
     } finally {
       setIsLoading(false);
     }
