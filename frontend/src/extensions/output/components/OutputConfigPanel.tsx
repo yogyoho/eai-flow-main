@@ -30,10 +30,7 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
   const [templateId, setTemplateId] = useState("");
   const [watermark, setWatermark] = useState<WatermarkType>("draft");
 
-  const templateOptions = [
-    { value: "", label: "请选择排版模板" },
-    ...templates.map((t) => ({ value: t.id, label: t.name })),
-  ];
+  const templateOptions = templates.map((t) => ({ value: t.id, label: t.name }));
 
   const canGenerate = projectId.trim() !== "" && templateId !== "";
 
