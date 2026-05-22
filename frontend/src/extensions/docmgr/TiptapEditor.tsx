@@ -3,14 +3,14 @@
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Table } from "@tiptap/extension-table";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableRow } from "@tiptap/extension-table-row";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
-import { Table } from "@tiptap/extension-table";
-import { TableRow } from "@tiptap/extension-table-row";
-import { TableHeader } from "@tiptap/extension-table-header";
-import { TableCell } from "@tiptap/extension-table-cell";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -25,13 +25,14 @@ import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, f
 import { Markdown } from "tiptap-markdown";
 
 import { cn } from "@/lib/utils";
-import { extractHeadings } from "./utils/headingIdManager";
-import { highlightSection } from "./utils/sectionHighlighter";
-import { getMarkdownPasteParseMode, shouldHandleMarkdownPaste } from "./utils/markdownPaste";
-import { useScrollSpy } from "./hooks/useScrollSpy";
-import { SlashCommand, SlashCommandPluginKey, type SlashCommandPluginState } from "./extensions/SlashCommand";
-import SlashMenu from "./components/SlashMenu";
+
 import EditorDragHandle from "./components/EditorDragHandle";
+import SlashMenu from "./components/SlashMenu";
+import { SlashCommand, SlashCommandPluginKey, type SlashCommandPluginState } from "./extensions/SlashCommand";
+import { useScrollSpy } from "./hooks/useScrollSpy";
+import { extractHeadings } from "./utils/headingIdManager";
+import { getMarkdownPasteParseMode, shouldHandleMarkdownPaste } from "./utils/markdownPaste";
+import { highlightSection } from "./utils/sectionHighlighter";
 
 export interface TiptapEditorRef {
   getMarkdown: () => string;
@@ -358,9 +359,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       setClickedId(sectionId);
       const editorDom = editor.view.dom;
 
-      let targetEl = container.querySelector(`#${CSS.escape(sectionId)}`) as HTMLElement;
+      let targetEl = container.querySelector(`#${CSS.escape(sectionId)}`)!;
       if (!targetEl) {
-        targetEl = editorDom.querySelector(`#${CSS.escape(sectionId)}`) as HTMLElement;
+        targetEl = editorDom.querySelector(`#${CSS.escape(sectionId)}`)!;
       }
 
       if (!targetEl) {
@@ -385,7 +386,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       if (!targetEl) return false;
       if (!targetEl.id) targetEl.id = sectionId;
       targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      highlightSection(targetEl, HIGHLIGHT_DURATION);
+      highlightSection(targetEl as HTMLElement, HIGHLIGHT_DURATION);
       return true;
     }, [editor, headings]);
 
@@ -464,7 +465,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           className="flex-1 overflow-y-auto scrollbar-hide relative"
         >
           <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
-            <EditorDragHandle editor={editor} />
+            <EditorDragHandle editor={editor} scrollContainerRef={scrollRef} />
             <EditorContent editor={editor} />
           </div>
         </div>
