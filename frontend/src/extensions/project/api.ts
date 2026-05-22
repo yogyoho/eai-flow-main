@@ -9,7 +9,7 @@ import type {
   Milestone,
 } from "./types";
 
-const API_BASE = "/api/project";
+const API_BASE = "/project";
 
 export const projectApi = {
   list: async (params?: { status?: string; reportType?: string; search?: string }): Promise<ReportProject[]> => {

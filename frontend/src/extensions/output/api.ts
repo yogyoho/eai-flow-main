@@ -3,7 +3,7 @@ import { authFetch } from "@/extensions/api/client";
 import { transformTemplate } from "./transforms";
 import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";
 
-const API_BASE = "/api/output";
+const API_BASE = "/output";
 
 export const outputApi = {
   listTemplates: async (): Promise<LayoutTemplate[]> => {
