@@ -33,7 +33,11 @@ function TemplatesTab() {
       const data = await outputApi.listTemplates();
       setTemplates(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载模板失败");
+      if ((err as Error & { status?: number })?.status === 404) {
+        setTemplates([]);
+      } else {
+        setError(err instanceof Error ? err.message : "加载模板失败");
+      }
     } finally {
       setLoading(false);
     }

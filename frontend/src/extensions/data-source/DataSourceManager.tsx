@@ -92,7 +92,9 @@ export function DataSourceManager() {
       const data = await dataSourceApi.list();
       setSources(data);
     } catch (e: any) {
-      toast(e?.message ?? "加载数据源失败", "error");
+      if (e?.status !== 404) {
+        toast(e?.message ?? "加载数据源失败", "error");
+      }
     } finally {
       setIsLoading(false);
     }

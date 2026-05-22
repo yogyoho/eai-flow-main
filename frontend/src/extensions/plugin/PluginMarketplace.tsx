@@ -129,8 +129,10 @@ function MarketTab() {
       ]);
       setPlugins(pluginList);
       setInstalledIds(new Set(instances.map((i) => i.pluginId)));
-    } catch {
-      toast.error("加载插件列表失败");
+    } catch (err) {
+      if ((err as Error & { status?: number })?.status !== 404) {
+        toast.error("加载插件列表失败");
+      }
     } finally {
       setLoading(false);
     }
@@ -240,8 +242,10 @@ function InstalledTab() {
     try {
       const data = await pluginApi.listInstances();
       setInstances(data);
-    } catch {
-      toast.error("加载已安装插件失败");
+    } catch (err) {
+      if ((err as Error & { status?: number })?.status !== 404) {
+        toast.error("加载已安装插件失败");
+      }
     } finally {
       setLoading(false);
     }
