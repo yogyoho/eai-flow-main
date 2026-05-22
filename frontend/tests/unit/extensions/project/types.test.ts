@@ -4,6 +4,7 @@ import {
   REPORT_TYPE_LABELS,
   PROJECT_STATUS_LABELS,
   CHAPTER_STATUS_LABELS,
+  MILESTONE_STATUS_LABELS,
   MEMBER_ROLE_LABELS,
 } from "@/extensions/project/types";
 
@@ -46,6 +47,15 @@ describe("Project type labels", () => {
       reviewer: "审核人",
       approver: "批准人",
       issuer: "签发人",
+    });
+  });
+
+  test("MILESTONE_STATUS_LABELS has all statuses", () => {
+    expect(MILESTONE_STATUS_LABELS).toEqual({
+      pending: "待开始",
+      in_progress: "进行中",
+      completed: "已完成",
+      overdue: "已逾期",
     });
   });
 });

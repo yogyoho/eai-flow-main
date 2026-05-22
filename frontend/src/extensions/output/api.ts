@@ -1,7 +1,7 @@
 import { authFetch } from "@/extensions/api/client";
 
 import { transformTemplate } from "./transforms";
-import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";
+import type { GenerateOutputRequest, GenerateOutputResult, HistoryEntry, LayoutTemplate } from "./types";
 
 const API_BASE = "/output";
 
@@ -43,5 +43,18 @@ export const outputApi = {
       downloadUrl: (data.download_url as string) ?? undefined,
       fileName: (data.file_name as string) ?? undefined,
     };
+  },
+
+  listHistory: async (): Promise<HistoryEntry[]> => {
+    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/history`);
+    return data.items.map((item) => ({
+      taskId: item.task_id as string,
+      projectId: item.project_id as string,
+      format: item.format as string,
+      status: item.status as GenerateOutputResult["status"],
+      fileName: (item.file_name as string) ?? undefined,
+      downloadUrl: (item.download_url as string) ?? undefined,
+      createdAt: item.created_at as string,
+    }));
   },
 };

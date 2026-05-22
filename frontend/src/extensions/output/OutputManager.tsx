@@ -188,11 +188,28 @@ interface HistoryItem {
 function HistoryTab() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await outputApi.listHistory();
+      setItems(data);
+    } catch (err: unknown) {
+      if (err instanceof Error && (err as Error & { status: number }).status === 404) {
+        setItems([]);
+      } else {
+        setError(err instanceof Error ? err.message : "加载历史记录失败");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Placeholder — will connect to real API when available
-    setLoading(false);
-  }, []);
+    void loadHistory();
+  }, [loadHistory]);
 
   if (loading) {
     return (
@@ -202,11 +219,27 @@ function HistoryTab() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-destructive">
+        <span className="mb-2 text-lg">加载失败</span>
+        <span className="mb-4 text-sm text-muted-foreground">{error}</span>
+        <button
+          type="button"
+          className="rounded-lg bg-destructive px-4 py-2 text-sm text-white hover:bg-destructive/90"
+          onClick={() => void loadHistory()}
+        >
+          重试
+        </button>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <History className="mb-4 h-12 w-12" />
-        <span className="mb-2 text-lg">暂无生成记录</span>
+        <span className="mb-2 text-lg">暂无输出历史</span>
         <span className="text-sm">生成报告后将在此处显示历史记录</span>
       </div>
     );

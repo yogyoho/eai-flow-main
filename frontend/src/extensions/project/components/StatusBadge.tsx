@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, AlertCircle, Pencil } from "lucide-react";
 import React from "react";
 
 import { cn } from "@/lib/utils";
@@ -50,8 +50,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function StatusBadge({ status, type }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.error!;
+  let config = STATUS_CONFIG[status] ?? STATUS_CONFIG.error!;
   const label = STATUS_LABELS[status] ?? status;
+
+  // Chapter "writing" uses Pencil icon instead of spinning Loader2
+  if (type === "chapter" && status === "writing") {
+    config = { ...config, icon: <Pencil className="h-3 w-3" /> };
+  }
 
   return (
     <span

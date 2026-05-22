@@ -13,7 +13,7 @@ import type { ApprovalStep, ApprovalRecord } from "./types";
 interface ApprovalPanelProps {
   projectId: string;
   reportType: string;
-  currentUserId: string;
+  currentUserId?: string;
   projectStatus?: string;
 }
 
@@ -23,6 +23,7 @@ export function ApprovalPanel({
   currentUserId,
   projectStatus,
 }: ApprovalPanelProps) {
+  const authenticated = Boolean(currentUserId);
   const [steps, setSteps] = useState<ApprovalStep[]>([]);
   const [records, setRecords] = useState<ApprovalRecord[]>([]);
   const [currentStepId, setCurrentStepId] = useState<string>();
@@ -61,8 +62,7 @@ export function ApprovalPanel({
           );
           if (!hasApproval) {
             setCurrentStepId(step.id);
-            // In a real app, currentReviewerId would come from the backend
-            // For now, we use a placeholder
+            setCurrentReviewerId(step.requiredRole);
             setCurrentReviewerName(step.requiredRole);
             break;
           }
@@ -76,9 +76,9 @@ export function ApprovalPanel({
   };
 
   const isCurrentReviewer = useMemo(() => {
-    if (!currentUserId || !currentReviewerId) return false;
+    if (!authenticated || !currentReviewerId) return false;
     return currentUserId === currentReviewerId;
-  }, [currentUserId, currentReviewerId]);
+  }, [authenticated, currentUserId, currentReviewerId]);
 
   const handleSubmitForApproval = async () => {
     setSubmitting(true);
@@ -173,7 +173,14 @@ export function ApprovalPanel({
         {/* Current step action panel */}
         {currentStepId && (
           <div className="rounded-xl border border-border bg-background p-6">
-            {isCurrentReviewer ? (
+            {!authenticated ? (
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <Clock className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  请先登录后再进行审批操作
+                </p>
+              </div>
+            ) : isCurrentReviewer ? (
               <>
                 <h4 className="mb-4 text-sm font-semibold">审批操作</h4>
                 <ApprovalAction

@@ -114,7 +114,7 @@ export function ExtensionsSidebar() {
           {navItems.map(({ href, label, icon }) => {
             const isActive =
               pathname === href ||
-              (href !== "/" && pathname.startsWith(href));
+              (href !== "/" && pathname.startsWith(href + "/"));
             return (
               <NavIcon
                 key={href}
