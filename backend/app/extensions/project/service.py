@@ -452,17 +452,14 @@ async def _get_chapter_or_404(db: AsyncSession, chapter_id):
 async def _create_deerflow_thread(metadata: dict) -> str:
     """Create a DeerFlow thread via the Gateway threads API."""
     import httpx
-    from app.extensions.config import get_extensions_config
+    import os
 
-    config = get_extensions_config()
-
-    import uuid
-
-    thread_id = str(uuid.uuid4())
+    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
+    thread_id = str(__import__("uuid").uuid4())
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"http://localhost:{config.gateway_port or 8001}/api/threads",
+            f"http://localhost:{gateway_port}/api/threads",
             json={"thread_id": thread_id, "metadata": metadata},
             timeout=10.0,
         )
@@ -501,6 +498,9 @@ async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, use
     """
     project = await _get_project_or_404(db, project_id)
     chapter = await _get_chapter_or_404(db, chapter_id)
+
+    if chapter.project_id != project_id:
+        raise ValueError("Chapter does not belong to this project")
 
     thread_id = await _create_deerflow_thread({
         "project_id": str(project_id),
