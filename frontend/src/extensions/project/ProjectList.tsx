@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { projectApi } from "@/extensions/project/api";
-import type { CreateProjectRequest, ReportType } from "@/extensions/project/types";
+import type { CreateProjectRequest, ProjectListItem, ReportType } from "@/extensions/project/types";
 import { REPORT_TYPE_LABELS, PROJECT_STATUS_LABELS } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
 
@@ -189,12 +189,11 @@ function CreateProjectModal({
   const [form, setForm] = useState<CreateProjectRequest>({
     name: "",
     reportType: "environmental_impact",
-    client: "",
   });
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.client.trim()) return;
+    if (!form.name.trim()) return;
     setCreating(true);
     try {
       await projectApi.create(form);
@@ -259,24 +258,12 @@ function CreateProjectModal({
               }))}
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              委托方 <span className="text-destructive">*</span>
-            </label>
-            <Input
-              type="text"
-              value={form.client}
-              onChange={(e) => setForm({ ...form, client: e.target.value })}
-              className="w-full"
-              placeholder="例如：XX建设有限公司"
-            />
-          </div>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             取消
           </Button>
-          <Button onClick={handleCreate} disabled={!form.name.trim() || !form.client.trim() || creating}>
+          <Button onClick={handleCreate} disabled={!form.name.trim() || creating}>
             {creating && <Loader2 className="h-4 w-4 animate-spin" />}
             创建
           </Button>
@@ -291,7 +278,7 @@ function CreateProjectModal({
 export function ProjectList() {
   const router = useRouter();
   const { toasts, show: toast, remove } = useToast();
-  const [projects, setProjects] = useState<import("@/extensions/project/types").ReportProject[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -301,8 +288,8 @@ export function ProjectList() {
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await projectApi.list();
-      setProjects(data);
+      const { items } = await projectApi.list();
+      setProjects(items);
     } catch (e: any) {
       if (e?.status !== 404) {
         toast(e?.message ?? "加载项目失败", "error");
@@ -317,7 +304,7 @@ export function ProjectList() {
   }, [loadProjects]);
 
   const filteredProjects = projects.filter((project) => {
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) || project.client.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || project.status === statusFilter;
     const matchesType = typeFilter === "all" || project.reportType === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -340,7 +327,7 @@ export function ProjectList() {
     router.push(`/projects/${id}`);
   };
 
-  const handleClick = (project: import("@/extensions/project/types").ReportProject) => {
+  const handleClick = (project: ProjectListItem) => {
     router.push(`/projects/${project.id}`);
   };
 
@@ -365,7 +352,7 @@ export function ProjectList() {
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="搜索项目名称或委托方..."
+              placeholder="搜索项目名称..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-muted pl-9 pr-4"

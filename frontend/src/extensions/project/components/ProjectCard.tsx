@@ -5,14 +5,14 @@ import { Edit, Trash2 } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
-import type { ReportProject } from "@/extensions/project/types";
+import type { ProjectListItem } from "@/extensions/project/types";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
 
 import { StatusBadge } from "./StatusBadge";
 
 interface ProjectCardProps {
-  project: ReportProject;
+  project: ProjectListItem;
   onClick: () => void;
   onEdit: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
@@ -35,29 +35,6 @@ const REPORT_TYPE_ICONS: Record<string, string> = {
   energy_assessment: "节",
   other: "报",
 };
-
-const AVATAR_COLORS = [
-  "bg-blue-500 text-white",
-  "bg-green-500 text-white",
-  "bg-amber-500 text-white",
-  "bg-purple-500 text-white",
-  "bg-pink-500 text-white",
-  "bg-cyan-500 text-white",
-];
-
-function getInitials(name: string): string {
-  if (!name) return "?";
-  // For Chinese names, take the last 1-2 characters
-  if (/[一-鿿]/.test(name)) {
-    return name.slice(-2);
-  }
-  // For English names, take first letter of first and last name
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
 
 function formatDate(dateString: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -104,9 +81,9 @@ export function ProjectCard({ project, onClick, onEdit, onDelete }: ProjectCardP
         {/* Middle: 3-column grid */}
         <div className="grid grid-cols-3 gap-3 border-t border-border py-3">
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">委托方</div>
-            <div className="truncate text-sm font-medium text-foreground" title={project.client}>
-              {project.client || "-"}
+            <div className="mb-1 text-xs text-muted-foreground">章节</div>
+            <div className="truncate text-sm font-medium text-foreground">
+              {project.chapterCount}
             </div>
           </div>
           <div>
@@ -125,28 +102,10 @@ export function ProjectCard({ project, onClick, onEdit, onDelete }: ProjectCardP
       {/* Bottom: Member avatars + action buttons */}
       <div className="flex items-center justify-between border-t border-border bg-muted/50 px-5 py-3">
         <div className="flex items-center">
-          {project.members.length === 0 ? (
+          {project.memberCount === 0 ? (
             <span className="text-xs text-muted-foreground">暂无成员</span>
           ) : (
-            <div className="flex -space-x-1.5">
-              {project.members.slice(0, 4).map((member, idx) => (
-                <div
-                  key={member.userId}
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full border-2 border-background text-[9px] font-medium",
-                    AVATAR_COLORS[idx % AVATAR_COLORS.length],
-                  )}
-                  title={`${member.username} (${member.role})`}
-                >
-                  {getInitials(member.username)}
-                </div>
-              ))}
-              {project.members.length > 4 && (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-medium text-muted-foreground">
-                  +{project.members.length - 4}
-                </div>
-              )}
-            </div>
+            <span className="text-xs text-muted-foreground">{project.memberCount} 名成员</span>
           )}
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
