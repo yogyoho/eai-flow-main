@@ -1,107 +1,184 @@
-"""Pydantic schemas for report project management."""
+"""Pydantic schemas for report project management (workflow-driven)."""
 
 from datetime import datetime
-from pydantic import BaseModel, Field
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+# ── Enums (as string literals) ──
+
+VALID_REPORT_TYPES = [
+    "environmental_impact",
+    "geological_survey",
+    "feasibility_study",
+    "safety_assessment",
+    "energy_assessment",
+    "other",
+]
+
+VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "published", "archived"]
+
+VALID_CHAPTER_STATUSES = ["pending", "writing", "draft", "editing", "completed", "rejected", "approved"]
+
+VALID_MEMBER_ROLES = ["manager", "editor", "reviewer", "approver"]
+
+VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
+
+VALID_APPROVAL_ACTIONS = ["approve", "reject", "comment"]
+
+
+# ── Chapter ──
+
+
+class ChapterOut(BaseModel):
+    id: UUID
+    project_id: UUID
+    parent_id: UUID | None = None
+    title: str
+    level: int = 1
+    sort_order: int = 0
+    status: str = "pending"
+    content: str | None = None
+    assigned_to: UUID | None = None
+    assigned_name: str | None = None
+    word_count_target: int = 3000
+    word_count_current: int = 0
+    purpose: str | None = None
+    generation_hint: str | None = None
+    children: list["ChapterOut"] = Field(default_factory=list)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ChapterTreeNode(BaseModel):
+    """Flat node for outline tree operations (add/reorder/update)."""
+    id: UUID | None = None  # None for new chapters
+    title: str
+    level: int = 1
+    sort_order: int = 0
+    purpose: str | None = None
+    generation_hint: str | None = None
+    word_count_target: int = 3000
+    children: list["ChapterTreeNode"] = Field(default_factory=list)
+
+
+class ChapterContentUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    status: str | None = None
+    assigned_to: UUID | None = None
+    word_count_target: int | None = None
+
+
+# ── Member ──
+
+
+class MemberOut(BaseModel):
+    id: UUID
+    project_id: UUID
+    user_id: UUID
+    username: str = ""
+    role: str
+    created_at: datetime | None = None
+
+
+class MemberCreate(BaseModel):
+    user_id: UUID
+    role: str = "editor"
 
 
 # ── Project ──
 
 
-class ProjectMemberIn(BaseModel):
-    user_id: str
-    role: str
-
-
 class ProjectCreate(BaseModel):
-    name: str
-    report_type: str
-    client: str
-    target_standard: str | None = None
-    template_id: str | None = None
-    compliance_rule_set_id: str | None = None
-    law_ids: list[str] | None = None
-    members: list[ProjectMemberIn] | None = None
+    name: str = Field(..., min_length=1, max_length=255)
+    report_type: str = Field(..., min_length=1)
+    template_id: UUID | None = None
 
 
 class ProjectUpdate(BaseModel):
-    name: str | None = None
-    client: str | None = None
-    target_standard: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=255)
     status: str | None = None
-    compliance_rule_set_id: str | None = None
-    law_ids: list[str] | None = None
-
-
-class ProjectMemberOut(BaseModel):
-    user_id: str
-    username: str = ""
-    role: str
-    chapter_assignments: list[str] = Field(default_factory=list)
-    avatar_url: str | None = None
-
-
-class OutlineNode(BaseModel):
-    id: str
-    project_id: str
-    parent_id: str | None = None
-    title: str
-    order: int = 0
-    status: str = "not_started"
-    assignee_id: str | None = None
-    assignee_name: str | None = None
-    word_count_target: int = 3000
-    word_count_current: int = 0
-    description: str = ""
-
-
-class MilestoneOut(BaseModel):
-    id: str
-    project_id: str
-    name: str
-    due_date: str
-    completed_at: str | None = None
-    status: str = "pending"
+    current_stage: int | None = None
 
 
 class ProjectOut(BaseModel):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
     name: str
     report_type: str
-    client: str
-    target_standard: str = ""
-    status: str = "planning"
-    template_id: str | None = None
-    compliance_rule_set_id: str | None = None
-    law_ids: list[str] = Field(default_factory=list)
-    members: list[ProjectMemberOut] = Field(default_factory=list)
-    outline: dict | None = None
-    milestones: list[MilestoneOut] = Field(default_factory=list)
-    created_by: str = ""
-    created_at: str = ""
-    updated_at: str = ""
+    template_id: UUID | None = None
+    status: str = "setup"
+    current_stage: int = 1
+    thread_id: str | None = None
+    created_by: UUID | None = None
+    members: list[MemberOut] = Field(default_factory=list)
+    chapters: list[ChapterOut] = Field(default_factory=list)
+    chapter_count: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ProjectListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    report_type: str
+    status: str = "setup"
+    current_stage: int = 1
+    template_id: UUID | None = None
+    chapter_count: int = 0
+    member_count: int = 0
+    created_by: UUID | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class ProjectListResponse(BaseModel):
-    items: list[ProjectOut] = Field(default_factory=list)
+    items: list[ProjectListItem] = Field(default_factory=list)
+    total: int = 0
 
 
-class OutlineListResponse(BaseModel):
-    items: list[OutlineNode] = Field(default_factory=list)
+# ── Outline batch update ──
 
 
-class OutlineUpdate(BaseModel):
-    title: str | None = None
-    status: str | None = None
-    assignee_id: str | None = None
-    word_count_target: int | None = None
-    word_count_current: int | None = None
-    description: str | None = None
+class OutlineBatchUpdate(BaseModel):
+    """Replace the entire outline tree with a new structure."""
+    chapters: list[ChapterTreeNode] = Field(default_factory=list)
 
 
-class MilestoneListResponse(BaseModel):
-    items: list[MilestoneOut] = Field(default_factory=list)
+# ── Approval ──
 
 
-class MemberCreate(BaseModel):
-    user_id: str
-    role: str
+class ApprovalWorkflowOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    step_order: int
+    step_name: str
+    role_required: str
+    status: str = "pending"
+
+
+class ApprovalRecordOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    workflow_id: UUID
+    chapter_id: UUID | None = None
+    action: str
+    reviewer_id: UUID
+    reviewer_name: str = ""
+    comment: str | None = None
+    created_at: datetime | None = None
+
+
+class ApprovalActionRequest(BaseModel):
+    workflow_id: UUID
+    chapter_id: UUID | None = None
+    action: str = Field(..., pattern="^(approve|reject|comment)$")
+    comment: str | None = None
