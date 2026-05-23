@@ -2,23 +2,34 @@ import { authFetch } from "@/extensions/api/client";
 
 import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
-  ReportProject,
-  ReportOutline,
   CreateProjectRequest,
+  ChapterTreeNode,
+  ChapterUpdateRequest,
+  ProjectListItem,
+  ProjectChapter,
+  ReportProject,
   UpdateProjectRequest,
-  Milestone,
 } from "./types";
 
 const API_BASE = "/project";
 
 export const projectApi = {
-  list: async (params?: { status?: string; reportType?: string; search?: string }): Promise<ReportProject[]> => {
+  // ── Projects ──
+
+  list: async (params?: {
+    status?: string;
+    reportType?: string;
+    search?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<{ items: ProjectListItem[]; total: number }> => {
     const query = new URLSearchParams();
     if (params?.status) query.set("status", params.status);
     if (params?.reportType) query.set("report_type", params.reportType);
     if (params?.search) query.set("search", params.search);
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/projects?${query}`);
-    return data.items.map((item) => toCamelCase<ReportProject>(item));
+    if (params?.skip) query.set("skip", String(params.skip));
+    if (params?.limit) query.set("limit", String(params.limit));
+    return await authFetch(`${API_BASE}/projects?${query}`);
   },
 
   get: async (id: string): Promise<ReportProject> => {
@@ -46,18 +57,39 @@ export const projectApi = {
     await authFetch<void>(`${API_BASE}/projects/${id}`, { method: "DELETE" });
   },
 
-  getOutline: async (projectId: string): Promise<ReportOutline[]> => {
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/projects/${projectId}/outline`);
-    return data.items.map((item) => toCamelCase<ReportOutline>(item));
+  // ── Outline ──
+
+  getOutline: async (projectId: string): Promise<ProjectChapter[]> => {
+    return await authFetch<ProjectChapter[]>(`${API_BASE}/projects/${projectId}/outline`);
   },
 
-  updateOutline: async (projectId: string, outlineId: string, updates: Partial<ReportOutline>): Promise<ReportOutline> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${projectId}/outline/${outlineId}`, {
-      method: "PATCH",
-      body: JSON.stringify(toSnakeCase(updates as Record<string, unknown>)),
+  replaceOutline: async (projectId: string, chapters: ChapterTreeNode[]): Promise<ProjectChapter[]> => {
+    return await authFetch<ProjectChapter[]>(`${API_BASE}/projects/${projectId}/outline`, {
+      method: "PUT",
+      body: JSON.stringify({ chapters }),
     });
-    return toCamelCase<ReportOutline>(data);
   },
+
+  updateChapter: async (projectId: string, chapterId: string, updates: ChapterUpdateRequest): Promise<ProjectChapter> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/chapters/${chapterId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(toSnakeCase(updates as Record<string, unknown>)),
+      },
+    );
+    return toCamelCase<ProjectChapter>(data);
+  },
+
+  confirmOutline: async (projectId: string): Promise<ReportProject> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/confirm-outline`,
+      { method: "POST" },
+    );
+    return toCamelCase<ReportProject>(data);
+  },
+
+  // ── Members ──
 
   addMember: async (projectId: string, userId: string, role: string): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members`, {
@@ -68,10 +100,5 @@ export const projectApi = {
 
   removeMember: async (projectId: string, userId: string): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
-  },
-
-  getMilestones: async (projectId: string): Promise<Milestone[]> => {
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/projects/${projectId}/milestones`);
-    return data.items.map((item) => toCamelCase<Milestone>(item));
   },
 };
