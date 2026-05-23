@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { projectApi } from "@/extensions/project/api";
 import { OutlineEditor } from "@/extensions/project/OutlineEditor";
 import { OutlinePreview } from "@/extensions/project/OutlinePreview";
-import { ProjectSetup } from "@/extensions/project/ProjectSetup";
 import { SplitScreenLayout } from "@/extensions/project/SplitScreenLayout";
 import { StageProgressBar } from "@/extensions/project/StageProgressBar";
 import {
@@ -66,14 +65,6 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     loadProject();
   }, [loadProject]);
 
-  const handleProjectCreated = useCallback(
-    (newProject: ReportProject) => {
-      setProject(newProject);
-      router.push(`/projects/${newProject.id}?stage=2`);
-    },
-    [router],
-  );
-
   const handleSaveOutline = useCallback(async () => {
     if (!project) return;
     setSaving(true);
@@ -123,9 +114,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
 
-  // Stage 1: Project Setup (only shown when project is new / status=setup)
+  // Stage 1: Project Setup — projects are created from the list page,
+  // so redirect any setup-stage project to stage 2 (outline) directly.
   if (project.status === "setup" && viewingStage <= 1) {
-    return <ProjectSetup onCreated={handleProjectCreated} />;
+    router.replace(`/projects/${projectId}?stage=2`);
+    return null;
   }
 
   // Stage 2: Outline Confirmation

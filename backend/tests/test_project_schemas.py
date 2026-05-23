@@ -189,6 +189,13 @@ class TestProjectListItem:
         p = ProjectListItem(id=uid, name="Test", report_type="other")
         assert p.chapter_count == 0
         assert p.member_count == 0
+        assert p.template_name is None
+
+    def test_with_template_name(self):
+        uid = uuid4()
+        tid = uuid4()
+        p = ProjectListItem(id=uid, name="Test", report_type="other", template_id=tid, template_name="环评模板")
+        assert p.template_name == "环评模板"
 
 
 class TestProjectListResponse:

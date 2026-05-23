@@ -88,9 +88,9 @@ export function ProjectCard({ project, onClick, onEdit, onDelete }: ProjectCardP
             </div>
           </div>
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">报告类型</div>
-            <div className="truncate text-sm font-medium text-foreground" title={typeLabel}>
-              {typeLabel}
+            <div className="mb-1 text-xs text-muted-foreground">报告模板</div>
+            <div className="truncate text-sm font-medium text-foreground" title={project.templateName ?? typeLabel}>
+              {project.templateName ?? typeLabel}
             </div>
           </div>
           <div>

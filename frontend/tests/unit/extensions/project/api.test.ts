@@ -17,14 +17,17 @@ beforeEach(() => {
 });
 
 describe("projectApi.list", () => {
-  test("returns { items, total } from API", async () => {
+  test("returns { items, total } with camelCase transform", async () => {
     const items = [
-      { id: "p1", name: "Test", report_type: "other", status: "setup", current_stage: 1, chapter_count: 3, member_count: 2 },
+      { id: "p1", name: "Test", report_type: "other", status: "setup", current_stage: 1, chapter_count: 3, member_count: 2, template_name: "环评模板" },
     ];
     mockFetch.mockResolvedValueOnce({ items, total: 1 });
 
     const result = await projectApi.list();
-    expect(result).toEqual({ items: expect.arrayContaining([expect.objectContaining({ id: "p1" })]), total: 1 });
+    expect(result.total).toBe(1);
+    expect(result.items[0].reportType).toBe("other");
+    expect(result.items[0].chapterCount).toBe(3);
+    expect(result.items[0].templateName).toBe("环评模板");
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/projects?"));
   });
 

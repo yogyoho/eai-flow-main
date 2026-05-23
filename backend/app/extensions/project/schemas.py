@@ -130,6 +130,7 @@ class ProjectListItem(BaseModel):
     status: str = "setup"
     current_stage: int = 1
     template_id: UUID | None = None
+    template_name: str | None = None
     chapter_count: int = 0
     member_count: int = 0
     created_by: UUID | None = None
