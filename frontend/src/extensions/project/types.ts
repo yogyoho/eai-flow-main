@@ -1,82 +1,123 @@
-export type ReportType = "environmental_impact" | "geological_survey" | "feasibility_study" | "safety_assessment" | "energy_assessment" | "other";
+// ── Enums ──
 
-export type ProjectStatus = "planning" | "writing" | "review" | "finalizing" | "archived";
+export type ReportType =
+  | "environmental_impact"
+  | "geological_survey"
+  | "feasibility_study"
+  | "safety_assessment"
+  | "energy_assessment"
+  | "other";
 
-export type MemberRole = "manager" | "writer" | "reviewer" | "approver" | "issuer";
+export type ProjectStatus = "setup" | "outline" | "writing" | "editing" | "approval" | "published" | "archived";
 
-export type ChapterStatus = "not_started" | "writing" | "pending_review" | "approved" | "signed";
+export type ChapterStatus = "pending" | "writing" | "draft" | "editing" | "completed" | "rejected" | "approved";
 
-export type MilestoneStatus = "pending" | "in_progress" | "completed" | "overdue";
+export type MemberRole = "manager" | "editor" | "reviewer" | "approver";
+
+// ── Chapter ──
+
+export interface ProjectChapter {
+  id: string;
+  projectId: string;
+  parentId: string | null;
+  title: string;
+  level: number;
+  sortOrder: number;
+  status: ChapterStatus;
+  content: string | null;
+  assignedTo: string | null;
+  assignedName: string | null;
+  wordCountTarget: number;
+  wordCountCurrent: number;
+  purpose: string | null;
+  generationHint: string | null;
+  children: ProjectChapter[];
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/** For outline batch updates — id is null for new nodes */
+export interface ChapterTreeNode {
+  id?: string;
+  title: string;
+  level: number;
+  sortOrder: number;
+  purpose?: string | null;
+  generationHint?: string | null;
+  wordCountTarget?: number;
+  children: ChapterTreeNode[];
+}
+
+// ── Member ──
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  username: string;
+  role: MemberRole;
+  createdAt: string | null;
+}
+
+// ── Project ──
 
 export interface ReportProject {
   id: string;
   name: string;
   reportType: ReportType;
-  client: string;
-  targetStandard: string;
-  status: ProjectStatus;
   templateId: string | null;
-  complianceRuleSetId: string | null;
-  lawIds: string[];
+  status: ProjectStatus;
+  currentStage: number;
+  threadId: string | null;
+  createdBy: string | null;
   members: ProjectMember[];
-  outline: ReportOutline | null;
-  milestones: Milestone[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  chapters: ProjectChapter[];
+  chapterCount: number;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
-export interface ProjectMember {
-  userId: string;
-  username: string;
-  role: MemberRole;
-  chapterAssignments: string[];
-  avatarUrl?: string;
-}
-
-export interface ReportOutline {
+export interface ProjectListItem {
   id: string;
-  projectId: string;
-  parentId: string | null;
-  title: string;
-  order: number;
-  status: ChapterStatus;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  wordCountTarget: number;
-  wordCountCurrent: number;
-  description: string;
-  children: ReportOutline[];
-}
-
-export interface Milestone {
-  id: string;
-  projectId: string;
   name: string;
-  dueDate: string;
-  completedAt: string | null;
-  status: MilestoneStatus;
+  reportType: ReportType;
+  status: ProjectStatus;
+  currentStage: number;
+  templateId: string | null;
+  chapterCount: number;
+  memberCount: number;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
+
+// ── API Request Types ──
 
 export interface CreateProjectRequest {
   name: string;
   reportType: ReportType;
-  client: string;
-  targetStandard?: string;
-  templateId?: string;
-  complianceRuleSetId?: string;
-  lawIds?: string[];
-  members?: { userId: string; role: MemberRole }[];
+  templateId?: string | null;
 }
 
 export interface UpdateProjectRequest {
   name?: string;
-  client?: string;
-  targetStandard?: string;
   status?: ProjectStatus;
-  complianceRuleSetId?: string;
-  lawIds?: string[];
+  currentStage?: number;
 }
+
+export interface OutlineBatchUpdateRequest {
+  chapters: ChapterTreeNode[];
+}
+
+export interface ChapterUpdateRequest {
+  title?: string;
+  content?: string | null;
+  status?: ChapterStatus;
+  assignedTo?: string | null;
+  wordCountTarget?: number;
+}
+
+// ── Labels ──
 
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   environmental_impact: "环境影响评价",
@@ -88,32 +129,37 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
 };
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  planning: "规划中",
-  writing: "编写中",
-  review: "审核中",
-  finalizing: "定稿中",
+  setup: "项目设定",
+  outline: "大纲确认",
+  writing: "AI撰写",
+  editing: "协作编辑",
+  approval: "审批",
+  published: "已发布",
   archived: "已归档",
 };
 
 export const CHAPTER_STATUS_LABELS: Record<ChapterStatus, string> = {
-  not_started: "未开始",
-  writing: "编写中",
-  pending_review: "待审核",
-  approved: "已通过",
-  signed: "已签发",
-};
-
-export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
-  pending: "待开始",
-  in_progress: "进行中",
+  pending: "待处理",
+  writing: "AI撰写中",
+  draft: "初稿",
+  editing: "编辑中",
   completed: "已完成",
-  overdue: "已逾期",
+  rejected: "退回修改",
+  approved: "已通过",
 };
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   manager: "项目经理",
-  writer: "编写人",
+  editor: "编辑",
   reviewer: "审核人",
   approver: "批准人",
-  issuer: "签发人",
 };
+
+export const STAGE_LABELS = [
+  "项目设定",
+  "大纲确认",
+  "AI撰写",
+  "协作编辑",
+  "审批",
+  "定稿输出",
+] as const;
