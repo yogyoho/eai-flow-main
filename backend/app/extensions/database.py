@@ -738,6 +738,104 @@ async def migrate_db() -> None:
             text("CREATE INDEX IF NOT EXISTS idx_document_shares_created_by ON document_shares(created_by)")
         )
 
+        # --- Report Project Management ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS report_projects (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(255) NOT NULL,
+                report_type VARCHAR(100) NOT NULL,
+                template_id UUID REFERENCES extraction_templates(id),
+                status VARCHAR(20) NOT NULL DEFAULT 'setup',
+                current_stage INT NOT NULL DEFAULT 1,
+                thread_id VARCHAR(100),
+                created_by UUID REFERENCES users(id),
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_report_projects_status ON report_projects(status)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_report_projects_created_by ON report_projects(created_by)"
+        ))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_chapters (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
+                parent_id UUID REFERENCES project_chapters(id) ON DELETE CASCADE,
+                title VARCHAR(500) NOT NULL,
+                level INT NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                content TEXT,
+                assigned_to UUID REFERENCES users(id),
+                word_count_target INT NOT NULL DEFAULT 3000,
+                word_count_current INT NOT NULL DEFAULT 0,
+                purpose TEXT,
+                generation_hint TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_project_chapters_project ON project_chapters(project_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_project_chapters_parent ON project_chapters(parent_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_project_chapters_status ON project_chapters(status)"
+        ))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_members (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
+                user_id UUID NOT NULL REFERENCES users(id),
+                role VARCHAR(50) NOT NULL DEFAULT 'editor',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                UNIQUE(project_id, user_id)
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id)"
+        ))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS approval_workflows (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
+                step_order INT NOT NULL,
+                step_name VARCHAR(200) NOT NULL,
+                role_required VARCHAR(50) NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_approval_workflows_project ON approval_workflows(project_id)"
+        ))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS approval_records (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                workflow_id UUID NOT NULL REFERENCES approval_workflows(id) ON DELETE CASCADE,
+                chapter_id UUID REFERENCES project_chapters(id),
+                action VARCHAR(20) NOT NULL,
+                reviewer_id UUID NOT NULL REFERENCES users(id),
+                comment TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id)"
+        ))
+
 
 async def close_db() -> None:
     """Close database connections."""
