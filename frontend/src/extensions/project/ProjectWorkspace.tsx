@@ -54,12 +54,16 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       if (data.chapters.length > 0) {
         setOutlineDraft(chaptersToTreeNodes(data.chapters));
       }
+      // Setup-stage projects are created from the list dialog — redirect to outline
+      if (data.status === "setup") {
+        router.replace(`/projects/${projectId}?stage=2`);
+      }
     } catch {
       toast.error("加载项目失败");
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, router]);
 
   useEffect(() => {
     loadProject();
@@ -112,13 +116,6 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         </Link>
       </div>
     );
-  }
-
-  // Stage 1: Project Setup — projects are created from the list page,
-  // so redirect any setup-stage project to stage 2 (outline) directly.
-  if (project.status === "setup" && viewingStage <= 1) {
-    router.replace(`/projects/${projectId}?stage=2`);
-    return null;
   }
 
   // Stage 2: Outline Confirmation
