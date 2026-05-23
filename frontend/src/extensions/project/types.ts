@@ -163,3 +163,27 @@ export const STAGE_LABELS = [
   "审批",
   "定稿输出",
 ] as const;
+
+// ── Legacy aliases (used by old components pending Phase 2+ rewrite) ──
+
+/** @deprecated Use ProjectChapter instead */
+export type ReportOutline = ProjectChapter;
+
+/** @deprecated Milestones removed in workflow redesign */
+export type MilestoneStatus = "pending" | "in_progress" | "completed" | "overdue";
+
+/** @deprecated Milestones removed in workflow redesign */
+export interface Milestone {
+  id: string;
+  name: string;
+  dueDate: string;
+  status: MilestoneStatus;
+  config?: { color: string };
+}
+
+export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
+  pending: "待开始",
+  in_progress: "进行中",
+  completed: "已完成",
+  overdue: "已逾期",
+};

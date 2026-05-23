@@ -101,4 +101,11 @@ export const projectApi = {
   removeMember: async (projectId: string, userId: string): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
   },
+
+  // ── Legacy aliases ──
+
+  /** @deprecated Use updateChapter instead */
+  updateOutline: async (projectId: string, outlineId: string, data: Record<string, unknown>): Promise<ProjectChapter> => {
+    return projectApi.updateChapter(projectId, outlineId, data as import("./types").ChapterUpdateRequest);
+  },
 };

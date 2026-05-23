@@ -20,7 +20,8 @@ function getAtPath(nodes: ChapterTreeNode[], path: number[]): ChapterTreeNode | 
   let node: ChapterTreeNode | null = null;
   for (const idx of path) {
     if (idx >= current.length) return null;
-    node = current[idx];
+    node = current[idx] ?? null;
+    if (!node) return null;
     current = node.children;
   }
   return node;
