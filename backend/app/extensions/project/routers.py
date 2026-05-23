@@ -1,17 +1,21 @@
-"""FastAPI routers for report project management."""
+"""FastAPI routers for report project management (workflow-driven)."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
+from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
 from .schemas import (
+    ApprovalActionRequest,
+    ChapterContentUpdate,
     MemberCreate,
-    MilestoneListResponse,
-    OutlineListResponse,
-    OutlineUpdate,
+    MemberOut,
+    OutlineBatchUpdate,
     ProjectCreate,
     ProjectListResponse,
     ProjectOut,
@@ -30,20 +34,26 @@ CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("syste
 @router.get("/projects", response_model=ProjectListResponse)
 async def list_projects(
     _user: CurrentUserWithAccess,
-    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    status_filter: str | None = Query(None, alias="status"),
     report_type: str | None = Query(None),
     search: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
-    items = await service.list_projects(status=status, report_type=report_type, search=search)
-    return ProjectListResponse(items=items)
+    items, total = await service.list_projects(
+        db, status=status_filter, report_type=report_type, search=search, skip=skip, limit=limit,
+    )
+    return ProjectListResponse(items=items, total=total)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectOut)
 async def get_project(
-    project_id: str,
+    project_id: UUID,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    result = await service.get_project(project_id)
+    result = await service.get_project(db, project_id)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     return result
@@ -53,27 +63,25 @@ async def get_project(
 async def create_project(
     body: ProjectCreate,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
     return await service.create_project(
+        db,
         name=body.name,
         report_type=body.report_type,
-        client=body.client,
-        target_standard=body.target_standard,
         template_id=body.template_id,
-        compliance_rule_set_id=body.compliance_rule_set_id,
-        law_ids=body.law_ids,
-        members=[m.model_dump() for m in body.members] if body.members else None,
-        created_by=_user.user_id if hasattr(_user, "user_id") else "",
+        created_by=_user.id,
     )
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectOut)
 async def update_project(
-    project_id: str,
+    project_id: UUID,
     body: ProjectUpdate,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_project(project_id, **body.model_dump(exclude_unset=True))
+    result = await service.update_project(db, project_id, **body.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     return result
@@ -81,36 +89,60 @@ async def update_project(
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
-    project_id: str,
+    project_id: UUID,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    ok = await service.delete_project(project_id)
+    ok = await service.delete_project(db, project_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Project not found")
 
 
-# ── Outlines ──
+# ── Outline ──
 
 
-@router.get("/projects/{project_id}/outline", response_model=OutlineListResponse)
-async def list_outlines(
-    project_id: str,
+@router.get("/projects/{project_id}/outline")
+async def get_outline(
+    project_id: UUID,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    items = await service.list_outlines(project_id)
-    return OutlineListResponse(items=items)
+    return await service.get_outline_tree(db, project_id)
 
 
-@router.patch("/projects/{project_id}/outline/{outline_id}")
-async def update_outline(
-    project_id: str,
-    outline_id: str,
-    body: OutlineUpdate,
+@router.put("/projects/{project_id}/outline")
+async def replace_outline(
+    project_id: UUID,
+    body: OutlineBatchUpdate,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_outline(outline_id, **body.model_dump(exclude_unset=True))
+    return await service.replace_outline(db, project_id, body.chapters)
+
+
+@router.patch("/projects/{project_id}/chapters/{chapter_id}")
+async def update_chapter(
+    project_id: UUID,
+    chapter_id: UUID,
+    body: ChapterContentUpdate,
+    _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.update_chapter(db, chapter_id, **body.model_dump(exclude_unset=True))
     if not result:
-        raise HTTPException(status_code=404, detail="Outline not found")
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return result
+
+
+@router.post("/projects/{project_id}/confirm-outline", response_model=ProjectOut)
+async def confirm_outline(
+    project_id: UUID,
+    _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.confirm_outline(db, project_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
     return result
 
 
@@ -119,11 +151,12 @@ async def update_outline(
 
 @router.post("/projects/{project_id}/members", status_code=status.HTTP_204_NO_CONTENT)
 async def add_member(
-    project_id: str,
+    project_id: UUID,
     body: MemberCreate,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    ok = await service.add_member(project_id, body.user_id, body.role)
+    ok = await service.add_member(db, project_id, body.user_id, body.role)
     if not ok:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -133,22 +166,11 @@ async def add_member(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def remove_member(
-    project_id: str,
-    user_id: str,
+    project_id: UUID,
+    user_id: UUID,
     _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
 ):
-    ok = await service.remove_member(project_id, user_id)
+    ok = await service.remove_member(db, project_id, user_id)
     if not ok:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-
-# ── Milestones ──
-
-
-@router.get("/projects/{project_id}/milestones", response_model=MilestoneListResponse)
-async def list_milestones(
-    project_id: str,
-    _user: CurrentUserWithAccess,
-):
-    items = await service.list_milestones(project_id)
-    return MilestoneListResponse(items=items)
+        raise HTTPException(status_code=404, detail="Member not found")
