@@ -18,6 +18,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { kfApi } from "@/extensions/api";
+import type { TemplateListItem } from "@/extensions/knowledge-factory/types";
 import { projectApi } from "@/extensions/project/api";
 import type { CreateProjectRequest, ProjectListItem, ReportType } from "@/extensions/project/types";
 import { REPORT_TYPE_LABELS, PROJECT_STATUS_LABELS } from "@/extensions/project/types";
@@ -189,8 +191,16 @@ function CreateProjectModal({
   const [form, setForm] = useState<CreateProjectRequest>({
     name: "",
     reportType: "environmental_impact",
+    templateId: null,
   });
   const [creating, setCreating] = useState(false);
+  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
+
+  useEffect(() => {
+    kfApi.listTemplates({ status: "published", limit: 100 }).then((res) => {
+      setTemplates(res.templates);
+    }).catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!form.name.trim()) return;
@@ -206,6 +216,14 @@ function CreateProjectModal({
       setCreating(false);
     }
   };
+
+  const templateOptions: SelectOption[] = [
+    { value: "", label: "不使用模板" },
+    ...templates.map((t) => ({
+      value: t.id,
+      label: `${t.name}${t.domain ? ` (${t.domain})` : ""}`,
+    })),
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -257,6 +275,15 @@ function CreateProjectModal({
                 icon: <FolderCheck className="h-3.5 w-3.5" />,
               }))}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">报告模板</label>
+            <CustomSelect
+              value={form.templateId ?? ""}
+              onChange={(v) => setForm({ ...form, templateId: v || null })}
+              options={templateOptions}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">选择模板后，大纲将自动从模板导入</p>
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
