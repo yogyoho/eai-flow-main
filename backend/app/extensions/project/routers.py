@@ -20,6 +20,8 @@ from .schemas import (
     ProjectListResponse,
     ProjectOut,
     ProjectUpdate,
+    StartEditingResponse,
+    StartWritingResponse,
 )
 from . import service
 
@@ -174,3 +176,35 @@ async def remove_member(
     ok = await service.remove_member(db, project_id, user_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Member not found")
+
+
+# ── Writing & Editing ──
+
+
+@router.post("/projects/{project_id}/start-writing", response_model=StartWritingResponse)
+async def start_writing(
+    project_id: UUID,
+    _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a project-level thread for AI writing (Stage 3) and return thread_id."""
+    try:
+        result = await service.start_writing(db, project_id, user_id=_user.id)
+        return StartWritingResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/projects/{project_id}/chapters/{chapter_id}/start-editing", response_model=StartEditingResponse)
+async def start_chapter_editing(
+    project_id: UUID,
+    chapter_id: UUID,
+    _user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a chapter-level thread for collaborative editing (Stage 4)."""
+    try:
+        result = await service.start_chapter_editing(db, project_id, chapter_id, user_id=_user.id)
+        return StartEditingResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
