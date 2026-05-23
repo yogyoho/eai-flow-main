@@ -424,3 +424,94 @@ async def remove_member(db: AsyncSession, project_id, user_id) -> bool:
         return False
     await db.delete(member)
     return True
+
+
+# ── Writing & Editing Thread Management ──
+
+
+async def _get_project_or_404(db: AsyncSession, project_id):
+    """Get project or raise ValueError."""
+    stmt = select(ReportProject).where(ReportProject.id == project_id)
+    result = await db.execute(stmt)
+    project = result.scalar_one_or_none()
+    if not project:
+        raise ValueError("Project not found")
+    return project
+
+
+async def _get_chapter_or_404(db: AsyncSession, chapter_id):
+    """Get chapter or raise ValueError."""
+    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
+    result = await db.execute(stmt)
+    chapter = result.scalar_one_or_none()
+    if not chapter:
+        raise ValueError("Chapter not found")
+    return chapter
+
+
+async def _create_deerflow_thread(metadata: dict) -> str:
+    """Create a DeerFlow thread via the Gateway threads API."""
+    import httpx
+    from app.extensions.config import get_extensions_config
+
+    config = get_extensions_config()
+
+    import uuid
+
+    thread_id = str(uuid.uuid4())
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"http://localhost:{config.gateway_port or 8001}/api/threads",
+            json={"thread_id": thread_id, "metadata": metadata},
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["thread_id"]
+
+
+async def start_writing(db: AsyncSession, project_id, *, user_id=None):
+    """Create a project-level thread for AI writing (Stage 3).
+
+    Returns {"thread_id": ..., "project_id": ...}
+    """
+    project = await _get_project_or_404(db, project_id)
+
+    # Reuse existing thread if already created
+    if project.thread_id:
+        return {"thread_id": project.thread_id, "project_id": project_id}
+
+    thread_id = await _create_deerflow_thread({
+        "project_id": str(project_id),
+        "type": "report_project",
+        "report_type": project.report_type,
+    })
+
+    project.thread_id = thread_id
+    await db.flush()
+
+    return {"thread_id": thread_id, "project_id": project_id}
+
+
+async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, user_id=None):
+    """Create a chapter-level thread for collaborative editing (Stage 4).
+
+    Returns {"thread_id": ..., "project_id": ..., "chapter_id": ...}
+    """
+    project = await _get_project_or_404(db, project_id)
+    chapter = await _get_chapter_or_404(db, chapter_id)
+
+    thread_id = await _create_deerflow_thread({
+        "project_id": str(project_id),
+        "chapter_id": str(chapter_id),
+        "parent_thread_id": project.thread_id or "",
+        "type": "chapter_edit",
+        "assigned_to": str(chapter.assigned_to) if chapter.assigned_to else "",
+    })
+
+    # Update chapter status to "editing"
+    chapter.status = "editing"
+    await db.flush()
+
+    return {"thread_id": thread_id, "project_id": project_id, "chapter_id": chapter_id}

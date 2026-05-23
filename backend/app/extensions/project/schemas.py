@@ -183,3 +183,19 @@ class ApprovalActionRequest(BaseModel):
     chapter_id: UUID | None = None
     action: str = Field(..., pattern="^(approve|reject|comment)$")
     comment: str | None = None
+
+
+# ── Writing / Editing thread responses ──
+
+
+class StartWritingResponse(BaseModel):
+    """Response for POST /projects/{id}/start-writing."""
+    thread_id: str
+    project_id: UUID
+
+
+class StartEditingResponse(BaseModel):
+    """Response for POST /projects/{id}/chapters/{ch_id}/start-editing."""
+    thread_id: str
+    project_id: UUID
+    chapter_id: UUID
