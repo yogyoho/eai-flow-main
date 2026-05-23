@@ -84,6 +84,7 @@ export interface ProjectListItem {
   status: ProjectStatus;
   currentStage: number;
   templateId: string | null;
+  templateName: string | null;
   chapterCount: number;
   memberCount: number;
   createdBy: string | null;

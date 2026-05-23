@@ -29,7 +29,11 @@ export const projectApi = {
     if (params?.search) query.set("search", params.search);
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
-    return await authFetch(`${API_BASE}/projects?${query}`);
+    const data = await authFetch<{ items: Record<string, unknown>[]; total: number }>(`${API_BASE}/projects?${query}`);
+    return {
+      items: data.items.map((item) => toCamelCase<ProjectListItem>(item)),
+      total: data.total,
+    };
   },
 
   get: async (id: string): Promise<ReportProject> => {

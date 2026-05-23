@@ -184,6 +184,13 @@ async def list_projects(
         member_count_stmt = select(func.count(ProjectMember.id)).where(ProjectMember.project_id == p.id)
         mc = (await db.execute(member_count_stmt)).scalar() or 0
 
+        template_name = None
+        if p.template_id:
+            from app.extensions.knowledge_factory.models import ExtractionTemplate
+            tmpl = await db.get(ExtractionTemplate, p.template_id)
+            if tmpl:
+                template_name = tmpl.name
+
         items.append(ProjectListItem(
             id=p.id,
             name=p.name,
@@ -191,6 +198,7 @@ async def list_projects(
             status=p.status,
             current_stage=p.current_stage,
             template_id=p.template_id,
+            template_name=template_name,
             chapter_count=cc,
             member_count=mc,
             created_by=p.created_by,
@@ -254,13 +262,14 @@ async def create_project(
     created_by=None,
     template_id=None,
 ) -> ProjectOut:
+    has_template = bool(template_id)
     project = ReportProject(
         name=name,
         report_type=report_type,
         created_by=created_by,
         template_id=template_id,
-        status="setup",
-        current_stage=1,
+        status="outline" if has_template else "setup",
+        current_stage=2 if has_template else 1,
     )
     db.add(project)
     await db.flush()
