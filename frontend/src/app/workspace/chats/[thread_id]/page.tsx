@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
@@ -52,6 +56,8 @@ export default function ChatPage() {
   const mountedRef = useRef(false);
   const [pageReady, setPageReady] = useState(false);
   useSpecificChatMode();
+  const searchParams = useSearchParams();
+  const fromProject = searchParams.get("from") === "project";
 
   useEffect(() => {
     mountedRef.current = true;
@@ -142,6 +148,17 @@ export default function ChatPage() {
     <ThreadContext.Provider value={{ thread, isMock }}>
       <ChatBox threadId={threadId}>
         <div className="relative flex size-full min-h-0 justify-between">
+          {fromProject && (
+            <div className="absolute top-12 right-0 left-0 z-30 flex h-8 items-center border-b border-border bg-muted/50 px-4 text-xs">
+              <Link
+                href="/projects"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                返回项目列表
+              </Link>
+            </div>
+          )}
           <header
             className={cn(
               "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center px-4",
