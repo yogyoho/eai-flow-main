@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { projectApi } from "@/extensions/project/api";
+import { ChapterEditingPanel } from "@/extensions/project/ChapterEditingPanel";
 import { ChapterWritingPanel } from "@/extensions/project/ChapterWritingPanel";
 import { OutlineEditor } from "@/extensions/project/OutlineEditor";
 import { OutlinePreview } from "@/extensions/project/OutlinePreview";
@@ -180,7 +181,28 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
 
-  // Stages 4-6: Placeholder
+  // Stage 4: Collaborative Editing
+  if (viewingStage === 4) {
+    return (
+      <div className="flex flex-col h-full">
+        <header className="bg-background border-b border-border px-6 py-3 flex items-center gap-4 shrink-0">
+          <Link href="/projects">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="font-bold text-lg text-foreground">{project.name}</h1>
+          <StageProgressBar projectId={projectId} currentStage={currentStage} />
+          <div className="ml-auto">
+            <Button variant="outline" size="sm">管理成员</Button>
+          </div>
+        </header>
+        <ChapterEditingPanel project={project} onRefresh={loadProject} />
+      </div>
+    );
+  }
+
+  // Stages 5-6: Placeholder
   return (
     <div className="flex flex-col h-full">
       <header className="bg-background border-b border-border px-6 py-3 flex items-center gap-4 shrink-0">
