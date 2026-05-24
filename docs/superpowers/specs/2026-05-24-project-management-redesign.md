@@ -423,7 +423,7 @@ class ProjectActivity(Base):
 
 **ApprovalRecord** — 已有足够字段（`workflow_id`, `chapter_id`, `action`, `reviewer_id`, `comment`）
 
-### 4.3 Alembit 迁移
+### 4.3 Alembic 迁移
 
 ```python
 # 新增 project_activities 表
