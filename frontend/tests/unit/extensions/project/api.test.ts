@@ -159,3 +159,38 @@ describe("projectApi.removeMember", () => {
     );
   });
 });
+
+describe("projectApi.startWriting", () => {
+  test("POSTs to start-writing and returns camelCase", async () => {
+    mockFetch.mockResolvedValueOnce({
+      thread_id: "thread-abc",
+      project_id: "proj-1",
+    });
+
+    const result = await projectApi.startWriting("proj-1");
+    expect(result.threadId).toBe("thread-abc");
+    expect(result.projectId).toBe("proj-1");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/project/projects/proj-1/start-writing",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
+
+describe("projectApi.startChapterEditing", () => {
+  test("POSTs to start-editing and returns camelCase", async () => {
+    mockFetch.mockResolvedValueOnce({
+      thread_id: "thread-xyz",
+      project_id: "proj-1",
+      chapter_id: "ch-2",
+    });
+
+    const result = await projectApi.startChapterEditing("proj-1", "ch-2");
+    expect(result.threadId).toBe("thread-xyz");
+    expect(result.chapterId).toBe("ch-2");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/project/projects/proj-1/chapters/ch-2/start-editing",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
