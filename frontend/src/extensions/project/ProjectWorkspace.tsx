@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { projectApi } from "@/extensions/project/api";
+import { ChapterWritingPanel } from "@/extensions/project/ChapterWritingPanel";
 import { OutlineEditor } from "@/extensions/project/OutlineEditor";
 import { OutlinePreview } from "@/extensions/project/OutlinePreview";
 import { SplitScreenLayout } from "@/extensions/project/SplitScreenLayout";
@@ -157,7 +158,29 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
 
-  // Stages 3-6: Placeholder (will be implemented in later phases)
+  // Stage 3: AI Writing
+  if (viewingStage === 3) {
+    return (
+      <div className="flex flex-col h-full">
+        <header className="bg-background border-b border-border px-6 py-3 flex items-center gap-4 shrink-0">
+          <Link href="/projects">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="font-bold text-lg text-foreground">{project.name}</h1>
+          <StageProgressBar projectId={projectId} currentStage={currentStage} />
+        </header>
+        <ChapterWritingPanel
+          projectId={projectId}
+          projectName={project.name}
+          chapters={project.chapters}
+        />
+      </div>
+    );
+  }
+
+  // Stages 4-6: Placeholder
   return (
     <div className="flex flex-col h-full">
       <header className="bg-background border-b border-border px-6 py-3 flex items-center gap-4 shrink-0">
