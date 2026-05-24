@@ -8,6 +8,8 @@ import type {
   ProjectListItem,
   ProjectChapter,
   ReportProject,
+  StartEditingResponse,
+  StartWritingResponse,
   UpdateProjectRequest,
 } from "./types";
 
@@ -104,6 +106,24 @@ export const projectApi = {
 
   removeMember: async (projectId: string, userId: string): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
+  },
+
+  // ── Writing & Editing ──
+
+  startWriting: async (projectId: string): Promise<StartWritingResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/start-writing`,
+      { method: "POST" },
+    );
+    return toCamelCase<StartWritingResponse>(data);
+  },
+
+  startChapterEditing: async (projectId: string, chapterId: string): Promise<StartEditingResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/chapters/${chapterId}/start-editing`,
+      { method: "POST" },
+    );
+    return toCamelCase<StartEditingResponse>(data);
   },
 
   // ── Legacy aliases ──

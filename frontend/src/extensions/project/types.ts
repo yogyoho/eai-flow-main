@@ -118,6 +118,19 @@ export interface ChapterUpdateRequest {
   wordCountTarget?: number;
 }
 
+// ── Writing / Editing thread responses ──
+
+export interface StartWritingResponse {
+  threadId: string;
+  projectId: string;
+}
+
+export interface StartEditingResponse {
+  threadId: string;
+  projectId: string;
+  chapterId: string;
+}
+
 // ── Labels ──
 
 export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
