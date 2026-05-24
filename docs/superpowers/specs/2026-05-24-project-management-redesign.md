@@ -530,17 +530,203 @@ src/extensions/project/
 
 ## 7. 与 DeerFlow Agent 系统的集成
 
-### 7.1 已集成（不变）
+### 7.1 核心设计：提示词预注入
 
-- **Stage 3 AI 撰写** — 通过 Project MCP Server 6 个工具 + report-write Skill，lead_agent 自动遍历章节撰写
-- **Stage 4 协作编辑** — 章节级 thread，成员借助 Agent 润色/补充
+调用 DeerFlow Agent 时，**项目模块负责将模板的编写契约内容作为提示词注入 thread**，而非让 Agent 自行通过 MCP 拉取。Agent 只通过 MCP 工具读写章节数据（内容、状态），不负责获取"怎么写"的指令。
+
+**提示词构建流程：**
+
+```
+创建 thread 时:
+  1. 从 ExtractionTemplate.root_sections_json 提取各章节的编写规格
+  2. 从 ProjectChapter 获取当前章节状态和已有内容
+  3. 组装完整提示词，包含：
+     - 项目背景（名称、报告类型）
+     - 各章节编写契约：
+       · purpose（编写目的）
+       · content_contract（结构约束、关键要素、风格规则、最低字数、禁用表述）
+       · generation_hint（额外编写指导）
+       · example_snippet（参考样例，仅参考结构和风格）
+       · compliance_rules（需遵守的法规/标准）
+     - RAG 资源引用（知识库ID、检索策略、top_k、相似度阈值）
+     - 相邻章节标题和摘要（保持上下文连贯）
+  4. 将组装的提示词写入 thread metadata 的 system_prompt 字段
+```
+
+**提示词结构示例：**
+
+```json
+{
+  "project_id": "uuid",
+  "type": "report_project",
+  "report_type": "environmental_impact",
+  "system_prompt": "你是专业的环评报告撰写专家。请按照以下章节规格撰写报告。\n\n## 项目信息\n项目名称：XX环境影响评价报告\n报告类型：环境影响评价\n\n## 章节规格\n\n### 第1章 概述\n- 编写目的：[purpose]\n- 关键要素：[content_contract.key_elements]\n- 结构类型：[content_contract.structure_type]\n- 风格规则：[content_contract.style_rules]\n- 最低字数：[content_contract.min_word_count]\n- 禁用表述：[content_contract.forbidden_phrases]\n- 编写提示：[generation_hint]\n- 参考样例：\n[example_snippet]\n\n### 第2章 环境现状\n...\n\n## RAG 资源\n- 知识库「环评法规库」(id: xxx)：检索策略 hybrid, top_k=5, 相似度阈值 0.7\n- 知识库「监测数据库」(id: yyy)：检索策略 vector, top_k=3, 相似度阈值 0.8\n\n## 合规要求\n- 环境影响评价技术导则 总纲 HJ 2.1-2016\n- 环境影响评价技术导则 生态影响 HJ 19-2022\n\n## 撰写规则\n1. 严格遵循大纲结构，不增删章节\n2. 内容必须覆盖所有关键要素\n3. 数据引用必须标注来源\n4. 保持前后章节术语和表述一致\n5. 禁用「我认为」「感觉」等主观表述"
+}
+```
+
+### 7.2 各场景的提示词注入策略
+
+**Stage 3 AI 撰写（项目级 thread）：**
+- 提示词包含**所有章节**的编写契约（Agent 需要遍历全部章节）
+- 包含完整 RAG 资源列表和合规要求
+- Agent 通过 MCP `list_chapters` + `read_chapter` + `write_chapter` 执行实际读写
+- 编写指令（写什么、怎么写）来自预注入的提示词，不来自 MCP
+
+**Stage 4 协作编辑（章节级 thread）：**
+- 提示词仅包含**当前章节**的编写契约 + 相邻章节摘要
+- 包含当前章节已有内容（供 Agent 理解和修改）
+- RAG 资源限定为与该章节相关的知识库
+- Agent 以辅助编辑模式运作（响应用户指令，不主动遍历）
+
+**AI 工具箱（临时 thread）：**
+- 提示词注入工具特定的指令（如"润色以下内容"、"检查合规性"）
+- 包含目标章节的当前内容
+- 包含适用的编写契约和合规规则
+- Agent 执行单项任务后通过 MCP `write_chapter` 回写
+
+### 7.3 后端实现：提示词构建服务
+
+```python
+# service.py 新增
+async def _build_chapter_spec_prompt(
+    db: AsyncSession,
+    project: ReportProject,
+    chapters: list[ProjectChapter],
+) -> str:
+    """从模板构建完整的项目级编写提示词。"""
+
+    if not project.template_id:
+        return _build_generic_prompt(project, chapters)
+
+    from app.extensions.knowledge_factory.models import ExtractionTemplate
+    template = await db.get(ExtractionTemplate, project.template_id)
+    if not template:
+        return _build_generic_prompt(project, chapters)
+
+    sections_data = template.root_sections_json or {}
+    section_list = sections_data.get("sections", [])
+    section_map = _match_sections_to_chapters(section_list, chapters)
+
+    prompt_parts = [
+        f"你是专业的{REPORT_TYPE_NAMES.get(project.report_type, '')}报告撰写专家。",
+        f"\n## 项目信息\n项目名称：{project.name}\n",
+    ]
+
+    for chapter in chapters:
+        spec = section_map.get(chapter.title, {})
+        prompt_parts.append(f"\n### {chapter.title}")
+        if spec.get("purpose"):
+            prompt_parts.append(f"- 编写目的：{spec['purpose']}")
+        contract = spec.get("content_contract", {})
+        if contract.get("key_elements"):
+            prompt_parts.append(f"- 关键要素：{', '.join(contract['key_elements'])}")
+        if contract.get("min_word_count"):
+            prompt_parts.append(f"- 最低字数：{contract['min_word_count']}")
+        if contract.get("style_rules"):
+            prompt_parts.append(f"- 风格规则：{contract['style_rules']}")
+        if contract.get("forbidden_phrases"):
+            prompt_parts.append(f"- 禁用表述：{', '.join(contract['forbidden_phrases'])}")
+        if spec.get("generation_hint"):
+            prompt_parts.append(f"- 编写提示：{spec['generation_hint']}")
+        if spec.get("example_snippet"):
+            prompt_parts.append(f"- 参考样例：\n{spec['example_snippet']}")
+
+    # RAG 资源
+    rag_sources = _extract_rag_sources(section_list)
+    if rag_sources:
+        prompt_parts.append("\n## RAG 资源")
+        for src in rag_sources:
+            prompt_parts.append(f"- 知识库「{src['kb_name']}」(id: {src['kb_id']})：检索策略 {src['retrieval_strategy']}, top_k={src['top_k']}")
+
+    # 合规规则
+    rules = _extract_compliance_rules(section_list)
+    if rules:
+        prompt_parts.append("\n## 合规要求")
+        for rule in rules:
+            prompt_parts.append(f"- {rule}")
+
+    return "\n".join(prompt_parts)
+
+
+async def _build_chapter_edit_prompt(
+    db: AsyncSession,
+    project: ReportProject,
+    chapter: ProjectChapter,
+) -> str:
+    """为单个章节构建协作编辑提示词。"""
+    # 与 _build_chapter_spec_prompt 类似，但只包含目标章节
+    # 并附加当前章节内容和相邻章节摘要
+    ...
+```
+
+**修改已有 `start_writing` 和 `start_chapter_editing`：**
+
+```python
+async def start_writing(db, project_id, *, user_id=None, cookies=None, csrf_token=None):
+    project = await _get_project_or_404(db, project_id)
+    if project.thread_id:
+        return {"thread_id": project.thread_id, "project_id": project_id}
+
+    # 构建包含模板编写契约的提示词
+    chapters = await _get_all_chapters(db, project_id)
+    system_prompt = await _build_chapter_spec_prompt(db, project, chapters)
+
+    thread_id = await _create_deerflow_thread({
+        "project_id": str(project_id),
+        "type": "report_project",
+        "report_type": project.report_type,
+        "system_prompt": system_prompt,  # 注入完整编写提示词
+    }, cookies=cookies, csrf_token=csrf_token)
+
+    project.thread_id = thread_id
+    await db.flush()
+    return {"thread_id": thread_id, "project_id": project_id}
+
+
+async def start_chapter_editing(db, project_id, chapter_id, *, user_id=None, cookies=None, csrf_token=None):
+    project = await _get_project_or_404(db, project_id)
+    chapter = await _get_chapter_or_404(db, chapter_id)
+
+    # 构建单章节编辑提示词
+    edit_prompt = await _build_chapter_edit_prompt(db, project, chapter)
+
+    thread_id = await _create_deerflow_thread({
+        "project_id": str(project_id),
+        "chapter_id": str(chapter_id),
+        "parent_thread_id": project.thread_id or "",
+        "type": "chapter_edit",
+        "assigned_to": str(chapter.assigned_to) if chapter.assigned_to else "",
+        "system_prompt": edit_prompt,  # 注入章节级编写提示词
+    }, cookies=cookies, csrf_token=csrf_token)
+
+    chapter.status = "editing"
+    await db.flush()
+    return {"thread_id": thread_id, "project_id": project_id, "chapter_id": chapter_id}
+```
+
+### 7.4 MCP 工具角色调整
+
+提示词预注入后，MCP 工具职责简化为纯数据读写：
+
+| 工具 | 职责 | 不再负责 |
+|------|------|---------|
+| `read_chapter` | 读取章节内容和状态 | ~~获取编写规格~~ |
+| `write_chapter` | 回写内容和更新状态 | ~~获取编写规格~~ |
+| `list_chapters` | 获取章节列表和进度 | ~~获取编写规格~~ |
+| `get_project` | 获取项目元数据 | 无变化 |
+| `get_chapter_neighbors` | 获取相邻章节信息 | 无变化 |
+| `get_chapter_spec` | **可选保留**，供 Agent 运行时查看完整规格 | 从主要信息源降级为参考工具 |
+
+`get_chapter_spec` 保留但定位从"Agent 的主要上下文来源"降级为"运行时参考工具"。Agent 主要依靠 thread 中预注入的提示词工作。
+
+### 7.5 已集成（不变）
+
 - **CSRF 认证** — `_create_deerflow_thread` 已转发 cookies 和 csrf_token
+- **report-write Skill** — 策略指导文件，告诉 Agent 如何按提示词撰写报告
 
-### 7.2 新增集成点
+### 7.6 审核流程
 
-**AI 工具箱：** 复用 DeerFlow thread + Agent 架构。区别是 AI 工具箱创建临时 thread，注入特定的工具 prompt（如"润色以下内容"、"检查合规性"），Agent 执行后通过 MCP `write_chapter` 回写结果。
-
-**审核流程：** 不涉及 Agent。纯人工审核流程，通过 `ApprovalWorkflow` 和 `ApprovalRecord` 模型管理。
+不涉及 Agent。纯人工审核流程，通过 `ApprovalWorkflow` 和 `ApprovalRecord` 模型管理。
 
 ---
 
