@@ -37,6 +37,7 @@ PERMISSION_MATRIX: dict[str, list[bool]] = {
     "member:add":         [True,   False,  False,  False,    False],
     "member:remove":      [True,   False,  False,  False,    False],
     "member:list":        [True,   True,   True,   False,    False],
+    "member:manage":      [True,   False,  False,  False,    False],
     # Outline
     "outline:edit":       [True,   True,   False,  False,    False],
     "outline:view":       [True,   True,   True,   True,     True],

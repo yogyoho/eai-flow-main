@@ -385,6 +385,12 @@ async def replace_outline(db: AsyncSession, project_id, chapters: list[ChapterTr
     return await get_outline_tree(db, project_id)
 
 
+async def get_chapter(db: AsyncSession, chapter_id) -> ProjectChapter | None:
+    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def update_chapter(db: AsyncSession, chapter_id, **kwargs) -> ChapterOut | None:
     stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
     result = await db.execute(stmt)

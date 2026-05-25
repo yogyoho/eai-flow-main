@@ -145,9 +145,17 @@ async def update_chapter(
     chapter_id: UUID,
     body: ChapterContentUpdate,
     _role: str = Depends(require_resource_permission("chapter:write_own")),
-    _user: CurrentUserWithAccess = None,
+    user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
+    # Verify chapter ownership for non-managers
+    if _role != "manager":
+        chapter = await service.get_chapter(db, chapter_id)
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+        if chapter.assigned_to and chapter.assigned_to != user.id:
+            raise HTTPException(status_code=403, detail="You can only edit chapters assigned to you")
+
     result = await service.update_chapter(db, chapter_id, **body.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Chapter not found")
@@ -223,14 +231,15 @@ async def start_writing(
 async def start_chapter_editing(
     project_id: UUID,
     chapter_id: UUID,
-    _user: CurrentUserWithAccess,
-    request: Request,
+    _role: str = Depends(require_resource_permission("ai:start_editing")),
+    user: CurrentUserWithAccess = None,
+    request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a chapter-level thread for collaborative editing (Stage 4)."""
     csrf_token = request.cookies.get("csrf_token")
     try:
-        result = await service.start_chapter_editing(db, project_id, chapter_id, user_id=_user.id, cookies=request.cookies, csrf_token=csrf_token)
+        result = await service.start_chapter_editing(db, project_id, chapter_id, user_id=user.id, cookies=request.cookies, csrf_token=csrf_token)
         return StartEditingResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -243,8 +252,9 @@ async def start_chapter_editing(
 async def execute_ai_action(
     project_id: UUID,
     body: AiActionRequest,
-    _user: CurrentUserWithAccess,
-    request: Request,
+    _role: str = Depends(require_resource_permission("ai:toolbox")),
+    user: CurrentUserWithAccess = None,
+    request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger an AI toolbox action (polish, expand, condense, format_check, etc.)."""
@@ -256,7 +266,7 @@ async def execute_ai_action(
             chapter_ids=body.chapter_ids,
             action=body.action,
             params=body.params,
-            user_id=_user.id,
+            user_id=user.id,
             cookies=request.cookies,
             csrf_token=csrf_token,
         )
@@ -298,8 +308,9 @@ async def submit_approval(
 async def approval_action(
     project_id: UUID,
     body: ApprovalActionRequest,
-    db: AsyncSession = Depends(get_db),
+    _role: str = Depends(require_resource_permission("approval:review")),
     user: CurrentUserWithAccess = None,
+    db: AsyncSession = Depends(get_db),
 ):
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
