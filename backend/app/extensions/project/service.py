@@ -1,6 +1,9 @@
 """Database-backed service for report project management."""
 
-from sqlalchemy import func, select
+from uuid import UUID
+
+from fastapi import HTTPException
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -149,6 +152,8 @@ async def _delete_project_chapters(db: AsyncSession, project_id) -> None:
 async def list_projects(
     db: AsyncSession,
     *,
+    user_id: object | None = None,
+    is_admin: bool = False,
     status: str | None = None,
     report_type: str | None = None,
     search: str | None = None,
@@ -157,6 +162,17 @@ async def list_projects(
 ) -> tuple[list[ProjectListItem], int]:
     query = select(ReportProject).where(ReportProject.status != "archived")
     count_query = select(func.count(ReportProject.id)).where(ReportProject.status != "archived")
+
+    if user_id and not is_admin:
+        member_exists = (
+            select(ProjectMember.id)
+            .where(ProjectMember.project_id == ReportProject.id, ProjectMember.user_id == user_id)
+            .correlate(ReportProject)
+            .exists()
+        )
+        user_filter = or_(ReportProject.created_by == user_id, member_exists)
+        query = query.where(user_filter)
+        count_query = count_query.where(user_filter)
 
     if status:
         query = query.where(ReportProject.status == status)
@@ -273,6 +289,16 @@ async def create_project(
     )
     db.add(project)
     await db.flush()
+
+    # Auto-add creator as manager
+    if created_by:
+        member = ProjectMember(
+            project_id=project.id,
+            user_id=created_by,
+            role="manager",
+        )
+        db.add(member)
+        await db.flush()
 
     # If template_id provided, import chapters from template
     if template_id:
@@ -449,7 +475,7 @@ async def _get_chapter_or_404(db: AsyncSession, chapter_id):
     return chapter
 
 
-async def _create_deerflow_thread(metadata: dict) -> str:
+async def _create_deerflow_thread(metadata: dict, cookies: dict | None = None, csrf_token: str | None = None) -> str:
     """Create a DeerFlow thread via the Gateway threads API."""
     import httpx
     import os
@@ -457,10 +483,15 @@ async def _create_deerflow_thread(metadata: dict) -> str:
     gateway_port = os.environ.get("GATEWAY_PORT", "8001")
     thread_id = str(__import__("uuid").uuid4())
 
-    async with httpx.AsyncClient() as client:
+    headers = {}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    async with httpx.AsyncClient(cookies=cookies) as client:
         resp = await client.post(
             f"http://localhost:{gateway_port}/api/threads",
             json={"thread_id": thread_id, "metadata": metadata},
+            headers=headers,
             timeout=10.0,
         )
         resp.raise_for_status()
@@ -468,7 +499,44 @@ async def _create_deerflow_thread(metadata: dict) -> str:
         return data["thread_id"]
 
 
-async def start_writing(db: AsyncSession, project_id, *, user_id=None):
+async def _start_deerflow_run(thread_id: str, message: str, *, cookies: dict | None = None, csrf_token: str | None = None) -> str:
+    """Start a DeerFlow run on an existing thread with a human message.
+
+    Returns the run_id.
+    """
+    import httpx
+    import os
+
+    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
+
+    headers = {}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    run_payload = {
+        "assistant_id": None,
+        "input": {
+            "messages": [
+                {"role": "human", "content": message},
+            ],
+        },
+        "metadata": {"source": "ai_tool_action"},
+        "multitask_strategy": "reject",
+    }
+
+    async with httpx.AsyncClient(cookies=cookies) as client:
+        resp = await client.post(
+            f"http://localhost:{gateway_port}/api/threads/{thread_id}/runs",
+            json=run_payload,
+            headers=headers,
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("run_id", "")
+
+
+async def start_writing(db: AsyncSession, project_id, *, user_id=None, cookies=None, csrf_token=None):
     """Create a project-level thread for AI writing (Stage 3).
 
     Returns {"thread_id": ..., "project_id": ...}
@@ -483,7 +551,7 @@ async def start_writing(db: AsyncSession, project_id, *, user_id=None):
         "project_id": str(project_id),
         "type": "report_project",
         "report_type": project.report_type,
-    })
+    }, cookies=cookies, csrf_token=csrf_token)
 
     project.thread_id = thread_id
     await db.flush()
@@ -491,7 +559,7 @@ async def start_writing(db: AsyncSession, project_id, *, user_id=None):
     return {"thread_id": thread_id, "project_id": project_id}
 
 
-async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, user_id=None):
+async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, user_id=None, cookies=None, csrf_token=None):
     """Create a chapter-level thread for collaborative editing (Stage 4).
 
     Returns {"thread_id": ..., "project_id": ..., "chapter_id": ...}
@@ -508,10 +576,248 @@ async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, use
         "parent_thread_id": project.thread_id or "",
         "type": "chapter_edit",
         "assigned_to": str(chapter.assigned_to) if chapter.assigned_to else "",
-    })
+    }, cookies=cookies, csrf_token=csrf_token)
 
     # Update chapter status to "editing"
     chapter.status = "editing"
     await db.flush()
 
     return {"thread_id": thread_id, "project_id": project_id, "chapter_id": chapter_id}
+
+
+# ── AI Action ──
+
+ACTION_LABELS = {
+    "polish": "内容润色",
+    "expand": "内容扩写",
+    "condense": "内容缩写",
+    "format_check": "格式检查",
+    "compliance_check": "合规性检查",
+    "terminology_check": "术语统一检查",
+}
+
+ACTION_PROMPTS = {
+    "polish": "请对以下章节内容进行润色，优化语言表述，提升文字质量。保持原意不变，不增删实质性内容。",
+    "expand": "请根据该章节的编写目的和要求，对以下内容进行扩写，丰富细节和数据支撑。目标字数：{target_word_count}字。",
+    "condense": "请精简以下章节内容，去除冗余表述，保留核心信息。目标字数：{target_word_count}字。",
+    "format_check": "请检查以下章节内容的格式问题，包括标点符号、编号规范、格式一致性、段落结构等，列出问题并给出修正建议。",
+    "compliance_check": "请对照以下法规/标准验证章节内容的合规性。检查标准：{standard}。如未指定标准，请对照项目报告类型的通用规范进行检查。",
+    "terminology_check": "请检查以下章节（以及全文上下文）中的专业术语使用是否一致、准确。列出不一致或可能有误的术语及其出现位置。",
+}
+
+
+async def execute_ai_action(
+    db: AsyncSession,
+    project_id,
+    chapter_ids: list,
+    action: str,
+    params: dict | None = None,
+    *,
+    user_id=None,
+    cookies=None,
+    csrf_token=None,
+) -> dict:
+    """Create a temporary thread for an AI toolbox action.
+
+    Returns {"thread_id": ..., "task_count": ...}
+    """
+    from .schemas import VALID_AI_ACTIONS
+
+    if action not in VALID_AI_ACTIONS:
+        raise ValueError(f"Invalid action: {action}. Valid: {VALID_AI_ACTIONS}")
+
+    project = await _get_project_or_404(db, project_id)
+
+    # Fetch chapters
+    chapters = []
+    for ch_id in chapter_ids:
+        chapter = await _get_chapter_or_404(db, ch_id)
+        if chapter.project_id != project_id:
+            raise ValueError(f"Chapter {ch_id} does not belong to this project")
+        chapters.append(chapter)
+
+    if not chapters:
+        raise ValueError("No valid chapters found")
+
+    # Build tool-specific prompt
+    action_prompt = ACTION_PROMPTS.get(action, "")
+    target_word_count = (params or {}).get("target_word_count", "")
+    standard = (params or {}).get("standard", "")
+    action_prompt = action_prompt.format(
+        target_word_count=target_word_count or "（保持原字数）",
+        standard=standard or "行业通用规范",
+    )
+
+    # Build chapter context
+    chapter_context_parts = []
+    for ch in chapters:
+        purpose_line = f"\n编写目的：{ch.purpose}" if ch.purpose else ""
+        hint_line = f"\n编写提示：{ch.generation_hint}" if ch.generation_hint else ""
+        content_line = f"\n\n当前内容：\n{ch.content}" if ch.content else "\n\n当前内容：（空）"
+        chapter_context_parts.append(f"### {ch.title}{purpose_line}{hint_line}{content_line}")
+
+    system_prompt = (
+        f"你是专业的报告撰写辅助AI。当前任务：{ACTION_LABELS.get(action, action)}\n\n"
+        f"## 项目信息\n项目名称：{project.name}\n\n"
+        f"## 任务指令\n{action_prompt}\n\n"
+        f"## 目标章节\n" + "\n".join(chapter_context_parts)
+    )
+
+    if project.template_id:
+        system_prompt += "\n\n请确保修改后的内容符合项目的编写规范和合规要求。"
+        system_prompt += "\n完成后请使用 write_chapter 工具将结果写回对应章节。"
+
+    # Create temporary thread
+    thread_id = await _create_deerflow_thread(
+        {
+            "project_id": str(project_id),
+            "type": "ai_tool_action",
+            "action": action,
+            "chapter_ids": [str(ch_id) for ch_id in chapter_ids],
+        },
+        cookies=cookies,
+        csrf_token=csrf_token,
+    )
+
+    # Build the human message that triggers the agent
+    chapter_names = "、".join(ch.title for ch in chapters)
+    human_message = (
+        f"请执行「{ACTION_LABELS.get(action, action)}」任务。\n\n"
+        f"目标章节：{chapter_names}\n\n"
+        f"以下是完整的任务指令和章节上下文：\n\n{system_prompt}"
+    )
+
+    # Start a run on the thread so the agent auto-executes
+    await _start_deerflow_run(thread_id, human_message, cookies=cookies, csrf_token=csrf_token)
+
+    return {"thread_id": thread_id, "task_count": len(chapters)}
+
+
+# ── Permission query & Approval workflow ──
+
+
+async def get_my_permissions(
+    db: AsyncSession, project_id: UUID, user_id: UUID, is_admin: bool = False
+) -> dict:
+    from app.extensions.project.permissions import get_user_project_permissions, get_default_tab
+    role, permissions = await get_user_project_permissions(db, project_id, user_id, is_admin)
+    return {
+        "role": role,
+        "permissions": permissions,
+        "default_tab": get_default_tab(role) if role else "dashboard",
+    }
+
+
+async def submit_approval(
+    db: AsyncSession, project_id: UUID, manager_id: UUID,
+    steps: list[dict],
+) -> dict:
+    """Manager submits project for approval, creating workflow steps."""
+    from app.extensions.models import ApprovalWorkflow
+
+    project = await _get_project_or_404(db, project_id)
+
+    # Delete existing workflows if any
+    existing = await db.execute(
+        select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id)
+    )
+    for wf in existing.scalars().all():
+        await db.delete(wf)
+
+    # Create new workflow steps
+    for step_data in steps:
+        workflow = ApprovalWorkflow(
+            project_id=project_id,
+            step_order=step_data["step_order"],
+            step_name=step_data["step_name"],
+            role_required="reviewer",
+            reviewer_id=step_data["reviewer_id"],
+            status="pending",
+        )
+        db.add(workflow)
+
+    project.current_stage = 5
+    await db.flush()
+    return {"project_id": project_id, "status": "submitted", "step_count": len(steps)}
+
+
+async def approval_action(
+    db: AsyncSession, project_id: UUID, workflow_id: UUID,
+    reviewer_id: UUID, action: str, comment: str | None,
+) -> dict:
+    """Execute an approval action (approve/reject) on a workflow step."""
+    from app.extensions.models import ApprovalWorkflow, ApprovalRecord
+
+    workflow = await db.get(ApprovalWorkflow, workflow_id)
+    if not workflow or workflow.project_id != project_id:
+        raise HTTPException(status_code=404, detail="审核步骤不存在")
+
+    if workflow.reviewer_id != reviewer_id:
+        raise HTTPException(status_code=403, detail="您不是此步骤的指定审核人")
+
+    if workflow.status != "pending":
+        raise HTTPException(status_code=400, detail="此步骤已处理")
+
+    record = ApprovalRecord(
+        workflow_id=workflow_id,
+        project_id=project_id,
+        action=action,
+        reviewer_id=reviewer_id,
+        comment=comment,
+    )
+    db.add(record)
+
+    if action == "approve":
+        workflow.status = "approved"
+        all_steps = await db.execute(
+            select(ApprovalWorkflow)
+            .where(ApprovalWorkflow.project_id == project_id)
+            .order_by(ApprovalWorkflow.step_order)
+        )
+        steps = all_steps.scalars().all()
+        if all(s.status == "approved" for s in steps):
+            project = await _get_project_or_404(db, project_id)
+            project.current_stage = 6
+
+    elif action == "reject":
+        workflow.status = "rejected"
+        project = await _get_project_or_404(db, project_id)
+        project.current_stage = 4
+        subsequent = await db.execute(
+            select(ApprovalWorkflow).where(
+                ApprovalWorkflow.project_id == project_id,
+                ApprovalWorkflow.step_order > workflow.step_order,
+            )
+        )
+        for s in subsequent.scalars().all():
+            s.status = "pending"
+
+    await db.flush()
+    project = await _get_project_or_404(db, project_id)
+    return {"workflow_id": workflow_id, "action": action, "new_stage": project.current_stage}
+
+
+async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
+    """Get current approval status for a project."""
+    from app.extensions.models import ApprovalWorkflow
+
+    all_steps = await db.execute(
+        select(ApprovalWorkflow)
+        .where(ApprovalWorkflow.project_id == project_id)
+        .order_by(ApprovalWorkflow.step_order)
+    )
+    steps = all_steps.scalars().all()
+
+    current_step = None
+    for s in steps:
+        if s.status == "pending":
+            current_step = s.step_order
+            break
+
+    return {
+        "project_id": project_id,
+        "current_step": current_step,
+        "total_steps": len(steps),
+        "steps": steps,
+        "all_approved": len(steps) > 0 and all(s.status == "approved" for s in steps),
+    }
