@@ -13,6 +13,7 @@ import { ApprovalTab } from "@/extensions/project/components/ApprovalTab";
 import { DashboardTab } from "@/extensions/project/components/DashboardTab";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard";
 import { MembersTab } from "@/extensions/project/components/MembersTab";
+import { MemberWorkspace } from "@/extensions/project/components/MemberWorkspace";
 import { OutlineTab } from "@/extensions/project/components/OutlineTab";
 import {
   type WorkspaceTab,
@@ -83,7 +84,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   // ── Permissions-driven tabs ──
 
-  const { role: _role, can: _can, visibleTabs, defaultTab, isLoading: permissionsLoading } =
+  const { role, can, visibleTabs, defaultTab, isLoading: permissionsLoading } =
     useProjectPermissions(projectId, project?.currentStage ?? 0);
 
   // Determine active tab from URL or default
@@ -167,15 +168,17 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
       {/* ── Content area ── */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "my-workspace" && <KanbanBoard project={project} onRefresh={loadProject} />}
-        {activeTab === "dashboard" && <DashboardTab project={project} />}
-        {activeTab === "kanban" && <KanbanBoard project={project} onRefresh={loadProject} />}
-        {activeTab === "outline" && <OutlineTab project={project} onRefresh={loadProject} />}
-        {activeTab === "members" && <MembersTab project={project} onRefresh={loadProject} />}
-        {activeTab === "approval" && (
-          <ApprovalTab project={project} onRefresh={loadProject} />
+        {activeTab === "my-workspace" && (
+          <MemberWorkspace can={can} role={role} projectId={projectId} project={project} />
         )}
-        {activeTab === "ai-tools" && <AiToolsTab project={project} onRefresh={loadProject} />}
+        {activeTab === "dashboard" && <DashboardTab project={project} />}
+        {activeTab === "kanban" && <KanbanBoard project={project} onRefresh={loadProject} can={can} role={role} />}
+        {activeTab === "outline" && <OutlineTab project={project} onRefresh={loadProject} />}
+        {activeTab === "members" && <MembersTab project={project} onRefresh={loadProject} canManage={can("member:manage")} />}
+        {activeTab === "approval" && (
+          <ApprovalTab can={can} role={role} projectId={projectId} project={project} onRefresh={loadProject} />
+        )}
+        {activeTab === "ai-tools" && <AiToolsTab project={project} onRefresh={loadProject} can={can} />}
       </div>
     </div>
   );
