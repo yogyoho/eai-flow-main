@@ -2,11 +2,16 @@ import { authFetch } from "@/extensions/api/client";
 
 import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
-  CreateProjectRequest,
+  AiActionRequest,
+  AiActionResponse,
+  ApprovalStepConfig,
+  ApprovalStatusResponse,
   ChapterTreeNode,
   ChapterUpdateRequest,
+  CreateProjectRequest,
   ProjectListItem,
   ProjectChapter,
+  ProjectMembership,
   ReportProject,
   StartEditingResponse,
   StartWritingResponse,
@@ -126,10 +131,71 @@ export const projectApi = {
     return toCamelCase<StartEditingResponse>(data);
   },
 
+  // ── AI Action ──
+
+  executeAiAction: async (projectId: string, req: AiActionRequest): Promise<AiActionResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/ai-action`,
+      {
+        method: "POST",
+        body: JSON.stringify(toSnakeCase(req as unknown as Record<string, unknown>)),
+      },
+    );
+    return toCamelCase<AiActionResponse>(data);
+  },
+
+  // ── Permissions ──
+
+  getMyPermissions: async (projectId: string): Promise<ProjectMembership> => {
+    const data = await authFetch<{ role: string | null; permissions: string[]; default_tab: string }>(
+      `${API_BASE}/projects/${projectId}/my-permissions`,
+    );
+    return toCamelCase<ProjectMembership>(data);
+  },
+
+  // ── Approval workflow ──
+
+  submitApproval: async (
+    projectId: string,
+    steps: ApprovalStepConfig[],
+  ): Promise<{ projectId: string; status: string; stepCount: number }> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/submit-approval`,
+      {
+        method: "POST",
+        body: JSON.stringify(toSnakeCase({ steps })),
+      },
+    );
+    return toCamelCase(data);
+  },
+
+  doApprovalAction: async (
+    projectId: string,
+    workflowId: string,
+    action: "approve" | "reject",
+    comment?: string,
+  ): Promise<Record<string, unknown>> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/approval-action`,
+      {
+        method: "POST",
+        body: JSON.stringify(toSnakeCase({ workflowId, action, comment })),
+      },
+    );
+    return data;
+  },
+
+  getApprovalStatus: async (projectId: string): Promise<ApprovalStatusResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/approval-status`,
+    );
+    return toCamelCase<ApprovalStatusResponse>(data);
+  },
+
   // ── Legacy aliases ──
 
   /** @deprecated Use updateChapter instead */
   updateOutline: async (projectId: string, outlineId: string, data: Record<string, unknown>): Promise<ProjectChapter> => {
-    return projectApi.updateChapter(projectId, outlineId, data as import("./types").ChapterUpdateRequest);
+    return projectApi.updateChapter(projectId, outlineId, data as ChapterUpdateRequest);
   },
 };
