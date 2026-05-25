@@ -42,7 +42,7 @@ class TestValidationConstants:
         ]
 
     def test_member_roles(self):
-        assert VALID_MEMBER_ROLES == ["manager", "editor", "reviewer", "approver"]
+        assert VALID_MEMBER_ROLES == ["manager", "editor", "writer", "reviewer", "approver"]
 
     def test_workflow_statuses(self):
         assert VALID_WORKFLOW_STATUSES == ["pending", "in_progress", "approved", "rejected"]

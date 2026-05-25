@@ -184,6 +184,8 @@ def require_resource_permission(action: str):
             ...
     """
 
+    from app.extensions.database import get_db
+
     from app.extensions.auth.middleware import require_permission
 
     base_auth = require_permission("system:access")
@@ -191,7 +193,7 @@ def require_resource_permission(action: str):
     async def check(
         current_user: Annotated = Depends(base_auth),
         request: Request = ...,
-        db: AsyncSession = Depends(_get_db),
+        db: AsyncSession = Depends(get_db),
     ) -> str:
         # Check if user is system admin
         is_admin = False
@@ -254,10 +256,3 @@ def require_resource_permission(action: str):
         return role
 
     return check
-
-
-def _get_db():
-    """Lazy import wrapper for get_db to avoid circular imports."""
-    from app.extensions.database import get_db as _get_db
-
-    return _get_db()
