@@ -28,6 +28,14 @@ def _make_user():
     return user
 
 
+def _make_admin_role():
+    """Create a mock Role that looks like a system admin."""
+    role = MagicMock()
+    role.is_system = True
+    role.permissions = ["*"]
+    return role
+
+
 @pytest.fixture
 def client():
     app = FastAPI()
@@ -35,6 +43,7 @@ def client():
 
     mock_user = _make_user()
     mock_db = AsyncMock()
+    mock_db.get = AsyncMock(return_value=_make_admin_role())
 
     async def _override_get_current_user():
         return mock_user
@@ -60,7 +69,6 @@ class TestListProjects:
 
         uid = uuid4()
         items = [ProjectListItem(id=uid, name="Test", report_type="other")]
-        resp = ProjectListResponse(items=items, total=1)
 
         with patch("app.extensions.project.service.list_projects", new_callable=AsyncMock, return_value=(items, 1)):
             response = client.get("/api/extensions/project/projects")
@@ -135,7 +143,8 @@ class TestUpdateProject:
 
         pid = uuid4()
         project = ProjectOut(id=pid, name="Updated", report_type="other", status="writing")
-        with patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=project):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=project):
             response = client.patch(
                 f"/api/extensions/project/projects/{pid}",
                 json={"status": "writing"},
@@ -145,7 +154,8 @@ class TestUpdateProject:
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=None):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=None):
             response = client.patch(
                 f"/api/extensions/project/projects/{pid}",
                 json={"status": "writing"},
@@ -160,14 +170,16 @@ class TestUpdateProject:
 class TestDeleteProject:
     def test_deletes_existing(self, client):
         pid = uuid4()
-        with patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=True):
             response = client.delete(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 204
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=False):
             response = client.delete(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 404
@@ -198,7 +210,8 @@ class TestReplaceOutline:
 
         pid = uuid4()
         chapters = [ChapterOut(id=uuid4(), project_id=pid, title="New Ch")]
-        with patch("app.extensions.project.service.replace_outline", new_callable=AsyncMock, return_value=chapters):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="editor"), \
+             patch("app.extensions.project.service.replace_outline", new_callable=AsyncMock, return_value=chapters):
             response = client.put(
                 f"/api/extensions/project/projects/{pid}/outline",
                 json={"chapters": [{"title": "New Ch"}]},
@@ -216,7 +229,8 @@ class TestConfirmOutline:
 
         pid = uuid4()
         project = ProjectOut(id=pid, name="Test", report_type="other", status="writing", current_stage=3)
-        with patch("app.extensions.project.service.confirm_outline", new_callable=AsyncMock, return_value=project):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.confirm_outline", new_callable=AsyncMock, return_value=project):
             response = client.post(f"/api/extensions/project/projects/{pid}/confirm-outline")
 
         assert response.status_code == 200
@@ -224,7 +238,8 @@ class TestConfirmOutline:
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.project.service.confirm_outline", new_callable=AsyncMock, return_value=None):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.confirm_outline", new_callable=AsyncMock, return_value=None):
             response = client.post(f"/api/extensions/project/projects/{pid}/confirm-outline")
 
         assert response.status_code == 404
@@ -237,7 +252,8 @@ class TestAddMember:
     def test_adds_member(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=True):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/members",
                 json={"user_id": str(uid), "role": "editor"},
@@ -248,7 +264,8 @@ class TestAddMember:
     def test_returns_404_for_missing_project(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=False):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/members",
                 json={"user_id": str(uid), "role": "editor"},
@@ -264,7 +281,8 @@ class TestRemoveMember:
     def test_removes_member(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=True):
             response = client.delete(f"/api/extensions/project/projects/{pid}/members/{uid}")
 
         assert response.status_code == 204
@@ -272,7 +290,210 @@ class TestRemoveMember:
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=False):
             response = client.delete(f"/api/extensions/project/projects/{pid}/members/{uid}")
 
         assert response.status_code == 404
+
+
+# ── Permission denial tests ──
+
+
+class TestPermissionDenied:
+    """Verify endpoints return 403 when user is not a project member."""
+
+    def test_update_project_denied(self, client):
+        pid = uuid4()
+        # Return non-admin role so admin bypass doesn't kick in
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.patch(f"/api/extensions/project/projects/{pid}", json={"status": "writing"})
+        assert response.status_code == 403
+
+    def test_delete_project_denied(self, client):
+        pid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.delete(f"/api/extensions/project/projects/{pid}")
+        assert response.status_code == 403
+
+    def test_replace_outline_denied(self, client):
+        pid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.put(
+                f"/api/extensions/project/projects/{pid}/outline",
+                json={"chapters": [{"title": "Ch"}]},
+            )
+        assert response.status_code == 403
+
+    def test_confirm_outline_denied(self, client):
+        pid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.post(f"/api/extensions/project/projects/{pid}/confirm-outline")
+        assert response.status_code == 403
+
+    def test_add_member_denied(self, client):
+        pid = uuid4()
+        uid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.post(
+                f"/api/extensions/project/projects/{pid}/members",
+                json={"user_id": str(uid), "role": "editor"},
+            )
+        assert response.status_code == 403
+
+    def test_remove_member_denied(self, client):
+        pid = uuid4()
+        uid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value=None):
+            response = client.delete(f"/api/extensions/project/projects/{pid}/members/{uid}")
+        assert response.status_code == 403
+
+    def test_writer_cannot_edit_outline(self, client):
+        """Writer has outline:view but not outline:edit."""
+        pid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="writer"):
+            response = client.put(
+                f"/api/extensions/project/projects/{pid}/outline",
+                json={"chapters": [{"title": "Ch"}]},
+            )
+        assert response.status_code == 403
+
+    def test_editor_cannot_delete_project(self, client):
+        """Editor cannot delete project (only manager can)."""
+        pid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="editor"):
+            response = client.delete(f"/api/extensions/project/projects/{pid}")
+        assert response.status_code == 403
+
+    def test_writer_cannot_add_members(self, client):
+        """Writer cannot add members."""
+        pid = uuid4()
+        uid = uuid4()
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="writer"):
+            response = client.post(
+                f"/api/extensions/project/projects/{pid}/members",
+                json={"user_id": str(uid), "role": "writer"},
+            )
+        assert response.status_code == 403
+
+
+# ── Role-based access tests ──
+
+
+class TestRoleBasedAccess:
+    """Verify different roles can access their permitted endpoints."""
+
+    def test_editor_can_edit_outline(self, client):
+        pid = uuid4()
+        from app.extensions.project.schemas import ChapterOut
+        chapters = [ChapterOut(id=uuid4(), project_id=pid, title="Edited")]
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="editor"), \
+             patch("app.extensions.project.service.replace_outline", new_callable=AsyncMock, return_value=chapters):
+            response = client.put(
+                f"/api/extensions/project/projects/{pid}/outline",
+                json={"chapters": [{"title": "Edited"}]},
+            )
+        assert response.status_code == 200
+
+    def test_writer_can_write_own_chapter(self, client):
+        """Writer with chapter:write_own can update their own assigned chapter."""
+        pid = uuid4()
+        cid = uuid4()
+        from app.extensions.project.schemas import ChapterOut
+        chapter = ChapterOut(id=cid, project_id=pid, title="Ch1", status="writing")
+        mock_chapter_orm = MagicMock()
+        mock_chapter_orm.assigned_to = client._mock_user.id
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="writer"), \
+             patch("app.extensions.project.service.get_chapter", new_callable=AsyncMock, return_value=mock_chapter_orm), \
+             patch("app.extensions.project.service.update_chapter", new_callable=AsyncMock, return_value=chapter):
+            response = client.patch(
+                f"/api/extensions/project/projects/{pid}/chapters/{cid}",
+                json={"status": "writing"},
+            )
+        assert response.status_code == 200
+
+    def test_writer_cannot_write_others_chapter(self, client):
+        """Writer cannot update a chapter assigned to someone else."""
+        pid = uuid4()
+        cid = uuid4()
+        other_user_id = uuid4()
+        mock_chapter_orm = MagicMock()
+        mock_chapter_orm.assigned_to = other_user_id
+        non_admin_role = MagicMock()
+        non_admin_role.is_system = False
+        non_admin_role.permissions = ["system:access"]
+        client._mock_db.get = AsyncMock(return_value=non_admin_role)
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="writer"), \
+             patch("app.extensions.project.service.get_chapter", new_callable=AsyncMock, return_value=mock_chapter_orm):
+            response = client.patch(
+                f"/api/extensions/project/projects/{pid}/chapters/{cid}",
+                json={"status": "writing"},
+            )
+        assert response.status_code == 403
+
+    def test_manager_can_write_any_chapter(self, client):
+        """Manager can update any chapter regardless of assignment."""
+        pid = uuid4()
+        cid = uuid4()
+        from app.extensions.project.schemas import ChapterOut
+        chapter = ChapterOut(id=cid, project_id=pid, title="Ch1")
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="manager"), \
+             patch("app.extensions.project.service.update_chapter", new_callable=AsyncMock, return_value=chapter):
+            response = client.patch(
+                f"/api/extensions/project/projects/{pid}/chapters/{cid}",
+                json={"title": "Updated"},
+            )
+        assert response.status_code == 200
+
+    def test_writer_can_write_unassigned_chapter(self, client):
+        """Writer can update a chapter with no assignment (assigned_to=None)."""
+        pid = uuid4()
+        cid = uuid4()
+        from app.extensions.project.schemas import ChapterOut
+        chapter = ChapterOut(id=cid, project_id=pid, title="Ch1")
+        mock_chapter_orm = MagicMock()
+        mock_chapter_orm.assigned_to = None
+        with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="writer"), \
+             patch("app.extensions.project.service.get_chapter", new_callable=AsyncMock, return_value=mock_chapter_orm), \
+             patch("app.extensions.project.service.update_chapter", new_callable=AsyncMock, return_value=chapter):
+            response = client.patch(
+                f"/api/extensions/project/projects/{pid}/chapters/{cid}",
+                json={"status": "writing"},
+            )
+        assert response.status_code == 200
