@@ -21,7 +21,7 @@ VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", 
 
 VALID_CHAPTER_STATUSES = ["pending", "writing", "draft", "editing", "completed", "rejected", "approved"]
 
-VALID_MEMBER_ROLES = ["manager", "editor", "reviewer", "approver"]
+VALID_MEMBER_ROLES = ["manager", "editor", "writer", "reviewer", "approver"]
 
 VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
 
@@ -185,6 +185,23 @@ class ApprovalActionRequest(BaseModel):
     comment: str | None = None
 
 
+# ── AI Action ──
+
+
+VALID_AI_ACTIONS = ["polish", "expand", "condense", "format_check", "compliance_check", "terminology_check"]
+
+
+class AiActionRequest(BaseModel):
+    chapter_ids: list[UUID] = Field(..., min_length=1)
+    action: str = Field(..., description="polish|expand|condense|format_check|compliance_check|terminology_check")
+    params: dict | None = None  # {"target_word_count": 5000, "standard": "HJ 2.1-2016"}
+
+
+class AiActionResponse(BaseModel):
+    thread_id: str
+    task_count: int
+
+
 # ── Writing / Editing thread responses ──
 
 
@@ -199,3 +216,45 @@ class StartEditingResponse(BaseModel):
     thread_id: str
     project_id: UUID
     chapter_id: UUID
+
+
+# ── Permission query ──
+
+
+class MyPermissionsResponse(BaseModel):
+    role: str | None
+    permissions: list[str]
+    default_tab: str
+
+
+# ── Approval workflow (extended) ──
+
+
+class ApprovalStepConfig(BaseModel):
+    step_order: int
+    step_name: str
+    reviewer_id: UUID
+
+
+class ApprovalSubmitRequest(BaseModel):
+    steps: list[ApprovalStepConfig]
+
+
+class ApprovalWorkflowWithRecords(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    step_order: int
+    step_name: str
+    reviewer_id: UUID | None = None
+    role_required: str
+    status: str
+    records: list[ApprovalRecordOut] = Field(default_factory=list)
+
+
+class ApprovalStatusOut(BaseModel):
+    project_id: UUID
+    current_step: int | None
+    total_steps: int
+    steps: list[ApprovalWorkflowWithRecords]
+    all_approved: bool
