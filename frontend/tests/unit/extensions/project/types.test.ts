@@ -6,6 +6,7 @@ import {
   CHAPTER_STATUS_LABELS,
   MILESTONE_STATUS_LABELS,
   MEMBER_ROLE_LABELS,
+  STAGE_LABELS,
 } from "@/extensions/project/types";
 
 describe("Project type labels", () => {
@@ -20,12 +21,14 @@ describe("Project type labels", () => {
     });
   });
 
-  test("PROJECT_STATUS_LABELS has all statuses", () => {
+  test("PROJECT_STATUS_LABELS has all workflow statuses", () => {
     expect(PROJECT_STATUS_LABELS).toEqual({
-      planning: "规划中",
-      writing: "编写中",
-      review: "审核中",
-      finalizing: "定稿中",
+      setup: "项目设定",
+      outline: "大纲确认",
+      writing: "AI撰写",
+      editing: "协作编辑",
+      approval: "审批",
+      published: "已发布",
       archived: "已归档",
     });
   });
@@ -33,8 +36,13 @@ describe("Project type labels", () => {
   test("CHAPTER_STATUS_LABELS has all chapter statuses", () => {
     expect(CHAPTER_STATUS_LABELS).toEqual({
       not_started: "未开始",
-      writing: "编写中",
+      pending: "待处理",
+      writing: "AI撰写中",
+      draft: "初稿",
+      editing: "编辑中",
       pending_review: "待审核",
+      completed: "已完成",
+      rejected: "退回修改",
       approved: "已通过",
       signed: "已签发",
     });
@@ -42,11 +50,11 @@ describe("Project type labels", () => {
 
   test("MEMBER_ROLE_LABELS has all roles", () => {
     expect(MEMBER_ROLE_LABELS).toEqual({
-      manager: "项目经理",
-      writer: "编写人",
+      manager: "经理",
+      editor: "编辑",
+      writer: "撰写人",
       reviewer: "审核人",
       approver: "批准人",
-      issuer: "签发人",
     });
   });
 
@@ -57,5 +65,11 @@ describe("Project type labels", () => {
       completed: "已完成",
       overdue: "已逾期",
     });
+  });
+
+  test("STAGE_LABELS has 6 stages", () => {
+    expect(STAGE_LABELS).toHaveLength(6);
+    expect(STAGE_LABELS[0]).toBe("项目设定");
+    expect(STAGE_LABELS[5]).toBe("定稿输出");
   });
 });
