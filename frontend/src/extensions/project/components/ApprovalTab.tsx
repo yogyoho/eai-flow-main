@@ -11,6 +11,7 @@ import {
   type MemberRole,
   type ReportProject,
 } from "@/extensions/project/types";
+import { useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -315,6 +316,7 @@ export function ApprovalTab({
   const isManager = role === "manager";
   const canSubmitApproval = can("approval:submit");
   const canReview = can("approval:review");
+  const { user: currentUser } = useAuth();
 
   // Fetch approval status when project is in stage 5
   const { data: approvalStatus, isLoading: approvalLoading } = useQuery({
@@ -367,8 +369,7 @@ export function ApprovalTab({
   const isCurrentReviewer =
     canReview &&
     currentWorkflow?.reviewerId != null &&
-    // We don't have userId here directly; the backend already checked permissions.
-    // The approval:review permission is only granted to the designated reviewer.
+    currentWorkflow.reviewerId === currentUser?.id &&
     currentWorkflow?.status !== "approved";
 
   return (
