@@ -26,15 +26,16 @@ import {
   type MemberRole,
   type ProjectMember,
 } from "@/extensions/project/types";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+import { cn } from "@/lib/utils";
 
 const ROLE_ORDER: MemberRole[] = [
   "manager",
+  "editor",
   "writer",
   "reviewer",
   "approver",
-  "issuer",
 ];
 
 const AVATAR_COLORS = [
@@ -212,7 +213,7 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
                         </div>
                         <div className="text-xs text-muted-foreground">
                           已分配{" "}
-                          {member.chapterAssignments.length} 个章节
+                          {member.chapterAssignments?.length ?? 0} 个章节
                         </div>
                       </div>
 
