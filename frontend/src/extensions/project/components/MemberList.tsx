@@ -51,9 +51,10 @@ interface MemberListProps {
   members: ProjectMember[];
   projectId: string;
   onUpdate: () => void;
+  canManage?: boolean;
 }
 
-export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
+export function MemberList({ members, projectId, onUpdate, canManage = true }: MemberListProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newMember, setNewMember] = useState({ userId: "", role: "manager" as string });
@@ -112,13 +113,15 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Add member button */}
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowAddDialog(true)}>
-          <UserPlus className="h-4 w-4" />
-          添加成员
-        </Button>
-      </div>
+      {/* Add member button — only visible to managers */}
+      {canManage && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowAddDialog(true)}>
+            <UserPlus className="h-4 w-4" />
+            添加成员
+          </Button>
+        </div>
+      )}
 
       {/* Add member dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -217,7 +220,8 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
                         </div>
                       </div>
 
-                      {/* Remove button */}
+                      {/* Remove button — only visible to managers */}
+                      {canManage && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -231,6 +235,7 @@ export function MemberList({ members, projectId, onUpdate }: MemberListProps) {
                           <Trash2 className="h-4 w-4" />
                         )}
                       </Button>
+                      )}
                     </div>
                   );
                 })}

@@ -159,22 +159,6 @@ async def get_user_project_permissions(
 # ── FastAPI dependency factory ──
 
 
-def _is_admin_user(current_user, db: AsyncSession) -> bool:
-    """Check if the current user has admin-level system permissions.
-
-    Returns True if the user's system role has '*' in permissions or is_system=True.
-    Returns False if user has no role_id or role not found.
-    """
-    if current_user.role_id is None:
-        return False
-
-    from app.extensions.models import Role
-
-    role = db.sync_session.get(Role, current_user.role_id) if hasattr(db, "sync_session") else None
-    # We need to use async — but this helper is called inside an async dep
-    # so we handle it inline in require_resource_permission instead.
-    return False  # Placeholder — actual check is in the dependency
-
 
 def require_resource_permission(action: str):
     """FastAPI dependency factory for project-level permission checks.
