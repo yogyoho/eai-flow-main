@@ -615,6 +615,9 @@ class ApprovalWorkflow(Base):
     step_order: Mapped[int] = mapped_column(Integer, nullable=False)
     step_name: Mapped[str] = mapped_column(String(200), nullable=False)
     role_required: Mapped[str] = mapped_column(String(50), nullable=False)
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
