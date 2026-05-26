@@ -706,6 +706,10 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_size BIGINT"))
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_mime VARCHAR(100)"))
 
+        # --- AIDocument: project_id for project-level document visibility ---
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES report_projects(id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_project_id ON ai_documents(project_id)"))
+
         # --- System configuration table ---
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS system_config (
@@ -835,6 +839,59 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id)"
         ))
+
+        # --- Collaborative editing tables ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_documents (
+                doc_id UUID PRIMARY KEY REFERENCES ai_documents(id) ON DELETE CASCADE,
+                yjs_doc BYTEA NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1,
+                last_editor_id UUID REFERENCES users(id),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_updates (
+                id BIGSERIAL PRIMARY KEY,
+                doc_id UUID NOT NULL REFERENCES collab_documents(doc_id) ON DELETE CASCADE,
+                update_data BYTEA NOT NULL,
+                user_id UUID NOT NULL REFERENCES users(id),
+                version INTEGER NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_updates_doc_version ON collab_updates(doc_id, version)"))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_versions (
+                id BIGSERIAL PRIMARY KEY,
+                doc_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
+                version INTEGER NOT NULL,
+                snapshot BYTEA NOT NULL,
+                summary TEXT,
+                created_by UUID REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(doc_id, version)
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_versions_doc ON collab_versions(doc_id, version DESC)"))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_comments (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                doc_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
+                block_id VARCHAR(100) NOT NULL,
+                content TEXT NOT NULL,
+                parent_id UUID REFERENCES collab_comments(id) ON DELETE CASCADE,
+                user_id UUID NOT NULL REFERENCES users(id),
+                resolved BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_doc_block ON collab_comments(doc_id, block_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_parent ON collab_comments(parent_id)"))
 
 
 async def close_db() -> None:
