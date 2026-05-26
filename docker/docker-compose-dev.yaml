@@ -93,7 +93,7 @@ services:
         PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
         NPM_REGISTRY: ${NPM_REGISTRY:-}
     container_name: deer-flow-frontend
-    command: sh -c "cd frontend && pnpm run dev > /app/logs/frontend.log 2>&1"
+    command: sh -c "cd frontend && pnpm run dev > /app/logs/frontend.log 2>&1 & sleep 8 && wget -q -O /dev/null http://localhost:3000/workspace/chats/new 2>/dev/null; wait"
     volumes:
       - ../frontend/src:/app/frontend/src
       - ../frontend/public:/app/frontend/public
@@ -141,6 +141,7 @@ services:
       - ../config.yaml:/app/config.yaml
       - ../extensions_config.json:/app/extensions_config.json
       - ../skills:/app/skills
+      - ../mcp-server:/app/mcp-server
       - ../logs:/app/logs
       # Use a Docker-managed uv cache volume instead of a host bind mount.
       # On macOS/Docker Desktop, uv may fail to create symlinks inside shared
@@ -177,6 +178,22 @@ services:
     extra_hosts:
       # For Linux: map host.docker.internal to host gateway
       - "host.docker.internal:host-gateway"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── Collaboration Server (Hocuspocus) ────────────────────────────────
+  # Real-time document collaboration via WebSocket (Yjs/Hocuspocus)
+  collab:
+    build:
+      context: ../backend/collab-server
+      dockerfile: Dockerfile
+    container_name: deer-flow-collab
+    environment:
+      - COLLAB_PORT=8002
+      - DATABASE_URL=postgresql://agentflow:agentflow123@eai-flow-postgres:5432/agentflow
+    env_file:
+      - ../.env
     networks:
       - eai-flow-net
     restart: unless-stopped
