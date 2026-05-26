@@ -29,6 +29,7 @@ from app.gateway.routers import (
 )
 from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.routers import router as docmgr_router
+from app.extensions.docmgr.collab_routers import router as collab_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.database import init_db, migrate_db, seed_db
 from app.extensions.user.routers import router as user_router
@@ -41,6 +42,7 @@ from app.extensions.knowledge_factory.routers import router as knowledge_factory
 from app.extensions.settings.routers import router as settings_router
 from app.extensions.project import router as project_router
 from app.extensions.approval import router as approval_router
+from app.extensions.data_source.routers import router as data_source_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -428,6 +430,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Doc Mgr API is mounted at /api/extensions/docmgr
     app.include_router(docmgr_router)
 
+    # Collab API (comments + versions) is mounted at /api/extensions/docmgr
+    app.include_router(collab_router)
+
     # Knowledge Bases API is mounted at /knowledge
     app.include_router(knowledge_router)
 
@@ -448,6 +453,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Approval workflow API is mounted at /api/extensions/approval
     app.include_router(approval_router)
+
+    # Data source management API (stub)
+    app.include_router(data_source_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
