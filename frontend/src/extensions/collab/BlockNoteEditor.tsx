@@ -9,7 +9,8 @@ import { VersionPanel } from "./VersionPanel";
 import { AIToolbar } from "./AIToolbar";
 import { useComments } from "./useComments";
 import { useVersions } from "./useVersions";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { useAuth } from "@/extensions/hooks/useAuth";
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from "react";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import "@blocknote/core/fonts/inter.css";
@@ -35,17 +36,26 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const { ydoc, provider, connected, users } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId);
     const { versions, loading: versionsLoading, createVersion, restoreVersion } = useVersions(documentId);
+    const { user: currentUser } = useAuth();
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
     const collabFragment = ydoc ? ydoc.getXmlFragment("document-store") : undefined;
-    const collabColor = COLLAB_USER_COLORS[Math.floor(Math.random() * COLLAB_USER_COLORS.length)] ?? "#6366f1";
+
+    // Derive a stable color from user ID so it doesn't change across re-renders
+    const collabUser = useMemo(() => {
+      const name = currentUser?.full_name || currentUser?.username || "User";
+      const colorIdx = currentUser
+        ? currentUser.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % COLLAB_USER_COLORS.length
+        : Math.floor(Math.random() * COLLAB_USER_COLORS.length);
+      return { name, color: COLLAB_USER_COLORS[colorIdx] ?? "#6366f1" };
+    }, [currentUser]);
 
     const editor = useCreateBlockNote({
       collaboration: ydoc && collabFragment
         ? {
             fragment: collabFragment,
-            user: { name: "User", color: collabColor },
+            user: { name: collabUser.name, color: collabUser.color },
             ...(provider?.awareness ? { provider: { awareness: provider.awareness } } : {}),
           }
         : undefined,
