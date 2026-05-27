@@ -1,30 +1,31 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft,
-  CheckCircle2, Copy, Download, FileText, File, Image, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
+  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
   RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { useModels } from "@/core/models/hooks";
+import { cn } from "@/lib/utils";
 
+import { CollabEditor, type CollabEditorRef } from "../collab/CollabEditor";
 import { docmgrApi } from "../api";
 import type { AIDocument } from "../types";
 
-import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
-import { useDocuments } from "./useDocuments";
+import BatchActionBar from "./BatchActionBar";
 import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./FilePreviewModal";
 import FolderPickerDialog from "./FolderPickerDialog";
-import BatchActionBar from "./BatchActionBar";
 import ShareDialog from "./ShareDialog";
+import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
+import { useDocuments } from "./useDocuments";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
@@ -32,6 +33,8 @@ type View = "list" | "editor";
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
+  const [activeNav, setActiveNav] = useState<"folder" | "starred" | "shared" | "file_ref" | "file_ref_folder">("folder");
+  const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const handleSelectDoc = (doc: AIDocument) => { setActiveDocId(doc.id); setView("editor"); };
   const handleBack = () => { setActiveDocId(null); setView("list"); };
   return (
@@ -40,7 +43,7 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
         {view === "list" ? (
           <motion.div key="list" className="flex-1 flex overflow-hidden"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            <DocumentList onSelectDoc={handleSelectDoc} />
+            <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
           </motion.div>
         ) : activeDocId ? (
           <motion.div key="editor" className="flex-1 flex overflow-hidden"
@@ -55,24 +58,40 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
 
 // ─── Document List ────────────────────────────────────────────────────────────
 
-function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void }) {
+function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFolderChange }: {
+  onSelectDoc: (doc: AIDocument) => void;
+  activeNav: "folder" | "starred" | "shared" | "file_ref" | "file_ref_folder";
+  onNavChange: (nav: "folder" | "starred" | "shared" | "file_ref" | "file_ref_folder") => void;
+  currentFolder: string;
+  onFolderChange: (folder: string) => void;
+}) {
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
-  const [activeNav, setActiveNav] = useState<"folder" | "starred" | "shared" | "file_ref" | "file_ref_folder">("folder");
-  const [folderOpen, setFolderOpen] = useState(true);
   const [archiveOpen, setArchiveOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
-  const menuButtonRef = useRef<{ [id: string]: HTMLButtonElement | null }>({});
+  const menuButtonRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const debouncedSearch = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewDocState, setPreviewDocState] = useState<AIDocument | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareDoc, setShareDoc] = useState<AIDocument | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
-  const { docs, total, loading, page, pageSize, setPage, folders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
+  const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
     useDocuments({ folder: currentFolder });
+
+  // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
+  const navSynced = useRef(false);
+  useEffect(() => {
+    if (navSynced.current) return;
+    navSynced.current = true;
+    if (activeNav === "starred") setFilter({ starred: true });
+    else if (activeNav === "shared") setFilter({ shared: true });
+    else if (activeNav === "file_ref") setFilter({ doc_type: "file_ref", project_scope: "personal" });
+    else if (activeNav === "file_ref_folder") setFilter({ doc_type: "file_ref", project_scope: "project", folder: currentFolder });
+    else setFilter({ folder: currentFolder, doc_type: "document" });
+  }, [activeNav, currentFolder, setFilter]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -83,21 +102,21 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
   const totalPages = Math.ceil(total / pageSize);
 
   const handleNavClick = (nav: typeof activeNav, folder?: string) => {
-    setActiveNav(nav);
+    onNavChange(nav);
     setSelectedIds(new Set());
     if (nav === "folder") {
       const nextFolder = folder ?? "默认文件夹";
-      setCurrentFolder(nextFolder);
+      onFolderChange(nextFolder);
       setFilter({ folder: nextFolder, doc_type: "document", q: search || undefined });
     } else if (nav === "starred") {
       setFilter({ starred: true, q: search || undefined });
     } else if (nav === "shared") {
       setFilter({ shared: true, q: search || undefined });
     } else if (nav === "file_ref") {
-      setFilter({ doc_type: "file_ref", q: search || undefined });
+      setFilter({ doc_type: "file_ref", project_scope: "personal", q: search || undefined });
     } else if (nav === "file_ref_folder") {
-      if (folder) setCurrentFolder(folder);
-      setFilter({ doc_type: "file_ref", folder, q: search || undefined });
+      if (folder) onFolderChange(folder);
+      setFilter({ doc_type: "file_ref", project_scope: "project", folder, q: search || undefined });
     }
   };
 
@@ -188,27 +207,6 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
             <Share2 className="w-4 h-4" />我的分享
           </button>
 
-          {/* Folder tree under 我的文档 */}
-          <button onClick={() => setFolderOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors">
-            <div className="flex items-center gap-2">
-              <FileText className="w-3.5 h-3.5" />
-              <span>子文件夹</span>
-            </div>
-            {folderOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </button>
-          {folderOpen && (
-            <div className="pl-4 space-y-0.5">
-              {folders.map((f) => (
-                <button key={f} onClick={() => handleNavClick("folder", f)}
-                  className={cn("w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors",
-                    activeNav === "folder" && currentFolder === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          )}
-
           <div className="h-px bg-border my-2" />
 
           {/* AI任务存档 */}
@@ -216,19 +214,19 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
           <button onClick={() => handleNavClick("file_ref")}
             className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
               activeNav === "file_ref" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-            <Archive className="w-4 h-4" />全部存档
+            <Archive className="w-4 h-4" />个人文件夹
           </button>
           <button onClick={() => setArchiveOpen((v) => !v)}
             className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors">
             <div className="flex items-center gap-2">
               <Archive className="w-3.5 h-3.5" />
-              <span>线程文件夹</span>
+              <span>项目文件夹</span>
             </div>
             {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </button>
           {archiveOpen && (
             <div className="pl-4 space-y-0.5">
-              {folders.map((f) => (
+              {projectFolders.map((f) => (
                 <button key={f} onClick={() => handleNavClick("file_ref_folder", f)}
                   className={cn("w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors",
                     activeNav === "file_ref_folder" && currentFolder === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
@@ -253,7 +251,29 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
                 className="w-full pl-9 pr-4" />
             </div>
           </div>
-          <span className="text-xs text-muted-foreground">共 {total} 篇文档</span>
+          <div className="flex items-center gap-3">
+            <div className="flex h-[30px] items-center overflow-hidden rounded-[6px] border border-border bg-card">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
+                  viewMode === "grid" ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
+                  viewMode === "list" ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground">共 {total} 篇文档</span>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 bg-muted/30">
           {loading ? (
@@ -264,7 +284,7 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
               <p className="text-sm font-medium text-muted-foreground">{isFileRefView ? "暂无文件" : "暂无文档"}</p>
               <p className="text-xs text-muted-foreground/70 mt-1">{isFileRefView ? "AI任务产出的文件会出现在这里" : "点击「新建文档」开始创作"}</p>
             </div>
-          ) : (
+          ) : viewMode === "grid" ? (
             <AnimatePresence>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {docs.map((doc) => (
@@ -275,7 +295,7 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
                       menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
                       onToggleStar={() => toggleStar(doc.id, doc.is_starred ?? false)}
                       onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文件？")) await deleteDoc(doc.id); }}
-                      onPreview={() => setPreviewDocState(doc)}
+                      onSelect={() => onSelectDoc(doc)}
                       onShare={() => { setShareDoc(doc); setShowShareDialog(true); }}
                       selected={selectedIds.has(doc.id)}
                       onToggleSelect={() => handleToggleSelect(doc.id)} />
@@ -294,6 +314,83 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
                 ))}
               </div>
             </AnimatePresence>
+          ) : (
+            <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">名称</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">类型</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">大小</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">更新时间</th>
+                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {docs.map((doc) => {
+                    const isFileRef = doc.doc_type === "file_ref";
+                    const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
+                    const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
+                    const handleClick = (e: React.MouseEvent) => {
+                      if (e.ctrlKey || e.metaKey) { e.preventDefault(); handleToggleSelect(doc.id); }
+                      else { onSelectDoc(doc); }
+                    };
+                    return (
+                      <tr key={doc.id}
+                        className={cn("hover:bg-muted/50 transition-colors group cursor-pointer", selectedIds.has(doc.id) && "bg-primary/5")}
+                        onClick={handleClick}>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {selectedIds.has(doc.id) ? (
+                              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                            ) : isFileRef ? (
+                              <FileTypeIcon mime={doc.file_mime} title={doc.title} size="sm" />
+                            ) : (
+                              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                              {doc.title || "无标题"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          {isFileRef ? (() => {
+                            const fic = FILE_ICON_CONFIG[getFileType(doc.file_mime, doc.title)]!;
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                                style={{ backgroundColor: fic.primary + "18", color: fic.primary }}>
+                                {fic.label}
+                              </span>
+                            );
+                          })() : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400 text-xs font-semibold">
+                              DOC
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-sm text-muted-foreground">
+                          {fileSize || "—"}
+                        </td>
+                        <td className="py-4 px-6 text-sm text-muted-foreground">{updatedAt}</td>
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                              onClick={(e) => { e.stopPropagation(); toggleStar(doc.id, doc.is_starred ?? false); }}>
+                              <Star className={cn("w-4 h-4", doc.is_starred && "text-amber-400")} fill={doc.is_starred ? "currentColor" : "none"} />
+                            </button>
+                            <button ref={(el) => { menuButtonRef.current[doc.id] = el; }}
+                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                              onClick={(e) => { e.stopPropagation(); handleOpenMenu(doc.id); }}>
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
         {openMenuId && menuAnchor && (() => {
@@ -306,18 +403,10 @@ function DocumentList({ onSelectDoc }: { onSelectDoc: (doc: AIDocument) => void 
               style={{ left: menuAnchor.x, top: menuAnchor.y + 4 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {!isFileRef && (
-                <button type="button" onClick={() => { handleCloseMenu(); onSelectDoc(doc); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
-                  <PenLine className="w-3 h-3" /> 打开编辑
-                </button>
-              )}
-              {isFileRef && (
-                <button type="button" onClick={() => { handleCloseMenu(); setPreviewDocState(doc); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
-                  <File className="w-3 h-3" /> 预览
-                </button>
-              )}
+              <button type="button" onClick={() => { handleCloseMenu(); onSelectDoc(doc); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
+                <PenLine className="w-3 h-3" /> 打开编辑
+              </button>
               <button type="button" onClick={() => { handleCloseMenu(); setShareDoc(doc); setShowShareDialog(true); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
                 <Share2 className="w-3 h-3" /> 分享
@@ -392,7 +481,7 @@ function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggl
   selected?: boolean; onToggleSelect?: () => void;
 }) {
   const preview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim().slice(0, 120);
-  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) : "";
+  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
@@ -427,24 +516,179 @@ function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggl
   );
 }
 
+// ─── File Type Icon System ─────────────────────────────────────────────────
+
+interface FileIconConfig {
+  primary: string;
+  secondary: string;
+  label: string;
+  dark?: boolean;
+  symbol: "doc" | "code" | "data" | "image" | "terminal";
+}
+
+const FILE_ICON_CONFIG: Record<string, FileIconConfig> = {
+  markdown:   { primary: "#0EA5E9", secondary: "#FFFFFF", label: "MD",  symbol: "doc" },
+  python:     { primary: "#8B5CF6", secondary: "#FDE68A", label: "PY",  symbol: "code" },
+  javascript: { primary: "#EAB308", secondary: "#1E293B", label: "JS",  dark: true, symbol: "code" },
+  typescript: { primary: "#3B82F6", secondary: "#FFFFFF", label: "TS",  symbol: "code" },
+  json:       { primary: "#F97316", secondary: "#FFFFFF", label: "JSON", symbol: "data" },
+  html:       { primary: "#EF4444", secondary: "#FFFFFF", label: "HTML", symbol: "code" },
+  css:        { primary: "#06B6D4", secondary: "#FFFFFF", label: "CSS",  symbol: "code" },
+  pdf:        { primary: "#DC2626", secondary: "#FFFFFF", label: "PDF",  symbol: "doc" },
+  word:       { primary: "#2563EB", secondary: "#FFFFFF", label: "DOC",  symbol: "doc" },
+  excel:      { primary: "#16A34A", secondary: "#FFFFFF", label: "XLS",  symbol: "data" },
+  csv:        { primary: "#65A30D", secondary: "#FFFFFF", label: "CSV",  symbol: "data" },
+  image:      { primary: "#D946EF", secondary: "#FFFFFF", label: "IMG",  symbol: "image" },
+  text:       { primary: "#94A3B8", secondary: "#FFFFFF", label: "TXT",  symbol: "doc" },
+  xml:        { primary: "#EA580C", secondary: "#FFFFFF", label: "XML",  symbol: "code" },
+  yaml:       { primary: "#EC4899", secondary: "#FFFFFF", label: "YML",  symbol: "data" },
+  shell:      { primary: "#22C55E", secondary: "#FFFFFF", label: "SH",   symbol: "terminal" },
+};
+
+function getFileType(mime: string | undefined | null, title: string | undefined | null): string {
+  if (!mime && title) {
+    const ext = title.split(".").pop()?.toLowerCase() || "";
+    const extMap: Record<string, string> = {
+      md: "markdown", py: "python", js: "javascript", ts: "typescript",
+      json: "json", html: "html", css: "css", pdf: "pdf",
+      doc: "word", docx: "word", xls: "excel", xlsx: "excel",
+      csv: "csv", xml: "xml", yml: "yaml", yaml: "yaml", sh: "shell", txt: "text",
+    };
+    return extMap[ext] || "text";
+  }
+  const m = (mime || "").toLowerCase();
+  if (m.includes("markdown") || m.includes("x-markdown")) return "markdown";
+  if (m.includes("python")) return "python";
+  if (m.includes("javascript")) return "javascript";
+  if (m.includes("typescript")) return "typescript";
+  if (m.includes("json")) return "json";
+  if (m.includes("html")) return "html";
+  if (m.includes("css")) return "css";
+  if (m.includes("pdf")) return "pdf";
+  if (m.includes("word") || m.includes("document")) return "word";
+  if (m.includes("excel") || m.includes("spreadsheet")) return "excel";
+  if (m.includes("csv")) return "csv";
+  if (m.includes("image")) return "image";
+  if (m.includes("xml")) return "xml";
+  if (m.includes("yaml")) return "yaml";
+  if (m.includes("shell") || m.includes("bash")) return "shell";
+  if (m.includes("text/plain")) return "text";
+  return "text";
+}
+
+const SymbolPaths = {
+  doc: (fill: string) => (
+    <g>
+      <rect x="8" y="11" width="24" height="2" rx="1" fill={fill} opacity="0.5" />
+      <rect x="8" y="16" width="18" height="2" rx="1" fill={fill} opacity="0.35" />
+      <rect x="8" y="21" width="12" height="2" rx="1" fill={fill} opacity="0.2" />
+    </g>
+  ),
+  code: (fill: string) => (
+    <g>
+      <polyline points="10,12 6,17 10,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <polyline points="30,12 34,17 30,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <line x1="24" y1="10" x2="16" y2="24" stroke={fill} strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+    </g>
+  ),
+  data: (fill: string) => (
+    <g>
+      <rect x="8" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.4" />
+      <rect x="19" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
+      <rect x="8" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
+      <rect x="19" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.2" />
+    </g>
+  ),
+  image: (fill: string) => (
+    <g>
+      <circle cx="16" cy="15" r="3.5" fill={fill} opacity="0.45" />
+      <polyline points="8,26 16,19 21,23 26,18 32,24 32,27 8,27" fill={fill} opacity="0.3" />
+    </g>
+  ),
+  terminal: (fill: string) => (
+    <g>
+      <polyline points="9,13 15,18 9,23" fill="none" stroke={fill} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <rect x="19" y="22" width="8" height="2.5" rx="1" fill={fill} opacity="0.35" />
+    </g>
+  ),
+};
+
+function FileTypeIcon({ mime, title, size = "lg" }: { mime?: string | null; title?: string | null; size?: "sm" | "lg" }) {
+  const fileType = getFileType(mime, title);
+  const config = FILE_ICON_CONFIG[fileType]!;
+  const labelFill = config.dark ? config.secondary : "#fff";
+  const symbolFill = config.dark ? config.secondary : "#fff";
+  const gid = size === "lg" ? `sheen-${fileType}` : `sheen-sm-${fileType}`;
+  const cid = size === "lg" ? `fold-${fileType}` : `fold-sm-${fileType}`;
+
+  if (size === "lg") {
+    return (
+      <svg className="w-12 h-14" viewBox="0 0 40 48" fill="none">
+        <defs>
+          <clipPath id={cid}>
+            <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z" />
+          </clipPath>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="white" stopOpacity="0.28" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="black" stopOpacity="0.06" />
+          </linearGradient>
+        </defs>
+        <g clipPath={`url(#${cid})`}>
+          <rect width="40" height="48" fill={config.primary} />
+          <rect width="40" height="48" fill={`url(#${gid})`} />
+          <path d="M26 2V12C26 14.2 27.8 16 30 16H40V16L26 2Z" fill="rgba(0,0,0,0.12)" />
+        </g>
+        <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z"
+          className="stroke-black/8" strokeWidth="0.5" fill="none" />
+        {SymbolPaths[config.symbol](symbolFill)}
+        <rect x="5" y="34" width="30" height="11" rx="3" fill="rgba(0,0,0,0.18)" />
+        <text x="20" y="43" textAnchor="middle" fill={labelFill} fontSize="10" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="0.5">{config.label}</text>
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="w-5 h-6" viewBox="0 0 20 24" fill="none">
+      <defs>
+        <clipPath id={cid}>
+          <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z" />
+        </clipPath>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="white" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="black" stopOpacity="0.05" />
+        </linearGradient>
+      </defs>
+      <g clipPath={`url(#${cid})`}>
+        <rect width="20" height="24" fill={config.primary} />
+        <rect width="20" height="24" fill={`url(#${gid})`} />
+        <path d="M13 1V6C13 7.1 13.9 8 15 8H20V8L13 1Z" fill="rgba(0,0,0,0.12)" />
+      </g>
+      <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z"
+        className="stroke-black/8" strokeWidth="0.5" fill="none" />
+      <rect x="3" y="17" width="14" height="5" rx="1.5" fill="rgba(0,0,0,0.18)" />
+      <text x="10" y="21" textAnchor="middle" fill={labelFill} fontSize="4.5" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif">{config.label}</text>
+    </svg>
+  );
+}
+
 // ─── File Ref Card ─────────────────────────────────────────────────────────────
 
-function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onToggleStar, onDelete, onPreview, onShare, selected, onToggleSelect }: {
+function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onToggleStar, onDelete, onSelect, onShare, selected, onToggleSelect }: {
   doc: AIDocument; isMenuOpen: boolean;
   onOpenMenu: (id: string) => void; menuButtonRef: (el: HTMLButtonElement | null) => void;
-  onToggleStar: () => void; onDelete: () => void; onPreview: () => void; onShare?: () => void;
+  onToggleStar: () => void; onDelete: () => void; onSelect: () => void; onShare?: () => void;
   selected?: boolean; onToggleSelect?: () => void;
 }) {
   const isImage = isImageFile(doc.file_mime);
-  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) : "";
+  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
   const fileSize = formatFileSize(doc.file_size);
-  const mimeLabel = doc.file_mime?.split("/")[1]?.toUpperCase() || "";
 
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
       className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-48 group hover:shadow-md hover:border-primary/50 relative"
-      onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onPreview(); } }}>
+      onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
       <div className="flex-1 mb-4 flex items-center justify-center relative overflow-hidden">
         {isImage && doc.file_ref_path ? (
           <img
@@ -454,10 +698,7 @@ function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onToggleStar,
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            {isImage ? <Image className="w-10 h-10 text-muted-foreground/50" /> : <File className="w-10 h-10 text-muted-foreground/50" />}
-            {mimeLabel && <span className="text-xs font-medium">{mimeLabel}</span>}
-          </div>
+          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
         )}
       </div>
       <h3 className="font-medium text-foreground text-sm line-clamp-1 mb-2 group-hover:text-primary transition-colors">
@@ -605,14 +846,27 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [loading, setLoading] = useState(true);
-  const editorRef = useRef<TiptapEditorRef>(null);
+  const editorRef = useRef<TiptapEditorRef | CollabEditorRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const titleRef = useRef(title);
   titleRef.current = title;
 
   useEffect(() => {
     setLoading(true);
-    docmgrApi.get(docId).then((d) => { setDoc(d); setTitle(d.title); setLoading(false); }).catch(() => setLoading(false));
+    docmgrApi.get(docId).then(async (d) => {
+      // For file_ref documents, load file content via preview API
+      if (d.doc_type === "file_ref" && !d.content) {
+        try {
+          const preview = await docmgrApi.preview(docId);
+          if (preview.content) {
+            d = { ...d, content: preview.content };
+          }
+        } catch { /* fall through with empty content */ }
+      }
+      setDoc(d);
+      setTitle(d.title);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [docId]);
 
   const scheduleSave = useCallback((content: string) => {
@@ -698,13 +952,23 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 flex flex-col overflow-hidden">
           {doc !== null && (
-            <TiptapEditor
-              ref={editorRef}
-              initialContent={doc.content ?? ""}
-              onChange={scheduleSave}
-              placeholder="开始输入内容..."
-              className="flex-1"
-            />
+            doc.project_id ? (
+              <CollabEditor
+                ref={editorRef as React.Ref<CollabEditorRef>}
+                documentId={docId}
+                initialContent={doc.content ?? ""}
+                onChange={scheduleSave}
+                className="flex-1"
+              />
+            ) : (
+              <TiptapEditor
+                ref={editorRef as React.Ref<TiptapEditorRef>}
+                initialContent={doc.content ?? ""}
+                onChange={scheduleSave}
+                placeholder="开始输入内容..."
+                className="flex-1"
+              />
+            )
           )}
         </div>
         <AnimatePresence>
