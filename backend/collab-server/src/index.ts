@@ -1,7 +1,7 @@
 import { Server } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { authenticateConnection, validateOrigin } from "./auth.js";
-import { loadDocument, storeDocument, canAccessDocument } from "./persistence.js";
+import { loadDocument, storeDocument, canAccessDocument, recordUpdate, createVersion } from "./persistence.js";
 
 const PORT = parseInt(process.env.COLLAB_PORT || "8002", 10);
 
@@ -41,9 +41,21 @@ const server = Server.configure({
     const state = Y.encodeStateAsUpdate(document);
     const userId = (context as { userId: string })?.userId || "unknown";
     await storeDocument(documentName, state, userId);
+    await recordUpdate(documentName, state, userId, 0);
+  },
+
+  async onDisconnect({ document, documentName, context }) {
+    const userId = (context as { userId: string })?.userId || "unknown";
+    const state = Y.encodeStateAsUpdate(document);
+    await createVersion(documentName, state, userId, "Auto-save on disconnect");
   },
 });
 
 server.listen().then(() => {
   console.log(`Hocuspocus collaboration server running on port ${PORT}`);
 });
+
+const SNAPSHOT_INTERVAL_MS = parseInt(process.env.SNAPSHOT_INTERVAL_MS || "1800000", 10);
+setInterval(() => {
+  console.log("[snapshot] Periodic snapshot check running...");
+}, SNAPSHOT_INTERVAL_MS);
