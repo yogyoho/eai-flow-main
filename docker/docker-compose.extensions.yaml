@@ -3,6 +3,7 @@
 #
 # Services:
 #   - postgres-ext: Extensions PostgreSQL (auth, knowledge, etc.)
+#   - collab: Real-time collaboration WebSocket server (Hocuspocus)
 
 services:
   # ── Extensions PostgreSQL ──────────────────────────────────────────────
@@ -27,6 +28,25 @@ services:
       timeout: 5s
       retries: 6
       start_period: 10s
+
+  # ── Collaboration WebSocket Server (Hocuspocus) ──────────────────────
+  # Real-time document collaboration via Yjs/Hocuspocus over WebSocket
+  collab:
+    build:
+      context: ../backend/collab-server
+      dockerfile: Dockerfile
+    container_name: eai-flow-collab
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - COLLAB_PORT=8002
+      - DATABASE_URL=postgresql://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
+    env_file:
+      - ../.env
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
 
 volumes:
   postgres-ext-data:
