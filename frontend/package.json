@@ -19,6 +19,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@blocknote/core": "^0.51.3",
+    "@blocknote/react": "^0.51.3",
+    "@blocknote/shadcn": "^0.51.3",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-javascript": "^6.2.4",
@@ -26,6 +29,7 @@
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/language-data": "^6.5.2",
+    "@hocuspocus/provider": "^4.1.0",
     "@langchain/core": "^1.1.15",
     "@langchain/langgraph-sdk": "^1.5.3",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -83,6 +87,7 @@
     "hast": "^1.0.0",
     "isomorphic-dompurify": "^3.9.0",
     "katex": "^0.16.28",
+    "lib0": "^0.2.117",
     "lucide-react": "^0.562.0",
     "motion": "^12.26.2",
     "nanoid": "^5.1.6",
@@ -111,6 +116,7 @@
     "unist-util-visit": "^5.0.0",
     "use-stick-to-bottom": "^1.1.1",
     "uuid": "^14.0.0",
+    "yjs": "^13.6.30",
     "zod": "^3.24.2"
   },
   "devDependencies": {

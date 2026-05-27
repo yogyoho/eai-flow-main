@@ -276,6 +276,7 @@ export interface AIDocument {
   id: string;
   user_id: string;
   source_thread_id?: string;
+  project_id?: string | null;
   title: string;
   content?: string;
   folder: string;
@@ -300,6 +301,7 @@ export interface CreateAIDocumentRequest {
   content?: string;
   folder?: string;
   source_thread_id?: string;
+  project_id?: string;
 }
 
 export interface UpdateAIDocumentRequest {
@@ -396,4 +398,45 @@ export function normalizeDocStatus(raw: string | undefined | null): DocumentStat
     processing: DocumentStatus.PROCESSING,
   };
   return mapping[s] ?? DocumentStatus.PENDING;
+}
+
+// ─── Collaborative Editing Types ─────────────────────────────────────────
+
+export interface CollabComment {
+  id: string;
+  doc_id: string;
+  block_id: string;
+  content: string;
+  parent_id: string | null;
+  user_id: string;
+  resolved: boolean;
+  created_at: string;
+  updated_at: string;
+  username?: string | null;
+  full_name?: string | null;
+}
+
+export interface CollabVersion {
+  id: number;
+  doc_id: string;
+  version: number;
+  summary: string | null;
+  created_by: string | null;
+  created_at: string;
+  username?: string | null;
+  full_name?: string | null;
+}
+
+export interface CommentCreateRequest {
+  block_id: string;
+  content: string;
+  parent_id?: string | null;
+}
+
+export interface CommentUpdateRequest {
+  content: string;
+}
+
+export interface VersionCreateRequest {
+  summary?: string | null;
 }
