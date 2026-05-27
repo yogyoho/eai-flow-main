@@ -1,4 +1,18 @@
 import type {
+  ExtractionDomain,
+  ExtractionTaskCreate,
+  ExtractionTaskResponse,
+  ExtractionTaskListResponse,
+  TemplateListResponse,
+  TemplateDocument,
+  TemplateVersionResponse,
+  QualityAssessmentResult,
+  VersionCompareResult,
+  TemplateRollbackResponse,
+  DictItemResponse,
+  RAGSourceConfig,
+} from "../knowledge-factory/types";
+import type {
   User,
   UserListResponse,
   CreateUserRequest,
@@ -28,6 +42,11 @@ import type {
   CreateAIDocumentRequest,
   UpdateAIDocumentRequest,
   FolderListResponse,
+  CollabComment,
+  CollabVersion,
+  CommentCreateRequest,
+  CommentUpdateRequest,
+  VersionCreateRequest,
   ChunkConfig,
   SampleReport,
   SampleReportListResponse,
@@ -37,20 +56,6 @@ import type {
   RAGChatRequest,
   RAGChatResponse,
 } from "../types";
-import type {
-  ExtractionDomain,
-  ExtractionTaskCreate,
-  ExtractionTaskResponse,
-  ExtractionTaskListResponse,
-  TemplateListResponse,
-  TemplateDocument,
-  TemplateVersionResponse,
-  QualityAssessmentResult,
-  VersionCompareResult,
-  TemplateRollbackResponse,
-  DictItemResponse,
-  RAGSourceConfig,
-} from "../knowledge-factory/types";
 
 const API_BASE = "/api/extensions";
 const KF_API_BASE = "/api/kf";
@@ -64,7 +69,7 @@ export class ApiError extends Error {
 
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  const match = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
@@ -370,6 +375,7 @@ export const docmgrApi = {
     shared?: boolean;
     q?: string;
     doc_type?: string;
+    project_scope?: string;
     skip?: number;
     limit?: number;
   }) => {
@@ -379,6 +385,7 @@ export const docmgrApi = {
     if (params?.shared !== undefined) query.set("shared", String(params.shared));
     if (params?.q) query.set("q", params.q);
     if (params?.doc_type) query.set("doc_type", params.doc_type);
+    if (params?.project_scope) query.set("project_scope", params.project_scope);
     if (params?.skip !== undefined) query.set("skip", String(params.skip));
     if (params?.limit !== undefined) query.set("limit", String(params.limit));
     return request<AIDocumentListResponse>(`/docmgr/documents?${query}`);
@@ -395,7 +402,14 @@ export const docmgrApi = {
   delete: (id: string) =>
     request<MessageResponse>(`/docmgr/documents/${id}`, { method: "DELETE" }),
 
-  listFolders: () => request<FolderListResponse>("/docmgr/folders"),
+  preview: (id: string) =>
+    request<{ content: string | null; doc_type: string; file_mime?: string; file_size?: number }>(`/docmgr/documents/${id}/preview`),
+
+  listFolders: (params?: { project_scope?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.project_scope) query.set("project_scope", params.project_scope);
+    return request<FolderListResponse>(`/docmgr/folders?${query}`);
+  },
 
   export: (id: string, format: "md" | "txt" | "docx" = "md") => {
     return fetch(`${API_BASE}/docmgr/documents/${id}/export?format=${format}`, {
@@ -466,6 +480,57 @@ export const docmgrApi = {
 
   accessSharedDocument: async (token: string): Promise<any> => {
     return request(`/docmgr/shared/${token}`);
+  },
+
+  // ─── Collaborative Editing ──────────────────────────────────────────
+
+  listComments: async (docId: string): Promise<CollabComment[]> => {
+    return request(`/docmgr/documents/${docId}/comments`);
+  },
+
+  createComment: async (docId: string, data: CommentCreateRequest): Promise<CollabComment> => {
+    return request(`/docmgr/documents/${docId}/comments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateComment: async (commentId: string, data: CommentUpdateRequest): Promise<CollabComment> => {
+    return request(`/docmgr/comments/${commentId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteComment: async (commentId: string): Promise<{ message: string }> => {
+    return request(`/docmgr/comments/${commentId}`, { method: "DELETE" });
+  },
+
+  resolveComment: async (commentId: string): Promise<CollabComment> => {
+    return request(`/docmgr/comments/${commentId}/resolve`, { method: "POST" });
+  },
+
+  reopenComment: async (commentId: string): Promise<CollabComment> => {
+    return request(`/docmgr/comments/${commentId}/reopen`, { method: "POST" });
+  },
+
+  listVersions: async (docId: string): Promise<CollabVersion[]> => {
+    return request(`/docmgr/documents/${docId}/versions`);
+  },
+
+  createVersion: async (docId: string, data?: VersionCreateRequest): Promise<CollabVersion> => {
+    return request(`/docmgr/documents/${docId}/versions`, {
+      method: "POST",
+      body: JSON.stringify(data ?? {}),
+    });
+  },
+
+  getVersion: async (docId: string, version: number): Promise<CollabVersion> => {
+    return request(`/docmgr/documents/${docId}/versions/${version}`);
+  },
+
+  restoreVersion: async (docId: string, version: number): Promise<{ version: number; message: string }> => {
+    return request(`/docmgr/documents/${docId}/versions/${version}/restore`, { method: "POST" });
   },
 };
 
@@ -895,7 +960,7 @@ export const kfApi = {
   createDomain: (data: { id: string; name: string; description?: string; standard_chapters?: Record<string, unknown>; industry?: string; report_type?: string }) =>
     kfRequest<ExtractionDomain>("/domains", { method: "POST", body: JSON.stringify(data) }),
 
-  inferChapters: (file: File, maxDepth: number = 3) => {
+  inferChapters: (file: File, maxDepth = 3) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("max_depth", String(maxDepth));
