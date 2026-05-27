@@ -18,6 +18,30 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return cookies;
 }
 
+const DEFAULT_ALLOWED_ORIGINS = "localhost:2026,localhost:3000,localhost:4000";
+
+export function validateOrigin(request: IncomingMessage): boolean {
+  const originHeader = request.headers?.origin;
+  const refererHeader = request.headers?.referer;
+
+  // Non-browser clients may not send origin headers — allow through
+  if (!originHeader && !refererHeader) return true;
+
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS)
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const originToCheck = originHeader || refererHeader;
+  try {
+    const url = new URL(originToCheck!);
+    const host = url.host; // host:port
+    return allowedOrigins.includes(host);
+  } catch {
+    return false;
+  }
+}
+
 export function authenticateConnection(request: IncomingMessage): AuthenticatedUser | null {
   const cookieHeader = request.headers?.cookie;
   if (!cookieHeader || typeof cookieHeader !== "string") return null;
