@@ -13,8 +13,7 @@ import { useAuth } from "@/extensions/hooks/useAuth";
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from "react";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import "@blocknote/core/fonts/inter.css";
-import "@blocknote/shadcn/style.css";
+
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
