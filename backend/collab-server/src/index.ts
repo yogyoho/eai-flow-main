@@ -1,4 +1,4 @@
-import { Hocuspocus, Server } from "@hocuspocus/server";
+import { Server } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { authenticateConnection } from "./auth.js";
 import { loadDocument, storeDocument, canAccessDocument } from "./persistence.js";
@@ -8,16 +8,15 @@ const PORT = parseInt(process.env.COLLAB_PORT || "8002", 10);
 const server = Server.configure({
   port: PORT,
 
-  async onConnect({ connection }) {
-    const user = authenticateConnection(connection.request);
+  async onConnect({ request, documentName, context }) {
+    const user = authenticateConnection(request);
     if (!user) {
       throw new Error("Unauthorized");
     }
 
-    connection.context = { userId: user.userId };
+    Object.assign(context, { userId: user.userId });
 
-    const docId = connection.documentName;
-    const hasAccess = await canAccessDocument(user.userId, docId);
+    const hasAccess = await canAccessDocument(user.userId, documentName);
     if (!hasAccess) {
       throw new Error("Forbidden: no access to this document");
     }

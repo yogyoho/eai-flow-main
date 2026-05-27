@@ -1,4 +1,4 @@
-import type { IncomingRequest } from "@hocuspocus/server";
+import type { IncomingMessage } from "http";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY || process.env.AUTH_JWT_SECRET || "";
@@ -18,7 +18,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return cookies;
 }
 
-export function authenticateConnection(request: IncomingRequest): AuthenticatedUser | null {
+export function authenticateConnection(request: IncomingMessage): AuthenticatedUser | null {
   const cookieHeader = request.headers?.cookie;
   if (!cookieHeader || typeof cookieHeader !== "string") return null;
 
