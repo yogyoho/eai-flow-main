@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 
 import { ArtifactFileList } from "../artifacts/artifact-file-list";
 import { CopyButton } from "../copy-button";
+import { SaveToDocButton } from "../save-to-doc-button";
 import { StreamingIndicator } from "../streaming-indicator";
 
 import { MarkdownContent } from "./markdown-content";
@@ -188,25 +189,25 @@ export function MessageList({
   );
 
   const renderAssistantCopyButton = useCallback((messages: Message[]) => {
-    const clipboardData = [...messages]
+    const lastAiMessage = [...messages]
       .reverse()
-      .filter((message) => message.type === "ai")
-      .map((message) => {
-        const content = extractContentFromMessage(message);
-        return content ?? extractReasoningContentFromMessage(message) ?? "";
-      })
-      .find((content) => content.length > 0);
+      .find((message) => message.type === "ai");
+    const content = lastAiMessage
+      ? extractContentFromMessage(lastAiMessage) ??
+        extractReasoningContentFromMessage(lastAiMessage)
+      : null;
 
-    if (!clipboardData) {
+    if (!content) {
       return null;
     }
 
     return (
-      <div className="mt-2 flex justify-start opacity-0 transition-opacity delay-200 duration-300 group-hover/assistant-turn:opacity-100">
-        <CopyButton clipboardData={clipboardData} />
+      <div className="mt-2 flex justify-start gap-1 opacity-0 transition-opacity delay-200 duration-300 group-hover/assistant-turn:opacity-100">
+        <SaveToDocButton content={content} threadId={threadId} />
+        <CopyButton clipboardData={content} />
       </div>
     );
-  }, []);
+  }, [threadId]);
 
   const renderTokenUsage = useCallback(
     ({

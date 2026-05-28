@@ -1,4 +1,4 @@
-"""Pydantic schemas for report project management (workflow-driven)."""
+"""Pydantic schemas for report project management."""
 
 from datetime import datetime
 from uuid import UUID
@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-# ── Enums (as string literals) ──
+# ── Enums ──
 
 VALID_REPORT_TYPES = [
     "environmental_impact",
@@ -17,18 +17,16 @@ VALID_REPORT_TYPES = [
     "other",
 ]
 
-VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "published", "archived"]
+VALID_PROJECT_STATUSES = ["active", "completed", "archived"]
 
-VALID_CHAPTER_STATUSES = ["pending", "writing", "draft", "editing", "completed", "rejected", "approved"]
-
-VALID_MEMBER_ROLES = ["manager", "editor", "writer", "reviewer", "approver"]
+VALID_MEMBER_ROLES = ["owner", "member"]
 
 VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
 
 VALID_APPROVAL_ACTIONS = ["approve", "reject", "comment"]
 
 
-# ── Chapter ──
+# ── Chapter (kept for ProjectOut compatibility) ──
 
 
 class ChapterOut(BaseModel):
@@ -51,26 +49,6 @@ class ChapterOut(BaseModel):
     updated_at: datetime | None = None
 
 
-class ChapterTreeNode(BaseModel):
-    """Flat node for outline tree operations (add/reorder/update)."""
-    id: UUID | None = None  # None for new chapters
-    title: str
-    level: int = 1
-    sort_order: int = 0
-    purpose: str | None = None
-    generation_hint: str | None = None
-    word_count_target: int = 3000
-    children: list["ChapterTreeNode"] = Field(default_factory=list)
-
-
-class ChapterContentUpdate(BaseModel):
-    title: str | None = None
-    content: str | None = None
-    status: str | None = None
-    assigned_to: UUID | None = None
-    word_count_target: int | None = None
-
-
 # ── Member ──
 
 
@@ -85,7 +63,7 @@ class MemberOut(BaseModel):
 
 class MemberCreate(BaseModel):
     user_id: UUID
-    role: str = "editor"
+    role: str = "member"
 
 
 # ── Project ──
@@ -100,7 +78,6 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     status: str | None = None
-    current_stage: int | None = None
 
 
 class ProjectOut(BaseModel):
@@ -110,8 +87,7 @@ class ProjectOut(BaseModel):
     name: str
     report_type: str
     template_id: UUID | None = None
-    status: str = "setup"
-    current_stage: int = 1
+    status: str = "active"
     thread_id: str | None = None
     created_by: UUID | None = None
     members: list[MemberOut] = Field(default_factory=list)
@@ -127,8 +103,7 @@ class ProjectListItem(BaseModel):
     id: UUID
     name: str
     report_type: str
-    status: str = "setup"
-    current_stage: int = 1
+    status: str = "active"
     template_id: UUID | None = None
     template_name: str | None = None
     chapter_count: int = 0
@@ -141,14 +116,6 @@ class ProjectListItem(BaseModel):
 class ProjectListResponse(BaseModel):
     items: list[ProjectListItem] = Field(default_factory=list)
     total: int = 0
-
-
-# ── Outline batch update ──
-
-
-class OutlineBatchUpdate(BaseModel):
-    """Replace the entire outline tree with a new structure."""
-    chapters: list[ChapterTreeNode] = Field(default_factory=list)
 
 
 # ── Approval ──
@@ -183,51 +150,6 @@ class ApprovalActionRequest(BaseModel):
     chapter_id: UUID | None = None
     action: str = Field(..., pattern="^(approve|reject|comment)$")
     comment: str | None = None
-
-
-# ── AI Action ──
-
-
-VALID_AI_ACTIONS = ["polish", "expand", "condense", "format_check", "compliance_check", "terminology_check"]
-
-
-class AiActionRequest(BaseModel):
-    chapter_ids: list[UUID] = Field(..., min_length=1)
-    action: str = Field(..., description="polish|expand|condense|format_check|compliance_check|terminology_check")
-    params: dict | None = None  # {"target_word_count": 5000, "standard": "HJ 2.1-2016"}
-
-
-class AiActionResponse(BaseModel):
-    thread_id: str
-    task_count: int
-
-
-# ── Writing / Editing thread responses ──
-
-
-class StartWritingResponse(BaseModel):
-    """Response for POST /projects/{id}/start-writing."""
-    thread_id: str
-    project_id: UUID
-
-
-class StartEditingResponse(BaseModel):
-    """Response for POST /projects/{id}/chapters/{ch_id}/start-editing."""
-    thread_id: str
-    project_id: UUID
-    chapter_id: UUID
-
-
-# ── Permission query ──
-
-
-class MyPermissionsResponse(BaseModel):
-    role: str | None
-    permissions: list[str]
-    default_tab: str
-
-
-# ── Approval workflow (extended) ──
 
 
 class ApprovalStepConfig(BaseModel):

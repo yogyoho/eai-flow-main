@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 
 import { kfApi } from "@/extensions/api";
 import type {
@@ -45,7 +46,7 @@ function StepRow({ step }: { step: StepStatus }) {
       <td className="py-2.5 font-medium text-foreground text-sm align-middle">{step.name}</td>
       <td className="py-2.5 align-middle">
         {step.status === "completed" ? (
-          <span className="inline-flex items-center gap-1 text-emerald-500 text-xs">
+          <span className="inline-flex items-center gap-1 text-success text-xs">
             <CheckCircle2 className="w-3.5 h-3.5" /> 完成
           </span>
         ) : step.status === "running" ? (
@@ -53,7 +54,7 @@ function StepRow({ step }: { step: StepStatus }) {
             <Loader2 className="w-3.5 h-3.5 animate-spin" /> 进行中
           </span>
         ) : step.status === "failed" ? (
-          <span className="inline-flex items-center gap-1 text-red-500 text-xs">
+          <span className="inline-flex items-center gap-1 text-destructive text-xs">
             <AlertCircle className="w-3.5 h-3.5" /> 失败
           </span>
         ) : (
@@ -84,19 +85,11 @@ export default function TemplateExtraction() {
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ action: () => Promise<void>; title: string; message: string } | null>(null);
-  const [toasts, setToasts] = useState<{ id: number; msg: string; type: "success" | "error" | "info" }[]>([]);
-  const toastId = useRef(0);
   const tasksRef = useRef<ExtractionTaskResponse[]>([]);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 保持 ref 与 state 同步
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
-
-  const showToast = (msg: string, type: "success" | "error" | "info" = "info") => {
-    const id = ++toastId.current;
-    setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
 
   const loadTasks = useCallback(async (pg: number, filter: string) => {
     setLoading(true);
@@ -107,7 +100,7 @@ export default function TemplateExtraction() {
       setTasks(res.tasks);
       setTotal(res.total);
     } catch {
-      showToast("加载任务列表失败", "error");
+      toast.error("加载任务列表失败");
     } finally {
       setLoading(false);
     }
@@ -136,7 +129,7 @@ export default function TemplateExtraction() {
               const msg = fresh.status === "completed"
                 ? `任务"${fresh.name}"已完成`
                 : `任务"${fresh.name}"失败: ${fresh.error ?? ""}`;
-              setToasts((prev) => [...prev, { id: ++toastId.current, msg, type: fresh.status === "completed" ? "success" : "error" }]);
+              toast[fresh.status === "completed" ? "success" : "error"](msg);
             }
           } catch { /* ignore */ }
         }
@@ -163,9 +156,9 @@ export default function TemplateExtraction() {
     try {
       await kfApi.pauseTask(task.id);
       setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: "paused" as const } : t));
-      showToast("任务已暂停", "success");
+      toast.success("任务已暂停");
     } catch {
-      showToast("暂停失败", "error");
+      toast.error("暂停失败");
     } finally {
       setActionLoading(null);
     }
@@ -176,9 +169,9 @@ export default function TemplateExtraction() {
     try {
       await kfApi.resumeTask(task.id);
       setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: "running" as const } : t));
-      showToast("任务已恢复", "success");
+      toast.success("任务已恢复");
     } catch {
-      showToast("恢复失败", "error");
+      toast.error("恢复失败");
     } finally {
       setActionLoading(null);
     }
@@ -193,9 +186,9 @@ export default function TemplateExtraction() {
         try {
           await kfApi.cancelTask(task.id);
           setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: "failed" as const } : t));
-          showToast("任务已取消", "success");
+          toast.success("任务已取消");
         } catch {
-          showToast("取消失败", "error");
+          toast.error("取消失败");
         } finally {
           setActionLoading(null);
         }
@@ -208,9 +201,9 @@ export default function TemplateExtraction() {
     try {
       const newTask = await kfApi.rerunTask(task.id);
       setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== task.id)]);
-      showToast("新任务已创建", "success");
+      toast.success("新任务已创建");
     } catch {
-      showToast("重新运行失败", "error");
+      toast.error("重新运行失败");
     } finally {
       setActionLoading(null);
     }
@@ -226,9 +219,9 @@ export default function TemplateExtraction() {
           await kfApi.deleteTask(task.id);
           setTasks((prev) => prev.filter((t) => t.id !== task.id));
           setTotal((prev) => Math.max(0, prev - 1));
-          showToast("任务已删除", "success");
+          toast.success("任务已删除");
         } catch {
-          showToast("删除失败", "error");
+          toast.error("删除失败");
         } finally {
           setActionLoading(null);
         }
@@ -239,7 +232,7 @@ export default function TemplateExtraction() {
   const handleClearHistory = async () => {
     const terminalTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed");
     if (terminalTasks.length === 0) {
-      showToast("没有可清除的历史任务", "info");
+      toast.info("没有可清除的历史任务");
       return;
     }
     setConfirmTarget({
@@ -249,11 +242,11 @@ export default function TemplateExtraction() {
         setActionLoading("__clear__");
         try {
           const res = await kfApi.clearTasks();
-          showToast(res.message, "success");
+          toast.success(res.message);
           void loadTasks(1, statusFilter);
           setPage(1);
         } catch {
-          showToast("清除失败", "error");
+          toast.error("清除失败");
         } finally {
           setActionLoading(null);
         }
@@ -270,7 +263,7 @@ export default function TemplateExtraction() {
   const handleCreateSuccess = (newTask: ExtractionTaskResponse) => {
     setShowCreateModal(false);
     setTasks((prev) => [newTask, ...prev]);
-    showToast("抽取任务已创建", "success");
+    toast.success("抽取任务已创建");
   };
 
   const handleExport = (task: ExtractionTaskResponse) => {
@@ -297,7 +290,7 @@ export default function TemplateExtraction() {
     switch (status) {
       case "completed":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded-full border border-success/20">
             <CheckCircle2 className="w-3 h-3" /> 完成
           </span>
         );
@@ -310,13 +303,13 @@ export default function TemplateExtraction() {
         );
       case "paused":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full border border-warning/20">
             <Pause className="w-3 h-3" /> 已暂停
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
             <AlertCircle className="w-3 h-3" /> 失败
           </span>
         );
@@ -393,10 +386,10 @@ export default function TemplateExtraction() {
             return (
               <div key={task.id} className={cn(
                 "bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden border-l-[3px] transition-shadow hover:shadow-md",
-                task.status === "completed" && "border-l-emerald-500/60",
+                task.status === "completed" && "border-l-success/60",
                 (task.status === "running" || task.status === "pending") && "border-l-primary/60",
-                task.status === "paused" && "border-l-amber-500/60",
-                task.status === "failed" && "border-l-red-500/60"
+                task.status === "paused" && "border-l-warning/60",
+                task.status === "failed" && "border-l-destructive/60"
               )}>
                 {/* Card top: info + actions */}
                 <div className="px-4 py-3">
@@ -413,7 +406,7 @@ export default function TemplateExtraction() {
                           : "-"}
                       </p>
                       {task.error && (
-                        <p className="text-xs text-red-500 flex items-center gap-1">
+                        <p className="text-xs text-destructive flex items-center gap-1">
                           <AlertCircle className="w-3 h-3 shrink-0" /> {task.error}
                         </p>
                       )}
@@ -537,7 +530,7 @@ export default function TemplateExtraction() {
                         模板: <span className="font-medium text-foreground">{task.result.name} {task.result.version}</span>
                       </span>
                       <span>{task.result.chapters}章 / {task.result.sections}节</span>
-                      <span>完整度: <span className="font-medium text-emerald-500">{task.result.completeness_score}%</span></span>
+                      <span>完整度: <span className={cn("font-medium", (task.result.completeness_score ?? 0) >= 80 ? "text-success" : (task.result.completeness_score ?? 0) >= 60 ? "text-info" : "text-warning")}>{task.result.completeness_score}%</span></span>
                     </div>
                   )}
                 </div>
@@ -619,7 +612,6 @@ export default function TemplateExtraction() {
         <ExtractionTaskModal
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleCreateSuccess}
-          onToast={showToast}
         />
       )}
       {showResultModal && selectedTask && (
@@ -664,25 +656,6 @@ export default function TemplateExtraction() {
         </div>
       )}
 
-      {/* Toast notifications */}
-      <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
-              t.type === "success" && "border-emerald-500/20 bg-emerald-500/90 text-white",
-              t.type === "error" && "border-red-500/20 bg-red-500/90 text-white",
-              t.type === "info" && "border-primary/20 bg-primary/90 text-primary-foreground"
-            )}
-          >
-            {t.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0" />}
-            {t.type === "error" && <AlertCircle className="w-4 h-4 shrink-0" />}
-            {t.type === "info" && <Loader2 className="w-4 h-4 shrink-0 animate-spin" />}
-            <span>{t.msg}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

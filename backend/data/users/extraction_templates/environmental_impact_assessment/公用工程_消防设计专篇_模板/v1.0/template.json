@@ -1,0 +1,2555 @@
+{
+  "sections": [
+    {
+      "id": "sec_01",
+      "level": 1,
+      "title": "设计依据及采用的标准",
+      "purpose": "列出设计所依据的国家法律法规、行业标准及地方规定",
+      "children": [
+        {
+          "id": "sec_01_01",
+          "level": 2,
+          "title": "设计依据",
+          "purpose": "明确项目设计的法律、法规及批复文件等依据",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "全国标准信息公共服务平台",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "住建部发布的工程建设标准体系",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目可行性研究报告中的法规清单",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "当地建设主管部门发布的适用规范清单",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "2.1  设计采用的技术标准、规范\n1)  石油化工企业设计防火标准（2018版）    GB50160-2008\n2)  建筑设计防火规范（2018版）            GB50016-2014\n3)  爆炸危险环境电力装置设计规范          GB50058-2014\n4)  火灾自动报警系统设计规范              GB50116-2013\n5)  建筑灭火器配置设计规范                GB50140-2005\n6)  消防给水及消火栓系统技术规范          GB50974-2014",
+          "generation_hint": "基于项目所属行业（如石油化工、民用建筑等）和项目所在地，输出本报告章节涉及的强制性标准和推荐性规范列表。优先列出安全、防火、环保等强制性法规，然后列出与设计直接相关的技术规范。按类分组（如防火类、电气类、给排水类），并注明最新版本号。",
+          "compliance_rules": [
+            "GB50160-2008 石油化工企业设计防火标准（2018版）",
+            "GB50016-2014 建筑设计防火规范（2018版）",
+            "GB50058-2014 爆炸危险环境电力装置设计规范",
+            "GB50116-2013 火灾自动报警系统设计规范",
+            "GB50140-2005 建筑灭火器配置设计规范",
+            "GB50974-2014 消防给水及消火栓系统技术规范"
+          ],
+          "content_contract": {
+            "style_rules": "采用符合行业惯例的列表或表格形式，每条规范单独一行，内容准确、简洁，使用规范名称全称和标准编号，必要时注明版本或修订号。",
+            "key_elements": [
+              "适用法律名称",
+              "对应的标准/规范编号",
+              "版本年份或修订状态"
+            ],
+            "min_word_count": 100,
+            "structure_type": "table",
+            "forbidden_phrases": [
+              "参考类似规范",
+              "暂定",
+              "如有变更",
+              "依据初步判断"
+            ]
+          },
+          "completeness_score": 90
+        },
+        {
+          "id": "sec_01_02",
+          "level": 2,
+          "title": "设计采用的技术标准、规范",
+          "purpose": "列举消防设计所引用的具体国家标准和行业规范",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "全国标准信息公共服务平台 （std.samr.gov.cn）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "应急管理部消防产品合格评定中心官网",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "住房和城乡建设部标准定额研究所发布的标准目录",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "中国建筑工业出版社出版的《现行建筑设计规范大全》",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "本工程消防设计严格执行以下现行国家标准和行业规范。具体采用的规范清单如下表所示：\n\n| 标准名称 | 标准编号 | 备注 |\n| --- | --- | --- |\n| 石油化工企业设计防火标准（2018版） | GB50160-2008 | — |\n| 建筑设计防火规范（2018版） | GB50016-2014 | — |\n| 爆炸危险环境电力装置设计规范 | GB50058-2014 | — |\n| 火灾自动报警系统设计规范 | GB50116-2013 | — |\n| 建筑灭火器配置设计规范 | GB50140-2005 | — |\n| 消防给水及消火栓系统技术规范 | GB50974-2014 | — |",
+          "generation_hint": "请基于用户提供的《设计采用的技术标准、规范》章节样本，完全按照样本中的6条规范作为核心内容进行精准复述和格式化。不要增加样本中未出现的规范，也不要遗漏。以表格形式输出，第一列写标准全称（含修订年份后缀），第二列写标准编号（含年份）。确保所有标准名称和编号与原样本完全一致。",
+          "compliance_rules": [
+            "GB50160-2008（2018版） 石油化工企业设计防火标准",
+            "GB50016-2014（2018版） 建筑设计防火规范",
+            "GB50058-2014 爆炸危险环境电力装置设计规范",
+            "GB50116-2013 火灾自动报警系统设计规范",
+            "GB50140-2005 建筑灭火器配置设计规范",
+            "GB50974-2014 消防给水及消火栓系统技术规范"
+          ],
+          "content_contract": {
+            "style_rules": "采用表格形式清晰呈现；标准名称使用全称，不得简写；标准编号使用国家标准编号格式（GB/GB/T 加年份后缀）；若标准有局部修订或条文说明，应在备注栏注明；采用被动语态描述引用行为，如“本设计遵循……”",
+            "key_elements": [
+              "列出所引用的国家标准和行业规范的名称",
+              "列出所引用的标准编号及版本（年号）",
+              "确保法规为现行有效版本，如GB50160-2008已更新至2018版",
+              "区分设计依据（项目基础文件）与技术标准（具体规范）",
+              "标准列表需按专业或编号顺序排列"
+            ],
+            "min_word_count": 150,
+            "structure_type": "table",
+            "forbidden_phrases": [
+              "“仅供参考”",
+              "“可能适用”",
+              "“建议采用”",
+              "“酌情选择”",
+              "“最新标准”（应直接写明具体年号）"
+            ]
+          },
+          "completeness_score": 95
+        },
+        {
+          "id": "sec_01_03",
+          "level": 2,
+          "title": "地方相关法规",
+          "purpose": "补充项目所在地适用的地方性消防法规和规定",
+          "children": [],
+          "required": false,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "全国法律法规数据库（www.flk.npc.gov.cn）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目所在地的地方政府网站（如：省/市人大网站、住建厅/局网站）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "应急管理部消防救援局官网发布的规范性文件",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目所在地的住房和城乡建设主管部门发布的消防审验指南",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "1.3 地方相关法规\n\n本项目位于XX省XX市，除应遵守国家消防法律法规外，还应严格执行以下地方性法规及规范性文件：\n\n1）《XX省消防条例》（XX省人大常委会公告第XX号，最新修订日期：2022年X月X日）\n2）《XX省建设工程消防设计审查验收实施细则》（XX省住建厅发〔2023〕XX号）\n3）《XX市消防安全重点单位消防安全管理规定》（XX市政府令第XX号）\n\n上述法规明确了本省（市）在建筑防火、消防设施配置、施工消防安全管理及消防审验程序等方面的具体要求。例如，《XX省消防条例》第XX条对高层民用建筑的保温材料燃烧性能提出了高于国家标准的规定，本报告第4.3节将对此进行专门分析。",
+          "generation_hint": "请首先明确项目的具体地理位置（省、市、区），然后列举该层级的地方消防法规。重点检索该地的地方消防条例、消防管理规定以及建设工程消防审验实施细则。对于每个法规，说明其发布机关、文号、最新修订时间，并简要指出与项目消防设计相关的核心条款（如疏散要求、消防车道宽度、防火间距特殊规定等）。避免笼统描述，应具体到条款编号。",
+          "compliance_rules": [
+            "《中华人民共和国消防法》（2019年4月23日修订，主席令第二十九号）",
+            "《建设工程消防设计审查验收管理暂行规定》（住建部令第51号）",
+            "各省市消防条例（如：XX省消防条例、XX市消防管理规定）",
+            "各省市建设工程消防设计审查验收实施细则"
+          ],
+          "content_contract": {
+            "style_rules": "使用第引述式表达，每条法规需明确标注全称、发布机关、文号及生效日期。按法规层级从高到低排列（省级法规优先于市级）。对重要条款应简要说明其与项目的相关性。使用被动语态或正式陈述语气，如'本项目应遵守XX省消防条例中关于XX的规定。'",
+            "key_elements": [
+              "项目所在地（省/市/区）",
+              "地方性消防条例或实施办法名称",
+              "地方性消防法规的发布文号和发布日期",
+              "地方性建设工程消防管理规定",
+              "地方性消防安全重点单位管理规定",
+              "与项目直接相关的地方性消防技术标准或细则",
+              "法规的适用性说明（如适用范围、特殊要求）"
+            ],
+            "min_word_count": 300,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "根据相关法律法规",
+              "参照国家标准",
+              "如上所述",
+              "地方规定略"
+            ]
+          },
+          "completeness_score": 15
+        }
+      ],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "国家标准化管理委员会官网（标准全文数据库）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "住房和城乡建设部官网（工程建设标准）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "应急管理部官网（消防安全相关标准）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "各省市地方标准信息服务平台",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "专业工程规范数据库（如建筑标准规范网）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "本设计依据以下国家法律法规、行业标准及地方规定进行。在标准规范方面，主要采用：石油化工企业设计防火标准（2018版）GB50160-2008，该标准规定了石油化工企业的防火设计要求；建筑设计防火规范（2018版）GB50016-2014，适用于工业与民用建筑的防火设计；爆炸危险环境电力装置设计规范GB50058-2014，指导爆炸危险环境中的电力装置安全设计；火灾自动报警系统设计规范GB50116-2013，确保火灾自动报警系统的可靠性；建筑灭火器配置设计规范GB50140-2005，规定灭火器的配置要求；消防给水及消火栓系统技术规范GB50974-2014，明确消防给水系统的设计标准。",
+      "generation_hint": "生成时需先列出所有依据的国家法律法规（如《中华人民共和国消防法》），再按专业领域分类列出行业标准（如防火、电气、消防给水等），并确保标准号、版本号、修订年份准确无误。注意区分规范名称和标准号，同一规范有多个版本时需注明最新有效版本。",
+      "compliance_rules": [
+        "GB50160-2008 石油化工企业设计防火标准（2018版）",
+        "GB50016-2014 建筑设计防火规范（2018版）",
+        "GB50058-2014 爆炸危险环境电力装置设计规范",
+        "GB50116-2013 火灾自动报警系统设计规范",
+        "GB50140-2005 建筑灭火器配置设计规范",
+        "GB50974-2014 消防给水及消火栓系统技术规范"
+      ],
+      "content_contract": {
+        "style_rules": "采用正式、客观的写作风格；使用被动语态（如‘本设计依据…’）；引用法规和标准时使用全称和标准号；按照法律法规、行业标准、地方规定的层级顺序排列；如有多个标准，按重要性或编号顺序排列；注明标准的实施日期或修订状态；避免主观评价。",
+        "key_elements": [
+          "设计所依据的国家法律法规列表",
+          "设计所依据的行业标准列表",
+          "设计所依据的地方规定列表",
+          "设计所依据的规范名称和版本号",
+          "设计所依据的规范的修订年份",
+          "规范的有效性和最新版本说明"
+        ],
+        "min_word_count": 250,
+        "structure_type": "mixed",
+        "forbidden_phrases": [
+          "我们可能使用",
+          "建议参考",
+          "以上标准仅供参考",
+          "大致依据"
+        ]
+      },
+      "completeness_score": 72
+    },
+    {
+      "id": "sec_02",
+      "level": 1,
+      "title": "概述",
+      "purpose": "介绍项目基本背景、建设规模、内容及环境条件",
+      "children": [
+        {
+          "id": "sec_02_01",
+          "level": 2,
+          "title": "项目位置",
+          "purpose": "说明项目所在地点及周边环境",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "建设项目选址意见书或建设用地规划许可证",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目可行性研究报告或项目申请报告",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "区域交通图或城市总体规划图",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "安全评价报告或预评价报告中的项目周边环境描述",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "地方政府公布的开发区、工业园区规划资料",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "2.1 项目位置\n\n随着对危险化学品行业安全要求不断提高，为解决省安全生产的严峻形式，在某消防支队旁，建设基地综合大队，占地面积23.8 亩。项目位置详见附图：区域位置图。",
+          "generation_hint": "请以'2.1 项目位置'为标题开始撰写。先概述项目建设的背景（如安全形势要求），然后直接说明项目选址的具体行政位置（如：在xx消防支队旁）。接着描述项目地块的基本情况（如占地面积），并列举至少三个周边关键设施或地貌（距离和方位需量化）。最后，以'项目位置详见附图：区域位置图。'结尾。",
+          "compliance_rules": [
+            "《危险化学品安全管理条例》（国务院令第591号）",
+            "《危险化学品生产建设项目安全风险防控指南（试行）》",
+            "《化工建设项目安全设计管理导则》（AQ/T 3033-2022）",
+            "《建筑设计防火规范》（GB 50016-2014，2018年版）"
+          ],
+          "content_contract": {
+            "style_rules": "使用客观、描述性语言；避免主观评价；必须包含具体数据（如面积、距离）；位置描述应精确到行政区域或地标；提及附图时需说明附图编号或名称。",
+            "key_elements": [
+              "项目名称或编号",
+              "项目所在的行政区划（省、市、区/县）",
+              "项目具体地址（街道、门牌号或地标）",
+              "项目占地面积或建筑面积",
+              "周边环境描述（如：交通干道、居民区、工业区、消防站、学校等）",
+              "附件说明（如：区域位置图、卫星图）"
+            ],
+            "min_word_count": 200,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "可能位于",
+              "大概在",
+              "环境优美",
+              "交通便利（除非有具体数据支持）",
+              "地理位置优越"
+            ]
+          },
+          "completeness_score": 34
+        },
+        {
+          "id": "sec_02_02",
+          "level": 2,
+          "title": "项目建设功能定位",
+          "purpose": "明确项目的主要功能、用途及服务对象",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "国家及地方应急管理政策法规库",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防应急救援队伍建设指导文件",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "类似重点工程项目建议书/可研报告案例库",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "省（市）‘十四五’应急体系建设规划",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "典型化工园区/基地综合救援能力评估报告",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目选址与外部条件影响评估标准集",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "基地综合大队建设项目目标是：建成能够承担省及邻近周边省（市）区域内特别重大和复杂危险化学品事故处置任务的重要救援队伍；具备人才储备、技术储备、装备物资储备和救援人员培训、演习与训练功能。项目场址的自然条件、环境条件、配套设施以及各种外部条件均符合项目建设要求。该项目建设能进一步完善省消防基础设施建设，增强省消防力量；能维护社会安定，最大限度地保护人民群众及社会单位的财产安全。对推动省的社会经济发展、构建和谐社会具有重要意义。",
+          "generation_hint": "撰写本部分时，应明确区分‘宏观战略定位’与‘具体功能设定’。首先引用上级规划或文件作为依据，然后逐项说明本项目的服务范围、处置能力、功能模块（如培训、演练、装备储备等），最后强调场址条件满足性及建设的综合社会效益。建议使用‘本项目建成后…’‘主要承担…’‘能够有效保障…’等结构句式，并引用1-2条具体法规或规划条文以增强依据性。",
+          "compliance_rules": [
+            "《中华人民共和国突发事件应对法》",
+            "《国家安全生产应急管理体系建设规划》",
+            "《危险化学品安全管理条例》",
+            "《消防应急队伍标准化建设规范》",
+            "《省（市）应急救援力量建设规划》",
+            "《项目建设用地控制指标》",
+            "《重大危险源辨识标准》（GB 18218）"
+          ],
+          "content_contract": {
+            "style_rules": "采用正式、客观、概括性的语言；优先使用‘建成…’‘具备…’‘符合…’等规范性表述；突出项目的战略性、应急性和社会价值；避免口语化或随意性描述；可适当引用政府文件或规划纲要精神",
+            "key_elements": [
+              "项目建设目标（需指明宏观目标和具体能力层级）",
+              "项目主要功能（如处置、救援、培训、演习等）",
+              "项目服务对象（区域、人群、组织等）",
+              "项目场址要求及外部条件（自然、环境、配套等）",
+              "项目建设的意义和影响（社会、经济、安全等）"
+            ],
+            "min_word_count": 150,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "该项目可有可无",
+              "该项目仅为短期应急措施",
+              "本项目与其他项目无关",
+              "功能定位未经论证"
+            ]
+          },
+          "completeness_score": 72
+        },
+        {
+          "id": "sec_02_03",
+          "level": 2,
+          "title": "建设规模",
+          "purpose": "描述项目的总体规模、占地面积、建筑面积等",
+          "children": [],
+          "required": true,
+          "rag_sources": [],
+          "example_snippet": "2  概述\n2.3  建设规模\n\n根据区域安全风险和安全隐患，新组建的综合大队建设规模为特勤消防站，配备消防车及配套装备，建筑面积6589.62㎡。",
+          "generation_hint": null,
+          "compliance_rules": [],
+          "content_contract": {
+            "style_rules": null,
+            "key_elements": [],
+            "min_word_count": null,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": []
+          },
+          "completeness_score": 50
+        },
+        {
+          "id": "sec_02_04",
+          "level": 2,
+          "title": "建设内容",
+          "purpose": "详述项目各主要建筑单体及附属设施组成",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防站建设标准（建标152-2017）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "建筑设计防火规范配套指南",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "类似消防站项目建施图及技术规格书",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防部门营房建设通用要求汇编",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "2.4 建设内容\n\n1）消防综合业务用房：包含消防车库（含4个停车位）、体能训练室（约120㎡）、通讯室（指挥中心，约80㎡）、器材库（约100㎡）、被装营具库（约60㎡）、器材修理间（约50㎡）、清洗室（约30㎡）、烘干室（约30㎡）、图书阅览室（约40㎡）、会议室（约60㎡）、三维模拟室（约50㎡）、干部备勤室（含4间）、消防员备勤室（含6间，每间约20㎡）等。\n\n2）辅助用房：包括餐厅（约80㎡，可容纳40人同时就餐）、厨房（约50㎡）、浴室（含淋浴位12个）、医务室（约20㎡）、晾衣室（约30㎡）、卫生间（每层设男、女卫生间各一间，约15㎡/间）、贮藏间（约40㎡）、配电室（约20㎡）、盥洗室（每层设一间，约20㎡）等。\n\n3）附属设施：包括消防水池及泵房（有效容积不小于400m³）、训练专用跑道（200m标准环形跑道）、门卫室及围墙（出入口设人脸识别门禁）、训练水池及洗消棚（训练水池尺寸12m×6m×2m，洗消棚面积约100㎡）等。",
+          "generation_hint": "请参照典型的消防站建设标准，按消防综合业务用房、辅助用房、附属设施三大类逐一列出各单体组成部分。每类建议以编号或分项列出，对关键功能用房（如通讯室、体能训练室、消防水池）可附加简要功能说明或参考面积。避免出现模糊表述，尽可能提供具体数量或体量指标。若内容不完整，可参考类似项目补齐基础构成。",
+          "compliance_rules": [
+            "GB 50016-2014（2018年版）《建筑设计防火规范》",
+            "建标〔2011〕8号《消防站建设标准》",
+            "GB/T 50779-2012《消防通信指挥系统设计规范》"
+          ],
+          "content_contract": {
+            "style_rules": "采用条列式或分项列举的方式清晰罗列各建筑单体及附属设施；使用专业术语明确功能分区；避免主观评价，仅描述客观组成和功能；如适用可补充面积或数量信息以增强可操作性",
+            "key_elements": [
+              "消防综合业务用房组成",
+              "辅助用房组成",
+              "附属设施组成",
+              "各单体功能描述",
+              "建筑面积或规模指标"
+            ],
+            "min_word_count": 200,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "等（详见下表）",
+              "一切从简",
+              "尽可能",
+              "视情况而定",
+              "酌情增减"
+            ]
+          },
+          "completeness_score": 75
+        },
+        {
+          "id": "sec_02_05",
+          "level": 2,
+          "title": "建设性质",
+          "purpose": "说明项目是新建、改建、扩建还是技术改造",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目立项批复文件或备案证",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目可研报告或初步设计文件",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "企业建设项目管理相关规程",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "本项目建设性质为新建项目。依据XX市发展和改革委员会出具的《关于XX项目备案的通知》（文号），明确该项目为新建性质，不涉及原有厂区改扩建。",
+          "generation_hint": "从项目正式批复或备案文件中直接提取建设性质字段，确保与官方文件表述一致；如果项目涉及多期或多个子项，需分别说明各子项的性质",
+          "compliance_rules": [
+            "《企业投资项目核准和备案管理条例》",
+            "《政府投资条例》",
+            "《产业结构调整指导目录》"
+          ],
+          "content_contract": {
+            "style_rules": "使用客观、简洁的陈述句式，避免主观评价；必须引用项目审批或备案文件中的明确表述；保持与合同或立项文件中一致的专业术语",
+            "key_elements": [
+              "项目性质的明确说明（新建、改建、扩建或技术改造）",
+              "依据文件（如项目备案证、核准文件或审批文件）中载明的性质",
+              "与建设性质相关的简要背景或说明（如项目是否属于已有场地改造等）"
+            ],
+            "min_word_count": 30,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "可能为",
+              "暂定为",
+              "不确定",
+              "或为"
+            ]
+          },
+          "completeness_score": 20
+        },
+        {
+          "id": "sec_02_06",
+          "level": 2,
+          "title": "工程所在地地址气象条件",
+          "purpose": "提供项目所在地的地理、气象基础数据",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "中国气象局国家气候中心公共气象服务产品数据库",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "中国气象数据网（data.cma.cn）历年气象统计资料",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "各省/市统计局年鉴",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "中国地震台网中心历史地震目录",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "工程项目所在地政府公布的气象公报及防灾规划",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "中国气象局《建筑气象参数标准》",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "表2.6-1  自然、气象条件表\n| 项目 | 数值 |\n|------|------|\n| 年平均气温（℃） | 16.3 |\n| 极端最高气温（℃） | 39.2 |\n| 极端最低气温（℃） | -5.8 |\n| 年平均降水量（mm） | 1102.5 |\n| 月最大降水量（mm） | 285.6（出现在7月） |\n| 年平均相对湿度（%） | 78 |\n| 年平均风速（m/s） | 2.1 |\n| 主导风向 | NNE（东北偏北风） |\n| 年平均日照时数（h） | 1890.4 |\n| 最大积雪深度（cm） | 15 |\n| 冻土深度（m） | 0.15 |\n| 年平均气压（hPa） | 1008.3 |\n| 土标准冻深（m） | 0.12 |\n\n注：气象数据来源于中国气象局××市气象站1981-2010年观测资料平均值。",
+          "generation_hint": "请先确定工程项目所在地具体名称（省份、城市或县级区域）。然后从权威气象数据源获取近30年统计值，按规范表格（表2.6-1）的结构填充各项参数。表格中每一行对应一个气象要素，左侧为要素名称（如“年平均气温”），右侧为具体数值及单位。注意单位统一（温度℃、风速m/s、降水量mm、气压hPa等）。数据需为多年平均值或设计值，杜绝“估计”“推测”等非确定表述。表格后可用1-2段文字补充说明特殊气候现象（如台风、寒潮影响频次）或区域微气候特征。",
+          "compliance_rules": [
+            "《建筑抗震设计规范》（GB 50011-2010）（2016年版）",
+            "《建筑结构荷载规范》（GB 50009-2012）",
+            "《工业建筑供暖通风与空气调节设计规范》（GB 50019-2015）",
+            "《气象灾害预警信号发布与传播办法》（中国气象局令第16号）",
+            "《电力工程气象勘测技术规程》（DL/T 5158-2012）",
+            "《化工建设项目气象技术规范》（HG/T 20550-2016）"
+          ],
+          "content_contract": {
+            "style_rules": "描述性语言为主，客观、准确、数据化；关键数据以表格呈现；使用标准气象术语；引用最新历年统计值（如近30年）；数据来源需注明依据（如中国气象局资料）。",
+            "key_elements": [
+              "工程所在地名称（省份、城市/区域）",
+              "地理位置（经纬度、海拔高度）",
+              "气候类型（如亚热带季风气候）",
+              "多年平均气温（年、月均温）",
+              "极端气温（极端最高、最低温度）",
+              "多年平均降水量（年、月降水量，雨季分布）",
+              "多年平均相对湿度",
+              "多年平均风速及主导风向",
+              "多年平均日照时数",
+              "冻土深度",
+              "最大积雪深度",
+              "雷暴日数",
+              "气压（年均气压）",
+              "地震烈度（地震动峰值加速度、反应谱特征周期）"
+            ],
+            "min_word_count": 350,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "天气不错",
+              "气候宜人",
+              "该地自然条件优越",
+              "没有特别之处",
+              "基本正常",
+              "大概",
+              "左右",
+              "大约",
+              "差不多"
+            ]
+          },
+          "completeness_score": 65
+        },
+        {
+          "id": "sec_02_07",
+          "level": 2,
+          "title": "周围消防站情况",
+          "purpose": "分析项目周边可用消防站的距离与能力",
+          "children": [],
+          "required": false,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目所在地消防规划文本",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "当地消防救援支队编组名录",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "百度/高德地图实时路况数据接口",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防站官方公示信息（站点地址、编制人数、车辆装备清单）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目场地及周边区域1:500或1:2000地形图",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "相关建设工程消防设计审查资料",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "新建基地综合大队周边3km范围内共有2座消防救援站。1. 北侧石化炼油消防队（专职消防队），位于项目基地北侧约27.18m（直线距离），实际通行距离约450m（经厂区内部道路），配置水罐消防车2辆、泡沫消防车1辆、举高喷射消防车1辆，消防员编制22人，储备泡沫液5吨。2. 西侧XX路消防救援站（国家综合性消防救援队伍），位于项目基地西侧约2.3km（直线距离），实际通行距离约3.5km（经XX路-XX大道），配置水罐消防车3辆、抢险救援消防车1辆、云梯消防车1辆，消防员编制30人。经测算，北侧石化炼油消防队到达本项目核心装置区的最短响应时间约1.2min（含出动时间30s），满足《建筑设计防火规范》GB 50016-2014第8.1.1条关于5分钟消防响应时间的要求。",
+          "generation_hint": "先以表格形式列出项目周边5km范围内的所有消防站名称、位置、与本项目的直线距离和实际通行距离；然后分别描述每个消防站的消防力量配置；最后重点分析距离最近消防站的5分钟响应时间是否满足要求，并引用规范条款作为依据。如果存在消防站距离过远或能力不足的情况，需提出补救建议。",
+          "compliance_rules": [
+            "GB 50016-2014《建筑设计防火规范》（2018年版）",
+            "XF 828-2009《消防站建筑设计标准》",
+            "《中华人民共和国消防法》",
+            "《城市消防站建设标准》（建标152-2017）",
+            "地方政府消防规划相关文件（需具体标注地区）"
+          ],
+          "content_contract": {
+            "style_rules": "使用客观、准确的描述性语言，避免主观评价；距离数据需明确标注测量方法（如直线距离、实际路径距离）；消防站能力描述需引用官方数据或实地调研结果；应引用具体法规条款编号；统一使用公制单位（m、km）。",
+            "key_elements": [
+              "项目周边消防站名称",
+              "各消防站与项目基地的直线距离",
+              "各消防站到项目基地的实际通行距离",
+              "各消防站的消防救援能力描述（如消防车辆类型、消防人员配置、消防药剂储备等）",
+              "距离最近的消防站及其响应时间估算",
+              "是否满足相关消防规范（如5分钟消防响应时间要求）"
+            ],
+            "min_word_count": 250,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "大约",
+              "大概",
+              "可能",
+              "我们认为",
+              "根据常识判断",
+              "据了解"
+            ]
+          },
+          "completeness_score": 65
+        }
+      ],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "项目立项可行性研究报告",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "区域安全风险评估报告",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "城市消防规划相关文件",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "同类特勤消防站建设案例",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "根据区域安全风险和安全隐患评估结果，为提升消防应急救援能力，新组建的综合大队按特勤消防站标准进行建设。建设规模为特勤消防站等级，主要配备消防车及配套灭火救援装备，总建筑面积6589.62平方米。项目选址位于城市东部重点安全保障区，周边交通便利，能够快速覆盖主要风险区域。",
+      "generation_hint": "以原文档中'2.3 建设规模'部分为基础，扩写项目背景及环境条件。先写1-2句话交代项目立项原因（区域安全风险、安全隐患），然后列出建设规模的具体数据（消防站等级、建筑面积、装备配置），最后简述对环境条件的要求。使用'根据...'、'配备...'等句式，保持段落结构紧凑。",
+      "compliance_rules": [
+        "《城市消防站建设标准》（建标152-2017）",
+        "《消防特勤队（站）建设标准》",
+        "项目立项批复文件"
+      ],
+      "content_contract": {
+        "style_rules": "客观、准确、简洁，采用官方报告语气，避免主观评价；应使用第三人称，如'本项目'、'根据'等；明确列出数据和指标。",
+        "key_elements": [
+          "项目背景与立项依据",
+          "建设规模与等级（如特勤消防站）",
+          "主要建设内容（消防车、配套装备、建筑面积等）",
+          "环境条件（如区域安全风险、周边设施等）"
+        ],
+        "min_word_count": 150,
+        "structure_type": "narrative_text",
+        "forbidden_phrases": [
+          "据报道",
+          "可能、大概、也许",
+          "我们认为",
+          "明显可见"
+        ]
+      },
+      "completeness_score": 60
+    },
+    {
+      "id": "sec_03",
+      "level": 1,
+      "title": "火灾危险性分析",
+      "purpose": "识别和评价项目生产、储存过程中的火灾风险",
+      "children": [],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "GB 50016-2014《建筑设计防火规范》条文及条文说明",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "GB 50160-2008《石油化工企业设计防火标准》条文及条文说明",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "《危险化学品安全技术说明书》（MSDS/SDS）数据库",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "《消防安全评估技术导则》（GA/T 1369-2016）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "类似消防站项目火灾危险性分析报告范例",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "根据《建筑设计防火规范》（GB 50016-2014，2018年版）第3.1.1条及附录A的规定，本项目消防站各主要功能单元的火灾危险性分级如下：\n（1）消防车库：主要停靠消防车辆，配有少量燃油（储存于车辆油箱内，总储量不超过规范要求的临界量），无连续明火或高温作业，操作检修时可能存在少量可燃液体泄漏风险。其火灾危险等级按规范第3.1.2条定性为丙类（2项）可燃液体场所，但由于汽油储存量远低于5m³的临界值，且未有其他高危险工艺，定性为轻危险级是合理的。\n（2）消防器材库：储存灭火器、水带、破拆工具等，多为不燃或难燃材料，火灾荷载密度低，按附录A判定为轻危险级。\n（3）通信值班室：内部主要为电子设备、办公桌椅等，无明火作业，按附录A判定为轻危险级。\n综上所述，本项目整体火灾危险性等级判定为轻危险级，符合消防站的使用特征，但应重点加强消防车库的防火分隔和初期火灾扑救设施配置。",
+      "generation_hint": "该章节原始内容过于简略，仅指出了“火灾危险级为轻危险级”。请以轻危险级为基础，结合消防站的功能分区（如停车库、器材库、值班室、训练区等），按照GB 50016逐条分析各区域火灾危险性的确定理由，明确引用规范条款。补充主要可燃物（如车辆燃油、消防器材包装材料、办公用品等）的物理化学性质及其对危险等级的影响。最终形成表格与叙述相结合的完整分析报告段落。",
+      "compliance_rules": [
+        "GB 50016-2014 (2018年版) 《建筑设计防火规范》",
+        "GB 50160-2008 (2018年版) 《石油化工企业设计防火标准》",
+        "GB 18218-2018 《危险化学品重大危险源辨识》",
+        "《机关、团体、企业、事业单位消防安全管理规定》（公安部第61号令）",
+        "《建设工程消防设计审查验收管理暂行规定》（住建部令第51号）"
+      ],
+      "content_contract": {
+        "style_rules": "采用客观、专业的陈述语气；使用规范术语；引用现行国家/行业标准（如GB 50016-2014《建筑设计防火规范》、GB 18218-2018《危险化学品重大危险源辨识》）；对每个建筑物/单元单独进行分析并引用依据；数据引用需明确来源；避免主观性评价词汇",
+        "key_elements": [
+          "项目主项表（包含建筑物/单元名称、火灾危险等级）",
+          "各单元/区域火灾危险性定级依据（如GB 50016、GB 50160等规范条款）",
+          "主要可燃物质或危险化学品清单（名称、状态、闪点、爆炸极限等关键参数）",
+          "火灾危险源识别与分析（如明火、电气、静电、化学反应等）",
+          "综合评价结论（是否属于易燃易爆场所、建议采取的防护措施）"
+        ],
+        "min_word_count": 600,
+        "structure_type": "mixed",
+        "forbidden_phrases": [
+          "可能发生",
+          "估计大概",
+          "我们认为",
+          "危险系数很高",
+          "非常危险"
+        ]
+      },
+      "completeness_score": 15
+    },
+    {
+      "id": "sec_04",
+      "level": 1,
+      "title": "防火安全措施",
+      "purpose": "阐述各项防火设计的具体技术措施",
+      "children": [
+        {
+          "id": "sec_04_01",
+          "level": 2,
+          "title": "总平面布置、防火间距及消防通道",
+          "purpose": "描述建筑布局、防火间距及消防车通道设计",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "建筑设计防火规范 GB 50016",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "城市消防站建设标准 建标152-2017",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "相关总平面布置图设计规范及图集",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防车通道设计要求（如《消防车道设置标准》）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "新建执勤楼布置在整个场地中部偏东侧呈南北向布置，距北侧石化炼油消防队25.22m，距南侧围墙24.45m，距东侧围墙14.32m，距西侧围墙27.47m。训练场地布置在场地的东北角。在场地的东侧布置消防水池及泵房，靠近东围墙布置小汽车停车场，拟建32个车位，车位尺寸6m×3m。场地的东南角布置训练水池及洗消棚。该站址距离辖区内生产、储存危险化学品单位大于200m，满足城市消防站距离的防火要求。总平面布置详见附图：总平面布置图。",
+          "generation_hint": "请基于示例内容，以专业、客观、数据化的口吻重新组织。首先明确新建执勤楼、训练场地、消防水池等核心设施在场地中的方位及与周边地物的精确距离。然后补充说明消防车道、出入口的设置情况，确保其满足消防车通行和回转要求。最后以‘总平面布置详见附图’收尾。在描述安全距离时，务必结合现行规范声明‘满足XX规范的防火要求’。",
+          "compliance_rules": [
+            "《城市消防站建设标准》（建标152-2017）关于消防站选址与防火间距的规定",
+            "《建筑设计防火规范》（GB 50016）关于防火间距及消防车道的要求",
+            "《消防给水及消火栓系统技术规范》（GB 50974）"
+          ],
+          "content_contract": {
+            "style_rules": "使用客观、描述性的第三人称；明确的数据（距离、尺寸、方位）必须精确量化；采用‘呈南北向布置’、‘设在…角’等方位准确、表达清晰的句式；避免主观评价或推测性用语；引用相关规范（如《城市消防站建设标准》）并声明满足要求。",
+            "key_elements": [
+              "建筑物/构筑物的具体位置（如执勤楼、训练场地、消防水池等）",
+              "建筑物与相邻边界或已有建（构）筑物的明确间距（如距北侧、南侧、东侧、西侧距离）",
+              "消防水池及泵房、停车场、训练水池等附属设施的布置",
+              "场地与危险化学品单位的安全距离满足规范要求",
+              "场地四周的交通条件（如道路、出入口）及消防车通道、车辆回转条件",
+              "总平面布置图的引用"
+            ],
+            "min_word_count": 150,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "大概",
+              "可能",
+              "大约",
+              "左右",
+              "估计",
+              "或许",
+              "应该满足",
+              "基本满足",
+              "初步考虑",
+              "拟采用"
+            ]
+          },
+          "completeness_score": 78
+        },
+        {
+          "id": "sec_04_02",
+          "level": 2,
+          "title": "防雷、接地",
+          "purpose": "说明防雷与接地系统的设计原则",
+          "children": [
+            {
+              "id": "sec_04_02_01",
+              "level": 3,
+              "title": "防雷设计原则",
+              "purpose": "确定防雷类别及具体防护措施",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "建筑物防雷设计规范（GB50057）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "项目所在地的雷电活动气象数据",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "企业防雷接地设计通用技术规定",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "按照《建筑物防雷设计规范》（GB50057-2010）的规定，本项目执勤楼为第三类防雷建构筑物，采用接闪网保护。建筑物在屋面明敷接闪网作为接闪器，利用柱内钢筋做引下线，利用建筑物基础内钢筋及接地模块做接地体。为防止雷电波侵入对信息设备造成的危害，对信息设备供电的回路装设电涌保护器。",
+              "generation_hint": "首先引用《建筑物防雷设计规范》（GB50057-2010），根据建筑物的重要性、使用性质和发生雷电事故的可能及后果，判定防雷类别（示例中为第三类）。随后描述采用的防护体系：接闪器（接闪网）、引下线（柱内钢筋）、接地装置（基础钢筋+接地模块）。最后补充防雷波侵入措施（电涌保护器安装位置）。",
+              "compliance_rules": [
+                "GB50057-2010 建筑物防雷设计规范"
+              ],
+              "content_contract": {
+                "style_rules": "采用专业、客观的技术描述语言，以设备/系统为主体，使用被动语态；必须明确引用防雷设计规范名称及编号；表述应精确、量化（如防雷类别、接地电阻值）。",
+                "key_elements": [
+                  "防雷类别判定（第一类、第二类、第三类）",
+                  "防雷规范依据（GB50057）",
+                  "防雷具体措施（接闪网/针、引下线、接地体、电涌保护器）"
+                ],
+                "min_word_count": 150,
+                "structure_type": "narrative_text",
+                "forbidden_phrases": [
+                  "应该/可以轻松实现",
+                  "大概/大约",
+                  "任何情况下都绝对不能"
+                ]
+              },
+              "completeness_score": 90
+            },
+            {
+              "id": "sec_04_02_02",
+              "level": 3,
+              "title": "接地设计原则",
+              "purpose": "确定接地系统类型及方式",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "GB/T50065-2011 交流电气装置的接地设计规范",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "GB14050-2008 系统接地的型式及安全技术要求",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "SH/T3079-2017 石油化工静电接地设计规范",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "相关工程项目接地设计说明书或施工图",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "接地设计按照《交流电气装置的接地设计规范》GB/T50065-2011、《系统接地的型式及安全技术要求》GB14050-2008的有关规定执行。本工程接地系统包括工作接地、保护接地、防雷接地、防静电接地、火灾报警系统接地等，共用一套接地系统，构成等电位联结的接地系统。要求工频和冲击接地电阻不大于4欧姆。0.38kV系统采用中性点直接接地TN-S系统。交流电力装置的接地体，在满足热稳定条件下，充分利用建筑物的基础钢筋等自然接地体。各建构筑物设置总等电位或局部等电位联结。",
+              "generation_hint": "在生成接地设计原则时，需明确列出包括工作接地、保护接地、防雷接地、防静电接地等在内的系统类型，并确保所有接地系统共用一套接地装置，形成等电位联结。重点说明接地型式（如TN-S系统）、接地电阻指标（≤4Ω）、接地材料选择（如纳米炭复合防腐材料）以及特殊设备（如移动式电气设备、照明系统）的接地要求。",
+              "compliance_rules": [
+                "《交流电气装置的接地设计规范》GB/T50065-2011",
+                "《系统接地的型式及安全技术要求》GB14050-2008",
+                "《石油化工静电接地设计规范》SH/T3079-2017"
+              ],
+              "content_contract": {
+                "style_rules": "采用专业、准确的技术语言，引用相关国家标准（GB/T50065、GB14050、SH/T3079等），描述应具体明确，避免模糊表述。使用清单或分项形式清晰列出不同类型接地方式和要求。",
+                "key_elements": [
+                  "接地系统类型（工作接地、保护接地、防雷接地等）",
+                  "接地型式（如TN-S系统）",
+                  "接地电阻要求（如不大于4欧姆）",
+                  "接地材料和导体规格",
+                  "等电位联结要求",
+                  "防静电接地措施",
+                  "特殊设备接地要求（如移动式电气设备、照明系统等）"
+                ],
+                "min_word_count": 300,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "大约",
+                  "可能",
+                  "一般来说",
+                  "或者类似",
+                  "大概"
+                ]
+              },
+              "completeness_score": 90
+            }
+          ],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB50057-2010 建筑物防雷设计规范",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB/T50065-2011 交流电气装置的接地设计规范",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB14050-2008 系统接地的型式及安全技术要求",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "SH/T3079-2017 石油化工静电接地设计规范",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "电气安全设计手册",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "防雷接地工程技术规范",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "按照《建筑物防雷设计规范》（GB50057-2010）的规定，本项目执勤楼为第三类防雷建构筑物，采用接闪网保护。建筑物在屋面明敷接闪网作为接闪器，利用柱内钢筋做引下线，利用建筑物基础内钢筋及接地模块做接地体。为防止雷电波侵入对信息设备造成的危害，对信息设备供电的回路装设电涌保护器。接地设计按照《交流电气装置的接地设计规范》GB/T50065-2011、《系统接地的型式及安全技术要求》GB14050-2008的有关规定执行。本工程接地系统包括工作接地、保护接地、防雷接地、防静电接地、火灾报警系统接地等，共用一套接地系统，构成等电位联结的接地系统。要求工频和冲击接地电阻不大于4欧姆。",
+          "generation_hint": "请按照'防雷设计原则'和'接地设计原则'两大子节展开。在防雷部分，明确建筑物防雷分类、接闪器（接闪网/接闪带）、引下线（柱内钢筋）和接地体（基础钢筋/接地模块）的设置方法，并提及电涌保护器。在接地部分，列举所有接地类型（工作、保护、防雷、防静电、火灾报警等），强调共用接地和等电位联结，明确接地电阻≤4Ω，说明系统接地型式为TN-S。随后单独列出静电接地措施，引用SH/T3079-2017，并说明接地材料要求。确保每个技术点都有规范支撑，避免模糊表述。",
+          "compliance_rules": [
+            "《建筑物防雷设计规范》（GB50057-2010）",
+            "《交流电气装置的接地设计规范》GB/T50065-2011",
+            "《系统接地的型式及安全技术要求》GB14050-2008",
+            "《石油化工静电接地设计规范》SH/T3079-2017"
+          ],
+          "content_contract": {
+            "style_rules": "采用技术文档的客观、准确、简洁风格，以分节形式逐项说明防雷和接地的设计原则；每个要点引用对应的国家标准或行业规范；使用被动语态描述设计措施（如'采用接闪网保护'、'应进行可靠接地'）。",
+            "key_elements": [
+              "防雷设计分类等级（如：第三类防雷建构筑物）",
+              "防雷装置组成（接闪器、引下线、接地体）",
+              "防雷规范引用（如：GB50057-2010）",
+              "电涌保护器（SPD）设置要求",
+              "接地系统类型（工作接地、保护接地、防雷接地等）",
+              "接地电阻值要求（如：不大于4欧姆）",
+              "系统接地型式（如：TN-S系统）",
+              "等电位联结要求（总等电位或局部等电位）",
+              "防静电接地措施及规范引用",
+              "接地材料要求"
+            ],
+            "min_word_count": 200,
+            "structure_type": "narrative_text",
+            "forbidden_phrases": [
+              "可能",
+              "大概",
+              "也许",
+              "大概会",
+              "随意",
+              "一般",
+              "不必要"
+            ]
+          },
+          "completeness_score": 90
+        },
+        {
+          "id": "sec_04_03",
+          "level": 2,
+          "title": "供电安全",
+          "purpose": "确保消防用电负荷的供电可靠性",
+          "children": [
+            {
+              "id": "sec_04_03_01",
+              "level": 3,
+              "title": "设计范围",
+              "purpose": "界定电气设计涵盖的内容",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "同类项目电气设计说明书",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "建筑电气设计规范",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "基地综合大队建设项目的变配电、照明、防雷、接地、界区内供电外线和道路照明。",
+              "generation_hint": "直接基于文档对象模型（如建筑、厂区）列举电气设计涵盖的子系统，无需解释或扩展。",
+              "compliance_rules": [],
+              "content_contract": {
+                "style_rules": "使用简洁、明确的陈述句，直接罗列设计覆盖的系统。语言风格应专业、客观，避免使用主观评价词汇。",
+                "key_elements": [
+                  "变配电系统范围",
+                  "照明系统范围",
+                  "防雷与接地系统范围",
+                  "界区内供电外线范围",
+                  "道路照明范围"
+                ],
+                "min_word_count": 30,
+                "structure_type": "narrative_text",
+                "forbidden_phrases": [
+                  "大约",
+                  "可能",
+                  "我们"
+                ]
+              },
+              "completeness_score": 95
+            },
+            {
+              "id": "sec_04_03_02",
+              "level": 3,
+              "title": "用电负荷",
+              "purpose": "分类和计算各类用电负荷等级",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "word_search_knowledge_base: 消防电气设计手册",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "word_search_knowledge_base: 供配电系统设计规范条文说明",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "word_search_knowledge_base: 各类负荷分级与供电要求汇总表",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "1）负荷特性\n本项目中大部分负荷为线性负荷，小部分负荷（如UPS、EPS等）为非线性负荷。\n2）总用电负荷\n本项目总计算负荷330.41kW，均为0.4kV负荷，电机最大容量为22kW。\n3）负荷等级\n本项目火灾报警系统、备用照明系统为一级负荷中重要负荷，消防排烟风机、消防增压稳压设备、消防水泵及自吸污水泵为二级负荷，其余均为三级负荷。重要负荷约30 kW；二级负荷约40kW；三级负荷约260.41kW。",
+              "generation_hint": "严格按照原文内容进行结构化提取和撰写，重点突出负荷特性、总负荷、负荷等级划分及对应容量、以及不同等级负荷对电源的具体要求。对于原文中的具体数值（如330.41kW、30kW等）和术语（如线性负荷、EPS、UPS）应准确保留。分点描述，确保逻辑清晰。",
+              "compliance_rules": [
+                "GB 50052-2009 供配电系统设计规范",
+                "GB 50016-2014（2018年版）建筑设计防火规范",
+                "JGJ 16-2008 民用建筑电气设计规范（如适用）"
+              ],
+              "content_contract": {
+                "style_rules": "分条列举，使用序号（1）、2）、3）等）；采用陈述句客观描述；明确区分负荷特性和负荷等级；明确电源要求与负荷等级的对应关系；使用专业术语（如线性负荷、非线性负荷、一级负荷、双重电源）。",
+                "key_elements": [
+                  "负荷特性（线性/非线性）",
+                  "总计算负荷及电压等级",
+                  "负荷等级划分（一级、二级、三级及重要负荷）",
+                  "各类负荷的容量（kW）",
+                  "对电源和供电回路的要求（如双重电源、两回线路、UPS/EPS）"
+                ],
+                "min_word_count": 150,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "大概、大约、可能、左右",
+                  "与原文内容矛盾或缺乏依据的表述",
+                  "不确定的估计值",
+                  "所有、任何（除非有明确依据）"
+                ]
+              },
+              "completeness_score": 90
+            },
+            {
+              "id": "sec_04_03_03",
+              "level": 3,
+              "title": "供、配电系统",
+              "purpose": "描述电源、电压及负荷分配原则",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "电气设计规范库",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "典型工业/民用建筑供配电系统案例库",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "GB/T 50062-2008《电力装置的继电保护和自动装置设计规范》",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "本项目附近现有一座110/10kV某变电站，另在其北侧约1km处现有一座6/0.4kV某变电所。某变电站可为本项目提供1回10kV电源，某变电所可为本项目提供1回0.4kV 40kW电源。其供电能力及可靠性均能满足本项目二、三级负荷的供电要求。电源电压和各级配电电压选择：供电电源为交流10（6）kV，50Hz，三相三线；低压配电为交流380/220V，50Hz，三相四线，中性点直接接地。变电所分段的两段母线所带负荷尽量均衡；同位号的多台用电设备均匀的分接于两段母线上。",
+              "generation_hint": "生成供、配电系统章节时，应严格区分电源来源、电压等级及低压配电系统接线方式。重点描述负荷分级（一级、二级、三级）及其对应的电源要求（如双回路、UPS、EPS）。对于‘重要负荷’，需明确其备用电源（如UPS或EPS）与供电时间。负荷分配原则需体现均衡性，避免单段母线过载。电压选择需明确高压侧（10kV）与低压侧（380/220V）的电压等级、频率及接地型式（TN-S）。引用具体条文规范时，应贴合行业标准。",
+              "compliance_rules": [
+                "JGJ16-2008《民用建筑电气设计规范》",
+                "GB50052-2009《供配电系统设计规范》",
+                "GB50054-2011《低压配电设计规范》"
+              ],
+              "content_contract": {
+                "style_rules": "使用客观、技术性描述；引用具体电压等级（如10kV）、频率（50Hz）、接地方式（中性点直接接地）；明确区分负荷等级及其供电要求；尽量采用被动语态（如'电源由...提供'、'负荷分配采用...原则'）",
+                "key_elements": [
+                  "电源位置与供电能力描述",
+                  "电源电压及各级配电电压选择",
+                  "负荷分配原则（包括一级、二级、三级负荷的分配）",
+                  "一级负荷中重要负荷的供电方式"
+                ],
+                "min_word_count": 150,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "可能",
+                  "大概",
+                  "估计",
+                  "根据经验推测"
+                ]
+              },
+              "completeness_score": 92
+            },
+            {
+              "id": "sec_04_03_04",
+              "level": 3,
+              "title": "供、配电系统设计",
+              "purpose": "说明系统接线、设备选型及保护设置",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "典型石化、化工企业供配电设计报告",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "10kV及以下变电所设计规范（GB50053）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "应急照明设计标准（GB51309）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "新建10（6）/ 0.4kV变电所两路10（6）kV电源分别引自某变电站和某变电所，所内设置2台10（6）/ 0.4kV 400kVA干式变压器及低压配电装置，0.4kV系统主接线为单母线分段接线方式，通过母线分段柜联络，正常时两段母线分列运行，故障时母联断路器闭合，由非故障段电源供电。母联断路器可手/自动投切。变压器选用节能型SCB系列干式变压器，接线组别D,yn11，配电柜采用抽出式开关柜，防护等级不低于IP40。",
+              "generation_hint": "生成章节内容时，请确保：1) 明确列出电源接入点（如某110kV变电站）和供电能力（如2台400kVA变压器）；2) 清晰说明一、二、三级负荷的具体数值及供电要求（如消防泵为二级负荷）；3) 详述0.4kV主接线为单母线分段方式，以及母联开关的投切逻辑；4) 严格按规范列出变压器、开关柜、UPS、EPS等设备的选型要求；5) 引用规范（GB/T50062-2008、GB50054-2011）阐述中压和低压系统保护配置（如速断、过流、接地保护）。",
+              "compliance_rules": [
+                "GB/T50062-2008《电力装置的继电保护和自动装置设计规范》",
+                "GB50054-2011《低压配电设计规范》"
+              ],
+              "content_contract": {
+                "style_rules": "使用被动语态描述设计原则（如：选用...、设置为...）；引用具体国家标准或规范（如GB/T50062-2008, GB50054-2011）；数据表达应准确、专业、无歧义；技术术语使用行业通用名称；段落逻辑清晰，先总后分。",
+                "key_elements": [
+                  "供电电源来源与电压等级",
+                  "总用电负荷计算与负荷等级划分（一级、二级、三级）",
+                  "供配电系统主接线方式（如单母线分段）",
+                  "主要电气设备（变压器、开关柜、UPS、EPS等）选型原则",
+                  "继电保护与自动装置设置原则及引用的设计规范",
+                  "负荷分配原则",
+                  "一级负荷中重要负荷的供电方式"
+                ],
+                "min_word_count": 600,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "大概、可能、差不多",
+                  "所有设备都保证可靠",
+                  "用户自行决定即可"
+                ]
+              },
+              "completeness_score": 95
+            },
+            {
+              "id": "sec_04_03_05",
+              "level": 3,
+              "title": "配电设计",
+              "purpose": "针对不同环境进行配电与敷设设计",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "电气设计手册（如《工业与民用配电设计手册》）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "电气设备产品样本（如电缆、桥架、配电箱）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "类似项目的施工图设计说明",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "国家标准规范库（GB系列）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "本项目各单元均为一般环境。根据环境特征，所有电气设备和材料选型将适合于使用场所的环境特征要求。户外安装的电气设备其防护外壳为IP55。电力线路采用YJV22型电力电缆；控制线路采用阻燃型KYJV22电缆。消防用电设备采用NH-YJV22型电缆。变电所至各单元用电设备的电力电缆和控制电缆埋地敷设至用电设备附近后穿镀锌钢管敷设至用电设备。",
+              "generation_hint": "基于给定的‘装置环境特征’（如：一般环境），明确阐述在此环境下的电气设备选型（如防护等级IP要求）和线缆选择规范。重点描述不同功能线路（电力、控制、消防）的电缆型号（如YJV22, NH-YJV22）及对应的敷设方式（埋地、穿管、桥架等），需体现技术严谨性和合规性。",
+              "compliance_rules": [
+                "《建筑设计防火规范》(GB 50016)",
+                "《低压配电设计规范》(GB 50054)",
+                "《电力工程电缆设计标准》(GB 50217)",
+                "《爆炸危险环境电力装置设计规范》(GB 50058) - 如适用于非一般环境"
+              ],
+              "content_contract": {
+                "style_rules": "采用客观、技术性的描述语言。在描述设备选型和线路敷设时，应明确提及所依据的环境特征（如一般环境、潮湿环境等）。对于不同用途的线路（如消防、控制、电力），应清晰区分并说明具体型号和敷设方式。使用被动语态，强调“如何做”和“为何这样做”。",
+                "key_elements": [
+                  "装置环境特征分析",
+                  "电气设备选型原则（基于环境特征）",
+                  "配电线路（电缆、导线）的选择与敷设方式",
+                  "消防与非消防线路的区分要求"
+                ],
+                "min_word_count": 200,
+                "structure_type": "narrative_text",
+                "forbidden_phrases": []
+              },
+              "completeness_score": 85
+            },
+            {
+              "id": "sec_04_03_06",
+              "level": 3,
+              "title": "照明",
+              "purpose": "确定照度标准及照明系统配置",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "国家建筑标准设计图集（如：19D702-7《应急照明设计与安装》）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "行业照明设计手册（如：《照明设计手册》第三版）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "典型办公/工业建筑照明电气设计案例",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "设备厂商（如飞利浦、欧普）的照明产品技术白皮书",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "根据《建筑照明设计标准》（GB 50034-2013）的规定，本项目办公区域的照度标准值为300 lx，功率密度限值为8.0 W/m²，显色指数不低于80。走道、楼梯间等公共区域的照度值为100 lx。正常照明采用LED平板灯具，色温4000K，显色指数≥80。应急照明系统按照GB 51309-2018执行，采用集中电源型消防应急灯具，疏散走道地面水平照度不低于1.0 lx，楼梯间不低于5.0 lx，持续供电时间不小于90分钟。照明控制采用智能DALI调光系统，实现分区、定时控制及天然光感应调节，以降低运行能耗。所有灯具外壳需满足不低于IP44的防护等级（卫生间、厨房等潮湿区域不低于IP54）。",
+              "generation_hint": "参考GB 50034-2013和GB 51309-2018，先明确建筑类型（工业/民用）和功能分区，然后针对每类区域分别列出照度标准值、照明功率密度限值、显色指数要求。应急照明部分需说明集中电源或自带电池配置方案、持续供电时间、疏散照度要求。控制方式建议采用智能照明系统（如DALI总线控制），并注明手动/自动切换逻辑。",
+              "compliance_rules": [
+                "GB 50034-2013《建筑照明设计标准》",
+                "GB 51309-2018《消防应急照明和疏散指示系统技术标准》",
+                "GB 50016-2014（2018年版）《建筑设计防火规范》（照明相关条款）",
+                "GB 17945-2010《消防应急照明和疏散指示系统》",
+                "所在地区或行业的地方性照明节能标准"
+              ],
+              "content_contract": {
+                "style_rules": "采用专业、简洁的技术说明风格；需引用对应的国家标准或行业规范（如GB 50034-2013《建筑照明设计标准》）；使用被动语态和客观描述；分条列出各类照明要求和参数；必要时采用表格形式列出照度标准值。",
+                "key_elements": [
+                  "照度标准（如：工作区、走道、应急照明照度值）",
+                  "照明系统分类（如：正常照明、应急照明、疏散指示）",
+                  "照明灯具选型与安装要求（如：LED灯具、防爆/防水等级）",
+                  "照明控制方式（如：智能控制、分区控制、手动/自动切换）",
+                  "节能要求（如：照明功率密度LPD值、能效等级）",
+                  "负荷分级与供电要求（如：一级、二级负荷，双电源切换）"
+                ],
+                "min_word_count": 300,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "可能、大概、或许",
+                  "根据经验",
+                  "我们建议",
+                  "待定/暂定",
+                  "尽量/尽可能"
+                ]
+              },
+              "completeness_score": 62
+            }
+          ],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "国家建筑标准设计图集（电气部分）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "典型消防站或基地综合大队建设项目的施工图设计说明",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "电气设备厂家选型手册（变压器、UPS、EPS、开关柜等）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB/T50062《电力装置的继电保护和自动装置设计规范》",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB50054《低压配电设计规范》",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "本项目火灾报警系统、备用照明系统为一级负荷中重要负荷，消防排烟风机、消防增压稳压设备、消防水泵及自吸污水泵为二级负荷，其余均为三级负荷。重要负荷约30 kW；二级负荷约40kW；三级负荷约260.41kW。本项目变电所为双重电源进线，任何一电源失电，另一电源能满足所有二级负荷的用电要求。火灾报警系统由UPS供电；备用照明系统由EPS供电。",
+          "generation_hint": "请以该章节的层次结构（4.3.1至4.3.6）为框架，逐项生成内容。重点确保：1) 用电负荷等级与供电电源要求的逻辑一致性；2) 继电保护设置与引用标准的匹配；3) 照明设计中照度值、光源选型与工程环境的适用性。数据部分（如负荷计算、容量）可以基于通用模型进行合理填充，但需符合典型消防站负荷特性。引用标准时必须提供标准号和名称。",
+          "compliance_rules": [
+            "《电力装置的继电保护和自动装置设计规范》GB/T50062-2008",
+            "《低压配电设计规范》GB50054-2011",
+            "消防安全相关规范（推断：如《建筑设计防火规范》GB 50016）",
+            "照明照度相关标准"
+          ],
+          "content_contract": {
+            "style_rules": "采用客观、专业的工程技术语言，以分项描述为主，辅以数据表格。严格遵守建筑设计及电气设计相关规范，使用被动语态描述设计要求（如'电缆应埋地敷设'）。需要对关键参数（如负荷值、容量、防护等级）进行定量描述。引用相关标准时必须给出完整标准号。",
+            "key_elements": [
+              "设计范围",
+              "用电负荷特性、总用电负荷及负荷等级划分",
+              "负荷等级对电源的要求",
+              "电源情况（位置、供电能力）",
+              "电源电压和各级配电电压选择",
+              "负荷分配原则",
+              "一级负荷中重要负荷的供电方式",
+              "供配电系统接线方式",
+              "电气设备材料选型原则（变压器、开关柜、UPS等）",
+              "继电保护和自动装置设置原则（含标准引用）",
+              "配电设计（装置环境特征、线缆选型与敷设）",
+              "照明设计（照度标准、供电控制、光源灯具选型、线路敷设）"
+            ],
+            "min_word_count": 500,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "大约、大概、左右（用于关键参数时）",
+              "我认为、我们应该（避免使用第一人称）",
+              "最好的、最完美的（使用客观描述）",
+              "笼统表述如'满足要求'而没有具体数值或引用标准"
+            ]
+          },
+          "completeness_score": 88
+        },
+        {
+          "id": "sec_04_04",
+          "level": 2,
+          "title": "建、构筑物防火",
+          "purpose": "说明建筑防火构造、装修及抗震等措施",
+          "children": [
+            {
+              "id": "sec_04_04_01",
+              "level": 3,
+              "title": "建筑类型及规模",
+              "purpose": "明确各建筑单体耐火等级和规模",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "《建筑设计防火规范》GB 50016 (建筑分类和耐火等级章节)",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "《建筑内部装修设计防火规范》GB 50222 (装饰材料燃烧性能等级章节)",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "消防设计专篇范本或优秀案例库",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "建筑结构设计资料（如结构施工图、设计说明）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "a）执勤楼：本工程为新建，钢筋混凝土结构，尺寸为142.1×37.2×9.0（高），住勤部分二层，一层为车库与食堂，二层为宿舍；办公楼部分三层。详见表4.4-1建、构筑物一览表。\nb）消防水池及泵房：本工程为新建工程，单层，混凝土框架结构，尺寸为8.7×7.5x5m，地下水池部分深-4.50m。\nc）门卫及围墙：本工程为新建工程，单层，混凝土框架结构，围墙为成品铁艺围墙高1.8m。",
+              "generation_hint": "根据给定的建筑单体列表，逐个提取其关键属性（如类型、结构、尺寸、层数），并以列举文字结合表格（‘建构筑物一览表’）的形式清晰呈现。确保所有数据准确，对于未直接在文本中出现的‘耐火等级’和‘火灾危险性分类’信息，需在生成时主动检查并补充说明（例如：‘耐火等级：未在文本中明确描述’）。表格可作为文字描述的补充和总结。",
+              "compliance_rules": [
+                "《建筑设计防火规范》GB 50016",
+                "《建筑内部装修设计防火规范》GB 50222",
+                "《建筑工程抗震设防分类标准》GB 50223",
+                "《公共建筑节能设计标准》GB 50189"
+              ],
+              "content_contract": {
+                "style_rules": "采用分项列举式结构，按照建筑单体逐个描述；描述需客观、准确、简洁；所有尺寸、层数等数据必须明确；对耐火等级、火灾危险性等安全参数，若未在条目中明确给出，应补充说明缺失；避免主观评价性语言。",
+                "key_elements": [
+                  "各建筑单体的名称",
+                  "建筑性质（新建/改建）",
+                  "建筑结构类型（如钢筋混凝土结构、混凝土框架结构等）",
+                  "建筑尺寸（长×宽×高）",
+                  "层数（地上/地下）",
+                  "耐火等级（如无，应有明确说明）",
+                  "火灾危险性分类（如无，应有明确说明）",
+                  "规模描述（如建筑面积、体积等）"
+                ],
+                "min_word_count": 150,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "大概",
+                  "大约",
+                  "可能",
+                  "比较",
+                  "差不多",
+                  "一些",
+                  "其他类似描述不确定性的词语"
+                ]
+              },
+              "completeness_score": 70
+            },
+            {
+              "id": "sec_04_04_02",
+              "level": 3,
+              "title": "采用的防火、防水、抗震、节能等技术措施",
+              "purpose": "列举建筑关键防护技术措施",
+              "children": [],
+              "required": true,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "国家工程建设标准化信息网（标准全文数据库）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "住房和城乡建设部官网（标准公告与实施指南）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "中国建筑科学研究院/中国标准设计研究院（官方标准解读与设计手册）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "各地方建筑节能与绿色建筑实施细则（如北京、上海等地方标准）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "b）防水：一般建筑按II级设防，特殊要求建筑，如：变配电所屋面按I级设防。c）抗震及安全等级：抗震按7度设防。抗震设防类别按《建筑工程抗震设防分类标准》GB50223设计使用年限为50年。d）节能:办公性建筑根据《公共建筑节能设计标准》GB50189，采取保温节能技术措施。外墙、屋面等围护结构采用外保温节能系统，并进行节能验算达到相关标准规范的规定，且对相应的热桥部位做必要处理；门窗气密性、保温隔热等性能符合相关标准规范的规定。",
+              "generation_hint": "请以列表和简短段落结合的方式，分别阐述防火、防水、抗震、节能四项技术措施。每项措施必须明确指出所执行的具体国家标准或行业标准编号（如GB 50016），并引用关键条文的量化要求（如防火等级、设防烈度、节能率等）。对于防水措施，需区分一般建筑与特殊部位（如变配电室屋面）的不同设防等级。",
+              "compliance_rules": [
+                "《建筑设计防火规范》GB 50016",
+                "《建筑内部装修设计防火规范》GB 50222",
+                "《建筑工程抗震设防分类标准》GB 50223",
+                "《公共建筑节能设计标准》GB 50189"
+              ],
+              "content_contract": {
+                "style_rules": "采用客观、严谨的技术文档风格，直接陈述技术要求和措施，广泛引用国家及行业标准规范，使用被动语态（如'按...设计'、'采用...措施'），避免主观评价；每个子项（防火、防水、抗震、节能）使用短段落或列表形式清晰展开。",
+                "key_elements": [
+                  "防火措施（包括耐火等级、防火分类、内装修标准及引用规范）",
+                  "防水措施（包括设防等级、特殊部位要求）",
+                  "抗震措施（包括设防烈度、抗震设防类别、设计使用年限）",
+                  "节能措施（包括设计标准、围护结构保温系统、热桥处理、门窗性能要求）"
+                ],
+                "min_word_count": 250,
+                "structure_type": "mixed",
+                "forbidden_phrases": [
+                  "根据经验",
+                  "大概",
+                  "可能",
+                  "建议",
+                  "推荐使用（除非是标准推荐）",
+                  "非常",
+                  "一些",
+                  "我们"
+                ]
+              },
+              "completeness_score": 92
+            },
+            {
+              "id": "sec_04_04_03",
+              "level": 3,
+              "title": "主要建筑物构造及装修",
+              "purpose": "描述重点建筑的构造做法与装修材料",
+              "children": [],
+              "required": false,
+              "rag_sources": [
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "建筑设计规范文档（建筑防火、节能）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "建筑材料产品标准库（防水卷材、保温板、门窗）",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "地方建筑材料选用指南",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                },
+                {
+                  "kb_id": "",
+                  "top_k": 5,
+                  "kb_name": "典型消防站/执勤楼施工图设计说明",
+                  "ragflow_dataset_id": null,
+                  "retrieval_strategy": "hybrid",
+                  "similarity_threshold": 0.2,
+                  "vector_similarity_weight": 0.3
+                }
+              ],
+              "example_snippet": "建筑材料选用基本原则：性能可靠，技术先进，经济易购。应充分选用地方材料。建筑材料及产品的选择以满足设计要求为依据，不随意提高标准，以节约工程造价。\n\n墙体：一般建筑物填充墙采用200mm厚蒸压加气混凝土砌块；内外墙均采用该规格，室内地面（防潮层）以下墙体采用混凝土实心砖。\n\n屋面防水、保温：高度大于10m的建筑物采用有组织外排水；较低建筑物可采用无组织排水，挑檐长度需不小于500mm。II级防水屋面采用SBS高聚物改性沥青防水卷材4mm厚，一道；I级防水屋面采用SBS等高聚物改性沥青防水卷材6mm厚，分两道铺设。保温材料采用B1级阻燃型聚苯乙烯泡沫塑料保温板100mm厚。屋面找坡采用1:10水泥膨胀珍珠岩2%找坡，最薄处30mm。卷材防水屋面需做保护层：1:3水泥砂浆20mm厚。\n\n门窗：一般采用平开式单框双玻塑钢窗。外门选用白钢大门或不锈钢框钢化玻璃大门；内门选用实木门。配电室采用乙级钢制防火门，窗采用铝合金窗。",
+              "generation_hint": "1. 严格按照墙体→屋面防水保温→门窗顺序展开；2. 专项说明特殊房间（配电室）的防火门窗配置；3. 所有防水等级、保温材料厚度、找坡参数需精确；4. 引用GB50016、GB50222、GB50189等标准；5. 描述材料规格时使用公制单位，避免模糊表述；6. 强调选用地方材料的方针",
+              "compliance_rules": [
+                "《建筑设计防火规范》GB50016",
+                "《建筑内部装修设计防火规范》GB50222",
+                "《公共建筑节能设计标准》GB50189",
+                "《建筑工程抗震设防分类标准》GB50223"
+              ],
+              "content_contract": {
+                "style_rules": "采用客观、技术性描述；统一使用公制单位（mm、m）；结构顺序按建筑部位自然展开（墙体→屋面→门窗）；使用'一般'、'需'等规范性措辞；引用标准规范时注明编号（如GB50016）",
+                "key_elements": [
+                  "墙体材料及厚度规格",
+                  "屋面防水等级、防水卷材类型及厚度、保温材料类型及厚度",
+                  "屋面找坡材料及坡度",
+                  "门窗类型（窗框材料、玻璃类型、门材质）",
+                  "特殊房间（如配电室）的防火门窗要求",
+                  "建筑材料选用基本原则",
+                  "外门（白钢大门/不锈钢玻璃门）与内门（实木门）区分"
+                ],
+                "min_word_count": 300,
+                "structure_type": "narrative_text",
+                "forbidden_phrases": [
+                  "可能",
+                  "大概",
+                  "约",
+                  "左右",
+                  "或其他劣质材料",
+                  "随意选择",
+                  "最好"
+                ]
+              },
+              "completeness_score": 88
+            }
+          ],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "《建筑设计防火规范》GB50016",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "《建筑内部装修设计防火规范》GB50222",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "《建筑工程抗震设防分类标准》GB50223",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "《公共建筑节能设计标准》GB50189",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "典型消防站/执勤楼建筑设计图纸与说明",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "4.4.1 建筑类型及规模\na）执勤楼：本工程为新建，钢筋混凝土结构，尺寸为142.1×37.2×9.0（高）。住勤部分二层，一层为车库与食堂，二层为宿舍；办公楼部分三层。\nb）消防水池及泵房：本工程为新建工程，单层，混凝土框架结构，尺寸为8.7×7.5x5m，地下水池部分深-4.50m。\nc）门卫及围墙：本工程为新建工程，单层，混凝土框架结构，围墙为成品铁艺围墙高1.8m。\n4.4.2 采用的防火、防水、抗震、节能等技术措施\na）防火：建筑物耐火等级、火灾危险性分类按《建筑设计防火规范》GB50016，内装修满足《建筑内部装修设计防火规范》GB50222的要求设计。",
+          "generation_hint": "根据章节目的‘说明建筑防火构造、装修及抗震等措施’，生成时需重点围绕4.4.1（建筑类型及规模）、4.4.2（技术措施）、4.4.3（构造装修）三个主要部分展开。先从列表界定主要建、构筑物（如执勤楼、消防水池、门卫）的基本信息，再分点阐述防火、防水、抗震、节能等具体措施并引用国标，最后详述墙体、屋面、门窗等关键部位的构造做法与材料选择。注意整体行文要严谨、量化、引用规范。",
+          "compliance_rules": [
+            "《建筑设计防火规范》GB50016",
+            "《建筑内部装修设计防火规范》GB50222",
+            "《建筑工程抗震设防分类标准》GB50223",
+            "《公共建筑节能设计标准》GB50189"
+          ],
+          "content_contract": {
+            "style_rules": "采用客观、技术性的说明语气；分条列举（如a）、b）、c））；引用国家或行业标准时需注明标准名称与编号；具体构造做法应清晰、量化（如厚度、等级、尺寸等）；避免主观评价性语言。",
+            "key_elements": [
+              "建筑类型及规模（包括主要建筑的结构形式、尺寸、层数）",
+              "采用的防火、防水、抗震、节能等技术措施（需明确引用相关规范标准）",
+              "主要建筑物构造及装修（墙体、屋面防水与保温、门窗等具体做法）",
+              "建筑材料选用原则"
+            ],
+            "min_word_count": 300,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "可能",
+              "也许",
+              "大概",
+              "我们认为",
+              "效果很好"
+            ]
+          },
+          "completeness_score": 90
+        },
+        {
+          "id": "sec_04_05",
+          "level": 2,
+          "title": "建筑物通风措施",
+          "purpose": "说明防排烟及通风系统的设计",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "建筑防火设计规范（GB 50016）条文及条文说明",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "建筑防烟排烟系统技术标准（GB 51251）图示与指南",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "典型公共建筑通风与防排烟系统设计实例",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防部门出具的防火审查意见模板",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "执勤楼变电所设机械排风系统，用于排除室内的余热，设备采用轴流式排风机，补风采用自然补风。消防车库内设机械排风系统排除车库废气，设备同样采用轴流式排风机。淋浴间、洗衣房设置边墙排式风机排除潮气，卫生间设吊顶排气扇排除室内的潮气及异味。消防水泵房设置轴流风机进行排风。除上述特殊区域外，其他场所均采用自然通风。各区域的通风设备型号、风量及换气次数等技术参数详见表4.5-1通风特性表。",
+          "generation_hint": "严格遵循GB 50016和GB 51251关于不同功能房间的通风与防排烟要求。每个功能区域的描述需清晰区分‘平时通风’与‘火灾时排烟’的不同工况。如果需要，可以在每个区域描述后附加一段对自动控制逻辑的简要说明（如：火灾信号触发后，排风机自动关闭/切换至排烟模式）。引用‘表4.5-1通风特性表’时，需在正文中明确列出表内关键参数（如换气次数、风机风量等）的汇总描述，不能仅提及表名。",
+          "compliance_rules": [
+            "GB 50016-2014《建筑设计防火规范》（相关防排烟章节）",
+            "GB 50736-2012《民用建筑供暖通风与空气调节设计规范》",
+            "GB 50067-2014《汽车库、修车库、停车场设计防火规范》",
+            "GB 51251-2017《建筑防烟排烟系统技术标准》"
+          ],
+          "content_contract": {
+            "style_rules": "采用分区域、分功能的列表式叙述，每个功能区域独立成句；每个系统描述遵循‘区域-目的-设备-补风方式’的结构；正式、客观的技术文档风格，使用被动语态或‘设’、‘采用’等表述。",
+            "key_elements": [
+              "各功能区域（变电所、消防车库、淋浴间、卫生间等）的通风/排风系统设置",
+              "通风与排烟系统的具体设备类型（如：轴流式排风机、边墙排式风机、吊顶排气扇等）",
+              "补风方式（自然补风或机械补风）",
+              "明确区分排风系统用于排除余热、废气、潮气还是异味",
+              "通风特性表（必须包含，并引用表号）",
+              "消防联动控制要求（如：火灾时自动切断通风系统）"
+            ],
+            "min_word_count": 250,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "大概",
+              "可能",
+              "大约",
+              "随意",
+              "酌情",
+              "如果可能"
+            ]
+          },
+          "completeness_score": 65
+        }
+      ],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "国家建筑标准设计图集（防雷与接地相关分册）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "消防工程设计规范汇编",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "电气工程施工验收规范数据库",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "防雷接地工程技术手册",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "按照《建筑物防雷设计规范》（GB50057-2010）的规定，本项目执勤楼为第三类防雷建构筑物，采用接闪网保护。建筑物在屋面明敷接闪网作为接闪器，利用柱内钢筋做引下线，利用建筑物基础内钢筋及接地模块做接地体。为防止雷电波侵入对信息设备造成的危害，对信息设备供电的回路装设电涌保护器。本工程接地系统包括工作接地、保护接地、防雷接地、防静电接地、火灾报警系统接地等，共用一套接地系统，构成等电位联结的接地系统。要求工频和冲击接地电阻不大于4欧姆。",
+      "generation_hint": "生成时需确保：(1) 完整引用上述4个法规标准；(2) 明确防雷等级为第三类，说明接闪网保护方式；(3) 列出所有接地系统类型并强调共用接地系统和等电位联结；(4) 给出明确接地电阻值（≤4Ω）；(5) 说明TN-S系统为0.38kV系统接地型式；(6) 区分普通接地材料和特殊防腐接地材料；(7) 语句采用技术规范条文风格，避免主观描述",
+      "compliance_rules": [
+        "《建筑物防雷设计规范》（GB50057-2010）",
+        "《交流电气装置的接地设计规范》（GB/T50065-2011）",
+        "《系统接地的型式及安全技术要求》（GB14050-2008）",
+        "《石油化工静电接地设计规范》（SH/T3079-2017）"
+      ],
+      "content_contract": {
+        "style_rules": "采用专业、准确的技术语言；引用具体法规标准编号；使用被动语态描述设计要求；分条列出不同接地系统的要求；明确数值指标（如电阻值）",
+        "key_elements": [
+          "防雷设计原则及规范依据",
+          "接地系统类型划分（工作接地、保护接地、防雷接地、防静电接地等）",
+          "接地电阻要求值",
+          "接地材料选择",
+          "等电位联结措施",
+          "电涌保护器设置"
+        ],
+        "min_word_count": 300,
+        "structure_type": "mixed",
+        "forbidden_phrases": [
+          "可能",
+          "大概",
+          "估计",
+          "也许",
+          "根据经验",
+          "随意"
+        ]
+      },
+      "completeness_score": 78
+    },
+    {
+      "id": "sec_05",
+      "level": 1,
+      "title": "消防设施",
+      "purpose": "详细配置各类消防灭火与报警系统",
+      "children": [
+        {
+          "id": "sec_05_01",
+          "level": 2,
+          "title": "室外消防水系统",
+          "purpose": "设计室外消火栓系统及消防水池",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "项目所在地市政给水管网现状资料",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "同类项目室外消防水系统设计方案库",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "GB 50974-2014 条文说明及理解与应用",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防水池及泵房通用设计图集（如国标图集）",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "本项目室外消火栓系统设计流量按GB 50974-2014第3.1.2条及附录确定，同一时间火灾次数为1次，设计流量取30L/s（108m³/h）。火灾延续时间按2h计算，一次火灾室外消防用水量为216m³。市政给水管网压力满足最不利点消火栓所需压力（经计算为0.25MPa）。自项目西侧市政给水管引入2根DN200给水管，并在厂区内环状布置，管网上均匀设置4个SS100/65-1.6型地上式消火栓，保护半径不大于150m，间距按120m控制。生活用水量10L/s（36m³/h）与消防流量合并校核，总流量40L/s（144m³/h），市政管网供水量及压力可满足需求，故本工程不设消防水池及消防泵房。",
+          "generation_hint": "按「设计依据→用水量计算→水源及引入管→管网布置→消火栓选型及布局→系统压力校核」顺序展开。每个关键数据（如流量30L/s）须标注出处或计算过程。消防水池容积需明确火灾延续时间及补水条件。文字描述后，建议用表格汇总消火栓数量、管径、压力等参数。",
+          "compliance_rules": [
+            "GB 50974-2014 消防给水及消火栓系统技术规范",
+            "GB 50016-2014 建筑设计防火规范（2018年版）",
+            "GB 50160-2008 石油化工企业设计防火规范（如适用）",
+            "当地市政给水设计相关标准或规划要求"
+          ],
+          "content_contract": {
+            "style_rules": "使用被动语态和客观描述；引用具体规范条文（如GB 50974-2014）；数据需有明确依据；禁止使用模糊表述如‘足够’、‘满足要求’；文字与计算式、表格相结合",
+            "key_elements": [
+              "室外消火栓设计流量",
+              "消防水池有效容积及设置位置",
+              "市政给水管网引入管径及数量",
+              "管网布置形式（环状/枝状）",
+              "消火栓数量、间距及保护半径",
+              "消防用水量计算（含火灾延续时间）",
+              "系统工作压力及最不利点压力校核"
+            ],
+            "min_word_count": 300,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "满足要求（无具体数值支撑）",
+              "足够",
+              "安全可靠（无依据）",
+              "系统简单",
+              "无需校核"
+            ]
+          },
+          "completeness_score": 65
+        },
+        {
+          "id": "sec_05_02",
+          "level": 2,
+          "title": "室内水消防系统",
+          "purpose": "设计室内消火栓及自动喷水灭火系统",
+          "children": [],
+          "required": true,
+          "rag_sources": [
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "室内水消防系统设计规范汇编",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "典型建筑消防系统投资估算案例库",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            },
+            {
+              "kb_id": "",
+              "top_k": 5,
+              "kb_name": "消防设备选型指南",
+              "ragflow_dataset_id": null,
+              "retrieval_strategy": "hybrid",
+              "similarity_threshold": 0.2,
+              "vector_similarity_weight": 0.3
+            }
+          ],
+          "example_snippet": "室内水消防系统包括室内消火栓系统和自动喷水灭火系统。室内消火栓系统按GB 50016要求设置，采用临时高压制，管网布置成环状，消火栓间距不大于30米，保护半径25米。系统设计流量为15L/s，充实水柱长度10米，选用SN65型消火栓。自动喷水灭火系统按GB 50084设计，采用湿式系统，喷头选用K80标准喷头，动作温度68℃，保护面积4.5m²/只，系统设计流量为30L/s，持续喷水时间1小时。本系统覆盖区域包括办公区、走廊、楼梯间及设备间，投资估算详见下表。",
+          "generation_hint": "先描述室内消火栓系统的设计依据、分区设置、管道布置和消火栓型号；再描述自动喷水灭火系统的喷头类型、布局、报警阀组和管网设计；最后以表格形式列出各分系统投资估算，并补充备注说明。",
+          "compliance_rules": [
+            "GB 50016-2014 建筑设计防火规范",
+            "GB 50084-2017 自动喷水灭火系统设计规范",
+            "GB 50974-2014 消防给水及消火栓系统技术规范"
+          ],
+          "content_contract": {
+            "style_rules": "使用被动语态，如'系统被设计为'；引用相关消防规范，如GB 50016、GB 50084；数据以表格形式清晰呈现；避免主观评价，保持客观描述",
+            "key_elements": [
+              "消火栓系统设计参数与配置",
+              "自动喷水灭火系统设计参数与配置",
+              "系统投资估算与明细",
+              "系统覆盖区域与分区说明",
+              "设备选型与规格"
+            ],
+            "min_word_count": 300,
+            "structure_type": "mixed",
+            "forbidden_phrases": [
+              "室内水消防系统很复杂",
+              "可能会导致火灾",
+              "完全可靠",
+              "绝对安全"
+            ]
+          },
+          "completeness_score": 70
+        }
+      ],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "国家工程建设消防技术标准体系数据库",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "GB 50016-2014条文说明与实施指南",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "GB 50974-2014条文说明及计算示例",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "应急管理部消防产品合格评定中心网站",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "典型化工/危险品项目消防设计案例库",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "5  消防设施\n为了确保本项目的安全生产，消防系统的设计充分考虑了装置的生产特点、火灾危险类别、火灾危险性等因素，严格遵守消防规范，结合“预防为主，防消结合”的消防方针，采取以下消防措施。\n本项目消防同一时间火灾次数为1次，以安全供水为目标，严格执行现行规范规定。\n负责本项目边界线以内的消防设计。\n5.1  室外消防水系统\n本项目设计室外消火栓水量30L/s（108m³/h），生活用水量10L/s（36m³/h），自本项目西侧的市政给水管网引入两根管径DN200的管线，环状布置，上设4个消火栓，水量及压力可以满足本项目的生活、消防要求。",
+      "generation_hint": "请以'5  消防设施'作为章节标题，首段概述设计原则与方针。然后分室外消防水系统、室内消火栓系统（如有）、火灾自动报警系统、灭火器配置等子节（5.1、5.2...），每个子节按参数、管道布置、设备选型、控制方式顺序描述。所有流量、压力、管径、设备数量等数据必须精确（如30L/s，108m³/h），避免模糊表述。",
+      "compliance_rules": [
+        "GB 50016-2014《建筑设计防火规范》（2018年版）",
+        "GB 50974-2014《消防给水及消火栓系统技术规范》",
+        "GB 50116-2013《火灾自动报警系统设计规范》",
+        "GB 50219-2014《水喷雾灭火系统技术规范》",
+        "《建设工程消防设计审查验收管理暂行规定》"
+      ],
+      "content_contract": {
+        "style_rules": "使用被动语态，引用现行消防规范（如GB 50016、GB 50974），分系统（室外消防水、室内消防设施等）分项说明，每个参数需注明单位与来源依据",
+        "key_elements": [
+          "设计原则与消防方针（预防为主、防消结合）",
+          "火灾次数与供水目标参数",
+          "消防设计责任边界（边界线以内）",
+          "室外消防给水系统参数（消火栓流量30L/s、生活用水量10L/s、管径DN200、环状布置、市政引入管数量2根、消火栓数量4个）",
+          "火灾危险类别与危险性考量"
+        ],
+        "min_word_count": 300,
+        "structure_type": "mixed",
+        "forbidden_phrases": [
+          "大概",
+          "可能",
+          "约",
+          "差不多",
+          "随意",
+          "未经计算"
+        ]
+      },
+      "completeness_score": 45
+    },
+    {
+      "id": "sec_06",
+      "level": 1,
+      "title": "灭火救援设施",
+      "purpose": "保障消防车、消防员及救援操作的条件",
+      "children": [],
+      "required": true,
+      "rag_sources": [
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "GB 50016-2014（2018年版）《建筑设计防火规范》条文说明",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "当地消防救援支队发布的《建设工程消防设计审查常见问题》",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "《消防车通道及救援场地设计指南》（行业优秀案例集）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        },
+        {
+          "kb_id": "",
+          "top_k": 5,
+          "kb_name": "典型住宅/公共建筑消防设计图纸（PDF或CAD图例）",
+          "ragflow_dataset_id": null,
+          "retrieval_strategy": "hybrid",
+          "similarity_threshold": 0.2,
+          "vector_similarity_weight": 0.3
+        }
+      ],
+      "example_snippet": "该建设场地的西侧为乡道，南侧为纬一路，可从两个方位进出场地，满足消防车通道至少两个出入口的要求。场地四周设计宽度不小于4m的车行通道，转弯半径不小于12m，路面承载力满足36吨消防车通行要求。结合建筑总平面布局，在建筑南侧和西侧分别设置两处消防登高操作场地，每处尺寸为15m×10m，与建筑外墙间距分别为8m和10m，满足规范要求。消防车可沿乡道及纬一路直接到达各操作场地，回转空间充足，无需额外设置回车场，符合GB 50016第7.2.2条的规定。",
+      "generation_hint": "请补充以下内容：\n1. 详细描述消防车通道的宽度（至少4m）、转弯半径（至少12m）、承载力（≥36吨）；\n2. 明确消防救援场地的数量、尺寸（如15m×10m）、与建筑外墙距离（5m~15m）；\n3. 说明是否设置消防电梯及消防登高操作场地；\n4. 补充消防车到达该场地各建筑外立面的路径说明；\n5. 若场地存在坡地或不规则边界，应说明如何保证灭火救援操作空间；\n6. 引用GB 50016第7.2条和第7.3条的具体规定进行论证。",
+      "compliance_rules": [
+        "《建筑设计防火规范》GB 50016（第7章：灭火救援设施）",
+        "《消防给水及消火栓系统技术规范》GB 50974（第5章关于消防车道、操作场地要求）",
+        "《车库建筑设计规范》JGJ 100（涉及无车道者与消防车道的关系）",
+        "地方消防设计审查要点（如当地规划部门或住建局发布的实施细则）"
+      ],
+      "content_contract": {
+        "style_rules": "应采用规范、简明、客观的叙述风格；必须引用《建筑设计防火规范》（GB 50016）等现行国家或地方标准；描述应基于实际建筑设计方案，避免模糊表述；优先使用主动语态，如'设置'、'满足'、'符合'等；数据需具体（如宽度、长度、数量等）",
+        "key_elements": [
+          "消防车通道设置（位置、宽度、转弯半径、承载力）",
+          "消防救援场地（长度、宽度、荷载、与建筑距离）",
+          "消防车登高操作场地（数量、尺寸、与建筑外墙间距）",
+          "消防楼梯、消防电梯及专用消防口设置",
+          "灭火救援设施与建筑总平面布局的关系",
+          "场地出入口数量与方位",
+          "救援操作空间（如回车场、举高消防车支撑区）"
+        ],
+        "min_word_count": 200,
+        "structure_type": "narrative_text",
+        "forbidden_phrases": [
+          "可能可以满足",
+          "大概满足",
+          "一般情况下",
+          "视情况而定"
+        ]
+      },
+      "completeness_score": 65
+    }
+  ]
+}

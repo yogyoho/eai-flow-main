@@ -116,7 +116,10 @@ async def init_engine(
         def _enable_sqlite_wal(dbapi_conn, _record):  # noqa: ARG001 — SQLAlchemy contract
             cursor = dbapi_conn.cursor()
             try:
-                cursor.execute("PRAGMA journal_mode=WAL;")
+                try:
+                    cursor.execute("PRAGMA journal_mode=WAL;")
+                except Exception:
+                    cursor.execute("PRAGMA journal_mode=DELETE;")
                 cursor.execute("PRAGMA synchronous=NORMAL;")
                 cursor.execute("PRAGMA foreign_keys=ON;")
             finally:

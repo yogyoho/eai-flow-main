@@ -1,11 +1,44 @@
 """MCP client using langchain-mcp-adapters."""
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from deerflow.config.extensions_config import ExtensionsConfig, McpServerConfig
 
 logger = logging.getLogger(__name__)
+
+# Docker container mount prefix — /app/ is the default WORKDIR in Docker images
+_CONTAINER_PREFIX = "/app/"
+
+
+def _get_project_root() -> Path:
+    """Resolve project root from this module's location.
+
+    This file is at: packages/harness/deerflow/mcp/client.py
+    parents[4] = backend/; parent = repo root.
+    """
+    backend_dir = Path(__file__).resolve().parents[4]
+    return backend_dir.parent
+
+
+def resolve_container_path(path: str, project_root: Path) -> str:
+    """Resolve Docker container-style absolute paths to local filesystem paths.
+
+    Paths starting with ``/app/`` are treated as relative to *project_root*.
+    All other paths pass through unchanged.
+
+    Args:
+        path: The path string to resolve.
+        project_root: Local project root directory.
+
+    Returns:
+        Resolved local path if it was a container path, otherwise unchanged.
+    """
+    if path.startswith(_CONTAINER_PREFIX):
+        relative = path[len(_CONTAINER_PREFIX) :]
+        return str(project_root / relative)
+    return path
 
 
 def build_server_params(server_name: str, config: McpServerConfig) -> dict[str, Any]:
@@ -24,11 +57,14 @@ def build_server_params(server_name: str, config: McpServerConfig) -> dict[str, 
     if transport_type == "stdio":
         if not config.command:
             raise ValueError(f"MCP server '{server_name}' with stdio transport requires 'command' field")
-        params["command"] = config.command
-        params["args"] = config.args
-        # Add environment variables if present
+
+        project_root = _get_project_root()
+        params["command"] = resolve_container_path(config.command, project_root)
+        params["args"] = [resolve_container_path(a, project_root) for a in config.args]
         if config.env:
-            params["env"] = config.env
+            params["env"] = {k: resolve_container_path(v, project_root) for k, v in config.env.items()}
+        if config.cwd:
+            params["cwd"] = resolve_container_path(config.cwd, project_root)
     elif transport_type in ("sse", "http"):
         if not config.url:
             raise ValueError(f"MCP server '{server_name}' with {transport_type} transport requires 'url' field")

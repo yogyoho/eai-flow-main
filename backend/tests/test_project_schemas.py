@@ -13,12 +13,11 @@ from app.extensions.project.schemas import (
     VALID_REPORT_TYPES,
     VALID_WORKFLOW_STATUSES,
     ApprovalActionRequest,
-    ChapterContentUpdate,
+    ApprovalStepConfig,
+    ApprovalSubmitRequest,
     ChapterOut,
-    ChapterTreeNode,
     MemberCreate,
     MemberOut,
-    OutlineBatchUpdate,
     ProjectCreate,
     ProjectListItem,
     ProjectListResponse,
@@ -36,13 +35,11 @@ class TestValidationConstants:
         assert "other" in VALID_REPORT_TYPES
         assert len(VALID_REPORT_TYPES) == 6
 
-    def test_project_statuses(self):
-        assert VALID_PROJECT_STATUSES == [
-            "setup", "outline", "writing", "editing", "approval", "published", "archived",
-        ]
+    def test_project_statuses_simplified(self):
+        assert VALID_PROJECT_STATUSES == ["active", "completed", "archived"]
 
-    def test_member_roles(self):
-        assert VALID_MEMBER_ROLES == ["manager", "editor", "writer", "reviewer", "approver"]
+    def test_member_roles_simplified(self):
+        assert VALID_MEMBER_ROLES == ["owner", "member"]
 
     def test_workflow_statuses(self):
         assert VALID_WORKFLOW_STATUSES == ["pending", "in_progress", "approved", "rejected"]
@@ -77,51 +74,19 @@ class TestChapterOut:
         assert parent.children[0].title == "Sub"
 
 
-class TestChapterTreeNode:
-    def test_new_chapter_no_id(self):
-        node = ChapterTreeNode(title="New Chapter")
-        assert node.id is None
-        assert node.level == 1
-        assert node.word_count_target == 3000
-
-    def test_with_existing_id(self):
-        uid = uuid4()
-        node = ChapterTreeNode(id=uid, title="Existing", level=2)
-        assert node.id == uid
-        assert node.level == 2
-
-    def test_nested_tree(self):
-        child = ChapterTreeNode(title="Child", level=2)
-        root = ChapterTreeNode(title="Root", children=[child])
-        assert len(root.children) == 1
-
-
-class TestChapterContentUpdate:
-    def test_all_none_by_default(self):
-        u = ChapterContentUpdate()
-        assert u.title is None
-        assert u.content is None
-        assert u.status is None
-
-    def test_partial_update(self):
-        u = ChapterContentUpdate(title="New Title", status="writing")
-        assert u.title == "New Title"
-        assert u.content is None
-
-
 # ── Member Schemas ──
 
 
 class TestMemberCreate:
-    def test_default_role(self):
+    def test_default_role_is_member(self):
         uid = uuid4()
         m = MemberCreate(user_id=uid)
-        assert m.role == "editor"
+        assert m.role == "member"
 
     def test_custom_role(self):
         uid = uuid4()
-        m = MemberCreate(user_id=uid, role="reviewer")
-        assert m.role == "reviewer"
+        m = MemberCreate(user_id=uid, role="owner")
+        assert m.role == "owner"
 
 
 class TestMemberOut:
@@ -129,7 +94,7 @@ class TestMemberOut:
         mid = uuid4()
         pid = uuid4()
         uid = uuid4()
-        m = MemberOut(id=mid, project_id=pid, user_id=uid, role="editor")
+        m = MemberOut(id=mid, project_id=pid, user_id=uid, role="owner")
         assert m.username == ""
         assert m.created_at is None
 
@@ -158,11 +123,10 @@ class TestProjectUpdate:
         u = ProjectUpdate()
         assert u.name is None
         assert u.status is None
-        assert u.current_stage is None
 
     def test_partial_update(self):
-        u = ProjectUpdate(status="writing", current_stage=3)
-        assert u.status == "writing"
+        u = ProjectUpdate(status="completed")
+        assert u.status == "completed"
         assert u.name is None
 
 
@@ -173,11 +137,12 @@ class TestProjectOut:
     def test_defaults(self):
         uid = uuid4()
         p = ProjectOut(id=uid, name="Test", report_type="other")
-        assert p.status == "setup"
-        assert p.current_stage == 1
+        assert p.status == "active"
         assert p.members == []
         assert p.chapters == []
         assert p.chapter_count == 0
+        assert p.thread_id is None
+        assert p.created_by is None
 
 
 class TestProjectListItem:
@@ -190,6 +155,7 @@ class TestProjectListItem:
         assert p.chapter_count == 0
         assert p.member_count == 0
         assert p.template_name is None
+        assert p.status == "active"
 
     def test_with_template_name(self):
         uid = uuid4()
@@ -210,20 +176,6 @@ class TestProjectListResponse:
         r = ProjectListResponse(items=[item], total=1)
         assert len(r.items) == 1
         assert r.total == 1
-
-
-# ── Outline Batch ──
-
-
-class TestOutlineBatchUpdate:
-    def test_empty(self):
-        o = OutlineBatchUpdate()
-        assert o.chapters == []
-
-    def test_with_chapters(self):
-        nodes = [ChapterTreeNode(title="Ch1"), ChapterTreeNode(title="Ch2")]
-        o = OutlineBatchUpdate(chapters=nodes)
-        assert len(o.chapters) == 2
 
 
 # ── Approval Schemas ──
@@ -249,3 +201,24 @@ class TestApprovalActionRequest:
         wid = uuid4()
         a = ApprovalActionRequest(workflow_id=wid, action="comment", comment="Note")
         assert a.action == "comment"
+
+
+class TestApprovalStepConfig:
+    def test_fields(self):
+        uid = uuid4()
+        s = ApprovalStepConfig(step_order=1, step_name="初审", reviewer_id=uid)
+        assert s.step_order == 1
+        assert s.step_name == "初审"
+        assert s.reviewer_id == uid
+
+
+class TestApprovalSubmitRequest:
+    def test_empty(self):
+        r = ApprovalSubmitRequest(steps=[])
+        assert r.steps == []
+
+    def test_with_steps(self):
+        uid = uuid4()
+        step = ApprovalStepConfig(step_order=1, step_name="Review", reviewer_id=uid)
+        r = ApprovalSubmitRequest(steps=[step])
+        assert len(r.steps) == 1

@@ -1,0 +1,142 @@
+<h2>协作智能写作 — 3种架构方案</h2>
+<p class="subtitle">基于 DeerFlow 现有系统，如何扩展出工程报告协作写作能力</p>
+
+<div class="section" style="margin-top: 2rem;">
+  <div class="options">
+    <div class="option selected" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>方案A: Report Orchestration Layer（报告编排层）</h3>
+        <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;">在现有 Agent 系统之上新增一个报告编排层</p>
+
+        <div style="background: #161b22; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9;">
+          <div style="color: #58a6ff;">┌─ ReportOrchestrator (新增)</div>
+          <div style="color: #58a6ff;">│</div>
+          <div style="color: #58a6ff;">├─ ReportProject (报告项目)</div>
+          <div style="color: #58a6ff;">│  ├─ 章节列表 + 状态机 (draft→collecting→writing→review→done)</div>
+          <div style="color: #58a6ff;">│  ├─ 章节锁 (owner + lock_type)</div>
+          <div style="color: #58a6ff;">│  └─ 实时预览 (SSE 广播)</div>
+          <div style="color: #58a6ff;">│</div>
+          <div style="color: #58a6ff;">├─ 3个专用 Subagent</div>
+          <div style="color: #58a6ff;">│  ├─ data-collector: RAG检索 + 数据提取</div>
+          <div style="color: #58a6ff;">│  ├─ report-writer: 按模板章节编写</div>
+          <div style="color: #58a6ff;">│  └─ compliance-checker: 合规规则校验</div>
+          <div style="color: #58a6ff;">│</div>
+          <div style="color: #58a6ff;">└─ 编排引擎</div>
+          <div style="color: #58a6ff;">   ├─ 按章节拆分 → 分配 Agent → 收集结果</div>
+          <div style="color: #58a6ff;">   └─ 复用 knowledge_factory 的模板/合规引擎</div>
+          <div style="margin-top: 0.5rem; color: #484f58;">────────────────────────────────</div>
+          <div style="color: #3fb950;">现有系统（不修改）</div>
+          <div style="color: #3fb950;">├─ Lead Agent + SubagentExecutor</div>
+          <div style="color: #3fb950;">├─ Knowledge Factory (模板/合规)</div>
+          <div style="color: #3fb950;">├─ TiptapEditor (文档编辑)</div>
+          <div style="color: #3fb950;">└─ ThreadState + StreamBridge</div>
+        </div>
+
+        <div class="pros-cons" style="margin-top: 0.5rem;">
+          <div class="pros"><h4>优势</h4><ul>
+            <li>不修改现有 harness 核心，纯 App 层扩展</li>
+            <li>复用 knowledge_factory 模板+合规引擎</li>
+            <li>编排逻辑清晰，易于理解和调试</li>
+          </ul></div>
+          <div class="cons"><h4>劣势</h4><ul>
+            <li>Subagent 15分钟超时限制（长报告可能超时）</li>
+            <li>每个章节独立 Agent 无共享上下文</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>方案B: Agent Workflow Pipeline（Agent 工作流）</h3>
+        <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;">用 LangGraph StateGraph 构建报告生成流水线</p>
+
+        <div style="background: #161b22; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9;">
+          <div style="color: #d2a8ff;">ReportWorkflowGraph (LangGraph StateGraph)</div>
+          <div style="margin-top: 0.5rem;">
+          <span style="color: #f0883e;">START</span>
+          → <span style="color: #58a6ff;">[章节拆分]</span>
+          → <span style="color: #58a6ff;">[并行: 每章节]</span>
+          <div style="margin-left: 2rem;">
+            → <span style="color: #79c0ff;">数据收集</span>
+            → <span style="color: #79c0ff;">AI编写</span>
+            → <span style="color: #79c0ff;">合规校验</span>
+            → <span style="color: #79c0ff;">人工审核(挂起等待)</span>
+          </div>
+          → <span style="color: #58a6ff;">[合并章节]</span>
+          → <span style="color: #58a6ff;">[全文一致性检查]</span>
+          → <span style="color: #f0883e;">END</span>
+          </div>
+        </div>
+
+        <div style="background: #161b22; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9;">
+          <div style="color: #d2a8ff;">ReportState (LangGraph 状态)</div>
+          <div style="color: #8b949e; margin-top: 0.3rem;">
+            sections: dict[章节ID, SectionState]<br/>
+            shared_context: 全局上下文(术语表、参数)<br/>
+            status: draft→generating→reviewing→approved
+          </div>
+        </div>
+
+        <div class="pros-cons" style="margin-top: 0.5rem;">
+          <div class="pros"><h4>优势</h4><ul>
+            <li>原生 LangGraph 流水线，可持久化、可恢复</li>
+            <li>章节间共享状态（术语、参数自动对齐）</li>
+            <li>天然支持并行处理多章节</li>
+            <li>人工审核可作为图中的 interrupt 节点</li>
+          </ul></div>
+          <div class="cons"><h4>劣势</h4><ul>
+            <li>需要新建 LangGraph 图，复杂度较高</li>
+            <li>与现有 Lead Agent 是两套运行时</li>
+            <li>实时协作需要额外的 SSE 层</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>方案C: Hybrid（混合方案）</h3>
+        <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;">编排层 + 轻量 LangGraph 流水线，取两者之长</p>
+
+        <div style="background: #161b22; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9;">
+          <div style="color: #f778ba;">┌─ ReportOrchestrator (App层)</div>
+          <div style="color: #f778ba;">│  ├─ 项目管理 CRUD</div>
+          <div style="color: #f778ba;">│  ├─ 章节锁 + SSE 实时预览</div>
+          <div style="color: #f778ba;">│  └─ 协作 API (Gateway Router)</div>
+          <div style="color: #f778ba;">│</div>
+          <div style="color: #f778ba;">├─ SectionPipeline (轻量 LangGraph)</div>
+          <div style="color: #f778ba;">│  每个章节一个轻量 StateGraph:</div>
+          <div style="color: #f778ba;">│  collect → write → validate → review</div>
+          <div style="color: #f778ba;">│  (带 interrupt 支持人工挂起)</div>
+          <div style="color: #f778ba;">│</div>
+          <div style="color: #f778ba;">├─ Agent 注册 (deerflow/subagents/)</div>
+          <div style="color: #f778ba;">│  ├─ data-collector (专用)</div>
+          <div style="color: #f778ba;">│  ├─ report-writer (专用)</div>
+          <div style="color: #f778ba;">│  └─ compliance-checker (复用引擎)</div>
+          <div style="color: #f778ba;">│</div>
+          <div style="color: #f778ba;">└─ 复用层</div>
+          <div style="color: #f778ba;">   ├─ knowledge_factory 模板+合规</div>
+          <div style="color: #f778ba;">   ├─ TiptapEditor AI内联操作</div>
+          <div style="color: #f778ba;">   └─ StreamBridge SSE</div>
+        </div>
+
+        <div class="pros-cons" style="margin-top: 0.5rem;">
+          <div class="pros"><h4>优势</h4><ul>
+            <li>项目管理由 App 层处理（简单 CRUD）</li>
+            <li>章节流水线用 LangGraph（可恢复、可中断）</li>
+            <li>3个专用 Agent 各司其职</li>
+            <li>与现有架构完美契合</li>
+          </ul></div>
+          <div class="cons"><h4>劣势</h4><ul>
+            <li>需要同时在 App 和 Harness 层开发</li>
+            <li>章节间共享上下文需要额外设计</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

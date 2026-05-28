@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import { kfApi } from "@/extensions/api";
 import type { QualityAssessmentResult } from "@/extensions/knowledge-factory/types";
 

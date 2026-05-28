@@ -11,13 +11,14 @@ import {
   GripVertical,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
+import { AdminSelect } from "@/components/ui/admin-select";
 import { kfApi } from "@/extensions/api";
 import type { ExtractionDomain, DictItemResponse } from "@/extensions/knowledge-factory/types";
-import { AdminSelect } from "@/components/ui/admin-select";
 import { cn } from "@/lib/utils";
 
-type CategoryKey = "domain" | "industry" | "report_type" | "region";
+type CategoryKey = "domain" | "industry" | "report_type" | "region" | "rule_type" | "severity_level";
 
 interface CategoryTab {
   key: CategoryKey;
@@ -29,6 +30,8 @@ const CATEGORY_TABS: CategoryTab[] = [
   { key: "industry", label: "业务领域" },
   { key: "report_type", label: "报告类型" },
   { key: "region", label: "适用地区" },
+  { key: "rule_type", label: "规则分类" },
+  { key: "severity_level", label: "严重级别" },
 ];
 
 // ============== Domain Edit Dialog ==============
@@ -46,7 +49,7 @@ interface InferSection {
   children?: InferSection[];
 }
 
-function flattenSections(sections: InferSection[], parentLevel: number = 0): ChapterItem[] {
+function flattenSections(sections: InferSection[], parentLevel = 0): ChapterItem[] {
   const result: ChapterItem[] = [];
   for (const s of sections) {
     const level = s.level ?? parentLevel + 1;
@@ -60,12 +63,10 @@ function DomainEditDialog({
   domain,
   onClose,
   onSave,
-  onToast,
 }: {
   domain: ExtractionDomain | null;
   onClose: () => void;
   onSave: (data: { id?: string; name: string; description: string; standard_chapters: Record<string, unknown>; industry?: string; report_type?: string }) => void;
-  onToast: (msg: string, type: "success" | "error") => void;
 }) {
   const isEdit = !!domain;
   const [name, setName] = useState(domain?.name ?? "");
@@ -125,14 +126,14 @@ function DomainEditDialog({
       const result = await kfApi.inferChapters(file, maxDepth);
       const items = flattenSections(result.sections as InferSection[]);
       if (items.length === 0) {
-        onToast("未能从文档中提取到章节结构", "error");
+        toast.error("未能从文档中提取到章节结构");
         return;
       }
       setChapters(items);
-      onToast(`已提取 ${items.length} 个章节`, "success");
+      toast.success(`已提取 ${items.length} 个章节`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "AI 提取失败";
-      onToast(msg, "error");
+      toast.error(msg);
     } finally {
       setAiLoading(false);
     }
@@ -378,7 +379,7 @@ function DictItemDialog({
                 onClick={() => setEnabled(!enabled)}
                 className={cn(
                   "w-full px-3 py-2 border rounded-lg text-sm font-medium transition-colors",
-                  enabled ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-border bg-muted text-muted-foreground"
+                  enabled ? "border-success/30 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"
                 )}
               >
                 {enabled ? "已启用" : "已禁用"}
@@ -422,22 +423,13 @@ export default function BusinessDictionary() {
   type DeleteTarget = { type: "domain"; data: ExtractionDomain } | { type: "item"; data: DictItemResponse } | null;
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
-  const [toasts, setToasts] = useState<{ id: number; msg: string; type: "success" | "error" }[]>([]);
-  const toastIdRef = React.useRef(0);
-
-  const showToast = (msg: string, type: "success" | "error") => {
-    const id = ++toastIdRef.current;
-    setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
-
   const loadDomains = useCallback(async () => {
     setLoading(true);
     try {
       const res = await kfApi.listDomains();
       setDomains(res.domains);
     } catch {
-      showToast("加载领域失败", "error");
+      toast.error("加载领域失败");
     } finally {
       setLoading(false);
     }
@@ -450,7 +442,7 @@ export default function BusinessDictionary() {
       setDictItems(res.items);
       setDictTotal(res.total);
     } catch {
-      showToast("加载字典失败", "error");
+      toast.error("加载字典失败");
     } finally {
       setLoading(false);
     }
@@ -474,16 +466,16 @@ export default function BusinessDictionary() {
     try {
       if (editDomain) {
         await kfApi.updateDomain(editDomain.id, { name: data.name, description: data.description, standard_chapters: data.standard_chapters, industry: data.industry, report_type: data.report_type });
-        showToast("领域已更新", "success");
+        toast.success("领域已更新");
       } else {
         await kfApi.createDomain({ id: data.name.toLowerCase().replace(/\s+/g, "_"), name: data.name, description: data.description, standard_chapters: data.standard_chapters, industry: data.industry, report_type: data.report_type });
-        showToast("领域已创建", "success");
+        toast.success("领域已创建");
       }
       setShowDomainDialog(false);
       setEditDomain(null);
       void loadDomains();
     } catch {
-      showToast("操作失败", "error");
+      toast.error("操作失败");
     }
   };
 
@@ -497,16 +489,16 @@ export default function BusinessDictionary() {
     try {
       if (editItem) {
         await kfApi.updateDictItem(editItem.id, { label: data.label, sort_order: data.sort_order, enabled: data.enabled });
-        showToast("已更新", "success");
+        toast.success("已更新");
       } else {
         await kfApi.createDictItem({ id: data.id!, category: data.category, label: data.label, sort_order: data.sort_order, enabled: data.enabled });
-        showToast("已创建", "success");
+        toast.success("已创建");
       }
       setShowItemDialog(false);
       setEditItem(null);
       void loadDictItems(activeCategory);
     } catch {
-      showToast("操作失败", "error");
+      toast.error("操作失败");
     }
   };
 
@@ -519,15 +511,15 @@ export default function BusinessDictionary() {
     try {
       if (deleteTarget.type === "domain") {
         await kfApi.deleteDomain(deleteTarget.data.id);
-        showToast("已删除", "success");
+        toast.success("已删除");
         void loadDomains();
       } else {
         await kfApi.deleteDictItem(deleteTarget.data.id);
-        showToast("已删除", "success");
+        toast.success("已删除");
         void loadDictItems(activeCategory);
       }
     } catch {
-      showToast("删除失败", "error");
+      toast.error("删除失败");
     } finally {
       setDeleteTarget(null);
     }
@@ -601,7 +593,7 @@ export default function BusinessDictionary() {
                             <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-primary/10 text-primary rounded">{CATEGORY_TABS.find(t => t.key === "industry")?.label}: {domain.industry}</span>
                           )}
                           {domain.report_type && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-600 rounded">{CATEGORY_TABS.find(t => t.key === "report_type")?.label}: {domain.report_type}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] bg-success/10 text-success rounded">{CATEGORY_TABS.find(t => t.key === "report_type")?.label}: {domain.report_type}</span>
                           )}
                         </div>
                         {domain.description && (
@@ -708,7 +700,6 @@ export default function BusinessDictionary() {
           domain={editDomain}
           onClose={() => { setShowDomainDialog(false); setEditDomain(null); }}
           onSave={handleSaveDomain}
-          onToast={showToast}
         />
       )}
       {showItemDialog && (
@@ -751,23 +742,6 @@ export default function BusinessDictionary() {
         </div>
       )}
 
-      {/* Toasts */}
-      <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
-              t.type === "success" && "border-emerald-500/20 bg-emerald-500/90 text-white",
-              t.type === "error" && "border-red-500/20 bg-red-500/90 text-white"
-            )}
-          >
-            {t.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0" />}
-            {t.type === "error" && <XCircle className="w-4 h-4 shrink-0" />}
-            <span>{t.msg}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

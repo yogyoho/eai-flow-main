@@ -1,4 +1,5 @@
 import { authFetch, authFormFetch } from "@/extensions/api/client";
+
 import { buildLawLibraryUrl } from "./law-library-api";
 import type { ComplianceRule, ComplianceRuleCreate } from "./types";
 

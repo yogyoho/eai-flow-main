@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 
-import { kfApi } from "../../api";
 import type {
   TemplateDocument,
   TemplateSection,
@@ -12,7 +11,11 @@ import type {
   EditorTemplate,
   EditorContentContract,
   TemplateUpdatePayload,
+  RAGSourceConfig,
 } from "@/extensions/knowledge-factory/types";
+import { normalizeRagSources } from "@/extensions/knowledge-factory/types";
+
+import { kfApi } from "../../api";
 
 /** 将后端 TemplateSection（snake_case API 响应）转换为前端 EditorSection（camelCase） */
 function apiSectionToEditor(sec: TemplateSection): EditorSection {
@@ -33,7 +36,7 @@ function apiSectionToEditor(sec: TemplateSection): EditorSection {
         }
       : undefined,
     complianceRules: sec.compliance_rules,
-    ragSources: sec.rag_sources,
+    ragSources: normalizeRagSources(sec.rag_sources as unknown[] | undefined),
     generationHint: sec.generation_hint,
     exampleSnippet: sec.example_snippet,
     completenessScore: sec.completeness_score,

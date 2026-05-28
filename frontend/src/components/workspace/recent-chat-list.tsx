@@ -58,6 +58,20 @@ import { pathOfThread, titleOfThread } from "@/core/threads/utils";
 import { env } from "@/env";
 import { isIMEComposing } from "@/lib/ime";
 
+function threadHref(thread: AgentThread): string {
+  const basePath = pathOfThread(thread);
+  const meta = thread.metadata as Record<string, unknown> | undefined;
+  if (meta?.project_id && meta?.type === "report_project") {
+    const params = new URLSearchParams({
+      from: "project",
+      projectId: String(meta.project_id),
+      projectName: String(meta.project_name ?? ""),
+    });
+    return `${basePath}?${params.toString()}`;
+  }
+  return basePath;
+}
+
 export function RecentChatList() {
   const { t } = useI18n();
   const router = useRouter();
@@ -185,7 +199,7 @@ export function RecentChatList() {
                       <div>
                         <Link
                           className="text-sidebar-foreground block w-full whitespace-nowrap group-hover/side-menu-item:overflow-hidden"
-                          href={pathOfThread(thread)}
+                          href={threadHref(thread)}
                         >
                           {titleOfThread(thread)}
                         </Link>

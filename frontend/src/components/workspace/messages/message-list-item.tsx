@@ -51,7 +51,6 @@ import { CopyButton } from "../copy-button";
 import { SaveToDocButton } from "../save-to-doc-button";
 
 import { MarkdownContent } from "./markdown-content";
-import { MessageTokenUsage } from "./message-token-usage";
 
 function FeedbackButtons({
   threadId,

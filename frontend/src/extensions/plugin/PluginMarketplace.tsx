@@ -11,8 +11,6 @@ import {
   PowerOff,
   Loader2,
 } from "lucide-react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,8 +32,7 @@ const NAV_ITEMS: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 function PluginMarketplaceContent() {
-  const params = useSearchParams();
-  const currentTab = (params.get("tab") ?? "market") as TabId;
+  const [currentTab, setCurrentTab] = useState<TabId>("market");
 
   return (
     <div className="flex flex-col h-full bg-muted">
@@ -46,12 +43,12 @@ function PluginMarketplaceContent() {
         </span>
         <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const href = `/plugins?tab=${id}`;
             const isActive = currentTab === id;
             return (
-              <Link
+              <button
                 key={id}
-                href={href}
+                type="button"
+                onClick={() => setCurrentTab(id)}
                 className={cn(
                   "flex items-center gap-2 h-full transition-colors py-5 border-b-2",
                   isActive
@@ -61,7 +58,7 @@ function PluginMarketplaceContent() {
               >
                 <Icon className="h-4 w-4" />
                 {label}
-              </Link>
+              </button>
             );
           })}
         </nav>

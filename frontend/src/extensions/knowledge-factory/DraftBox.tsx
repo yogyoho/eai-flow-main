@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 import { scraperApi } from "@/extensions/api";
 import { kbApi } from "@/extensions/api";
@@ -105,12 +106,12 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
         knowledge_base_id: kbId,
         auto_parse: true,
       });
-      alert("已成功导入到知识库！");
+      toast.success("已成功导入到知识库！");
       setShowImportModal(false);
       setSelectedDraft(null);
       loadDrafts();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "导入失败");
+      toast.error(e instanceof Error ? e.message : "导入失败");
     }
   };
 

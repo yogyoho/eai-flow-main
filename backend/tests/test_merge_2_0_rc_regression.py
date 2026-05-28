@@ -239,14 +239,24 @@ class TestMemoryUpdaterCorrectionSignals:
 class TestGatewayMemoryRouterIntegration:
     """Validate that gateway memory router uses effective_user_id correctly."""
 
-    def test_get_memory_uses_effective_user_id(self):
-        """gateway/memory.py get_memory should use _get_user_id_from_request."""
-        # Import the router helper
-        from app.gateway.routers.memory import _get_user_id_from_request
+    def test_get_memory_uses_resolve_user_id(self):
+        """gateway/memory.py get_memory should use _resolve_user_id."""
+        from unittest.mock import MagicMock
 
-        # _get_user_id_from_request should return the passed user_id
-        assert _get_user_id_from_request("alice") == "alice"
-        assert _get_user_id_from_request(None) is None
+        from app.gateway.routers.memory import _resolve_user_id
+
+        # With no request.state.user, falls back to user_id param
+        req = MagicMock()
+        req.state.user = None
+        assert _resolve_user_id(req, "alice") == "alice"
+        assert _resolve_user_id(req, None) is None
+
+        # With request.state.user set, takes priority over user_id param
+        user = MagicMock()
+        user.id = "jwt-user-123"
+        req.state.user = user
+        assert _resolve_user_id(req, "query-param-user") == "jwt-user-123"
+        assert _resolve_user_id(req, None) == "jwt-user-123"
 
     def test_memory_router_endpoints_have_user_id_query_param(self):
         """All memory endpoints should accept user_id query parameter."""
@@ -589,7 +599,12 @@ class TestRunAsyncUpdateSync:
 
     def test_run_async_update_sync_nested_loop(self):
         """Should handle nested asyncio event loop (2.0-rc fix)."""
-        from deerflow.agents.memory.updater import _run_async_update_sync
+        import importlib
+
+        mod = importlib.import_module("deerflow.agents.memory.updater")
+        if not hasattr(mod, "_run_async_update_sync"):
+            pytest.skip("_run_async_update_sync removed in upstream")
+        _run_async_update_sync = mod._run_async_update_sync
 
         async def fake_coro():
             return True

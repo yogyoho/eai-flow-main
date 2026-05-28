@@ -6,8 +6,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-import type { AIDocument } from "../types";
 import { docmgrApi } from "../api";
+import type { AIDocument } from "../types";
 
 interface FilePreviewModalProps {
   doc: AIDocument | null;

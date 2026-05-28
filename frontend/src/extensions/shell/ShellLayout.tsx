@@ -1,7 +1,8 @@
 "use client";
 
-import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { QueryClientProvider } from "@/components/query-client-provider";
+import { AuthProvider } from "@/extensions/hooks/useAuth";
+
 import { ExtensionsSidebar } from "./Sidebar";
 
 export function ShellLayout({ children }: { children: React.ReactNode }) {

@@ -1,9 +1,4 @@
-import { mapRuleImportResponse } from "./rule-import-utils";
-import { mapRuleOverviewResponse } from "./rule-overview-utils";
-import {
-  buildRuleTestRequestBody,
-  type RuleTestPayload,
-} from "./rule-test-utils";
+import { authFetch } from "@/extensions/api/client";
 import type {
   ComplianceRule,
   ComplianceRuleCreate,
@@ -16,8 +11,15 @@ import type {
   ComplianceRuleStatistics,
   RuleFilterParams,
 } from "@/extensions/knowledge-factory/types";
-import { authFetch } from "@/extensions/api/client";
+
 import { buildLawLibraryUrl } from "./law-library-api";
+import { mapRuleImportResponse } from "./rule-import-utils";
+import { mapRuleOverviewResponse } from "./rule-overview-utils";
+import {
+  buildRuleTestRequestBody,
+  type RuleTestPayload,
+} from "./rule-test-utils";
+
 
 export async function fetchRuleDictionaries(): Promise<RuleDictionaries> {
   const url = buildLawLibraryUrl("/kf/rule-dictionaries");

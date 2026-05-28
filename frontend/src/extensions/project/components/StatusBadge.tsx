@@ -12,27 +12,27 @@ interface StatusBadgeProps {
 
 const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> = {
   // Project statuses
-  planning: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
+  planning: { color: "border-[#E2E8F0] bg-[#F9FAFB] text-[#94A3B8]", icon: <Clock className="h-3 w-3" /> },
   writing: {
-    color: "border-primary/20 bg-primary/10 text-primary",
+    color: "border-[#0746FF]/20 bg-[#EBF0FF] text-[#0746FF]",
     icon: <Loader2 className="h-3 w-3 animate-spin" />,
   },
-  review: { color: "border-amber-500/20 bg-amber-500/10 text-amber-600", icon: <Clock className="h-3 w-3" /> },
-  finalizing: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-  archived: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+  review: { color: "border-[#F59E0B]/20 bg-[#FFFBEB] text-[#F59E0B]", icon: <Clock className="h-3 w-3" /> },
+  finalizing: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  archived: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Chapter statuses
-  not_started: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
+  not_started: { color: "border-[#E2E8F0] bg-[#F9FAFB] text-[#94A3B8]", icon: <Clock className="h-3 w-3" /> },
   pending_review: {
-    color: "border-amber-500/20 bg-amber-500/10 text-amber-600",
+    color: "border-[#F59E0B]/20 bg-[#FFFBEB] text-[#F59E0B]",
     icon: <Clock className="h-3 w-3" />,
   },
-  approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-  signed: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+  approved: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  signed: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Error states
-  error: { color: "border-destructive/20 bg-destructive/10 text-destructive", icon: <AlertCircle className="h-3 w-3" /> },
-  failed: { color: "border-destructive/20 bg-destructive/10 text-destructive", icon: <AlertCircle className="h-3 w-3" /> },
+  error: { color: "border-[#EF4444]/20 bg-[#FEF2F2] text-[#EF4444]", icon: <AlertCircle className="h-3 w-3" /> },
+  failed: { color: "border-[#EF4444]/20 bg-[#FEF2F2] text-[#EF4444]", icon: <AlertCircle className="h-3 w-3" /> },
 };
 
 const STATUS_LABELS: Record<string, string> = {

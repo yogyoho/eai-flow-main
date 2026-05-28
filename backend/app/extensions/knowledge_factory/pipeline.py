@@ -689,6 +689,84 @@ class ExtractionPipeline:
                     "chunks": chunks,
                 }
 
+        # Fetch available knowledge bases for RAG source matching
+        available_kbs: list[dict] = []
+        try:
+            from app.extensions.models import KnowledgeBase
+            from sqlalchemy import select
+            from app.extensions.database import get_db_context
+
+            async with get_db_context() as db:
+                result = await db.execute(
+                    select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id)
+                    .where(KnowledgeBase.status == "active")
+                    .limit(200)
+                )
+                for row in result.all():
+                    available_kbs.append({
+                        "kb_id": str(row.id),
+                        "kb_name": row.name,
+                        "description": row.description,
+                        "ragflow_dataset_id": row.ragflow_dataset_id,
+                    })
+            logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] Loaded {len(available_kbs)} knowledge bases for RAG source matching")
+        except Exception as e:
+            logger.warning(f"[Task {ctx.get('_task_id', 'unknown')}] Failed to load knowledge bases: {e}")
+
+        def _match_rag_sources(
+            llm_sources: list, available_kbs: list[dict]
+        ) -> list[dict]:
+            """Match LLM-suggested rag_sources against real KB records."""
+            if not llm_sources:
+                return []
+            matched = []
+            for source in llm_sources:
+                if isinstance(source, dict):
+                    kb_name = source.get("kb_name", "")
+                elif isinstance(source, str):
+                    kb_name = source
+                else:
+                    continue
+
+                # Fuzzy match: check if any KB name contains the suggestion or vice versa
+                best_kb = None
+                best_score = 0
+                for kb in available_kbs:
+                    name = kb["kb_name"]
+                    # Exact match
+                    if name == kb_name:
+                        best_kb = kb
+                        best_score = 100
+                        break
+                    # Substring match
+                    if name in kb_name or kb_name in name:
+                        score = min(len(name), len(kb_name)) / max(len(name), len(kb_name)) * 80
+                        if score > best_score:
+                            best_score = score
+                            best_kb = kb
+
+                if best_kb and best_score >= 40:
+                    matched.append({
+                        "kb_id": best_kb["kb_id"],
+                        "kb_name": best_kb["kb_name"],
+                        "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
+                        "retrieval_strategy": "hybrid",
+                        "top_k": 5,
+                        "similarity_threshold": 0.2,
+                        "vector_similarity_weight": 0.3,
+                    })
+                elif kb_name:
+                    # Keep as legacy label (no real KB match)
+                    matched.append({
+                        "kb_id": "",
+                        "kb_name": kb_name,
+                        "retrieval_strategy": "hybrid",
+                        "top_k": 5,
+                        "similarity_threshold": 0.2,
+                        "vector_similarity_weight": 0.3,
+                    })
+            return matched
+
         loop = asyncio.get_event_loop()
 
         def _find_section_content(
@@ -753,8 +831,8 @@ class ExtractionPipeline:
             try:
                 metadata = await loop.run_in_executor(
                     None,
-                    lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content:
-                        self.llm.extract_metadata(sid, t, lv, p, sc)
+                    lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content, kbs=available_kbs:
+                        self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs)
                 )
             except Exception as e:
                 logger.warning(f"Metadata extraction failed for {sec_id}: {e}")
@@ -773,11 +851,15 @@ class ExtractionPipeline:
                     "completeness_score": 50,
                 }
 
+            # Match LLM-suggested rag_sources against real KB records
+            raw_rag_sources = metadata.get("rag_sources", [])
+            matched_rag_sources = _match_rag_sources(raw_rag_sources, available_kbs)
+
             result = {
                 **sec,
                 "content_contract": metadata.get("content_contract"),
                 "compliance_rules": metadata.get("compliance_rules"),
-                "rag_sources": metadata.get("rag_sources"),
+                "rag_sources": matched_rag_sources,
                 "generation_hint": metadata.get("generation_hint"),
                 "example_snippet": metadata.get("example_snippet"),
                 "completeness_score": metadata.get("completeness_score"),

@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+
 import { BlockNoteEditor } from "./BlockNoteEditor";
 import type { BlockNoteEditorRef } from "./BlockNoteEditor";
 

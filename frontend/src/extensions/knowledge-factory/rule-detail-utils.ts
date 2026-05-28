@@ -1,4 +1,3 @@
-import { parseCommaSeparatedInput } from "./rule-form-utils";
 import {
   DEFAULT_RULE_DICTIONARIES,
   RULE_TYPES,
@@ -8,6 +7,8 @@ import {
   type RuleDictionaries,
   type ValidationConfig,
 } from "@/extensions/knowledge-factory/types";
+
+import { parseCommaSeparatedInput } from "./rule-form-utils";
 
 export function formatValidationConfig(config?: ValidationConfig): string {
   return JSON.stringify(config ?? {}, null, 2);

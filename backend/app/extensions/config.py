@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 _env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 load_dotenv(_env_path, override=False)
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field  # noqa: E402
 
 
 class DatabaseConfig(BaseModel):
@@ -108,6 +108,35 @@ class StorageConfig(BaseModel):
         )
 
 
+class LawDatasetInfo(BaseModel):
+    """Display info for a single law dataset."""
+
+    name: str = Field(default="", description="Display name for the knowledge base")
+    description: str = Field(default="", description="Description for the knowledge base")
+
+
+class LawConfig(BaseModel):
+    """Law module configuration."""
+
+    dataset_display_info: dict[str, LawDatasetInfo] = Field(
+        default_factory=lambda: {
+            "ragflow-laws-legal": LawDatasetInfo(
+                name="法规标准库 — 法律/法规/规章",
+                description="法律、行政法规和部门规章知识库，按条/款/项结构分块",
+            ),
+            "ragflow-laws-standards": LawDatasetInfo(
+                name="法规标准库 — 标准/规范",
+                description="国家标准、行业标准、地方标准和技术规范知识库，按章/节标题边界分块",
+            ),
+        },
+        description="Display info for law datasets, keyed by RAGFlow dataset name",
+    )
+
+    @classmethod
+    def from_env(cls) -> "LawConfig":
+        return cls()
+
+
 class ExtensionsConfig(BaseModel):
     """Extensions module configuration."""
 
@@ -115,6 +144,7 @@ class ExtensionsConfig(BaseModel):
     jwt: JWTConfig = Field(default_factory=JWTConfig)
     ragflow: RAGFlowConfig = Field(default_factory=RAGFlowConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    law: LawConfig = Field(default_factory=LawConfig)
 
     @classmethod
     def from_config(cls, config: dict) -> "ExtensionsConfig":
@@ -130,6 +160,7 @@ class ExtensionsConfig(BaseModel):
             jwt=JWTConfig.from_env(),
             ragflow=RAGFlowConfig.from_env(),
             storage=StorageConfig.from_env(),
+            law=LawConfig.from_env(),
         )
 
 

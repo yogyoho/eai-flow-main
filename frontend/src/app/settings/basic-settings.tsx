@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import {
   Globe,
   Loader2,
@@ -10,6 +8,8 @@ import {
   Save,
   SunIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,9 @@ import {
   type ChatModelGroup,
 } from "@/components/workspace/settings/grouped-model-select";
 import { SettingsSection } from "@/components/workspace/settings/settings-section";
+import { fetch } from "@/core/api/fetcher";
 import { enUS, isLocale, zhCN, type Locale } from "@/core/i18n";
 import { useI18n } from "@/core/i18n/hooks";
-import { fetch } from "@/core/api/fetcher";
 import { cn } from "@/lib/utils";
 
 interface SystemConfig {

@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ============== Enums ==============
@@ -38,6 +38,12 @@ class StructureType(str, Enum):
     FORMULA = "formula"
     DIAGRAM = "diagram"
     MIXED = "mixed"
+
+
+class RetrievalStrategy(str, Enum):
+    SEMANTIC = "semantic"
+    KEYWORD = "keyword"
+    HYBRID = "hybrid"
 
 
 # ============== Domain ==============
@@ -162,6 +168,24 @@ class CrossSectionRule(BaseModel):
     fields: list[str] = Field(default_factory=list)
 
 
+# ============== RAG Source Config ==============
+
+
+class RAGSourceConfig(BaseModel):
+    """Structured RAG source reference with retrieval strategy."""
+    kb_id: str = ""
+    kb_name: str = ""
+    ragflow_dataset_id: Optional[str] = None
+    retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
+    top_k: int = Field(default=5, ge=1, le=50)
+    similarity_threshold: float = Field(default=0.2, ge=0.0, le=1.0)
+    vector_similarity_weight: float = Field(default=0.3, ge=0.0, le=1.0)
+
+
+class RAGSourceSuggestionResponse(BaseModel):
+    suggestions: list[RAGSourceConfig] = Field(default_factory=list)
+
+
 # ============== Template Section ==============
 
 
@@ -174,10 +198,25 @@ class TemplateSection(BaseModel):
     children: Optional[list["TemplateSection"]] = None
     content_contract: Optional[ContentContract] = None
     compliance_rules: Optional[list[str]] = None
-    rag_sources: Optional[list[str]] = None
+    rag_sources: Optional[list[RAGSourceConfig]] = None
     generation_hint: Optional[str] = None
     example_snippet: Optional[str] = None
     completeness_score: Optional[int] = None
+
+    @field_validator("rag_sources", mode="before")
+    @classmethod
+    def normalize_rag_sources(cls, v):
+        if v is None:
+            return None
+        result = []
+        for item in v:
+            if isinstance(item, str):
+                result.append(RAGSourceConfig(kb_name=item))
+            elif isinstance(item, dict):
+                result.append(RAGSourceConfig(**item))
+            else:
+                result.append(item)
+        return result
 
 
 # ============== Template Result ==============
@@ -265,7 +304,8 @@ class TemplateRollbackResponse(BaseModel):
 class QualityAssessmentDimension(BaseModel):
     """质量评估维度"""
     score: int = Field(..., ge=0, le=100, description="评分 0-100")
-    issues: list[str] = Field(default_factory=list, description="发现的问题列表")
+    strengths: list[str] = Field(default_factory=list, description="该维度的亮点和优点")
+    issues: list[str] = Field(default_factory=list, description="发现的实际问题和不足")
 
 
 class QualityAssessmentResult(BaseModel):

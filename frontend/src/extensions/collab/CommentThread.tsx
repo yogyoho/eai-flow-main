@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+
 import type { CollabComment } from "../types";
 
 interface CommentThreadProps {

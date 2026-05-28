@@ -87,7 +87,7 @@ async def create_law(
 ):
     """创建法规"""
     law = await LawService.create_law(db, data)
-    synced, _ = await LawService.sync_to_ragflow(db, law)
+    synced, _ = await LawService.sync_to_ragflow(db, law, owner_id=current_user.id)
     if not synced:
         logger.warning("Law created but RAGFlow sync failed: %s", law.id)
     return LawService._law_to_response(law)
@@ -108,7 +108,7 @@ async def get_ragflow_status(
     current_user: CurrentUserWithAccess = None,
 ):
     """获取所有法规类型的RAGFlow知识库状态"""
-    return await LawService.get_ragflow_status(db)
+    return await LawService.get_ragflow_status(db, owner_id=current_user.id)
 
 
 @router.post("/init-ragflow", response_model=RAGFlowInitResponse)
@@ -151,13 +151,14 @@ async def init_ragflow_knowledge_bases(
     else:
         datasets_to_init = dict(RAGFLOW_DATASET_GROUPS)
 
-    results = {"created": [], "already_exists": [], "failed": []}
+    results = {"created": [], "already_exists": [], "failed": [], "registered": []}
 
     for kb_name, chunk_method in datasets_to_init.items():
         try:
             existing = await rf_client.get_dataset_by_name(kb_name)
             if existing:
                 results["already_exists"].append(kb_name)
+                dataset_id = existing.get("id")
             else:
                 result = await rf_client.create_dataset(
                     name=kb_name,
@@ -165,7 +166,16 @@ async def init_ragflow_knowledge_bases(
                     chunk_method=chunk_method,
                 )
                 results["created"].append(kb_name)
+                dataset_id = result.get("data", {}).get("id")
                 logger.info(f"创建RAGFlow知识库成功: {kb_name} (chunk_method={chunk_method})")
+
+            # 注册到 knowledge_bases 表
+            if dataset_id:
+                registered = await LawService._ensure_kb_registered(
+                    db, current_user.id, kb_name, dataset_id, chunk_method
+                )
+                if registered:
+                    results["registered"].append(kb_name)
         except Exception as e:
             results["failed"].append({"kb": kb_name, "error": str(e)})
             logger.error(f"创建RAGFlow知识库失败: {kb_name} - {e}")
@@ -191,7 +201,7 @@ async def sync_all_laws_to_ragflow(
             skipped += 1
             continue
 
-        success, _ = await LawService.sync_to_ragflow(db, law)
+        success, _ = await LawService.sync_to_ragflow(db, law, owner_id=current_user.id)
         if success:
             synced += 1
         else:
@@ -345,6 +355,7 @@ async def import_law_with_file(
             law,
             file_path=tmp_path,
             file_name=original_file_name,
+            owner_id=current_user.id,
         )
         if not synced:
             logger.warning("Law imported but RAGFlow sync failed: %s, reason: %s", law.id, sync_err)
@@ -421,7 +432,7 @@ async def sync_law_to_ragflow(
     if not law:
         raise HTTPException(status_code=404, detail="法规不存在")
 
-    success, err_msg = await LawService.sync_to_ragflow(db, law)
+    success, err_msg = await LawService.sync_to_ragflow(db, law, owner_id=current_user.id)
 
     if success:
         return {

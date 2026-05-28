@@ -78,6 +78,16 @@ if ! uv sync --all-packages $EXTRAS_FLAGS; then
     uv sync --all-packages $EXTRAS_FLAGS
 fi
 
+# ── Install MCP server dependencies ──────────────────────────────────────
+
+# Auto-install dependencies for enabled MCP servers whose source is mounted
+# into the container. This runs after the main `uv sync` so the venv is ready.
+if [ -d /app/mcp-server/Office-Word-MCP-Server ]; then
+    echo "[startup] Installing Office-Word-MCP-Server dependencies"
+    cd /app/backend && uv pip install --quiet python-docx fastmcp msoffcrypto-tool docx2pdf || \
+        echo "[startup] Warning: Office-Word-MCP-Server deps install failed (non-fatal)"
+fi
+
 # ── Hand off to uvicorn ─────────────────────────────────────────────────────
 
 PYTHONPATH=. exec uv run uvicorn app.gateway.app:app \

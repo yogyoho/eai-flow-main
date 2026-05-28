@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+
 import { docmgrApi } from "../api";
 
 interface AIToolbarProps {

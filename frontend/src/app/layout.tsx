@@ -5,8 +5,8 @@ import { type Metadata } from "next";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/core/i18n/context";
-import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { detectLocaleServer } from "@/core/i18n/server";
+import { AuthProvider } from "@/extensions/hooks/useAuth";
 
 export const metadata: Metadata = {
   title: "EAIFlow",

@@ -7,10 +7,10 @@ import os
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.models import AIDocument
+from app.extensions.models import AIDocument, ProjectMember
 from app.extensions.schemas import (
     AIDocumentCreate,
     AIDocumentResponse,
@@ -31,13 +31,24 @@ class AIDocumentService:
         starred: bool | None = None,
         shared: bool | None = None,
         doc_type: str | None = None,
+        project_scope: str | None = None,
         q: str | None = None,
         skip: int = 0,
         limit: int = 12,
     ) -> tuple[list[AIDocument], int]:
-        """List documents with filters."""
-        query = select(AIDocument).where(AIDocument.user_id == user_id)
-        count_query = select(func.count(AIDocument.id)).where(AIDocument.user_id == user_id)
+        """List documents with filters.
+
+        Shows user's own documents plus documents from projects the user is a member of.
+        project_scope: "personal" = no project, "project" = has project, None = both.
+        """
+        # Base visibility: own docs OR docs from user's projects
+        own_docs = AIDocument.user_id == user_id
+        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+        project_docs = AIDocument.project_id.in_(my_project_ids)
+        visibility_filter = or_(own_docs, project_docs)
+
+        query = select(AIDocument).where(visibility_filter)
+        count_query = select(func.count(AIDocument.id)).where(visibility_filter)
 
         if folder is not None:
             query = query.where(AIDocument.folder == folder)
@@ -54,6 +65,13 @@ class AIDocumentService:
         if doc_type is not None:
             query = query.where(AIDocument.doc_type == doc_type)
             count_query = count_query.where(AIDocument.doc_type == doc_type)
+
+        if project_scope == "personal":
+            query = query.where(AIDocument.project_id.is_(None))
+            count_query = count_query.where(AIDocument.project_id.is_(None))
+        elif project_scope == "project":
+            query = query.where(AIDocument.project_id.isnot(None))
+            count_query = count_query.where(AIDocument.project_id.isnot(None))
 
         if q is not None:
             search_filter = AIDocument.title.ilike(f"%{q}%")
@@ -72,20 +90,29 @@ class AIDocumentService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, doc_id: UUID, user_id: UUID) -> AIDocument | None:
-        """Get document by ID with user check."""
-        stmt = select(AIDocument).where(AIDocument.id == doc_id, AIDocument.user_id == user_id)
+        """Get document by ID — accessible by owner or project member."""
+        own_docs = AIDocument.user_id == user_id
+        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+        project_docs = AIDocument.project_id.in_(my_project_ids)
+        stmt = select(AIDocument).where(AIDocument.id == doc_id, or_(own_docs, project_docs))
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
     async def create(db: AsyncSession, user_id: UUID, data: AIDocumentCreate) -> AIDocument:
         """Create a new document."""
+        # Auto-detect project_id from thread if not explicitly provided
+        project_id = data.project_id
+        if not project_id and data.source_thread_id:
+            project_id = await AIDocumentService._detect_project_from_thread(db, data.source_thread_id)
+
         document = AIDocument(
             user_id=user_id,
             title=data.title,
             content=data.content,
             folder=data.folder,
             source_thread_id=data.source_thread_id,
+            project_id=project_id,
             doc_type=data.doc_type,
             file_ref_path=data.file_ref_path,
             file_size=data.file_size,
@@ -131,9 +158,21 @@ class AIDocumentService:
         await db.commit()
 
     @staticmethod
-    async def list_folders(db: AsyncSession, user_id: UUID) -> list[str]:
-        """List all folders for a user."""
-        stmt = select(AIDocument.folder).where(AIDocument.user_id == user_id).distinct()
+    async def list_folders(db: AsyncSession, user_id: UUID, project_scope: str | None = None) -> list[str]:
+        """List all folders for a user (own + project docs)."""
+        own_docs = AIDocument.user_id == user_id
+        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+        project_docs = AIDocument.project_id.in_(my_project_ids)
+        visibility_filter = or_(own_docs, project_docs)
+
+        stmt = select(AIDocument.folder).where(visibility_filter)
+
+        if project_scope == "personal":
+            stmt = stmt.where(AIDocument.project_id.is_(None))
+        elif project_scope == "project":
+            stmt = stmt.where(AIDocument.project_id.isnot(None))
+
+        stmt = stmt.distinct()
         result = await db.execute(stmt)
         folders = [row[0] for row in result.all()]
         return folders
@@ -145,6 +184,7 @@ class AIDocumentService:
             id=doc.id,
             user_id=doc.user_id,
             source_thread_id=doc.source_thread_id,
+            project_id=doc.project_id,
             title=doc.title,
             content=doc.content,
             folder=doc.folder,
@@ -231,16 +271,36 @@ class AIDocumentService:
 
     @staticmethod
     async def _get_thread_title(db: AsyncSession, thread_id: str) -> str:
-        """Get thread display name from threads_meta table."""
-        from deerflow.persistence.thread_meta.model import ThreadMetaRow
+        """Get thread display name.
 
+        The ``threads_meta`` table lives in the Gateway SQLite database, not
+        the extensions PostgreSQL database that *db* is connected to.  Querying
+        it through *db* would abort the PostgreSQL transaction.  Read from the
+        Gateway's SQLite file directly instead.
+        """
         try:
-            stmt = select(ThreadMetaRow.display_name).where(ThreadMetaRow.thread_id == thread_id)
-            result = await db.execute(stmt)
-            row = result.scalar_one_or_none()
-            return row or thread_id[:8]
+            import json
+            import sqlite3
+
+            from deerflow.config.paths import Paths
+
+            paths = Paths()
+            db_path = paths.base_dir / "data" / "deerflow.db"
+            if db_path.exists():
+                conn = sqlite3.connect(str(db_path))
+                try:
+                    row = conn.execute(
+                        "SELECT display_name FROM threads_meta WHERE thread_id = ?",
+                        (thread_id,),
+                    ).fetchone()
+                    if row and row[0]:
+                        return row[0]
+                finally:
+                    conn.close()
         except Exception:
-            return thread_id[:8]
+            pass
+
+        return thread_id[:8]
 
     @staticmethod
     async def sync_thread_files(
@@ -251,6 +311,7 @@ class AIDocumentService:
     ) -> dict:
         """Sync sandbox files for a thread into document space as file_ref records."""
         folder_name = await AIDocumentService._get_thread_title(db, thread_id)
+        project_id = await AIDocumentService._detect_project_from_thread(db, thread_id)
         synced = 0
         skipped = 0
         max_per_sync = 100
@@ -288,6 +349,7 @@ class AIDocumentService:
                 title=filepath.name,
                 folder=folder_name,
                 source_thread_id=thread_id,
+                project_id=project_id,
                 doc_type="file_ref",
                 file_ref_path=abs_path,
                 file_size=file_size,
@@ -299,3 +361,11 @@ class AIDocumentService:
 
         await db.commit()
         return {"synced": synced, "skipped": skipped}
+
+    @staticmethod
+    async def _detect_project_from_thread(db: AsyncSession, thread_id: str) -> UUID | None:
+        """Detect project_id from a thread_id by checking project_members."""
+        stmt = select(ProjectMember.project_id).where(ProjectMember.thread_id == thread_id).limit(1)
+        result = await db.execute(stmt)
+        row = result.scalar_one_or_none()
+        return row

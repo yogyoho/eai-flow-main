@@ -1,11 +1,13 @@
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, FileText, Loader2, Trash2, Upload, X, ExternalLink, Clock } from "lucide-react";
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { scraperApi, kbApi } from "@/extensions/api";
-import { useScraperContext } from "./ScraperContext";
 import { cn } from "@/lib/utils";
+
+import { useScraperContext } from "./ScraperContext";
 
 const STATUS_TABS = [
   { value: "", label: "全部" },
@@ -127,7 +129,7 @@ export default function ScraperDraftBox() {
                     {/* Status indicator */}
                     <div className={cn(
                       "shrink-0 flex items-center justify-center w-8 h-8 rounded-lg",
-                      isImported ? "bg-emerald-50 text-emerald-500" : "bg-blue-50 text-blue-500"
+                      isImported ? "bg-success/10 text-success" : "bg-primary/10 text-primary"
                     )}>
                       {isImported ? <CheckCircle2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                     </div>
@@ -137,9 +139,9 @@ export default function ScraperDraftBox() {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{draft.title}</p>
                         {isImported ? (
-                          <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-200/60">已导入</span>
+                          <span className="px-1.5 py-0.5 bg-success/10 text-success rounded text-[10px] font-bold uppercase tracking-wider border border-success/20">已导入</span>
                         ) : (
-                          <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-200/60">草稿</span>
+                          <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20">草稿</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -260,7 +262,7 @@ export default function ScraperDraftBox() {
                   <button
                     onClick={() => deleteMutation.mutate(selectedId)}
                     disabled={deleteMutation.isPending}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-red-200 rounded-xl text-sm text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2.5 border border-destructive/20 rounded-xl text-sm text-destructive hover:bg-destructive/5 hover:border-destructive/30 transition-colors disabled:opacity-50"
                   >
                     {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     删除
@@ -268,7 +270,7 @@ export default function ScraperDraftBox() {
                 </>
               )}
               {detailData.status === "imported" && (
-                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                <div className="flex items-center gap-2 text-sm text-success">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>已导入知识库</span>
                 </div>

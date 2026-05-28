@@ -1,4 +1,4 @@
-"""FastAPI routers for report project management (workflow-driven)."""
+"""FastAPI routers for report project management."""
 
 from typing import Annotated
 from uuid import UUID
@@ -13,22 +13,14 @@ from app.extensions.schemas import CurrentUser
 
 from .permissions import require_resource_permission
 from .schemas import (
-    AiActionRequest,
-    AiActionResponse,
     ApprovalActionRequest,
     ApprovalStatusOut,
     ApprovalSubmitRequest,
-    ChapterContentUpdate,
     MemberCreate,
-    MemberOut,
-    MyPermissionsResponse,
-    OutlineBatchUpdate,
     ProjectCreate,
     ProjectListResponse,
     ProjectOut,
     ProjectUpdate,
-    StartEditingResponse,
-    StartWritingResponse,
 )
 from . import service
 
@@ -116,63 +108,38 @@ async def delete_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
 
-# ── Outline ──
+# ── Enter project (thread binding) ──
 
 
-@router.get("/projects/{project_id}/outline")
-async def get_outline(
+@router.post("/projects/{project_id}/enter")
+async def enter_project(
     project_id: UUID,
-    _user: CurrentUserWithAccess,
+    request: Request,
+    user: CurrentUserWithAccess,
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_outline_tree(db, project_id)
+    csrf_token = request.cookies.get("csrf_token")
+    try:
+        result = await service.enter_project(
+            db, project_id, user.id,
+            cookies=request.cookies, csrf_token=csrf_token,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.put("/projects/{project_id}/outline")
-async def replace_outline(
+@router.get("/projects/{project_id}/files")
+async def get_project_files(
     project_id: UUID,
-    body: OutlineBatchUpdate,
-    _role: str = Depends(require_resource_permission("outline:edit")),
-    _user: CurrentUserWithAccess = None,
+    request: Request,
+    user: CurrentUserWithAccess,
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.replace_outline(db, project_id, body.chapters)
-
-
-@router.patch("/projects/{project_id}/chapters/{chapter_id}")
-async def update_chapter(
-    project_id: UUID,
-    chapter_id: UUID,
-    body: ChapterContentUpdate,
-    _role: str = Depends(require_resource_permission("chapter:write_own")),
-    user: CurrentUserWithAccess = None,
-    db: AsyncSession = Depends(get_db),
-):
-    # Verify chapter ownership for non-managers
-    if _role != "manager":
-        chapter = await service.get_chapter(db, chapter_id)
-        if not chapter:
-            raise HTTPException(status_code=404, detail="Chapter not found")
-        if chapter.assigned_to and chapter.assigned_to != user.id:
-            raise HTTPException(status_code=403, detail="You can only edit chapters assigned to you")
-
-    result = await service.update_chapter(db, chapter_id, **body.model_dump(exclude_unset=True))
-    if not result:
-        raise HTTPException(status_code=404, detail="Chapter not found")
-    return result
-
-
-@router.post("/projects/{project_id}/confirm-outline", response_model=ProjectOut)
-async def confirm_outline(
-    project_id: UUID,
-    _role: str = Depends(require_resource_permission("project:advance")),
-    _user: CurrentUserWithAccess = None,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await service.confirm_outline(db, project_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return result
+    csrf_token = request.cookies.get("csrf_token")
+    return await service.get_project_files(
+        db, project_id, cookies=request.cookies, csrf_token=csrf_token,
+    )
 
 
 # ── Members ──
@@ -207,89 +174,7 @@ async def remove_member(
         raise HTTPException(status_code=404, detail="Member not found")
 
 
-# ── Writing & Editing ──
-
-
-@router.post("/projects/{project_id}/start-writing", response_model=StartWritingResponse)
-async def start_writing(
-    project_id: UUID,
-    request: Request,
-    _user: CurrentUserWithAccess,
-    _role: str = Depends(require_resource_permission("ai:start_writing")),
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a project-level thread for AI writing (Stage 3) and return thread_id."""
-    csrf_token = request.cookies.get("csrf_token")
-    try:
-        result = await service.start_writing(db, project_id, user_id=_user.id, cookies=request.cookies, csrf_token=csrf_token)
-        return StartWritingResponse(**result)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post("/projects/{project_id}/chapters/{chapter_id}/start-editing", response_model=StartEditingResponse)
-async def start_chapter_editing(
-    project_id: UUID,
-    chapter_id: UUID,
-    _role: str = Depends(require_resource_permission("ai:start_editing")),
-    user: CurrentUserWithAccess = None,
-    request: Request = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a chapter-level thread for collaborative editing (Stage 4)."""
-    csrf_token = request.cookies.get("csrf_token")
-    try:
-        result = await service.start_chapter_editing(db, project_id, chapter_id, user_id=user.id, cookies=request.cookies, csrf_token=csrf_token)
-        return StartEditingResponse(**result)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# ── AI Action ──
-
-
-@router.post("/projects/{project_id}/ai-action", response_model=AiActionResponse)
-async def execute_ai_action(
-    project_id: UUID,
-    body: AiActionRequest,
-    _role: str = Depends(require_resource_permission("ai:toolbox")),
-    user: CurrentUserWithAccess = None,
-    request: Request = None,
-    db: AsyncSession = Depends(get_db),
-):
-    """Trigger an AI toolbox action (polish, expand, condense, format_check, etc.)."""
-    csrf_token = request.cookies.get("csrf_token")
-    try:
-        result = await service.execute_ai_action(
-            db,
-            project_id,
-            chapter_ids=body.chapter_ids,
-            action=body.action,
-            params=body.params,
-            user_id=user.id,
-            cookies=request.cookies,
-            csrf_token=csrf_token,
-        )
-        return AiActionResponse(**result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# --- Permission query ---
-
-
-@router.get("/projects/{project_id}/my-permissions", response_model=MyPermissionsResponse)
-async def get_my_permissions(
-    project_id: UUID,
-    user: CurrentUserWithAccess,
-    db: AsyncSession = Depends(get_db),
-):
-    role_row = await db.get(Role, user.role_id) if user.role_id else None
-    is_admin = role_row is not None and ("*" in (role_row.permissions or []) or role_row.is_system)
-    return await service.get_my_permissions(db, project_id, user.id, is_admin=is_admin)
-
-
-# --- Approval workflow ---
+# ── Approval workflow ──
 
 
 @router.post("/projects/{project_id}/submit-approval")

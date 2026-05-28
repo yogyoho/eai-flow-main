@@ -95,7 +95,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     if (activeNav === "starred") setFilter({ starred: true });
     else if (activeNav === "shared") setFilter({ shared: true });
     else if (activeNav === "file_ref") setFilter({ doc_type: "file_ref", project_scope: "personal" });
-    else if (activeNav === "file_ref_folder") setFilter({ doc_type: "file_ref", project_scope: "project", folder: currentFolder });
+    else if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
     else setFilter({ folder: currentFolder, doc_type: "document" });
   }, [activeNav, currentFolder, setFilter]);
 
@@ -122,7 +122,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
       setFilter({ doc_type: "file_ref", project_scope: "personal", q: search || undefined });
     } else if (nav === "file_ref_folder") {
       if (folder) onFolderChange(folder);
-      setFilter({ doc_type: "file_ref", project_scope: "project", folder, q: search || undefined });
+      setFilter({ project_scope: "project", folder, q: search || undefined });
     }
   };
 

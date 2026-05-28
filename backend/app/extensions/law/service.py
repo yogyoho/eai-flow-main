@@ -3,6 +3,7 @@
 import logging
 import os
 import tempfile
+import uuid
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -11,7 +12,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions.config import get_extensions_config
 from app.extensions.knowledge.client import RAGFlowClient
-from app.extensions.models import Law, LawTemplateRelation
+from app.extensions.models import KnowledgeBase, Law, LawTemplateRelation
 
 from .schemas import (
     LawCreate,
@@ -119,7 +120,57 @@ class LawService:
         return _LAW_CHUNK_METHOD.get(law_type)
 
     @staticmethod
-    async def ensure_ragflow_kb_exists(rf_client: RAGFlowClient, law_type: str) -> str | None:
+    async def _ensure_kb_registered(
+        db: AsyncSession,
+        owner_id: uuid.UUID,
+        kb_name: str,
+        ragflow_dataset_id: str | None,
+        chunk_method: str,
+    ) -> bool:
+        """确保法规标准库在 knowledge_bases 表中注册为公开知识库。"""
+        config = get_extensions_config()
+        law_config = config.law.dataset_display_info.get(kb_name)
+        display_name = law_config.name if law_config and law_config.name else kb_name
+        display_desc = law_config.description if law_config and law_config.description else f"法规标准库 - {kb_name}"
+
+        try:
+            existing = await db.execute(
+                select(KnowledgeBase).where(KnowledgeBase.name == display_name)
+            )
+            kb_record = existing.scalar_one_or_none()
+
+            if kb_record is None:
+                kb_record = KnowledgeBase(
+                    name=display_name,
+                    description=display_desc,
+                    owner_id=owner_id,
+                    access_type="public",
+                    kb_type="ragflow",
+                    ragflow_dataset_id=ragflow_dataset_id,
+                    chunk_method=chunk_method,
+                    status="active",
+                )
+                db.add(kb_record)
+                await db.commit()
+                logger.info("Registered law KB in knowledge_bases table: %s", display_name)
+            elif ragflow_dataset_id and not kb_record.ragflow_dataset_id:
+                kb_record.ragflow_dataset_id = ragflow_dataset_id
+                await db.commit()
+                logger.info("Updated ragflow_dataset_id for law KB: %s", display_name)
+
+            return True
+        except Exception as e:
+            logger.error("Failed to register law KB %s: %s", kb_name, e)
+            await db.rollback()
+            return False
+
+    @staticmethod
+    async def ensure_ragflow_kb_exists(
+        rf_client: RAGFlowClient,
+        law_type: str,
+        db: AsyncSession | None = None,
+        owner_id: uuid.UUID | None = None,
+    ) -> str | None:
         """确保指定类型的RAGFlow知识库存在，返回dataset_id"""
         kb_name = LawService.get_ragflow_dataset_id(law_type)
 
@@ -127,7 +178,11 @@ class LawService:
             # 尝试获取现有知识库
             existing = await rf_client.get_dataset_by_name(kb_name)
             if existing:
-                return existing.get("id")
+                dataset_id = existing.get("id")
+                if db and owner_id and dataset_id:
+                    chunk_method = LawService.get_chunk_method(law_type) or "naive"
+                    await LawService._ensure_kb_registered(db, owner_id, kb_name, dataset_id, chunk_method)
+                return dataset_id
         except Exception as e:
             logger.warning(f"获取RAGFlow知识库失败: {e}")
 
@@ -139,7 +194,10 @@ class LawService:
                 description=f"法规标准库 - {law_type}",
                 chunk_method=chunk_method,
             )
-            return result.get("data", {}).get("id")
+            dataset_id = result.get("data", {}).get("id")
+            if db and owner_id and dataset_id:
+                await LawService._ensure_kb_registered(db, owner_id, kb_name, dataset_id, chunk_method or "naive")
+            return dataset_id
         except Exception as e:
             logger.error(f"创建RAGFlow知识库失败: {e}")
             return None
@@ -417,6 +475,7 @@ class LawService:
         law: Law,
         file_path: str = None,
         file_name: str | None = None,
+        owner_id: uuid.UUID | None = None,
     ) -> tuple[bool, str]:
         """同步法规到 RAGFlow，返回 (成功, 错误信息)"""
         config = get_extensions_config()
@@ -426,7 +485,7 @@ class LawService:
             return False, msg
 
         rf_client = RAGFlowClient()
-        dataset_id = await LawService.ensure_ragflow_kb_exists(rf_client, law.law_type)
+        dataset_id = await LawService.ensure_ragflow_kb_exists(rf_client, law.law_type, db=db, owner_id=owner_id)
         if not dataset_id:
             msg = f"RAGFlow 知识库不存在且创建失败 (law_type={law.law_type})，请先调用 init-ragflow 初始化知识库"
             logger.warning(msg)
@@ -510,9 +569,43 @@ class LawService:
                 os.unlink(temp_upload_path)
 
     @staticmethod
-    async def get_ragflow_status(db: AsyncSession) -> RAGFlowStatusResponse:
+    async def auto_register_law_kbs(db: AsyncSession, owner_id: uuid.UUID) -> list[str]:
+        """检查 RAGFlow 中已存在的法规知识库，自动注册到 knowledge_bases 表。"""
+        config = get_extensions_config()
+        if not config.ragflow.api_key:
+            return []
+
+        rf_client = RAGFlowClient()
+        registered = []
+
+        for kb_name, chunk_method in RAGFLOW_DATASET_GROUPS.items():
+            try:
+                existing = await rf_client.get_dataset_by_name(kb_name)
+                if existing:
+                    dataset_id = existing.get("id")
+                    if dataset_id:
+                        ok = await LawService._ensure_kb_registered(
+                            db, owner_id, kb_name, dataset_id, chunk_method
+                        )
+                        if ok:
+                            registered.append(kb_name)
+            except Exception:
+                pass
+
+        return registered
+
+    @staticmethod
+    async def get_ragflow_status(db: AsyncSession, owner_id: uuid.UUID | None = None) -> RAGFlowStatusResponse:
         """获取所有法规类型的RAGFlow知识库状态"""
         config = get_extensions_config()
+
+        # 自动注册：如果 RAGFlow 可达，尝试补注册缺失的 KB 记录
+        if config.ragflow.api_key and owner_id:
+            try:
+                await LawService.auto_register_law_kbs(db, owner_id)
+            except Exception:
+                pass
+
         if not config.ragflow.api_key:
             # RAGFlow未配置，返回所有missing状态
             statuses = [
@@ -574,9 +667,22 @@ class LawService:
                 }
                 errors += 1
 
+        # 查询已注册的法规知识库
+        registered_kb_names = set()
+        try:
+            kb_result = await db.execute(
+                select(KnowledgeBase.name).where(KnowledgeBase.kb_type == "law")
+            )
+            registered_kb_names = {row[0] for row in kb_result.all()}
+        except Exception:
+            pass
+
         # 按每个 law_type 展开状态（多个 type 共享同一 dataset）
+        config = get_extensions_config()
         for law_type, kb_name in RAGFLOW_KB_MAPPING.items():
             cached = dataset_cache.get(kb_name, {})
+            law_cfg = config.law.dataset_display_info.get(kb_name)
+            display_name = law_cfg.name if law_cfg and law_cfg.name else kb_name
             statuses.append(
                 RAGFlowKBStatus(
                     type=law_type,
@@ -586,6 +692,7 @@ class LawService:
                     document_count=cached.get("doc_count", 0),
                     status=cached.get("status", "unknown"),
                     error_message=cached.get("error_message"),
+                    kb_registered=display_name in registered_kb_names,
                 )
             )
 

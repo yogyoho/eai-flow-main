@@ -2,9 +2,10 @@
  * 规则日志查看组件
  */
 
-import React from "react";
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import React from "react";
+
+import { Button } from "@/components/ui/button";
 import type { RuleExecutionLog, RuleExecutionStatistics } from "@/extensions/knowledge-factory/complianceRulesApi";
 import { cn } from "@/lib/utils";
 

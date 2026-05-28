@@ -4,10 +4,15 @@ import {
   X,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   RefreshCw,
   Database,
   FileText,
+  Activity,
+  FolderCheck,
+  FolderX,
+  CircleAlert,
 } from "lucide-react";
 import React, { useState } from "react";
 
@@ -18,10 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { LawType } from "@/extensions/knowledge-factory/types";
 
 import { LAW_CATEGORIES } from "../config/lawCategories";
 import { useRAGFlowStatus, useInitRAGFlow } from "../hooks/useLawLibrary";
-import type { LawType } from "@/extensions/knowledge-factory/types";
 import { cn } from "../utils";
 
 interface RAGFlowStatusPanelProps {
@@ -39,18 +44,32 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
 
   const statusMap = new Map(data?.statuses?.map((s) => [s.type, s]) ?? []);
 
+  const healthyCount = data?.healthy_kbs ?? 0;
+  const missingCount = data?.missing_kbs ?? 0;
+  const errorCount = data?.error_kbs ?? 0;
+  const totalCount = data?.total_kbs ?? 0;
+  const healthyPercent = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col border border-border/50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary" />
-            RAGFlow知识库状态
-          </h3>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">RAGFlow 知识库状态</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">查看和管理法规知识库的同步状态</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded-lg transition-colors"
+            className="p-2 hover:bg-accent rounded-xl transition-colors text-muted-foreground hover:text-foreground"
           >
             <X className="w-5 h-5" />
           </button>
@@ -58,55 +77,107 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Summary */}
+          {/* Summary Cards */}
           {data && (
-            <div className="grid grid-cols-4 gap-4">
-              <div className="bg-muted/50 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-foreground">
-                  {data.total_kbs}
+            <div className="space-y-4">
+              {/* Health Progress Bar */}
+              <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Activity className="w-4 h-4 text-primary" />
+                    总体健康度
+                  </div>
+                  <span className={cn(
+                    "text-sm font-bold tabular-nums",
+                    healthyPercent >= 80 ? "text-success" : healthyPercent >= 50 ? "text-warning" : "text-destructive"
+                  )}>
+                    {healthyPercent}%
+                  </span>
                 </div>
-                <div className="text-sm text-muted-foreground">知识库总数</div>
+                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700",
+                      healthyPercent >= 80
+                        ? "bg-gradient-to-r from-success to-success/70"
+                        : healthyPercent >= 50
+                          ? "bg-gradient-to-r from-warning to-warning/70"
+                          : "bg-gradient-to-r from-destructive to-destructive/70"
+                    )}
+                    style={{ width: `${healthyPercent}%` }}
+                  />
+                </div>
               </div>
-              <div className="bg-emerald-500/10 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-emerald-500">
-                  {data.healthy_kbs}
+
+              {/* Stat Cards */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-4 shadow-sm">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-foreground tabular-nums">{totalCount}</div>
+                    <div className="text-[11px] text-muted-foreground font-medium">知识库总数</div>
+                  </div>
                 </div>
-                <div className="text-sm text-emerald-500">正常</div>
-              </div>
-              <div className="bg-amber-500/10 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-amber-500">
-                  {data.missing_kbs}
+                <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-gradient-to-br from-card to-success/5 p-4 shadow-sm">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success">
+                    <FolderCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-success tabular-nums">{healthyCount}</div>
+                    <div className="text-[11px] text-muted-foreground font-medium">正常运行</div>
+                  </div>
                 </div>
-                <div className="text-sm text-amber-500">未创建</div>
-              </div>
-              <div className="bg-red-500/10 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-red-500">
-                  {data.error_kbs}
+                <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-gradient-to-br from-card to-warning/5 p-4 shadow-sm">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10 text-warning">
+                    <FolderX className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-warning tabular-nums">{missingCount}</div>
+                    <div className="text-[11px] text-muted-foreground font-medium">未创建</div>
+                  </div>
                 </div>
-                <div className="text-sm text-red-500">错误</div>
+                <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-gradient-to-br from-card to-destructive/5 p-4 shadow-sm">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                    <CircleAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-destructive tabular-nums">{errorCount}</div>
+                    <div className="text-[11px] text-muted-foreground font-medium">异常</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Loading/Error State */}
+          {/* Loading State */}
           {isLoading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">加载中...</span>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+              <span className="text-sm text-muted-foreground">正在获取知识库状态...</span>
             </div>
           )}
 
+          {/* Error State */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-              <span className="text-red-500">{error.message}</span>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+              </div>
+              <span className="text-sm text-destructive">{error.message}</span>
             </div>
           )}
 
           {/* Knowledge Base List */}
           {data && !isLoading && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-foreground">知识库详情</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-foreground">知识库详情</h4>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{LAW_CATEGORIES.length} 个</span>
+              </div>
               <div className="space-y-2">
                 {LAW_CATEGORIES.map((cat) => {
                   const status = statusMap.get(cat.code);
@@ -118,26 +189,21 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                     <div
                       key={cat.code}
                       className={cn(
-                        "flex items-center justify-between p-4 rounded-lg border",
+                        "flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-sm",
                         isHealthy
-                          ? "bg-emerald-500/10 border-emerald-500/20"
+                          ? "bg-gradient-to-r from-card to-success/5 border-success/20 hover:border-success/30"
                           : isError
-                            ? "bg-red-500/10 border-red-500/20"
-                            : "bg-amber-500/10 border-amber-500/20"
+                            ? "bg-gradient-to-r from-card to-destructive/5 border-destructive/20 hover:border-destructive/30"
+                            : "bg-gradient-to-r from-card to-warning/5 border-warning/20 hover:border-warning/30"
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-lg flex items-center justify-center",
-                            cat.bgColor
-                          )}
-                        >
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", cat.bgColor)}>
                           <cat.icon className={cn("w-5 h-5", cat.color)} />
                         </div>
                         <div>
-                          <div className="font-medium text-foreground">{cat.name}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm font-medium text-foreground">{cat.name}</div>
+                          <div className="text-xs text-muted-foreground font-mono mt-0.5">
                             {cat.ragflowKbName}
                           </div>
                         </div>
@@ -145,33 +211,28 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
 
                       <div className="flex items-center gap-4">
                         {status?.document_count !== undefined && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <FileText className="w-4 h-4" />
-                            {status.document_count} 份文档
+                          <div className="text-xs text-muted-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-lg">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="tabular-nums font-medium">{status.document_count}</span> 份
                           </div>
                         )}
 
                         {isHealthy && (
-                          <div className="flex items-center gap-1 text-emerald-500">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="text-sm font-medium">正常</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
+                            <CheckCircle className="w-3.5 h-3.5" /> 正常
+                          </span>
                         )}
 
                         {isMissing && (
-                          <div className="flex items-center gap-1 text-amber-500">
-                            <AlertCircle className="w-5 h-5" />
-                            <span className="text-sm font-medium">未创建</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning">
+                            <AlertCircle className="w-3.5 h-3.5" /> 未创建
+                          </span>
                         )}
 
                         {isError && (
-                          <div className="flex items-center gap-1 text-red-500">
-                            <AlertCircle className="w-5 h-5" />
-                            <span className="text-sm font-medium">
-                              {status?.error_message ?? "错误"}
-                            </span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                            <AlertTriangle className="w-3.5 h-3.5" /> {status?.error_message ?? "错误"}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -182,8 +243,28 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
           )}
         </div>
 
+        {/* Init Result */}
+        {initMutation.data && (
+          <div className="px-6 py-3 border-t border-success/20 bg-success/5">
+            <div className="text-sm text-success flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>
+                {initMutation.data.created?.length > 0 && (
+                  <span className="font-medium">已创建 {initMutation.data.created.length} 个知识库</span>
+                )}
+                {initMutation.data.already_exists?.length > 0 && (
+                  <span className="text-muted-foreground">，{initMutation.data.already_exists.length} 个已存在</span>
+                )}
+                {initMutation.data.failed?.length > 0 && (
+                  <span className="text-destructive font-medium">，{initMutation.data.failed.length} 个失败</span>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex items-center justify-between gap-4 p-4 border-t border-border shrink-0 bg-muted/30">
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-border shrink-0 bg-muted/30">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <Select value={initType} onValueChange={setInitType}>
               <SelectTrigger
@@ -220,7 +301,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
             <button
               onClick={handleInit}
               disabled={initMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm font-medium shadow-sm"
             >
               {initMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -234,36 +315,16 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg hover:bg-accent transition-colors text-sm text-muted-foreground hover:text-foreground"
           >
             {isFetching ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            刷新状态
+            刷新
           </button>
         </div>
-
-        {/* Init Result */}
-        {initMutation.data && (
-          <div className="p-4 border-t border-border bg-emerald-500/10">
-            <div className="text-sm text-emerald-500">
-              <strong>初始化结果：</strong>
-              {initMutation.data.created?.length > 0 && (
-                <span>已创建 {initMutation.data.created.length} 个知识库</span>
-              )}
-              {initMutation.data.already_exists?.length > 0 && (
-                <span>，{initMutation.data.already_exists.length} 个已存在</span>
-              )}
-              {initMutation.data.failed?.length > 0 && (
-                <span className="text-red-500">
-                  ，{initMutation.data.failed.length} 个失败
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

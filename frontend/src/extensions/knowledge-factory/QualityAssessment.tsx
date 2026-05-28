@@ -43,29 +43,29 @@ const DIMENSION_LABELS: Record<string, string> = {
 };
 
 const DIMENSION_COLORS: Record<string, string> = {
-  completeness: "bg-gradient-to-r from-emerald-500 to-emerald-400",
-  accuracy: "bg-gradient-to-r from-blue-500 to-blue-400",
-  consistency: "bg-gradient-to-r from-violet-500 to-violet-400",
-  compliance: "bg-gradient-to-r from-amber-500 to-amber-400",
-  freshness: "bg-gradient-to-r from-pink-500 to-pink-400",
+  completeness: "bg-gradient-to-r from-success to-success/70",
+  accuracy: "bg-gradient-to-r from-primary to-primary/70",
+  consistency: "bg-gradient-to-r from-info to-info/70",
+  compliance: "bg-gradient-to-r from-warning to-warning/70",
+  freshness: "bg-gradient-to-r from-chart-4 to-chart-4/70",
 };
 
 function getGradeLabel(grade: string): { label: string; color: string } {
   const grades: Record<string, { label: string; color: string }> = {
-    优秀: { label: "优秀", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+    优秀: { label: "优秀", color: "bg-success/10 text-success border-success/20" },
     良好: { label: "良好", color: "bg-primary/10 text-primary border-primary/20" },
-    一般: { label: "一般", color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" },
-    较差: { label: "较差", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
-    差: { label: "差", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+    一般: { label: "一般", color: "bg-info/10 text-info border-info/20" },
+    较差: { label: "较差", color: "bg-warning/10 text-warning border-warning/20" },
+    差: { label: "差", color: "bg-destructive/10 text-destructive border-destructive/20" },
   };
   return grades[grade] ?? { label: grade, color: "bg-muted text-muted-foreground" };
 }
 
 export default function QualityAssessment() {
   const colorScheme = useColorScheme();
-  const gridColor = colorScheme === "dark" ? "#404040" : "#e4e4e7";
-  const axisColor = colorScheme === "dark" ? "#a1a1aa" : "#a1a1aa";
-  const radarColor = "#6366f1";
+  const gridColor = colorScheme === "dark" ? "var(--gray-500)" : "var(--gray-200)";
+  const axisColor = "var(--gray-400)";
+  const radarColor = "var(--primary)";
 
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -80,10 +80,10 @@ export default function QualityAssessment() {
 
   const statusColor = (s: string) =>
     s === "draft"
-      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+      ? "bg-warning/10 text-warning"
       : s === "published"
-        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-        : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+        ? "bg-success/10 text-success"
+        : "bg-muted text-muted-foreground";
 
   const loadTemplates = useCallback(async () => {
     setLoadingTemplates(true);
@@ -133,10 +133,21 @@ export default function QualityAssessment() {
   const allIssues = result
     ? Object.entries(result.dimensions).flatMap(([key, dim]) =>
         (dim.issues || []).map((issue, i) => ({
-          id: `${key}-${i}`,
+          id: `${key}-issue-${i}`,
           dimension: DIMENSION_LABELS[key] ?? key,
           title: issue,
-          type: dim.score >= 80 ? "info" : "warning",
+          type: dim.score >= 60 ? "warning" : "error",
+        }))
+      )
+    : [];
+
+  // Collect all strengths from all dimensions
+  const allStrengths = result
+    ? Object.entries(result.dimensions).flatMap(([key, dim]) =>
+        (dim.strengths || []).map((strength, i) => ({
+          id: `${key}-strength-${i}`,
+          dimension: DIMENSION_LABELS[key] ?? key,
+          title: strength,
         }))
       )
     : [];
@@ -246,7 +257,7 @@ export default function QualityAssessment() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg bg-red-500/10 p-4 text-red-500 text-sm flex items-center gap-2">
+          <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" /> {error}
           </div>
         )}
@@ -288,8 +299,8 @@ export default function QualityAssessment() {
                       stroke="currentColor"
                       strokeWidth="8"
                       className={cn(
-                        result.overall_score >= 80 ? "text-emerald-500" :
-                        result.overall_score >= 60 ? "text-yellow-500" : "text-red-500"
+                        result.overall_score >= 80 ? "text-success" :
+                        result.overall_score >= 60 ? "text-info" : "text-destructive"
                       )}
                       strokeDasharray={`${(result.overall_score / 100) * 553} 553`}
                       strokeLinecap="round"
@@ -298,8 +309,8 @@ export default function QualityAssessment() {
                   <div className="text-center">
                     <div className={cn(
                       "text-5xl font-black",
-                      result.overall_score >= 80 ? "text-emerald-500" :
-                      result.overall_score >= 60 ? "text-yellow-500" : "text-red-500"
+                      result.overall_score >= 80 ? "text-success" :
+                      result.overall_score >= 60 ? "text-info" : "text-destructive"
                     )}>
                       {result.overall_score}
                     </div>
@@ -313,18 +324,18 @@ export default function QualityAssessment() {
 
               {/* Dimension Scores */}
               <div className="lg:col-span-2 bg-gradient-to-br from-card to-card/80 p-8 rounded-xl border border-border/50 shadow-sm">
-                <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    维度评分
-                  </h3>
+                <h3 className="text-lg font-semibold text-foreground mb-6">
+                  维度评分
+                </h3>
+                <div className="flex gap-8 items-center">
                   {radarData.length > 0 && (
-                    <div className="h-48 w-48">
+                    <div className="shrink-0 w-64 h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                           <PolarGrid stroke={gridColor} />
                           <PolarAngleAxis
                             dataKey="subject"
-                            tick={{ fill: axisColor, fontSize: 10 }}
+                            tick={{ fill: axisColor, fontSize: 12 }}
                           />
                           <PolarRadiusAxis angle={30} domain={[0, 100]} />
                           <Radar
@@ -338,36 +349,36 @@ export default function QualityAssessment() {
                       </ResponsiveContainer>
                     </div>
                   )}
-                </div>
-                <div className="space-y-4">
-                  {Object.entries(result.dimensions).map(([key, dim]) => (
-                    <div key={key} className="space-y-1.5">
-                      <div className="flex justify-between text-sm font-medium">
-                        <span className="text-foreground">{DIMENSION_LABELS[key] ?? key}</span>
-                        <span className={cn(
-                          "font-bold",
-                          dim.score >= 80 ? "text-emerald-500" :
-                          dim.score >= 60 ? "text-yellow-500" : "text-red-500"
-                        )}>
-                          {dim.score}%
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-1000",
-                              DIMENSION_COLORS[key] ?? "bg-muted-foreground"
-                            )}
-                            style={{ width: `${dim.score}%` }}
-                          />
+                  <div className="flex-1 space-y-4">
+                    {Object.entries(result.dimensions).map(([key, dim]) => (
+                      <div key={key} className="space-y-1.5">
+                        <div className="flex justify-between text-sm font-medium">
+                          <span className="text-foreground">{DIMENSION_LABELS[key] ?? key}</span>
+                          <span className={cn(
+                            "font-bold",
+                            dim.score >= 80 ? "text-success" :
+                            dim.score >= 60 ? "text-info" : "text-destructive"
+                          )}>
+                            {dim.score}%
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[120px]">
-                          {dim.issues.length > 0 ? `${dim.issues.length} 个问题` : "通过"}
-                        </span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-1000",
+                                DIMENSION_COLORS[key] ?? "bg-muted-foreground"
+                              )}
+                              style={{ width: `${dim.score}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[120px]">
+                            {dim.issues && dim.issues.length > 0 ? `${dim.issues.length} 个问题` : "通过"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -396,11 +407,40 @@ export default function QualityAssessment() {
               </div>
             )}
 
+            {/* Strengths */}
+            {allStrengths.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-success" /> 模板亮点
+                </h3>
+                <div className="space-y-3">
+                  {allStrengths.map((s) => (
+                    <div
+                      key={s.id}
+                      className="bg-card p-5 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 border-l-[3px] border-l-success/60"
+                    >
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-success/20 to-success/5 text-success shrink-0">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                            {s.dimension}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground">{s.title}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Issue List */}
             {allIssues.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-500" /> 问题清单
+                  <AlertTriangle className="w-5 h-5 text-warning" /> 问题清单
                 </h3>
                 <div className="space-y-3">
                   {allIssues.map((issue) => (
@@ -408,22 +448,18 @@ export default function QualityAssessment() {
                       key={issue.id}
                       className={cn(
                         "bg-card p-5 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 border-l-[3px]",
-                        issue.type === "warning" ? "border-l-amber-500/60" : "border-l-primary/40"
+                        issue.type === "error" ? "border-l-destructive/60" : "border-l-warning/60"
                       )}
                     >
                       <div
                         className={cn(
                           "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                          issue.type === "warning"
-                            ? "bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500"
-                            : "bg-gradient-to-br from-primary/20 to-primary/5 text-primary"
+                          issue.type === "error"
+                            ? "bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive"
+                            : "bg-gradient-to-br from-warning/20 to-warning/5 text-warning"
                         )}
                       >
-                        {issue.type === "warning" ? (
-                          <AlertTriangle className="w-5 h-5" />
-                        ) : (
-                          <Info className="w-5 h-5" />
-                        )}
+                        <AlertTriangle className="w-5 h-5" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
@@ -439,9 +475,9 @@ export default function QualityAssessment() {
               </div>
             )}
 
-            {allIssues.length === 0 && result.suggestions.length === 0 && (
+            {allIssues.length === 0 && allStrengths.length === 0 && result.suggestions.length === 0 && (
               <div className="flex flex-col items-center py-8 text-muted-foreground">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2" />
+                <CheckCircle2 className="w-12 h-12 text-success mb-2" />
                 <p className="text-foreground font-medium">模板质量良好，未发现明显问题</p>
               </div>
             )}

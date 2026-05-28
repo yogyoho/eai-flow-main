@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { fetchRuleDictionaries } from "../complianceRulesApi";
-import { mergeRuleDictionaries } from "../rule-dictionary-utils";
 import {
   DEFAULT_RULE_DICTIONARIES,
   type RuleDictionaries,
 } from "@/extensions/knowledge-factory/types";
+
+import { fetchRuleDictionaries } from "../complianceRulesApi";
+import { mergeRuleDictionaries } from "../rule-dictionary-utils";
 
 export function useRuleDictionaries() {
   const [dictionaries, setDictionaries] = useState<RuleDictionaries>(DEFAULT_RULE_DICTIONARIES);

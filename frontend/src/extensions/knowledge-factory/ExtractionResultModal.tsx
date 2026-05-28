@@ -13,7 +13,6 @@ import {
 import React, { useState, useEffect } from "react";
 
 import { kfApi } from "@/extensions/api";
-
 import type {
   ExtractionTaskResponse,
   TemplateResult,

@@ -2,19 +2,11 @@ import { authFetch } from "@/extensions/api/client";
 
 import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
-  AiActionRequest,
-  AiActionResponse,
   ApprovalStepConfig,
   ApprovalStatusResponse,
-  ChapterTreeNode,
-  ChapterUpdateRequest,
   CreateProjectRequest,
   ProjectListItem,
-  ProjectChapter,
-  ProjectMembership,
   ReportProject,
-  StartEditingResponse,
-  StartWritingResponse,
   UpdateProjectRequest,
 } from "./types";
 
@@ -68,36 +60,14 @@ export const projectApi = {
     await authFetch<void>(`${API_BASE}/projects/${id}`, { method: "DELETE" });
   },
 
-  // ── Outline ──
-
-  getOutline: async (projectId: string): Promise<ProjectChapter[]> => {
-    return await authFetch<ProjectChapter[]>(`${API_BASE}/projects/${projectId}/outline`);
+  enter: async (id: string): Promise<{ threadId: string; projectId: string }> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/enter`, { method: "POST" });
+    return toCamelCase<{ threadId: string; projectId: string }>(data);
   },
 
-  replaceOutline: async (projectId: string, chapters: ChapterTreeNode[]): Promise<ProjectChapter[]> => {
-    return await authFetch<ProjectChapter[]>(`${API_BASE}/projects/${projectId}/outline`, {
-      method: "PUT",
-      body: JSON.stringify({ chapters }),
-    });
-  },
-
-  updateChapter: async (projectId: string, chapterId: string, updates: ChapterUpdateRequest): Promise<ProjectChapter> => {
-    const data = await authFetch<Record<string, unknown>>(
-      `${API_BASE}/projects/${projectId}/chapters/${chapterId}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify(toSnakeCase(updates as Record<string, unknown>)),
-      },
-    );
-    return toCamelCase<ProjectChapter>(data);
-  },
-
-  confirmOutline: async (projectId: string): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(
-      `${API_BASE}/projects/${projectId}/confirm-outline`,
-      { method: "POST" },
-    );
-    return toCamelCase<ReportProject>(data);
+  getFiles: async (id: string): Promise<Record<string, unknown>[]> => {
+    const data = await authFetch<Record<string, unknown>[]>(`${API_BASE}/projects/${id}/files`);
+    return data;
   },
 
   // ── Members ──
@@ -111,46 +81,6 @@ export const projectApi = {
 
   removeMember: async (projectId: string, userId: string): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
-  },
-
-  // ── Writing & Editing ──
-
-  startWriting: async (projectId: string): Promise<StartWritingResponse> => {
-    const data = await authFetch<Record<string, unknown>>(
-      `${API_BASE}/projects/${projectId}/start-writing`,
-      { method: "POST" },
-    );
-    return toCamelCase<StartWritingResponse>(data);
-  },
-
-  startChapterEditing: async (projectId: string, chapterId: string): Promise<StartEditingResponse> => {
-    const data = await authFetch<Record<string, unknown>>(
-      `${API_BASE}/projects/${projectId}/chapters/${chapterId}/start-editing`,
-      { method: "POST" },
-    );
-    return toCamelCase<StartEditingResponse>(data);
-  },
-
-  // ── AI Action ──
-
-  executeAiAction: async (projectId: string, req: AiActionRequest): Promise<AiActionResponse> => {
-    const data = await authFetch<Record<string, unknown>>(
-      `${API_BASE}/projects/${projectId}/ai-action`,
-      {
-        method: "POST",
-        body: JSON.stringify(toSnakeCase(req as unknown as Record<string, unknown>)),
-      },
-    );
-    return toCamelCase<AiActionResponse>(data);
-  },
-
-  // ── Permissions ──
-
-  getMyPermissions: async (projectId: string): Promise<ProjectMembership> => {
-    const data = await authFetch<{ role: string | null; permissions: string[]; default_tab: string }>(
-      `${API_BASE}/projects/${projectId}/my-permissions`,
-    );
-    return toCamelCase<ProjectMembership>(data);
   },
 
   // ── Approval workflow ──
@@ -190,12 +120,5 @@ export const projectApi = {
       `${API_BASE}/projects/${projectId}/approval-status`,
     );
     return toCamelCase<ApprovalStatusResponse>(data);
-  },
-
-  // ── Legacy aliases ──
-
-  /** @deprecated Use updateChapter instead */
-  updateOutline: async (projectId: string, outlineId: string, data: Record<string, unknown>): Promise<ProjectChapter> => {
-    return projectApi.updateChapter(projectId, outlineId, data as ChapterUpdateRequest);
   },
 };

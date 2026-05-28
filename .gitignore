@@ -65,3 +65,4 @@ config.yaml.bak
 
 # RAGFlow runtime data
 docker/ragflow/
+_workspace_temp/

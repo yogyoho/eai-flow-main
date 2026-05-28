@@ -1,0 +1,199 @@
+<h2>设计 Section 3：审核流程（Stage 5）</h2>
+<p class="subtitle">5 角色方案 — 经理灵活指定审核链，按角色逐步审批</p>
+
+<div class="section">
+  <h3>🔄 审核流程状态机</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7;">
+    <pre style="margin:0; color:#e2e8f0;">
+Stage 4 (协作编辑)
+    │
+    ▼ 经理点击「提交审核」
+    │  ┌──────────────────────────────────────┐
+    │  │ 组长配置审核链（灵活指定）：            │
+    │  │                                      │
+    │  │  Step 1: 技术审核 → 指定：张三(reviewer) │
+    │  │  Step 2: 内容审核 → 指定：李四(reviewer) │
+    │  │  Step 3: 最终审批 → 指定：王五(approver) │
+    │  │                                      │
+    │  │  ⚠️ 至少 1 步，每步指定 1 人            │
+    │  │  ⚠️ 步骤顺序可拖拽调整                  │
+    │  └──────────────────────────────────────┘
+    ▼
+Stage 5 (审核中)
+    │
+    ├─ Step 1: 张三(reviewer) ──通过──▶ Step 2
+    │                          ──退回──▶ 回到 Stage 4
+    │
+    ├─ Step 2: 李四(reviewer) ──通过──▶ Step 3
+    │                          ──退回──▶ 回到 Stage 4
+    │
+    ├─ Step 3: 王五(approver) ──通过──▶ Stage 6 ✅
+    │                         ──退回──▶ 回到 Stage 4
+    │
+    ▼
+Stage 6 (已定稿)</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>📋 审核权限矩阵（审核相关操作）</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">操作</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">👑 经理</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">✏️ 编辑</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">📝 撰写</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">🔍 审核人</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">✅ 批准人</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">提交审核</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">配置审核链</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">查看审核状态</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">执行审核（通过/退回）</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅ 被指定时</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">✅ 被指定时</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;">退回到编辑</td>
+          <td style="padding: 8px; text-align: center; background: #dcfce7;">✅ 随时</td>
+          <td style="padding: 8px; text-align: center;">—</td>
+          <td style="padding: 8px; text-align: center;">—</td>
+          <td style="padding: 8px; text-align: center; background: #dcfce7;">✅ 退回时</td>
+          <td style="padding: 8px; text-align: center; background: #dcfce7;">✅ 退回时</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>💬 审核交互流程</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #2563eb;">👑 经理视角 — 提交审核时</div>
+      <div style="background: white; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.8;">
+        <div style="margin-bottom: 8px;">1. 点击「提交审核」按钮</div>
+        <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-weight: bold; margin-bottom: 6px;">配置审核步骤：</div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Step 1</span>
+            <select style="flex: 1; padding: 4px; font-size: 11px;">
+              <option>张三 (审核人)</option>
+              <option>李四 (审核人)</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="background: #8b5cf6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Step 2</span>
+            <select style="flex: 1; padding: 4px; font-size: 11px;">
+              <option>王五 (批准人)</option>
+            </select>
+          </div>
+          <div style="margin-top: 8px; color: #3b82f6; font-size: 11px;">+ 添加步骤</div>
+        </div>
+        <button style="background: #2563eb; color: white; padding: 6px 16px; border-radius: 6px; border: none; font-size: 12px;">确认提交</button>
+      </div>
+    </div>
+
+    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #059669;">🔍 审核人视角 — 执行审核时</div>
+      <div style="background: white; padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.8;">
+        <div style="margin-bottom: 8px;">审核 Step 1/2 — 技术审核</div>
+        <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+          <div style="margin-bottom: 6px;">章节：第5章 大气环境影响评价</div>
+          <div style="margin-bottom: 6px;">状态：待审核</div>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 8px;">
+            <label style="font-size: 11px; color: #64748b;">审核意见：</label>
+            <textarea style="width: 100%; height: 40px; padding: 4px; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 4px;">内容基本符合要求，建议补充监测数据...</textarea>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button style="background: #22c55e; color: white; padding: 6px 16px; border-radius: 6px; border: none; font-size: 12px;">✅ 通过</button>
+          <button style="background: #ef4444; color: white; padding: 6px 16px; border-radius: 6px; border: none; font-size: 12px;">❌ 退回修改</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🖥️ 新增 API 端点</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">方法</th>
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">路径</th>
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">所需权限</th>
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>POST</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">/projects/{id}/submit-approval</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>approval:submit</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">经理提交审核，配置审核链</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>POST</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">/projects/{id}/approval-action</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>approval:review</code> 或 <code>approval:approve</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">审核人/批准人执行审批</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>GET</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">/projects/{id}/approval-status</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><code>approval:view</code></td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">获取审核流程状态</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;"><code>GET</code></td>
+          <td style="padding: 8px;">/projects/{id}/approval-records</td>
+          <td style="padding: 8px;"><code>approval:view</code></td>
+          <td style="padding: 8px;">获取审批记录列表</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px; background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #22c55e;">
+  <h3 style="color: #166534;">✅ 审核流程关键规则</h3>
+  <ul style="font-size: 13px; line-height: 2; color: #334155;">
+    <li><strong>经理灵活指定</strong>：提交审核时，经理从项目成员中选择审核人和批准人，自由配置步骤链</li>
+    <li><strong>按步骤串行</strong>：前一步通过后，下一步的审核人才收到待办通知</li>
+    <li><strong>退回即中断</strong>：任一步骤退回，项目立即回到 Stage 4，附带审核意见</li>
+    <li><strong>身份验证</strong>：后端验证当前操作人是否为该步骤的指定人（不只看角色，还看具体 ID）</li>
+    <li><strong>经理可随时撤回</strong>：审核过程中经理可撤回审核，回到 Stage 4 重新编辑</li>
+  </ul>
+</div>

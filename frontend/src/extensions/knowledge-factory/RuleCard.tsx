@@ -44,7 +44,7 @@ export function RuleCard({
 }: RuleCardProps) {
   // 获取严重级别颜色和标签
   const severityInfo = SEVERITY_LEVELS.find((s) => s.value === rule.severity);
-  const severityColor = severityInfo?.color || "#6b7280";
+  const severityColor = severityInfo?.color || "var(--muted-foreground)";
   const severityLabel = rule.severityName || severityInfo?.label || rule.severity;
 
   // 获取规则类型标签
@@ -74,7 +74,7 @@ export function RuleCard({
     rule.severity === "critical"
       ? "bg-destructive/10 text-destructive border-destructive/20"
       : rule.severity === "warning"
-      ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+      ? "bg-warning/10 text-warning border-warning/20"
       : "bg-muted text-muted-foreground border-transparent";
 
   return (
@@ -120,7 +120,7 @@ export function RuleCard({
                 rule.severity === "critical"
                   ? "bg-destructive/10 text-destructive"
                   : rule.severity === "warning"
-                  ? "bg-amber-500/10 text-amber-500"
+                  ? "bg-warning/10 text-warning"
                   : "bg-muted text-muted-foreground"
               )}
             >
@@ -164,7 +164,7 @@ export function RuleCard({
             {industryLabel}
           </Badge>
           {rule.nationalLevel && (
-            <Badge variant="outline" className="text-xs border-amber-500/20 bg-amber-500/10 text-amber-500">
+            <Badge variant="outline" className="text-xs border-warning/20 bg-warning/10 text-warning">
               国家标准
             </Badge>
           )}
@@ -212,7 +212,7 @@ export function RuleCard({
               className={cn(
                 "h-7 text-xs",
                 rule.enabled
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10"
+                  ? "border-success/20 bg-success/10 text-success hover:bg-success/10"
                   : "border-border bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
@@ -223,7 +223,7 @@ export function RuleCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                rule.enabled ? "text-emerald-500" : "text-muted-foreground"
+                rule.enabled ? "text-success" : "text-muted-foreground"
               )}
             >
               {rule.enabled ? "启用" : "禁用"}

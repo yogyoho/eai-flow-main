@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
-import { ShellLayout } from "@/extensions/shell";
-import type { TabId } from "@/extensions/knowledge-factory/types";
+import { Toaster } from "@/components/ui/sonner";
 import {
   SampleReports,
   TemplateExtraction,
@@ -17,6 +16,8 @@ import {
   WebScraper,
   BusinessDictionary,
 } from "@/extensions/knowledge-factory";
+import type { TabId } from "@/extensions/knowledge-factory/types";
+import { ShellLayout } from "@/extensions/shell";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS: { id: TabId; label: string }[] = [
@@ -105,6 +106,7 @@ function KnowledgeFactoryContent() {
 
 function KnowledgeFactoryRoute() {
   return (
+    <>
     <Suspense fallback={<KnowledgeFactoryLayoutFallback><div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div></KnowledgeFactoryLayoutFallback>}>
       <KnowledgeFactoryLayoutContent>
         <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>}>
@@ -112,6 +114,8 @@ function KnowledgeFactoryRoute() {
         </Suspense>
       </KnowledgeFactoryLayoutContent>
     </Suspense>
+    <Toaster />
+    </>
   );
 }
 

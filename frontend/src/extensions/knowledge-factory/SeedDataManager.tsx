@@ -21,7 +21,6 @@ import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-
 import type { ComplianceRuleImportResponse, ComplianceRuleStatus } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 

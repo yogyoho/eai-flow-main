@@ -322,7 +322,7 @@ export function ApprovalTab({
   const { data: approvalStatus, isLoading: approvalLoading } = useQuery({
     queryKey: ["approval-status", projectId],
     queryFn: () => projectApi.getApprovalStatus(projectId),
-    enabled: project?.currentStage === 5 && !!projectId,
+    enabled: project?.status === "active" && !!projectId,
   });
 
   if (!project) {
@@ -334,7 +334,7 @@ export function ApprovalTab({
   }
 
   // ── Manager view: stage <= 4, can submit ──
-  if (project.currentStage <= 4) {
+  if (project.status !== "completed") {
     if (isManager && canSubmitApproval) {
       return (
         <SubmitApprovalView
@@ -382,14 +382,14 @@ export function ApprovalTab({
       )}
 
       {/* Manager: withdraw button */}
-      {isManager && project.currentStage === 5 && (
+      {isManager && (
         <div className="px-5 py-3 border-b border-[#E2E8F0]">
           <button
             type="button"
             onClick={async () => {
               try {
-                await projectApi.update(projectId, { currentStage: 4 });
-                toast.success("已撤回审核，回到协作编辑阶段");
+                await projectApi.update(projectId, { status: "active" });
+                toast.success("已撤回审核");
                 onRefresh();
               } catch {
                 toast.error("撤回审核失败");

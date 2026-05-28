@@ -10,8 +10,6 @@ import {
   UserCircle,
   FolderCheck,
   ClipboardList,
-  Database,
-  Puzzle,
   FileOutput,
 } from "lucide-react";
 import Link from "next/link";
@@ -40,8 +38,6 @@ const navItems: { href: string; label: string; icon: React.ElementType }[] = [
   { href: "/docmgr", label: "文档空间", icon: FolderCheck },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory },
   { href: "/knowledge", label: "知识库", icon: BookOpen },
-  { href: "/data-sources", label: "数据源", icon: Database },
-  { href: "/plugins", label: "插件", icon: Puzzle },
   { href: "/output", label: "报告输出", icon: FileOutput },
   { href: "/admin", label: "系统管理", icon: Settings2 },
 ];

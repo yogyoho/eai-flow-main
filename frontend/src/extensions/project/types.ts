@@ -8,21 +8,9 @@ export type ReportType =
   | "energy_assessment"
   | "other";
 
-export type ProjectStatus = "setup" | "outline" | "writing" | "editing" | "approval" | "published" | "archived";
+export type ProjectStatus = "active" | "completed" | "archived";
 
-export type ChapterStatus =
-  | "not_started"
-  | "pending"
-  | "writing"
-  | "draft"
-  | "editing"
-  | "pending_review"
-  | "completed"
-  | "rejected"
-  | "approved"
-  | "signed";
-
-export type MemberRole = "manager" | "editor" | "writer" | "reviewer" | "approver";
+export type MemberRole = "owner" | "member";
 
 // ── Chapter ──
 
@@ -33,7 +21,7 @@ export interface ProjectChapter {
   title: string;
   level: number;
   sortOrder: number;
-  status: ChapterStatus;
+  status: string;
   content: string | null;
   assignedTo: string | null;
   assignedName: string | null;
@@ -46,18 +34,6 @@ export interface ProjectChapter {
   updatedAt: string | null;
 }
 
-/** For outline batch updates — id is null for new nodes */
-export interface ChapterTreeNode {
-  id?: string;
-  title: string;
-  level: number;
-  sortOrder: number;
-  purpose?: string | null;
-  generationHint?: string | null;
-  wordCountTarget?: number;
-  children: ChapterTreeNode[];
-}
-
 // ── Member ──
 
 export interface ProjectMember {
@@ -66,7 +42,6 @@ export interface ProjectMember {
   userId: string;
   username: string;
   role: MemberRole;
-  chapterAssignments?: string[];
   createdAt: string | null;
 }
 
@@ -78,16 +53,11 @@ export interface ReportProject {
   reportType: ReportType;
   templateId: string | null;
   status: ProjectStatus;
-  currentStage: number;
   threadId: string | null;
   createdBy: string | null;
   members: ProjectMember[];
   chapters: ProjectChapter[];
   chapterCount: number;
-  client?: string;
-  targetStandard?: string;
-  outline?: string;
-  milestones?: Milestone[];
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -97,7 +67,6 @@ export interface ProjectListItem {
   name: string;
   reportType: ReportType;
   status: ProjectStatus;
-  currentStage: number;
   templateId: string | null;
   templateName: string | null;
   chapterCount: number;
@@ -113,58 +82,12 @@ export interface CreateProjectRequest {
   name: string;
   reportType: ReportType;
   templateId?: string | null;
-  client?: string;
-  targetStandard?: string;
   members?: { userId: string; role: MemberRole }[];
 }
 
 export interface UpdateProjectRequest {
   name?: string;
   status?: ProjectStatus;
-  currentStage?: number;
-}
-
-export interface OutlineBatchUpdateRequest {
-  chapters: ChapterTreeNode[];
-}
-
-export interface ChapterUpdateRequest {
-  title?: string;
-  content?: string | null;
-  status?: ChapterStatus;
-  assignedTo?: string | null;
-  wordCountTarget?: number;
-}
-
-// ── AI Action ──
-
-export type AiActionType = "polish" | "expand" | "condense" | "format_check" | "compliance_check" | "terminology_check";
-
-export interface AiActionRequest {
-  chapterIds: string[];
-  action: AiActionType;
-  params?: {
-    targetWordCount?: number;
-    standard?: string;
-  };
-}
-
-export interface AiActionResponse {
-  threadId: string;
-  taskCount: number;
-}
-
-// ── Writing / Editing thread responses ──
-
-export interface StartWritingResponse {
-  threadId: string;
-  projectId: string;
-}
-
-export interface StartEditingResponse {
-  threadId: string;
-  projectId: string;
-  chapterId: string;
 }
 
 // ── Labels ──
@@ -179,52 +102,15 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
 };
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  setup: "项目设定",
-  outline: "大纲确认",
-  writing: "AI撰写",
-  editing: "协作编辑",
-  approval: "审批",
-  published: "已发布",
+  active: "进行中",
+  completed: "已完成",
   archived: "已归档",
 };
 
-export const CHAPTER_STATUS_LABELS: Record<ChapterStatus, string> = {
-  not_started: "未开始",
-  pending: "待处理",
-  writing: "AI撰写中",
-  draft: "初稿",
-  editing: "编辑中",
-  pending_review: "待审核",
-  completed: "已完成",
-  rejected: "退回修改",
-  approved: "已通过",
-  signed: "已签发",
-};
-
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
-  manager: "经理",
-  editor: "编辑",
-  writer: "撰写人",
-  reviewer: "审核人",
-  approver: "批准人",
+  owner: "负责人",
+  member: "成员",
 };
-
-export const STAGE_LABELS = [
-  "项目设定",
-  "大纲确认",
-  "AI撰写",
-  "协作编辑",
-  "审批",
-  "定稿输出",
-] as const;
-
-// ── Permission types ──
-
-export interface ProjectMembership {
-  role: MemberRole | null;
-  permissions: string[];
-  defaultTab: string;
-}
 
 // ── Approval config types ──
 
@@ -264,28 +150,3 @@ export interface ApprovalStatusResponse {
   steps: ApprovalWorkflowWithRecords[];
   allApproved: boolean;
 }
-
-// ── Legacy aliases (used by old components pending Phase 2+ rewrite) ──
-
-/** @deprecated Use ProjectChapter instead */
-export type ReportOutline = ProjectChapter;
-
-/** @deprecated Milestones removed in workflow redesign */
-export type MilestoneStatus = "pending" | "in_progress" | "completed" | "overdue";
-
-/** @deprecated Milestones removed in workflow redesign */
-export interface Milestone {
-  id: string;
-  name: string;
-  dueDate: string;
-  status: MilestoneStatus;
-  completedAt?: string | null;
-  config?: { color: string };
-}
-
-export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
-  pending: "待开始",
-  in_progress: "进行中",
-  completed: "已完成",
-  overdue: "已逾期",
-};

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -51,6 +52,7 @@ async def list_documents(
     starred: bool | None = Query(None, description="Filter by starred status"),
     shared: bool | None = Query(None, description="Filter by shared status"),
     doc_type: str | None = Query(None, description="Filter by doc_type: document or file_ref"),
+    project_scope: str | None = Query(None, description="Filter by project scope: personal or project"),
     q: str | None = Query(None, description="Search query for title"),
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=100),
@@ -65,6 +67,7 @@ async def list_documents(
         starred=starred,
         shared=shared,
         doc_type=doc_type,
+        project_scope=project_scope,
         q=q,
         skip=skip,
         limit=limit,
@@ -201,11 +204,12 @@ async def preview_document(
 
 @router.get("/folders", response_model=FolderListResponse)
 async def list_folders(
+    project_scope: str | None = Query(None, description="Filter: personal or project"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """List all folders for the current user."""
-    folders = await AIDocumentService.list_folders(db, current_user.id)
+    folders = await AIDocumentService.list_folders(db, current_user.id, project_scope=project_scope)
     return FolderListResponse(folders=folders)
 
 
@@ -306,14 +310,62 @@ async def sync_thread_files(
     from deerflow.config.paths import Paths
 
     paths = Paths()
-    user_data_dir = paths.sandbox_user_data_dir(thread_id=request.thread_id, user_id=str(current_user.id))
+    thread_id = request.thread_id
+
+    # Resolve the actual sandbox directory for the thread.
+    # The thread may have been created by the Gateway auth (Gateway UUID) while
+    # the current user is authenticated via extensions (different UUID).  Scan
+    # for the thread under all user directories to bridge this gap.
+    user_data_dir = _resolve_thread_sandbox_dir(paths, thread_id, str(current_user.id))
+
     result = await AIDocumentService.sync_thread_files(
         db=db,
         user_id=current_user.id,
-        thread_id=request.thread_id,
+        thread_id=thread_id,
         sandbox_dir=str(user_data_dir),
     )
     return result
+
+
+def _resolve_thread_sandbox_dir(paths, thread_id: str, fallback_user_id: str):
+    """Find the sandbox user-data directory for *thread_id*.
+
+    Tries the *fallback_user_id* path first.  If that directory is missing or
+    contains no files, scans ``{base_dir}/users/`` for any user bucket
+    containing this thread.  This bridges the Gateway-vs-extensions UUID split
+    where a thread created through the Gateway uses the Gateway user_id for
+    its filesystem layout, but the extensions docmgr sync authenticates with
+    the extensions user_id.
+    """
+    primary = paths.sandbox_user_data_dir(thread_id=thread_id, user_id=fallback_user_id)
+    if _has_files(primary):
+        return primary
+
+    users_dir = paths.base_dir / "users"
+    if not users_dir.is_dir():
+        return primary
+
+    for user_path in users_dir.iterdir():
+        candidate = user_path / "threads" / thread_id / "user-data"
+        if _has_files(candidate):
+            return candidate
+
+    return primary
+
+
+def _has_files(directory) -> bool:
+    """Quick check whether *directory* contains at least one file (non-recursive)."""
+    if not directory.is_dir():
+        return False
+    for sub in ("workspace", "outputs", "uploads"):
+        d = directory / sub
+        if d.is_dir():
+            try:
+                next(d.iterdir())
+                return True
+            except StopIteration:
+                pass
+    return False
 
 
 # ─── Document Sharing ────────────────────────────────────────────────────────

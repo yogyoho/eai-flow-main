@@ -1,7 +1,8 @@
 "use client";
 
-import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import type { ReactNode } from "react";
+
+import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (

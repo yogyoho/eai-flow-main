@@ -17,6 +17,7 @@ export interface CollabUser {
 
 export function useCollab(docId: string | null) {
   const [connected, setConnected] = useState(false);
+  const [synced, setSynced] = useState(false);
   const [users, setUsers] = useState<CollabUser[]>([]);
   const providerRef = useRef<HocuspocusProvider | null>(null);
 
@@ -31,8 +32,9 @@ export function useCollab(docId: string | null) {
       name: docId,
       document: ydoc,
       onConnect: () => setConnected(true),
-      onDisconnect: () => setConnected(false),
-      onClose: () => setConnected(false),
+      onDisconnect: () => { setConnected(false); setSynced(false); },
+      onClose: () => { setConnected(false); setSynced(false); },
+      onSynced: () => setSynced(true),
     });
     providerRef.current = provider;
 
@@ -53,6 +55,7 @@ export function useCollab(docId: string | null) {
       provider.destroy();
       providerRef.current = null;
       setConnected(false);
+      setSynced(false);
       setUsers([]);
     };
   }, [docId, ydoc]);
@@ -90,5 +93,5 @@ export function useCollab(docId: string | null) {
     };
   }, [connected]);
 
-  return { ydoc, provider: providerRef.current, connected, users, broadcastEvent };
+  return { ydoc, provider: providerRef.current, connected, synced, users, broadcastEvent };
 }

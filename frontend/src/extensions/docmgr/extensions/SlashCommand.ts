@@ -1,6 +1,6 @@
-import type { Range } from "@tiptap/react";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { Range } from "@tiptap/react";
 
 export const SlashCommandPluginKey = new PluginKey("slashCommand");
 
