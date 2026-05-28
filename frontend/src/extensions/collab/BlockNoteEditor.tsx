@@ -9,6 +9,7 @@ import { OnlineUsers } from "./OnlineUsers";
 import { CommentSidebar } from "./CommentSidebar";
 import { VersionPanel } from "./VersionPanel";
 import { AIToolbar } from "./AIToolbar";
+import { AIDocumentReview } from "./AIDocumentReview";
 import { useComments } from "./useComments";
 import { useVersions } from "./useVersions";
 import { useAuth } from "@/extensions/hooks/useAuth";
@@ -242,14 +243,27 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           />
         )}
         {sidePanel === "ai" && (
-          <div className="w-80 border-l border-border bg-background">
+          <div className="w-80 border-l border-border bg-background flex flex-col h-full">
             <div className="p-3 border-b border-border flex items-center justify-between">
               <span className="font-medium text-sm">AI 助手</span>
               <Button size="icon" variant="ghost" onClick={() => setSidePanel(null)}>
                 ×
               </Button>
             </div>
-            <AIToolbar selectedText="" fullText="" onApplyResult={() => {}} />
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-3 border-b border-border">
+                <AIToolbar selectedText="" fullText="" onApplyResult={() => {}} />
+              </div>
+              <div className="p-3">
+                <AIDocumentReview
+                  docId={documentId}
+                  onInsertComment={(blockId, comment) => {
+                    handleCreateComment(blockId || selectedBlockId || "", `[AI 审查] ${comment}`);
+                    setSidePanel("comments");
+                  }}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

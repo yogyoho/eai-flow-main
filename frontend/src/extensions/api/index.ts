@@ -537,6 +537,13 @@ export const docmgrApi = {
   diffVersions: async (docId: string, fromVer: number, toVer: number): Promise<VersionDiffResponse> => {
     return request(`/docmgr/documents/${docId}/versions/diff?from=${fromVer}&to=${toVer}`);
   },
+
+  aiReview: async (data: { doc_id: string; review_type: string }): Promise<any> => {
+    return request(`/docmgr/documents/ai-review`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // ===== Models API (direct gateway, not under /api/extensions) =====

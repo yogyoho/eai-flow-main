@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
 from app.extensions.docmgr.collab_schemas import (
+    AIReviewRequest,
+    AIReviewResponse,
     CommentCreateRequest,
     CommentResponse,
     CommentUpdateRequest,
@@ -16,7 +18,7 @@ from app.extensions.docmgr.collab_schemas import (
     VersionResponse,
     VersionRestoreResponse,
 )
-from app.extensions.docmgr.collab_service import CommentService, VersionService
+from app.extensions.docmgr.collab_service import AIReviewService, CommentService, VersionService
 from app.extensions.docmgr.service import AIDocumentService
 from app.extensions.schemas import CurrentUser, MessageResponse
 
@@ -209,3 +211,18 @@ async def restore_version(
     )
 
     return VersionRestoreResponse(version=version, message=f"Restored to version {version}")
+
+
+# ─── AI Document-Level Review ────────────────────────────────────────────
+
+
+@router.post("/documents/ai-review", response_model=AIReviewResponse)
+async def ai_review_document(
+    request: AIReviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    doc = await AIDocumentService.get_by_id(db, request.doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return await AIReviewService.ai_review_document(db, request.doc_id, doc.content or "", request.review_type)

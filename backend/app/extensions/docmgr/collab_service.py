@@ -1,7 +1,8 @@
 """Services for collaborative editing: comments and versions."""
 
+import json
 import logging
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -145,6 +146,56 @@ class CommentService:
             "updated_at": comment.updated_at,
             "username": user.username if user else None,
             "full_name": user.full_name if user else None,
+        }
+
+
+class AIReviewService:
+    @staticmethod
+    async def ai_review_document(db: AsyncSession, doc_id: UUID, content: str, review_type: str) -> dict:
+        from deerflow.models import create_chat_model
+
+        model = create_chat_model("ai-review", thinking_enabled=False)
+
+        prompts = {
+            "full": "请审查以下文档，从逻辑一致性、语言风格统一性、缺失章节、数据准确性四个维度给出建议。对每个问题指出具体段落位置和修改建议。",
+            "style": "请审查以下文档的语言风格是否统一，用词是否专业准确，语气是否一致。",
+            "logic": "请审查以下文档的逻辑是否连贯，论证是否有漏洞，结构是否清晰。",
+            "completeness": "请检查以下文档是否有缺失的章节、未覆盖的要点、需要补充的内容。",
+        }
+        prompt = prompts.get(review_type, prompts["full"])
+
+        response = await model.ainvoke(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        f"{prompt}\n\n"
+                        '请以 JSON 格式返回，格式为: {{"comments": [{{"block_id": null, "comment": "...", '
+                        '"severity": "info|warning|error"}}], "overall_score": 0-100, "summary": "..."}}'
+                    ),
+                },
+                {"role": "user", "content": content[:8000]},
+            ]
+        )
+        try:
+            result = json.loads(response.content)
+        except (json.JSONDecodeError, AttributeError):
+            result = {
+                "comments": [
+                    {
+                        "comment": response.content if isinstance(response.content, str) else str(response.content),
+                        "severity": "info",
+                    }
+                ],
+                "overall_score": None,
+                "summary": None,
+            }
+
+        return {
+            "review_id": str(uuid4()),
+            "comments": result.get("comments", []),
+            "overall_score": result.get("overall_score"),
+            "summary": result.get("summary"),
         }
 
 
