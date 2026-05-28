@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-28T06:55:23.365Z
-> Files: 762 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-28T08:42:53.328Z
+> Files: 763 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1037,6 +1037,10 @@
 
 - `page.tsx` — SettingsPage (~816 tok)
 
+## frontend/src/app/test-editor/
+
+- `page.tsx` — TestEditorPage (~103 tok)
+
 ## frontend/src/app/workspace/
 
 - `workspace-content.tsx` — parseSidebarOpenCookie (~332 tok)
@@ -1087,7 +1091,7 @@
 
 - `AIDocumentReview.tsx` — REVIEW_TYPES (~1017 tok)
 - `BlockCommentAnchor.tsx` — BlockCommentAnchor (~313 tok)
-- `BlockNoteEditor.tsx` — COLLAB_USER_COLORS (~3323 tok)
+- `BlockNoteEditor.tsx` — COLLAB_USER_COLORS (~3315 tok)
 - `DiffViewer.tsx` — DiffViewer (~532 tok)
 - `InlineCommentThread.tsx` — InlineCommentThread (~758 tok)
 - `useCollab.ts` — Exports CollabUser, useCollab (~905 tok)
@@ -1212,7 +1216,7 @@
 - `AIDocumentReview.test.tsx` — render (~1982 tok)
 - `DiffViewer.test.tsx` — render (~1071 tok)
 - `types.test.ts` — Declares has (~867 tok)
-- `VersionPanel.test.tsx` — Mock lucide-react icons (~2217 tok)
+- `VersionPanel.test.tsx` — Mock lucide-react icons (~2231 tok)
 
 ## frontend/tests/unit/extensions/project/
 

@@ -1,13 +1,12 @@
 "use client";
 
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, BlockNoteViewRaw } from "@blocknote/react";
 import { BlockNoteView as ShadcnBlockNoteView } from "@blocknote/shadcn";
 
-import "@blocknote/shadcn/style.css";
-import "@blocknote/react/style.css";
+// import "@blocknote/shadcn/style.css";
+// import "@blocknote/react/style.css";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type ReactNode, useState } from "react";
-import * as Y from "yjs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
@@ -54,8 +53,23 @@ class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[EditorErrorBoundary] Full error:", error);
+    console.error("[EditorErrorBoundary] Component stack:", info.componentStack);
+  }
   render() {
-    if (this.state.hasError) return this.props.fallback;
+    if (this.state.hasError) {
+      return (
+        <div className="text-muted-foreground text-sm p-4">
+          <p className="font-medium mb-2">编辑器加载失败</p>
+          <pre className="text-xs whitespace-pre-wrap break-all bg-muted p-2 rounded">
+            {this.state.error?.message}
+            {"\n"}
+            {this.state.error?.stack}
+          </pre>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }
@@ -70,7 +84,6 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
-    const [editorReady, setEditorReady] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -92,32 +105,10 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return map;
     }, [comments]);
 
-    // TEMP: Disable collaboration to test base editor rendering
-    const editor = useCreateBlockNote(
-      {
-        _tiptapOptions: {
-          editorProps: {
-            attributes: {
-              class: "bn-editor",
-            },
-          },
-        },
-      },
-      [],
-    );
-
-    // Defer rendering until the editor is fully initialized on the client
-    useEffect(() => {
-      if (mounted && editor) {
-        // Give ProseMirror a tick to finish setting up its internal state
-        const id = requestAnimationFrame(() => setEditorReady(true));
-        return () => cancelAnimationFrame(id);
-      }
-    }, [mounted, editor]);
+    const editor = useCreateBlockNote({}, []);
 
     // Track selected block via onSelectionChange
     useEffect(() => {
-      if (!editorReady) return;
       const unsubscribe = editor.onSelectionChange(() => {
         const cursorPos = editor.getTextCursorPosition();
         if (cursorPos.block) {
@@ -125,7 +116,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
         }
       });
       return unsubscribe;
-    }, [editor, editorReady]);
+    }, [editor]);
 
     useImperativeHandle(ref, () => ({
       getMarkdown: () => {
@@ -199,7 +190,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       [restoreVersion],
     );
 
-    if (!mounted || !editor || !editorReady) {
+    if (!mounted || !editor) {
       return (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           加载编辑器...
@@ -213,7 +204,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           <div className="flex items-center justify-between px-4 py-2 border-b border-border">
             <div className="flex items-center gap-2">
               <OnlineUsers users={users} connected={connected} />
-              {synced && <span className="text-[10px] text-green-600">协作中</span>}
+              {connected && <span className="text-[10px] text-green-600">协作中</span>}
             </div>
             <div className="flex items-center gap-1">
               <Button size="icon" variant={sidePanel === "comments" ? "secondary" : "ghost"}
@@ -233,7 +224,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
 
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
-              <ShadcnBlockNoteView editor={editor} />
+              <EditorErrorBoundary fallback={<div className="text-muted-foreground text-sm">编辑器加载失败</div>}>
+                <BlockNoteViewRaw editor={editor} />
+              </EditorErrorBoundary>
 
               {/* Comment anchors for each block with unresolved comments */}
               {Array.from(commentsByBlock.entries()).map(([blockId, blockComments]) => (

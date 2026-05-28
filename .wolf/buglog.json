@@ -3145,6 +3145,150 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-28T06:55:23.386Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-05-28T07:20:35.465Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Had \"yjs\"",
+      "fix": "Changed to \"@/components/ui/button\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:20:35.465Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-05-28T07:21:01.920Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:21:01.920Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-05-28T07:21:13.387Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 13→3 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:21:13.387Z"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-05-28T07:21:47.460Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Condition was: if (!mounted || !editor || !editorReady)",
+      "fix": "Changed to: if (!mounted || !editor)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:21:47.460Z"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-05-28T07:22:03.770Z",
+      "error_message": "Wrong reference: synced should be connected",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"synced\" instead of \"connected\"",
+      "fix": "Changed synced → connected",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:22:03.771Z"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-05-28T07:23:29.274Z",
+      "error_message": "CSS fix: hasError",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "hasError: true, error → true",
+      "fix": "Changed hasError: true, error → true",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:23:29.274Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-05-28T07:25:10.929Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/extensions/collab/VersionPanel.test.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T07:25:10.929Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-05-28T08:11:19.884Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T08:11:19.884Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-05-28T08:16:21.180Z",
+      "error_message": "Wrong reference: ShadcnBlockNoteView should be BlockNoteViewRaw",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"ShadcnBlockNoteView\" instead of \"BlockNoteViewRaw\"",
+      "fix": "Changed ShadcnBlockNoteView → BlockNoteViewRaw",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T08:16:21.180Z"
     }
   ]
 }
