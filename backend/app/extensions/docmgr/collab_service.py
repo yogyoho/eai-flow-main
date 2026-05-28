@@ -226,6 +226,42 @@ class VersionService:
         }
 
     @staticmethod
+    async def diff_versions(db: AsyncSession, doc_id: UUID, from_ver: int, to_ver: int) -> dict | None:
+        from_meta = await VersionService.get_version(db, doc_id, from_ver)
+        to_meta = await VersionService.get_version(db, doc_id, to_ver)
+        if not from_meta or not to_meta:
+            return None
+
+        from_snap = await VersionService.get_snapshot(db, doc_id, from_ver)
+        to_snap = await VersionService.get_snapshot(db, doc_id, to_ver)
+
+        from_lines = (from_snap or b"").decode("utf-8", errors="replace").splitlines()
+        to_lines = (to_snap or b"").decode("utf-8", errors="replace").splitlines()
+
+        from_set = set(from_lines)
+        to_set = set(to_lines)
+
+        added = to_set - from_set
+        removed = from_set - to_set
+
+        diff_blocks = []
+        for line in sorted(added):
+            diff_blocks.append({"type": "added", "content": line})
+        for line in sorted(removed):
+            diff_blocks.append({"type": "removed", "content": line})
+
+        return {
+            "from_version": from_ver,
+            "to_version": to_ver,
+            "from_summary": from_meta.get("summary"),
+            "to_summary": to_meta.get("summary"),
+            "from_created_at": from_meta.get("created_at"),
+            "to_created_at": to_meta.get("created_at"),
+            "diff_blocks": diff_blocks,
+            "ai_summary": None,
+        }
+
+    @staticmethod
     async def get_snapshot(db: AsyncSession, doc_id: UUID, version: int) -> bytes | None:
         stmt = select(CollabVersion.snapshot).where(
             CollabVersion.doc_id == doc_id, CollabVersion.version == version

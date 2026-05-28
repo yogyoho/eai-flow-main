@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user
@@ -12,6 +12,7 @@ from app.extensions.docmgr.collab_schemas import (
     CommentResponse,
     CommentUpdateRequest,
     VersionCreateRequest,
+    VersionDiffResponse,
     VersionResponse,
     VersionRestoreResponse,
 )
@@ -130,12 +131,30 @@ async def create_version(
         raise HTTPException(status_code=404, detail="Document not found")
 
     collab_doc = await db.get(CollabDocument, doc_id)
-    if not collab_doc:
-        raise HTTPException(status_code=400, detail="Document has no collaborative content")
+    snapshot = bytes(collab_doc.yjs_doc) if collab_doc else b""
+    if not snapshot and doc.content:
+        snapshot = doc.content.encode("utf-8")
 
     return await VersionService.create_version(
-        db, doc_id, current_user.id, bytes(collab_doc.yjs_doc), summary=data.summary
+        db, doc_id, current_user.id, snapshot, summary=data.summary
     )
+
+
+@router.get("/documents/{doc_id}/versions/diff", response_model=VersionDiffResponse)
+async def diff_versions(
+    doc_id: UUID,
+    from_version: int = Query(..., alias="from", description="Source version number"),
+    to_version: int = Query(..., alias="to", description="Target version number"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    result = await VersionService.diff_versions(db, doc_id, from_version, to_version)
+    if not result:
+        raise HTTPException(status_code=404, detail="One or both versions not found")
+    return result
 
 
 @router.get("/documents/{doc_id}/versions/{version}", response_model=VersionResponse)

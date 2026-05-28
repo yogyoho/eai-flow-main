@@ -48,3 +48,14 @@ class VersionCreateRequest(BaseModel):
 class VersionRestoreResponse(BaseModel):
     version: int
     message: str
+
+
+class VersionDiffResponse(BaseModel):
+    from_version: int
+    to_version: int
+    from_summary: str | None = None
+    to_summary: str | None = None
+    from_created_at: datetime | None = None
+    to_created_at: datetime | None = None
+    diff_blocks: list[dict] = Field(default_factory=list, description="Block-level diff entries")
+    ai_summary: str | None = Field(None, description="AI-generated summary of changes")
