@@ -2212,3 +2212,44 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-05-28 15:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:20 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 2→1 lines | ~14 |
+| 15:20 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 4→3 lines | ~29 |
+| 15:21 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 13→14 lines | ~140 |
+| 15:21 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | reduced (-10 lines) | ~38 |
+| 15:21 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 2→2 lines | ~13 |
+| 15:21 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~9 |
+| 15:22 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~24 |
+| 15:22 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 2→4 lines | ~83 |
+| 15:23 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | modified constructor() | ~96 |
+| 15:25 | Edited frontend/tests/unit/extensions/collab/VersionPanel.test.tsx | 17→17 lines | ~155 |
+
+## Session: 2026-05-28 15:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:11 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added optional chaining | ~298 |
+| 16:11 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | removed 14 lines | ~14 |
+| 16:15 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 2→2 lines | ~42 |
+| 16:16 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~15 |
+| 16:35 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 2→2 lines | ~23 |
+| 16:42 | Created frontend/src/app/test-editor/page.tsx | — | ~103 |
+
+## Session: 2026-05-28 16:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-28 16:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-05-28 19:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

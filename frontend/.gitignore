@@ -48,3 +48,4 @@ yarn-error.log*
 # 补充一些不要上传内容
 /test/
 /andrej-karpathy-skills-main/
+.gstack/

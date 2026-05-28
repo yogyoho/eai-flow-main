@@ -1,11 +1,37 @@
 {
-  "session_id": "session-2026-05-28-1507",
-  "started": "2026-05-28T07:07:04.340Z",
-  "files_read": {},
+  "session_id": "session-2026-05-28-1932",
+  "started": "2026-05-28T11:32:24.864Z",
+  "files_read": {
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/CollabEditor.tsx": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-05-28T11:36:15.892Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx": {
+      "count": 1,
+      "tokens": 3315,
+      "first_read": "2026-05-28T11:36:16.323Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useCollab.ts": {
+      "count": 1,
+      "tokens": 905,
+      "first_read": "2026-05-28T11:36:16.860Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useComments.ts": {
+      "count": 1,
+      "tokens": 901,
+      "first_read": "2026-05-28T11:36:17.378Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useVersions.ts": {
+      "count": 1,
+      "tokens": 576,
+      "first_read": "2026-05-28T11:36:17.773Z"
+    }
+  },
   "files_written": [],
   "edit_counts": {},
-  "anatomy_hits": 0,
-  "anatomy_misses": 0,
+  "anatomy_hits": 4,
+  "anatomy_misses": 1,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
   "stop_count": 0

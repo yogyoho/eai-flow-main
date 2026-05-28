@@ -230,19 +230,19 @@ test("selecting two versions in diff mode calls onDiffVersions", async () => {
   const diffButton = Array.from(buttons).find((b) => b.textContent?.includes("对比"));
 
   await act(async () => {
-    diffButton!.click();
+    (diffButton as HTMLElement).click();
   });
 
   // Click first checkbox (v3)
   const checkboxes = container!.querySelectorAll('input[type="checkbox"]');
   await act(async () => {
-    checkboxes[0]!.click();
+    (checkboxes[0] as HTMLElement).click();
   });
 
   // Click second checkbox (v2)
   const updatedCheckboxes = container!.querySelectorAll('input[type="checkbox"]');
   await act(async () => {
-    updatedCheckboxes[1]!.click();
+    (updatedCheckboxes[1] as HTMLElement).click();
   });
 
   // onDiffVersions should be called with the two selected version numbers
