@@ -8,6 +8,7 @@ export function useVersions(docId: string | null) {
   const [versions, setVersions] = useState<CollabVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [diffResult, setDiffResult] = useState<VersionDiffResponse | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!docId) return;
@@ -47,15 +48,21 @@ export function useVersions(docId: string | null) {
   );
 
   const diffVersions = useCallback(
-    async (version: number): Promise<void> => {
+    async (fromOrVersion: number, toVersion?: number): Promise<void> => {
       if (!docId) return;
-      // Diff against the latest version (first in list) or self if no other versions
-      const toVersion = versions.length > 0 && versions[0]!.version !== version ? versions[0]!.version : version;
-      const result = await docmgrApi.diffVersions(docId, version, toVersion);
-      setDiffResult(result);
+      setDiffLoading(true);
+      try {
+        const to = toVersion ?? (versions.length > 0 && versions[0]!.version !== fromOrVersion ? versions[0]!.version : fromOrVersion);
+        const result = await docmgrApi.diffVersions(docId, fromOrVersion, to);
+        setDiffResult(result);
+      } catch {
+        // handle error
+      } finally {
+        setDiffLoading(false);
+      }
     },
     [docId, versions],
   );
 
-  return { versions, loading, createVersion, restoreVersion, reload: load, diffResult, diffVersions };
+  return { versions, loading, createVersion, restoreVersion, reload: load, diffResult, diffLoading, diffVersions };
 }

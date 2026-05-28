@@ -38,7 +38,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
   function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
     const { ydoc, provider, connected, users, broadcastEvent } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId, broadcastEvent);
-    const { versions, loading: versionsLoading, createVersion, restoreVersion, diffVersions } = useVersions(documentId);
+    const { versions, loading: versionsLoading, createVersion, restoreVersion, diffResult, diffLoading, diffVersions } = useVersions(documentId);
     const { user: currentUser } = useAuth();
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -232,9 +232,12 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           <VersionPanel
             versions={versions}
             loading={versionsLoading}
+            diffResult={diffResult}
+            diffLoading={diffLoading}
             onCreateVersion={handleCreateVersion}
             onRestoreVersion={handleRestoreVersion}
             onPreviewVersion={(version) => diffVersions(version)}
+            onDiffVersions={(from, to) => diffVersions(from, to)}
             onClose={() => setSidePanel(null)}
           />
         )}
