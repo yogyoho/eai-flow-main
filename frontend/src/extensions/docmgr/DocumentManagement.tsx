@@ -16,7 +16,13 @@ import { Input } from "@/components/ui/input";
 import { useModels } from "@/core/models/hooks";
 import { cn } from "@/lib/utils";
 
-import { CollabEditor, type CollabEditorRef } from "../collab/CollabEditor";
+import dynamic from "next/dynamic";
+
+const CollabEditor = dynamic(() => import("../collab/CollabEditor").then((m) => m.CollabEditor), {
+  ssr: false,
+  loading: () => <div className="flex-1 flex items-center justify-center text-muted-foreground">加载编辑器...</div>,
+});
+import type { CollabEditorRef } from "../collab/CollabEditor";
 import { docmgrApi } from "../api";
 import type { AIDocument } from "../types";
 
