@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+
 import { docmgrApi } from "../api";
 
 interface AIDocumentReviewProps {
@@ -23,9 +25,16 @@ const SEVERITY_ICONS = {
   error: AlertCircle,
 };
 
+interface AIReviewResult {
+  overall_score?: number | null;
+  summary?: string | null;
+  comments?: Array<{ block_id?: string | null; comment: string; severity: string }>;
+  error?: string;
+}
+
 export function AIDocumentReview({ docId, onInsertComment }: AIDocumentReviewProps) {
   const [reviewType, setReviewType] = useState<string>("full");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AIReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleReview = async () => {
@@ -81,8 +90,8 @@ export function AIDocumentReview({ docId, onInsertComment }: AIDocumentReviewPro
             </div>
           )}
           {result.summary && <p className="text-sm text-muted-foreground">{result.summary}</p>}
-          {(result.comments || []).map((c: any, i: number) => {
-            const Icon = SEVERITY_ICONS[c.severity as keyof typeof SEVERITY_ICONS] || Info;
+          {(result.comments ?? []).map((c, i: number) => {
+            const Icon = SEVERITY_ICONS[c.severity as keyof typeof SEVERITY_ICONS] ?? Info;
             return (
               <div key={i} className="p-2 rounded border border-border flex gap-2">
                 <Icon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -92,7 +101,7 @@ export function AIDocumentReview({ docId, onInsertComment }: AIDocumentReviewPro
                     size="sm"
                     variant="link"
                     className="h-auto p-0 text-[10px]"
-                    onClick={() => onInsertComment(c.block_id, c.comment)}
+                    onClick={() => onInsertComment(c.block_id ?? null, c.comment)}
                   >
                     插入为评论
                   </Button>

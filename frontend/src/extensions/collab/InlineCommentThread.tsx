@@ -1,11 +1,14 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
-import { CommentThread } from "./CommentThread";
+
 import type { CollabComment } from "../types";
+
+import { CommentThread } from "./CommentThread";
 
 interface InlineCommentThreadProps {
   comments: CollabComment[];
@@ -68,7 +71,7 @@ export function InlineCommentThread({
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="添加回复..."
           className="min-h-[40px] text-xs resize-none"
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCreate(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void handleCreate(); }}
         />
         <Button
           size="sm"
