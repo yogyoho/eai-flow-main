@@ -47,6 +47,7 @@ import type {
   CommentCreateRequest,
   CommentUpdateRequest,
   VersionCreateRequest,
+  VersionDiffResponse,
   ChunkConfig,
   SampleReport,
   SampleReportListResponse,
@@ -531,6 +532,10 @@ export const docmgrApi = {
 
   restoreVersion: async (docId: string, version: number): Promise<{ version: number; message: string }> => {
     return request(`/docmgr/documents/${docId}/versions/${version}/restore`, { method: "POST" });
+  },
+
+  diffVersions: async (docId: string, fromVer: number, toVer: number): Promise<VersionDiffResponse> => {
+    return request(`/docmgr/documents/${docId}/versions/diff?from=${fromVer}&to=${toVer}`);
   },
 };
 

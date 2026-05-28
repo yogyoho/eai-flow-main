@@ -440,3 +440,20 @@ export interface CommentUpdateRequest {
 export interface VersionCreateRequest {
   summary?: string | null;
 }
+
+export interface VersionDiffResponse {
+  from_version: number;
+  to_version: number;
+  from_summary: string | null;
+  to_summary: string | null;
+  from_created_at: string | null;
+  to_created_at: string | null;
+  diff_blocks: Array<{
+    type: "added" | "removed" | "changed";
+    content: string;
+    block_id?: string;
+    from_content?: string;
+    to_content?: string;
+  }>;
+  ai_summary: string | null;
+}
