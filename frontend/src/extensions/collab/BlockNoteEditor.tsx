@@ -36,8 +36,8 @@ const COLLAB_USER_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6
 
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
   function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
-    const { ydoc, provider, connected, users } = useCollab(documentId);
-    const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId);
+    const { ydoc, provider, connected, users, broadcastEvent } = useCollab(documentId);
+    const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId, broadcastEvent);
     const { versions, loading: versionsLoading, createVersion, restoreVersion } = useVersions(documentId);
     const { user: currentUser } = useAuth();
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);

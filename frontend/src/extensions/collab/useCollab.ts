@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 
@@ -18,14 +18,13 @@ export interface CollabUser {
 export function useCollab(docId: string | null) {
   const [connected, setConnected] = useState(false);
   const [users, setUsers] = useState<CollabUser[]>([]);
-  const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<HocuspocusProvider | null>(null);
+
+  // Create Y.Doc synchronously so it's available on first render
+  const ydoc = useMemo(() => new Y.Doc(), []);
 
   useEffect(() => {
     if (!docId) return;
-
-    const ydoc = new Y.Doc();
-    ydocRef.current = ydoc;
 
     const provider = new HocuspocusProvider({
       url: COLLAB_URL,
@@ -51,13 +50,43 @@ export function useCollab(docId: string | null) {
 
     return () => {
       provider.destroy();
-      ydoc.destroy();
-      ydocRef.current = null;
       providerRef.current = null;
       setConnected(false);
       setUsers([]);
     };
-  }, [docId]);
+  }, [docId, ydoc]);
 
-  return { ydoc: ydocRef.current, provider: providerRef.current, connected, users };
+  const broadcastEvent = useCallback((event: { type: string; payload: unknown }) => {
+    if (providerRef.current?.awareness) {
+      providerRef.current.awareness.setLocalStateField("collabEvent", {
+        ...event,
+        timestamp: Date.now(),
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!providerRef.current?.awareness) return;
+    const awareness = providerRef.current.awareness;
+    const seenTimestamps = new Map<number, number>();
+
+    const handler = () => {
+      awareness.getStates().forEach((state: any, clientId: number) => {
+        if (state.collabEvent && clientId !== awareness.clientID) {
+          const ts = state.collabEvent.timestamp || 0;
+          const lastTs = seenTimestamps.get(clientId) || 0;
+          if (ts > lastTs) {
+            seenTimestamps.set(clientId, ts);
+            window.dispatchEvent(new CustomEvent("collab-event", { detail: state.collabEvent }));
+          }
+        }
+      });
+    };
+    awareness.on("change", handler);
+    return () => {
+      awareness.off("change", handler);
+    };
+  }, [connected]);
+
+  return { ydoc, provider: providerRef.current, connected, users, broadcastEvent };
 }
