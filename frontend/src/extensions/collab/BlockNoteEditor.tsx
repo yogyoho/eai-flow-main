@@ -2,23 +2,25 @@
 
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import "@blocknote/shadcn/dist/style.css";
-import "@blocknote/react/dist/style.css";
-import { useCollab } from "./useCollab";
-import { OnlineUsers } from "./OnlineUsers";
-import { CommentSidebar } from "./CommentSidebar";
-import { VersionPanel } from "./VersionPanel";
-import { AIToolbar } from "./AIToolbar";
+
+import "@blocknote/shadcn/style.css";
+import "@blocknote/react/style.css";
+import { MessageSquare, History, Sparkles } from "lucide-react";
+import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type ReactNode, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/extensions/hooks/useAuth";
+
+import type { CollabComment } from "../types";
 import { AIDocumentReview } from "./AIDocumentReview";
+import { AIToolbar } from "./AIToolbar";
+import { BlockCommentAnchor } from "./BlockCommentAnchor";
+import { CommentSidebar } from "./CommentSidebar";
+import { InlineCommentThread } from "./InlineCommentThread";
+import { OnlineUsers } from "./OnlineUsers";
+import { useCollab } from "./useCollab";
 import { useComments } from "./useComments";
 import { useVersions } from "./useVersions";
-import { useAuth } from "@/extensions/hooks/useAuth";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import { MessageSquare, History, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { BlockCommentAnchor } from "./BlockCommentAnchor";
-import { InlineCommentThread } from "./InlineCommentThread";
-import type { CollabComment } from "../types";
+import { VersionPanel } from "./VersionPanel";
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
@@ -35,6 +37,27 @@ type SidePanel = "comments" | "versions" | "ai" | null;
 
 const COLLAB_USER_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6", "#3b82f6"];
 
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
   function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
     const { ydoc, provider, connected, users, broadcastEvent } = useCollab(documentId);
@@ -44,6 +67,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
 
     const collabUser = useMemo(() => {
       const name = currentUser?.full_name || currentUser?.username || "User";
@@ -65,7 +91,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
 
     const editor = useCreateBlockNote(
       {
-        collaboration: provider
+        collaboration: connected
           ? {
               fragment: ydoc.getXmlFragment("document-store"),
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +101,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
             }
           : undefined,
       },
-      [ydoc, provider, collabUser],
+      [ydoc, connected, provider, collabUser],
     );
 
     // Track selected block via onSelectionChange
@@ -161,6 +187,14 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       [restoreVersion],
     );
 
+    if (!mounted || !editor) {
+      return (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          加载编辑器...
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex h-full">
         <div className="flex-1 flex flex-col min-w-0">
@@ -187,7 +221,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
 
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
-              <BlockNoteView editor={editor} theme="light" />
+              <EditorErrorBoundary fallback={<div className="text-muted-foreground text-sm">编辑器加载失败</div>}>
+                <BlockNoteView editor={editor} theme="light" />
+              </EditorErrorBoundary>
 
               {/* Comment anchors for each block with unresolved comments */}
               {Array.from(commentsByBlock.entries()).map(([blockId, blockComments]) => (
