@@ -59,3 +59,24 @@ class VersionDiffResponse(BaseModel):
     to_created_at: datetime | None = None
     diff_blocks: list[dict] = Field(default_factory=list, description="Block-level diff entries")
     ai_summary: str | None = Field(None, description="AI-generated summary of changes")
+
+
+# ─── AI Document-Level Review ─────────────────────────────────────────────
+
+
+class AIReviewRequest(BaseModel):
+    doc_id: UUID
+    review_type: str = Field(default="full", description="full | style | logic | completeness")
+
+
+class AIReviewComment(BaseModel):
+    block_id: str | None = None
+    comment: str
+    severity: str = Field(default="info", description="info | warning | error")
+
+
+class AIReviewResponse(BaseModel):
+    review_id: str
+    comments: list[AIReviewComment] = Field(default_factory=list)
+    overall_score: float | None = None
+    summary: str | None = None
