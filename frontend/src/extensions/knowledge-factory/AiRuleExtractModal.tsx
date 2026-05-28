@@ -138,14 +138,14 @@ export default function AiRuleExtractModal({
 
   const severityColor = (s: string) => {
     if (s === "critical") return "text-destructive";
-    if (s === "warning") return "text-amber-500";
-    return "text-blue-500";
+    if (s === "warning") return "text-warning";
+    return "text-info";
   };
 
   const severityBg = (s: string) => {
     if (s === "critical") return "bg-gradient-to-r from-destructive/20 to-destructive/5 border-l-destructive/60";
-    if (s === "warning") return "bg-gradient-to-r from-amber-500/20 to-amber-500/5 border-l-amber-500/60";
-    return "bg-gradient-to-r from-blue-500/20 to-blue-500/5 border-l-blue-500/60";
+    if (s === "warning") return "bg-gradient-to-r from-warning/20 to-warning/5 border-l-warning/60";
+    return "bg-gradient-to-r from-info/20 to-info/5 border-l-info/60";
   };
 
   return (
@@ -170,7 +170,7 @@ export default function AiRuleExtractModal({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-500/10 p-4 text-sm text-red-500">
+            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
             </div>
           )}
@@ -248,7 +248,7 @@ export default function AiRuleExtractModal({
             <>
               {extractedRules.length === 0 ? (
                 <div className="flex flex-col items-center py-12 text-muted-foreground">
-                  <AlertTriangle className="mb-4 h-12 w-12 text-amber-500/40" />
+                  <AlertTriangle className="mb-4 h-12 w-12 text-warning/40" />
                   <p className="mb-1 font-medium text-foreground">未提取到可校验的合规规则</p>
                   <p className="text-sm">该文档可能不包含可自动校验的合规要求</p>
                 </div>
@@ -415,7 +415,7 @@ export default function AiRuleExtractModal({
               </span>
             )}
             {importResult && (
-              <span className="flex items-center gap-1 text-emerald-500">
+              <span className="flex items-center gap-1 text-success">
                 <CheckCircle2 className="h-4 w-4" /> 成功导入 {importResult.created} 条
                 {importResult.skipped > 0 && `，跳过 ${importResult.skipped} 条重复`}
               </span>

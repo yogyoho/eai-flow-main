@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, MessageSquare, Trash2 } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface ProjectCardProps {
   onClick: () => void;
   onEdit: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
+  onEnterChat: (e: React.MouseEvent) => void;
 }
 
 const REPORT_TYPE_COLORS: Record<string, string> = {
@@ -45,7 +46,7 @@ function formatDate(dateString: string | null): string {
   }).format(new Date(dateString));
 }
 
-export function ProjectCard({ project, onClick, onEdit, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, onEdit, onDelete, onEnterChat }: ProjectCardProps) {
   const typeColor = REPORT_TYPE_COLORS[project.reportType] ?? REPORT_TYPE_COLORS.other;
   const typeIcon = REPORT_TYPE_ICONS[project.reportType] ?? REPORT_TYPE_ICONS.other;
   const typeLabel = REPORT_TYPE_LABELS[project.reportType] ?? project.reportType;
@@ -110,6 +111,16 @@ export function ProjectCard({ project, onClick, onEdit, onDelete }: ProjectCardP
           )}
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEnterChat}
+            className="h-7 gap-1 px-2 text-xs text-primary hover:bg-primary/10"
+            title="进入对话"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            对话
+          </Button>
           <Button
             variant="ghost"
             size="icon"

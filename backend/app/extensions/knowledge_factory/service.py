@@ -122,6 +122,8 @@ DICT_CATEGORY_LABELS = {
     "industry": "行业类型",
     "report_type": "报告类型",
     "region": "适用地区",
+    "rule_type": "规则分类",
+    "severity_level": "严重级别",
 }
 
 
@@ -196,12 +198,15 @@ class DictionaryService:
         existing = await db.execute(select(func.count()).select_from(BusinessDictionary))
         is_empty = (existing.scalar() or 0) == 0
 
+        mapping = {
+            "industries": "industry",
+            "report_types": "report_type",
+            "regions": "region",
+            "rule_types": "rule_type",
+            "severity_levels": "severity_level",
+        }
+
         if is_empty:
-            mapping = {
-                "industries": "industry",
-                "report_types": "report_type",
-                "regions": "region",
-            }
             for json_key, category in mapping.items():
                 for idx, item in enumerate(data.get(json_key, [])):
                     db.add(BusinessDictionary(
@@ -212,11 +217,10 @@ class DictionaryService:
                     ))
             await db.commit()
         else:
-            # 已有数据：清除并重建 industry 和 report_type，保留 region 不变
-            for category in ("industry", "report_type"):
+            # 已有数据：清除并重建所有字典类目
+            for category in mapping.values():
                 await db.execute(delete(BusinessDictionary).where(BusinessDictionary.category == category))
-            json_key_map = {"industry": "industries", "report_type": "report_types"}
-            for category, json_key in json_key_map.items():
+            for json_key, category in mapping.items():
                 for idx, item in enumerate(data.get(json_key, [])):
                     db.add(BusinessDictionary(
                         id=item["value"],
@@ -256,8 +260,8 @@ class DictionaryService:
         """加载所有字典数据（用于替代 JSON 文件数据源）"""
         result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.enabled.is_(True)).order_by(BusinessDictionary.sort_order))
         items = result.scalars().all()
-        data: dict[str, list[dict[str, str]]] = {"industries": [], "report_types": [], "regions": []}
-        cat_map = {"industry": "industries", "report_type": "report_types", "region": "regions"}
+        data: dict[str, list[dict[str, str]]] = {"industries": [], "report_types": [], "regions": [], "rule_types": [], "severity_levels": []}
+        cat_map = {"industry": "industries", "report_type": "report_types", "region": "regions", "rule_type": "rule_types", "severity_level": "severity_levels"}
         for item in items:
             key = cat_map.get(item.category)
             if key:

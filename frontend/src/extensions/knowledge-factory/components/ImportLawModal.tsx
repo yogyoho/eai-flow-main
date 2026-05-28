@@ -15,11 +15,11 @@ import React, { useState, useCallback, useRef } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { authFormFetch } from "@/extensions/api/client";
+import type { LawType } from "@/extensions/knowledge-factory/types";
 
 import { LAW_TYPE_OPTIONS, getCategoryByCode } from "../config/lawCategories";
 import { useImportLawWithFile } from "../hooks/useLawLibrary";
 import { buildLawLibraryUrl } from "../law-library-api";
-import type { LawType } from "@/extensions/knowledge-factory/types";
 import { cn } from "../utils";
 
 interface ImportLawModalProps {

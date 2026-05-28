@@ -1,12 +1,13 @@
 "use client";
 
 import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/shadcn";
+import { BlockNoteView as ShadcnBlockNoteView } from "@blocknote/shadcn";
 
 import "@blocknote/shadcn/style.css";
 import "@blocknote/react/style.css";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type ReactNode, useState } from "react";
+import * as Y from "yjs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
@@ -43,14 +44,15 @@ interface ErrorBoundaryProps {
 }
 interface ErrorBoundaryState {
   hasError: boolean;
+  error: Error | null;
 }
 class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
   }
   render() {
     if (this.state.hasError) return this.props.fallback;
@@ -60,7 +62,7 @@ class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
 
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
   function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
-    const { ydoc, provider, connected, users, broadcastEvent } = useCollab(documentId);
+    const { ydoc, provider, connected, synced, users, broadcastEvent } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId, broadcastEvent);
     const { versions, loading: versionsLoading, createVersion, restoreVersion, diffResult, diffLoading, diffVersions } = useVersions(documentId);
     const { user: currentUser } = useAuth();
@@ -68,6 +70,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [editorReady, setEditorReady] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -89,23 +92,32 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return map;
     }, [comments]);
 
+    // TEMP: Disable collaboration to test base editor rendering
     const editor = useCreateBlockNote(
       {
-        collaboration: connected
-          ? {
-              fragment: ydoc.getXmlFragment("document-store"),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              provider: provider as any,
-              user: { name: collabUser.name, color: collabUser.color },
-              showCursorLabels: "activity",
-            }
-          : undefined,
+        _tiptapOptions: {
+          editorProps: {
+            attributes: {
+              class: "bn-editor",
+            },
+          },
+        },
       },
-      [ydoc, connected, provider, collabUser],
+      [],
     );
+
+    // Defer rendering until the editor is fully initialized on the client
+    useEffect(() => {
+      if (mounted && editor) {
+        // Give ProseMirror a tick to finish setting up its internal state
+        const id = requestAnimationFrame(() => setEditorReady(true));
+        return () => cancelAnimationFrame(id);
+      }
+    }, [mounted, editor]);
 
     // Track selected block via onSelectionChange
     useEffect(() => {
+      if (!editorReady) return;
       const unsubscribe = editor.onSelectionChange(() => {
         const cursorPos = editor.getTextCursorPosition();
         if (cursorPos.block) {
@@ -113,7 +125,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
         }
       });
       return unsubscribe;
-    }, [editor]);
+    }, [editor, editorReady]);
 
     useImperativeHandle(ref, () => ({
       getMarkdown: () => {
@@ -187,7 +199,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       [restoreVersion],
     );
 
-    if (!mounted || !editor) {
+    if (!mounted || !editor || !editorReady) {
       return (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           加载编辑器...
@@ -201,7 +213,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           <div className="flex items-center justify-between px-4 py-2 border-b border-border">
             <div className="flex items-center gap-2">
               <OnlineUsers users={users} connected={connected} />
-              {connected && <span className="text-[10px] text-green-600">协作中</span>}
+              {synced && <span className="text-[10px] text-green-600">协作中</span>}
             </div>
             <div className="flex items-center gap-1">
               <Button size="icon" variant={sidePanel === "comments" ? "secondary" : "ghost"}
@@ -221,9 +233,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
 
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
-              <EditorErrorBoundary fallback={<div className="text-muted-foreground text-sm">编辑器加载失败</div>}>
-                <BlockNoteView editor={editor} theme="light" />
-              </EditorErrorBoundary>
+              <ShadcnBlockNoteView editor={editor} />
 
               {/* Comment anchors for each block with unresolved comments */}
               {Array.from(commentsByBlock.entries()).map(([blockId, blockComments]) => (

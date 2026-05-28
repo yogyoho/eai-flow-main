@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageSquare } from "lucide-react";
+
 import type { CollabComment } from "../types";
 
 interface BlockCommentAnchorProps {

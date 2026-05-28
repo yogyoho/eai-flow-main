@@ -10,6 +10,7 @@ import {
   ExternalLink,
   AlertCircle,
   CheckCircle,
+  Clock,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -116,7 +117,7 @@ export default function LawLibrary() {
           <Library className="w-5 h-5 text-primary" />
           法规标准库
           {hasMissingKBs && (
-            <span className="text-xs bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               未初始化
             </span>
@@ -130,9 +131,9 @@ export default function LawLibrary() {
           >
             {ragflowStatus ? (
               ragflowStatus.missing_kbs > 0 ? (
-                <AlertCircle className="w-4 h-4 text-amber-500" />
+                <AlertCircle className="w-4 h-4 text-warning" />
               ) : (
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-success" />
               )
             ) : (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -223,13 +224,13 @@ export default function LawLibrary() {
               </div>
             </div>
             {deletingLaw?.is_synced === "synced" && (
-              <div className="flex items-start gap-2 text-amber-500 text-sm">
+              <div className="flex items-start gap-2 text-warning text-sm">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>该法规已同步到 RAGFlow 知识库，将同时删除知识库中的文档。</span>
               </div>
             )}
             {deleteMutation.isError && (
-              <div className="flex items-start gap-2 text-red-500 text-sm">
+              <div className="flex items-start gap-2 text-destructive text-sm">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "删除失败"}</span>
               </div>
@@ -255,7 +256,7 @@ export default function LawLibrary() {
                 }
               }}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               确认删除
@@ -370,12 +371,12 @@ function LawListView({
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-            <span className="text-red-500">{error.message}</span>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+            <span className="text-destructive">{error.message}</span>
             <button
               onClick={() => refetch()}
-              className="ml-auto text-sm text-red-500 hover:underline"
+              className="ml-auto text-sm text-destructive hover:underline"
             >
               重试
             </button>
@@ -525,7 +526,7 @@ function LawListItem({
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-500">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-success/10 text-success">
             <CheckCircle className="w-3 h-3" /> 现行
           </span>
         );
@@ -537,7 +538,7 @@ function LawListItem({
         );
       case "updating":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-500">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning">
             <Loader2 className="w-3 h-3" /> 修订中
           </span>
         );
@@ -550,20 +551,20 @@ function LawListItem({
     switch (isSynced) {
       case "synced":
         return (
-          <span className="text-xs text-emerald-500" title="已同步到RAGFlow">
-            已同步
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-info/10 text-info" title="已同步到RAGFlow">
+            <CheckCircle className="w-3 h-3" /> 已同步
           </span>
         );
       case "pending":
         return (
-          <span className="text-xs text-amber-500" title="待同步">
-            待同步
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning" title="待同步">
+            <Clock className="w-3 h-3" /> 待同步
           </span>
         );
       case "failed":
         return (
-          <span className="text-xs text-red-500" title="同步失败">
-            同步失败
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-destructive/10 text-destructive" title="同步失败">
+            <AlertCircle className="w-3 h-3" /> 同步失败
           </span>
         );
       default:
@@ -606,7 +607,7 @@ function LawListItem({
               <span>生效: {new Date(law.effective_date).toLocaleDateString()}</span>
             )}
             {law.ref_count > 0 && (
-              <span className="text-amber-500">引用 {law.ref_count} 次</span>
+              <span className="text-warning">引用 {law.ref_count} 次</span>
             )}
             {(law.view_count ?? 0) > 0 && <span>查看 {law.view_count} 次</span>}
           </div>
@@ -639,7 +640,7 @@ function LawListItem({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
             title="删除法规"
           >
             <Trash2 className="w-4 h-4" />

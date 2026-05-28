@@ -1,0 +1,126 @@
+<h2>设计 Section 1：权限矩阵架构</h2>
+<p class="subtitle">6 角色 × 操作 → 集中定义，前后端统一消费</p>
+
+<div class="section">
+  <h3>📐 核心数据结构</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7; overflow-x: auto;">
+    <pre style="margin:0; color:#e2e8f0;">
+# backend/app/extensions/project/permissions.py
+
+PERMISSION_MATRIX: dict[str, dict[str, bool]] = {
+    #                     manager  editor  writer  reviewer  approver  issuer
+    #                     ------   ------  ------  --------  --------  ------
+    "project:edit":       [True,   False,  False,  False,    False,    False],
+    "project:delete":     [True,   False,  False,  False,    False,    False],
+    "project:advance":    [True,   False,  False,  False,    False,    False],
+
+    "member:add":         [True,   False,  False,  False,    False,    False],
+    "member:remove":      [True,   False,  False,  False,    False,    False],
+    "member:assign_role": [True,   False,  False,  False,    False,    False],
+
+    "outline:edit":       [True,   True,   False,  False,    False,    False],
+    "outline:view":       [True,   True,   True,   True,     True,     True],
+
+    "chapter:write_own":  [True,   True,   True,   False,    False,    False],
+    "chapter:write_any":  [True,   False,  False,  False,    False,    False],
+    "chapter:view_all":   [True,   True,   True,   True,     True,     True],
+    "chapter:assign":     [True,   False,  False,  False,    False,    False],
+    "chapter:status":     [True,   False,  False,  False,    False,    False],
+
+    "ai:start_writing":   [True,   False,  False,  False,    False,    False],
+    "ai:start_editing":   [True,   True,   True,   False,    False,    False],
+    "ai:toolbox":         [True,   True,   True,   False,    False,    False],
+
+    "approval:submit":    [True,   False,  False,  False,    False,    False],
+    "approval:review":    [True,   False,  False,  True,     False,    False],
+    "approval:approve":   [True,   False,  False,  False,    True,     False],
+    "approval:view":      [True,   True,   True,   True,     True,     True],
+
+    "export:generate":    [True,   False,  False,  False,    False,    True],
+    "export:view":        [True,   True,   True,   True,     True,     True],
+}
+
+ROLE_ORDER = ["manager", "editor", "writer", "reviewer", "approver", "issuer"]</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🔧 后端权限检查</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7;">
+    <pre style="margin:0; color:#e2e8f0;">
+# permissions.py — 统一权限检查函数
+
+def check_permission(role: str, action: str) -> bool:
+    """检查角色是否有某项权限"""
+    allowed_roles = PERMISSION_MATRIX.get(action)
+    if not allowed_roles:
+        return False
+    role_idx = ROLE_ORDER.index(role) if role in ROLE_ORDER else -1
+    return role_idx >= 0 and allowed_roles[role_idx]
+
+def require_project_permission(action: str):
+    """FastAPI 依赖：检查当前用户在项目中的角色权限"""
+    async def _check(
+        project_id: UUID,
+        user: CurrentUser,
+        db: AsyncSession = Depends(get_db),
+    ):
+        member = await _get_member_role(db, project_id, user.id)
+        if not member and not user.is_admin:
+            raise HTTPException(403, "不是项目成员")
+        role = "manager" if user.is_admin else member.role
+        if not check_permission(role, action):
+            raise HTTPException(403, f"角色 '{role}' 无权执行 '{action}'")
+        return role
+    return _check
+
+# 使用示例：
+@router.post("/projects/{pid}/members")
+async def add_member(
+    ...,
+    role: str = Depends(require_project_permission("member:add")),
+):
+    ...</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🎨 前端权限消费</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7;">
+    <pre style="margin:0; color:#e2e8f0;">
+// hooks/useProjectPermissions.ts
+
+// API 返回用户在项目中的角色 + 权限列表
+interface ProjectMembership {
+  role: string;
+  permissions: string[];  // ["outline:edit", "chapter:write_own", ...]
+}
+
+function useProjectPermissions(projectId: string) {
+  const { data } = useQuery({
+    queryKey: ["project-membership", projectId],
+    queryFn: () => fetchProjectMembership(projectId),
+  });
+
+  const can = (action: string) =>
+    data?.permissions.includes(action) ?? false;
+
+  return { role: data?.role, can, permissions: data?.permissions ?? [] };
+}
+
+// 组件内使用：
+const { can } = useProjectPermissions(projectId);
+{can("member:add") && &lt;Button&gt;添加成员&lt;/Button&gt;}</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px; background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #22c55e;">
+  <h3 style="color: #166534;">✅ 设计要点</h3>
+  <ul style="font-size: 13px; line-height: 2; color: #334155;">
+    <li><strong>单一数据源</strong>：权限只在 <code>permissions.py</code> 定义一次，前端通过 API 获取</li>
+    <li><strong>admin 超级权限</strong>：系统管理员自动拥有 manager 级权限</li>
+    <li><strong>项目创建者</strong>：自动成为 manager 角色</li>
+    <li><strong>优雅降级</strong>：前端隐藏无权限按钮，后端拒绝无权限请求，双重保护</li>
+    <li><strong>新增 API</strong>：<code>GET /projects/{id}/my-permissions</code> 返回当前用户的权限列表</li>
+  </ul>
+</div>

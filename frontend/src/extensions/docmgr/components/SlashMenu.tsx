@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor } from "@tiptap/react";
 import React, {
   useCallback,
   useEffect,
@@ -9,11 +10,12 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import type { Editor } from "@tiptap/react";
-import { editorCommands, filterCommands, type CommandItem } from "../utils/editorCommands";
-import { SlashCommandPluginKey, type SlashCommandPluginState } from "../extensions/SlashCommand";
-import { getSlashMenuViewportPosition } from "../utils/slashMenuPosition";
+
 import { cn } from "@/lib/utils";
+
+import { SlashCommandPluginKey, type SlashCommandPluginState } from "../extensions/SlashCommand";
+import { editorCommands, filterCommands, type CommandItem } from "../utils/editorCommands";
+import { getSlashMenuViewportPosition } from "../utils/slashMenuPosition";
 
 export interface SlashMenuRef {
   onActivate: (state: SlashCommandPluginState) => void;

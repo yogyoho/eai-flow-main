@@ -1,0 +1,114 @@
+<h2>AI 助手面板：当前布局 vs 改造方向</h2>
+<p class="subtitle">当前布局操作类型卡片占了大部分空间，文本输出区域被压缩</p>
+
+<div class="split">
+  <!-- 当前布局 -->
+  <div class="mockup">
+    <div class="mockup-header">当前布局（320px 宽）</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="display:flex;flex-direction:column;height:480px;font-size:12px;">
+        <!-- Header -->
+        <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#fff;">
+          <span style="font-weight:600;">✨ AI 助手</span>
+          <span style="color:#999;">✕</span>
+        </div>
+        <!-- 操作类型 - 占空间大 -->
+        <div style="flex:1;overflow-y:auto;padding:12px;">
+          <div style="font-size:10px;color:#999;text-transform:uppercase;margin-bottom:6px;">操作类型</div>
+          <div style="border:2px solid #6366f1;border-radius:12px;padding:10px;margin-bottom:6px;background:#f0f0ff;">
+            <div style="font-weight:500;color:#6366f1;">🪄 润色</div>
+            <div style="font-size:10px;color:#999;">改善表达，使文字更流畅专业</div>
+          </div>
+          <div style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:6px;">
+            <div style="font-weight:500;">📖 扩写</div>
+            <div style="font-size:10px;color:#999;">丰富内容，补充细节和论据</div>
+          </div>
+          <div style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:6px;">
+            <div style="font-weight:500;">✂️ 缩写</div>
+            <div style="font-size:10px;color:#999;">精简内容，保留核心要点</div>
+          </div>
+          <div style="border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:6px;">
+            <div style="font-weight:500;">🔄 头脑风暴</div>
+            <div style="font-size:10px;color:#999;">基于内容生成相关想法</div>
+          </div>
+          <!-- 模型选择 -->
+          <div style="margin-top:8px;font-size:10px;color:#999;text-transform:uppercase;margin-bottom:4px;">AI 模型</div>
+          <select style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;margin-bottom:8px;">
+            <option>默认模型</option>
+          </select>
+          <div style="font-size:10px;color:#999;">在编辑器中选中文字，然后点击执行</div>
+        </div>
+        <!-- 底部按钮 -->
+        <div style="padding:12px;border-top:1px solid #e5e7eb;display:flex;gap:8px;">
+          <button style="flex:1;padding:8px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;">执行</button>
+          <button style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#999;">替换选中内容</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 改造方向 -->
+  <div class="mockup">
+    <div class="mockup-header">改造方向（紧凑型）</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="display:flex;flex-direction:column;height:480px;font-size:12px;">
+        <!-- Header -->
+        <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#fff;">
+          <span style="font-weight:600;">✨ AI 助手</span>
+          <span style="color:#999;">✕</span>
+        </div>
+        <!-- 快捷标签 - 非常紧凑 -->
+        <div style="padding:8px 12px 0;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:4px 10px;border-radius:20px;background:#6366f1;color:#fff;font-size:11px;">润色</span>
+          <span style="padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;font-size:11px;">扩写</span>
+          <span style="padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;font-size:11px;">缩写</span>
+          <span style="padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;font-size:11px;">头脑风暴</span>
+        </div>
+        <!-- 大面积输出区 -->
+        <div style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;color:#ccc;">
+          <div style="font-size:32px;margin-bottom:8px;">💬</div>
+          <div style="font-size:11px;">选中文字后点击发送</div>
+          <div style="font-size:11px;">或输入自定义指令</div>
+        </div>
+        <!-- AI 结果 + 替换按钮 -->
+        <div style="padding:0 12px;display:none;">
+          <!-- 结果区（有结果时显示） -->
+        </div>
+        <!-- 底部输入框 -->
+        <div style="padding:8px 12px;border-top:1px solid #e5e7eb;background:#fafafa;">
+          <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:6px 8px;">
+            <select style="border:none;font-size:11px;color:#999;background:transparent;outline:none;">
+              <option>默认模型</option>
+            </select>
+            <div style="flex:1;height:1px;background:#e5e7eb;"></div>
+            <input style="flex:1;border:none;outline:none;font-size:12px;" placeholder="输入指令..." />
+            <button style="width:28px;height:28px;border-radius:50%;background:#6366f1;color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:14px;">▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>关键变化</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>改造后优势</h4>
+      <ul>
+        <li>操作类型从卡片列表 → 胶囊标签（节省 ~200px 垂直空间）</li>
+        <li>模型选择移入输入框内（节省一整个区块）</li>
+        <li>执行按钮 → 圆形发送按钮（视觉更轻量）</li>
+        <li>文本输出区占据大部分空间</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>需确认</h4>
+      <ul>
+        <li>快捷选项不含描述文字 — 是否 OK？</li>
+        <li>是否需要自定义指令输入？还是只选中文字点发送？</li>
+        <li>AI 结果展示后，替换按钮的位置</li>
+      </ul>
+    </div>
+  </div>
+</div>

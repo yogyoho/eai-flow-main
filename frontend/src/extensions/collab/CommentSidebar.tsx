@@ -1,11 +1,14 @@
 "use client";
 
+import { MessageSquare, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, CheckCircle2 } from "lucide-react";
-import { CommentThread } from "./CommentThread";
+
 import type { CollabComment } from "../types";
+
+import { CommentThread } from "./CommentThread";
 
 interface CommentSidebarProps {
   comments: CollabComment[];

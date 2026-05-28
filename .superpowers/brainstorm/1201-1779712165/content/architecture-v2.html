@@ -1,0 +1,90 @@
+<h2>协作智能写作 — 松耦合架构设计</h2>
+<p class="subtitle">核心思路：项目管理是元数据层，报告编写复用 DeerFlow 现有能力</p>
+
+<div class="section" style="margin-top: 1.5rem;">
+
+  <h3 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem;">整体架构</h3>
+
+  <div style="background: #161b22; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; font-family: monospace; font-size: 0.85rem; line-height: 1.8; color: #c9d1d9;">
+    <div style="color: #f0883e; font-weight: bold;">用户视角（前端 3 个页面）</div>
+    <div style="margin-left: 1rem;">
+      ┌─ <span style="color: #79c0ff;">项目管理页</span>  →  项目Card列表 → 点击"进入项目"</div>
+      <div style="margin-left: 3rem;">→ 自动创建/跳转到绑定线程的 <span style="color: #79c0ff;">DeerFlow 对话页</span></div>
+      <div style="margin-left: 1rem;">
+      └─ <span style="color: #79c0ff;">项目文件视图</span>  →  聚合项目下所有线程文件 → 查看/编辑</div>
+    </div>
+
+    <div style="margin-top: 1rem; color: #3fb950; font-weight: bold;">后端（纯 App 层，不修改 harness）</div>
+    <div style="margin-left: 1rem;">
+      ├─ <span style="color: #7ee787;">report_projects</span> 表  →  项目元数据 + 成员关联</div>
+    <div style="margin-left: 1rem;">
+      ├─ <span style="color: #7ee787;">project_thread_bindings</span> 表  →  项目×成员×线程 映射</div>
+    <div style="margin-left: 1rem;">
+      ├─ <span style="color: #7ee787;">Gateway Router</span>  →  项目 CRUD + 文件聚合 API</div>
+    <div style="margin-left: 1rem;">
+      └─ <span style="color: #7ee787;">Prompt 注入</span>  →  通过 thread_data 注入模板上下文</div>
+  </div>
+
+  <h3 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem;">核心流程</h3>
+
+  <div style="background: #161b22; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; font-family: monospace; font-size: 0.85rem; line-height: 2; color: #c9d1d9;">
+    <div style="color: #d2a8ff;">1. 创建项目</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">选择领域 → 选择报告类型 → 选择模板 → 添加成员 → 生成项目 Card</div>
+
+    <div style="color: #d2a8ff; margin-top: 0.8rem;">2. 进入项目对话</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">成员点击 Card → 自动创建/绑定线程 → Prompt 自动注入模板上下文</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">→ 进入 DeerFlow 对话页，Agent 已知道"你在写 XX 类型的报告，模板是 YY"</div>
+
+    <div style="color: #d2a8ff; margin-top: 0.8rem;">3. AI 生成报告</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">成员在对话中要求 AI 生成报告内容</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">→ Agent 根据注入的模板上下文，按章节结构生成</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">→ 文件输出到线程目录（现有机制，零改动）</div>
+
+    <div style="color: #d2a8ff; margin-top: 0.8rem;">4. 文件共享</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">项目文件视图 → 聚合查询所有成员线程的文件目录</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">→ 虚拟展示，底层文件仍在各线程目录（零改动）</div>
+
+    <div style="color: #d2a8ff; margin-top: 0.8rem;">5. 合规校验</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">在项目页面一键触发 → 调用现有 ComplianceEngine</div>
+    <div style="margin-left: 1.5rem; color: #8b949e;">→ 结果展示在项目 Card 或详情页（复用 knowledge_factory）</div>
+  </div>
+
+  <h3 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem;">数据模型</h3>
+
+  <div style="background: #161b22; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; font-family: monospace; font-size: 0.85rem; line-height: 1.7; color: #c9d1d9;">
+    <span style="color: #ff7b72;">report_projects</span> {<br/>
+    &nbsp;&nbsp;id: UUID,<br/>
+    &nbsp;&nbsp;name: String,           <span style="color: #8b949e;">// "XX项目环评报告"</span><br/>
+    &nbsp;&nbsp;domain_id: String,      <span style="color: #8b949e;">// → extraction_domains.id</span><br/>
+    &nbsp;&nbsp;report_type: String,    <span style="color: #8b949e;">// "环评"/"地质勘查"/"可研"</span><br/>
+    &nbsp;&nbsp;template_id: UUID,      <span style="color: #8b949e;">// → extraction_templates.id</span><br/>
+    &nbsp;&nbsp;status: String,         <span style="color: #8b949e;">// active/completed/archived</span><br/>
+    &nbsp;&nbsp;created_by: UUID,<br/>
+    &nbsp;&nbsp;members: [project_members]<br/>
+    }<br/>
+    <br/>
+    <span style="color: #ff7b72;">project_members</span> {<br/>
+    &nbsp;&nbsp;project_id: UUID,<br/>
+    &nbsp;&nbsp;user_id: UUID,<br/>
+    &nbsp;&nbsp;role: String,           <span style="color: #8b949e;">// owner/editor/reviewer</span><br/>
+    &nbsp;&nbsp;thread_id: String       <span style="color: #8b949e;">// 绑定的 DeerFlow 线程ID</span><br/>
+    }
+  </div>
+
+  <h3 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem;">不改动 harness 的关键点</h3>
+
+  <div style="background: #0d1117; border: 1px solid #238636; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+    <div style="color: #3fb950; font-weight: bold; margin-bottom: 0.5rem;">Prompt 注入方式</div>
+    <div style="font-family: monospace; font-size: 0.85rem; color: #c9d1d9; line-height: 1.7;">
+      <div style="color: #8b949e;">方式1（推荐）：通过 thread_data 元数据注入</div>
+      <div style="margin-left: 1rem;">创建线程时在 metadata 中写入项目模板信息</div>
+      <div style="margin-left: 1rem;">→ ThreadDataMiddleware 已读取 thread_data</div>
+      <div style="margin-left: 1rem;">→ 只需在 App 层创建线程时写入，harness 层自动读取</div>
+      <br/>
+      <div style="color: #8b949e;">方式2（备选）：通过 Skill 注入</div>
+      <div style="margin-left: 1rem;">创建一个 report-writing SKILL.md，包含模板上下文</div>
+      <div style="margin-left: 1rem;">→ 项目线程启用该 Skill</div>
+    </div>
+  </div>
+
+</div>

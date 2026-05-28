@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { Fragment, useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Button } from "@/components/ui/button";
@@ -35,14 +36,6 @@ import type { SampleReport, KnowledgeBase } from "@/extensions/types";
 import { isDocumentReady, DocumentStatus } from "@/extensions/types";
 import { cn } from "@/lib/utils";
 
-type ToastType = "success" | "error" | "info";
-
-interface Toast {
-  id: number;
-  type: ToastType;
-  message: string;
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -59,55 +52,8 @@ function formatDateTime(dateString: string): string {
   });
 }
 
-function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
-  return (
-    <div className="fixed right-6 bottom-6 z-[100] flex flex-col gap-2">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={cn(
-            "flex items-center gap-3 rounded-xl border px-4 py-3 font-medium shadow-lg backdrop-blur-sm",
-            t.type === "success" && "border-emerald-500/20 bg-emerald-500/90 text-white",
-            t.type === "error" && "border-red-500/20 bg-red-500/90 text-white",
-            t.type === "info" && "border-blue-500/20 bg-blue-500/90 text-white"
-          )}
-        >
-          {t.type === "success" && <CheckCircle2 className="h-4 w-4 shrink-0" />}
-          {t.type === "error" && <AlertCircle className="h-4 w-4 shrink-0" />}
-          {t.type === "info" && <Loader2 className="h-4 w-4 shrink-0" />}
-          <span>{t.message}</span>
-          <button
-            onClick={() => onRemove(t.id)}
-            className="ml-2 text-xs opacity-60 hover:opacity-100"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function useToast() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const counter = useRef(0);
-
-  const show = useCallback((message: string, type: ToastType = "info") => {
-    const id = ++counter.current;
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
-
-  const remove = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  return { toasts, show, remove };
-}
-
 export default function SampleReports() {
   const router = useRouter();
-  const { toasts, show, remove } = useToast();
 
   const [reports, setReports] = useState<SampleReport[]>([]);
   const [kbList, setKbList] = useState<KnowledgeBase[]>([]);
@@ -178,11 +124,11 @@ export default function SampleReports() {
       setReports(allDocs);
       setTotal(totalCount);
     } catch (e) {
-      show("加载报告列表失败", "error");
+      toast.error("加载报告列表失败");
     } finally {
       setLoading(false);
     }
-  }, [filterKb, kbList, page, pageSize, show]);
+  }, [filterKb, kbList, page, pageSize]);
 
   useEffect(() => {
     loadKbList();
@@ -243,11 +189,11 @@ export default function SampleReports() {
     try {
       await kfApi.deleteDoc(report.knowledge_base_id, report.id);
       setReports((prev) => prev.filter((r) => r.id !== report.id));
-      show(type === "delete" ? "报告已删除" : "已取消并删除", "success");
+      toast.success(type === "delete" ? "报告已删除" : "已取消并删除");
     } catch (e) {
-      show(type === "delete" ? "删除失败" : "取消失败", "error");
+      toast.error(type === "delete" ? "删除失败" : "取消失败");
     }
-  }, [confirmAction, show]);
+  }, [confirmAction]);
 
   // 处理上传成功
   const handleUploadSuccess = (newReports: SampleReport[]) => {
@@ -298,7 +244,7 @@ export default function SampleReports() {
     { label: "总数", value: stats.total, color: "text-foreground" },
     { label: "已完成", value: stats.completed, color: "text-success" },
     { label: "解析中", value: stats.parsing, color: "text-primary" },
-    { label: "待处理", value: stats.pending, color: "text-amber-500" },
+    { label: "待处理", value: stats.pending, color: "text-warning" },
   ];
 
   // 只有搜索或状态筛选时才显示当前页条数（翻页本身不需要提示）
@@ -418,11 +364,9 @@ export default function SampleReports() {
                     <div
                       className={cn(
                         "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                        isReady
-                          ? "bg-success/10 text-success"
-                          : isProcessing
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground",
+                        isReady || isProcessing
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
                       <FileText className="h-5 w-5" />
@@ -443,7 +387,7 @@ export default function SampleReports() {
                             解析中
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                             <Clock className="h-3 w-3" />
                             待处理
                           </span>
@@ -497,7 +441,7 @@ export default function SampleReports() {
                   <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 pt-3">
                     {isReady ? (
                       <>
-                        <span className="text-[11px] text-muted-foreground/60">已就绪</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-success bg-success/10 border border-success/20">已就绪</span>
                         <button
                           type="button"
                           onClick={() => setConfirmAction({ type: "delete", report })}
@@ -512,7 +456,7 @@ export default function SampleReports() {
                         <button
                           type="button"
                           onClick={() => setConfirmAction({ type: "cancel", report })}
-                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-amber-600 transition-colors hover:bg-amber-500/10"
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-warning transition-colors hover:bg-warning/10"
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           取消
@@ -600,7 +544,7 @@ export default function SampleReports() {
           <DialogHeader>
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               {confirmAction?.type === "cancel" ? (
-                <AlertTriangle className="h-6 w-6 text-amber-600" />
+                <AlertTriangle className="h-6 w-6 text-warning" />
               ) : (
                 <Trash2 className="h-6 w-6 text-destructive" />
               )}
@@ -621,7 +565,7 @@ export default function SampleReports() {
             <Button
               variant={confirmAction?.type === "cancel" ? "default" : "destructive"}
               onClick={executeConfirmAction}
-              className={confirmAction?.type === "cancel" ? "bg-amber-600 hover:bg-amber-700" : ""}
+              className={confirmAction?.type === "cancel" ? "bg-warning hover:bg-warning/90" : ""}
             >
               {confirmAction?.type === "cancel" ? "确认取消" : "确认删除"}
             </Button>
@@ -635,11 +579,8 @@ export default function SampleReports() {
           businessType="sample_reports"
           onClose={() => setShowUploadModal(false)}
           onSuccess={handleUploadSuccess}
-          onToast={show}
         />
       )}
-
-      <ToastContainer toasts={toasts} onRemove={remove} />
     </div>
   );
 }

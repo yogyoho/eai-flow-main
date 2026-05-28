@@ -1361,32 +1361,33 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
   };
 
   const getStatusBadge = (status: string) => {
+    const base = "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium";
     if (status === "active" || status === "done")
       return (
-        <div className="flex items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-2 py-1 text-xs font-medium text-success">
-          <CheckCircle2 className="h-3.5 w-3.5" />
+        <span className={cn(base, "border border-success/20 bg-success/10 text-success")}>
+          <CheckCircle2 className="h-3 w-3" />
           已就绪
-        </div>
+        </span>
       );
     if (status === "syncing" || status === "processing")
       return (
-        <div className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+        <span className={cn(base, "border border-primary/20 bg-primary/10 text-primary")}>
+          <RefreshCw className="h-3 w-3 animate-spin" />
           同步中
-        </div>
+        </span>
       );
     if (status === "error" || status === "failed")
       return (
-        <div className="flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
-          <AlertCircle className="h-3.5 w-3.5" />
+        <span className={cn(base, "border border-destructive/20 bg-destructive/10 text-destructive")}>
+          <AlertCircle className="h-3 w-3" />
           同步失败
-        </div>
+        </span>
       );
     return (
-      <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-        <Clock className="h-3.5 w-3.5" />
+      <span className={cn(base, "border border-border bg-muted text-muted-foreground")}>
+        <Clock className="h-3 w-3" />
         未同步
-      </div>
+      </span>
     );
   };
 
@@ -1484,29 +1485,29 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                     className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md"
                   >
                     <div className="flex-1 p-5">
-                      <div className="mb-4 flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-lg border",
-                              kbType === "ragflow"
-                                ? "border-primary/20 bg-primary/10 text-primary"
-                                : "border-success/20 bg-success/10 text-success",
-                            )}
-                          >
-                            {kbType === "ragflow" ? (
-                              <Database className="h-5 w-5" />
-                            ) : (
-                              <FileText className="h-5 w-5" />
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="line-clamp-1 font-semibold text-foreground">
-                              {kb.name}
-                            </h3>
+                      <div className="mb-4 flex items-center gap-3">
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border",
+                            kbType === "ragflow"
+                              ? "border-primary/20 bg-primary/10 text-primary"
+                              : "border-success/20 bg-success/10 text-success",
+                          )}
+                        >
+                          {kbType === "ragflow" ? (
+                            <Database className="h-5 w-5" />
+                          ) : (
+                            <FileText className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="line-clamp-1 font-semibold text-foreground">
+                            {kb.name}
+                          </h3>
+                          <div className="mt-0.5 flex items-center gap-1.5">
                             <span
                               className={cn(
-                                "mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                                "inline-block rounded-md px-1.5 py-0.5 text-[10px] font-medium",
                                 kbType === "ragflow"
                                   ? "bg-primary/10 text-primary"
                                   : "bg-success/10 text-success",
@@ -1514,9 +1515,9 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                             >
                               {knowledgeBaseTypeLabel(kbType)}
                             </span>
+                            {getStatusBadge(kb.status)}
                           </div>
                         </div>
-                        {getStatusBadge(kb.status)}
                       </div>
 
                       <p className="mb-4 line-clamp-2 h-10 text-sm text-muted-foreground">

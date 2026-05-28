@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { kfApi } from "@/extensions/api";
 import type { TemplateVersionResponse, VersionCompareResult } from "@/extensions/knowledge-factory/types";
 
@@ -196,7 +197,7 @@ export default function VersionCompareModal({
               {/* Diff List */}
               <div className="space-y-2">
                 {compareResult.sections.map((sec) => {
-                  const config = STATUS_CONFIG[sec.status as keyof typeof STATUS_CONFIG];
+                  const config = STATUS_CONFIG[sec.status];
                   return (
                     <div
                       key={sec.section_id}

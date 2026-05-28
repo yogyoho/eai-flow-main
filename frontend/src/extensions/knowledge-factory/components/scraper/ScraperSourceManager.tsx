@@ -1,12 +1,14 @@
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Database, Globe, Layers, Loader2, Pencil, Play, Plus, Power, PowerOff, Scale, Trash2, Zap } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { scraperApi } from "@/extensions/api";
-import { useScraperContext } from "./ScraperContext";
 import { cn } from "@/lib/utils";
+
+import { useScraperContext } from "./ScraperContext";
 
 interface SourceFormData {
   name: string;
@@ -77,8 +79,8 @@ function SchemaDropdown({
   }
 
   const groups: { key: string; label: string; icon: React.ComponentType<{ className?: string }>; color: string; items: SchemaItem[] }[] = [];
-  if (lawSchemas.length) groups.push({ key: "law", label: "法规标准", icon: Scale, color: "text-blue-500", items: lawSchemas });
-  if (generalSchemas.length) groups.push({ key: "general", label: "通用模板", icon: Layers, color: "text-amber-500", items: generalSchemas });
+  if (lawSchemas.length) groups.push({ key: "law", label: "法规标准", icon: Scale, color: "text-primary", items: lawSchemas });
+  if (generalSchemas.length) groups.push({ key: "general", label: "通用模板", icon: Layers, color: "text-warning", items: generalSchemas });
 
   return (
     <div ref={containerRef} className="relative">
@@ -143,9 +145,9 @@ function SchemaDropdown({
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "法规标准": "bg-blue-50 text-blue-600 border-blue-200/60",
-  "行业标准": "bg-purple-50 text-purple-600 border-purple-200/60",
-  "技术规范": "bg-amber-50 text-amber-600 border-amber-200/60",
+  "法规标准": "bg-primary/10 text-primary border-primary/20",
+  "行业标准": "bg-info/10 text-info border-info/20",
+  "技术规范": "bg-warning/10 text-warning border-warning/20",
 };
 
 export default function ScraperSourceManager() {
@@ -260,7 +262,7 @@ export default function ScraperSourceManager() {
             {/* Name + URL row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold tracking-tight">名称 <span className="text-red-400">*</span></label>
+                <label className="text-sm font-semibold tracking-tight">名称 <span className="text-destructive">*</span></label>
                 <input
                   type="text"
                   value={form.name}
@@ -271,7 +273,7 @@ export default function ScraperSourceManager() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold tracking-tight">URL 模式 <span className="text-red-400">*</span></label>
+                <label className="text-sm font-semibold tracking-tight">URL 模式 <span className="text-destructive">*</span></label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
@@ -382,7 +384,7 @@ export default function ScraperSourceManager() {
                   )}
                 >
                   {/* Enable/Disable indicator */}
-                  <div className={cn("shrink-0", source.is_enabled ? "text-emerald-500" : "text-muted-foreground/40")}>
+                  <div className={cn("shrink-0", source.is_enabled ? "text-success" : "text-muted-foreground/40")}>
                     {source.is_enabled ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
                   </div>
 
@@ -431,7 +433,7 @@ export default function ScraperSourceManager() {
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); if (confirm("确定删除该数据源？")) deleteMutation.mutate(source.id); }}
-                      className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                      className="p-2 rounded-lg hover:bg-destructive/5 text-muted-foreground hover:text-destructive transition-colors"
                       title="删除"
                     >
                       <Trash2 className="h-4 w-4" />

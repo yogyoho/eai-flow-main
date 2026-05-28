@@ -27,6 +27,8 @@ export function mergeRuleDictionaries(
     industries: sanitizeOptions(dictionaries?.industries, DEFAULT_RULE_DICTIONARIES.industries),
     reportTypes: sanitizeOptions(dictionaries?.reportTypes, DEFAULT_RULE_DICTIONARIES.reportTypes),
     regions: sanitizeOptions(dictionaries?.regions, DEFAULT_RULE_DICTIONARIES.regions),
+    ruleTypes: sanitizeOptions(dictionaries?.ruleTypes, DEFAULT_RULE_DICTIONARIES.ruleTypes),
+    severityLevels: sanitizeOptions(dictionaries?.severityLevels, DEFAULT_RULE_DICTIONARIES.severityLevels),
   };
 }
 

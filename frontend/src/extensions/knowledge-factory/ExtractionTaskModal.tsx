@@ -2,6 +2,7 @@
 
 import { X, Loader2, CheckCircle2, Info } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -24,7 +25,6 @@ import { cn } from "@/lib/utils";
 interface Props {
   onClose: () => void;
   onSuccess: (task: ExtractionTaskResponse) => void;
-  onToast: (msg: string, type: "success" | "error" | "info") => void;
 }
 
 const DEFAULT_CONFIG: ExtractionConfig = {
@@ -57,7 +57,7 @@ function formatDateTime(): string {
   return `模板抽取-${y}-${M}-${d}-${h}${m}`;
 }
 
-export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Props) {
+export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
   const [name, setName] = useState(formatDateTime);
   const [templateName, setTemplateName] = useState("");
   const templateNameManuallyEdited = useRef(false);
@@ -201,8 +201,8 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
   const handleSubmit = async () => {
-    if (!name.trim()) { onToast("请输入任务名称", "error"); return; }
-    if (selectedReports.size === 0) { onToast("请至少选择 1 份样例报告", "error"); return; }
+    if (!name.trim()) { toast.error("请输入任务名称"); return; }
+    if (selectedReports.size === 0) { toast.error("请至少选择 1 份样例报告"); return; }
 
     setSubmitting(true);
     try {
@@ -225,7 +225,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess, onToast }: Pro
       onSuccess(task);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "创建任务失败";
-      onToast(msg, "error");
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

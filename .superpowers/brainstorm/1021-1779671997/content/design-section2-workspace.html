@@ -1,0 +1,231 @@
+<h2>设计 Section 2：成员工作台 + 角色视图切换</h2>
+<p class="subtitle">不同角色进入项目后的体验差异，以及 Tab 可见性规则</p>
+
+<div class="section">
+  <h3>🎯 角色默认页映射</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">角色</th>
+          <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">默认页</th>
+          <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">定位</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: #eff6ff;">
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>👑 经理 (manager)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">📊 仪表盘</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">全局管理者视角 — 看进度、管成员、控流程</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>✏️ 编辑 (editor)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">🎯 我的工作台</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">内容执行者 — 编辑章节、使用 AI 工具</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>📝 撰写人 (writer)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">🎯 我的工作台</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">内容生产者 — 撰写自己被分配的章节</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>🔍 审核人 (reviewer)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">📋 看板</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">质量把控者 — 查看章节、审核内容</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>✅ 批准人 (approver)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">📋 看板</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">最终审批者 — 审阅并做出通过/退回决定</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;"><strong>🏢 委托方 (issuer)</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">📊 仪表盘</td>
+          <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">项目委托方 — 只读查看进度、下载产出</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>📑 Tab 可见性矩阵（角色 × Tab）</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 8px; border-bottom: 2px solid #e2e8f0;">Tab</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">👑 经理</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">✏️ 编辑</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">📝 撰写</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">🔍 审核</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">✅ 批准</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">🏢 委托方</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">🎯 我的工作台</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">📊 仪表盘</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 可切</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">📋 看板</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 全操作</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 已分配</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 已分配</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #dcfce7;">🏠 默认</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">📝 大纲</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 可编辑</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">👥 成员</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 管理</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 只读</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔒 隐藏</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔒 隐藏</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔒 隐藏</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">✅ 审核</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 查看</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 查看</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 查看</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 审核</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✏️ 批准</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">👁️ 查看</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;">🤖 AI工具</td>
+          <td style="padding: 8px; text-align: center;">✏️ 可用</td>
+          <td style="padding: 8px; text-align: center;">✏️ 可用</td>
+          <td style="padding: 8px; text-align: center;">✏️ 可用</td>
+          <td style="padding: 8px; text-align: center;">🔒 隐藏</td>
+          <td style="padding: 8px; text-align: center;">🔒 隐藏</td>
+          <td style="padding: 8px; text-align: center;">🔒 隐藏</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="font-size: 11px; color: #64748b; margin-top: 8px;">
+    🏠 默认 = 进入项目后首先看到的页面 | ✏️ 可操作 | 👁️ 只读 | 🔒 隐藏（不显示 Tab）
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🏗️ 前端实现架构</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7;">
+    <pre style="margin:0; color:#e2e8f0;">
+// types.ts — Tab 配置与角色映射
+
+interface TabConfig {
+  id: string;
+  label: string;
+  icon: string;
+  stages: number[];            // 在哪些 Stage 可见
+  minPermission: string;       // 最低权限要求（null = 所有成员）
+  defaultFor: string[];        // 哪些角色默认进入此 Tab
+  accessLevel: "full" | "read" | "hidden";  // 按角色控制
+}
+
+const TAB_REGISTRY: TabConfig[] = [
+  {
+    id: "my-workspace",
+    label: "我的工作台",
+    icon: "Target",
+    stages: [3, 4, 5],
+    minPermission: null,  // 所有角色可见
+    defaultFor: ["editor", "writer"],
+    accessLevel: "full",
+  },
+  {
+    id: "dashboard",
+    label: "仪表盘",
+    icon: "BarChart3",
+    stages: [2, 3, 4, 5, 6],
+    minPermission: null,
+    defaultFor: ["manager", "issuer"],
+    accessLevel: "full",
+  },
+  {
+    id: "kanban",
+    label: "看板",
+    icon: "Kanban",
+    stages: [3, 4],
+    minPermission: "chapter:view_all",
+    defaultFor: ["reviewer", "approver"],
+    accessLevel: "full",
+  },
+  {
+    id: "outline",
+    label: "大纲",
+    icon: "FileText",
+    stages: [2, 3, 4],
+    minPermission: "outline:view",
+    defaultFor: [],
+    accessLevel: "read",  // 根据 outline:edit 决定能否编辑
+  },
+  {
+    id: "members",
+    label: "成员",
+    icon: "Users",
+    stages: [2, 3, 4, 5, 6],
+    minPermission: "member:list",  // 无此权限则隐藏
+    defaultFor: [],
+    accessLevel: "full",
+  },
+  {
+    id: "approval",
+    label: "审核",
+    icon: "CheckCircle",
+    stages: [5],
+    minPermission: "approval:view",
+    defaultFor: [],
+    accessLevel: "read",  // 根据 approval:review/approve 决定操作权限
+  },
+  {
+    id: "ai-tools",
+    label: "AI工具",
+    icon: "Bot",
+    stages: [3, 4],
+    minPermission: "ai:toolbox",
+    defaultFor: [],
+    accessLevel: "full",
+  },
+];</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px; background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #22c55e;">
+  <h3 style="color: #166534;">✅ 关键设计点</h3>
+  <ul style="font-size: 13px; line-height: 2; color: #334155;">
+    <li><strong>TAB_REGISTRY</strong> 是唯一的 Tab 配置源 — 后端权限决定可见性，前端不硬编码</li>
+    <li><strong>默认页由角色决定</strong> — editor/writer 进入「我的工作台」，manager 进入「仪表盘」</li>
+    <li><strong>审计人/批准人</strong> 在 Stage 5 时审核 Tab 自动出现并设为默认</li>
+    <li><strong>委托方</strong> 只能看仪表盘（只读）和审核状态，不能编辑任何内容</li>
+    <li><strong>Stage 联动</strong> — Tab 可见性同时受 Stage 和角色控制，两个条件都要满足</li>
+  </ul>
+</div>

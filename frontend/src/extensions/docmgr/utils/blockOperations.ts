@@ -1,6 +1,6 @@
-import type { Editor } from "@tiptap/react";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/react";
 
 function getTopLevelBlocks(doc: ProseMirrorNode): ProseMirrorNode[] {
   const blocks: ProseMirrorNode[] = [];
@@ -143,6 +143,28 @@ export function moveTopLevelBlockByTarget(
   const fromIndex = getTopLevelBlockIndex(state.doc, sourcePos);
   const toIndex = getTopLevelBlockIndex(state.doc, targetPos);
   if (fromIndex === null || toIndex === null) return false;
+
+  const nextBlocks = moveTopLevelBlockToIndex(blocks, fromIndex, toIndex);
+  if (!nextBlocks) return false;
+
+  return replaceTopLevelBlocks(editor, nextBlocks, toIndex);
+}
+
+export function moveTopLevelBlockToPosition(
+  editor: Editor,
+  sourcePos: number,
+  targetIndex: number,
+  placement: "before" | "after"
+): boolean {
+  const { state } = editor;
+  const blocks = getTopLevelBlocks(state.doc);
+  const fromIndex = getTopLevelBlockIndex(state.doc, sourcePos);
+  if (fromIndex === null) return false;
+
+  let toIndex = placement === "before" ? targetIndex : targetIndex + 1;
+  // When the source is above the target, removing it shifts indices down by one
+  if (fromIndex < toIndex) toIndex -= 1;
+  if (toIndex < 0 || toIndex >= blocks.length) return false;
 
   const nextBlocks = moveTopLevelBlockToIndex(blocks, fromIndex, toIndex);
   if (!nextBlocks) return false;

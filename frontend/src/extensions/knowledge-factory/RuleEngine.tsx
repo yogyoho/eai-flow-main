@@ -20,10 +20,17 @@ import {
 import React, { useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
-
+import AiRuleExtractModal from "@/extensions/knowledge-factory/AiRuleExtractModal";
 import { useRuleDictionaries } from "@/extensions/knowledge-factory/hooks/use-rule-dictionaries";
 import { useRuleEngineData } from "@/extensions/knowledge-factory/hooks/use-rule-engine-data";
-import AiRuleExtractModal from "@/extensions/knowledge-factory/AiRuleExtractModal";
+import {
+  type ComplianceRule,
+  type RuleFilterParams,
+  RULE_TYPES,
+  SEVERITY_LEVELS,
+} from "@/extensions/knowledge-factory/types";
+import { cn } from "@/lib/utils";
+
 import { getDictionaryLabel } from "./rule-dictionary-utils";
 import {
   areAllRulesSelected,
@@ -35,13 +42,6 @@ import { RuleDetail } from "./RuleDetail";
 import { RuleLogsViewer } from "./RuleLogsViewer";
 import { RuleTestModal } from "./RuleTestModal";
 import { SeedDataManager } from "./SeedDataManager";
-import {
-  type ComplianceRule,
-  type RuleFilterParams,
-  RULE_TYPES,
-  SEVERITY_LEVELS,
-} from "@/extensions/knowledge-factory/types";
-import { cn } from "@/lib/utils";
 
 interface RuleEngineProps {
   showManagement?: boolean;
@@ -316,14 +316,14 @@ export default function RuleEngine({
             ) : (
               <>
                 <button
-                  className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-success/20 bg-success/10 text-success px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-success/20 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void handleBatchToggle(true)}
                   disabled={batchActionLoading || selectedBatchRules.length === 0}
                 >
                   批量启用
                 </button>
                 <button
-                  className="rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-500 px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-warning/20 bg-warning/10 text-warning px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-warning/20 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void handleBatchToggle(false)}
                   disabled={batchActionLoading || selectedBatchRules.length === 0}
                 >
@@ -356,8 +356,8 @@ export default function RuleEngine({
 
       <div className="flex-1 space-y-6 overflow-y-auto bg-muted/30 p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted/20 text-muted-foreground">
+          <div className="flex items-center gap-3 rounded-xl border border-info/20 bg-gradient-to-br from-card to-info/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-info/20 to-info/5 text-info">
               <LayoutList className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -365,13 +365,13 @@ export default function RuleEngine({
               <div className="text-2xl font-bold text-foreground">{statistics?.total ?? "-"}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-card to-emerald-500/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 text-emerald-500">
+          <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-gradient-to-br from-card to-success/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-success/20 to-success/5 text-success">
               <BadgeCheck className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">已启用</div>
-              <div className="text-2xl font-bold text-emerald-500">{statistics?.enabled ?? "-"}</div>
+              <div className="text-2xl font-bold text-success">{statistics?.enabled ?? "-"}</div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -394,13 +394,13 @@ export default function RuleEngine({
               <div className="text-2xl font-bold text-destructive">{triggerStats?.monthBlocked ?? "-"}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-gradient-to-br from-card to-amber-500/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500">
+          <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-gradient-to-br from-card to-warning/5 p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-warning/20 to-warning/5 text-warning">
               <Sprout className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">种子规则</div>
-              <div className="text-2xl font-bold text-amber-500">{seedStatus?.seedTotal ?? "-"}</div>
+              <div className="text-2xl font-bold text-warning">{seedStatus?.seedTotal ?? "-"}</div>
             </div>
           </div>
         </div>
@@ -497,7 +497,7 @@ export default function RuleEngine({
 
         <div className="space-y-4">
           {batchActionError && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {batchActionError}
             </div>
           )}
@@ -569,7 +569,7 @@ export default function RuleEngine({
                   className={cn(
                     "overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-all group hover:border-primary/30 hover:shadow-md border-l-[3px]",
                     rule.severity === "critical" && "border-l-destructive/60",
-                    rule.severity === "warning" && "border-l-amber-500/60",
+                    rule.severity === "warning" && "border-l-warning/60",
                     (rule.severity !== "critical" && rule.severity !== "warning") && "border-l-primary/40",
                     effectiveSelectionMode && selectedRules.includes(rule.id) && "border-primary/40 ring-2 ring-primary/30"
                   )}
@@ -601,7 +601,7 @@ export default function RuleEngine({
                           rule.severity === "critical"
                             ? "bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive"
                             : rule.severity === "warning"
-                              ? "bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500"
+                              ? "bg-gradient-to-br from-warning/20 to-warning/5 text-warning"
                               : "bg-gradient-to-br from-muted/50 to-muted/20 text-muted-foreground"
                         )}
                       >
@@ -617,7 +617,7 @@ export default function RuleEngine({
                             className={cn(
                               "flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
                               rule.enabled
-                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                                ? "border-success/20 bg-success/10 text-success"
                                 : "border-border bg-muted text-muted-foreground"
                             )}
                             onClick={() => {
@@ -637,7 +637,7 @@ export default function RuleEngine({
                             {rule.severity === "critical" ? (
                               <span className="font-medium text-destructive">严重</span>
                             ) : rule.severity === "warning" ? (
-                              <span className="font-medium text-amber-500">警告</span>
+                              <span className="font-medium text-warning">警告</span>
                             ) : (
                               <span>{rule.severity}</span>
                             )}

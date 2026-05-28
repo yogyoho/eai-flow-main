@@ -17,9 +17,10 @@ import {
 } from "lucide-react";
 import React from "react";
 
+import type { LawItem, LawType } from "@/extensions/knowledge-factory/types";
+
 import { getCategoryByCode, getCategoryColor } from "../config/lawCategories";
 import { useSyncLaw, useLinkTemplate, useUnlinkTemplate } from "../hooks/useLawLibrary";
-import type { LawItem, LawType } from "@/extensions/knowledge-factory/types";
 import { cn } from "../utils";
 
 interface LawDetailDrawerProps {

@@ -1,18 +1,20 @@
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, Globe, Loader2, Play, RotateCcw, Save, XCircle, AlertTriangle, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { scraperApi } from "@/extensions/api";
-import { useScraperContext } from "./ScraperContext";
 import { cn } from "@/lib/utils";
 
+import { useScraperContext } from "./ScraperContext";
+
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; bg: string; dot: string }> = {
-  pending: { label: "等待中", icon: Clock, color: "text-amber-600", bg: "bg-amber-50/80 border-amber-200/60", dot: "bg-amber-400" },
-  running: { label: "运行中", icon: Loader2, color: "text-blue-600", bg: "bg-blue-50/80 border-blue-200/60", dot: "bg-blue-400 animate-pulse" },
-  completed: { label: "已完成", icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50/80 border-emerald-200/60", dot: "bg-emerald-400" },
-  failed: { label: "失败", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50/80 border-red-200/60", dot: "bg-red-400" },
-  cancelled: { label: "已取消", icon: XCircle, color: "text-gray-500", bg: "bg-gray-50/80 border-gray-200/60", dot: "bg-gray-400" },
+  pending: { label: "等待中", icon: Clock, color: "text-warning", bg: "bg-warning/10 border-warning/20", dot: "bg-warning" },
+  running: { label: "运行中", icon: Loader2, color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary animate-pulse" },
+  completed: { label: "已完成", icon: CheckCircle2, color: "text-success", bg: "bg-success/10 border-success/20", dot: "bg-success" },
+  failed: { label: "失败", icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", dot: "bg-destructive" },
+  cancelled: { label: "已取消", icon: XCircle, color: "text-muted-foreground", bg: "bg-muted border-border/50", dot: "bg-muted-foreground" },
 };
 
 const STATUS_FILTERS = [
@@ -265,8 +267,8 @@ export default function ScraperTaskCenter() {
 
                 {/* Error */}
                 {detailQuery.data.error && (
-                  <div className="p-3 rounded-xl bg-red-50/80 border border-red-200/60 text-red-700 text-sm flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
+                  <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
                     <span>{detailQuery.data.error}</span>
                   </div>
                 )}
@@ -281,7 +283,7 @@ export default function ScraperTaskCenter() {
                         .map((log, i) => (
                           <div key={i} className={cn(
                             "leading-relaxed",
-                            log.level === "error" ? "text-red-400" : log.level === "success" ? "text-emerald-400" : "text-gray-400"
+                            log.level === "error" ? "text-destructive" : log.level === "success" ? "text-success" : "text-muted-foreground"
                           )}>
                             {log.message || log.content || JSON.stringify(log)}
                           </div>

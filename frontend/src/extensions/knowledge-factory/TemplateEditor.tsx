@@ -25,15 +25,21 @@ import {
   Clock,
   User,
   Eye,
+  Database,
+  Settings2,
+  Sparkles,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 
+import { AdminSelect } from "@/components/ui/admin-select";
 import { kfApi } from "@/extensions/api";
+import type { EditorSection, EditorTemplate, TemplateVersionResponse, ExtractionDomain } from "@/extensions/knowledge-factory/types";
+import type { RAGSourceConfig } from "@/extensions/knowledge-factory/types";
+import { RETRIEVAL_STRATEGIES } from "@/extensions/knowledge-factory/types";
+import { cn } from "@/lib/utils";
 
 import { useTemplateList, useTemplateEditor } from "./hooks";
-import type { EditorSection, EditorTemplate, TemplateVersionResponse, ExtractionDomain } from "@/extensions/knowledge-factory/types";
-import { cn } from "@/lib/utils";
-import { AdminSelect } from "@/components/ui/admin-select";
 
 // ============== Template Selector ==============
 
@@ -268,61 +274,183 @@ function SectionTree({
 // ============== RAG Source Selector ==============
 
 interface RAGSourceSelectorProps {
-  selected: string[];
-  onUpdate: (newSources: string[]) => void;
+  selected: RAGSourceConfig[];
+  onUpdate: (newSources: RAGSourceConfig[]) => void;
   isReadOnly: boolean;
 }
 
-const AVAILABLE_RAG_SOURCES = [
-  { id: "laws-national", name: "国家法律法规库", type: "法规", description: "国家法律、行政法规、部门规章等" },
-  { id: "laws-local", name: "地方生态环境厅文件库", type: "法规", description: "地方性法规、环保厅规范性文件等" },
-  { id: "standards", name: "行业标准规范库", type: "标准", description: "国家标准、行业标准、地方标准等" },
-  { id: "cases", name: "历史案例库", type: "案例", description: "同类项目环评报告、历史案例参考" },
-  { id: "guides", name: "编制指南库", type: "指南", description: "环评编制技术指南、导则等" },
-  { id: "templates", name: "模板参考库", type: "模板", description: "标准模板、章节模板参考" },
-];
+interface KnowledgeBaseItem {
+  id: string;
+  name: string;
+  description?: string;
+  ragflow_dataset_id?: string;
+}
 
 function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelectorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseItem[]>([]);
+  const [loadingKbs, setLoadingKbs] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const filteredSources = AVAILABLE_RAG_SOURCES.filter(
-    (s) =>
-      !selected.includes(s.name) &&
-      (s.name.includes(searchQuery) || s.type.includes(searchQuery))
+  useEffect(() => {
+    setLoadingKbs(true);
+    kfApi.listKnowledgeBases({ limit: 200 })
+      .then((res) => {
+        setKnowledgeBases(
+          (res.knowledge_bases || []).map((kb) => ({
+            id: kb.id,
+            name: kb.name,
+            description: kb.description,
+            ragflow_dataset_id: kb.ragflow_dataset_id,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => setLoadingKbs(false));
+  }, []);
+
+  const selectedKbIds = new Set(selected.filter((s) => s.kb_id).map((s) => s.kb_id));
+
+  const filteredKbs = knowledgeBases.filter(
+    (kb) =>
+      !selectedKbIds.has(kb.id) &&
+      (kb.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (kb.description ?? "").toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleAdd = (name: string) => {
-    onUpdate([...selected, name]);
+  const handleAddKb = (kb: KnowledgeBaseItem) => {
+    onUpdate([
+      ...selected,
+      {
+        kb_id: kb.id,
+        kb_name: kb.name,
+        ragflow_dataset_id: kb.ragflow_dataset_id,
+        retrieval_strategy: "hybrid",
+        top_k: 5,
+        similarity_threshold: 0.2,
+        vector_similarity_weight: 0.3,
+      },
+    ]);
     setShowDropdown(false);
+    setSearchQuery("");
   };
 
-  const handleRemove = (name: string) => {
-    onUpdate(selected.filter((s) => s !== name));
+  const handleRemove = (index: number) => {
+    onUpdate(selected.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateSource = (index: number, changes: Partial<RAGSourceConfig>) => {
+    onUpdate(selected.map((s, i) => (i === index ? { ...s, ...changes } : s)));
+  };
+
+  const strategyBadge = (strategy: string) => {
+    const labels: Record<string, { text: string; cls: string }> = {
+      semantic: { text: "语义", cls: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      keyword: { text: "关键词", cls: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
+      hybrid: { text: "混合", cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+    };
+    const badge = labels[strategy] ?? labels.hybrid!;
+    return (
+      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.cls}`}>
+        {badge.text}
+      </span>
+    );
   };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {selected.map((name) => {
-          const source = AVAILABLE_RAG_SOURCES.find((s) => s.name === name);
+        {selected.map((source, index) => {
+          const isLegacy = !source.kb_id;
           return (
-            <span
-              key={name}
-              className="bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/20 dark:border-amber-500/30 text-xs font-medium flex items-center gap-2"
-            >
-              {source?.type === "法规" && <ShieldCheck className="w-3 h-3" />}
-              {source?.type === "标准" && <FileJson className="w-3 h-3" />}
-              {source?.type === "案例" && <FileText className="w-3 h-3" />}
-              {name}
-              <button
-                onClick={() => handleRemove(name)}
-                disabled={isReadOnly}
-                className="hover:text-amber-500 transition-colors disabled:opacity-50"
+            <div key={`${source.kb_id || source.kb_name}-${index}`} className="relative group">
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer ${
+                  isLegacy
+                    ? "bg-muted/50 text-muted-foreground border border-dashed border-border"
+                    : "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 border border-amber-500/20 dark:border-amber-500/30"
+                }`}
+                onClick={() => !isReadOnly && setEditingIndex(editingIndex === index ? null : index)}
               >
-                <X className="w-3 h-3 cursor-pointer" />
-              </button>
-            </span>
+                {isLegacy ? (
+                  <AlertCircle className="w-3 h-3 text-muted-foreground" />
+                ) : (
+                  <Database className="w-3 h-3" />
+                )}
+                {source.kb_name}
+                {strategyBadge(source.retrieval_strategy)}
+                {!isReadOnly && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(index);
+                    }}
+                    className="hover:text-red-500 transition-colors ml-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+
+              {/* Inline edit popover */}
+              {editingIndex === index && !isReadOnly && (
+                <div className="absolute top-full left-0 mt-1 w-64 bg-background rounded-xl border border-border shadow-lg z-30 p-3 space-y-3">
+                  <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Settings2 className="w-3 h-3" /> 检索参数
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-foreground">检索策略</label>
+                    <select
+                      value={source.retrieval_strategy}
+                      onChange={(e) => handleUpdateSource(index, { retrieval_strategy: e.target.value as RAGSourceConfig["retrieval_strategy"] })}
+                      className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                    >
+                      {RETRIEVAL_STRATEGIES.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label} — {s.description}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-foreground">Top K</label>
+                      <input
+                        type="number"
+                        value={source.top_k}
+                        onChange={(e) => handleUpdateSource(index, { top_k: parseInt(e.target.value) || 5 })}
+                        min={1}
+                        max={50}
+                        className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-foreground">相似度阈值</label>
+                      <input
+                        type="number"
+                        value={source.similarity_threshold}
+                        onChange={(e) => handleUpdateSource(index, { similarity_threshold: parseFloat(e.target.value) || 0.2 })}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingIndex(null)}
+                    className="w-full text-xs text-primary hover:underline"
+                  >
+                    关闭
+                  </button>
+                </div>
+              )}
+
+              {isLegacy && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-2 h-2 text-white" />
+                </span>
+              )}
+            </div>
           );
         })}
 
@@ -331,45 +459,55 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="w-8 h-8 rounded-full border border-dashed border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-colors"
+              title="关联知识库"
             >
-              <Plus className="w-4 h-4" />
+              {loadingKbs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             </button>
 
             {showDropdown && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowDropdown(false)}
-                />
-                <div className="absolute top-full left-0 mt-2 w-72 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
+                <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
                   <div className="p-3 border-b border-border">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="搜索数据源..."
+                      placeholder="搜索知识库..."
                       className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       autoFocus
                     />
                   </div>
-                  <div className="max-h-48 overflow-y-auto">
-                    {filteredSources.length === 0 ? (
+                  <div className="max-h-56 overflow-y-auto">
+                    {knowledgeBases.length === 0 && loadingKbs ? (
                       <div className="p-4 text-center text-sm text-muted-foreground">
-                        没有更多可添加的数据源
+                        <Loader2 className="w-4 h-4 animate-spin inline mr-2" />加载中...
+                      </div>
+                    ) : filteredKbs.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        {knowledgeBases.length === 0 ? "暂无知识库，请先创建知识库并上传文档" : "没有匹配的知识库"}
                       </div>
                     ) : (
-                      filteredSources.map((source) => (
+                      filteredKbs.map((kb) => (
                         <button
-                          key={source.id}
-                          onClick={() => handleAdd(source.name)}
+                          key={kb.id}
+                          onClick={() => handleAddKb(kb)}
                           className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b border-border last:border-0"
                         >
-                          <div className="font-medium text-sm text-foreground">
-                            {source.name}
+                          <div className="font-medium text-sm text-foreground flex items-center gap-2">
+                            <Database className="w-3.5 h-3.5 text-amber-500" />
+                            {kb.name}
                           </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {source.description}
-                          </div>
+                          {kb.description && (
+                            <div className="text-xs text-muted-foreground mt-0.5 ml-5.5">
+                              {kb.description}
+                            </div>
+                          )}
+                          {kb.ragflow_dataset_id ? (
+                            <div className="text-[10px] text-emerald-500 mt-0.5 ml-5.5">已连接 RAGFlow</div>
+                          ) : (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 ml-5.5">未连接 RAGFlow</div>
+                          )}
                         </button>
                       ))
                     )}
@@ -383,7 +521,7 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
 
       {selected.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          提示：选择 RAG 数据源后，AI 生成内容时会自动参考这些知识库。
+          提示：关联知识库后，AI 生成内容时会从这些知识库检索相关参考资料。点击已关联的知识库可调整检索参数。
         </p>
       )}
     </div>
@@ -625,7 +763,6 @@ function SectionEditor({
   const [newKeyElement, setNewKeyElement] = useState("");
   const [newForbiddenPhrase, setNewForbiddenPhrase] = useState("");
   const [newComplianceRule, setNewComplianceRule] = useState("");
-  const [newRagSource, setNewRagSource] = useState("");
   const [structureType, setStructureType] = useState<string>(
     section?.contentContract?.structureType || "narrative_text"
   );
@@ -989,7 +1126,7 @@ function SectionEditor({
         <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
           <Link className="w-4 h-4" />
           <h4 className="font-bold text-sm uppercase tracking-wider">RAG 数据源</h4>
-          <span className="text-xs text-muted-foreground font-normal ml-auto">AI 生成时的参考知识库</span>
+          <span className="text-xs text-muted-foreground font-normal ml-auto">报告生成时的检索知识库</span>
         </div>
         
         {/* 可用的 RAG 数据源 */}
@@ -1044,10 +1181,6 @@ export default function TemplateEditor() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [notification, setNotification] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ action: () => Promise<void>; title: string; message: string } | null>(null);
 
   // 版本历史弹窗状态
@@ -1073,7 +1206,7 @@ export default function TemplateEditor() {
   // 创建新模板
   const handleCreateTemplate = async () => {
     if (!newTemplateName.trim()) {
-      showNotification("error", "请输入模板名称");
+      toast.error("请输入模板名称");
       return;
     }
     setCreating(true);
@@ -1086,9 +1219,9 @@ export default function TemplateEditor() {
       setNewTemplateName("");
       await fetchTemplates({ status: "draft,published", limit: 50 });
       setSelectedTemplateId(res.template_id);
-      showNotification("success", "模板创建成功");
+      toast.success("模板创建成功");
     } catch (e) {
-      showNotification("error", e instanceof Error ? e.message : "创建失败");
+      toast.error(e instanceof Error ? e.message : "创建失败");
     } finally {
       setCreating(false);
     }
@@ -1195,23 +1328,13 @@ export default function TemplateEditor() {
     [deleteSection, selectedSectionId]
   );
 
-  // 通知
-  const showNotification = useCallback(
-    (type: "success" | "error", message: string) => {
-      setNotification({ type, message });
-      setTimeout(() => setNotification(null), 3000);
-    },
-    []
-  );
-
   // 保存草稿
   const handleSaveDraft = async () => {
     try {
       await saveDraft();
-      showNotification("success", "草稿保存成功");
+      toast.success("草稿保存成功");
     } catch (e) {
-      showNotification(
-        "error",
+      toast.error(
         e instanceof Error ? e.message : "保存失败"
       );
     }
@@ -1226,9 +1349,9 @@ export default function TemplateEditor() {
       action: async () => {
         try {
           await publishTemplate();
-          showNotification("success", "模板发布成功");
+          toast.success("模板发布成功");
         } catch (e) {
-          showNotification("error", e instanceof Error ? e.message : "发布失败");
+          toast.error(e instanceof Error ? e.message : "发布失败");
         }
       },
     });
@@ -1245,8 +1368,8 @@ export default function TemplateEditor() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showNotification("success", "模板导出成功");
-  }, [template, selectedTemplateId, showNotification]);
+    toast.success("模板导出成功");
+  }, [template, selectedTemplateId]);
 
   // 删除模板
   const handleDeleteTemplate = () => {
@@ -1259,9 +1382,9 @@ export default function TemplateEditor() {
           await kfApi.deleteTemplate(selectedTemplateId);
           setSelectedTemplateId("");
           await fetchTemplates({ status: "draft,published", limit: 50 });
-          showNotification("success", "模板已删除");
+          toast.success("模板已删除");
         } catch (e) {
-          showNotification("error", e instanceof Error ? e.message : "删除失败");
+          toast.error(e instanceof Error ? e.message : "删除失败");
         }
       },
     });
@@ -1277,8 +1400,8 @@ export default function TemplateEditor() {
     
     // 恢复原始状态
     setTemplate(originalSnapshot);
-    showNotification("success", "已撤销所有更改");
-  }, [originalSnapshot, setTemplate, showNotification]);
+    toast.success("已撤销所有更改");
+  }, [originalSnapshot, setTemplate]);
 
   // 当模板加载或保存后，更新快照
   useEffect(() => {
@@ -1411,25 +1534,6 @@ export default function TemplateEditor() {
           </button>
         </div>
       </div>
-
-      {/* Notification */}
-      {notification && (
-        <div
-          className={cn(
-            "fixed right-6 bottom-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 backdrop-blur-sm animate-in slide-in-from-right",
-            notification.type === "success"
-              ? "bg-emerald-500/90 text-white border border-emerald-500/20"
-              : "bg-red-500/90 text-white border border-red-500/20"
-          )}
-        >
-          {notification.type === "success" ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
-          )}
-          {notification.message}
-        </div>
-      )}
 
       {/* Confirmation Modal */}
       {confirmAction && (

@@ -1,0 +1,177 @@
+<h2>项目管理模块 — 冗余分析</h2>
+<p class="subtitle">当前 35 个文件 / ~5000 行前端代码，简化后目标 ~10 个文件</p>
+
+<div class="section" style="margin-top: 1.5rem;">
+
+  <h3 style="color: #f85149; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem;">需要删除的文件（25个）</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 1rem 0;">
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">DashboardTab.tsx <span style="color: #8b949e; font-weight: 400;">253行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">项目仪表盘，指标统计 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">KanbanBoard.tsx <span style="color: #8b949e; font-weight: 400;">345行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">章节看板 — 状态追踪由对话完成</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">OutlineEditor.tsx <span style="color: #8b949e; font-weight: 400;">411行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">大纲编辑器 — 在对话中通过 AI 管理</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">OutlinePreview.tsx <span style="color: #8b949e; font-weight: 400;">84行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">大纲预览 — 同上</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">OutlineTab.tsx <span style="color: #8b949e; font-weight: 400;">101行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">大纲 Tab 包装 — 不需要 Tab 系统</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ChapterEditor.tsx <span style="color: #8b949e; font-weight: 400;">359行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">独立章节编辑页 — 编辑在对话/文档空间完成</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ChapterWritingPanel.tsx <span style="color: #8b949e; font-weight: 400;">153行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">章节写作面板 — 同上</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ChapterEditingPanel.tsx <span style="color: #8b949e; font-weight: 400;">184行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">章节编辑面板 — 同上</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ChapterAssignDropdown.tsx <span style="color: #8b949e; font-weight: 400;">61行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">章节分配下拉 — 不需要细粒度章节管理</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ChapterStatusBadge.tsx</div>
+      <div style="color: #8b949e; font-size: 0.8rem;">章节状态徽章 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ApprovalFlowEditor.tsx <span style="color: #8b949e; font-weight: 400;">233行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">审批流编辑器 — 过度设计</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ApprovalWorkflow.tsx <span style="color: #8b949e; font-weight: 400;">219行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">审批工作流管理 — 过度设计</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ApprovalTab.tsx <span style="color: #8b949e; font-weight: 400;">498行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">审批 Tab — 审核通过项目列表页完成</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">AiToolbox.tsx <span style="color: #8b949e; font-weight: 400;">386行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">AI 工具箱 — 能力由 Agent 对话提供</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">AiToolsTab.tsx <span style="color: #8b949e; font-weight: 400;">14行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">AI 工具 Tab 包装 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">SplitScreenLayout.tsx <span style="color: #8b949e; font-weight: 400;">56行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">分屏布局 — 仅大纲编辑器使用</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">MilestoneTimeline.tsx <span style="color: #8b949e; font-weight: 400;">120行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">里程碑时间线 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ProjectBreadcrumbBar.tsx <span style="color: #8b949e; font-weight: 400;">150行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">面包屑导航 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">MemberWorkspace.tsx <span style="color: #8b949e; font-weight: 400;">394行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">成员工作台 — 进入对话页即代替</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">WorkspaceTabs.tsx <span style="color: #8b949e; font-weight: 400;">50行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">Tab 导航 — 不需要 Tab 系统</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">tabRegistry.ts</div>
+      <div style="color: #8b949e; font-size: 0.8rem;">Tab 注册 — 不需要</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">navigateToChat.ts</div>
+      <div style="color: #8b949e; font-size: 0.8rem;">导航辅助 — 简化后直接 router.push</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">useProjectPermissions.ts</div>
+      <div style="color: #8b949e; font-size: 0.8rem;">15种权限 — 简化为 owner/member</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">ProjectWorkspace.tsx <span style="color: #8b949e; font-weight: 400;">186行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">7-Tab 工作台 — 删除，点击Card直接进对话</div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.6rem 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem;">OutlineTree.tsx <span style="color: #8b949e; font-weight: 400;">145行</span></div>
+      <div style="color: #8b949e; font-size: 0.8rem;">大纲树视图 — 在对话中展示</div>
+    </div>
+  </div>
+
+  <h3 style="color: #3fb950; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem;">保留的文件（~10个）</h3>
+
+  <div style="background: #0d1117; border: 1px solid #238636; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+    <div style="font-family: monospace; font-size: 0.85rem; line-height: 2; color: #c9d1d9;">
+      <span style="color: #3fb950;">pages/</span><br/>
+      &nbsp;&nbsp;projects/page.tsx          <span style="color: #8b949e;">← 项目列表页（保留）</span><br/>
+      &nbsp;&nbsp;projects/new/page.tsx      <span style="color: #8b949e;">← 创建项目页（保留）</span><br/>
+      &nbsp;&nbsp;projects/[id]/page.tsx     <span style="color: #f0883e;">← 改为：项目详情/设置页（简化）</span><br/>
+      <span style="color: #f85149; text-decoration: line-through;">&nbsp;&nbsp;projects/[id]/chapter/...   ← 删除</span><br/>
+      <span style="color: #f85149; text-decoration: line-through;">&nbsp;&nbsp;projects/workspace/...      ← 删除</span><br/>
+      <br/>
+      <span style="color: #3fb950;">components/</span><br/>
+      &nbsp;&nbsp;ProjectList.tsx            <span style="color: #8b949e;">← 项目列表（保留）</span><br/>
+      &nbsp;&nbsp;ProjectCreateWizard.tsx    <span style="color: #8b949e;">← 创建向导（保留）</span><br/>
+      &nbsp;&nbsp;components/ProjectCard.tsx <span style="color: #8b949e;">← 项目卡片（保留，增加"进入对话"按钮）</span><br/>
+      &nbsp;&nbsp;components/StatusBadge.tsx <span style="color: #8b949e;">← 状态徽章（保留）</span><br/>
+      &nbsp;&nbsp;components/FilterPills.tsx <span style="color: #8b949e;">← 筛选器（保留）</span><br/>
+      &nbsp;&nbsp;components/MemberList.tsx  <span style="color: #8b949e;">← 成员管理（保留，简化角色）</span><br/>
+      <br/>
+      <span style="color: #3fb950;">shared/</span><br/>
+      &nbsp;&nbsp;api.ts                     <span style="color: #8b949e;">← API 调用（保留，精简接口）</span><br/>
+      &nbsp;&nbsp;types.ts                   <span style="color: #8b949e;">← 类型定义（保留，精简）</span><br/>
+      &nbsp;&nbsp;transforms.ts             <span style="color: #8b949e;">← 数据转换（保留）</span><br/>
+    </div>
+  </div>
+
+  <h3 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-top: 2rem;">后端精简</h3>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 1rem 0;">
+    <div style="background: #0d1117; border: 1px solid #238636; border-radius: 6px; padding: 0.8rem;">
+      <div style="color: #3fb950; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">保留的 API（6个）</div>
+      <div style="font-family: monospace; font-size: 0.8rem; color: #c9d1d9; line-height: 1.8;">
+        GET    /projects          <span style="color: #8b949e;">列表</span><br/>
+        GET    /projects/{id}     <span style="color: #8b949e;">详情</span><br/>
+        POST   /projects          <span style="color: #8b949e;">创建</span><br/>
+        PATCH  /projects/{id}     <span style="color: #8b949e;">更新</span><br/>
+        DELETE /projects/{id}     <span style="color: #8b949e;">删除</span><br/>
+        POST   /projects/{id}/members    <span style="color: #8b949e;">加人</span><br/>
+        DELETE /projects/{id}/members/{uid} <span style="color: #8b949e;">移除</span>
+      </div>
+    </div>
+    <div style="background: #1c1017; border: 1px solid #f8514933; border-radius: 6px; padding: 0.8rem;">
+      <div style="color: #f85149; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">删除的 API（13个）</div>
+      <div style="font-family: monospace; font-size: 0.8rem; color: #8b949e; line-height: 1.8; text-decoration: line-through;">
+        GET/PUT/PATCH /outline<br/>
+        POST /confirm-outline<br/>
+        POST /start-writing<br/>
+        POST /start-editing<br/>
+        POST /ai-action<br/>
+        GET /my-permissions<br/>
+        POST /submit-approval<br/>
+        POST /approval-action<br/>
+        GET /approval-status<br/>
+        GET /approval-records
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #0d1117; border: 1px solid #238636; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+    <div style="color: #3fb950; font-weight: bold; margin-bottom: 0.5rem;">后端新增（2个）</div>
+    <div style="font-family: monospace; font-size: 0.85rem; color: #c9d1d9; line-height: 1.8;">
+      POST /projects/{id}/enter   <span style="color: #8b949e;">← 创建/获取成员线程，返回 thread_id</span><br/>
+      GET  /projects/{id}/files   <span style="color: #8b949e;">← 聚合项目下所有线程的文件列表</span>
+    </div>
+  </div>
+
+</div>

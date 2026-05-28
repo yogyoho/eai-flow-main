@@ -531,3 +531,25 @@ async def oauth_callback(provider: str, code: str, state: str):
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="OAuth callback not yet implemented",
     )
+
+
+class GatewayUserInfo(BaseModel):
+    id: str
+    email: str
+    system_role: str = "user"
+
+
+@router.get("/users/{user_id}", response_model=GatewayUserInfo)
+async def get_user_info(user_id: str):
+    """Internal endpoint for collab server to resolve gateway user IDs to emails."""
+    try:
+        provider = get_local_provider()
+        user = await provider.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return GatewayUserInfo(id=str(user.id), email=str(user.email), system_role=str(user.system_role))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_user_info failed for %s: %s", user_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

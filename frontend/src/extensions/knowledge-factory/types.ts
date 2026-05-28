@@ -165,6 +165,7 @@ export interface TemplateVersionResponse {
 
 export interface QualityAssessmentDimension {
   score: number;
+  strengths: string[];
   issues: string[];
 }
 
@@ -209,7 +210,7 @@ export interface EditorSection {
   children?: EditorSection[];
   contentContract?: EditorContentContract;
   complianceRules?: string[];
-  ragSources?: string[];
+  ragSources?: RAGSourceConfig[];
   generationHint?: string;
   exampleSnippet?: string;
   completenessScore?: number;
@@ -240,6 +241,42 @@ export interface TemplateUpdatePayload {
   root_sections_json?: { sections: Record<string, unknown>[] };
   cross_section_rules?: CrossSectionRule[];
   completeness_score?: number;
+  rag_sources?: RAGSourceConfig[];
+}
+
+export interface RAGSourceConfig {
+  kb_id: string;
+  kb_name: string;
+  ragflow_dataset_id?: string;
+  retrieval_strategy: "semantic" | "keyword" | "hybrid";
+  top_k: number;
+  similarity_threshold: number;
+  vector_similarity_weight: number;
+}
+
+export const RETRIEVAL_STRATEGIES: { value: RAGSourceConfig["retrieval_strategy"]; label: string; description: string }[] = [
+  { value: "hybrid", label: "混合检索", description: "语义+关键词混合，推荐" },
+  { value: "semantic", label: "语义检索", description: "基于语义相似度匹配" },
+  { value: "keyword", label: "关键词检索", description: "基于关键词精确匹配" },
+];
+
+export function normalizeRagSources(raw: unknown[] | undefined): RAGSourceConfig[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    if (typeof item === "object" && item !== null && "kb_id" in item) {
+      return item as RAGSourceConfig;
+    }
+    const obj = item as Record<string, unknown>;
+    return {
+      kb_id: String(obj.kb_id ?? obj.id ?? ""),
+      kb_name: String(obj.kb_name ?? obj.name ?? ""),
+      ragflow_dataset_id: obj.ragflow_dataset_id ? String(obj.ragflow_dataset_id) : undefined,
+      retrieval_strategy: (obj.retrieval_strategy as RAGSourceConfig["retrieval_strategy"]) ?? "hybrid",
+      top_k: Number(obj.top_k ?? 5),
+      similarity_threshold: Number(obj.similarity_threshold ?? 0.2),
+      vector_similarity_weight: Number(obj.vector_similarity_weight ?? 0.3),
+    };
+  });
 }
 
 export type SectionOperation =
@@ -496,9 +533,9 @@ export const RULE_TYPES = [
 ] as const;
 
 export const SEVERITY_LEVELS = [
-  { value: "critical", label: "严重", color: "#dc2626" },
-  { value: "warning", label: "警告", color: "#f59e0b" },
-  { value: "info", label: "提示", color: "#3b82f6" },
+  { value: "critical", label: "严重", color: "var(--error-500)" },
+  { value: "warning", label: "警告", color: "var(--warning-500)" },
+  { value: "info", label: "提示", color: "var(--info-500)" },
 ] as const;
 
 export const INDUSTRIES = [
@@ -527,6 +564,8 @@ export const DEFAULT_RULE_DICTIONARIES: RuleDictionaries = {
   industries: [...INDUSTRIES],
   reportTypes: [...REPORT_TYPES],
   regions: [...REGIONS],
+  ruleTypes: [...RULE_TYPES],
+  severityLevels: [...SEVERITY_LEVELS],
 };
 
 // ============== Compliance Check Types ==============
@@ -641,7 +680,7 @@ export interface LawTemplateSection {
     forbiddenPhrases: string[];
   };
   complianceRules?: string[];
-  ragSources?: string[];
+  ragSources?: RAGSourceConfig[];
   generationHint?: string;
   exampleSnippet?: string;
 }

@@ -1,0 +1,169 @@
+<h2>项目管理：组长 vs 成员导航方案</h2>
+<p class="subtitle">不同默认页，可切换 — 组员默认进入「我的工作台」，组长默认进入「仪表盘」</p>
+
+<div class="split">
+  <!-- 组长视图 -->
+  <div class="mockup">
+    <div class="mockup-header">组长（Manager）视图 — 默认进入仪表盘</div>
+    <div class="mockup-body" style="padding: 0;">
+      <div class="mock-nav" style="background: #2563eb; color: white; padding: 8px 16px; font-size: 13px;">
+        <span style="font-weight: bold;">← 返回</span> &nbsp;|&nbsp;
+        <span style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 4px;">📊 仪表盘</span> &nbsp;
+        <span>📋 看板</span> &nbsp;
+        <span>📝 大纲</span> &nbsp;
+        <span>👥 成员</span> &nbsp;
+        <span>✅ 审核</span> &nbsp;
+        <span>🤖 AI工具</span>
+        <span style="float: right; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 4px; font-size: 11px;">👑 管理员视角</span>
+      </div>
+      <div style="padding: 16px; background: #f8fafc;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+            <div style="font-size: 11px; color: #94a3b8;">总章节</div>
+            <div style="font-size: 24px; font-weight: bold;">12</div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #22c55e;">
+            <div style="font-size: 11px; color: #94a3b8;">已完成</div>
+            <div style="font-size: 24px; font-weight: bold;">4</div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+            <div style="font-size: 11px; color: #94a3b8;">进行中</div>
+            <div style="font-size: 24px; font-weight: bold;">5</div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+            <div style="font-size: 11px; color: #94a3b8;">完成率</div>
+            <div style="font-size: 24px; font-weight: bold;">33%</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+          <div style="background: white; padding: 12px; border-radius: 8px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">章节状态分布</div>
+            <div style="display: flex; gap: 4px; height: 20px;">
+              <div style="flex: 3; background: #94a3b8; border-radius: 3px;"></div>
+              <div style="flex: 2; background: #3b82f6; border-radius: 3px;"></div>
+              <div style="flex: 2; background: #f59e0b; border-radius: 3px;"></div>
+              <div style="flex: 4; background: #22c55e; border-radius: 3px;"></div>
+              <div style="flex: 1; background: #ef4444; border-radius: 3px;"></div>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 10px; color: #64748b;">
+              <span>⬤ 待撰写 3</span><span>⬤ 撰写中 2</span><span>⬤ 编辑中 2</span><span>⬤ 完成 4</span><span>⬤ 退回 1</span>
+            </div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">成员工作量</div>
+            <div style="font-size: 11px; color: #475569; line-height: 2;">
+              👤 张三 — 3章 (1完成)<br>
+              👤 李四 — 3章 (2完成)<br>
+              👤 王五 — 2章 (1完成)<br>
+              👤 赵六 — 4章 (0完成)
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 10px; background: white; padding: 12px; border-radius: 8px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">最近活动</div>
+          <div style="font-size: 11px; color: #475569; line-height: 1.8;">
+            📝 张三 完成了「第3章 环境现状调查」&nbsp;&nbsp;<span style="color:#94a3b8">10分钟前</span><br>
+            ✏️ 李四 开始编辑「第5章 大气环境影响」&nbsp;&nbsp;<span style="color:#94a3b8">30分钟前</span><br>
+            🤖 AI 完成「第2章 工程分析」初稿&nbsp;&nbsp;<span style="color:#94a3b8">1小时前</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成员视图 -->
+  <div class="mockup">
+    <div class="mockup-header">成员（Writer/Editor）视图 — 默认进入我的工作台</div>
+    <div class="mockup-body" style="padding: 0;">
+      <div class="mock-nav" style="background: #059669; color: white; padding: 8px 16px; font-size: 13px;">
+        <span style="font-weight: bold;">← 返回</span> &nbsp;|&nbsp;
+        <span style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 4px;">🎯 我的工作台</span> &nbsp;
+        <span>📊 仪表盘</span> &nbsp;
+        <span>📋 看板</span> &nbsp;
+        <span style="opacity: 0.5;">📝 大纲 🔒</span> &nbsp;
+        <span style="opacity: 0.5;">👥 成员 🔒</span>
+        <span style="float: right; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 4px; font-size: 11px;">👤 成员视角</span>
+      </div>
+      <div style="padding: 16px; background: #f0fdf4;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+            <div style="font-size: 11px; color: #94a3b8;">待处理</div>
+            <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">2</div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+            <div style="font-size: 11px; color: #94a3b8;">进行中</div>
+            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">1</div>
+          </div>
+          <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #22c55e;">
+            <div style="font-size: 11px; color: #94a3b8;">已完成</div>
+            <div style="font-size: 24px; font-weight: bold; color: #22c55e;">1</div>
+          </div>
+        </div>
+
+        <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 10px; color: #f59e0b;">⏳ 待处理</div>
+          <div style="background: #fffbeb; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600;">第4章 地下水环境影响</div>
+                <div style="font-size: 11px; color: #94a3b8;">目标 5000字 · 当前 0字 · 已退回修改</div>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">✏️ 编辑</button>
+                <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">🤖 AI辅助</button>
+              </div>
+            </div>
+          </div>
+          <div style="background: #fffbeb; padding: 10px; border-radius: 6px; border-left: 3px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600;">第7章 环境风险分析</div>
+                <div style="font-size: 11px; color: #94a3b8;">目标 3000字 · 当前 0字 · 待编辑</div>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">✏️ 编辑</button>
+                <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">🤖 AI辅助</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 10px; color: #3b82f6;">🔄 进行中</div>
+          <div style="background: #eff6ff; padding: 10px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 13px; font-weight: 600;">第5章 大气环境影响</div>
+                <div style="font-size: 11px; color: #94a3b8;">目标 8000字 · 当前 5200字 · 65%</div>
+                <div style="background: #e2e8f0; height: 4px; border-radius: 2px; margin-top: 4px;">
+                  <div style="background: #3b82f6; height: 100%; width: 65%; border-radius: 2px;"></div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <button class="mock-button" style="font-size: 11px; padding: 4px 8px;">💬 继续对话</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: white; padding: 12px; border-radius: 8px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 10px; color: #22c55e;">✅ 已完成</div>
+          <div style="background: #f0fdf4; padding: 10px; border-radius: 6px; border-left: 3px solid #22c55e;">
+            <div style="font-size: 13px; font-weight: 600; opacity: 0.7;">第3章 环境现状调查</div>
+            <div style="font-size: 11px; color: #94a3b8;">5200字 · 已提交审核</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>💡 关键设计点</h3>
+  <div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+    <p><strong>默认页不同：</strong>组长进入仪表盘（全局视角），成员进入我的工作台（个人视角）</p>
+    <p><strong>可切换：</strong>成员可切换到「仪表盘」「看板」查看全局（只读），但不能操作不属于自己的章节</p>
+    <p><strong>灰化标识：</strong>成员看到带 🔒 的 Tab（大纲/成员管理），点击提示「需要管理员权限」</p>
+    <p><strong>审核/审批：</strong>只在 Stage 5 出现，且只有审核人/批准人角色能看到操作按钮</p>
+  </div>
+</div>

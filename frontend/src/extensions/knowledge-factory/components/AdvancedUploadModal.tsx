@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { kfApi, kbApi } from "@/extensions/api";
@@ -35,8 +36,6 @@ interface AdvancedUploadModalProps {
   onClose: () => void;
   /** 上传成功回调 */
   onSuccess: (reports: SampleReport[]) => void;
-  /** Toast提示 */
-  onToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -78,7 +77,6 @@ export default function AdvancedUploadModal({
   defaultKbId,
   onClose,
   onSuccess,
-  onToast,
 }: AdvancedUploadModalProps) {
   // 步骤状态
   const [step, setStep] = useState<"kb" | "config" | "upload">("kb");
@@ -123,7 +121,7 @@ export default function AdvancedUploadModal({
         }))
       );
     } catch (e) {
-      onToast("加载知识库列表失败", "error");
+      toast.error("加载知识库列表失败");
     } finally {
       setLoadingKbs(false);
     }
@@ -131,7 +129,7 @@ export default function AdvancedUploadModal({
 
   const handleCreateKb = async () => {
     if (!newKbName.trim()) {
-      onToast("请输入知识库名称", "error");
+      toast.error("请输入知识库名称");
       return;
     }
     setCreatingKb(true);
@@ -151,9 +149,9 @@ export default function AdvancedUploadModal({
       setShowNewKbForm(false);
       setNewKbName("");
       setNewKbDescription("");
-      onToast("知识库创建成功", "success");
+      toast.success("知识库创建成功");
     } catch (e: any) {
-      onToast(e.message || "创建知识库失败", "error");
+      toast.error(e.message || "创建知识库失败");
     } finally {
       setCreatingKb(false);
     }
@@ -166,18 +164,18 @@ export default function AdvancedUploadModal({
       return ["pdf", "docx", "doc", "txt", "md"].includes(ext || "");
     });
     if (validFiles.length < newFiles.length) {
-      onToast(`已过滤 ${newFiles.length - validFiles.length} 个不支持的文件`, "info");
+      toast.info(`已过滤 ${newFiles.length - validFiles.length} 个不支持的文件`);
     }
     setFiles((prev) => [...prev, ...validFiles]);
   };
 
   const handleUpload = async () => {
     if (!selectedKbId) {
-      onToast("请选择目标知识库", "error");
+      toast.error("请选择目标知识库");
       return;
     }
     if (files.length === 0) {
-      onToast("请选择要上传的文件", "error");
+      toast.error("请选择要上传的文件");
       return;
     }
 
@@ -191,11 +189,11 @@ export default function AdvancedUploadModal({
         chunkConfig,
         (current, total) => setUploadProgress({ current, total })
       );
-      onToast(`成功上传 ${results.length} 个文件`, "success");
+      toast.success(`成功上传 ${results.length} 个文件`);
       onSuccess(results);
       onClose();
     } catch (e: any) {
-      onToast(e.message || "上传失败", "error");
+      toast.error(e.message || "上传失败");
     } finally {
       setUploading(false);
     }

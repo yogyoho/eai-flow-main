@@ -12,8 +12,8 @@ import {
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
 import { kfApi } from "@/extensions/api";
-import type { ExtractionTaskResponse, TemplateResult } from "@/extensions/knowledge-factory/types";
 import ExtractionResultModal from "@/extensions/knowledge-factory/ExtractionResultModal";
+import type { ExtractionTaskResponse, TemplateResult } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL = 5000;

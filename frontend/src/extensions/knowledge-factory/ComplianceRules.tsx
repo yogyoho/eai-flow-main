@@ -14,11 +14,10 @@ import {
 } from "lucide-react";
 import React, { useState, useCallback, useEffect } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -26,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchRules,
   fetchRuleStatistics,
@@ -39,11 +39,6 @@ import {
   type RuleExecutionStatistics,
   type TriggerStatistics,
 } from "@/extensions/knowledge-factory/complianceRulesApi";
-import { RuleCard } from "./RuleCard";
-import { RuleDetail } from "./RuleDetail";
-import { SeedDataManager } from "./SeedDataManager";
-import { RuleLogsViewer } from "./RuleLogsViewer";
-import { RuleTestModal } from "./RuleTestModal";
 import {
   type ComplianceRule,
   type ComplianceRuleListResponse,
@@ -56,6 +51,12 @@ import {
   REPORT_TYPES,
 } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
+
+import { RuleCard } from "./RuleCard";
+import { RuleDetail } from "./RuleDetail";
+import { RuleLogsViewer } from "./RuleLogsViewer";
+import { RuleTestModal } from "./RuleTestModal";
+import { SeedDataManager } from "./SeedDataManager";
 
 interface ComplianceRulesProps {
   /** 是否显示管理功能（如导入、编辑、删除） */
@@ -314,7 +315,7 @@ export function ComplianceRules({
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">启用</span>
-                    <span className="text-xl font-bold text-emerald-500">
+                    <span className="text-xl font-bold text-success">
                       {statistics.enabled}
                     </span>
                   </div>

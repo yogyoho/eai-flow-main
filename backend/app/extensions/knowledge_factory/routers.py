@@ -59,6 +59,7 @@ from .schemas import (
     StepStatusSchema,
     VersionCompareRequest,
     VersionDiff,
+    RAGSourceSuggestionResponse,
 )
 from app.extensions.settings.service import SystemConfigService
 from .dictionary_loader import load_rule_dictionaries
@@ -998,6 +999,121 @@ async def assess_template_quality(
     result = QualityService.assess_template_quality(template_data)
 
     return QualityAssessmentResult(**result)
+
+
+def _flatten_template_sections(sections: list[dict]) -> list[dict]:
+    """Flatten nested section tree into a flat list."""
+    flat = []
+    for sec in sections:
+        flat.append(sec)
+        children = sec.get("children") or []
+        if children:
+            flat.extend(_flatten_template_sections(children))
+    return flat
+
+
+@router.post(
+    "/templates/{template_id}/sections/{section_id}/suggest-rag-sources",
+    response_model=RAGSourceSuggestionResponse,
+)
+async def suggest_rag_sources(
+    template_id: UUID,
+    section_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """AI 推荐：基于章节内容推荐匹配的知识库作为 RAG 数据源。"""
+    template = await TemplateService.get_template(db, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    # Find the section in the template
+    sections_json = template.root_sections_json or {}
+    flat_sections = _flatten_template_sections(sections_json.get("sections", []))
+    target_section = None
+    for sec in flat_sections:
+        if sec.get("id") == section_id:
+            target_section = sec
+            break
+    if not target_section:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    # Fetch available knowledge bases
+    result = await db.execute(
+        select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id)
+        .where(KnowledgeBase.status == "active")
+        .limit(200)
+    )
+    available_kbs = [
+        {"kb_id": str(row.id), "kb_name": row.name, "description": row.description, "ragflow_dataset_id": row.ragflow_dataset_id}
+        for row in result.all()
+    ]
+
+    if not available_kbs:
+        return RAGSourceSuggestionResponse(suggestions=[])
+
+    # Use LLM to suggest relevant KBs
+    from .llm import ExtractionLLMClient
+    llm = ExtractionLLMClient()
+
+    section_title = target_section.get("title", "")
+    section_purpose = target_section.get("purpose", "")
+    key_elements = (target_section.get("content_contract") or {}).get("key_elements", [])
+
+    kb_list_text = "\n".join(
+        f"- {kb['kb_name']}" + (f" ({kb['description']})" if kb.get("description") else "")
+        for kb in available_kbs
+    )
+
+    prompt = (
+        f"根据以下章节信息，从可用知识库列表中推荐最适合该章节的知识库作为报告生成时的参考数据源。\n\n"
+        f"章节标题: {section_title}\n"
+        f"章节目的: {section_purpose or '未知'}\n"
+        f"关键要素: {', '.join(key_elements) if key_elements else '无'}\n\n"
+        f"可用知识库:\n{kb_list_text}\n\n"
+        f"请返回 JSON 格式的推荐列表（最多 3 个）：\n"
+        f'```json\n{{"suggestions": [{{"kb_name": "知识库名称", "relevance_note": "推荐原因"}}]}}\n```'
+    )
+
+    try:
+        from langchain_core.messages import HumanMessage
+        raw = llm._invoke([HumanMessage(content=prompt)])
+        parsed = llm._extract_json(raw)
+        suggestions_raw = parsed.get("suggestions", [])
+
+        # Match suggestions to real KBs
+        matched = []
+        for sug in suggestions_raw:
+            kb_name = sug.get("kb_name", "") if isinstance(sug, dict) else str(sug)
+            best_kb = None
+            best_score = 0
+            for kb in available_kbs:
+                name = kb["kb_name"]
+                if name == kb_name:
+                    best_kb = kb
+                    best_score = 100
+                    break
+                if name in kb_name or kb_name in name:
+                    score = min(len(name), len(kb_name)) / max(len(name), len(kb_name)) * 80
+                    if score > best_score:
+                        best_score = score
+                        best_kb = kb
+
+            if best_kb and best_score >= 40:
+                matched.append({
+                    "kb_id": best_kb["kb_id"],
+                    "kb_name": best_kb["kb_name"],
+                    "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
+                    "retrieval_strategy": "hybrid",
+                    "top_k": 5,
+                    "similarity_threshold": 0.2,
+                    "vector_similarity_weight": 0.3,
+                })
+
+        return RAGSourceSuggestionResponse(suggestions=matched)
+    except Exception as e:
+        logger.error(f"Suggest RAG sources failed: {e}")
+        return RAGSourceSuggestionResponse(suggestions=[])
 
 
 @router.post("/templates/compare", response_model=VersionDiff)

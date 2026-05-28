@@ -13,14 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-
 import { deleteRule, updateRule } from "@/extensions/knowledge-factory/complianceRulesApi";
-import {
-  buildRuleUpdatePayload,
-  formatValidationConfig,
-  getRegionLabel,
-} from "./rule-detail-utils";
 import {
   DEFAULT_RULE_DICTIONARIES,
   RULE_TYPES,
@@ -29,6 +22,13 @@ import {
   type ValidationConfig,
   type RuleDictionaries,
 } from "@/extensions/knowledge-factory/types";
+import { cn } from "@/lib/utils";
+
+import {
+  buildRuleUpdatePayload,
+  formatValidationConfig,
+  getRegionLabel,
+} from "./rule-detail-utils";
 
 interface RuleDetailProps {
   rule: ComplianceRule;
@@ -71,7 +71,7 @@ export function RuleDetail({
   }, [rule]);
 
   const severityInfo = SEVERITY_LEVELS.find((item) => item.value === editedRule.severity);
-  const severityColor = severityInfo?.color ?? "#6b7280";
+  const severityColor = severityInfo?.color ?? "var(--muted-foreground)";
   const typeLabel =
     editedRule.typeName ?? RULE_TYPES.find((item) => item.value === editedRule.type)?.label ?? editedRule.type;
   const industryLabel =
@@ -273,7 +273,7 @@ export function RuleDetail({
                 {isEditing ? (
                   <Select
                     value={editedRule.severity}
-                    onValueChange={(value) => handleChange("severity", value as ComplianceRule["severity"])}
+                    onValueChange={(value) => handleChange("severity", value)}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="选择严重级别" />
@@ -527,7 +527,7 @@ export function RuleDetail({
                       boxShadow: "inset 3px 0 0 0 color-mix(in srgb, var(--destructive) 60%, transparent)",
                     }}
                   >
-                    <p className="text-sm text-red-500 leading-relaxed whitespace-pre-wrap break-words m-0">
+                    <p className="text-sm text-destructive leading-relaxed whitespace-pre-wrap break-words m-0">
                       {editedRule.errorMessage ?? "无"}
                     </p>
                   </div>
@@ -546,12 +546,12 @@ export function RuleDetail({
                   <div
                     className="p-2.5 rounded-lg border"
                     style={{
-                      backgroundColor: "color-mix(in srgb, var(--emerald-500, #10b981) 8%, transparent)",
-                      borderColor: "color-mix(in srgb, var(--emerald-500, #10b981) 30%, transparent)",
-                      boxShadow: "inset 3px 0 0 0 var(--emerald-500, #10b981)",
+                      backgroundColor: "color-mix(in srgb, var(--success) 8%, transparent)",
+                      borderColor: "color-mix(in srgb, var(--success) 30%, transparent)",
+                      boxShadow: "inset 3px 0 0 0 var(--success)",
                     }}
                   >
-                    <p className="text-sm text-emerald-500 leading-relaxed whitespace-pre-wrap break-words m-0">
+                    <p className="text-sm text-success leading-relaxed whitespace-pre-wrap break-words m-0">
                       {editedRule.autoFixSuggestion ?? "无"}
                     </p>
                   </div>
@@ -656,7 +656,7 @@ export function RuleDetail({
               )}
               {onTestRule && (
                 <Button
-                  className="bg-violet-600 hover:bg-violet-700 text-white"
+                  className="bg-primary hover:bg-primary/90 text-white"
                   onClick={onTestRule}
                 >
                   测试规则

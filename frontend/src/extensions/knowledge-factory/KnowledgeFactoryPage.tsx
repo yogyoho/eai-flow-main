@@ -3,9 +3,6 @@
 import { LayoutDashboard } from "lucide-react";
 import React, { useState } from "react";
 
-import type { TabId } from "@/extensions/knowledge-factory/types";
-import { cn } from "@/lib/utils";
-
 import {
   SampleReports,
   TemplateExtraction,
@@ -18,6 +15,9 @@ import {
   BusinessDictionary,
   TabNavigation,
 } from "@/extensions/knowledge-factory/index";
+import type { TabId } from "@/extensions/knowledge-factory/types";
+import { cn } from "@/lib/utils";
+
 
 export default function KnowledgeFactoryPage() {
   const [activeTab, setActiveTab] = useState<TabId>("reports");

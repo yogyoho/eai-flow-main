@@ -4,11 +4,12 @@ import { Check, Globe, Loader2, Play, ChevronDown, Layers, Scale } from "lucide-
 import React, { useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { scraperApi } from "@/extensions/api";
 import { useModels } from "@/core/models/hooks";
 import { getBaseSettingsSnapshot } from "@/core/settings/store";
-import { useScraperContext } from "./ScraperContext";
+import { scraperApi } from "@/extensions/api";
 import { cn } from "@/lib/utils";
+
+import { useScraperContext } from "./ScraperContext";
 
 /* ---------- Schema Dropdown ---------- */
 
@@ -45,8 +46,8 @@ function SchemaDropdown({ schemas, value, onChange }: { schemas: SchemaItem[]; v
   function pick(name: string | undefined) { onChange(name || undefined); setOpen(false); }
 
   const groups: { key: string; label: string; icon: React.ComponentType<{ className?: string }>; color: string; items: SchemaItem[] }[] = [];
-  if (lawSchemas.length) groups.push({ key: "law", label: "法规标准", icon: Scale, color: "text-blue-500", items: lawSchemas });
-  if (generalSchemas.length) groups.push({ key: "general", label: "通用模板", icon: Layers, color: "text-amber-500", items: generalSchemas });
+  if (lawSchemas.length) groups.push({ key: "law", label: "法规标准", icon: Scale, color: "text-primary", items: lawSchemas });
+  if (generalSchemas.length) groups.push({ key: "general", label: "通用模板", icon: Layers, color: "text-warning", items: generalSchemas });
 
   return (
     <div ref={containerRef} className="relative">
@@ -238,7 +239,7 @@ export default function ScraperScrapeDialog() {
 
           {/* Error */}
           {error && (
-            <div className="p-3 rounded-xl bg-red-50/80 border border-red-200/60 text-red-700 text-sm flex items-start gap-2">
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2">
               <span className="shrink-0">!</span> {error}
             </div>
           )}

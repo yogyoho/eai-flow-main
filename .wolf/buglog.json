@@ -1,0 +1,3150 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-05-19T04:19:17.242Z",
+      "error_message": "Wrong operator: >= should be &&",
+      "file": "docker/dev-entrypoint.sh",
+      "root_cause": "Used \">=\" instead of \"&&\"",
+      "fix": "Changed operator >= → &&",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T04:19:17.242Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-05-19T05:25:40.064Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../aiproj/Pisuan-Know/web/src/assets/theme.js",
+      "root_cause": "Had '#1c7796'",
+      "fix": "Changed to '#1890ff'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:25:40.065Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-05-19T05:25:42.530Z",
+      "error_message": "Wrong reference: 096dd9 should be 40a9ff",
+      "file": "../../aiproj/Pisuan-Know/web/src/assets/css/base.css",
+      "root_cause": "Used \"096dd9\" instead of \"40a9ff\"",
+      "fix": "Changed 096dd9 → 40a9ff",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T05:25:44.444Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-05-19T05:26:22.438Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../aiproj/Pisuan-Know/web/src/App.vue",
+      "root_cause": "Had '#1c7796'",
+      "fix": "Changed to '#1890ff'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "vue"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:26:22.438Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-05-19T05:26:36.674Z",
+      "error_message": "Wrong reference: 3996ae should be 40a9ff",
+      "file": "../../aiproj/Pisuan-Know/web/src/utils/chartColors.js",
+      "root_cause": "Used \"3996ae\" instead of \"40a9ff\"",
+      "fix": "Changed 3996ae → 40a9ff",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:26:36.674Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-05-19T05:26:50.880Z",
+      "error_message": "Wrong reference: 3996ae should be var",
+      "file": "../../aiproj/Pisuan-Know/web/src/components/dashboard/CallStatsComponent.vue",
+      "root_cause": "Used \"3996ae\" instead of \"var\"",
+      "fix": "Changed 3996ae → var",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "vue"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:26:50.880Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-05-19T05:27:04.215Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../aiproj/Pisuan-Know/web/src/utils/chartColors.js",
+      "root_cause": "Had '#028ea0'",
+      "fix": "Changed to '#11cbe3'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:27:04.215Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-05-19T05:33:56.200Z",
+      "error_message": "CSS fix: background",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "background: oklch(0.54 0.26 265.5 / 0.1) → oklch(0.615 0.103 199.0 / 0.1)",
+      "fix": "Changed background: oklch(0.54 0.26 265.5 / 0.1) → oklch(0.615 0.103 199.0 / 0.1)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:33:56.200Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-05-19T05:36:06.015Z",
+      "error_message": "Wrong reference: 2563eb should be 08979c",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "Used \"2563eb\" instead of \"08979c\"",
+      "fix": "Changed 2563eb → 08979c",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-19T05:36:14.793Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-05-19T05:36:33.939Z",
+      "error_message": "CSS fix: --purple-primary, --purple-glow, --purple-border",
+      "file": "frontend/src/components/ui/magic-bento.css",
+      "root_cause": "--purple-primary: rgba(132, 0, 255, 1) → rgba(114, 46, 209, 1); --purple-glow: rgba(132, 0, 255, 0.2) → rgba(114, 46, 209, 0.2); --purple-border: rgba(132, 0, 255, 0.8) → rgba(114, 46, 209, 0.8)",
+      "fix": "Changed --purple-primary: rgba(132, 0, 255, 1) → rgba(114, 46, 209, 1); --purple-glow: rgba(132, 0, 255, 0.2) → rgba(114, 46, 209, 0.2); --purple-border: rgba(132, 0, 255, 0.8) → rgba(114, 46, 209, 0.8)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T05:36:35.487Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-05-19T05:37:43.126Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/types.ts",
+      "root_cause": "Had \"#3b82f6\"",
+      "fix": "Changed to \"#08979c\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:37:43.126Z"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-05-19T05:37:44.890Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx",
+      "root_cause": "Had \"#3b82f6\"",
+      "fix": "Changed to \"#08979c\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:37:44.890Z"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-05-19T05:49:43.696Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/knowledge-factory/types.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T05:49:43.696Z"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-05-19T05:51:27.931Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/knowledge-factory/types.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: export function normalizeRagSources(raw: unknown[] | undefin; if (!raw || !Array.isArray(raw)) return [];",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T05:56:25.468Z"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-05-19T05:55:53.987Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/types.ts",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 40→20 lines (16 removed) | Also: export function normalizeRagSources(raw: unknown[]; if (!raw || !Array.isArray(raw)) return [];",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T05:56:50.104Z"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-05-19T07:28:50.369Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/packages/harness/deerflow/config/extensions_config.py",
+      "root_cause": "Had \"URL of the MCP server (for sse or http type)\"",
+      "fix": "Changed to \"Working directory for the MCP server process (std",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T07:28:50.369Z"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-05-19T08:30:52.224Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/SampleReports.tsx",
+      "root_cause": "Had \"text-[11px] text-muted-foreground/60\"",
+      "fix": "Changed to \"inline-flex items-center px-2 py-0.5 rounded-full",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T08:30:52.224Z"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-05-19T23:32:24.172Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "30 lines replaced/restructured",
+      "fix": "Rewrote 38→96 lines (30 removed) | Also: --background: oklch(0.145 0 0);; --foreground: oklch(0.985 0 0);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T23:32:50.511Z"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-05-19T23:33:06.699Z",
+      "error_message": "CSS fix: background",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "background: oklch(0.54 0.26 265.5 / 0.1) → color-mix(in oklch, var(--primary) 10%, transparent)",
+      "fix": "Changed background: oklch(0.54 0.26 265.5 / 0.1) → color-mix(in oklch, var(--primary) 10%, transparent)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T23:33:06.699Z"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-05-19T23:45:26.443Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateExtraction.tsx",
+      "root_cause": "Had \"font-medium text-emerald-500\"",
+      "fix": "Changed to \"font-medium text-success\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-19T23:46:50.735Z"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-05-19T23:45:34.549Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/SampleReports.tsx",
+      "root_cause": "Had \"inline-flex items-center px-2 py-0.5 rounded-full",
+      "fix": "Changed to \"inline-flex items-center px-2 py-0.5 rounded-full",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 8,
+      "last_seen": "2026-05-19T23:47:42.734Z"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-05-20T00:10:39.567Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/ComplianceRules.tsx",
+      "root_cause": "Had \"text-xl font-bold text-emerald-500\"",
+      "fix": "Changed to \"text-xl font-bold text-success\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:10:39.567Z"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-05-20T00:10:52.825Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/LawLibrary.tsx",
+      "root_cause": "Had \"text-xs bg-amber-500/10 text-amber-500 px-2 py-0.",
+      "fix": "Changed to \"text-xs bg-warning/10 text-warning px-2 py-0.5 ro",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 8,
+      "last_seen": "2026-05-20T00:13:19.990Z"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-05-20T00:13:33.985Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RuleCard.tsx",
+      "root_cause": "Had \"#6b7280\"",
+      "fix": "Changed to \"var(--muted-foreground)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:14:05.356Z"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-05-20T00:14:21.271Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RuleDetail.tsx",
+      "root_cause": "Had \"#6b7280\"",
+      "fix": "Changed to \"var(--muted-foreground)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:14:33.769Z"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-05-20T00:50:24.886Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx",
+      "root_cause": "Had \"p-3 rounded-xl bg-red-50/80 border border-red-200",
+      "fix": "Changed to \"p-3 rounded-xl bg-destructive/10 border border-de",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:50:37.406Z"
+    },
+    {
+      "id": "bug-027",
+      "timestamp": "2026-05-20T00:50:54.199Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx",
+      "root_cause": "Had \"text-blue-500\"",
+      "fix": "Changed to \"text-primary\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:50:54.199Z"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-05-20T00:52:00.787Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/scraper/ScraperScrapeDialog.tsx",
+      "root_cause": "Had \"text-blue-500\"",
+      "fix": "Changed to \"text-primary\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:52:13.967Z"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-05-20T00:52:37.469Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/CheckResultPanel.tsx",
+      "root_cause": "Had \"#6b7280\"",
+      "fix": "Changed to \"var(--muted-foreground)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:52:37.469Z"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-05-20T00:54:14.200Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RuleCard.tsx",
+      "root_cause": "Had \"text-xs border-amber-500/20 bg-warning/10 text-wa",
+      "fix": "Changed to \"text-xs border-warning/20 bg-warning/10 text-warn",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:54:14.200Z"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-05-20T01:00:27.062Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RuleEngine.tsx",
+      "root_cause": "Had \"flex items-center gap-3 rounded-xl border border-",
+      "fix": "Changed to \"flex items-center gap-3 rounded-xl border border-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T01:00:40.642Z"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-05-20T01:01:11.762Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/AiRuleExtractModal.tsx",
+      "root_cause": "Had \"flex items-center gap-2 rounded-lg bg-red-500/10 ",
+      "fix": "Changed to \"flex items-center gap-2 rounded-lg bg-destructive",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-20T01:01:34.329Z"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-05-20T01:02:02.958Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/QualityAssessment.tsx",
+      "root_cause": "Had \"#404040\"",
+      "fix": "Changed to \"var(--gray-500)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-20T01:03:33.867Z"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-05-20T01:19:19.536Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateExtraction.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:19:19.536Z"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-05-20T01:20:49.506Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RuleEngine.tsx",
+      "root_cause": "Had \"flex size-12 shrink-0 items-center justify-center",
+      "fix": "Changed to \"flex size-12 shrink-0 items-center justify-center",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T01:21:03.748Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-05-20T01:29:01.870Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/LawLibrary.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 24→24 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:29:01.870Z"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-05-20T01:35:29.367Z",
+      "error_message": "Wrong reference: FolderAlert should be CircleAlert",
+      "file": "frontend/src/extensions/knowledge-factory/components/RAGFlowStatusPanel.tsx",
+      "root_cause": "Used \"FolderAlert\" instead of \"CircleAlert\"",
+      "fix": "Changed FolderAlert → CircleAlert",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T01:35:35.921Z"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-05-20T01:45:46.970Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/knowledge_factory/quality.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 14→19 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T01:45:46.970Z"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-05-20T02:54:48.100Z",
+      "error_message": "CSS fix: title, type",
+      "file": "frontend/src/extensions/knowledge-factory/QualityAssessment.tsx",
+      "root_cause": "title: issue, → strength,; type: dim.score >= 80 ? \"info\" : \"warning\", → dim.score >= 60 ? \"warning\" : \"error\",",
+      "fix": "Changed title: issue, → strength,; type: dim.score >= 80 ? \"info\" : \"warning\", → dim.score >= 60 ? \"warning\" : \"error\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T02:54:48.100Z"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-05-20T02:56:02.611Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/QualityAssessment.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 44→69 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T02:56:02.611Z"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-05-20T03:15:48.131Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "Had \"siliconflow-deepseek\"",
+      "fix": "Changed to \"glm-4.7-flash\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:15:48.131Z"
+    },
+    {
+      "id": "bug-042",
+      "timestamp": "2026-05-20T03:35:47.597Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:35:47.597Z"
+    },
+    {
+      "id": "bug-043",
+      "timestamp": "2026-05-20T03:36:56.956Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: {models.length > 0 && (; <div className=\"space-y-1.5\">",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T03:37:10.724Z"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-05-20T03:45:34.275Z",
+      "error_message": "Wrong reference: showToast should be toast",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateExtraction.tsx",
+      "root_cause": "Used \"showToast\" instead of \"toast\"",
+      "fix": "Changed showToast → toast",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 14,
+      "last_seen": "2026-05-20T03:46:23.630Z"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-05-20T03:46:47.481Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateExtraction.tsx",
+      "root_cause": "17 lines replaced/restructured",
+      "fix": "Rewrote 22→3 lines (17 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:46:47.481Z"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-05-20T03:47:15.662Z",
+      "error_message": "Wrong reference: onToast should be Props",
+      "file": "frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx",
+      "root_cause": "Used \"onToast\" instead of \"Props\"",
+      "fix": "Changed onToast → Props",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:47:15.662Z"
+    },
+    {
+      "id": "bug-047",
+      "timestamp": "2026-05-20T03:47:28.976Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx",
+      "root_cause": "Had \"error\"",
+      "fix": "Changed to \"请至少选择 1 份样例报告\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:47:28.976Z"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-05-20T03:55:21.336Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/knowledge-factory/page.tsx",
+      "root_cause": "Had \"@/extensions/knowledge-factory/types\"",
+      "fix": "Changed to \"@/components/ui/sonner\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T03:55:21.336Z"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-05-20T06:55:42.535Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T06:55:42.535Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-05-20T07:20:34.732Z",
+      "error_message": "Wrong reference: HTMLInputElement should be HTMLTextAreaElement",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Used \"HTMLInputElement\" instead of \"HTMLTextAreaElement\"",
+      "fix": "Changed HTMLInputElement → HTMLTextAreaElement",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T07:20:34.732Z"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-05-20T07:20:53.711Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "No early return/throw for edge case: scrollRef.current",
+      "fix": "Added guard clause: if (scrollRef.current)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T07:20:53.711Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-05-20T07:21:14.403Z",
+      "error_message": "CSS fix: placeholder",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "placeholder: text-muted-foreground\" → text-muted-foreground resize-none leading-relaxed max-h-[120px]\"",
+      "fix": "Changed placeholder: text-muted-foreground\" → text-muted-foreground resize-none leading-relaxed max-h-[120px]\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T07:21:14.403Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-05-20T08:03:43.766Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:03:43.766Z"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-05-20T08:04:03.688Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:04:03.689Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-05-20T08:04:35.769Z",
+      "error_message": "Wrong operator: ?? should be ===",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Used \"??\" instead of \"===\"",
+      "fix": "Changed operator ?? → ===",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:04:35.769Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-05-20T08:06:20.893Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"w-3 h-3\"",
+      "fix": "Changed to \"truncate\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:06:20.893Z"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-05-20T08:14:57.673Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 15→23 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:14:57.673Z"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-05-20T08:15:15.998Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "No early return/throw for edge case: !hasSelection",
+      "fix": "Added guard clause: if (!hasSelection)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:15:15.998Z"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-05-20T08:23:59.619Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"px-3 py-3 border-t border-border shrink-0 bg-mute",
+      "fix": "Changed to \"px-3 py-3 shrink-0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:23:59.619Z"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-05-20T08:31:19.132Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"inline-flex items-center gap-1 px-2.5 py-1 rounde",
+      "fix": "Changed to \"inline-flex items-center gap-1 px-2.5 py-1 rounde",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-05-20T08:33:27.398Z"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-05-20T08:39:30.791Z",
+      "error_message": "Wrong reference: RefreshCw should be Lightbulb",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Used \"RefreshCw\" instead of \"Lightbulb\"",
+      "fix": "Changed RefreshCw → Lightbulb",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T08:40:10.694Z"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-05-20T08:42:48.529Z",
+      "error_message": "CSS fix: text, userMsg",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "text: string, operation?: AIOperation) => { → string, operation?: AIOperation, displayContent?: string) => {; userMsg: ChatMessage = { id: crypto.randomUUID(), role: \"user\", content: text, operation → ChatMessage = { id: crypto.randomUUID(), role: \"user\", content: displayContent ?? text, operation",
+      "fix": "Changed text: string, operation?: AIOperation) => { → string, operation?: AIOperation, displayContent?: string) => {; userMsg: ChatMessage = { id: crypto.randomUUID(), role: \"user\", content: text, operation → ChatMessage = { id: crypto.randomUUID(), role: \"user\", content: displayContent ?? text, operation",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T08:42:48.529Z"
+    },
+    {
+      "id": "bug-063",
+      "timestamp": "2026-05-20T09:23:57.655Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "Had \"notion-drag-handle\"",
+      "fix": "Changed to \"notion-drag-handle notion-drag-handle--visible\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T09:23:57.656Z"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-05-20T10:05:27.412Z",
+      "error_message": "Wrong operator: ?? should be !==",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "Used \"??\" instead of \"!==\"",
+      "fix": "Changed operator ?? → !==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T10:05:27.412Z"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-05-20T10:05:49.120Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T10:05:49.120Z"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-05-20T10:06:51.774Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "71 lines replaced/restructured",
+      "fix": "Rewrote 94→8 lines (71 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T10:06:51.774Z"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-05-20T10:47:22.069Z",
+      "error_message": "CSS fix: top",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "top: rect.top - editorRect.top + editorDom.scrollTop, → rect.top - containerRect.top,",
+      "fix": "Changed top: rect.top - editorRect.top + editorDom.scrollTop, → rect.top - containerRect.top,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T10:47:22.069Z"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-05-20T12:31:35.545Z",
+      "error_message": "CSS fix: opacity",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "opacity: 1 → 0.35",
+      "fix": "Changed opacity: 1 → 0.35",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T12:33:06.380Z"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-05-20T12:35:05.969Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 19→11 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T12:35:05.969Z"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-05-20T13:29:29.274Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/SampleReports.tsx",
+      "root_cause": "39 lines replaced/restructured",
+      "fix": "Rewrote 57→11 lines (39 removed) | Also: onToast={show}; <ToastContainer toasts={toasts} onRemove={remove} ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T13:30:09.835Z"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-05-20T13:30:52.394Z",
+      "error_message": "Wrong reference: showToast should be toast",
+      "file": "frontend/src/extensions/knowledge-factory/BusinessDictionary.tsx",
+      "root_cause": "Used \"showToast\" instead of \"toast\"",
+      "fix": "Changed showToast → toast",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 9,
+      "last_seen": "2026-05-20T13:31:57.533Z"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-05-20T13:32:46.000Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/knowledge-factory/BusinessDictionary.tsx",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 20→3 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T13:32:46.000Z"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-05-20T13:35:38.449Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateEditor.tsx",
+      "root_cause": "Had \"error\"",
+      "fix": "Changed to \"请输入模板名称\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 10,
+      "last_seen": "2026-05-20T13:36:13.547Z"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-05-20T13:37:42.929Z",
+      "error_message": "Wrong reference: onToast should be toast",
+      "file": "frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx",
+      "root_cause": "Used \"onToast\" instead of \"toast\"",
+      "fix": "Changed onToast → toast",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-05-20T13:37:51.692Z"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-05-20T13:37:46.081Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx",
+      "root_cause": "Had \"success\"",
+      "fix": "Changed to \"创建知识库失败\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T13:37:46.081Z"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-05-21T04:25:00.000Z",
+      "error_message": "/workspace/chats/new returns 404 after Docker restart - Turbopack lazy compilation",
+      "file": "docker/docker-compose-dev.yaml",
+      "root_cause": "Turbopack lazily compiles routes on first access. After Docker restart, /workspace/chats/[thread_id] is not compiled. First access triggers 23+ second compilation but Next.js returns 404 instead of waiting. Docker volume mounts make compilation slow.",
+      "fix": "Added warm-up wget to /workspace/chats/new in frontend startup command, triggered 8s after dev server starts to pre-compile the critical chat route.",
+      "tags": [
+        "docker",
+        "next.js",
+        "turbopack",
+        "404",
+        "startup"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:25:00.000Z"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-05-21T04:48:09.602Z",
+      "error_message": "CSS fix: left",
+      "file": "frontend/src/extensions/docmgr/components/EditorDragHandle.tsx",
+      "root_cause": "left: -28, → 4,",
+      "fix": "Changed left: -28, → 4,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T04:48:09.602Z"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-05-21T05:20:12.148Z",
+      "error_message": "CSS fix: opacity",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "opacity: 0 → 0 !important",
+      "fix": "Changed opacity: 0 → 0 !important",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T05:20:19.183Z"
+    },
+    {
+      "id": "bug-079",
+      "timestamp": "2026-05-21T06:41:03.960Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T06:44:12.075Z"
+    },
+    {
+      "id": "bug-080",
+      "timestamp": "2026-05-21T06:41:18.475Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_document_space.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: # ─── Task 3: move, rename, batch_delete, preview ──────────; @pytest.mark.asyncio | Also: # ─── Task 4: Document Shares ──────────────────────────────; def test_document_share_model_columns():",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-21T06:48:46.591Z"
+    },
+    {
+      "id": "bug-081",
+      "timestamp": "2026-05-21T06:53:10.285Z",
+      "error_message": "Function not marked async",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T06:53:10.285Z"
+    },
+    {
+      "id": "bug-082",
+      "timestamp": "2026-05-21T06:58:53.757Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T06:58:53.757Z"
+    },
+    {
+      "id": "bug-083",
+      "timestamp": "2026-05-21T06:59:08.367Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 31→69 lines (5 removed) | Also: <p className=\"text-sm font-medium text-muted-foreg; <p className=\"text-xs text-muted-foreground/70 mt- | Also: function DocCard({ doc, isMenuOpen, onOpenMenu, me; onSelect: () => void; onToggleStar: () => void; on",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-21T06:59:35.831Z"
+    },
+    {
+      "id": "bug-084",
+      "timestamp": "2026-05-21T06:59:40.894Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // ─── File Ref Card ───────────────────────────────────────; function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButt",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-21T07:00:45.227Z"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-05-21T07:32:05.418Z",
+      "error_message": "Missing error handling in isSavableToDoc",
+      "file": "frontend/src/components/workspace/artifacts/save-artifact-to-doc-button.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T07:32:05.418Z"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-05-25T00:40:00.911Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/components/MemberWorkspace.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T00:40:00.911Z"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-05-25T00:40:13.596Z",
+      "error_message": "Wrong reference: select should be or_",
+      "file": "backend/app/extensions/project/service.py",
+      "root_cause": "Used \"select\" instead of \"or_\"",
+      "fix": "Changed select → or_",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T00:40:13.596Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-05-25T00:40:42.396Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→21 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T00:40:42.396Z"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-05-25T01:20:45.947Z",
+      "error_message": "CSS fix: hover",
+      "file": "frontend/src/extensions/project/components/WorkspaceTabs.tsx",
+      "root_cause": "hover: text-[#475569]\", → text-foreground\",",
+      "fix": "Changed hover: text-[#475569]\", → text-foreground\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T01:20:45.947Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-05-25T01:29:37.507Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/plugin/PluginMarketplace.tsx",
+      "root_cause": "Had \"next/link\"",
+      "fix": "Changed to \"react\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T01:29:37.507Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-05-25T01:46:54.079Z",
+      "error_message": "Wrong reference: setOutlineDraft should be handleChange",
+      "file": "frontend/src/extensions/project/components/OutlineTab.tsx",
+      "root_cause": "Used \"setOutlineDraft\" instead of \"handleChange\"",
+      "fix": "Changed setOutlineDraft → handleChange",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T01:46:54.079Z"
+    },
+    {
+      "id": "bug-092",
+      "timestamp": "2026-05-25T01:47:06.257Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/project/OutlineEditor.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T01:47:06.257Z"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-05-25T03:25:48.219Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-05-25-project-rbac-workspace-approval-design.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (3 removed) | Also: ### 6.2 无新增表; 本次设计不需要新增数据库表。所有权限逻辑基于 `PERMISSION_MATRIX` 字典 + `P",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T03:26:27.170Z"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-05-25T03:26:42.020Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-05-25-project-rbac-workspace-approval-design.md",
+      "root_cause": "Had `ProjectMember.role`",
+      "fix": "Changed to `ApprovalWorkflow.reviewer_id`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T03:26:42.020Z"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-05-25T03:48:54.562Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/project/service.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T03:48:54.562Z"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-05-25T03:49:11.000Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T03:49:11.000Z"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-05-25T03:50:12.028Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/project/api.ts",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T03:50:12.028Z"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-05-25T04:35:28.254Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_project_permissions.py",
+      "root_cause": "32 lines replaced/restructured",
+      "fix": "Rewrote 104→139 lines (32 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T04:35:28.254Z"
+    },
+    {
+      "id": "bug-099",
+      "timestamp": "2026-05-25T04:38:17.628Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/project/schemas.py",
+      "root_cause": "Had \"reviewer\"",
+      "fix": "Changed to \"writer\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T04:38:17.628Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-05-25T04:53:13.334Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/project/service.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T04:53:13.334Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-05-25T04:55:35.188Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T04:55:35.188Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-05-25T07:06:15.161Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/project/types.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T07:06:15.161Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-05-25T07:07:06.983Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/project/api.ts",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T07:07:06.983Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-05-25T07:12:22.575Z",
+      "error_message": "Wrong reference: import should be ChapterUpdateRequest",
+      "file": "frontend/src/extensions/project/api.ts",
+      "root_cause": "Used \"import\" instead of \"ChapterUpdateRequest\"",
+      "fix": "Changed import → ChapterUpdateRequest",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T07:12:22.575Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-05-25T08:01:14.395Z",
+      "error_message": "Wrong reference: Button should be only",
+      "file": "frontend/src/extensions/project/components/MemberList.tsx",
+      "root_cause": "Used \"Button\" instead of \"only\"",
+      "fix": "Changed Button → only",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T08:01:14.395Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-05-25T08:02:11.313Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Had \"@/extensions/project/components/MembersTab\"",
+      "fix": "Changed to \"@/extensions/project/components/MemberWorkspace\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T08:02:11.313Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-05-25T08:05:35.800Z",
+      "error_message": "Missing error handling in MemberWorkspace",
+      "file": "frontend/src/extensions/project/components/MemberWorkspace.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T08:05:35.800Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-05-25T08:14:00.569Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/components/MemberWorkspace.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: {getGreeting()}，{user?.full_name ?? user?.username ?? \"用户\"}",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T08:14:46.610Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-05-25T11:35:36.546Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T11:35:36.546Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-05-25T11:36:04.313Z",
+      "error_message": "Wrong reference: _user should be user",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "Used \"_user\" instead of \"user\"",
+      "fix": "Changed _user → user",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T11:36:04.313Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-05-25T11:36:23.763Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/project/components/ApprovalTab.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T11:36:23.763Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-05-25T11:36:30.794Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/project/components/ApprovalTab.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T11:36:30.794Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-05-25T11:41:33.822Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_project_schemas.py",
+      "root_cause": "Had \"reviewer\"",
+      "fix": "Changed to \"writer\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T11:41:33.822Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-05-25T12:28:48.747Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/project/permissions.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T12:28:48.747Z"
+    },
+    {
+      "id": "bug-115",
+      "timestamp": "2026-05-25T14:46:07.185Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "Had \"@/extensions/project/navigateToChat\"",
+      "fix": "Changed to \"@/lib/utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:46:07.185Z"
+    },
+    {
+      "id": "bug-116",
+      "timestamp": "2026-05-25T14:46:15.087Z",
+      "error_message": "Wrong reference: ChatNavigateMode should be string",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "Used \"ChatNavigateMode\" instead of \"string\"",
+      "fix": "Changed ChatNavigateMode → string",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:46:15.087Z"
+    },
+    {
+      "id": "bug-117",
+      "timestamp": "2026-05-25T14:46:33.240Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "Had \"manager\"",
+      "fix": "Changed to \"owner\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-25T14:48:29.993Z"
+    },
+    {
+      "id": "bug-118",
+      "timestamp": "2026-05-25T14:46:57.374Z",
+      "error_message": "CSS fix: enabled",
+      "file": "frontend/src/extensions/project/components/ApprovalTab.tsx",
+      "root_cause": "enabled: project?.currentStage === 5 && !!projectId, → project?.status === \"active\" && !!projectId,",
+      "fix": "Changed enabled: project?.currentStage === 5 && !!projectId, → project?.status === \"active\" && !!projectId,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:46:57.374Z"
+    },
+    {
+      "id": "bug-119",
+      "timestamp": "2026-05-25T14:47:04.156Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/project/components/ApprovalTab.tsx",
+      "root_cause": "Condition was: if (project.currentStage <= 4)",
+      "fix": "Changed to: if (project.status !== \"completed\")",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:47:04.156Z"
+    },
+    {
+      "id": "bug-120",
+      "timestamp": "2026-05-25T14:48:01.780Z",
+      "error_message": "Wrong reference: report_type should be reportType",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Used \"report_type\" instead of \"reportType\"",
+      "fix": "Changed report_type → reportType",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T14:48:06.520Z"
+    },
+    {
+      "id": "bug-121",
+      "timestamp": "2026-05-25T14:48:17.180Z",
+      "error_message": "CSS fix: count",
+      "file": "frontend/src/extensions/project/ProjectList.tsx",
+      "root_cause": "count: projects.filter((p) => p.status === \"published\" || p.status === \"archived\").length, → projects.filter((p) => p.status === \"completed\").length,",
+      "fix": "Changed count: projects.filter((p) => p.status === \"published\" || p.status === \"archived\").length, → projects.filter((p) => p.status === \"completed\").length,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:48:17.180Z"
+    },
+    {
+      "id": "bug-122",
+      "timestamp": "2026-05-25T14:53:51.939Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/project/service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: # ── Project file aggregation ──; async def get_project_files(db: AsyncSession, project_id) ->",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T14:54:56.276Z"
+    },
+    {
+      "id": "bug-123",
+      "timestamp": "2026-05-25T14:54:11.167Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: @router.get(\"/projects/{project_id}/files\"); async def get_project_files(",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T14:55:42.300Z"
+    },
+    {
+      "id": "bug-124",
+      "timestamp": "2026-05-25T14:56:21.005Z",
+      "error_message": "Wrong reference: ProjectCardProps should be onEnterChat",
+      "file": "frontend/src/extensions/project/components/ProjectCard.tsx",
+      "root_cause": "Used \"ProjectCardProps\" instead of \"onEnterChat\"",
+      "fix": "Changed ProjectCardProps → onEnterChat",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:56:21.005Z"
+    },
+    {
+      "id": "bug-125",
+      "timestamp": "2026-05-25T14:57:03.966Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/project/ProjectList.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:57:03.966Z"
+    },
+    {
+      "id": "bug-126",
+      "timestamp": "2026-05-25T14:57:39.413Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T14:57:39.413Z"
+    },
+    {
+      "id": "bug-127",
+      "timestamp": "2026-05-25T15:00:43.842Z",
+      "error_message": "Wrong reference: user_id should be userId",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Used \"user_id\" instead of \"userId\"",
+      "fix": "Changed user_id → userId",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-25T15:01:14.578Z"
+    },
+    {
+      "id": "bug-128",
+      "timestamp": "2026-05-25T15:01:19.143Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T15:01:19.143Z"
+    },
+    {
+      "id": "bug-129",
+      "timestamp": "2026-05-26T00:39:01.441Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T00:39:01.441Z"
+    },
+    {
+      "id": "bug-130",
+      "timestamp": "2026-05-26T00:41:25.714Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_project_service.py",
+      "root_cause": "Had \"app.extensions.project.service.get_paths\"",
+      "fix": "Changed to \"deerflow.config.paths.get_paths\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T00:41:25.714Z"
+    },
+    {
+      "id": "bug-131",
+      "timestamp": "2026-05-26T00:47:03.597Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T00:47:03.597Z"
+    },
+    {
+      "id": "bug-132",
+      "timestamp": "2026-05-26T01:19:47.435Z",
+      "error_message": "Missing error handling in function",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T01:19:47.435Z"
+    },
+    {
+      "id": "bug-133",
+      "timestamp": "2026-05-26T01:21:16.122Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "No early return/throw for edge case: templateId === \"tpl_blank\"",
+      "fix": "Added guard clause: if (templateId === \"tpl_blank\")",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T01:21:16.122Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-05-26T01:26:16.428Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T01:26:16.428Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-05-26T01:26:34.417Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T01:26:34.417Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-05-26T07:37:42.298Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→55 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T07:37:42.298Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-05-26T09:30:00",
+      "error_message": "AI-generated report files not appearing in docmgr 全部存档 (synced:0, skipped:0)",
+      "file": "backend/app/extensions/docmgr/routers.py, backend/app/extensions/docmgr/service.py",
+      "root_cause": "Two issues: (1) Dual auth system - Gateway uses Gateway UUID for sandbox paths, but extensions docmgr sync uses extensions UUID, so sync scans wrong directory. (2) _get_thread_title queries ThreadMetaRow from Gateway SQLite via PostgreSQL session, which fails and aborts the PostgreSQL transaction, leaving subsequent queries broken.",
+      "fix": "1) Added _resolve_thread_sandbox_dir() that scans all user directories to find the actual thread sandbox dir regardless of UUID mismatch. 2) Changed _get_thread_title() to read directly from Gateway SQLite file instead of querying through the PostgreSQL session. Added from pathlib import Path to fix NameError.",
+      "tags": [
+        "docmgr",
+        "dual-auth",
+        "uuid-mismatch",
+        "sqlite-postgresql",
+        "sync-thread-files"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T09:30:00"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-05-26T10:15:00",
+      "error_message": "Docmgr: returning from editor resets view from 全部存档 to 我的文档",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "AnimatePresence mode=wait unmounts DocumentList when editor is shown, losing all local state (activeNav, currentFolder). On remount, useDocuments reinitializes with default filter { folder: currentFolder } instead of the nav-specific filter",
+      "fix": "1. Lifted activeNav and currentFolder state from DocumentList to parent DocumentManagement. 2. Added navSynced useRef + useEffect in DocumentList that restores the correct filter from activeNav on mount (e.g. { doc_type: 'file_ref' } for 全部存档)",
+      "tags": [
+        "docmgr",
+        "navigation",
+        "state-loss",
+        "AnimatePresence",
+        "remount"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T10:15:00"
+    },
+    {
+      "id": "bug-139",
+      "timestamp": "2026-05-26T13:05:18.991Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-05-26-coal-data-asset-strategy-design.md",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 17→150 lines (15 removed) | Also: ### 3.3 技术实现（嵌入 EAI Flow）; │   └── coal_data_server.py       # 煤炭数据 MCP Serve",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-26T13:05:38.746Z"
+    },
+    {
+      "id": "bug-140",
+      "timestamp": "2026-05-26T13:26:28.615Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-05-26-coal-data-asset-strategy-design.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 7→234 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T13:26:28.615Z"
+    },
+    {
+      "id": "bug-141",
+      "timestamp": "2026-05-26T14:30:00",
+      "error_message": "Project members cannot see each other's documents in docmgr - strict user_id isolation prevents project-level visibility",
+      "file": "backend/app/extensions/docmgr/service.py, backend/app/extensions/models.py",
+      "root_cause": "AIDocument.list_docs filtered strictly by user_id with no project-level visibility. Documents created in project conversations only belonged to the creating user. No project_id field on AIDocument model.",
+      "fix": "1) Added nullable project_id UUID column to AIDocument model with FK to report_projects. 2) Added DB migration ALTER TABLE + CREATE INDEX. 3) Updated list_docs to use OR(own_docs, project_docs) via ProjectMember subquery. 4) Added _detect_project_from_thread() to auto-populate project_id from thread_id. 5) Updated create, sync_thread_files, get_by_id, list_folders for project visibility. 6) Backfilled 4 existing documents with project_id.",
+      "tags": [
+        "docmgr",
+        "project",
+        "visibility",
+        "data-isolation",
+        "multi-user"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T14:30:00"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-05-27T23:56:12.841Z",
+      "error_message": "Missing error handling in validateOrigin",
+      "file": "backend/collab-server/src/auth.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T23:56:12.841Z"
+    },
+    {
+      "id": "bug-143",
+      "timestamp": "2026-05-27T23:56:24.600Z",
+      "error_message": "Type error",
+      "file": "backend/collab-server/src/index.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T23:56:24.600Z"
+    },
+    {
+      "id": "bug-144",
+      "timestamp": "2026-05-27T23:57:48.736Z",
+      "error_message": "Null/undefined access in ",
+      "file": "backend/collab-server/src/persistence.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T23:57:48.736Z"
+    },
+    {
+      "id": "bug-145",
+      "timestamp": "2026-05-27T23:59:48.668Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/docmgr/collab_service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T23:59:48.668Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-05-27T23:59:50.517Z",
+      "error_message": "Wrong reference: status should be Query",
+      "file": "backend/app/extensions/docmgr/collab_routers.py",
+      "root_cause": "Used \"status\" instead of \"Query\"",
+      "fix": "Changed status → Query",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T23:59:50.517Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-05-28T00:00:03.572Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/docmgr/collab_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:00:03.572Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-05-28T00:21:52.737Z",
+      "error_message": "CSS fix: provider",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "provider: provider as unknown as { awareness?: import(\"y-protocols/awareness\").Awareness → provider as unknown as { awareness?: { getStates: () => Map<number, Record<string, unknown>>",
+      "fix": "Changed provider: provider as unknown as { awareness?: import(\"y-protocols/awareness\").Awareness → provider as unknown as { awareness?: { getStates: () => Map<number, Record<string, unknown>>",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T00:22:21.340Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-05-28T00:22:15.340Z",
+      "error_message": "Missing import: @blocknote/react",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Module(s) not imported: @blocknote/react",
+      "fix": "Added import(s) for @blocknote/react",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:22:15.340Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-05-28T00:22:45.152Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Had \"@hocuspocus/provider\"",
+      "fix": "Changed to \"./useCollab\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:22:45.153Z"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-05-28T00:22:50.677Z",
+      "error_message": "Wrong reference: ref should be _initialContent",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"ref\" instead of \"_initialContent\"",
+      "fix": "Changed ref → _initialContent",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:22:50.677Z"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-05-28T08:30:00.000Z",
+      "error_message": "TS2307: Cannot find module y-protocols/awareness",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "pnpm does not hoist y-protocols to top-level node_modules; tried to import it for type annotation on BlockNote collaboration provider",
+      "fix": "Used provider as any cast instead of importing y-protocols/awareness for type annotation",
+      "tags": [
+        "typescript",
+        "pnpm",
+        "blocknote",
+        "types"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T08:30:00.000Z"
+    },
+    {
+      "id": "bug-153",
+      "timestamp": "2026-05-28T00:27:04.583Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: {/* Comment anchors for each block with unresolved comments ; {Array.from(commentsByBlock.entries()).map(([blockId, blockC",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T00:27:19.148Z"
+    },
+    {
+      "id": "bug-154",
+      "timestamp": "2026-05-28T00:29:00.131Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/useCollab.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:29:00.131Z"
+    },
+    {
+      "id": "bug-155",
+      "timestamp": "2026-05-28T00:29:10.868Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/useComments.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: broadcastEvent?.({ type: \"comment_created\", payload: { comme; [docId, broadcastEvent], | Also: broadcastEvent?.({ type: \"comment_deleted\", payload: { comme; }, [broadcastEvent]); | Also: broadcastEvent?.({ type: \"comment_resolved\", payload: { comm; }, [broadcastEvent]); | Also: broadcastEvent?.({ type: \"comment_reopened\", payload: { comm; }, [broadcastEvent]);",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-05-28T00:29:41.024Z"
+    },
+    {
+      "id": "bug-156",
+      "timestamp": "2026-05-28T00:34:50.440Z",
+      "error_message": "Wrong reference: ChunkConfig should be VersionDiffResponse",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "Used \"ChunkConfig\" instead of \"VersionDiffResponse\"",
+      "fix": "Changed ChunkConfig → VersionDiffResponse",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:34:50.440Z"
+    },
+    {
+      "id": "bug-157",
+      "timestamp": "2026-05-28T00:34:56.755Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/collab/useVersions.ts",
+      "root_cause": "No early return/throw for edge case: !docId",
+      "fix": "Added guard clause: if (!docId)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:34:56.755Z"
+    },
+    {
+      "id": "bug-158",
+      "timestamp": "2026-05-28T00:35:03.516Z",
+      "error_message": "CSS fix: hover",
+      "file": "frontend/src/extensions/collab/VersionPanel.tsx",
+      "root_cause": "hover: bg-muted/50 transition-colors\"> → bg-muted/50 transition-colors cursor-pointer\"",
+      "fix": "Changed hover: bg-muted/50 transition-colors\"> → bg-muted/50 transition-colors cursor-pointer\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:35:03.516Z"
+    },
+    {
+      "id": "bug-159",
+      "timestamp": "2026-05-28T00:35:25.824Z",
+      "error_message": "CSS fix: loading",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "loading: versionsLoading, createVersion, restoreVersion → versionsLoading, createVersion, restoreVersion, diffVersions",
+      "fix": "Changed loading: versionsLoading, createVersion, restoreVersion → versionsLoading, createVersion, restoreVersion, diffVersions",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T00:39:03.047Z"
+    },
+    {
+      "id": "bug-160",
+      "timestamp": "2026-05-28T00:38:00.877Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/useVersions.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:38:00.877Z"
+    },
+    {
+      "id": "bug-161",
+      "timestamp": "2026-05-28T00:38:19.404Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/collab/useVersions.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:38:19.404Z"
+    },
+    {
+      "id": "bug-162",
+      "timestamp": "2026-05-28T00:44:44.811Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/docmgr/collab_service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:44:44.811Z"
+    },
+    {
+      "id": "bug-163",
+      "timestamp": "2026-05-28T00:45:07.421Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/docmgr/collab_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:45:07.421Z"
+    },
+    {
+      "id": "bug-164",
+      "timestamp": "2026-05-28T00:49:43.102Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/DiffViewer.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:49:43.102Z"
+    },
+    {
+      "id": "bug-165",
+      "timestamp": "2026-05-28T00:49:46.131Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/VersionPanel.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:49:46.131Z"
+    },
+    {
+      "id": "bug-166",
+      "timestamp": "2026-05-28T00:49:50.960Z",
+      "error_message": "Wrong reference: handleCreate should be void",
+      "file": "frontend/src/extensions/collab/InlineCommentThread.tsx",
+      "root_cause": "Used \"handleCreate\" instead of \"void\"",
+      "fix": "Changed handleCreate → void",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:49:50.960Z"
+    },
+    {
+      "id": "bug-167",
+      "timestamp": "2026-05-28T00:49:52.691Z",
+      "error_message": "Wrong reference: load should be void",
+      "file": "frontend/src/extensions/collab/useVersions.ts",
+      "root_cause": "Used \"load\" instead of \"void\"",
+      "fix": "Changed load → void",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:49:52.691Z"
+    },
+    {
+      "id": "bug-168",
+      "timestamp": "2026-05-28T00:49:54.385Z",
+      "error_message": "Wrong reference: load should be void",
+      "file": "frontend/src/extensions/collab/useComments.ts",
+      "root_cause": "Used \"load\" instead of \"void\"",
+      "fix": "Changed load → void",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T00:49:59.310Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-05-28T00:50:16.059Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/useCollab.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:50:16.059Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-05-28T00:50:27.625Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/collab/useCollab.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T00:50:27.625Z"
+    },
+    {
+      "id": "bug-171",
+      "timestamp": "2026-05-28T00:52:13.052Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/collab/AIDocumentReview.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: onClick={() => onInsertComment(c.block_id ?? null, c.comment",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T00:52:58.728Z"
+    },
+    {
+      "id": "bug-172",
+      "timestamp": "2026-05-28T01:09:32.508Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/collab/VersionPanel.test.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T01:09:32.508Z"
+    },
+    {
+      "id": "bug-173",
+      "timestamp": "2026-05-28T01:09:46.662Z",
+      "error_message": "CSS fix: diff_blocks",
+      "file": "frontend/tests/unit/extensions/collab/VersionPanel.test.tsx",
+      "root_cause": "diff_blocks: [{ type: \"added\", content: \"new content\" → [{ type: \"added\", content: \"new content from diff\"",
+      "fix": "Changed diff_blocks: [{ type: \"added\", content: \"new content\" → [{ type: \"added\", content: \"new content from diff\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T01:09:46.662Z"
+    },
+    {
+      "id": "bug-174",
+      "timestamp": "2026-05-28T02:07:46.282Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Had \"@blocknote/shadcn/dist/style.css\"",
+      "fix": "Changed to \"@blocknote/shadcn/style.css\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:07:46.282Z"
+    },
+    {
+      "id": "bug-175",
+      "timestamp": "2026-05-28T02:19:32.464Z",
+      "error_message": "Missing import: ../collab/CollabEditor",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Module(s) not imported: ../collab/CollabEditor",
+      "fix": "Added import(s) for ../collab/CollabEditor",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:19:32.464Z"
+    },
+    {
+      "id": "bug-176",
+      "timestamp": "2026-05-28T02:24:03.914Z",
+      "error_message": "Wrong reference: editor should be mounted",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"editor\" instead of \"mounted\"",
+      "fix": "Changed editor → mounted",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:24:03.915Z"
+    },
+    {
+      "id": "bug-177",
+      "timestamp": "2026-05-28T02:28:38.975Z",
+      "error_message": "CSS fix: collaboration",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "collaboration: provider → connected",
+      "fix": "Changed collaboration: provider → connected",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:28:38.975Z"
+    },
+    {
+      "id": "bug-178",
+      "timestamp": "2026-05-28T02:29:09.928Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "No early return/throw for edge case: this.state.hasError",
+      "fix": "Added guard clause: if (this.state.hasError)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:29:09.928Z"
+    },
+    {
+      "id": "bug-179",
+      "timestamp": "2026-05-28T02:29:22.485Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Had \"light\"",
+      "fix": "Changed to \"text-muted-foreground text-sm\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:29:22.485Z"
+    },
+    {
+      "id": "bug-180",
+      "timestamp": "2026-05-28T02:30:29.490Z",
+      "error_message": "CSS fix: ssr",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "ssr: false → false,",
+      "fix": "Changed ssr: false → false,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T02:30:29.490Z"
+    },
+    {
+      "id": "bug-181",
+      "timestamp": "2026-05-28T03:31:47.613Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"file_ref\"",
+      "fix": "Changed to \"project\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T03:31:59.047Z"
+    },
+    {
+      "id": "bug-182",
+      "timestamp": "2026-05-28T04:28:17.219Z",
+      "error_message": "Missing error handling in function",
+      "file": "backend/collab-server/src/persistence.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:28:17.219Z"
+    },
+    {
+      "id": "bug-183",
+      "timestamp": "2026-05-28T04:30:02.176Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/routers/auth.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:30:02.176Z"
+    },
+    {
+      "id": "bug-184",
+      "timestamp": "2026-05-28T04:30:20.707Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/collab-server/src/persistence.ts",
+      "root_cause": "Had `${gatewayUrl}/api/auth/users/${gatewayUserId}`",
+      "fix": "Changed to `${gatewayUrl}/api/v1/auth/users/${gatewayUserId}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:30:20.707Z"
+    },
+    {
+      "id": "bug-185",
+      "timestamp": "2026-05-28T04:48:22.464Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/collab/useCollab.ts",
+      "root_cause": "Was returning: { ydoc, provider: providerRef.current, connected, ",
+      "fix": "Now returns: { ydoc, provider: providerRef.current, connected, ",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:48:22.464Z"
+    },
+    {
+      "id": "bug-186",
+      "timestamp": "2026-05-28T04:48:40.790Z",
+      "error_message": "CSS fix: collaboration",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "collaboration: connected → synced",
+      "fix": "Changed collaboration: connected → synced",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:48:40.790Z"
+    },
+    {
+      "id": "bug-187",
+      "timestamp": "2026-05-28T04:48:49.953Z",
+      "error_message": "Wrong reference: connected should be synced",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"connected\" instead of \"synced\"",
+      "fix": "Changed connected → synced",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T04:48:49.953Z"
+    },
+    {
+      "id": "bug-188",
+      "timestamp": "2026-05-28T06:32:19.499Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/collab-server/src/index.ts",
+      "root_cause": "19 lines replaced/restructured",
+      "fix": "Rewrote 30→6 lines (19 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:32:19.499Z"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-05-28T06:33:06.840Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "No early return/throw for edge case: !synced",
+      "fix": "Added guard clause: if (!synced)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:33:06.840Z"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-05-28T06:33:21.747Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:33:21.747Z"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-05-28T06:33:38.687Z",
+      "error_message": "CSS fix: collaboration",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "collaboration: synced → collabReady",
+      "fix": "Changed collaboration: synced → collabReady",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:33:38.687Z"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-05-28T06:33:47.568Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Condition was: if (!mounted || !editor || !editorReady)",
+      "fix": "Changed to: if (!mounted || !editor || !editorReady || !collabRead)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:33:47.568Z"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-05-28T06:41:44.718Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 31→4 lines (26 removed) | Also: collaboration: collabReady; ? {",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-28T06:41:55.563Z"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-05-28T06:42:05.252Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Condition was: if (!mounted || !editor || !editorReady || !collabRead)",
+      "fix": "Changed to: if (!mounted || !editor || !editorReady)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:42:05.252Z"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-05-28T06:49:41.955Z",
+      "error_message": "Wrong reference: ShadcnBlockNoteView should be ReactBlockNoteView",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"ShadcnBlockNoteView\" instead of \"ReactBlockNoteView\"",
+      "fix": "Changed ShadcnBlockNoteView → ReactBlockNoteView",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:49:41.955Z"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-05-28T06:55:23.386Z",
+      "error_message": "Wrong reference: ReactBlockNoteView should be ShadcnBlockNoteView",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Used \"ReactBlockNoteView\" instead of \"ShadcnBlockNoteView\"",
+      "fix": "Changed ReactBlockNoteView → ShadcnBlockNoteView",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-28T06:55:23.386Z"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+<h2>升级方案：统一 RBAC 架构</h2>
+<p class="subtitle">不是新建权限系统，而是扩展现有 RBAC 基础，覆盖全系统</p>
+
+<div class="section" style="background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+  <h3 style="color: #92400e;">🔍 发现：系统已有 RBAC 基础</h3>
+  <div style="font-size: 13px; line-height: 2; color: #334155;">
+    <p>✅ <code>Role</code> 模型 — 有 <code>permissions[]</code> 数组字段，支持 <code>"*"</code> 通配符</p>
+    <p>✅ <code>require_permission("kb:read")</code> — 10 个模块已在用</p>
+    <p>✅ 已有 <strong>22 个系统级权限</strong>：kb:read/create、user:read/create、role:read/create 等</p>
+    <p>✅ 角色层级 — <code>level</code> 字段支持继承，<code>parent_role_id</code> 支持树形</p>
+    <p>⚠️ <strong>但</strong>：项目管理模块只用 <code>"system:access"</code>，无细粒度控制</p>
+    <p>⚠️ <strong>且</strong>：系统权限和项目级角色是两套独立体系</p>
+  </div>
+</div>
+
+<div class="section">
+  <h3>📐 统一 RBAC：两层权限模型</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.6;">
+    <pre style="margin:0; color:#e2e8f0;">
+┌─────────────────────────────────────────────────────────┐
+│                 统一权限架构 (Unified RBAC)                │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  第 1 层：系统级权限 (System Permissions)                  │
+│  ─────────────────────────────────────                   │
+│  存储位置：Role.permissions[] 数组                        │
+│  格式：     "resource:action"                            │
+│  示例：     "kb:read", "user:create", "project:create"   │
+│  检查方式： require_permission("kb:read")  ← 已有         │
+│  适用范围： 用户能否访问某类功能模块                        │
+│                                                         │
+│  第 2 层：资源级权限 (Resource Permissions)                │
+│  ─────────────────────────────────────                   │
+│  存储位置：PERMISSION_MATRIX + 成员角色                    │
+│  格式：     "resource:action" (同上)                      │
+│  示例：     "project:member:add", "project:outline:edit"  │
+│  检查方式： require_resource_permission(pid, action)  ←新  │
+│  适用范围： 用户在特定项目/资源内能做什么                   │
+│                                                         │
+│  统一接口：can(user, action, resource?) → bool            │
+│  ─────────────────────────────────────                   │
+│  无 resource → 查系统级 Role.permissions                 │
+│  有 resource → 查资源级 成员角色 + PERMISSION_MATRIX       │
+│                                                         │
+└─────────────────────────────────────────────────────────┘</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🗺️ 权限命名空间规划（覆盖全部模块）</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">模块</th>
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">系统级权限</th>
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">资源级权限</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: #eff6ff;">
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold;">项目管理</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">project:create<br>project:list</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">project:edit, member:add<br>chapter:write_own, approval:review</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🆕 新增</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">知识库</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">kb:read, kb:create<br>kb:update, kb:delete, kb:upload</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">（未来：知识库级别权限）</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✅ 已有</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">知识工厂</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">kf:read, kf:create<br>kf:update, kf:delete</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">（未来：模板级别权限）</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔄 升级</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">法规库</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">law:read, law:create</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔄 升级</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">用户管理</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">user:read, user:create<br>user:update, user:delete</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✅ 已有</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">角色管理</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">role:read, role:create<br>role:update, role:delete</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">—</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✅ 已有</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">文档管理</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">docmgr:read, docmgr:write</td>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; color: #94a3b8;">（未来：文件夹级别权限）</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">🔄 升级</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;">对话/Agent</td>
+          <td style="padding: 8px;">threads:read, threads:write<br>runs:create, runs:read</td>
+          <td style="padding: 8px; color: #94a3b8;">（已有 owner_check）</td>
+          <td style="padding: 8px; text-align: center;">✅ 已有</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>🔄 统一权限检查函数</h3>
+  <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.7;">
+    <pre style="margin:0; color:#e2e8f0;">
+# backend/app/extensions/auth/permissions.py — 统一权限服务
+
+class PermissionService:
+    """统一的权限检查入口，覆盖系统级 + 资源级"""
+
+    @staticmethod
+    async def can(
+        user_id: UUID,
+        action: str,
+        resource_type: str | None = None,  # "project", "kb", etc.
+        resource_id: UUID | None = None,
+        db: AsyncSession = ...,
+    ) -> bool:
+        # 1. 获取用户系统角色
+        user = await db.get(User, user_id)
+        role = await db.get(Role, user.role_id)
+
+        # 2. 系统级权限：通配符或直接匹配
+        if "*" in role.permissions or action in role.permissions:
+            return True
+
+        # 3. 资源级权限：查成员角色 + 权限矩阵
+        if resource_type and resource_id:
+            member_role = await _get_resource_member_role(
+                db, resource_type, resource_id, user_id
+            )
+            if member_role:
+                return check_resource_permission(member_role, action)
+
+        return False
+
+# 使用 — 与现有 require_permission 兼容，同时支持资源级：
+# 系统级（已有，不变）：
+@router.get("/knowledge-bases")
+async def list_kb(user = Depends(require_permission("kb:read"))):
+    ...
+
+# 资源级（新增）：
+@router.post("/projects/{pid}/members")
+async def add_member(
+    pid: UUID,
+    user = Depends(require_resource_permission("project", pid, "member:add")),
+):
+    ...</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px; background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #22c55e;">
+  <h3 style="color: #166534;">✅ 升级策略：渐进式，不破坏现有代码</h3>
+  <ul style="font-size: 13px; line-height: 2; color: #334155;">
+    <li><strong>Phase 1（本次）</strong>：项目管理模块接入资源级权限，新建 <code>PermissionService</code></li>
+    <li><strong>Phase 2</strong>：知识工厂、法规库、文档管理升级为细粒度系统级权限</li>
+    <li><strong>Phase 3</strong>：知识库、文件夹等增加资源级权限（按需）</li>
+    <li><strong>不变</strong>：现有 <code>require_permission("kb:read")</code> 调用全部兼容，无需修改</li>
+  </ul>
+</div>

@@ -15,15 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-
 import { createRule } from "@/extensions/knowledge-factory/complianceRulesApi";
-import {
-  buildRuleCreatePayload,
-  createEmptyRuleDraft,
-  parseCommaSeparatedInput,
-  validateRuleDraft,
-} from "./rule-form-utils";
 import {
   DEFAULT_RULE_DICTIONARIES,
   RULE_TYPES,
@@ -32,6 +24,14 @@ import {
   type ComplianceRuleCreate,
   type RuleDictionaries,
 } from "@/extensions/knowledge-factory/types";
+import { cn } from "@/lib/utils";
+
+import {
+  buildRuleCreatePayload,
+  createEmptyRuleDraft,
+  parseCommaSeparatedInput,
+  validateRuleDraft,
+} from "./rule-form-utils";
 
 interface RuleCreatePanelProps {
   onClose: () => void;

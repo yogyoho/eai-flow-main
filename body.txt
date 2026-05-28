@@ -1,0 +1,1 @@
+{"detail":{"code":"not_authenticated","message":"Authentication required"}}

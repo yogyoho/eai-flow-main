@@ -551,6 +551,7 @@ class AIDocumentCreate(BaseModel):
     content: str | None = None
     folder: str = Field(default="默认文件夹", max_length=255)
     source_thread_id: str | None = Field(None, max_length=100)
+    project_id: UUID | None = Field(None, description="Project ID for project-level document visibility")
     doc_type: str = Field(default="document", max_length=20)
     file_ref_path: str | None = Field(None, max_length=500)
     file_size: int | None = None
@@ -580,6 +581,7 @@ class AIDocumentResponse(BaseModel):
     id: UUID
     user_id: UUID
     source_thread_id: str | None = None
+    project_id: UUID | None = None
     title: str
     content: str | None = None
     folder: str

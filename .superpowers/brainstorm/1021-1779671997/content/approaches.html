@@ -1,0 +1,101 @@
+<h2>三种实现方案对比</h2>
+<p class="subtitle">全链路权限控制 + 成员工作台 + 审核流程 — 三种架构方式</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>方案 A：装饰器权限 + 前端 Hook</h3>
+      <p><strong>后端：</strong>用 FastAPI 依赖注入 + 自定义装饰器 <code>@require_project_role("manager")</code> 控制每个端点<br>
+      <strong>前端：</strong><code>useProjectRole()</code> Hook 获取当前角色，组件内条件渲染<br>
+      <strong>优点：</strong>实现简单，与现有代码风格一致，每个端点独立控制<br>
+      <strong>缺点：</strong>权限逻辑分散在各端点，容易遗漏，无统一权限矩阵</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>方案 B：集中权限矩阵 + RBAC Service（推荐）</h3>
+      <p><strong>后端：</strong>新建 <code>permissions.py</code>，定义集中权限矩阵 <code>PERMISSION_MATRIX</code>（角色×操作→允许/拒绝），统一权限检查函数<br>
+      <strong>前端：</strong>API 返回用户权限列表，前端 <code>usePermissions()</code> 统一判断，Tab/按钮自动隐藏<br>
+      <strong>优点：</strong>权限一目了然，新增角色/操作只需改矩阵，前后端统一<br>
+      <strong>缺点：</strong>需新建权限服务层，初期工作稍多</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>方案 C：阶段 + 角色 联合状态机</h3>
+      <p><strong>后端：</strong>将权限建模为 (Stage, Role, Action) → Decision 的三维状态机，自动推导当前允许的操作<br>
+      <strong>前端：</strong>根据 (currentStage, myRole) 动态生成可见 Tab 列表和可用操作<br>
+      <strong>优点：</strong>最灵活，Stage 变化时权限自动调整，适合复杂流程<br>
+      <strong>缺点：</strong>实现复杂，调试困难，可能过度设计</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>📊 方案对比表</h3>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0;">维度</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">A 装饰器</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #3b82f6; background: #eff6ff;">B 权限矩阵 ★</th>
+          <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e2e8f0;">C 状态机</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">实现复杂度</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">⭐ 低</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #eff6ff;">⭐⭐ 中</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">⭐⭐⭐ 高</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">可维护性</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">⭐⭐ 分散</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #eff6ff;">⭐⭐⭐ 集中</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">⭐⭐⭐ 集中</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">权限审计</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">困难</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #eff6ff;">一目了然</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">需推导</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">扩展性</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">改代码</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #eff6ff;">改矩阵</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">改配置</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">与现有代码兼容</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">✅ 好</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; background: #eff6ff;">✅ 好</td>
+          <td style="padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">⚠️ 改动大</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;">适合当前规模</td>
+          <td style="padding: 8px; text-align: center;">适中</td>
+          <td style="padding: 8px; text-align: center; background: #eff6ff;">✅ 最佳</td>
+          <td style="padding: 8px; text-align: center;">过度</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px; background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+  <h3 style="color: #1e40af;">💡 推荐：方案 B（集中权限矩阵 + RBAC Service）</h3>
+  <p style="font-size: 13px; color: #334155; line-height: 1.8;">
+    在"权限控制"和"实现简洁"之间取得最佳平衡。<br>
+    核心思路：一个 Python 字典定义 <code>PERMISSION_MATRIX[role][action]</code>，
+    后端一个统一函数检查，前端一个 Hook 消费。新增角色或操作只需修改矩阵。<br>
+    方案 A 太分散，容易遗漏端点；方案 C 过度设计，当前 6 角色 × 6 阶段不需要状态机。
+  </p>
+</div>

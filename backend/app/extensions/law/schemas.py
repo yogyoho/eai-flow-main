@@ -117,6 +117,7 @@ class RAGFlowKBStatus(BaseModel):
     dataset_id: str | None = None
     document_count: int = 0
     status: str = "unknown"
+    kb_registered: bool = False
 
     class Config:
         populate_by_name = True
@@ -152,6 +153,7 @@ class RAGFlowInitResponse(BaseModel):
     created: list[str] = Field(default_factory=list)
     already_exists: list[str] = Field(default_factory=list)
     failed: list[dict[str, str]] = Field(default_factory=list)
+    registered: list[str] = Field(default_factory=list)
 
 
 class LawTemplateRelationCreate(BaseModel):

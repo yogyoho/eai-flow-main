@@ -2,9 +2,10 @@
  * 检查结果展示组件
  */
 
-import React from "react";
-import { Button } from "@/components/ui/button";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
+import React from "react";
+
+import { Button } from "@/components/ui/button";
 import type { ValidationIssue, ComplianceCheckResponse } from "@/extensions/knowledge-factory/types";
 import { SEVERITY_LEVELS } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
@@ -137,7 +138,7 @@ interface IssueItemProps {
 
 function IssueItem({ issue, onClick }: IssueItemProps) {
   const severityInfo = SEVERITY_LEVELS.find((s) => s.value === issue.severity);
-  const severityColor = severityInfo?.color || "#6b7280";
+  const severityColor = severityInfo?.color || "var(--muted-foreground)";
 
   return (
     <div className="p-3 bg-muted rounded-md mb-2 cursor-pointer transition-colors hover:bg-muted/80 last:mb-0" onClick={onClick}>

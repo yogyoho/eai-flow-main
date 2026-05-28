@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type {
+  ComplianceRule,
+  ComplianceRuleListResponse,
+  ComplianceRuleOverview,
+  RuleFilterParams,
+} from "@/extensions/knowledge-factory/types";
+
 import {
   fetchRuleExecutionStatistics,
   fetchRuleLogs,
@@ -11,12 +18,6 @@ import {
   type RuleExecutionStatistics,
 } from "../complianceRulesApi";
 import { updateRuleFilters } from "../rule-filter-utils";
-import type {
-  ComplianceRule,
-  ComplianceRuleListResponse,
-  ComplianceRuleOverview,
-  RuleFilterParams,
-} from "@/extensions/knowledge-factory/types";
 
 interface UseRuleEngineDataOptions {
   initialFilters?: RuleFilterParams;

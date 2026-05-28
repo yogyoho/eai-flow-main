@@ -1,141 +1,102 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  UserCircle,
-  FileText,
-  Loader2,
+  ArrowLeft,
+  CalendarIcon,
+  Check,
   CheckCircle2,
   ChevronDown,
-  Trash2,
+  ChevronRight,
+  FileText,
+  Loader2,
+  Plus,
+  Search,
+  Sparkles,
+  UserCircle,
+  X,
 } from "lucide-react";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import React, { useState, useCallback } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { projectApi } from "@/extensions/project/api";
+import {
+  MEMBER_ROLE_LABELS,
+  REPORT_TYPE_LABELS,
+  type MemberRole,
+  type ReportType,
+} from "@/extensions/project/types";
+import { authFetch } from "@/extensions/api/client";
 import { cn } from "@/lib/utils";
 
-import { projectApi } from "./api";
-import {
-  REPORT_TYPE_LABELS,
-  MEMBER_ROLE_LABELS,
-  type ReportProject,
-  type ReportType,
-  type MemberRole,
-} from "./types";
-
 // ─── Types ──────────────────────────────────────────────────────────────────────
-
-interface ProjectCreateWizardProps {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (project: ReportProject) => void;
-}
 
 interface SelectOption {
   value: string;
   label: string;
 }
 
-interface OutlineItem {
-  id: string;
-  title: string;
-  children: OutlineItem[];
-}
-
 type WizardStep = 1 | 2 | 3 | 4;
 
 // ─── Constants ───────────────────────────────────────────────────────────────────
 
-const STEPS: { step: WizardStep; label: string }[] = [
-  { step: 1, label: "基本信息" },
-  { step: 2, label: "选择模板" },
-  { step: 3, label: "报告大纲" },
-  { step: 4, label: "成员分配" },
+const STEPS: { step: WizardStep; key: string; label: string }[] = [
+  { step: 1, key: "1", label: "基本信息" },
+  { step: 2, key: "2", label: "选择模板" },
+  { step: 3, key: "3", label: "组建团队" },
+  { step: 4, key: "4", label: "确认创建" },
 ];
 
 const REPORT_TYPE_OPTIONS: SelectOption[] = Object.entries(REPORT_TYPE_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
-// Built-in template presets — no backend template API yet
-const BUILTIN_TEMPLATES = [
-  {
-    id: "tpl_env",
-    name: "环境影响评价报告模板",
-    description: "适用于建设项目的环境影响评价报告，包含环境现状调查、影响预测与评价、环境保护措施等章节。",
-  },
-  {
-    id: "tpl_geo",
-    name: "地质勘查报告模板",
-    description: "适用于地质勘查项目的报告模板，包含地质概况、勘查方法、勘查成果等章节。",
-  },
-  {
-    id: "tpl_feasibility",
-    name: "可行性研究报告模板",
-    description: "适用于各类建设项目的可行性研究报告，包含项目概述、市场分析、技术方案、经济评价等章节。",
-  },
-  {
-    id: "tpl_blank",
-    name: "空白模板",
-    description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
-  },
-];
-
-const MEMBER_ROLES: MemberRole[] = ["manager", "writer", "reviewer", "issuer"];
-
-const DEFAULT_OUTLINES: Record<string, OutlineItem[]> = {
-  environmental_impact: [
-    { id: "o1", title: "第一章 概述", children: [] },
-    { id: "o2", title: "第二章 环境现状调查与评价", children: [] },
-    { id: "o3", title: "第三章 环境影响预测与评价", children: [] },
-    { id: "o4", title: "第四章 环境保护措施及其技术经济论证", children: [] },
-    { id: "o5", title: "第五章 环境影响经济损益分析", children: [] },
-    { id: "o6", title: "第六章 环境管理与监测计划", children: [] },
-  ],
-  geological_survey: [
-    { id: "o1", title: "第一章 概述", children: [] },
-    { id: "o2", title: "第二章 地质概况", children: [] },
-    { id: "o3", title: "第三章 勘查方法及工作量", children: [] },
-    { id: "o4", title: "第四章 勘查成果", children: [] },
-    { id: "o5", title: "第五章 结论与建议", children: [] },
-  ],
-  feasibility_study: [
-    { id: "o1", title: "第一章 总论", children: [] },
-    { id: "o2", title: "第二章 市场分析与预测", children: [] },
-    { id: "o3", title: "第三章 建设规模与产品方案", children: [] },
-    { id: "o4", title: "第四章 技术方案", children: [] },
-    { id: "o5", title: "第五章 投资估算与资金筹措", children: [] },
-    { id: "o6", title: "第六章 财务评价", children: [] },
-    { id: "o7", title: "第七章 结论与建议", children: [] },
-  ],
-  safety_assessment: [
-    { id: "o1", title: "第一章 概述", children: [] },
-    { id: "o2", title: "第二章 危险有害因素辨识与分析", children: [] },
-    { id: "o3", title: "第三章 评价单元划分与评价方法选择", children: [] },
-    { id: "o4", title: "第四章 定性定量评价", children: [] },
-    { id: "o5", title: "第五章 安全对策措施与建议", children: [] },
-  ],
-  energy_assessment: [
-    { id: "o1", title: "第一章 概述", children: [] },
-    { id: "o2", title: "第二章 项目概况", children: [] },
-    { id: "o3", title: "第三章 能源供应状况分析", children: [] },
-    { id: "o4", title: "第四章 项目建设方案的节能分析", children: [] },
-    { id: "o5", title: "第五章 节能措施评估", children: [] },
-  ],
-  other: [
-    { id: "o1", title: "第一章 概述", children: [] },
-  ],
+const REPORT_TYPE_TO_DOMAIN: Record<string, string[]> = {
+  environmental_impact: ["environmental_impact", "environmental_impact_assessment", "environmental"],
+  geological_survey: ["geological_survey", "geological", "geology"],
+  feasibility_study: ["feasibility_study", "feasibility"],
+  safety_assessment: ["safety_assessment", "safety"],
+  energy_assessment: ["energy_assessment", "energy"],
 };
 
-const BLANK_OUTLINE: OutlineItem[] = [
-  { id: "o1", title: "第一章 概述", children: [] },
-];
+const BLANK_TEMPLATE = {
+  id: "tpl_blank",
+  name: "空白模板",
+  description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
+  domain: "",
+};
+
+interface TemplateOption {
+  id: string;
+  name: string;
+  description: string;
+  domain: string;
+}
+
+async function fetchPublishedTemplates(): Promise<TemplateOption[]> {
+  try {
+    const data = await authFetch<{ templates: Array<{ id: string; name: string; domain: string; status: string }>; total: number }>(
+      "/api/kf/templates?status=published&limit=100",
+      {},
+      "",
+    );
+    return (data.templates ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.name,
+      domain: t.domain,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+const MEMBER_ROLES: MemberRole[] = ["owner", "member"];
 
 // ─── CustomSelect ────────────────────────────────────────────────────────────────
 
@@ -151,300 +112,47 @@ function CustomSelect({
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   return (
-    <div ref={ref} className="relative w-full">
+    <div className="relative w-full">
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm",
-          "border bg-background transition-all duration-150",
-          open
-            ? "border-primary shadow-sm ring-2 ring-ring/50"
-            : "border-input hover:border-input hover:shadow-sm",
+          "flex h-[34px] w-full items-center justify-between rounded-md px-3 text-sm",
+          "border bg-white transition-all duration-150",
+          open ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 hover:border-gray-300",
         )}
       >
-        <span
-          className={cn(
-            "flex min-w-0 items-center gap-2",
-            selected ? "text-foreground" : "text-muted-foreground",
-          )}
-        >
-          <span className="truncate">{selected?.label ?? placeholder ?? "请选择"}</span>
+        <span className={cn("truncate", selected ? "text-foreground" : "text-gray-400")}>
+          {selected?.label ?? placeholder ?? "请选择"}
         </span>
         <ChevronDown
-          className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
-          )}
+          className={cn("h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200", open && "rotate-180")}
         />
       </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5"
-          >
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => {
-                  onChange(o.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
-                  o.value === value
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-foreground hover:bg-muted",
-                )}
-              >
-                {o.label}
-                {o.value === value && (
-                  <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
-                )}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Step Indicator ──────────────────────────────────────────────────────────────
-
-function StepIndicator({ currentStep }: { currentStep: WizardStep }) {
-  return (
-    <div className="flex items-center justify-center gap-0">
-      {STEPS.map((s, i) => {
-        const isActive = s.step === currentStep;
-        const isCompleted = s.step < currentStep;
-        return (
-          <React.Fragment key={s.step}>
-            {i > 0 && (
-              <div
-                className={cn(
-                  "h-px w-8",
-                  isCompleted ? "bg-primary" : "bg-border",
-                )}
-              />
-            )}
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isCompleted
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  s.step
-                )}
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-medium whitespace-nowrap",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                {s.label}
-              </span>
-            </div>
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Outline Tree ────────────────────────────────────────────────────────────────
-
-let outlineIdCounter = 100;
-
-function OutlineTree({
-  items,
-  onChange,
-  depth = 0,
-}: {
-  items: OutlineItem[];
-  onChange: (items: OutlineItem[]) => void;
-  depth?: number;
-}) {
-  const addItem = (index: number) => {
-    const newItems = [...items];
-    const id = `o_new_${++outlineIdCounter}`;
-    const chapterNum = newItems.length + 1;
-    const prefix = depth === 0 ? `第${numberToChinese(chapterNum)}章 ` : `${chapterNum}.`;
-    newItems.splice(index + 1, 0, { id, title: `${prefix}新章节`, children: [] });
-    onChange(newItems);
-  };
-
-  const removeItem = (index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    onChange(newItems);
-  };
-
-  const updateTitle = (index: number, title: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index]!, title };
-    onChange(newItems);
-  };
-
-  const updateChildren = (index: number, children: OutlineItem[]) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index]!, children };
-    onChange(newItems);
-  };
-
-  return (
-    <div className="space-y-1">
-      {items.map((item, index) => (
-        <div key={item.id}>
-          <div
-            className={cn(
-              "group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50",
-              depth > 0 && "ml-6",
-            )}
-          >
-            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="text"
-              value={item.title}
-              onChange={(e) => updateTitle(index, e.target.value)}
-              className="flex-1 bg-transparent text-sm text-foreground outline-none"
-            />
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+          {options.map((o) => (
             <button
+              key={o.value}
               type="button"
-              onClick={() => addItem(index)}
-              className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
+                o.value === value
+                  ? "bg-blue-50 font-medium text-blue-600"
+                  : "text-foreground hover:bg-gray-50",
+              )}
             >
-              <Plus className="h-3.5 w-3.5" />
+              {o.label}
+              {o.value === value && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-blue-600" />}
             </button>
-            {items.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeItem(index)}
-                className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          {item.children?.length > 0 && (
-            <OutlineTree
-              items={item.children}
-              onChange={(children) => updateChildren(index, children)}
-              depth={depth + 1}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function numberToChinese(n: number): string {
-  const chars = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
-  if (n <= 10) return chars[n] ?? String(n);
-  if (n < 20) return "十" + (n % 10 === 0 ? "" : chars[n % 10]);
-  return String(n);
-}
-
-// ─── Member Role Section ─────────────────────────────────────────────────────────
-
-function MemberRoleSection({
-  role,
-  members,
-  onAdd,
-  onRemove,
-}: {
-  role: MemberRole;
-  members: string[];
-  onAdd: (userId: string) => void;
-  onRemove: (userId: string) => void;
-}) {
-  const [inputValue, setInputValue] = useState("");
-
-  const handleAdd = () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    if (members.includes(trimmed)) {
-      toast.error("该成员已添加");
-      return;
-    }
-    onAdd(trimmed);
-    setInputValue("");
-  };
-
-  return (
-    <div className="space-y-2">
-      <span className="text-sm font-medium text-foreground">
-        {MEMBER_ROLE_LABELS[role]}
-      </span>
-
-      <div className="flex gap-2">
-        <Input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="输入用户 ID"
-          className="h-8 text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-        />
-        <Button type="button" variant="outline" size="sm" onClick={handleAdd} className="h-8 gap-1 text-xs shrink-0">
-          <Plus className="h-3 w-3" />
-          添加
-        </Button>
-      </div>
-
-      {members.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-          <UserCircle className="h-4 w-4" />
-          暂未分配成员
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {members.map((userId) => (
-            <span
-              key={userId}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
-            >
-              <UserCircle className="h-3.5 w-3.5" />
-              {userId}
-              <button
-                type="button"
-                onClick={() => onRemove(userId)}
-                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
           ))}
         </div>
       )}
@@ -452,118 +160,638 @@ function MemberRoleSection({
   );
 }
 
-// ─── Slide Variants ──────────────────────────────────────────────────────────────
+// ─── Sidebar ─────────────────────────────────────────────────────────────────────
 
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 60 : -60,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -60 : 60,
-    opacity: 0,
-  }),
-};
+function WizardSidebar({ currentStep }: { currentStep: WizardStep }) {
+  return (
+    <div className="flex h-full w-[220px] shrink-0 flex-col border-r border-gray-200 bg-white">
+      {/* Logo */}
+      <div className="flex h-[56px] items-center px-5">
+        <span className="text-lg font-bold text-foreground">项目创建向导</span>
+      </div>
+
+      {/* Steps */}
+      <div className="flex flex-col px-5 pt-6">
+        {STEPS.map((s, i) => {
+          const isActive = s.step === currentStep;
+          const isCompleted = s.step < currentStep;
+          return (
+            <React.Fragment key={s.key}>
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                    isActive
+                      ? "bg-blue-600 text-white"
+                      : isCompleted
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-500",
+                  )}
+                >
+                  {isCompleted ? <Check className="h-4 w-4" /> : s.step}
+                </div>
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    isActive ? "text-foreground" : isCompleted ? "text-green-600" : "text-gray-400",
+                  )}
+                >
+                  步骤 {s.step}：{s.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div
+                  className={cn(
+                    "ml-4 h-12 w-[1px]",
+                    isCompleted ? "bg-green-500" : "bg-gray-200",
+                  )}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 1: Basic Info ──────────────────────────────────────────────────────────
+
+function StepBasicInfo({
+  name,
+  reportType,
+  client,
+  targetStandard,
+  deadline,
+  errors,
+  onNameChange,
+  onReportTypeChange,
+  onClientChange,
+  onTargetStandardChange,
+  onDeadlineChange,
+}: {
+  name: string;
+  reportType: ReportType;
+  client: string;
+  targetStandard: string;
+  deadline: string;
+  errors: { name?: string; client?: string };
+  onNameChange: (v: string) => void;
+  onReportTypeChange: (v: string) => void;
+  onClientChange: (v: string) => void;
+  onTargetStandardChange: (v: string) => void;
+  onDeadlineChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">项目基本信息</h3>
+        <p className="mt-1 text-[13px] text-[#475569]">
+          填写项目的基本信息，带 <span className="text-red-500">*</span> 的为必填项
+        </p>
+      </div>
+
+      <div className="space-y-5">
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">
+            项目名称 <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="请输入项目名称"
+            className={cn(
+              "h-[34px] rounded-md bg-white text-sm",
+              errors.name ? "border-red-500 focus-visible:ring-red-500/30" : "border-gray-200",
+            )}
+          />
+          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">报告类型</Label>
+          <CustomSelect
+            value={reportType}
+            onChange={onReportTypeChange}
+            options={REPORT_TYPE_OPTIONS}
+            placeholder="请选择报告类型"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">
+            客户单位 <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            value={client}
+            onChange={(e) => onClientChange(e.target.value)}
+            placeholder="请输入客户单位名称"
+            className={cn(
+              "h-[34px] rounded-md bg-white text-sm",
+              errors.client ? "border-red-500 focus-visible:ring-red-500/30" : "border-gray-200",
+            )}
+          />
+          {errors.client && <p className="text-xs text-red-500">{errors.client}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">目标标准</Label>
+          <Input
+            value={targetStandard}
+            onChange={(e) => onTargetStandardChange(e.target.value)}
+            placeholder="如 HJ 2.1-2016（选填）"
+            className="h-[34px] rounded-md border-gray-200 bg-white text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">截止日期</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "flex h-[34px] w-full items-center justify-between rounded-md border bg-white px-3 text-sm transition-colors",
+                  deadline ? "border-gray-200 text-foreground" : "border-gray-200 text-gray-400",
+                )}
+              >
+                <span>{deadline ? (() => { const [y, m, d] = deadline.split("-"); return `${y}年${Number(m)}月${Number(d)}日`; })() : "选择截止日期"}</span>
+                <CalendarIcon className="h-4 w-4 shrink-0 text-gray-400" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={deadline ? (() => { const [y, m, d] = deadline.split("-"); return new Date(Number(y), Number(m) - 1, Number(d)); })() : undefined}
+                onSelect={(date) => onDeadlineChange(date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "")}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 2: Template Selection ──────────────────────────────────────────────────
+
+function StepTemplate({
+  templateId,
+  templates,
+  onTemplateChange,
+  onSkip,
+}: {
+  templateId: string;
+  templates: TemplateOption[];
+  onTemplateChange: (id: string) => void;
+  onSkip: () => void;
+}) {
+  const options = [...templates, BLANK_TEMPLATE];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">选择报告模板</h3>
+        <p className="mt-1 text-[13px] text-[#475569]">
+          选择一个来自知识工厂的报告模板作为项目基础结构，或跳过此步骤
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((tpl) => (
+          <button
+            key={tpl.id}
+            type="button"
+            onClick={() => onTemplateChange(tpl.id)}
+            className={cn(
+              "flex flex-col items-start rounded-lg border-2 p-4 text-left transition-all",
+              templateId === tpl.id
+                ? "border-blue-500 bg-blue-50/50"
+                : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm",
+            )}
+          >
+            <div className="flex w-full items-start gap-3">
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                  templateId === tpl.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500",
+                )}
+              >
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    "text-sm font-medium",
+                    templateId === tpl.id ? "text-blue-600" : "text-foreground",
+                  )}
+                >
+                  {tpl.name}
+                </p>
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
+              </div>
+            </div>
+            {templateId === tpl.id && (
+              <div className="mt-2 flex w-full items-center gap-1 text-xs text-blue-600">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                已选择
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-400 transition-colors hover:text-blue-500"
+        >
+          跳过此步骤
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 3: Team Building ───────────────────────────────────────────────────────
+
+function StepTeam({
+  leader,
+  members,
+  onSetLeader,
+  onAddMember,
+  onRemoveMember,
+  onSkip,
+}: {
+  leader: string;
+  members: string[];
+  onSetLeader: (userId: string) => void;
+  onAddMember: (userId: string) => void;
+  onRemoveMember: (userId: string) => void;
+  onSkip: () => void;
+}) {
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleAddMember = () => {
+    const trimmed = searchValue.trim();
+    if (!trimmed) return;
+    if (leader === trimmed || members.includes(trimmed)) {
+      toast.error("该成员已在团队中");
+      return;
+    }
+    onAddMember(trimmed);
+    setSearchValue("");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">组建项目团队</h3>
+        <p className="mt-1 text-[13px] text-[#475569]">
+          团队由组长和组员组成，负责报告编写。审核、批准等环节由团队外的相关部门或领导负责。
+        </p>
+      </div>
+
+      {/* Search + Add */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="搜索或输入成员名称"
+            className="h-[34px] rounded-md border-gray-200 bg-white pl-9 text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddMember();
+              }
+            }}
+          />
+        </div>
+        <Button type="button" variant="outline" onClick={handleAddMember} className="h-[34px] shrink-0 gap-1">
+          <Plus className="h-3.5 w-3.5" />
+          添加组员
+        </Button>
+      </div>
+
+      {/* Leader */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground">组长</span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">必选</span>
+          </div>
+          <span className="text-[11px] text-gray-400">负责创建任务、选择模板、提交审核</span>
+        </div>
+        {!leader ? (
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
+            <UserCircle className="h-4 w-4" />
+            请点击成员设为组长，或在上方搜索后点击"设为组长"
+          </div>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
+            <UserCircle className="h-3.5 w-3.5" />
+            {leader}
+            <button
+              type="button"
+              onClick={() => onSetLeader("")}
+              className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-blue-100"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        )}
+      </div>
+
+      {/* Members */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">组员</span>
+          <span className="text-[11px] text-gray-400">负责修改AI生成的初稿 · {members.length} 人</span>
+        </div>
+        {members.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
+            <UserCircle className="h-4 w-4" />
+            暂未添加组员
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {members.map((userId) => (
+              <span
+                key={userId}
+                className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm font-medium text-foreground"
+              >
+                <UserCircle className="h-3.5 w-3.5 text-gray-400" />
+                {userId}
+                <button
+                  type="button"
+                  onClick={() => onRemoveMember(userId)}
+                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-gray-200"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onSetLeader(userId); onRemoveMember(userId); }}
+                  className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] text-blue-600 transition-colors hover:bg-blue-50"
+                >
+                  设为组长
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-400 transition-colors hover:text-blue-500"
+        >
+          跳过此步骤
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 4: Confirm ─────────────────────────────────────────────────────────────
+
+function StepConfirm({
+  name,
+  reportType,
+  client,
+  targetStandard,
+  templateId,
+  templates,
+  leader,
+  teamMembers,
+}: {
+  name: string;
+  reportType: ReportType;
+  client: string;
+  targetStandard: string;
+  templateId: string;
+  templates: TemplateOption[];
+  leader: string;
+  teamMembers: string[];
+}) {
+  const allTemplates = [...templates, BLANK_TEMPLATE];
+  const selectedTemplate = allTemplates.find((t) => t.id === templateId);
+  const totalMembers = (leader ? 1 : 0) + teamMembers.length;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">确认项目信息</h3>
+        <p className="mt-1 text-[13px] text-[#475569]">请核实以下信息无误后点击创建</p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Basic info card */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
+            <span className="text-sm font-medium text-foreground">基本信息</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div>
+              <span className="text-gray-400">项目名称</span>
+              <p className="mt-0.5 text-foreground">{name}</p>
+            </div>
+            <div>
+              <span className="text-gray-400">报告类型</span>
+              <p className="mt-0.5 text-foreground">{REPORT_TYPE_LABELS[reportType]}</p>
+            </div>
+            <div>
+              <span className="text-gray-400">客户单位</span>
+              <p className="mt-0.5 text-foreground">{client}</p>
+            </div>
+            {targetStandard && (
+              <div>
+                <span className="text-gray-400">目标标准</span>
+                <p className="mt-0.5 text-foreground">{targetStandard}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Template card */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-50">
+              <FileText className="h-4 w-4 text-purple-600" />
+            </div>
+            <span className="text-sm font-medium text-foreground">报告模板</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-400">选用模板</span>
+            <p className="mt-0.5 text-foreground">{selectedTemplate?.name ?? "未选择模板"}</p>
+          </div>
+        </div>
+
+        {/* Team card */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50">
+              <UserCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <span className="text-sm font-medium text-foreground">项目团队</span>
+            <span className="text-xs text-gray-400">{totalMembers} 人</span>
+          </div>
+          {totalMembers === 0 ? (
+            <p className="text-sm text-gray-400">暂未分配团队成员</p>
+          ) : (
+            <div className="space-y-2">
+              {leader && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">组长</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                    {leader}
+                  </span>
+                </div>
+              )}
+              {teamMembers.length > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">组员</span>
+                  <div className="flex gap-1">
+                    {teamMembers.map((userId) => (
+                      <span
+                        key={userId}
+                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-foreground"
+                      >
+                        {userId}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Component ──────────────────────────────────────────────────────────────
 
-export default function ProjectCreateWizard({
-  open,
-  onClose,
-  onCreated,
-}: ProjectCreateWizardProps) {
+export function ProjectCreateWizard() {
+  const router = useRouter();
+
   // Step
   const [step, setStep] = useState<WizardStep>(1);
-  const [direction, setDirection] = useState(1);
 
   // Step 1: Basic info
   const [name, setName] = useState("");
   const [reportType, setReportType] = useState<ReportType>("environmental_impact");
   const [client, setClient] = useState("");
   const [targetStandard, setTargetStandard] = useState("");
+  const [deadline, setDeadline] = useState("");
 
   // Step 2: Template
-  const [templateId, setTemplateId] = useState("tpl_env");
+  const [templateId, setTemplateId] = useState<string>("tpl_blank");
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
 
-  // Step 3: Outline
-  const [outline, setOutline] = useState<OutlineItem[]>(
-    DEFAULT_OUTLINES.environmental_impact ?? BLANK_OUTLINE,
-  );
+  // Fetch published templates on mount
+  React.useEffect(() => {
+    fetchPublishedTemplates().then((fetched) => {
+      setTemplates(fetched);
+      // Auto-select a template matching the current report type
+      const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
+      const match = fetched.find((t) => domains.includes(t.domain));
+      if (match) setTemplateId(match.id);
+    });
+  }, []);
 
-  // Step 4: Members
-  const emptyMembers: Record<MemberRole, string[]> = {
-    manager: [],
-    writer: [],
-    reviewer: [],
-    approver: [],
-    issuer: [],
-  };
-  const [membersByRole, setMembersByRole] = useState<Record<MemberRole, string[]>>(emptyMembers);
+  // Step 3: Team
+  const [leader, setLeader] = useState("");
+  const [teamMembers, setTeamMembers] = useState<string[]>([]);
 
   // Submitting
   const [submitting, setSubmitting] = useState(false);
 
-  // When report type changes, update outline if no template selected or blank template
-  const handleReportTypeChange = useCallback((newType: string) => {
-    setReportType(newType as ReportType);
-    if (templateId === "tpl_blank" || !templateId) {
-      setOutline(DEFAULT_OUTLINES[newType] ?? BLANK_OUTLINE);
-    }
-  }, [templateId]);
-
-  // When template changes, update outline
-  const handleTemplateChange = useCallback((newTemplateId: string) => {
-    setTemplateId(newTemplateId);
-    if (newTemplateId === "tpl_blank") {
-      setOutline(BLANK_OUTLINE);
-    } else {
-      setOutline(DEFAULT_OUTLINES[reportType] ?? BLANK_OUTLINE);
-    }
-  }, [reportType]);
+  // Validation errors
+  const [errors, setErrors] = useState<{ name?: string; client?: string }>({});
 
   // Navigation
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (step === 1) {
-      if (!name.trim()) { toast.error("请输入项目名称"); return; }
-      if (!client.trim()) { toast.error("请输入客户名称"); return; }
+      const newErrors: { name?: string; client?: string } = {};
+      if (!name.trim()) {
+        newErrors.name = "请输入项目名称";
+      }
+      if (!client.trim()) {
+        newErrors.client = "请输入客户单位";
+      }
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+      }
+      setErrors({});
     }
     if (step < 4) {
-      setDirection(1);
       setStep((s) => (s + 1) as WizardStep);
     }
-  };
+  }, [step, name, client]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (step > 1) {
-      setDirection(-1);
       setStep((s) => (s - 1) as WizardStep);
+    } else {
+      router.push("/projects");
     }
-  };
+  }, [step, router]);
+
+  // Skip helpers
+  const skipToNext = useCallback(() => {
+    if (step < 4) {
+      setStep((s) => (s + 1) as WizardStep);
+    }
+  }, [step]);
+
+  // Team operations
+  const addTeamMember = useCallback((userId: string) => {
+    setTeamMembers((prev) => [...prev, userId]);
+  }, []);
+
+  const removeTeamMember = useCallback((userId: string) => {
+    setTeamMembers((prev) => prev.filter((id) => id !== userId));
+  }, []);
+
+  // Resolve template_id for submission: match by domain if using a real template
+  const resolveTemplateId = useCallback((): string | undefined => {
+    if (templateId === "tpl_blank") return undefined;
+    return templateId || undefined;
+  }, [templateId]);
 
   // Submit
   const handleCreate = async () => {
     setSubmitting(true);
     try {
-      const memberList = Object.entries(membersByRole).flatMap(([role, userIds]) =>
-        userIds.map((userId) => ({ userId, role: role as MemberRole })),
-      );
+      const memberList: { userId: string; role: MemberRole }[] = [];
+      if (leader) {
+        memberList.push({ userId: leader, role: "owner" });
+      }
+      for (const userId of teamMembers) {
+        memberList.push({ userId, role: "member" });
+      }
 
       const project = await projectApi.create({
         name: name.trim(),
         reportType,
-        client: client.trim(),
-        targetStandard: targetStandard.trim() || undefined,
-        templateId: templateId === "tpl_blank" ? undefined : templateId,
+        templateId: resolveTemplateId(),
         members: memberList.length > 0 ? memberList : undefined,
       });
 
       toast.success("项目创建成功");
-      onCreated(project);
-      handleClose();
+      router.push(`/projects/${project.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "项目创建失败";
       toast.error(msg);
@@ -572,329 +800,124 @@ export default function ProjectCreateWizard({
     }
   };
 
-  // Reset & close
-  const handleClose = () => {
-    setStep(1);
-    setName("");
-    setReportType("environmental_impact");
-    setClient("");
-    setTargetStandard("");
-    setTemplateId("tpl_env");
-    setOutline(DEFAULT_OUTLINES.environmental_impact ?? BLANK_OUTLINE);
-    setMembersByRole(emptyMembers);
-    setSubmitting(false);
-    onClose();
+  const handleBack = () => {
+    router.push("/projects");
   };
-
-  // Member operations
-  const addMember = (role: MemberRole, userId: string) => {
-    setMembersByRole((prev) => ({
-      ...prev,
-      [role]: [...prev[role], userId],
-    }));
-  };
-
-  const removeMember = (role: MemberRole, userId: string) => {
-    setMembersByRole((prev) => ({
-      ...prev,
-      [role]: prev[role].filter((id) => id !== userId),
-    }));
-  };
-
-  if (!open) return null;
-
-  const selectedTemplate = BUILTIN_TEMPLATES.find((t) => t.id === templateId);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 10 }}
-            transition={{ duration: 0.2 }}
-            className="flex w-full max-w-2xl max-h-[85vh] flex-col rounded-2xl bg-background shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">新建报告项目</h2>
-                  <p className="text-xs text-muted-foreground">
-                    步骤 {step} / 4 — {STEPS.find((s) => s.step === step)?.label}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleClose}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
+    <div className="flex h-screen bg-[#F9FAFB]">
+      {/* Sidebar */}
+      <WizardSidebar currentStep={step} />
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col items-center overflow-y-auto">
+        <div className="my-8 w-full max-w-[640px] rounded-[8px] border border-gray-200 bg-white">
+          {/* Header */}
+          <div className="flex h-[56px] items-center gap-3 border-b border-gray-200 px-6">
+            <button
+              type="button"
+              onClick={goPrev}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-foreground"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h2 className="text-base font-semibold text-foreground">新建项目</h2>
+            <span className="text-sm text-gray-400">步骤 {step}/4</span>
+          </div>
+
+          {/* Content */}
+          <div className="min-h-[400px] px-6 py-6">
+            {step === 1 && (
+              <StepBasicInfo
+                name={name}
+                reportType={reportType}
+                client={client}
+                targetStandard={targetStandard}
+                deadline={deadline}
+                errors={errors}
+                onNameChange={(v) => { setName(v); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
+                onReportTypeChange={(v) => setReportType(v as ReportType)}
+                onClientChange={(v) => { setClient(v); if (errors.client) setErrors((e) => ({ ...e, client: undefined })); }}
+                onTargetStandardChange={setTargetStandard}
+                onDeadlineChange={setDeadline}
+              />
+            )}
+            {step === 2 && (
+              <StepTemplate
+                templateId={templateId}
+                templates={templates}
+                onTemplateChange={setTemplateId}
+                onSkip={skipToNext}
+              />
+            )}
+            {step === 3 && (
+              <StepTeam
+                leader={leader}
+                members={teamMembers}
+                onSetLeader={setLeader}
+                onAddMember={addTeamMember}
+                onRemoveMember={removeTeamMember}
+                onSkip={skipToNext}
+              />
+            )}
+            {step === 4 && (
+              <StepConfirm
+                name={name}
+                reportType={reportType}
+                client={client}
+                targetStandard={targetStandard}
+                templateId={templateId}
+                templates={templates}
+                leader={leader}
+                teamMembers={teamMembers}
+              />
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex h-[60px] items-center justify-between border-t border-gray-200 px-6">
+            <div>
+              {step === 1 && (
+                <Button type="button" variant="ghost" onClick={handleBack} className="text-gray-500">
+                  取消
+                </Button>
+              )}
             </div>
-
-            {/* Step Indicator */}
-            <div className="shrink-0 border-b border-border px-6 py-3">
-              <StepIndicator currentStep={step} />
+            <div className="flex gap-3">
+              {step > 1 && (
+                <Button type="button" variant="outline" onClick={goPrev} className="gap-1">
+                  上一步
+                </Button>
+              )}
+              {step < 4 ? (
+                <Button type="button" onClick={goNext} className="gap-1 bg-blue-600 hover:bg-blue-700">
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={submitting}
+                  className="gap-1.5 bg-green-600 hover:bg-green-700"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      创建项目
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
-
-            {/* Body */}
-            <div className="relative flex-1 overflow-y-auto px-6 py-5">
-              <AnimatePresence mode="wait" custom={direction}>
-                {/* Step 1: Basic Info */}
-                {step === 1 && (
-                  <motion.div
-                    key="step1"
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.2 }}
-                    className="space-y-5"
-                  >
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        项目名称 <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="请输入项目名称"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        报告类型
-                      </label>
-                      <CustomSelect
-                        value={reportType}
-                        onChange={handleReportTypeChange}
-                        options={REPORT_TYPE_OPTIONS}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        客户 <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        value={client}
-                        onChange={(e) => setClient(e.target.value)}
-                        placeholder="请输入客户名称"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        目标标准
-                      </label>
-                      <Input
-                        value={targetStandard}
-                        onChange={(e) => setTargetStandard(e.target.value)}
-                        placeholder="如 HJ 2.1-2016（选填）"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 2: Select Template */}
-                {step === 2 && (
-                  <motion.div
-                    key="step2"
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.2 }}
-                    className="space-y-3"
-                  >
-                    <p className="text-sm text-muted-foreground">
-                      选择一个模板作为报告的基础结构
-                    </p>
-                    <div className="space-y-2">
-                      {BUILTIN_TEMPLATES.map((tpl) => (
-                        <label
-                          key={tpl.id}
-                          className={cn(
-                            "flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all",
-                            templateId === tpl.id
-                              ? "border-primary bg-primary/5 shadow-sm"
-                              : "border-border hover:border-primary/40 hover:bg-accent/50",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="template"
-                            value={tpl.id}
-                            checked={templateId === tpl.id}
-                            onChange={() => handleTemplateChange(tpl.id)}
-                            className="sr-only"
-                          />
-                          <div
-                            className={cn(
-                              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                              templateId === tpl.id
-                                ? "border-primary bg-primary"
-                                : "border-input bg-background",
-                            )}
-                          >
-                            {templateId === tpl.id && (
-                              <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={cn(
-                                "text-sm font-medium",
-                                templateId === tpl.id ? "text-primary" : "text-foreground",
-                              )}
-                            >
-                              {tpl.name}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {tpl.description}
-                            </p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 3: Report Outline */}
-                {step === 3 && (
-                  <motion.div
-                    key="step3"
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.2 }}
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        预览并编辑报告大纲结构
-                      </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const id = `o_new_${++outlineIdCounter}`;
-                          const chapterNum = outline.length + 1;
-                          setOutline([
-                            ...outline,
-                            { id, title: `第${numberToChinese(chapterNum)}章 新章节`, children: [] },
-                          ]);
-                        }}
-                        className="h-7 gap-1 text-xs"
-                      >
-                        <Plus className="h-3 w-3" />
-                        添加章节
-                      </Button>
-                    </div>
-                    <div className="rounded-xl border border-border bg-muted/30 p-3">
-                      <OutlineTree items={outline} onChange={setOutline} />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 4: Member Assignment */}
-                {step === 4 && (
-                  <motion.div
-                    key="step4"
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.2 }}
-                    className="space-y-5"
-                  >
-                    <p className="text-sm text-muted-foreground">
-                      为项目各角色分配团队成员
-                    </p>
-                    {MEMBER_ROLES.map((role) => (
-                      <MemberRoleSection
-                        key={role}
-                        role={role}
-                        members={membersByRole[role]}
-                        onAdd={(userId) => addMember(role, userId)}
-                        onRemove={(userId) => removeMember(role, userId)}
-                      />
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Footer */}
-            <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-4">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                取消
-              </Button>
-
-              <div className="flex gap-3">
-                {step > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={goPrev}
-                    className="gap-1"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    上一步
-                  </Button>
-                )}
-
-                {step < 4 ? (
-                  <Button type="button" onClick={goNext} className="gap-1">
-                    下一步
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={submitting}
-                    className="gap-1"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        创建中...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        创建
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

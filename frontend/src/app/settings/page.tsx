@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { Suspense, useState } from "react";
+
+import { Toaster } from "@/components/ui/sonner";
+import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
+import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 import { useI18n } from "@/core/i18n/hooks";
+
 import { BasicSettings } from "./basic-settings";
 
 export default function SettingsPage() {
@@ -10,6 +16,8 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "basic", label: t.settings.sections.basic },
+    { id: "data-sources", label: "数据源" },
+    { id: "plugins", label: "插件" },
   ];
 
   return (
@@ -40,12 +48,40 @@ export default function SettingsPage() {
         </nav>
 
         {/* 右侧内容 */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-4xl mx-auto">
-            {activeTab === "basic" && <BasicSettings />}
-          </div>
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === "basic" && (
+            <div className="p-6">
+              <div className="max-w-4xl mx-auto">
+                <BasicSettings />
+              </div>
+            </div>
+          )}
+          {activeTab === "data-sources" && (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+                  加载中...
+                </div>
+              }
+            >
+              <DataSourceManager />
+            </Suspense>
+          )}
+          {activeTab === "plugins" && (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  加载中...
+                </div>
+              }
+            >
+              <PluginMarketplace />
+            </Suspense>
+          )}
         </div>
       </div>
+      <Toaster />
     </div>
   );
 }

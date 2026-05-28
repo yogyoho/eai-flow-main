@@ -2,13 +2,15 @@
  * 规则测试弹窗组件
  */
 
+import { X } from "lucide-react";
 import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
 import { testRule } from "@/extensions/knowledge-factory/complianceRulesApi";
-import { parseRuleTestInput } from "./rule-test-utils";
 import { cn } from "@/lib/utils";
+
+import { parseRuleTestInput } from "./rule-test-utils";
 
 interface RuleTestModalProps {
   ruleId?: string;

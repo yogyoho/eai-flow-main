@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { authFetch, authFormFetch } from "@/extensions/api/client";
-
-import { buildLawLibraryUrl } from "../law-library-api";
 import type {
   LawItem,
   LawListResponse,
@@ -10,6 +8,8 @@ import type {
   RAGFlowStatusResponse,
   LawType,
 } from "@/extensions/knowledge-factory/types";
+
+import { buildLawLibraryUrl } from "../law-library-api";
 
 // ========== Query Hooks ==========
 

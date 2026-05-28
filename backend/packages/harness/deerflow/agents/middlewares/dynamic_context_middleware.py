@@ -1,8 +1,10 @@
-"""Middleware to inject dynamic context (memory, current date) as a system-reminder.
+"""Middleware to inject dynamic context (memory, current date, project context) as a system-reminder.
 
 The system prompt is kept fully static for maximum prefix-cache reuse across users
 and sessions.  The current date is always injected.  Per-user memory is also injected
-when ``memory.injection_enabled`` is True in the app config.  Both are delivered once
+when ``memory.injection_enabled`` is True in the app config.  Project context is
+injected when a ``project-context.json`` file exists in the thread directory (written
+by the app layer when a user enters a report project).  All are delivered once
 per conversation as a dedicated <system-reminder> HumanMessage inserted before the
 first user message (frozen-snapshot pattern).
 
@@ -15,6 +17,8 @@ Reminder format:
 
     <system-reminder>
     <memory>...</memory>
+
+    <project_context>...</project_context>
 
     <current_date>2026-05-08, Friday</current_date>
     </system-reminder>
@@ -101,7 +105,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         self._agent_name = agent_name
         self._app_config = app_config
 
-    def _build_full_reminder(self) -> str:
+    def _build_full_reminder(self, *, thread_id: str | None = None) -> str:
         from deerflow.agents.lead_agent.prompt import _get_memory_context
 
         # Memory injection is gated by injection_enabled; date is always included.
@@ -113,6 +117,10 @@ class DynamicContextMiddleware(AgentMiddleware):
         if memory_context:
             lines.append(memory_context.strip())
             lines.append("")  # blank line separating memory from date
+        project_context = self._get_project_context(thread_id) if thread_id else ""
+        if project_context:
+            lines.append(project_context.strip())
+            lines.append("")
         lines.append(f"<current_date>{current_date}</current_date>")
         lines.append("</system-reminder>")
 
@@ -127,6 +135,56 @@ class DynamicContextMiddleware(AgentMiddleware):
                 "</system-reminder>",
             ]
         )
+
+    def _get_project_context(self, thread_id: str) -> str:
+        """Read project context from thread directory if it exists."""
+        import json
+
+        from deerflow.config.paths import get_paths
+        from deerflow.runtime.user_context import get_effective_user_id
+
+        user_id = get_effective_user_id()
+        paths = get_paths()
+        context_file = paths.thread_dir(thread_id, user_id=user_id) / "project-context.json"
+        if not context_file.exists():
+            return ""
+
+        try:
+            ctx = json.loads(context_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            logger.exception("Failed to read project context for thread %s", thread_id)
+            return ""
+
+        parts = ["<project_context>"]
+        parts.append("You are working on a collaborative report writing project.")
+        if ctx.get("project_name"):
+            parts.append(f"Project name: {ctx['project_name']}")
+        if ctx.get("report_type"):
+            parts.append(f"Report type: {ctx['report_type']}")
+        tmpl = ctx.get("template")
+        if tmpl:
+            if tmpl.get("template_name"):
+                parts.append(f"Template: {tmpl['template_name']}")
+            if tmpl.get("domain"):
+                parts.append(f"Domain: {tmpl['domain']}")
+            sections = tmpl.get("sections")
+            if isinstance(sections, dict):
+                section_list = sections.get("sections", [])
+            elif isinstance(sections, list):
+                section_list = sections
+            else:
+                section_list = []
+            if section_list:
+                parts.append("Report structure:")
+                for s in section_list:
+                    title = s.get("title", "Untitled") if isinstance(s, dict) else str(s)
+                    parts.append(f"  - {title}")
+        parts.append(
+            "Follow the template structure when generating report content. "
+            "Use the project context to guide your writing and ensure compliance with the report requirements."
+        )
+        parts.append("</project_context>")
+        return "\n".join(parts)
 
     @staticmethod
     def _make_reminder_and_user_messages(original: HumanMessage, reminder_content: str) -> tuple[HumanMessage, HumanMessage]:
@@ -153,7 +211,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         )
         return reminder_msg, user_msg
 
-    def _inject(self, state) -> dict | None:
+    def _inject(self, state, *, thread_id: str | None = None) -> dict | None:
         messages = list(state.get("messages", []))
         if not messages:
             return None
@@ -172,7 +230,7 @@ class DynamicContextMiddleware(AgentMiddleware):
             first_idx = next((i for i, m in enumerate(messages) if _is_user_injection_target(m)), None)
             if first_idx is None:
                 return None
-            full_reminder = self._build_full_reminder()
+            full_reminder = self._build_full_reminder(thread_id=thread_id)
             logger.info(
                 "DynamicContextMiddleware: injecting full reminder (len=%d, has_memory=%s) into first HumanMessage id=%r",
                 len(full_reminder),
@@ -197,8 +255,10 @@ class DynamicContextMiddleware(AgentMiddleware):
 
     @override
     def before_agent(self, state, runtime: Runtime) -> dict | None:
-        return self._inject(state)
+        thread_id = runtime.context.get("thread_id") if runtime.context else None
+        return self._inject(state, thread_id=thread_id)
 
     @override
     async def abefore_agent(self, state, runtime: Runtime) -> dict | None:
-        return self._inject(state)
+        thread_id = runtime.context.get("thread_id") if runtime.context else None
+        return self._inject(state, thread_id=thread_id)

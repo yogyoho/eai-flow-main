@@ -5,7 +5,6 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.extensions.models import (
     ApprovalRecord,
@@ -18,7 +17,6 @@ from app.extensions.models import (
 
 from .schemas import (
     ChapterOut,
-    ChapterTreeNode,
     MemberOut,
     ProjectListItem,
     ProjectOut,
@@ -33,30 +31,7 @@ async def _resolve_username(db: AsyncSession, user_id) -> str:
     return user.username if user else str(user_id)
 
 
-def _chapter_to_out(chapter: ProjectChapter, children: list[ChapterOut] | None = None) -> ChapterOut:
-    return ChapterOut(
-        id=chapter.id,
-        project_id=chapter.project_id,
-        parent_id=chapter.parent_id,
-        title=chapter.title,
-        level=chapter.level,
-        sort_order=chapter.sort_order,
-        status=chapter.status,
-        content=chapter.content,
-        assigned_to=chapter.assigned_to,
-        assigned_name=None,  # resolved separately
-        word_count_target=chapter.word_count_target,
-        word_count_current=chapter.word_count_current,
-        purpose=chapter.purpose,
-        generation_hint=chapter.generation_hint,
-        children=children or [],
-        created_at=chapter.created_at,
-        updated_at=chapter.updated_at,
-    )
-
-
 def _build_chapter_tree(chapters: list[ProjectChapter], assigned_names: dict) -> list[ChapterOut]:
-    """Build nested tree from flat chapter list."""
     by_id = {c.id: c for c in chapters}
     children_map: dict = {c.id: [] for c in chapters}
     roots = []
@@ -101,49 +76,49 @@ async def _get_assigned_names(db: AsyncSession, chapters: list[ProjectChapter]) 
     return dict(result.all())
 
 
-# ── Outline tree helpers ──
-
-
-async def _create_chapters_from_tree(
-    db: AsyncSession,
-    project_id,
-    nodes: list[ChapterTreeNode],
-    parent_id=None,
-    level: int = 1,
-    start_order: int = 0,
-) -> list[ProjectChapter]:
-    """Recursively create ProjectChapter records from ChapterTreeNode list."""
-    created = []
-    for i, node in enumerate(nodes):
-        chapter = ProjectChapter(
-            project_id=project_id,
-            parent_id=parent_id,
-            title=node.title,
-            level=level,
-            sort_order=start_order + i,
-            purpose=node.purpose,
-            generation_hint=node.generation_hint,
-            word_count_target=node.word_count_target,
-        )
-        db.add(chapter)
-        await db.flush()
-        created.append(chapter)
-
-        if node.children:
-            children = await _create_chapters_from_tree(
-                db, project_id, node.children, parent_id=chapter.id, level=level + 1, start_order=0,
-            )
-            created.extend(children)
-
-    return created
-
-
-async def _delete_project_chapters(db: AsyncSession, project_id) -> None:
-    """Delete all chapters for a project (for outline replacement)."""
-    stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id)
+async def _get_project_or_404(db: AsyncSession, project_id):
+    stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
-    for chapter in result.scalars().all():
-        await db.delete(chapter)
+    project = result.scalar_one_or_none()
+    if not project:
+        raise ValueError("Project not found")
+    return project
+
+
+async def _create_deerflow_thread(metadata: dict, cookies: dict | None = None, csrf_token: str | None = None) -> str:
+    import httpx
+    import os
+
+    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
+    thread_id = str(__import__("uuid").uuid4())
+
+    headers = {}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    async with httpx.AsyncClient(cookies=cookies) as client:
+        resp = await client.post(
+            f"http://localhost:{gateway_port}/api/threads",
+            json={"thread_id": thread_id, "metadata": metadata},
+            headers=headers,
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["thread_id"]
+
+
+def _write_project_context(thread_id: str, user_id: str, metadata: dict) -> None:
+    """Write project context to the thread directory for DynamicContextMiddleware."""
+    import json
+
+    from deerflow.config.paths import get_paths
+
+    paths = get_paths()
+    thread_dir = paths.thread_dir(thread_id, user_id=user_id)
+    thread_dir.mkdir(parents=True, exist_ok=True)
+    context_file = thread_dir / "project-context.json"
+    context_file.write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
 
 
 # ── Public API ──
@@ -212,7 +187,6 @@ async def list_projects(
             name=p.name,
             report_type=p.report_type,
             status=p.status,
-            current_stage=p.current_stage,
             template_id=p.template_id,
             template_name=template_name,
             chapter_count=cc,
@@ -232,14 +206,12 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
     if not project:
         return None
 
-    # Load chapters
     chap_stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id)
     chap_result = await db.execute(chap_stmt)
     chapters = list(chap_result.scalars().all())
     assigned_names = await _get_assigned_names(db, chapters)
     chapter_tree = _build_chapter_tree(chapters, assigned_names)
 
-    # Load members
     mem_stmt = select(ProjectMember).where(ProjectMember.project_id == project_id)
     mem_result = await db.execute(mem_stmt)
     members = []
@@ -259,7 +231,6 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         report_type=project.report_type,
         template_id=project.template_id,
         status=project.status,
-        current_stage=project.current_stage,
         thread_id=project.thread_id,
         created_by=project.created_by,
         members=members,
@@ -268,6 +239,56 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         created_at=project.created_at,
         updated_at=project.updated_at,
     )
+
+
+async def enter_project(
+    db: AsyncSession,
+    project_id,
+    user_id,
+    *,
+    cookies: dict | None = None,
+    csrf_token: str | None = None,
+) -> dict:
+    project = await _get_project_or_404(db, project_id)
+
+    stmt = select(ProjectMember).where(
+        ProjectMember.project_id == project_id,
+        ProjectMember.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+    if not member:
+        raise ValueError("Not a project member")
+
+    if member.thread_id:
+        return {"thread_id": member.thread_id, "project_id": str(project_id)}
+
+    template_context = {}
+    if project.template_id:
+        from app.extensions.knowledge_factory.models import ExtractionTemplate
+        tmpl = await db.get(ExtractionTemplate, project.template_id)
+        if tmpl:
+            template_context = {
+                "template_name": tmpl.name,
+                "domain": tmpl.domain,
+                "sections": tmpl.root_sections_json,
+            }
+
+    metadata = {
+        "project_id": str(project_id),
+        "type": "report_project",
+        "report_type": project.report_type,
+        "project_name": project.name,
+        "template": template_context,
+    }
+
+    thread_id = await _create_deerflow_thread(metadata, cookies=cookies, csrf_token=csrf_token)
+    member.thread_id = thread_id
+    await db.flush()
+
+    _write_project_context(thread_id, str(user_id), metadata)
+
+    return {"thread_id": thread_id, "project_id": str(project_id)}
 
 
 async def create_project(
@@ -284,23 +305,20 @@ async def create_project(
         report_type=report_type,
         created_by=created_by,
         template_id=template_id,
-        status="outline" if has_template else "setup",
-        current_stage=2 if has_template else 1,
+        status="active",
     )
     db.add(project)
     await db.flush()
 
-    # Auto-add creator as manager
     if created_by:
         member = ProjectMember(
             project_id=project.id,
             user_id=created_by,
-            role="manager",
+            role="owner",
         )
         db.add(member)
         await db.flush()
 
-    # If template_id provided, import chapters from template
     if template_id:
         await _import_template_outline(db, project.id, template_id)
 
@@ -308,7 +326,6 @@ async def create_project(
 
 
 async def _import_template_outline(db: AsyncSession, project_id, template_id) -> None:
-    """Import chapter structure from a KF template."""
     from app.extensions.knowledge_factory.models import ExtractionTemplate
 
     template = await db.get(ExtractionTemplate, template_id)
@@ -366,65 +383,10 @@ async def delete_project(db: AsyncSession, project_id) -> bool:
     return True
 
 
-# ── Outline ──
-
-
-async def get_outline_tree(db: AsyncSession, project_id) -> list[ChapterOut]:
-    chap_stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id)
-    chap_result = await db.execute(chap_stmt)
-    chapters = list(chap_result.scalars().all())
-    assigned_names = await _get_assigned_names(db, chapters)
-    return _build_chapter_tree(chapters, assigned_names)
-
-
-async def replace_outline(db: AsyncSession, project_id, chapters: list[ChapterTreeNode]) -> list[ChapterOut]:
-    """Delete existing chapters and create new ones from the tree structure."""
-    await _delete_project_chapters(db, project_id)
-    await _create_chapters_from_tree(db, project_id, chapters)
-    await db.flush()
-    return await get_outline_tree(db, project_id)
-
-
-async def get_chapter(db: AsyncSession, chapter_id) -> ProjectChapter | None:
-    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def update_chapter(db: AsyncSession, chapter_id, **kwargs) -> ChapterOut | None:
-    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
-    result = await db.execute(stmt)
-    chapter = result.scalar_one_or_none()
-    if not chapter:
-        return None
-
-    for k, v in kwargs.items():
-        if v is not None:
-            setattr(chapter, k, v)
-
-    await db.flush()
-    assigned_names = await _get_assigned_names(db, [chapter])
-    return _chapter_to_out(chapter)
-
-
-async def confirm_outline(db: AsyncSession, project_id) -> ProjectOut | None:
-    """Advance project from stage 2 (outline) to stage 3 (writing)."""
-    stmt = select(ReportProject).where(ReportProject.id == project_id)
-    result = await db.execute(stmt)
-    project = result.scalar_one_or_none()
-    if not project:
-        return None
-
-    project.current_stage = 3
-    project.status = "writing"
-    await db.flush()
-    return await get_project(db, project_id)
-
-
 # ── Members ──
 
 
-async def add_member(db: AsyncSession, project_id, user_id, role: str = "editor") -> bool:
+async def add_member(db: AsyncSession, project_id, user_id, role: str = "member") -> bool:
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
     if not result.scalar_one_or_none():
@@ -458,279 +420,21 @@ async def remove_member(db: AsyncSession, project_id, user_id) -> bool:
     return True
 
 
-# ── Writing & Editing Thread Management ──
-
-
-async def _get_project_or_404(db: AsyncSession, project_id):
-    """Get project or raise ValueError."""
-    stmt = select(ReportProject).where(ReportProject.id == project_id)
-    result = await db.execute(stmt)
-    project = result.scalar_one_or_none()
-    if not project:
-        raise ValueError("Project not found")
-    return project
-
-
-async def _get_chapter_or_404(db: AsyncSession, chapter_id):
-    """Get chapter or raise ValueError."""
-    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
-    result = await db.execute(stmt)
-    chapter = result.scalar_one_or_none()
-    if not chapter:
-        raise ValueError("Chapter not found")
-    return chapter
-
-
-async def _create_deerflow_thread(metadata: dict, cookies: dict | None = None, csrf_token: str | None = None) -> str:
-    """Create a DeerFlow thread via the Gateway threads API."""
-    import httpx
-    import os
-
-    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
-    thread_id = str(__import__("uuid").uuid4())
-
-    headers = {}
-    if csrf_token:
-        headers["X-CSRF-Token"] = csrf_token
-
-    async with httpx.AsyncClient(cookies=cookies) as client:
-        resp = await client.post(
-            f"http://localhost:{gateway_port}/api/threads",
-            json={"thread_id": thread_id, "metadata": metadata},
-            headers=headers,
-            timeout=10.0,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["thread_id"]
-
-
-async def _start_deerflow_run(thread_id: str, message: str, *, cookies: dict | None = None, csrf_token: str | None = None) -> str:
-    """Start a DeerFlow run on an existing thread with a human message.
-
-    Returns the run_id.
-    """
-    import httpx
-    import os
-
-    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
-
-    headers = {}
-    if csrf_token:
-        headers["X-CSRF-Token"] = csrf_token
-
-    run_payload = {
-        "assistant_id": None,
-        "input": {
-            "messages": [
-                {"role": "human", "content": message},
-            ],
-        },
-        "metadata": {"source": "ai_tool_action"},
-        "multitask_strategy": "reject",
-    }
-
-    async with httpx.AsyncClient(cookies=cookies) as client:
-        resp = await client.post(
-            f"http://localhost:{gateway_port}/api/threads/{thread_id}/runs",
-            json=run_payload,
-            headers=headers,
-            timeout=30.0,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("run_id", "")
-
-
-async def start_writing(db: AsyncSession, project_id, *, user_id=None, cookies=None, csrf_token=None):
-    """Create a project-level thread for AI writing (Stage 3).
-
-    Returns {"thread_id": ..., "project_id": ...}
-    """
-    project = await _get_project_or_404(db, project_id)
-
-    # Reuse existing thread if already created
-    if project.thread_id:
-        return {"thread_id": project.thread_id, "project_id": project_id}
-
-    thread_id = await _create_deerflow_thread({
-        "project_id": str(project_id),
-        "type": "report_project",
-        "report_type": project.report_type,
-    }, cookies=cookies, csrf_token=csrf_token)
-
-    project.thread_id = thread_id
-    await db.flush()
-
-    return {"thread_id": thread_id, "project_id": project_id}
-
-
-async def start_chapter_editing(db: AsyncSession, project_id, chapter_id, *, user_id=None, cookies=None, csrf_token=None):
-    """Create a chapter-level thread for collaborative editing (Stage 4).
-
-    Returns {"thread_id": ..., "project_id": ..., "chapter_id": ...}
-    """
-    project = await _get_project_or_404(db, project_id)
-    chapter = await _get_chapter_or_404(db, chapter_id)
-
-    if chapter.project_id != project_id:
-        raise ValueError("Chapter does not belong to this project")
-
-    thread_id = await _create_deerflow_thread({
-        "project_id": str(project_id),
-        "chapter_id": str(chapter_id),
-        "parent_thread_id": project.thread_id or "",
-        "type": "chapter_edit",
-        "assigned_to": str(chapter.assigned_to) if chapter.assigned_to else "",
-    }, cookies=cookies, csrf_token=csrf_token)
-
-    # Update chapter status to "editing"
-    chapter.status = "editing"
-    await db.flush()
-
-    return {"thread_id": thread_id, "project_id": project_id, "chapter_id": chapter_id}
-
-
-# ── AI Action ──
-
-ACTION_LABELS = {
-    "polish": "内容润色",
-    "expand": "内容扩写",
-    "condense": "内容缩写",
-    "format_check": "格式检查",
-    "compliance_check": "合规性检查",
-    "terminology_check": "术语统一检查",
-}
-
-ACTION_PROMPTS = {
-    "polish": "请对以下章节内容进行润色，优化语言表述，提升文字质量。保持原意不变，不增删实质性内容。",
-    "expand": "请根据该章节的编写目的和要求，对以下内容进行扩写，丰富细节和数据支撑。目标字数：{target_word_count}字。",
-    "condense": "请精简以下章节内容，去除冗余表述，保留核心信息。目标字数：{target_word_count}字。",
-    "format_check": "请检查以下章节内容的格式问题，包括标点符号、编号规范、格式一致性、段落结构等，列出问题并给出修正建议。",
-    "compliance_check": "请对照以下法规/标准验证章节内容的合规性。检查标准：{standard}。如未指定标准，请对照项目报告类型的通用规范进行检查。",
-    "terminology_check": "请检查以下章节（以及全文上下文）中的专业术语使用是否一致、准确。列出不一致或可能有误的术语及其出现位置。",
-}
-
-
-async def execute_ai_action(
-    db: AsyncSession,
-    project_id,
-    chapter_ids: list,
-    action: str,
-    params: dict | None = None,
-    *,
-    user_id=None,
-    cookies=None,
-    csrf_token=None,
-) -> dict:
-    """Create a temporary thread for an AI toolbox action.
-
-    Returns {"thread_id": ..., "task_count": ...}
-    """
-    from .schemas import VALID_AI_ACTIONS
-
-    if action not in VALID_AI_ACTIONS:
-        raise ValueError(f"Invalid action: {action}. Valid: {VALID_AI_ACTIONS}")
-
-    project = await _get_project_or_404(db, project_id)
-
-    # Fetch chapters
-    chapters = []
-    for ch_id in chapter_ids:
-        chapter = await _get_chapter_or_404(db, ch_id)
-        if chapter.project_id != project_id:
-            raise ValueError(f"Chapter {ch_id} does not belong to this project")
-        chapters.append(chapter)
-
-    if not chapters:
-        raise ValueError("No valid chapters found")
-
-    # Build tool-specific prompt
-    action_prompt = ACTION_PROMPTS.get(action, "")
-    target_word_count = (params or {}).get("target_word_count", "")
-    standard = (params or {}).get("standard", "")
-    action_prompt = action_prompt.format(
-        target_word_count=target_word_count or "（保持原字数）",
-        standard=standard or "行业通用规范",
-    )
-
-    # Build chapter context
-    chapter_context_parts = []
-    for ch in chapters:
-        purpose_line = f"\n编写目的：{ch.purpose}" if ch.purpose else ""
-        hint_line = f"\n编写提示：{ch.generation_hint}" if ch.generation_hint else ""
-        content_line = f"\n\n当前内容：\n{ch.content}" if ch.content else "\n\n当前内容：（空）"
-        chapter_context_parts.append(f"### {ch.title}{purpose_line}{hint_line}{content_line}")
-
-    system_prompt = (
-        f"你是专业的报告撰写辅助AI。当前任务：{ACTION_LABELS.get(action, action)}\n\n"
-        f"## 项目信息\n项目名称：{project.name}\n\n"
-        f"## 任务指令\n{action_prompt}\n\n"
-        f"## 目标章节\n" + "\n".join(chapter_context_parts)
-    )
-
-    if project.template_id:
-        system_prompt += "\n\n请确保修改后的内容符合项目的编写规范和合规要求。"
-        system_prompt += "\n完成后请使用 write_chapter 工具将结果写回对应章节。"
-
-    # Create temporary thread
-    thread_id = await _create_deerflow_thread(
-        {
-            "project_id": str(project_id),
-            "type": "ai_tool_action",
-            "action": action,
-            "chapter_ids": [str(ch_id) for ch_id in chapter_ids],
-        },
-        cookies=cookies,
-        csrf_token=csrf_token,
-    )
-
-    # Build the human message that triggers the agent
-    chapter_names = "、".join(ch.title for ch in chapters)
-    human_message = (
-        f"请执行「{ACTION_LABELS.get(action, action)}」任务。\n\n"
-        f"目标章节：{chapter_names}\n\n"
-        f"以下是完整的任务指令和章节上下文：\n\n{system_prompt}"
-    )
-
-    # Start a run on the thread so the agent auto-executes
-    await _start_deerflow_run(thread_id, human_message, cookies=cookies, csrf_token=csrf_token)
-
-    return {"thread_id": thread_id, "task_count": len(chapters)}
-
-
-# ── Permission query & Approval workflow ──
-
-
-async def get_my_permissions(
-    db: AsyncSession, project_id: UUID, user_id: UUID, is_admin: bool = False
-) -> dict:
-    from app.extensions.project.permissions import get_user_project_permissions, get_default_tab
-    role, permissions = await get_user_project_permissions(db, project_id, user_id, is_admin)
-    return {
-        "role": role,
-        "permissions": permissions,
-        "default_tab": get_default_tab(role) if role else "dashboard",
-    }
+# ── Approval workflow ──
 
 
 async def submit_approval(
     db: AsyncSession, project_id: UUID, manager_id: UUID,
     steps: list[dict],
 ) -> dict:
-    """Manager submits project for approval, creating workflow steps."""
-    from app.extensions.models import ApprovalWorkflow
-
     project = await _get_project_or_404(db, project_id)
 
-    # Delete existing workflows if any
     existing = await db.execute(
         select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id)
     )
     for wf in existing.scalars().all():
         await db.delete(wf)
 
-    # Create new workflow steps
     for step_data in steps:
         workflow = ApprovalWorkflow(
             project_id=project_id,
@@ -742,7 +446,6 @@ async def submit_approval(
         )
         db.add(workflow)
 
-    project.current_stage = 5
     await db.flush()
     return {"project_id": project_id, "status": "submitted", "step_count": len(steps)}
 
@@ -751,9 +454,6 @@ async def approval_action(
     db: AsyncSession, project_id: UUID, workflow_id: UUID,
     reviewer_id: UUID, action: str, comment: str | None,
 ) -> dict:
-    """Execute an approval action (approve/reject) on a workflow step."""
-    from app.extensions.models import ApprovalWorkflow, ApprovalRecord
-
     workflow = await db.get(ApprovalWorkflow, workflow_id)
     if not workflow or workflow.project_id != project_id:
         raise HTTPException(status_code=404, detail="审核步骤不存在")
@@ -783,12 +483,10 @@ async def approval_action(
         steps = all_steps.scalars().all()
         if all(s.status == "approved" for s in steps):
             project = await _get_project_or_404(db, project_id)
-            project.current_stage = 6
+            project.status = "completed"
 
     elif action == "reject":
         workflow.status = "rejected"
-        project = await _get_project_or_404(db, project_id)
-        project.current_stage = 4
         subsequent = await db.execute(
             select(ApprovalWorkflow).where(
                 ApprovalWorkflow.project_id == project_id,
@@ -799,14 +497,10 @@ async def approval_action(
             s.status = "pending"
 
     await db.flush()
-    project = await _get_project_or_404(db, project_id)
-    return {"workflow_id": workflow_id, "action": action, "new_stage": project.current_stage}
+    return {"workflow_id": workflow_id, "action": action}
 
 
 async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
-    """Get current approval status for a project."""
-    from app.extensions.models import ApprovalWorkflow
-
     all_steps = await db.execute(
         select(ApprovalWorkflow)
         .where(ApprovalWorkflow.project_id == project_id)
@@ -827,3 +521,44 @@ async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
         "steps": steps,
         "all_approved": len(steps) > 0 and all(s.status == "approved" for s in steps),
     }
+
+
+# ── Project file aggregation ──
+
+
+async def get_project_files(db: AsyncSession, project_id, *, cookies=None, csrf_token=None) -> list[dict]:
+    """Aggregate files from all member threads via Gateway upload list API."""
+    import httpx
+    import os
+
+    stmt = select(ProjectMember).where(ProjectMember.project_id == project_id)
+    result = await db.execute(stmt)
+    members = result.scalars().all()
+
+    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
+    headers = {}
+    if csrf_token:
+        headers["X-CSRF-Token"] = csrf_token
+
+    files = []
+    async with httpx.AsyncClient(cookies=cookies) as client:
+        for m in members:
+            username = await _resolve_username(db, m.user_id)
+            if not m.thread_id:
+                continue
+            try:
+                resp = await client.get(
+                    f"http://localhost:{gateway_port}/api/threads/{m.thread_id}/uploads/list",
+                    headers=headers,
+                    timeout=10.0,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for f in data.get("files", []):
+                        f["thread_id"] = m.thread_id
+                        f["member"] = username
+                        files.append(f)
+            except Exception:
+                pass
+
+    return files

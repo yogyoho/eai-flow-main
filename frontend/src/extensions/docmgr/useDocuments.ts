@@ -11,6 +11,7 @@ export interface DocumentFilter {
   starred?: boolean;
   shared?: boolean;
   doc_type?: "document" | "file_ref";
+  project_scope?: "personal" | "project";
   q?: string;
 }
 
@@ -23,6 +24,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE);
   const [folders, setFolders] = useState<string[]>([]);
+  const [projectFolders, setProjectFolders] = useState<string[]>([]);
   const [filter, setFilter] = useState<DocumentFilter>(initialFilter ?? { folder: "默认文件夹" });
 
   const filterRef = useRef<DocumentFilter>(filter);
@@ -36,6 +38,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
         starred: filterRef.current.starred,
         shared: filterRef.current.shared,
         doc_type: filterRef.current.doc_type,
+        project_scope: filterRef.current.project_scope,
         q: filterRef.current.q,
         skip: (pageRef.current - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
@@ -51,8 +54,8 @@ export function useDocuments(initialFilter?: DocumentFilter) {
 
   useEffect(() => {
     try {
-      const res = docmgrApi.listFolders();
-      res.then((r) => setFolders(r.folders));
+      docmgrApi.listFolders().then((r) => setFolders(r.folders));
+      docmgrApi.listFolders({ project_scope: "project" }).then((r) => setProjectFolders(r.folders));
     } catch {
       // keep default
     }
@@ -150,6 +153,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     setPage,
     setFilter: handleSetFilter,
     folders,
+    projectFolders,
     createDoc,
     updateDoc,
     deleteDoc,

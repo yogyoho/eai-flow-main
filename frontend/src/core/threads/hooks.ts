@@ -79,7 +79,7 @@ function dedupeMessagesByIdentity(messages: Message[]): Message[] {
   });
 }
 
-function findLatestUnloadedRunIndex(
+export function findLatestUnloadedRunIndex(
   runs: Run[],
   loadedRunIds: ReadonlySet<string>,
 ): number {
@@ -355,6 +355,9 @@ export function useThreadStream({
       if (threadIdRef.current && !isMock) {
         void queryClient.invalidateQueries({
           queryKey: threadTokenUsageQueryKey(threadIdRef.current),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["thread", threadIdRef.current],
         });
       }
     },
@@ -661,13 +664,13 @@ export function useThreadHistory(threadId: string) {
   const runs = useThreadRuns(threadId);
   const threadIdRef = useRef(threadId);
   const runsRef = useRef(runs.data ?? []);
-  const indexRef = useRef(-1);
   const loadingRef = useRef(false);
   const pendingLoadRef = useRef(false);
   const loadingRunIdRef = useRef<string | null>(null);
   const loadedRunIdsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [unloadedIndex, setUnloadedIndex] = useState(-1);
 
   const loadMessages = useCallback(async () => {
     if (loadingRef.current) {
@@ -696,11 +699,10 @@ export function useThreadHistory(threadId: string) {
           runsRef.current,
           loadedRunIdsRef.current,
         );
-        indexRef.current = nextRunIndex;
 
         const run = runsRef.current[nextRunIndex];
         if (!run) {
-          indexRef.current = -1;
+          setUnloadedIndex(-1);
           return;
         }
 
@@ -728,10 +730,11 @@ export function useThreadHistory(threadId: string) {
           dedupeMessagesByIdentity([..._messages, ...prev]),
         );
         loadedRunIdsRef.current.add(run.run_id);
-        indexRef.current = findLatestUnloadedRunIndex(
+        const nextIndex = findLatestUnloadedRunIndex(
           runsRef.current,
           loadedRunIdsRef.current,
         );
+        setUnloadedIndex(nextIndex);
       } while (pendingLoadRef.current);
     } catch (err) {
       console.error(err);
@@ -747,33 +750,31 @@ export function useThreadHistory(threadId: string) {
 
     if (threadChanged) {
       runsRef.current = [];
-      indexRef.current = -1;
       pendingLoadRef.current = false;
       loadingRunIdRef.current = null;
       loadedRunIdsRef.current = new Set();
       loadingRef.current = false;
       setLoading(false);
       setMessages([]);
+      setUnloadedIndex(-1);
     }
 
     if (runs.data && runs.data.length > 0) {
       runsRef.current = runs.data ?? [];
-      indexRef.current = findLatestUnloadedRunIndex(
+      const newIndex = findLatestUnloadedRunIndex(
         runs.data,
         loadedRunIdsRef.current,
       );
+      setUnloadedIndex(newIndex);
     }
-    loadMessages().catch(() => {
-      toast.error("Failed to load thread history.");
-    });
-  }, [threadId, runs.data, loadMessages]);
+  }, [threadId, runs.data]);
 
   const appendMessages = useCallback((_messages: Message[]) => {
     setMessages((prev) => {
       return dedupeMessagesByIdentity([...prev, ..._messages]);
     });
   }, []);
-  const hasMore = indexRef.current >= 0 || !runs.data;
+  const hasMore = unloadedIndex >= 0 || !runs.data;
   return {
     runs: runs.data,
     messages,

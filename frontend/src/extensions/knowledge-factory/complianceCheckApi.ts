@@ -2,12 +2,13 @@
  * 合规性检查 API
  */
 
+import { authFetch } from "@/extensions/api/client";
 import type {
   ComplianceCheckRequest,
   ComplianceCheckResponse,
   ValidationIssue,
 } from "@/extensions/knowledge-factory/types";
-import { authFetch } from "@/extensions/api/client";
+
 import { buildLawLibraryUrl } from "./law-library-api";
 
 /**
