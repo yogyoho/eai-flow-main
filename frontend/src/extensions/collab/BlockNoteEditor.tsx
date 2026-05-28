@@ -15,6 +15,9 @@ import { useAuth } from "@/extensions/hooks/useAuth";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BlockCommentAnchor } from "./BlockCommentAnchor";
+import { InlineCommentThread } from "./InlineCommentThread";
+import type { CollabComment } from "../types";
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
@@ -39,6 +42,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const { user: currentUser } = useAuth();
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+    const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
 
     const collabUser = useMemo(() => {
       const name = currentUser?.full_name || currentUser?.username || "User";
@@ -47,6 +51,16 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
         : Math.floor(Math.random() * COLLAB_USER_COLORS.length);
       return { name, color: COLLAB_USER_COLORS[colorIdx] ?? "#6366f1" };
     }, [currentUser]);
+
+    const commentsByBlock = useMemo(() => {
+      const map = new Map<string, CollabComment[]>();
+      for (const c of comments) {
+        const list = map.get(c.block_id) ?? [];
+        list.push(c);
+        map.set(c.block_id, list);
+      }
+      return map;
+    }, [comments]);
 
     const editor = useCreateBlockNote(
       {
@@ -173,6 +187,32 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
               <BlockNoteView editor={editor} theme="light" />
+
+              {/* Comment anchors for each block with unresolved comments */}
+              {Array.from(commentsByBlock.entries()).map(([blockId, blockComments]) => (
+                <BlockCommentAnchor
+                  key={blockId}
+                  blockId={blockId}
+                  comments={blockComments}
+                  onClick={(id) => {
+                    setSelectedBlockId(id);
+                    setSidePanel("comments");
+                  }}
+                />
+              ))}
+
+              {/* Inline comment thread floating near selected block */}
+              {inlineThreadBlockId && commentsByBlock.has(inlineThreadBlockId) && (
+                <InlineCommentThread
+                  comments={commentsByBlock.get(inlineThreadBlockId) ?? []}
+                  onCreateComment={handleCreateComment}
+                  onReply={handleReply}
+                  onResolve={handleResolve}
+                  onReopen={handleReopen}
+                  onDelete={handleDelete}
+                  onClose={() => setInlineThreadBlockId(null)}
+                />
+              )}
             </div>
           </div>
         </div>
