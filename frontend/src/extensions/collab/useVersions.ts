@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { docmgrApi } from "../api";
-import type { CollabVersion } from "../types";
+import type { CollabVersion, VersionDiffResponse } from "../types";
 
 export function useVersions(docId: string | null) {
   const [versions, setVersions] = useState<CollabVersion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [diffResult, setDiffResult] = useState<VersionDiffResponse | null>(null);
 
   const load = useCallback(async () => {
     if (!docId) return;
@@ -45,5 +46,16 @@ export function useVersions(docId: string | null) {
     [docId, load],
   );
 
-  return { versions, loading, createVersion, restoreVersion, reload: load };
+  const diffVersions = useCallback(
+    async (version: number): Promise<void> => {
+      if (!docId) return;
+      // Diff against the latest version (first in list) or self if no other versions
+      const toVersion = versions.length > 0 && versions[0]!.version !== version ? versions[0]!.version : version;
+      const result = await docmgrApi.diffVersions(docId, version, toVersion);
+      setDiffResult(result);
+    },
+    [docId, versions],
+  );
+
+  return { versions, loading, createVersion, restoreVersion, reload: load, diffResult, diffVersions };
 }
