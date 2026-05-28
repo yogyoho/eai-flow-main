@@ -1,10 +1,9 @@
 "use client";
 
-import { useCreateBlockNote, BlockNoteViewRaw } from "@blocknote/react";
-import { BlockNoteView as ShadcnBlockNoteView } from "@blocknote/shadcn";
+import "./patch-prosemirror";
+import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
 
-// import "@blocknote/shadcn/style.css";
-// import "@blocknote/react/style.css";
+import "@blocknote/react/style.css";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -105,7 +104,11 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return map;
     }, [comments]);
 
-    const editor = useCreateBlockNote({}, []);
+    const editor = useCreateBlockNote({
+      initialContent: [
+        { type: "paragraph", children: [{ text: "" }] },
+      ],
+    });
 
     // Track selected block via onSelectionChange
     useEffect(() => {
@@ -225,7 +228,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
               <EditorErrorBoundary fallback={<div className="text-muted-foreground text-sm">编辑器加载失败</div>}>
-                <BlockNoteViewRaw editor={editor} />
+                <BlockNoteView editor={editor} />
               </EditorErrorBoundary>
 
               {/* Comment anchors for each block with unresolved comments */}
