@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Eye, GitCompare, History, RotateCcw, Save } from "lucide-react";
-import { DiffViewer } from "./DiffViewer";
+import { useCallback, useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+
 import type { CollabVersion, VersionDiffResponse } from "../types";
+
+import { DiffViewer } from "./DiffViewer";
 
 interface VersionPanelProps {
   versions: CollabVersion[];
@@ -118,7 +121,7 @@ export function VersionPanel({
                     if (diffMode) {
                       toggleVersionSelection(v.version);
                     } else {
-                      onPreviewVersion(v.version);
+                      void onPreviewVersion(v.version);
                     }
                   }}
                 >
@@ -147,7 +150,7 @@ export function VersionPanel({
                   {v.summary && <p className="text-xs text-muted-foreground mb-1">{v.summary}</p>}
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">
-                      {v.full_name || v.username || "未知"}
+                      {v.full_name ?? v.username ?? "未知"}
                     </span>
                     {!diffMode && (
                       <div className="flex items-center gap-1">
@@ -157,7 +160,7 @@ export function VersionPanel({
                           className="h-6 text-[10px] px-2"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onPreviewVersion(v.version);
+                            void onPreviewVersion(v.version);
                           }}
                         >
                           <Eye className="w-3 h-3 mr-1" />
@@ -169,7 +172,7 @@ export function VersionPanel({
                           className="h-6 text-[10px] px-2"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`确定恢复到版本 v${v.version}？`)) onRestoreVersion(v.version);
+                            if (confirm(`确定恢复到版本 v${v.version}？`)) void onRestoreVersion(v.version);
                           }}
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />

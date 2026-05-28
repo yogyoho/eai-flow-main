@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+
 import type { VersionDiffResponse } from "../types";
 
 interface DiffViewerProps {
@@ -48,7 +49,7 @@ export function DiffViewer({ diff, loading }: DiffViewerProps) {
             }`}
           >
             {block.type === "added" ? "+ " : block.type === "removed" ? "- " : "~ "}
-            {block.content || block.to_content || ""}
+            {block.content ?? block.to_content ?? ""}
           </div>
         ))}
       </div>

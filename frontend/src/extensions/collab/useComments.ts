@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import { docmgrApi } from "../api";
 import type { CollabComment, CommentCreateRequest } from "../types";
 
@@ -22,7 +23,7 @@ export function useComments(docId: string | null, broadcastEvent?: (event: { typ
   }, [docId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useComments(docId: string | null, broadcastEvent?: (event: { typ
         detail?.type === "comment_reopened" ||
         detail?.type === "comment_deleted"
       ) {
-        load();
+        void load();
       }
     };
     window.addEventListener("collab-event", handler);

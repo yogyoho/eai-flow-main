@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import { docmgrApi } from "../api";
 import type { CollabVersion, VersionDiffResponse } from "../types";
 
@@ -24,7 +25,7 @@ export function useVersions(docId: string | null) {
   }, [docId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const createVersion = useCallback(

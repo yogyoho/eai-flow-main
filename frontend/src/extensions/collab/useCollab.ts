@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HocuspocusProvider } from "@hocuspocus/provider";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
 const COLLAB_URL =
@@ -39,9 +39,10 @@ export function useCollab(docId: string | null) {
     if (provider.awareness) {
       provider.awareness.on("change", () => {
         const userList: CollabUser[] = [];
-        provider.awareness!.getStates().forEach((state: any, clientId: number) => {
+        provider.awareness!.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
           if (state.user) {
-            userList.push({ name: state.user.name, color: state.user.color, clientId });
+            const user = state.user as { name: string; color: string };
+            userList.push({ name: user.name, color: user.color, clientId });
           }
         });
         setUsers(userList);
@@ -71,13 +72,14 @@ export function useCollab(docId: string | null) {
     const seenTimestamps = new Map<number, number>();
 
     const handler = () => {
-      awareness.getStates().forEach((state: any, clientId: number) => {
+      awareness.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
         if (state.collabEvent && clientId !== awareness.clientID) {
-          const ts = state.collabEvent.timestamp || 0;
-          const lastTs = seenTimestamps.get(clientId) || 0;
+          const collabEvent = state.collabEvent as Record<string, unknown>;
+          const ts = (collabEvent.timestamp as number) ?? 0;
+          const lastTs = seenTimestamps.get(clientId) ?? 0;
           if (ts > lastTs) {
             seenTimestamps.set(clientId, ts);
-            window.dispatchEvent(new CustomEvent("collab-event", { detail: state.collabEvent }));
+            window.dispatchEvent(new CustomEvent("collab-event", { detail: collabEvent }));
           }
         }
       });
