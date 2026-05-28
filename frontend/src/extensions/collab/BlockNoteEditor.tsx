@@ -2,6 +2,8 @@
 
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import "@blocknote/shadcn/dist/style.css";
+import "@blocknote/react/dist/style.css";
 import { useCollab } from "./useCollab";
 import { OnlineUsers } from "./OnlineUsers";
 import { CommentSidebar } from "./CommentSidebar";
@@ -10,10 +12,9 @@ import { AIToolbar } from "./AIToolbar";
 import { useComments } from "./useComments";
 import { useVersions } from "./useVersions";
 import { useAuth } from "@/extensions/hooks/useAuth";
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { MessageSquare, History, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
@@ -31,7 +32,7 @@ type SidePanel = "comments" | "versions" | "ai" | null;
 const COLLAB_USER_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6", "#3b82f6"];
 
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
-  function BlockNoteEditor({ documentId, initialContent }, ref) {
+  function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
     const { ydoc, provider, connected, users } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId);
     const { versions, loading: versionsLoading, createVersion, restoreVersion } = useVersions(documentId);
@@ -39,9 +40,6 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
-    const collabFragment = ydoc ? ydoc.getXmlFragment("document-store") : undefined;
-
-    // Derive a stable color from user ID so it doesn't change across re-renders
     const collabUser = useMemo(() => {
       const name = currentUser?.full_name || currentUser?.username || "User";
       const colorIdx = currentUser
@@ -50,40 +48,52 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return { name, color: COLLAB_USER_COLORS[colorIdx] ?? "#6366f1" };
     }, [currentUser]);
 
-    const editor = useCreateBlockNote({
-      collaboration: ydoc && collabFragment
-        ? {
-            fragment: collabFragment,
-            user: { name: collabUser.name, color: collabUser.color },
-            ...(provider?.awareness ? { provider: { awareness: provider.awareness } } : {}),
-          }
-        : undefined,
-      initialContent: initialContent ? (() => {
-        try { return JSON.parse(initialContent); } catch { return undefined; }
-      })() : undefined,
-    });
+    const editor = useCreateBlockNote(
+      {
+        collaboration: provider
+          ? {
+              fragment: ydoc.getXmlFragment("document-store"),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              provider: provider as any,
+              user: { name: collabUser.name, color: collabUser.color },
+              showCursorLabels: "activity",
+            }
+          : undefined,
+      },
+      [ydoc, provider, collabUser],
+    );
+
+    // Track selected block via onSelectionChange
+    useEffect(() => {
+      const unsubscribe = editor.onSelectionChange(() => {
+        const cursorPos = editor.getTextCursorPosition();
+        if (cursorPos.block) {
+          setSelectedBlockId(cursorPos.block.id);
+        }
+      });
+      return unsubscribe;
+    }, [editor]);
 
     useImperativeHandle(ref, () => ({
       getMarkdown: () => {
-        const blocks = editor.document;
-        return blocks.map((block: any) => {
-          if (typeof block.content === "string") return block.content;
-          if (Array.isArray(block.content)) {
-            return block.content.map((c: any) => c.text || "").join("");
-          }
-          return "";
-        }).join("\n\n");
+        return editor.blocksToMarkdownLossy();
       },
       getSelectedText: () => {
-        try { return editor.getSelectedText() || ""; } catch { return ""; }
+        return editor.getSelectedText();
       },
       replaceSelection: (text: string) => {
-        try {
-          const sel = editor.getSelection();
-          if (sel && sel.blocks.length > 0) {
-            editor.insertBlocks([{ type: "paragraph", content: text }], sel.blocks[0]!.id, "after");
-          }
-        } catch { /* noop */ }
+        editor.focus();
+        const blocks = editor.tryParseMarkdownToBlocks(text);
+        const selection = editor.getSelection();
+        if (selection && selection.blocks.length > 0) {
+          editor.replaceBlocks(
+            selection.blocks.map((b) => b.id),
+            blocks,
+          );
+        } else {
+          const cursorBlock = editor.getTextCursorPosition().block;
+          editor.insertBlocks(blocks, cursorBlock, "after");
+        }
       },
     }));
 
@@ -161,7 +171,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {editor && <BlockNoteView editor={editor} theme={"light"} />}
+            <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
+              <BlockNoteView editor={editor} theme="light" />
+            </div>
           </div>
         </div>
 
