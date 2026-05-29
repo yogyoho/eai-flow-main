@@ -27,6 +27,7 @@ dependencies = [
     "email-validator>=2.0.0",
     "aiofiles>=23.0.0",
     "minio>=7.0.0",
+    "temporalio[pydantic]>=1.27.0",
 ]
 
 [project.optional-dependencies]

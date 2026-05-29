@@ -1,0 +1,29 @@
+# docker/docker-compose.temporal.yaml
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.extensions.yaml -f docker-compose.temporal.yaml up -d
+#
+# Services:
+#   - temporal: Temporal Server (auto-setup, connects to existing postgres-ext)
+
+services:
+  temporal:
+    image: temporalio/auto-setup:1.27.0
+    container_name: eai-flow-temporal
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal_password
+      - POSTGRES_SEEDS=postgres-ext
+    networks:
+      - eai-flow-net
+    ports:
+      - "7233:7233"
+    restart: unless-stopped
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net
