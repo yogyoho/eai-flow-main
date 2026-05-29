@@ -43,6 +43,7 @@ from app.extensions.settings.routers import router as settings_router
 from app.extensions.project import router as project_router
 from app.extensions.approval import router as approval_router
 from app.extensions.data_source.routers import router as data_source_router
+from app.extensions.workflow import router as workflow_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -456,6 +457,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Data source management API (stub)
     app.include_router(data_source_router)
+
+    # Workflow definition API is mounted at /api/extensions/workflow
+    app.include_router(workflow_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
