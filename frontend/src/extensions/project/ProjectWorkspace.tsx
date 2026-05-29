@@ -1,9 +1,15 @@
 "use client";
 
 import { ArrowLeft, FileText, Loader2, MessageSquare, Settings } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+const WorkflowEditor = dynamic(
+  () => import("@/extensions/workflow/WorkflowEditor").then((m) => ({ default: m.WorkflowEditor })),
+  { ssr: false },
+);
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +21,7 @@ interface ProjectWorkspaceProps {
   projectId: string;
 }
 
-type ViewTab = "info" | "files" | "approval";
+type ViewTab = "info" | "files" | "workflow" | "approval";
 
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const router = useRouter();
@@ -143,6 +149,17 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           >
             项目文件
           </button>
+          <button
+            type="button"
+            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
+              activeTab === "workflow"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("workflow")}
+          >
+            工作流
+          </button>
         </div>
       )}
 
@@ -154,6 +171,8 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               setShowApprovalEditor(false);
             }}
           />
+        ) : activeTab === "workflow" ? (
+          <WorkflowEditor projectId={projectId} />
         ) : activeTab === "files" ? (
           <ProjectFilesTab projectId={projectId} />
         ) : (
