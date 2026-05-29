@@ -1,0 +1,391 @@
+"""DynamicGraphWorkflow — a Temporal workflow that walks a DAG of nodes.
+
+The graph definition (``graph_json``) follows the React Flow format:
+
+{
+  "nodes": [{"id": "...", "type": "phase|review|condition|merge|ai_generate", "data": {...}}],
+  "edges": [{"source": "...", "target": "..."}]
+}
+
+The workflow resolves a topological ordering at runtime, executes
+activities for each node type, and uses Temporal signals / conditions
+to coordinate human-in-the-loop steps (phase completion, reviews).
+"""
+
+import logging
+from datetime import timedelta
+
+from temporalio import workflow
+
+with workflow.unsafe.imports_passed_through():
+    from .activities import (
+        advance_phase as _advance_phase,
+        create_review_assignments as _create_review_assignments,
+        evaluate_condition as _evaluate_condition,
+        init_phase as _init_phase,
+        notify_phase_start as _notify_phase_start,
+        notify_review_pending as _notify_review_pending,
+        notify_workflow_complete as _notify_workflow_complete,
+    )
+    from .signals import SIGNAL_AI_COMPLETE, SIGNAL_PHASE_COMPLETE, SIGNAL_REVIEW_ACTION
+
+logger = logging.getLogger(__name__)
+
+# Maximum wall-clock time a phase can wait for external completion.
+PHASE_COMPLETION_TIMEOUT = timedelta(days=30)
+
+# Maximum wall-clock time a review gate can wait for all reviewers.
+REVIEW_COMPLETION_TIMEOUT = timedelta(days=30)
+
+
+class DynamicGraphWorkflow:
+    """Walk a user-defined DAG of workflow nodes.
+
+    Signal handlers
+    ~~~~~~~~~~~~~~~
+    * ``phase_complete(node_id, result)`` — mark a phase node as done.
+    * ``review_action(node_id, approved, comment)`` — respond to a review gate.
+    * ``ai_complete(node_id, result)`` — mark an AI generation node as done.
+
+    The workflow is intentionally tolerant: if a node type is unknown it is
+    skipped so that new node types can be added to the frontend without
+    requiring a workflow redeployment.
+    """
+
+    def __init__(self) -> None:
+        # Internal state ------------------------------------------------
+        self._phase_results: dict[str, dict] = {}
+        self._completed: set[str] = set()
+        self._pending_reviews: dict[str, list[bool]] = {}  # node_id -> approvals
+
+    # ------------------------------------------------------------------
+    # Signal handlers
+    # ------------------------------------------------------------------
+
+    @workflow.signal(name=SIGNAL_PHASE_COMPLETE)
+    def phase_complete(self, node_id: str, result: dict | None = None) -> None:
+        """External signal: a phase has been completed by the user."""
+        logger.info("signal:phase_complete node_id=%s", node_id)
+        self._phase_results[node_id] = result or {}
+        self._completed.add(node_id)
+
+    @workflow.signal(name=SIGNAL_REVIEW_ACTION)
+    def review_action(self, node_id: str, approved: bool, comment: str = "") -> None:
+        """External signal: a reviewer has acted on a review gate."""
+        logger.info("signal:review_action node_id=%s approved=%s", node_id, approved)
+        self._pending_reviews.setdefault(node_id, []).append(approved)
+
+    @workflow.signal(name=SIGNAL_AI_COMPLETE)
+    def ai_complete(self, node_id: str, result: dict | None = None) -> None:
+        """External signal: an AI generation step finished."""
+        logger.info("signal:ai_complete node_id=%s", node_id)
+        self._phase_results[node_id] = result or {}
+        self._completed.add(node_id)
+
+    # ------------------------------------------------------------------
+    # Main run
+    # ------------------------------------------------------------------
+
+    @workflow.run
+    async def run(self, params: dict) -> dict:
+        """Execute the workflow defined by *params[\"graph_json\"]*.
+
+        Parameters
+        ----------
+        params:
+            ``graph_json`` (dict) — React Flow graph with ``nodes`` and ``edges``.
+            ``project_id`` (str) — Owning project.
+        """
+        graph: dict = params["graph_json"]
+        project_id: str = params.get("project_id", "")
+
+        nodes: list[dict] = graph.get("nodes", [])
+        edges: list[dict] = graph.get("edges", [])
+
+        if not nodes:
+            return {"status": "empty_graph", "completed": [], "results": {}}
+
+        # ---- build adjacency lists ------------------------------------
+        # downstream[node_id] = [target_node_ids...]
+        downstream: dict[str, list[str]] = {n["id"]: [] for n in nodes}
+        # upstream[node_id] = [source_node_ids...]
+        upstream: dict[str, list[str]] = {n["id"]: [] for n in nodes}
+
+        for edge in edges:
+            src = edge.get("source", "")
+            tgt = edge.get("target", "")
+            if src and tgt:
+                downstream.setdefault(src, []).append(tgt)
+                upstream.setdefault(tgt, []).append(src)
+
+        # ---- find start nodes (no incoming edges) ---------------------
+        start_nodes = [nid for nid, preds in upstream.items() if not preds]
+
+        # ---- node lookup ----------------------------------------------
+        node_map: dict[str, dict] = {n["id"]: n for n in nodes}
+
+        results: dict[str, dict] = {}
+        completed: set[str] = set()
+
+        # ---- process nodes -------------------------------------------
+        ready: list[str] = list(start_nodes)
+        processed: set[str] = set()
+
+        while ready:
+            node_id = ready.pop(0)
+            if node_id in processed:
+                continue
+            processed.add(node_id)
+
+            node = node_map.get(node_id)
+            if node is None:
+                logger.warning("Node %s referenced in edges but missing from nodes list", node_id)
+                continue
+
+            node_type = node.get("type", "phase")
+            node_data = node.get("data", {})
+
+            logger.info("Processing node %s (type=%s)", node_id, node_type)
+
+            try:
+                if node_type == "phase":
+                    await self._execute_phase(
+                        node_id=node_id,
+                        project_id=project_id,
+                        node_data=node_data,
+                        results=results,
+                        completed=completed,
+                    )
+
+                elif node_type == "review":
+                    await self._execute_review(
+                        node_id=node_id,
+                        project_id=project_id,
+                        node_data=node_data,
+                        results=results,
+                        completed=completed,
+                    )
+
+                elif node_type == "condition":
+                    branch = await self._execute_condition(
+                        node_id=node_id,
+                        project_id=project_id,
+                        node_data=node_data,
+                        results=results,
+                        completed=completed,
+                    )
+                    # For condition nodes we mark completed but still enqueue
+                    # downstream nodes — the activity result includes the branch.
+                    completed.add(node_id)
+
+                elif node_type == "merge":
+                    await self._execute_merge(
+                        node_id=node_id,
+                        upstream=upstream,
+                        completed=completed,
+                    )
+
+                elif node_type == "ai_generate":
+                    await self._execute_ai_generate(
+                        node_id=node_id,
+                        project_id=project_id,
+                        results=results,
+                        completed=completed,
+                    )
+
+                else:
+                    logger.info("Unknown node type '%s' for node %s — skipping", node_type, node_id)
+                    completed.add(node_id)
+
+            except Exception:
+                logger.exception("Error processing node %s (type=%s)", node_id, node_type)
+                # Record the failure but continue processing other branches.
+                results[node_id] = {"status": "error"}
+                completed.add(node_id)
+
+            # ---- enqueue newly-ready downstream nodes ----------------
+            for down_id in downstream.get(node_id, []):
+                if down_id in processed:
+                    continue
+                # A downstream node is ready when ALL its upstream nodes
+                # have completed (or been processed).
+                preds = upstream.get(down_id, [])
+                if all(p in completed for p in preds):
+                    ready.append(down_id)
+
+        # ---- final notification --------------------------------------
+        try:
+            await workflow.execute_activity(
+                _notify_workflow_complete,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+        except Exception:
+            logger.exception("Failed to send workflow completion notification")
+
+        return {"status": "completed", "completed": list(completed), "results": results}
+
+    # ------------------------------------------------------------------
+    # Node-type helpers
+    # ------------------------------------------------------------------
+
+    async def _execute_phase(
+        self,
+        node_id: str,
+        project_id: str,
+        node_data: dict,
+        results: dict,
+        completed: set[str],
+    ) -> None:
+        """Run init_phase + advance_phase, then wait for external completion."""
+        # Notify phase start
+        try:
+            await workflow.execute_activity(
+                _notify_phase_start,
+                node_id,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+        except Exception:
+            logger.exception("notify_phase_start failed for %s", node_id)
+
+        # Initialise phase
+        init_result = await workflow.execute_activity(
+            _init_phase,
+            node_id,
+            project_id,
+            node_data,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+        results[node_id] = init_result
+
+        # Wait for external phase_complete signal.
+        already_completed = node_id in self._completed
+        if not already_completed:
+            await workflow.wait_condition(
+                lambda nid=node_id: nid in self._completed,  # type: ignore[misc]
+                timeout=PHASE_COMPLETION_TIMEOUT,
+            )
+
+        phase_result = self._phase_results.get(node_id, {})
+        results[node_id]["result"] = phase_result
+
+        # Advance phase
+        try:
+            advance_result = await workflow.execute_activity(
+                _advance_phase,
+                node_id,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=60),
+            )
+            results[node_id].update(advance_result)
+        except Exception:
+            logger.exception("advance_phase failed for %s", node_id)
+
+        completed.add(node_id)
+
+    async def _execute_review(
+        self,
+        node_id: str,
+        project_id: str,
+        node_data: dict,
+        results: dict,
+        completed: set[str],
+    ) -> None:
+        """Create review assignments, then wait for review_action signals."""
+        reviewers = node_data.get("reviewers", None)
+
+        try:
+            await workflow.execute_activity(
+                _notify_review_pending,
+                node_id,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+        except Exception:
+            logger.exception("notify_review_pending failed for %s", node_id)
+
+        assignment_result = await workflow.execute_activity(
+            _create_review_assignments,
+            node_id,
+            project_id,
+            reviewers,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+        results[node_id] = assignment_result
+
+        # Wait until at least one review action has been received.
+        has_reviews = bool(self._pending_reviews.get(node_id))
+        if not has_reviews:
+            await workflow.wait_condition(
+                lambda nid=node_id: bool(self._pending_reviews.get(nid)),  # type: ignore[misc]
+                timeout=REVIEW_COMPLETION_TIMEOUT,
+            )
+
+        approvals = self._pending_reviews.get(node_id, [])
+        all_approved = bool(approvals) and all(approvals)
+        results[node_id]["all_approved"] = all_approved
+        results[node_id]["approval_count"] = len(approvals)
+        completed.add(node_id)
+
+    async def _execute_condition(
+        self,
+        node_id: str,
+        project_id: str,
+        node_data: dict,
+        results: dict,
+        completed: set[str],
+    ) -> str:
+        """Evaluate a condition node and return the chosen branch."""
+        condition_expr = node_data.get("condition", None)
+        cond_result = await workflow.execute_activity(
+            _evaluate_condition,
+            node_id,
+            project_id,
+            condition_expr,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+        results[node_id] = cond_result
+        return cond_result.get("branch", "true")
+
+    async def _execute_merge(
+        self,
+        node_id: str,
+        upstream: dict[str, list[str]],
+        completed: set[str],
+    ) -> None:
+        """Wait for all upstream nodes of a merge node to complete."""
+        preds = upstream.get(node_id, [])
+        if not preds:
+            completed.add(node_id)
+            return
+
+        all_done = all(p in completed for p in preds)
+        if not all_done:
+            await workflow.wait_condition(
+                lambda: all(p in completed for p in preds),  # type: ignore[misc]
+                timeout=PHASE_COMPLETION_TIMEOUT,
+            )
+        completed.add(node_id)
+
+    async def _execute_ai_generate(
+        self,
+        node_id: str,
+        project_id: str,
+        results: dict,
+        completed: set[str],
+    ) -> None:
+        """Stub for AI generation nodes — marks as completed immediately."""
+        logger.info("ai_generate node %s — stub, marking completed", node_id)
+        results[node_id] = {"status": "ok", "node_id": node_id, "stub": True}
+
+        # Wait for ai_complete signal (if not already received).
+        if node_id not in self._completed:
+            await workflow.wait_condition(
+                lambda nid=node_id: nid in self._completed,  # type: ignore[misc]
+                timeout=PHASE_COMPLETION_TIMEOUT,
+            )
+
+        ai_result = self._phase_results.get(node_id, {})
+        results[node_id]["result"] = ai_result
+        completed.add(node_id)

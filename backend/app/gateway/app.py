@@ -227,32 +227,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Must run AFTER langgraph_runtime so app.state.store is available for thread migration
         await _ensure_admin_user(app)
 
-        # Start IM channel service if any channels are configured
-        try:
-            from app.channels.service import start_channel_service
+        # Start Temporal client + embedded worker (non-blocking if Temporal is unavailable)
+        from app.extensions.workflow.temporal.client import temporal_lifespan
 
-            channel_service = await start_channel_service(app.state.config)
-            logger.info("Channel service started: %s", channel_service.get_status())
-        except Exception:
-            logger.exception("No IM channels configured or channel service failed to start")
+        async with temporal_lifespan(app):
+            # Start IM channel service if any channels are configured
+            try:
+                from app.channels.service import start_channel_service
 
-        yield
+                channel_service = await start_channel_service(app.state.config)
+                logger.info("Channel service started: %s", channel_service.get_status())
+            except Exception:
+                logger.exception("No IM channels configured or channel service failed to start")
 
-        # Stop channel service on shutdown (bounded to prevent worker hang)
-        try:
-            from app.channels.service import stop_channel_service
+            yield
 
-            await asyncio.wait_for(
-                stop_channel_service(),
-                timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            logger.warning(
-                "Channel service shutdown exceeded %.1fs; proceeding with worker exit.",
-                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except Exception:
-            logger.exception("Failed to stop channel service")
+            # Stop channel service on shutdown (bounded to prevent worker hang)
+            try:
+                from app.channels.service import stop_channel_service
+
+                await asyncio.wait_for(
+                    stop_channel_service(),
+                    timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "Channel service shutdown exceeded %.1fs; proceeding with worker exit.",
+                    _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.exception("Failed to stop channel service")
 
     logger.info("Shutting down API Gateway")
 
