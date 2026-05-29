@@ -508,6 +508,9 @@ class ReportProject(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    workflow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id"), nullable=True)
+    temporal_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    current_phase_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     chapters: Mapped[list["ProjectChapter"]] = relationship(
         "ProjectChapter",

@@ -893,6 +893,29 @@ async def migrate_db() -> None:
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_doc_block ON collab_comments(doc_id, block_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_parent ON collab_comments(parent_id)"))
 
+        # --- Workflow engine tables ---
+        await conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS workflow_definitions ("
+            "  id UUID PRIMARY KEY,"
+            "  name VARCHAR(200) NOT NULL,"
+            "  report_type VARCHAR(50),"
+            "  graph_json JSONB NOT NULL,"
+            "  is_template BOOLEAN NOT NULL DEFAULT FALSE,"
+            "  created_by UUID REFERENCES users(id),"
+            "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
+            "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
+            ")"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES workflow_definitions(id)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS temporal_workflow_id VARCHAR(100)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS current_phase_node VARCHAR(50)"
+        ))
+
 
 async def close_db() -> None:
     """Close database connections."""
