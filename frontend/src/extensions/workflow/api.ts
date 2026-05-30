@@ -58,4 +58,16 @@ export const workflowApi = {
     });
     return toCamelCase<DAGValidationResult>(data);
   },
+
+  // ── Traceability / Sources ──
+
+  getSources: async (projectId: string, chapterId: string): Promise<{ sources: any[]; stats: Record<string, number> }> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${projectId}/chapters/${chapterId}/sources`);
+    return toCamelCase<{ sources: any[]; stats: Record<string, number> }>(data);
+  },
+
+  getMissingSources: async (projectId: string, chapterId: string): Promise<{ missing: Array<{ blockIndex: number; preview: string }> }> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${projectId}/chapters/${chapterId}/sources/missing`);
+    return toCamelCase<{ missing: Array<{ blockIndex: number; preview: string }> }>(data);
+  },
 };
