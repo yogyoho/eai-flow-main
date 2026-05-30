@@ -82,3 +82,57 @@ class ContentSourceListResponse(BaseModel):
 class SourceMissingResult(BaseModel):
     block_index: int
     preview: str = ""
+
+
+# ── Phase Review ──
+
+
+class ReviewAssignmentCreate(BaseModel):
+    """Create review assignments in bulk."""
+    project_id: UUID
+    phase_node: str
+    assignments: list["ReviewAssignmentItem"] = Field(..., min_length=1)
+
+
+class ReviewAssignmentItem(BaseModel):
+    chapter_id: UUID | None = None
+    reviewer_id: UUID
+    review_type: str = Field(..., pattern=r"^(chapter|dimension)$")
+    dimension: str | None = None
+
+
+class ReviewActionRequest(BaseModel):
+    """Submit an approve/reject action for a review."""
+    action: str = Field(..., pattern=r"^(approved|rejected)$")
+    comment: str | None = None
+
+
+class PhaseReviewOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    phase_node: str
+    chapter_id: UUID | None = None
+    reviewer_id: UUID
+    review_type: str
+    dimension: str | None = None
+    status: str = "pending"
+    comment: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ReviewStatusResponse(BaseModel):
+    """Aggregated review status for a phase node."""
+    phase_node: str
+    total: int = 0
+    approved: int = 0
+    rejected: int = 0
+    pending: int = 0
+    all_approved: bool = False
+    reviews: list[PhaseReviewOut] = Field(default_factory=list)
+
+
+# Resolve forward references
+ReviewAssignmentCreate.model_rebuild()
