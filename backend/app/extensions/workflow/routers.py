@@ -11,8 +11,12 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
-from .models import WorkflowDefinition
+from app.extensions.models import ProjectChapter
+
+from .models import ContentSource, WorkflowDefinition
 from .schemas import (
+    ContentSourceListResponse,
+    ContentSourceOut,
     DAGValidationResult,
     WorkflowDefinitionCreate,
     WorkflowDefinitionListItem,
@@ -21,6 +25,7 @@ from .schemas import (
     WorkflowDefinitionUpdate,
 )
 from .service import validate_dag
+from .traceability import find_missing_sources
 
 router = APIRouter(prefix="/api/extensions/workflow", tags=["workflow"])
 
@@ -132,3 +137,41 @@ async def validate_definition(
 ):
     result = validate_dag(body)
     return DAGValidationResult(**result)
+
+
+# ── Source Traceability ──
+
+
+@router.get("/projects/{project_id}/chapters/{chapter_id}/sources", response_model=ContentSourceListResponse)
+async def get_chapter_sources(
+    project_id: UUID,
+    chapter_id: UUID,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ContentSource)
+        .where(ContentSource.chapter_id == chapter_id)
+        .order_by(ContentSource.block_index)
+    )
+    sources = result.scalars().all()
+    stats: dict[str, int] = {}
+    for s in sources:
+        stats[s.source_type] = stats.get(s.source_type, 0) + 1
+    return ContentSourceListResponse(
+        sources=[ContentSourceOut.model_validate(s) for s in sources],
+        stats=stats,
+    )
+
+
+@router.get("/projects/{project_id}/chapters/{chapter_id}/sources/missing")
+async def get_missing_sources_endpoint(
+    project_id: UUID,
+    chapter_id: UUID,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    chapter = await db.get(ProjectChapter, chapter_id)
+    if not chapter or not chapter.content:
+        return {"missing": []}
+    return {"missing": find_missing_sources(chapter.content)}
