@@ -27,6 +27,9 @@ from .schemas import (
     WorkflowDefinitionListResponse,
     WorkflowDefinitionOut,
     WorkflowDefinitionUpdate,
+    WorkflowNodeStatus,
+    WorkflowStartRequest,
+    WorkflowStatusResponse,
 )
 from .service import validate_dag
 from .traceability import find_missing_sources
@@ -317,3 +320,100 @@ async def get_my_reviews(
     )
     result = await db.execute(stmt)
     return [PhaseReviewOut.model_validate(r) for r in result.scalars().all()]
+
+
+# ── Workflow Monitoring ──
+
+
+@router.get("/projects/{project_id}/workflow-status", response_model=WorkflowStatusResponse)
+async def get_workflow_status_endpoint(
+    project_id: UUID,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current workflow execution status for a project."""
+    from app.extensions.models import ReportProject
+
+    project = await db.get(ReportProject, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    from .temporal.client import get_workflow_status as _get_wf_status
+    temporal_status = await _get_wf_status(str(project_id))
+
+    nodes: list[WorkflowNodeStatus] = []
+    if project.workflow_id:
+        definition = await db.get(WorkflowDefinition, project.workflow_id)
+        if definition and definition.graph_json:
+            graph = definition.graph_json
+            current = project.current_phase_node
+            for n in graph.get("nodes", []):
+                nid = n["id"]
+                node_status = "completed" if nid == current else "pending"
+                if temporal_status and temporal_status.get("status") == "running" and nid == current:
+                    node_status = "running"
+                nodes.append(WorkflowNodeStatus(
+                    node_id=nid,
+                    node_type=n.get("type", "phase"),
+                    label=n.get("data", {}).get("label", nid),
+                    status=node_status,
+                ))
+
+    return WorkflowStatusResponse(
+        project_id=project_id,
+        workflow_id=project.workflow_id,
+        temporal_workflow_id=project.temporal_workflow_id,
+        current_phase_node=project.current_phase_node,
+        status=temporal_status.get("status", "idle") if temporal_status else "idle",
+        nodes=nodes,
+    )
+
+
+@router.post("/projects/{project_id}/workflow-cancel")
+async def cancel_workflow_endpoint(
+    project_id: UUID,
+    user: CurrentUserWithAccess,
+):
+    """Cancel the running workflow for a project."""
+    from .temporal.client import cancel_workflow as _cancel_wf
+    success = await _cancel_wf(str(project_id))
+    if not success:
+        raise HTTPException(status_code=400, detail="No active workflow to cancel")
+    return {"status": "cancelled"}
+
+
+@router.post("/projects/{project_id}/start-workflow")
+async def start_workflow(
+    project_id: UUID,
+    body: WorkflowStartRequest,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Start a Temporal workflow for a project."""
+    from app.extensions.models import ReportProject
+
+    project = await db.get(ReportProject, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    definition = await db.get(WorkflowDefinition, body.workflow_id)
+    if not definition:
+        raise HTTPException(status_code=404, detail="Workflow definition not found")
+
+    from .temporal.client import start_workflow as _start_wf
+    workflow_id = await _start_wf(
+        workflow_name="DynamicGraphWorkflow",
+        params={
+            "graph_json": definition.graph_json,
+            "project_id": str(project_id),
+        },
+    )
+
+    if workflow_id:
+        project.workflow_id = body.workflow_id
+        project.temporal_workflow_id = workflow_id
+        project.status = "in_progress"
+        await db.commit()
+        return {"status": "started", "temporal_workflow_id": workflow_id}
+    else:
+        raise HTTPException(status_code=503, detail="Temporal server unavailable")
