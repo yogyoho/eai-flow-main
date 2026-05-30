@@ -916,6 +916,24 @@ async def migrate_db() -> None:
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS current_phase_node VARCHAR(50)"
         ))
 
+        await conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS content_sources ("
+            "  id UUID PRIMARY KEY,"
+            "  chapter_id UUID NOT NULL REFERENCES project_chapters(id),"
+            "  block_index INTEGER NOT NULL,"
+            "  source_type VARCHAR(30) NOT NULL,"
+            "  source_ref VARCHAR(500),"
+            "  snippet TEXT,"
+            "  confidence FLOAT,"
+            "  metadata JSONB,"
+            "  created_at TIMESTAMP NOT NULL DEFAULT NOW()"
+            ")"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_content_sources_chapter "
+            "ON content_sources (chapter_id, block_index)"
+        ))
+
 
 async def close_db() -> None:
     """Close database connections."""
