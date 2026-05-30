@@ -13,11 +13,15 @@ from app.extensions.schemas import CurrentUser
 
 from app.extensions.models import ProjectChapter
 
-from .models import ContentSource, WorkflowDefinition
+from .models import ContentSource, PhaseReview, WorkflowDefinition
 from .schemas import (
     ContentSourceListResponse,
     ContentSourceOut,
     DAGValidationResult,
+    PhaseReviewOut,
+    ReviewActionRequest,
+    ReviewAssignmentCreate,
+    ReviewStatusResponse,
     WorkflowDefinitionCreate,
     WorkflowDefinitionListItem,
     WorkflowDefinitionListResponse,
@@ -175,3 +179,141 @@ async def get_missing_sources_endpoint(
     if not chapter or not chapter.content:
         return {"missing": []}
     return {"missing": find_missing_sources(chapter.content)}
+
+
+# ── Phase Reviews ──
+
+
+@router.post("/projects/{project_id}/phase-reviews/assign", response_model=list[PhaseReviewOut], status_code=status.HTTP_201_CREATED)
+async def assign_reviews(
+    project_id: UUID,
+    body: ReviewAssignmentCreate,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create review assignments for a phase node. Replaces existing pending assignments."""
+    if body.project_id != project_id:
+        raise HTTPException(status_code=400, detail="project_id mismatch")
+
+    await db.execute(
+        PhaseReview.__table__.delete()
+        .where(PhaseReview.project_id == project_id)
+        .where(PhaseReview.phase_node == body.phase_node)
+        .where(PhaseReview.status == "pending")
+    )
+
+    reviews = []
+    for item in body.assignments:
+        review = PhaseReview(
+            project_id=project_id,
+            phase_node=body.phase_node,
+            chapter_id=item.chapter_id,
+            reviewer_id=item.reviewer_id,
+            review_type=item.review_type,
+            dimension=item.dimension,
+            status="pending",
+        )
+        db.add(review)
+        reviews.append(review)
+
+    await db.commit()
+    for r in reviews:
+        await db.refresh(r)
+
+    return [PhaseReviewOut.model_validate(r) for r in reviews]
+
+
+@router.post("/projects/{project_id}/phase-reviews/{review_id}/action", response_model=PhaseReviewOut)
+async def submit_review_action(
+    project_id: UUID,
+    review_id: UUID,
+    body: ReviewActionRequest,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit an approve/reject action for a review assignment."""
+    review = await db.get(PhaseReview, review_id)
+    if not review or review.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Review assignment not found")
+
+    if review.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Review already {review.status}")
+
+    review.status = body.action
+    review.comment = body.comment
+    review.updated_at = func.now()
+    await db.commit()
+    await db.refresh(review)
+
+    stmt = (
+        select(PhaseReview)
+        .where(PhaseReview.project_id == project_id)
+        .where(PhaseReview.phase_node == review.phase_node)
+    )
+    result = await db.execute(stmt)
+    all_reviews = result.scalars().all()
+    all_done = all(r.status in ("approved", "rejected") for r in all_reviews)
+
+    if all_done:
+        from .temporal.client import send_signal
+        all_approved = all(r.status == "approved" for r in all_reviews)
+        try:
+            await send_signal(
+                project_id=str(project_id),
+                signal_name="review_action",
+                args=[review.phase_node, all_approved, body.comment or ""],
+            )
+        except Exception:
+            pass  # Temporal unavailable — still record the action
+
+    return PhaseReviewOut.model_validate(review)
+
+
+@router.get("/projects/{project_id}/phase-reviews", response_model=ReviewStatusResponse)
+async def get_review_status(
+    project_id: UUID,
+    user: CurrentUserWithAccess,
+    phase_node: str = Query(..., description="Phase node ID to filter"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get aggregated review status for a phase node."""
+    stmt = (
+        select(PhaseReview)
+        .where(PhaseReview.project_id == project_id)
+        .where(PhaseReview.phase_node == phase_node)
+        .order_by(PhaseReview.created_at)
+    )
+    result = await db.execute(stmt)
+    reviews = result.scalars().all()
+
+    approved = sum(1 for r in reviews if r.status == "approved")
+    rejected = sum(1 for r in reviews if r.status == "rejected")
+    pending = sum(1 for r in reviews if r.status == "pending")
+
+    return ReviewStatusResponse(
+        phase_node=phase_node,
+        total=len(reviews),
+        approved=approved,
+        rejected=rejected,
+        pending=pending,
+        all_approved=len(reviews) > 0 and approved == len(reviews),
+        reviews=[PhaseReviewOut.model_validate(r) for r in reviews],
+    )
+
+
+@router.get("/projects/{project_id}/phase-reviews/my", response_model=list[PhaseReviewOut])
+async def get_my_reviews(
+    project_id: UUID,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current user's pending reviews for a project."""
+    stmt = (
+        select(PhaseReview)
+        .where(PhaseReview.project_id == project_id)
+        .where(PhaseReview.reviewer_id == user.id)
+        .where(PhaseReview.status == "pending")
+        .order_by(PhaseReview.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    return [PhaseReviewOut.model_validate(r) for r in result.scalars().all()]
