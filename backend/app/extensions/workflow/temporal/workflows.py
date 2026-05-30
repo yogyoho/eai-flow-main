@@ -26,6 +26,9 @@ with workflow.unsafe.imports_passed_through():
         notify_phase_start as _notify_phase_start,
         notify_review_pending as _notify_review_pending,
         notify_workflow_complete as _notify_workflow_complete,
+        parse_sources as _parse_sources,
+        start_ai_writing as _start_ai_writing,
+        store_sources as _store_sources,
     )
     from .signals import SIGNAL_AI_COMPLETE, SIGNAL_PHASE_COMPLETE, SIGNAL_REVIEW_ACTION
 
@@ -158,13 +161,22 @@ class DynamicGraphWorkflow:
                     )
 
                 elif node_type == "review":
-                    await self._execute_review(
+                    rollback_target = await self._execute_review(
                         node_id=node_id,
                         project_id=project_id,
                         node_data=node_data,
                         results=results,
                         completed=completed,
+                        edges=edges,
+                        processed=processed,
                     )
+                    if rollback_target:
+                        # Roll back: re-add the target and reset its processed state
+                        processed.discard(rollback_target)
+                        completed.discard(rollback_target)
+                        ready.append(rollback_target)
+                        logger.info("Rolling back to node %s", rollback_target)
+                        continue
 
                 elif node_type == "condition":
                     branch = await self._execute_condition(
@@ -189,6 +201,7 @@ class DynamicGraphWorkflow:
                     await self._execute_ai_generate(
                         node_id=node_id,
                         project_id=project_id,
+                        node_data=node_data,
                         results=results,
                         completed=completed,
                     )
@@ -291,8 +304,13 @@ class DynamicGraphWorkflow:
         node_data: dict,
         results: dict,
         completed: set[str],
-    ) -> None:
-        """Create review assignments, then wait for review_action signals."""
+        edges: list[dict],
+        processed: set[str],
+    ) -> str | None:
+        """Create review assignments, wait for review_action signals.
+
+        Returns the rollback target node ID if rejected, None if approved.
+        """
         reviewers = node_data.get("reviewers", None)
 
         try:
@@ -327,6 +345,17 @@ class DynamicGraphWorkflow:
         results[node_id]["all_approved"] = all_approved
         results[node_id]["approval_count"] = len(approvals)
         completed.add(node_id)
+
+        if not all_approved:
+            # Find rejection target from DAG edges with label "rejected"
+            for edge in edges:
+                if edge.get("source") == node_id and edge.get("label") == "rejected":
+                    target = edge["target"]
+                    logger.info("Review %s rejected — rolling back to %s", node_id, target)
+                    return target
+            logger.warning("Review %s rejected but no rollback edge found", node_id)
+
+        return None
 
     async def _execute_condition(
         self,
@@ -372,20 +401,46 @@ class DynamicGraphWorkflow:
         self,
         node_id: str,
         project_id: str,
+        node_data: dict,
         results: dict,
         completed: set[str],
     ) -> None:
-        """Stub for AI generation nodes — marks as completed immediately."""
-        logger.info("ai_generate node %s — stub, marking completed", node_id)
-        results[node_id] = {"status": "ok", "node_id": node_id, "stub": True}
+        """Execute AI generation: start writing, wait for completion, parse and store sources."""
+        chapter_id = node_data.get("chapter_id")
+
+        await workflow.execute_activity(
+            _start_ai_writing,
+            node_id,
+            project_id,
+            chapter_id,
+            start_to_close_timeout=timedelta(seconds=30),
+        )
 
         # Wait for ai_complete signal (if not already received).
         if node_id not in self._completed:
             await workflow.wait_condition(
                 lambda nid=node_id: nid in self._completed,  # type: ignore[misc]
-                timeout=PHASE_COMPLETION_TIMEOUT,
+                timeout=timedelta(hours=2),
             )
 
         ai_result = self._phase_results.get(node_id, {})
-        results[node_id]["result"] = ai_result
+        results[node_id] = ai_result
+
+        # Parse and store source markers if content is available
+        content = ai_result.get("content", "")
+        if content and chapter_id:
+            parsed = await workflow.execute_activity(
+                _parse_sources,
+                str(chapter_id),
+                content,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+            if parsed.get("source_count", 0) > 0:
+                await workflow.execute_activity(
+                    _store_sources,
+                    str(chapter_id),
+                    parsed["sources"],
+                    start_to_close_timeout=timedelta(seconds=30),
+                )
+
         completed.add(node_id)

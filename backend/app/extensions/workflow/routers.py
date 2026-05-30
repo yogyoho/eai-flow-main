@@ -37,6 +37,12 @@ from .traceability import find_missing_sources
 router = APIRouter(prefix="/api/extensions/workflow", tags=["workflow"])
 
 CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("system:access"))]
+WorkflowReader = Annotated[CurrentUser, Depends(require_permission("project:read"))]
+WorkflowWriter = Annotated[CurrentUser, Depends(require_permission("project:create"))]
+WorkflowAdmin = Annotated[CurrentUser, Depends(require_permission("project:advance"))]
+ReviewSubmitter = Annotated[CurrentUser, Depends(require_permission("approval:submit"))]
+ReviewActor = Annotated[CurrentUser, Depends(require_permission("approval:review"))]
+ReviewViewer = Annotated[CurrentUser, Depends(require_permission("approval:view"))]
 
 
 # ── Definitions ──
@@ -44,7 +50,7 @@ CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("syste
 
 @router.get("/definitions", response_model=WorkflowDefinitionListResponse)
 async def list_definitions(
-    user: CurrentUserWithAccess,
+    user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
     is_template: bool | None = Query(None),
     report_type: str | None = Query(None),
@@ -76,7 +82,7 @@ async def list_definitions(
 @router.get("/definitions/{definition_id}", response_model=WorkflowDefinitionOut)
 async def get_definition(
     definition_id: UUID,
-    _user: CurrentUserWithAccess,
+    _user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.get(WorkflowDefinition, definition_id)
@@ -88,7 +94,7 @@ async def get_definition(
 @router.post("/definitions", response_model=WorkflowDefinitionOut, status_code=status.HTTP_201_CREATED)
 async def create_definition(
     body: WorkflowDefinitionCreate,
-    user: CurrentUserWithAccess,
+    user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
     definition = WorkflowDefinition(
@@ -108,7 +114,7 @@ async def create_definition(
 async def update_definition(
     definition_id: UUID,
     body: WorkflowDefinitionUpdate,
-    _user: CurrentUserWithAccess,
+    _user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
     definition = await db.get(WorkflowDefinition, definition_id)
@@ -127,7 +133,7 @@ async def update_definition(
 @router.delete("/definitions/{definition_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_definition(
     definition_id: UUID,
-    _user: CurrentUserWithAccess,
+    _user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
     definition = await db.get(WorkflowDefinition, definition_id)
@@ -140,7 +146,7 @@ async def delete_definition(
 @router.post("/definitions/validate", response_model=DAGValidationResult)
 async def validate_definition(
     body: dict,
-    _user: CurrentUserWithAccess,
+    _user: WorkflowReader,
 ):
     result = validate_dag(body)
     return DAGValidationResult(**result)
@@ -153,7 +159,7 @@ async def validate_definition(
 async def get_chapter_sources(
     project_id: UUID,
     chapter_id: UUID,
-    user: CurrentUserWithAccess,
+    user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -175,13 +181,49 @@ async def get_chapter_sources(
 async def get_missing_sources_endpoint(
     project_id: UUID,
     chapter_id: UUID,
-    user: CurrentUserWithAccess,
+    user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
     chapter = await db.get(ProjectChapter, chapter_id)
     if not chapter or not chapter.content:
         return {"missing": []}
     return {"missing": find_missing_sources(chapter.content)}
+
+
+@router.post("/projects/{project_id}/chapters/{chapter_id}/sources/parse")
+async def parse_and_store_chapter_sources(
+    project_id: UUID,
+    chapter_id: UUID,
+    user: WorkflowWriter,
+    db: AsyncSession = Depends(get_db),
+):
+    """Parse source markers from chapter content and persist to content_sources table."""
+    from .traceability import parse_source_markers
+    from .models import ContentSource
+
+    chapter = await db.get(ProjectChapter, chapter_id)
+    if not chapter or not chapter.content:
+        return {"parsed": 0, "stored": 0}
+
+    parsed = parse_source_markers(chapter.content)
+
+    # Delete existing sources for this chapter
+    await db.execute(
+        ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id)
+    )
+
+    for s in parsed:
+        source = ContentSource(
+            chapter_id=chapter_id,
+            block_index=s.block_index,
+            source_type=s.source_type,
+            source_ref=s.source_ref,
+            snippet=s.snippet,
+        )
+        db.add(source)
+
+    await db.commit()
+    return {"parsed": len(parsed), "stored": len(parsed)}
 
 
 # ── Phase Reviews ──
@@ -191,7 +233,7 @@ async def get_missing_sources_endpoint(
 async def assign_reviews(
     project_id: UUID,
     body: ReviewAssignmentCreate,
-    user: CurrentUserWithAccess,
+    user: ReviewSubmitter,
     db: AsyncSession = Depends(get_db),
 ):
     """Create review assignments for a phase node. Replaces existing pending assignments."""
@@ -231,7 +273,7 @@ async def submit_review_action(
     project_id: UUID,
     review_id: UUID,
     body: ReviewActionRequest,
-    user: CurrentUserWithAccess,
+    user: ReviewActor,
     db: AsyncSession = Depends(get_db),
 ):
     """Submit an approve/reject action for a review assignment."""
@@ -275,7 +317,7 @@ async def submit_review_action(
 @router.get("/projects/{project_id}/phase-reviews", response_model=ReviewStatusResponse)
 async def get_review_status(
     project_id: UUID,
-    user: CurrentUserWithAccess,
+    user: ReviewViewer,
     phase_node: str = Query(..., description="Phase node ID to filter"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -307,7 +349,7 @@ async def get_review_status(
 @router.get("/projects/{project_id}/phase-reviews/my", response_model=list[PhaseReviewOut])
 async def get_my_reviews(
     project_id: UUID,
-    user: CurrentUserWithAccess,
+    user: ReviewViewer,
     db: AsyncSession = Depends(get_db),
 ):
     """Get current user's pending reviews for a project."""
@@ -328,7 +370,7 @@ async def get_my_reviews(
 @router.get("/projects/{project_id}/workflow-status", response_model=WorkflowStatusResponse)
 async def get_workflow_status_endpoint(
     project_id: UUID,
-    user: CurrentUserWithAccess,
+    user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current workflow execution status for a project."""
@@ -372,7 +414,7 @@ async def get_workflow_status_endpoint(
 @router.post("/projects/{project_id}/workflow-cancel")
 async def cancel_workflow_endpoint(
     project_id: UUID,
-    user: CurrentUserWithAccess,
+    user: WorkflowAdmin,
 ):
     """Cancel the running workflow for a project."""
     from .temporal.client import cancel_workflow as _cancel_wf
@@ -386,7 +428,7 @@ async def cancel_workflow_endpoint(
 async def start_workflow(
     project_id: UUID,
     body: WorkflowStartRequest,
-    user: CurrentUserWithAccess,
+    user: WorkflowAdmin,
     db: AsyncSession = Depends(get_db),
 ):
     """Start a Temporal workflow for a project."""
