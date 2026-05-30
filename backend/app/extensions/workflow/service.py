@@ -24,7 +24,8 @@ def validate_dag(graph: dict) -> dict:
     # Cycle detection (DFS)
     adjacency = defaultdict(list)
     for edge in edges:
-        adjacency[edge["source"]].append(edge["target"])
+        if edge["source"] in node_ids and edge["target"] in node_ids:
+            adjacency[edge["source"]].append(edge["target"])
 
     WHITE, GRAY, BLACK = 0, 1, 2
     color = {nid: WHITE for nid in node_ids}
