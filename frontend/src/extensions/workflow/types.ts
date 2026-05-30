@@ -81,3 +81,61 @@ export interface DAGValidationResult {
   errors: string[];
   warnings: string[];
 }
+
+// ── Phase Review ──
+
+export interface PhaseReview {
+  id: string;
+  projectId: string;
+  phaseNode: string;
+  chapterId: string | null;
+  reviewerId: string;
+  reviewType: "chapter" | "dimension";
+  dimension: string | null;
+  status: "pending" | "approved" | "rejected";
+  comment: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface ReviewAssignmentItem {
+  chapterId?: string | null;
+  reviewerId: string;
+  reviewType: "chapter" | "dimension";
+  dimension?: string | null;
+}
+
+export interface ReviewStatus {
+  phaseNode: string;
+  total: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  allApproved: boolean;
+  reviews: PhaseReview[];
+}
+
+export interface ReviewActionRequest {
+  action: "approved" | "rejected";
+  comment?: string | null;
+}
+
+// ── Workflow Monitoring ──
+
+export interface WorkflowNodeStatus {
+  nodeId: string;
+  nodeType: string;
+  label: string;
+  status: "pending" | "running" | "completed" | "error";
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface WorkflowStatusResponse {
+  projectId: string;
+  workflowId: string | null;
+  temporalWorkflowId: string | null;
+  currentPhaseNode: string | null;
+  status: "idle" | "running" | "completed" | "failed";
+  nodes: WorkflowNodeStatus[];
+}
