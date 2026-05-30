@@ -4,10 +4,15 @@ import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
   CreateWorkflowRequest,
   DAGValidationResult,
+  PhaseReview,
+  ReviewActionRequest,
+  ReviewAssignmentItem,
+  ReviewStatus,
   UpdateWorkflowRequest,
   WorkflowDefinition,
   WorkflowDefinitionListResponse,
   WorkflowGraph,
+  WorkflowStatusResponse,
 } from "./types";
 
 const API_BASE = "/api/extensions/workflow";
@@ -69,5 +74,75 @@ export const workflowApi = {
   getMissingSources: async (projectId: string, chapterId: string): Promise<{ missing: Array<{ blockIndex: number; preview: string }> }> => {
     const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${projectId}/chapters/${chapterId}/sources/missing`);
     return toCamelCase<{ missing: Array<{ blockIndex: number; preview: string }> }>(data);
+  },
+
+  // ── Phase Reviews ──
+
+  assignReviews: async (
+    projectId: string,
+    phaseNode: string,
+    assignments: ReviewAssignmentItem[],
+  ): Promise<PhaseReview[]> => {
+    const body = {
+      project_id: projectId,
+      phase_node: phaseNode,
+      assignments: assignments.map((a) => toSnakeCase(a as unknown as Record<string, unknown>)),
+    };
+    const data = await authFetch<Record<string, unknown>[]>(
+      `${API_BASE}/projects/${projectId}/phase-reviews/assign`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    return data.map((d) => toCamelCase<PhaseReview>(d));
+  },
+
+  submitReviewAction: async (
+    projectId: string,
+    reviewId: string,
+    req: ReviewActionRequest,
+  ): Promise<PhaseReview> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/phase-reviews/${reviewId}/action`,
+      { method: "POST", body: JSON.stringify(toSnakeCase(req as unknown as Record<string, unknown>)) },
+    );
+    return toCamelCase<PhaseReview>(data);
+  },
+
+  getReviewStatus: async (projectId: string, phaseNode: string): Promise<ReviewStatus> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/phase-reviews?phase_node=${phaseNode}`,
+    );
+    return toCamelCase<ReviewStatus>(data);
+  },
+
+  getMyReviews: async (projectId: string): Promise<PhaseReview[]> => {
+    const data = await authFetch<Record<string, unknown>[]>(
+      `${API_BASE}/projects/${projectId}/phase-reviews/my`,
+    );
+    return data.map((d) => toCamelCase<PhaseReview>(d));
+  },
+
+  // ── Workflow Monitoring ──
+
+  getWorkflowStatus: async (projectId: string): Promise<WorkflowStatusResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/workflow-status`,
+    );
+    return toCamelCase<WorkflowStatusResponse>(data);
+  },
+
+  startWorkflow: async (projectId: string, workflowId: string): Promise<{ status: string; temporalWorkflowId: string }> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/start-workflow`,
+      { method: "POST", body: JSON.stringify({ workflow_id: workflowId }) },
+    );
+    return toCamelCase<{ status: string; temporalWorkflowId: string }>(data);
+  },
+
+  cancelWorkflow: async (projectId: string): Promise<{ status: string }> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/workflow-cancel`,
+      { method: "POST" },
+    );
+    return toCamelCase<{ status: string }>(data);
   },
 };
