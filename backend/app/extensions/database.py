@@ -934,6 +934,27 @@ async def migrate_db() -> None:
             "ON content_sources (chapter_id, block_index)"
         ))
 
+        # phase_reviews
+        await conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS phase_reviews ("
+            "  id UUID PRIMARY KEY,"
+            "  project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,"
+            "  phase_node VARCHAR(50) NOT NULL,"
+            "  chapter_id UUID REFERENCES project_chapters(id),"
+            "  reviewer_id UUID NOT NULL REFERENCES users(id),"
+            "  review_type VARCHAR(20) NOT NULL,"
+            "  dimension VARCHAR(50),"
+            "  status VARCHAR(20) NOT NULL DEFAULT 'pending',"
+            "  comment TEXT,"
+            "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
+            "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
+            ")"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_phase_reviews_project_phase "
+            "ON phase_reviews (project_id, phase_node)"
+        ))
+
 
 async def close_db() -> None:
     """Close database connections."""
