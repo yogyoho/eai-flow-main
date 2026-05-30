@@ -59,3 +59,26 @@ class WorkflowStartRequest(BaseModel):
 class WorkflowSignalRequest(BaseModel):
     signal_name: str
     signal_payload: dict | None = None
+
+
+class ContentSourceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    chapter_id: UUID
+    block_index: int
+    source_type: str
+    source_ref: str | None = None
+    snippet: str | None = None
+    confidence: float | None = None
+    metadata: dict | None = None
+    created_at: datetime | None = None
+
+
+class ContentSourceListResponse(BaseModel):
+    sources: list[ContentSourceOut] = Field(default_factory=list)
+    stats: dict[str, int] = Field(default_factory=dict)
+
+
+class SourceMissingResult(BaseModel):
+    block_index: int
+    preview: str = ""
