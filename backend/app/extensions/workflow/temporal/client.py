@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from temporalio.client import Client
@@ -8,7 +9,7 @@ from temporalio.worker import Worker
 logger = logging.getLogger(__name__)
 
 TEMPORAL_TASK_QUEUE = "project-workflow-queue"
-TEMPORAL_URL = "localhost:7233"
+TEMPORAL_URL = os.environ.get("TEMPORAL_URL", "localhost:7233")
 
 _temporal_client: Client | None = None
 
