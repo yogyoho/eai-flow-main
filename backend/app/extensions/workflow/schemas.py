@@ -136,3 +136,26 @@ class ReviewStatusResponse(BaseModel):
 
 # Resolve forward references
 ReviewAssignmentCreate.model_rebuild()
+
+
+# ── Workflow Monitoring ──
+
+
+class WorkflowNodeStatus(BaseModel):
+    """Status of a single workflow node."""
+    node_id: str
+    node_type: str
+    label: str
+    status: str = "pending"  # pending | running | completed | error
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class WorkflowStatusResponse(BaseModel):
+    """Full workflow execution status for a project."""
+    project_id: UUID
+    workflow_id: UUID | None = None
+    temporal_workflow_id: str | None = None
+    current_phase_node: str | None = None
+    status: str = "idle"  # idle | running | completed | failed
+    nodes: list[WorkflowNodeStatus] = Field(default_factory=list)
