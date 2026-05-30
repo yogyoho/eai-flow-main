@@ -1,17 +1,23 @@
 "use client";
 
 import "./patch-prosemirror";
-import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
-
+import { useCreateBlockNote, FormattingToolbar, FormattingToolbarController, getFormattingToolbarItems, useComponentsContext } from "@blocknote/react";
+import { BlockNoteView } from "@blocknote/shadcn";
+import { AIExtension, AIMenu, AIMenuController, AIToolbarButton } from "@blocknote/xl-ai";
+import { en as coreEn } from "@blocknote/core/locales";
+import { en as aiEn } from "@blocknote/xl-ai/locales";
+import { DefaultChatTransport } from "ai";
 import "@blocknote/react/style.css";
-import { MessageSquare, History, Sparkles } from "lucide-react";
-import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, type ReactNode, useState } from "react";
+import "@blocknote/shadcn/style.css";
+import "@blocknote/xl-ai/style.css";
+import { MessageSquare, History, Sparkles, MessageCircle } from "lucide-react";
+import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
 import type { CollabComment } from "../types";
 import { AIDocumentReview } from "./AIDocumentReview";
-import { AIToolbar } from "./AIToolbar";
+import { getCollabAIMenuItems } from "./aiMenuItems";
 import { BlockCommentAnchor } from "./BlockCommentAnchor";
 import { CommentSidebar } from "./CommentSidebar";
 import { InlineCommentThread } from "./InlineCommentThread";
@@ -73,9 +79,44 @@ class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+function CommentPopoverButton({ editor, onSubmit }: {
+  editor: ReturnType<typeof useCreateBlockNote>;
+  onSubmit: (blockId: string, content: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const Components = useComponentsContext();
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return;
+    setSubmitting(true);
+    try {
+      const cursorBlock = editor.getTextCursorPosition().block;
+      await onSubmit(cursorBlock.id, text.trim());
+      setText("");
+      setOpen(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!Components) return null;
+
+  return (
+    <Components.FormattingToolbar.Button
+      onClick={() => setOpen(!open)}
+      isSelected={open}
+      mainTooltip={"评论"}
+    >
+      <MessageCircle className="w-4 h-4" />
+    </Components.FormattingToolbar.Button>
+  );
+}
+
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
-  function BlockNoteEditor({ documentId, initialContent: _initialContent }, ref) {
-    const { ydoc, provider, connected, synced, users, broadcastEvent } = useCollab(documentId);
+  function BlockNoteEditor({ documentId, initialContent }, ref) {
+    const { ydoc, connected, synced, users, broadcastEvent } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId, broadcastEvent);
     const { versions, loading: versionsLoading, createVersion, restoreVersion, diffResult, diffLoading, diffVersions } = useVersions(documentId);
     const { user: currentUser } = useAuth();
@@ -83,6 +124,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
     const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const seededDocsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -104,11 +146,89 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return map;
     }, [comments]);
 
-    const editor = useCreateBlockNote({
-      initialContent: [
-        { type: "paragraph", children: [{ text: "" }] },
-      ],
-    });
+    const aiTransport = useMemo(
+      () =>
+        new DefaultChatTransport({
+          api: "/api/collab/ai-chat",
+          credentials: "include",
+        }),
+      [],
+    );
+
+    const editor = useCreateBlockNote(
+      {
+        // Merge base BlockNote dictionary with AI dictionary so both
+        // core UI and xl-ai components have translations.
+        dictionary: { ...coreEn, ai: aiEn } as any,
+        collaboration: {
+          fragment: ydoc.getXmlFragment("document-store"),
+          user: collabUser,
+        },
+        extensions: [
+          AIExtension({ transport: aiTransport }),
+        ],
+      },
+      [ydoc, aiTransport],
+    );
+
+    useEffect(() => {
+      const source = initialContent?.trim();
+      if (!synced || !source || seededDocsRef.current.has(documentId)) return;
+
+      // Priority 1: Server signaled pending markdown via Yjs metadata
+      const meta = ydoc.getMap("_collabMeta");
+      const pendingMarkdown = meta.get("pendingMarkdown");
+      if (pendingMarkdown && typeof pendingMarkdown === "string" && pendingMarkdown.trim()) {
+        try {
+          const blocks = editor.tryParseMarkdownToBlocks(pendingMarkdown.trim());
+          if (blocks.length > 0) {
+            editor.replaceBlocks(
+              editor.document.map((block) => block.id),
+              blocks,
+            );
+          }
+          // Clear the flag so it doesn't re-seed on subsequent opens
+          meta.delete("pendingMarkdown");
+        } catch (error) {
+          console.error("[BlockNoteEditor] Failed to seed from server markdown:", error);
+        }
+        seededDocsRef.current.add(documentId);
+        return;
+      }
+
+      // Priority 2: Standard seeding — only if editor has no real content.
+      // Check whether any block contains actual text (not just empty paragraphs).
+      const hasRealContent = editor.document.some((block) => {
+        if (block.type !== "paragraph") return true;
+        const children = (block as Record<string, unknown>).children;
+        const content = (block as Record<string, unknown>).content;
+        if (Array.isArray(children) && children.length > 0) return true;
+        if (Array.isArray(content)) {
+          return content.some(
+            (c: Record<string, unknown>) =>
+              typeof c.text === "string" && (c.text as string).trim().length > 0,
+          );
+        }
+        return false;
+      });
+
+      if (hasRealContent) {
+        seededDocsRef.current.add(documentId);
+        return;
+      }
+
+      try {
+        const blocks = editor.tryParseMarkdownToBlocks(source);
+        if (blocks.length === 0) return;
+        editor.replaceBlocks(
+          editor.document.map((block) => block.id),
+          blocks,
+        );
+        seededDocsRef.current.add(documentId);
+      } catch (error) {
+        console.error("[BlockNoteEditor] Failed to seed collaborative content:", error);
+      }
+    }, [documentId, editor, initialContent, synced, ydoc]);
 
     // Track selected block via onSelectionChange
     useEffect(() => {
@@ -202,7 +322,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     }
 
     return (
-      <div className="flex-1 flex h-full">
+      <div className="flex-1 flex h-full min-h-0">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-center justify-between px-4 py-2 border-b border-border">
             <div className="flex items-center gap-2">
@@ -219,16 +339,46 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                 <History className="w-4 h-4" />
               </Button>
               <Button size="icon" variant={sidePanel === "ai" ? "secondary" : "ghost"}
-                onClick={() => setSidePanel(sidePanel === "ai" ? null : "ai")} title="AI 助手">
+                onClick={() => setSidePanel(sidePanel === "ai" ? null : "ai")} title="AI 文档审查">
                 <Sparkles className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
               <EditorErrorBoundary fallback={<div className="text-muted-foreground text-sm">编辑器加载失败</div>}>
-                <BlockNoteView editor={editor} />
+                <BlockNoteView
+                  editor={editor}
+                  sideMenu
+                  slashMenu
+                  formattingToolbar={false}
+                  linkToolbar
+                  tableHandles
+                >
+                  <FormattingToolbarController
+                    formattingToolbar={() => (
+                      <FormattingToolbar>
+                        {...getFormattingToolbarItems()}
+                        <CommentPopoverButton
+                          editor={editor}
+                          onSubmit={async (blockId, content) => {
+                            await handleCreateComment(blockId, content);
+                            setSidePanel("comments");
+                          }}
+                        />
+                        <AIToolbarButton />
+                      </FormattingToolbar>
+                    )}
+                  />
+                  <AIMenuController
+                    aiMenu={() => (
+                      <AIMenu
+                        items={(editor, status) => getCollabAIMenuItems(editor, status)}
+                      />
+                    )}
+                  />
+                </BlockNoteView>
               </EditorErrorBoundary>
 
               {/* Comment anchors for each block with unresolved comments */}
@@ -287,24 +437,20 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
         {sidePanel === "ai" && (
           <div className="w-80 border-l border-border bg-background flex flex-col h-full">
             <div className="p-3 border-b border-border flex items-center justify-between">
-              <span className="font-medium text-sm">AI 助手</span>
+              <span className="font-medium text-sm">AI 文档审查</span>
               <Button size="icon" variant="ghost" onClick={() => setSidePanel(null)}>
                 ×
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-3 border-b border-border">
-                <AIToolbar selectedText="" fullText="" onApplyResult={() => {}} />
-              </div>
-              <div className="p-3">
-                <AIDocumentReview
-                  docId={documentId}
-                  onInsertComment={(blockId, comment) => {
-                    handleCreateComment(blockId || selectedBlockId || "", `[AI 审查] ${comment}`);
-                    setSidePanel("comments");
-                  }}
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              <AIDocumentReview
+                docId={documentId}
+                documentContent={editor.blocksToMarkdownLossy()}
+                onInsertComment={(blockId, comment) => {
+                  handleCreateComment(blockId || selectedBlockId || "", `[AI 审查] ${comment}`);
+                  setSidePanel("comments");
+                }}
+              />
             </div>
           </div>
         )}
