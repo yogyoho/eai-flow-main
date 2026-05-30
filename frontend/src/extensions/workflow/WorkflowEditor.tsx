@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Background, Controls, MiniMap, ReactFlow, type NodeTypes } from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow, type NodeTypes, type EdgeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { AIGenerateNode } from "./nodes/AIGenerateNode";
@@ -9,10 +9,14 @@ import { ConditionNode } from "./nodes/ConditionNode";
 import { MergeNode } from "./nodes/MergeNode";
 import { PhaseNode } from "./nodes/PhaseNode";
 import { ReviewNode } from "./nodes/ReviewNode";
+import { ConditionEdge } from "./edges/ConditionEdge";
 import { NodePalette } from "./panels/NodePalette";
+import { PhaseConfigPanel } from "./panels/PhaseConfigPanel";
+import { ReviewConfigPanel } from "./panels/ReviewConfigPanel";
 import { useValidation } from "./hooks/useValidation";
 import { useWorkflowDAG } from "./hooks/useWorkflowDAG";
 import { workflowApi } from "./api";
+import type { DAGNode, DAGNodeData } from "./types";
 
 const nodeTypes: NodeTypes = {
   phase: PhaseNode,
@@ -22,15 +26,20 @@ const nodeTypes: NodeTypes = {
   merge: MergeNode,
 };
 
+const edgeTypes: EdgeTypes = {
+  condition: ConditionEdge,
+};
+
 interface WorkflowEditorProps {
   projectId: string;
 }
 
 export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, toGraphJson } = useWorkflowDAG();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, updateNodeData, toGraphJson } = useWorkflowDAG();
   const { result: validationResult, isValidating, validate } = useValidation();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("新工作流");
+  const [selectedNode, setSelectedNode] = useState<DAGNode | null>(null);
 
   const handleValidate = useCallback(async () => {
     await validate(toGraphJson());
@@ -40,6 +49,15 @@ export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
     setSaving(true);
     try {
       await workflowApi.create({ name, graphJson: toGraphJson() });
+    } finally {
+      setSaving(false);
+    }
+  }, [name, toGraphJson]);
+
+  const handleSaveTemplate = useCallback(async () => {
+    setSaving(true);
+    try {
+      await workflowApi.create({ name: name + " (模板)", graphJson: toGraphJson(), isTemplate: true });
     } finally {
       setSaving(false);
     }
@@ -61,13 +79,55 @@ export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={(_event, node) => {
+            const dagNode: DAGNode = {
+              id: node.id,
+              type: node.type as DAGNode["type"],
+              position: node.position,
+              data: node.data as DAGNodeData,
+            };
+            setSelectedNode(dagNode);
+          }}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
         >
           <Background />
           <Controls />
           <MiniMap />
         </ReactFlow>
+      </div>
+
+      {/* Right: Config Panel */}
+      <div className="w-72 shrink-0 border-l bg-card overflow-y-auto">
+        {selectedNode ? (
+          <div className="p-4 space-y-3">
+            <div className="text-sm font-semibold">
+              {selectedNode.data.label || selectedNode.id} 属性
+            </div>
+            {selectedNode.type === "phase" && (
+              <PhaseConfigPanel
+                data={selectedNode.data}
+                onUpdate={(partial) => updateNodeData(selectedNode.id, partial)}
+              />
+            )}
+            {selectedNode.type === "review" && (
+              <ReviewConfigPanel
+                data={selectedNode.data}
+                onUpdate={(partial) => updateNodeData(selectedNode.id, partial)}
+              />
+            )}
+            {selectedNode.type !== "phase" && selectedNode.type !== "review" && (
+              <div className="text-xs text-muted-foreground">
+                {selectedNode.type} 节点暂无可配置属性
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 text-sm text-muted-foreground">
+            选择节点查看属性
+          </div>
+        )}
       </div>
 
       {/* Top toolbar */}
@@ -84,6 +144,13 @@ export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
           className="px-3 py-1 text-sm bg-secondary rounded hover:bg-secondary/80"
         >
           {isValidating ? "校验中..." : "校验"}
+        </button>
+        <button
+          onClick={handleSaveTemplate}
+          disabled={saving}
+          className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80"
+        >
+          存为模板
         </button>
         <button
           onClick={handleSave}
