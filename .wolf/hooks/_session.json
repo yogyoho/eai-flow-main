@@ -1,38 +1,599 @@
 {
-  "session_id": "session-2026-05-28-1932",
-  "started": "2026-05-28T11:32:24.864Z",
+  "session_id": "session-2026-06-01-1324",
+  "started": "2026-06-01T05:24:06.598Z",
   "files_read": {
-    "D:/eai/eai-flow-main/frontend/src/extensions/collab/CollabEditor.tsx": {
+    "D:/eai/eai-flow-main/backend/app/gateway/app.py": {
+      "count": 2,
+      "tokens": 5242,
+      "first_read": "2026-06-01T05:25:18.140Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/app/projects/page.tsx": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-06-01T05:28:17.660Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/service.ts": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-05-28T11:36:15.892Z"
+      "first_read": "2026-06-01T05:28:25.487Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/api/index.ts": {
+      "count": 3,
+      "tokens": 10612,
+      "first_read": "2026-06-01T05:28:25.602Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/workflow/api.ts": {
+      "count": 2,
+      "tokens": 1889,
+      "first_read": "2026-06-01T05:29:58.322Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/api.ts": {
+      "count": 1,
+      "tokens": 1294,
+      "first_read": "2026-06-01T05:29:58.437Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx": {
+      "count": 8,
+      "tokens": 9317,
+      "first_read": "2026-06-01T05:29:58.627Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/project/service.py": {
+      "count": 1,
+      "tokens": 5505,
+      "first_read": "2026-06-01T05:30:02.383Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/app/admin/layout.tsx": {
+      "count": 2,
+      "tokens": 575,
+      "first_read": "2026-06-01T05:30:02.547Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/types.ts": {
+      "count": 2,
+      "tokens": 963,
+      "first_read": "2026-06-01T05:30:02.713Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/app/admin/roles/page.tsx": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-01T05:30:06.836Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/project/schemas.py": {
+      "count": 1,
+      "tokens": 1271,
+      "first_read": "2026-06-01T05:30:06.949Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/project/routers.py": {
+      "count": 1,
+      "tokens": 2552,
+      "first_read": "2026-06-01T05:30:07.069Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/workflow/types.ts": {
+      "count": 1,
+      "tokens": 869,
+      "first_read": "2026-06-01T05:30:11.275Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/workflow/routers.py": {
+      "count": 1,
+      "tokens": 5021,
+      "first_read": "2026-06-01T05:30:11.412Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/workflow/service.py": {
+      "count": 1,
+      "tokens": 1689,
+      "first_read": "2026-06-01T05:30:14.344Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/workflow/schemas.py": {
+      "count": 1,
+      "tokens": 1236,
+      "first_read": "2026-06-01T05:30:16.810Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/app/admin/departments/page.tsx": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-01T05:30:19.470Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/CollabEditor.tsx": {
+      "count": 2,
+      "tokens": 445,
+      "first_read": "2026-06-01T05:30:22.487Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectWorkspace.tsx": {
+      "count": 3,
+      "tokens": 3474,
+      "first_read": "2026-06-01T05:30:22.652Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/tabRegistry.ts": {
+      "count": 1,
+      "tokens": 1095,
+      "first_read": "2026-06-01T05:30:22.919Z"
     },
     "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx": {
-      "count": 1,
-      "tokens": 3315,
-      "first_read": "2026-05-28T11:36:16.323Z"
+      "count": 3,
+      "tokens": 7505,
+      "first_read": "2026-06-01T05:30:25.710Z"
     },
-    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useCollab.ts": {
-      "count": 1,
-      "tokens": 905,
-      "first_read": "2026-05-28T11:36:16.860Z"
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx": {
+      "count": 6,
+      "tokens": 3225,
+      "first_read": "2026-06-01T05:30:25.924Z"
     },
-    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useComments.ts": {
-      "count": 1,
-      "tokens": 901,
-      "first_read": "2026-05-28T11:36:17.378Z"
+    "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx": {
+      "count": 3,
+      "tokens": 18040,
+      "first_read": "2026-06-01T05:30:31.277Z"
     },
-    "D:/eai/eai-flow-main/frontend/src/extensions/collab/useVersions.ts": {
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/components/OutlineTab.tsx": {
       "count": 1,
-      "tokens": 576,
-      "first_read": "2026-05-28T11:36:17.773Z"
+      "tokens": 0,
+      "first_read": "2026-06-01T05:30:33.354Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/extensions/database.py": {
+      "count": 3,
+      "tokens": 13494,
+      "first_read": "2026-06-01T05:30:55.427Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/project/hooks/useProjectPermissions.ts": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-01T05:30:56.607Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/patch-prosemirror.ts": {
+      "count": 1,
+      "tokens": 366,
+      "first_read": "2026-06-01T05:31:25.178Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/traceability-extension.ts": {
+      "count": 2,
+      "tokens": 2026,
+      "first_read": "2026-06-01T05:31:39.949Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/extensions/collab/human-written-plugin.ts": {
+      "count": 3,
+      "tokens": 1853,
+      "first_read": "2026-06-01T05:39:06.751Z"
     }
   },
-  "files_written": [],
-  "edit_counts": {},
-  "anatomy_hits": 4,
-  "anatomy_misses": 1,
-  "repeated_reads_warned": 0,
+  "files_written": [
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/extensions/dashboard/service.py",
+      "action": "create",
+      "tokens": 5162,
+      "at": "2026-06-01T05:24:43.222Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/extensions/dashboard/routers.py",
+      "action": "create",
+      "tokens": 941,
+      "at": "2026-06-01T05:25:08.646Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/gateway/app.py",
+      "action": "edit",
+      "tokens": 61,
+      "at": "2026-06-01T05:25:30.755Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/gateway/app.py",
+      "action": "edit",
+      "tokens": 81,
+      "at": "2026-06-01T05:25:44.387Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_dashboard.py",
+      "action": "create",
+      "tokens": 1396,
+      "at": "2026-06-01T05:26:14.537Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/types.ts",
+      "action": "create",
+      "tokens": 397,
+      "at": "2026-06-01T05:28:34.724Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/api.ts",
+      "action": "create",
+      "tokens": 417,
+      "at": "2026-06-01T05:28:36.635Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/hooks/useMyTasks.ts",
+      "action": "create",
+      "tokens": 72,
+      "at": "2026-06-01T05:28:38.700Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/hooks/useMyProjects.ts",
+      "action": "create",
+      "tokens": 75,
+      "at": "2026-06-01T05:28:40.529Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/hooks/useMyStats.ts",
+      "action": "create",
+      "tokens": 72,
+      "at": "2026-06-01T05:28:42.310Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/TaskItemCard.tsx",
+      "action": "create",
+      "tokens": 389,
+      "at": "2026-06-01T05:28:43.927Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/TodayTasks.tsx",
+      "action": "create",
+      "tokens": 292,
+      "at": "2026-06-01T05:28:45.515Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/ProjectMiniCard.tsx",
+      "action": "create",
+      "tokens": 471,
+      "at": "2026-06-01T05:28:47.214Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/MyProjects.tsx",
+      "action": "create",
+      "tokens": 549,
+      "at": "2026-06-01T05:28:49.045Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/StatsPanel.tsx",
+      "action": "create",
+      "tokens": 235,
+      "at": "2026-06-01T05:28:50.772Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/QuickActions.tsx",
+      "action": "create",
+      "tokens": 223,
+      "at": "2026-06-01T05:28:52.546Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/DashboardPage.tsx",
+      "action": "create",
+      "tokens": 350,
+      "at": "2026-06-01T05:28:54.054Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/app/dashboard/page.tsx",
+      "action": "create",
+      "tokens": 143,
+      "at": "2026-06-01T05:28:55.558Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/GanttChart/types.ts",
+      "action": "create",
+      "tokens": 144,
+      "at": "2026-06-01T05:29:25.952Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/GanttChart/GanttBar.tsx",
+      "action": "create",
+      "tokens": 724,
+      "at": "2026-06-01T05:29:31.154Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/GanttChart/GanttChart.tsx",
+      "action": "create",
+      "tokens": 1234,
+      "at": "2026-06-01T05:29:37.338Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/KanbanBoard/types.ts",
+      "action": "create",
+      "tokens": 62,
+      "at": "2026-06-01T05:29:40.353Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/KanbanBoard/KanbanCard.tsx",
+      "action": "create",
+      "tokens": 423,
+      "at": "2026-06-01T05:29:44.065Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/KanbanBoard/KanbanColumn.tsx",
+      "action": "create",
+      "tokens": 344,
+      "at": "2026-06-01T05:29:47.645Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/components/KanbanBoard/KanbanBoard.tsx",
+      "action": "create",
+      "tokens": 385,
+      "at": "2026-06-01T05:29:51.699Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/extensions/project/schemas.py",
+      "action": "edit",
+      "tokens": 60,
+      "at": "2026-06-01T05:30:27.153Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/extensions/project/service.py",
+      "action": "edit",
+      "tokens": 120,
+      "at": "2026-06-01T05:30:32.533Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/extensions/project/routers.py",
+      "action": "edit",
+      "tokens": 65,
+      "at": "2026-06-01T05:30:37.087Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/types.ts",
+      "action": "edit",
+      "tokens": 56,
+      "at": "2026-06-01T05:30:42.070Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/workflow/api.ts",
+      "action": "edit",
+      "tokens": 261,
+      "at": "2026-06-01T05:30:47.827Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/workflow/api.ts",
+      "action": "edit",
+      "tokens": 247,
+      "at": "2026-06-01T05:30:53.095Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 57,
+      "at": "2026-06-01T05:30:57.657Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 297,
+      "at": "2026-06-01T05:31:04.639Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 174,
+      "at": "2026-06-01T05:31:05.847Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 28,
+      "at": "2026-06-01T05:31:09.834Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 271,
+      "at": "2026-06-01T05:31:11.504Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 113,
+      "at": "2026-06-01T05:31:17.236Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 192,
+      "at": "2026-06-01T05:31:17.311Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 12,
+      "at": "2026-06-01T05:31:21.965Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 72,
+      "at": "2026-06-01T05:31:22.969Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 32,
+      "at": "2026-06-01T05:31:27.133Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 22,
+      "at": "2026-06-01T05:31:27.624Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 14,
+      "at": "2026-06-01T05:31:40.345Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "action": "edit",
+      "tokens": 91,
+      "at": "2026-06-01T05:31:44.303Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 220,
+      "at": "2026-06-01T05:31:44.489Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "action": "edit",
+      "tokens": 31,
+      "at": "2026-06-01T05:31:48.634Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/app/admin/layout.tsx",
+      "action": "edit",
+      "tokens": 19,
+      "at": "2026-06-01T05:31:49.006Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "action": "edit",
+      "tokens": 34,
+      "at": "2026-06-01T05:31:52.880Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/app/admin/layout.tsx",
+      "action": "edit",
+      "tokens": 75,
+      "at": "2026-06-01T05:31:53.705Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/CollabEditor.tsx",
+      "action": "edit",
+      "tokens": 228,
+      "at": "2026-06-01T05:32:01.061Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/CollabEditor.tsx",
+      "action": "edit",
+      "tokens": 153,
+      "at": "2026-06-01T05:32:05.559Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "action": "edit",
+      "tokens": 19,
+      "at": "2026-06-01T05:32:17.927Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectWorkspace.tsx",
+      "action": "edit",
+      "tokens": 304,
+      "at": "2026-06-01T05:32:26.092Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/human-written-plugin.ts",
+      "action": "create",
+      "tokens": 1803,
+      "at": "2026-06-01T05:32:32.430Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/app/admin/templates/page.tsx",
+      "action": "create",
+      "tokens": 3211,
+      "at": "2026-06-01T05:32:47.734Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 165,
+      "at": "2026-06-01T05:32:48.636Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/OutlinePanel.tsx",
+      "action": "edit",
+      "tokens": 11,
+      "at": "2026-06-01T05:32:53.226Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 35,
+      "at": "2026-06-01T05:33:14.533Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "action": "edit",
+      "tokens": 81,
+      "at": "2026-06-01T05:33:17.933Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "action": "edit",
+      "tokens": 150,
+      "at": "2026-06-01T05:33:44.605Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 40,
+      "at": "2026-06-01T05:34:21.350Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "action": "edit",
+      "tokens": 118,
+      "at": "2026-06-01T05:34:30.030Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/dashboard/components/NotificationFeed.tsx",
+      "action": "create",
+      "tokens": 1649,
+      "at": "2026-06-01T05:34:34.557Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/human-written-plugin.ts",
+      "action": "edit",
+      "tokens": 315,
+      "at": "2026-06-01T05:39:23.015Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/human-written-plugin.ts",
+      "action": "edit",
+      "tokens": 207,
+      "at": "2026-06-01T05:39:54.789Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/collab/human-written-plugin.ts",
+      "action": "edit",
+      "tokens": 189,
+      "at": "2026-06-01T05:40:58.157Z"
+    }
+  ],
+  "edit_counts": {
+    "backend/app/extensions/dashboard/service.py": 1,
+    "backend/app/extensions/dashboard/routers.py": 1,
+    "backend/app/gateway/app.py": 2,
+    "backend/tests/test_dashboard.py": 1,
+    "frontend/src/extensions/dashboard/types.ts": 1,
+    "frontend/src/extensions/dashboard/api.ts": 1,
+    "frontend/src/extensions/dashboard/hooks/useMyTasks.ts": 1,
+    "frontend/src/extensions/dashboard/hooks/useMyProjects.ts": 1,
+    "frontend/src/extensions/dashboard/hooks/useMyStats.ts": 1,
+    "frontend/src/extensions/dashboard/components/TaskItemCard.tsx": 1,
+    "frontend/src/extensions/dashboard/components/TodayTasks.tsx": 1,
+    "frontend/src/extensions/dashboard/components/ProjectMiniCard.tsx": 1,
+    "frontend/src/extensions/dashboard/components/MyProjects.tsx": 1,
+    "frontend/src/extensions/dashboard/components/StatsPanel.tsx": 1,
+    "frontend/src/extensions/dashboard/components/QuickActions.tsx": 1,
+    "frontend/src/extensions/dashboard/DashboardPage.tsx": 1,
+    "frontend/src/app/dashboard/page.tsx": 1,
+    "frontend/src/extensions/project/components/GanttChart/types.ts": 1,
+    "frontend/src/extensions/project/components/GanttChart/GanttBar.tsx": 1,
+    "frontend/src/extensions/project/components/GanttChart/GanttChart.tsx": 1,
+    "frontend/src/extensions/project/components/KanbanBoard/types.ts": 1,
+    "frontend/src/extensions/project/components/KanbanBoard/KanbanCard.tsx": 1,
+    "frontend/src/extensions/project/components/KanbanBoard/KanbanColumn.tsx": 1,
+    "frontend/src/extensions/project/components/KanbanBoard/KanbanBoard.tsx": 1,
+    "backend/app/extensions/project/schemas.py": 1,
+    "backend/app/extensions/project/service.py": 1,
+    "backend/app/extensions/project/routers.py": 1,
+    "frontend/src/extensions/project/types.ts": 1,
+    "frontend/src/extensions/workflow/api.ts": 2,
+    "frontend/src/extensions/project/ProjectCreateWizard.tsx": 10,
+    "frontend/src/extensions/collab/OutlinePanel.tsx": 8,
+    "frontend/src/extensions/collab/BlockNoteEditor.tsx": 5,
+    "frontend/src/app/admin/layout.tsx": 2,
+    "frontend/src/extensions/collab/CollabEditor.tsx": 2,
+    "frontend/src/extensions/project/ProjectWorkspace.tsx": 2,
+    "frontend/src/extensions/collab/human-written-plugin.ts": 4,
+    "frontend/src/app/admin/templates/page.tsx": 1,
+    "frontend/src/extensions/dashboard/components/NotificationFeed.tsx": 1
+  },
+  "anatomy_hits": 25,
+  "anatomy_misses": 5,
+  "repeated_reads_warned": 31,
   "cerebrum_warnings": 0,
   "stop_count": 0
 }

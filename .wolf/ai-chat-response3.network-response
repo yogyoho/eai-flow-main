@@ -1,0 +1,8 @@
+data: {"type":"start"}
+
+data: {"type":"tool-input-start","toolCallId":"call_00_QeabNNnKxZ1N1jV9vC3M4375","toolName":"applyDocumentOperations"}
+
+data: {"type":"tool-input-available","toolCallId":"call_00_QeabNNnKxZ1N1jV9vC3M4375","toolName":"applyDocumentOperations","input":{"operations":[{"type":"update","id":"initialBlockId$","block":"<p>è¿™æ˜¯ä¸€ä¸ªæµ‹è¯•æ®µè½ï¼Œç”¨äºŽéªŒè¯AIæ¶¦è‰²åŠŸèƒ½æ˜¯å¦æ­£å¸¸å·¥ä½œã€‚è¿™æ®µæ–‡å­—åŒ…å«ä¸€äº›ä¸å¤Ÿç²¾ç‚¼çš„è¡¨è¾¾ï¼Œå¯é€šè¿‡AIæ¶¦è‰²åŠ ä»¥æ”¹å–„ã€‚</p>"}]}}
+
+data: {"type":"finish"}
+

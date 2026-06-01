@@ -1,0 +1,130 @@
+<h2>设计 Section 2: 数据模型</h2>
+<p class="subtitle">新增 4 张表，扩展现有模型，驱动三大新能力</p>
+
+<div class="mockup">
+  <div class="mockup-header">模型关系图</div>
+  <div class="mockup-body" style="padding: 20px; font-size: 13px;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+
+      <!-- Row 1: Workflow Definition -->
+      <div style="padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">NEW</span>
+          <strong style="color: #6d28d9;">workflow_definitions</strong>
+          <span style="color: #6b7280; font-size: 12px;">— 工作流 DAG 定义（React Flow 生成）</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px;">
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>id</strong> UUID PK</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>name</strong> VARCHAR "环评报告流程"</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>report_type</strong> VARCHAR 可选绑定</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>graph_json</strong> JSONB DAG节点+边</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>is_template</strong> BOOLEAN 预设模板</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>created_by</strong> UUID FK→users</div>
+        </div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="text-align: center; color: #8b5cf6; font-size: 14px;">↓ 1:N (一个定义可启动多个实例)</div>
+
+      <!-- Row 2: Existing + Extension -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <!-- Existing ReportProject -->
+        <div style="flex: 1; min-width: 240px; padding: 16px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">EXTEND</span>
+            <strong style="color: #166534;">report_projects</strong>
+          </div>
+          <div style="font-size: 12px;">
+            <div style="padding: 4px 0;">✅ id, name, report_type, status...</div>
+            <div style="padding: 4px 0;">✅ current_stage (改为从 workflow 推导)</div>
+            <div style="padding: 4px 0; color: #6d28d9;">🆕 workflow_id FK→workflow_definitions</div>
+            <div style="padding: 4px 0; color: #6d28d9;">🆕 temporal_workflow_id VARCHAR</div>
+            <div style="padding: 4px 0; color: #6d28d9;">🆕 current_phase_node VARCHAR 当前节点</div>
+          </div>
+        </div>
+
+        <!-- NEW: Phase Review -->
+        <div style="flex: 1; min-width: 240px; padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">NEW</span>
+            <strong style="color: #6d28d9;">phase_reviews</strong>
+            <span style="color: #6b7280; font-size: 12px;">— 阶段审核分配</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>id</strong> UUID PK</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>project_id</strong> FK→projects</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>phase_node</strong> VARCHAR DAG节点ID</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>chapter_id</strong> FK→chapters 可NULL</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>reviewer_id</strong> FK→users</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>review_type</strong> chapter|dimension</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>dimension</strong> VARCHAR 技术|合规|语言...</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>status</strong> pending|approved|rejected</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>comment</strong> TEXT</div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>created_at</strong> TIMESTAMP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Content Sources -->
+      <div style="padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">NEW</span>
+          <strong style="color: #6d28d9;">content_sources</strong>
+          <span style="color: #6b7280; font-size: 12px;">— AI 内容溯源（段落级）</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px;">
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>id</strong> UUID PK</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>chapter_id</strong> FK→chapters</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>block_index</strong> INT BlockNote块索引</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>source_type</strong> ENUM</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>source_ref</strong> VARCHAR 来源标识</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>snippet</strong> TEXT 引用片段</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>confidence</strong> FLOAT 0-1</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>metadata</strong> JSONB 扩展信息</div>
+          <div style="padding: 6px 8px; background: white; border-radius: 4px;"><strong>created_at</strong> TIMESTAMP</div>
+        </div>
+        <div style="margin-top: 10px; padding: 8px; background: #eff6ff; border-radius: 4px; font-size: 12px;">
+          <strong>source_type 枚举：</strong>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">knowledge_base</span>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">rag_retrieval</span>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">ai_generated</span>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">human_written</span>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">template</span>
+          <span style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #dbeafe; border-radius: 3px;">external_data</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Existing tables: no change -->
+    <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #94a3b8;">
+      <strong style="color: #475569;">现有表不变：</strong>
+      <span style="font-size: 12px; color: #6b7280;">project_chapters, project_members, approval_workflows, approval_records, collab_documents — 无结构变更</span>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 24px;">graph_json 示例（React Flow 输出）</h3>
+<div style="padding: 16px; background: #1e293b; border-radius: 8px; color: #e2e8f0; font-family: monospace; font-size: 11px; line-height: 1.5; margin-top: 8px; overflow-x: auto;">
+<pre style="margin:0; white-space: pre-wrap;">{
+  "nodes": [
+    { "id": "phase-a", "type": "phase", "data": { "label": "现状调查", "team": "group-a", "input_from": [] } },
+    { "id": "phase-b", "type": "phase", "data": { "label": "影响预测", "team": "group-b", "input_from": ["phase-a"] } },
+    { "id": "phase-c", "type": "phase", "data": { "label": "措施设计", "team": "group-c", "input_from": ["phase-b"] } },
+    { "id": "phase-d", "type": "phase", "data": { "label": "监测方案", "team": "group-d", "input_from": ["phase-b"] } },
+    { "id": "review-1", "type": "review", "data": { "label": "分章节审核", "mode": "chapter", "reviewers": [] } },
+    { "id": "phase-e", "type": "phase", "data": { "label": "综合报告", "team": "group-e", "input_from": ["phase-c", "phase-d"] } },
+    { "id": "condition-1", "type": "condition", "data": { "label": "环评类型?", "expression": "report.subtype" } }
+  ],
+  "edges": [
+    { "source": "phase-a", "target": "phase-b" },
+    { "source": "phase-b", "target": "phase-c" },
+    { "source": "phase-b", "target": "phase-d" },
+    { "source": "phase-c", "target": "phase-e" },
+    { "source": "phase-d", "target": "phase-e" },
+    { "source": "phase-e", "target": "review-1" },
+    { "source": "review-1", "target": "end", "label": "approved" },
+    { "source": "review-1", "target": "phase-e", "label": "rejected" }
+  ]
+}</pre>
+</div>

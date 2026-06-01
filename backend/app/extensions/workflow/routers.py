@@ -28,10 +28,18 @@ from .schemas import (
     WorkflowDefinitionOut,
     WorkflowDefinitionUpdate,
     WorkflowNodeStatus,
+    WorkflowSignalRequest,
     WorkflowStartRequest,
     WorkflowStatusResponse,
 )
-from .service import validate_dag
+from .service import (
+    create_definition as _create_definition_svc,
+    delete_definition as _delete_definition_svc,
+    get_definition as _get_definition_svc,
+    list_definitions as _list_definitions_svc,
+    update_definition as _update_definition_svc,
+    validate_dag,
+)
 from .traceability import find_missing_sources
 
 router = APIRouter(prefix="/api/extensions/workflow", tags=["workflow"])
@@ -57,22 +65,7 @@ async def list_definitions(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    stmt = select(WorkflowDefinition)
-    count_stmt = select(func.count()).select_from(WorkflowDefinition)
-
-    if is_template is not None:
-        stmt = stmt.where(WorkflowDefinition.is_template == is_template)
-        count_stmt = count_stmt.where(WorkflowDefinition.is_template == is_template)
-    if report_type is not None:
-        stmt = stmt.where(WorkflowDefinition.report_type == report_type)
-        count_stmt = count_stmt.where(WorkflowDefinition.report_type == report_type)
-
-    total = (await db.execute(count_stmt)).scalar_one()
-
-    stmt = stmt.order_by(WorkflowDefinition.created_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    items = result.scalars().all()
-
+    items, total = await _list_definitions_svc(db, is_template=is_template, report_type=report_type, skip=skip, limit=limit)
     return WorkflowDefinitionListResponse(
         items=[WorkflowDefinitionListItem.model_validate(w) for w in items],
         total=total,
@@ -85,10 +78,10 @@ async def get_definition(
     _user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.get(WorkflowDefinition, definition_id)
-    if not result:
+    definition = await _get_definition_svc(db, definition_id)
+    if not definition:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
-    return WorkflowDefinitionOut.model_validate(result)
+    return WorkflowDefinitionOut.model_validate(definition)
 
 
 @router.post("/definitions", response_model=WorkflowDefinitionOut, status_code=status.HTTP_201_CREATED)
@@ -97,16 +90,14 @@ async def create_definition(
     user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
-    definition = WorkflowDefinition(
+    definition = await _create_definition_svc(
+        db,
         name=body.name,
         report_type=body.report_type,
         graph_json=body.graph_json,
         is_template=body.is_template,
         created_by=user.id,
     )
-    db.add(definition)
-    await db.commit()
-    await db.refresh(definition)
     return WorkflowDefinitionOut.model_validate(definition)
 
 
@@ -117,16 +108,10 @@ async def update_definition(
     _user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
-    definition = await db.get(WorkflowDefinition, definition_id)
+    update_data = body.model_dump(exclude_unset=True)
+    definition = await _update_definition_svc(db, definition_id, update_data)
     if not definition:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
-
-    update_data = body.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(definition, key, value)
-
-    await db.commit()
-    await db.refresh(definition)
     return WorkflowDefinitionOut.model_validate(definition)
 
 
@@ -136,11 +121,9 @@ async def delete_definition(
     _user: WorkflowWriter,
     db: AsyncSession = Depends(get_db),
 ):
-    definition = await db.get(WorkflowDefinition, definition_id)
-    if not definition:
+    deleted = await _delete_definition_svc(db, definition_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
-    await db.delete(definition)
-    await db.commit()
 
 
 @router.post("/definitions/validate", response_model=DAGValidationResult)
@@ -150,6 +133,21 @@ async def validate_definition(
 ):
     result = validate_dag(body)
     return DAGValidationResult(**result)
+
+
+@router.post("/definitions/{definition_id}/publish-template", response_model=WorkflowDefinitionOut)
+async def publish_template(
+    definition_id: UUID,
+    _user: WorkflowWriter,
+    db: AsyncSession = Depends(get_db),
+):
+    """Publish a workflow definition as a reusable template."""
+    from .service import publish_as_template as _publish_svc
+
+    definition = await _publish_svc(db, definition_id)
+    if not definition:
+        raise HTTPException(status_code=404, detail="Workflow definition not found")
+    return WorkflowDefinitionOut.model_validate(definition)
 
 
 # ── Source Traceability ──
@@ -311,6 +309,11 @@ async def submit_review_action(
         except Exception:
             pass  # Temporal unavailable — still record the action
 
+        # Application-side fallback: update project state even without Temporal
+        if not all_approved:
+            from .review import apply_rejection_rollback
+            await apply_rejection_rollback(db, project_id, review.phase_node)
+
     return PhaseReviewOut.model_validate(review)
 
 
@@ -459,3 +462,54 @@ async def start_workflow(
         return {"status": "started", "temporal_workflow_id": workflow_id}
     else:
         raise HTTPException(status_code=503, detail="Temporal server unavailable")
+
+
+# ── Workflow Signal ──
+
+
+async def send_workflow_signal(
+    project_id: UUID,
+    body: WorkflowSignalRequest,
+    db: AsyncSession = None,
+) -> dict:
+    """Send an arbitrary signal to a running workflow for a project.
+
+    Extracted for testability — the router delegates to this function.
+    """
+    from app.extensions.models import ReportProject
+
+    if db is None:
+        return {"status": "error", "detail": "Database session required"}
+
+    project = await db.get(ReportProject, project_id)
+    if not project:
+        return {"status": "error", "detail": "Project not found"}
+
+    if not project.temporal_workflow_id:
+        return {"status": "error", "detail": "No active workflow"}
+
+    from .temporal.client import send_signal as _send_signal
+
+    try:
+        await _send_signal(
+            project_id=str(project_id),
+            signal_name=body.signal_name,
+            args=[body.args],
+        )
+        return {"status": "signal_sent"}
+    except Exception:
+        return {"status": "error", "detail": "Signal delivery failed"}
+
+
+@router.post("/projects/{project_id}/workflow-signal")
+async def workflow_signal_endpoint(
+    project_id: UUID,
+    body: WorkflowSignalRequest,
+    user: WorkflowAdmin,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a signal to a running Temporal workflow."""
+    result = await send_workflow_signal(project_id, body, db)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result.get("detail", "Unknown error"))
+    return result

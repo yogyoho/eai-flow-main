@@ -37,6 +37,32 @@ if [ -f "$REPO_ROOT/.env" ]; then
     set +a
 fi
 
+# Override Docker-specific paths for local dev (non-Docker runs).
+# The .env file ships with container paths like /app/config.yaml; on the host
+# those paths don't exist and MSYS2 may mangle them into Git-installation paths.
+if [ -z "$IN_DOCKER" ]; then
+    # Convert Git Bash Unix path (/d/...) to Windows path (D:\...) for native
+    # Windows programs (Python, uv) that consume these env vars.
+    _win_root="$REPO_ROOT"
+    case "$_win_root" in
+        /?/*) _win_root="$(echo "${_win_root#/}" | cut -c1 | tr '[:lower:]' '[:upper:]'):${_win_root#/?}" ;;
+    esac
+    DEER_FLOW_HOME="$_win_root\\backend\\.deer-flow"
+    DEER_FLOW_CONFIG_PATH="$_win_root\\config.yaml"
+    DEER_FLOW_EXTENSIONS_CONFIG_PATH="$_win_root\\extensions_config.json"
+    DEER_FLOW_REPO_ROOT="$_win_root"
+    DEER_FLOW_HOST_BASE_DIR="$_win_root\\backend\\.deer-flow"
+    DEER_FLOW_HOST_SKILLS_PATH="$_win_root\\skills"
+    unset DEER_FLOW_DOCKER_SOCKET
+
+    # Replace Docker container hostnames with localhost (Gateway is local,
+    # but databases/services still run in Docker with exposed ports).
+    # postgres-ext:5432 → localhost:5432 (extensions DB, port mapped in docker-compose.extensions.yaml)
+    EXTENSIONS_DB_HOST=localhost
+    # RAGFlow is always accessed via localhost:9380 on the host
+    RAGFLOW_BASE_URL="${RAGFLOW_BASE_URL:-http://localhost:9380}"
+fi
+
 # ── Argument parsing ─────────────────────────────────────────────────────────
 
 DEV_MODE=true
@@ -255,7 +281,7 @@ mkdir -p temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp
 # 1. Gateway API
 run_service "Gateway" \
     "cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
-    8001 30
+    8001 60
 
 # 2. Frontend
 run_service "Frontend" \

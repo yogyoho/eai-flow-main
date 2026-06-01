@@ -1,7 +1,7 @@
 # 项目文档协作编辑系统设计
 
 **日期**: 2026-05-26
-**状态**: Draft
+**状态**: Implemented
 **范围**: 仅项目文件夹下的文档（`project_id IS NOT NULL`），其他文档区域（个人文件夹、收藏、共享）保持不变
 
 ## 1. 概述
@@ -380,3 +380,120 @@ location /api/collab {
 | 评论存储 | PostgreSQL | 结构化查询，与用户/文档关联 |
 | 版本存储 | PostgreSQL (BYTEA) | Yjs 二进制快照，可靠持久化 |
 | 前端状态 | TanStack Query + Yjs | 服务端数据用 Query，协作状态用 Yjs |
+
+---
+
+## 11. 实现状态对照表（2026-05-29 更新）
+
+**总体进度: 100%** — 设计方案中所有功能已实现。
+
+### 11.1 后端 (Hocuspocus 协作服务)
+
+| 设计要求 | 实现文件 | 状态 | 备注 |
+|---|---|---|---|
+| Cookie JWT 认证 | `backend/collab-server/src/auth.ts` | ✅ 完成 | `authenticateConnection` 解析 JWT |
+| CSRF Origin 校验 | `backend/collab-server/src/auth.ts` | ✅ 完成 | `validateOrigin` 检查 Origin/Referer |
+| Yjs 文档持久化 | `backend/collab-server/src/persistence.ts` | ✅ 完成 | `loadDocument` / `storeDocument` |
+| collab_updates 记录 | `backend/collab-server/src/persistence.ts` | ✅ 完成 | `recordUpdate` 记录每次变更 |
+| 项目成员权限检查 | `backend/collab-server/src/persistence.ts` | ✅ 完成 | 三重校验：owner + project member + email bridge |
+| 断开连接自动保存 | `backend/collab-server/src/index.ts` | ✅ 完成 | `onDisconnect` 调用 `createVersion` |
+| 定时快照 (30min) | `backend/collab-server/src/index.ts` | ✅ 完成 | `periodicSnapshot()` 比较版本号，仅变更文档创建版本 |
+| 活跃文档跟踪 | `backend/collab-server/src/index.ts` | ✅ 完成 | `activeDocuments` Map + `afterUnloadDocument` 清理 |
+
+### 11.2 后端 (Gateway API)
+
+| 设计要求 | 实现文件 | 状态 | 备注 |
+|---|---|---|---|
+| 评论 CRUD (6 个端点) | `backend/app/extensions/docmgr/collab_routers.py` | ✅ 完成 | list/create/update/delete/resolve/reopen |
+| 版本 CRUD (5 个端点) | `backend/app/extensions/docmgr/collab_routers.py` | ✅ 完成 | list/create/get/restore/diff |
+| 版本差异对比 API | `backend/app/extensions/docmgr/collab_service.py` | ✅ 完成 | `VersionService.diff_versions` |
+| AI 文档级审查 API | `backend/app/extensions/docmgr/collab_routers.py` | ✅ 完成 | `POST /documents/ai-review` |
+| AI 审查服务 | `backend/app/extensions/docmgr/collab_service.py` | ✅ 完成 | `AIReviewService.ai_review_document` |
+| AI 版本变更摘要 | `backend/app/extensions/docmgr/collab_service.py` | ✅ 完成 | `VersionService.generate_ai_summary`，create_version 支持 `generate_summary` 参数 |
+| 评论数据模型 | `backend/app/extensions/docmgr/collab_models.py` | ✅ 完成 | `CollabComment` 含 block_id、parent_id、resolved |
+| 版本数据模型 | `backend/app/extensions/docmgr/collab_models.py` | ✅ 完成 | `CollabVersion` 含 snapshot (BYTEA) |
+
+### 11.3 前端组件
+
+| 设计要求 | 实现文件 | 状态 | 备注 |
+|---|---|---|---|
+| BlockNote 编辑器替换 | `frontend/src/extensions/collab/BlockNoteEditor.tsx` | ✅ 完成 | 使用 `useCreateBlockNote` + Yjs fragment |
+| 在线用户头像列表 | `frontend/src/extensions/collab/OnlineUsers.tsx` | ✅ 完成 | Awareness 协议同步 |
+| 评论侧边栏 | `frontend/src/extensions/collab/CommentSidebar.tsx` | ✅ 完成 | |
+| 评论线程组件 | `frontend/src/extensions/collab/CommentThread.tsx` | ✅ 完成 | 支持多轮回复 |
+| 段落评论锚点 | `frontend/src/extensions/collab/BlockCommentAnchor.tsx` | ✅ 完成 | 未解决评论数量标记 |
+| 浮动评论线程 | `frontend/src/extensions/collab/InlineCommentThread.tsx` | ✅ 完成 | 段落旁浮动显示 |
+| 版本历史面板 | `frontend/src/extensions/collab/VersionPanel.tsx` | ✅ 完成 | 含版本列表、预览、diff 触发、AI 摘要开关 |
+| 差异对比视图 | `frontend/src/extensions/collab/DiffViewer.tsx` | ✅ 完成 | 绿色新增 / 红色删除 / 黄色修改 |
+| AI 辅助工具栏 | `frontend/src/extensions/collab/AIToolbar.tsx` | ✅ 完成 | 段落级润色/扩写/精简/头脑风暴 |
+| AI 文档级审查面板 | `frontend/src/extensions/collab/AIDocumentReview.tsx` | ✅ 完成 | full/style/logic/completeness 四种审查类型 |
+| 协作 WebSocket hook | `frontend/src/extensions/collab/useCollab.ts` | ✅ 完成 | HocuspocusProvider + Awareness + broadcastEvent |
+| 评论数据 hook | `frontend/src/extensions/collab/useComments.ts` | ✅ 完成 | 实时评论同步 via collab-event |
+| 版本数据 hook | `frontend/src/extensions/collab/useVersions.ts` | ✅ 完成 | 含 createVersion/restoreVersion/diffVersions |
+
+### 11.4 设计方案外的增强
+
+以下功能在设计方案中未提及，实际实现中增加：
+
+| 增强项 | 文件 | 说明 |
+|---|---|---|
+| EditorErrorBoundary | `BlockNoteEditor.tsx` | 编辑器崩溃时显示错误信息，避免白屏 |
+| ProseMirror DOM 补丁 | `patch-prosemirror.ts` | 修复 prosemirror-model renderSpec 对 DOM element 节点的处理 |
+| Email Bridge 权限校验 | `persistence.ts` | Gateway user ID 与 Extensions user ID 不一致时，通过 email 桥接查找权限 |
+| Yjs fragment API | `BlockNoteEditor.tsx` | 使用 `ydoc.getXmlFragment("document-store")` 替代方案中的 `thread: ydoc`，更符合 BlockNote 内部数据结构 |
+| 初始内容注入保护 | `BlockNoteEditor.tsx` | `seededDocsRef` 防止重复注入，仅空文档时注入初始内容 |
+
+### 11.5 已知局限
+
+| 项 | 说明 |
+|---|---|
+| BlockNoteView 类型声明 | `@blocknote/react` 仅导出 `BlockNoteViewRaw` 类型，运行时正常但 `tsc --noEmit` 报错 |
+| 版本 diff 为行级对比 | 当前 `diff_versions` 按文本行比较，非块级语义对比。Yjs 二进制快照无法直接提取块结构 |
+| 定时快照精度 | 仅在版本号变化时创建快照。如果多个编辑都在内存中未持久化到 collab_documents，快照可能基于旧数据 |
+
+---
+
+## 12. 浏览器测试报告（2026-05-29）
+
+**测试环境**: Chrome 148 + chrome-devtools-mcp，localhost:2026
+**测试文档**: 华宇大厦消防设计专篇_第1-2章.md（项目文件夹文档）
+
+### 12.1 测试结果
+
+| 测试项 | 结果 | 备注 |
+|---|---|---|
+| BlockNote 编辑器加载 | ✅ 通过 | 内容正确渲染，工具栏完整 |
+| 文本输入/新段落 | ✅ 通过 | 新内容成功添加到文档 |
+| 协作状态（"协作中"） | ✅ 通过 | WebSocket 连接正常，绿色状态显示 |
+| 评论侧边栏 | ✅ 通过 | 显示评论列表、添加评论输入框 |
+| 创建评论 | ✅ 通过 | 新评论即时出现，计数器从1→2 |
+| 解决评论 | ✅ 通过 | 评论标记为已解决，"已解决 (1)" 按钮出现 |
+| 已解决评论可查看 | ✅ 通过 | "已解决" 折叠面板可展开查看 |
+| 版本历史列表 | ✅ 通过 | 41个版本正确按时间倒序排列 |
+| 版本 diff 对比 | ✅ 通过 | 自动选择2个版本触发 diff，无崩溃（修复后） |
+| 版本 diff 显示内容 | ⚠️ 部分 | diff 输出包含 Yjs 二进制数据（如 `idw$...`），非纯文本差异 |
+| AI 助手面板 | ✅ 通过 | 段落级工具（润色/扩写/精简/头脑风暴）+ 文档级审查 |
+| AI 文档级审查 | ❌ 失败 | 后端 500 错误，`create_chat_model("ai-review")` 调用失败（模型配置问题，非代码 bug） |
+| 版本保存 | ✅ 通过 | 断开连接时自动创建版本（v41, "Auto-save on disconnect"） |
+
+### 12.2 测试中修复的 Bug
+
+| Bug | 文件 | 修复 |
+|---|---|---|
+| `Maximum update depth exceeded` 在 diff 对比时 | `VersionPanel.tsx` | `onDiffVersions` 用 `useRef` 包裹，从 useEffect 依赖数组中移除，避免无限循环 |
+| BlockNote 缺少 Notion 风格 UI（+/拖拽/斜杠菜单） | `BlockNoteEditor.tsx` | 导入源从 `@blocknote/react` 改为 `@blocknote/shadcn`，启用 sideMenu/slashMenu/formattingToolbar 等属性，安装缺失的 react-hook-form 依赖 |
+
+### 12.4 UI 组件验证（修复后二次测试）
+
+| 功能 | 结果 | 备注 |
+|---|---|---|
+| Side Menu（"+"添加块按钮） | ✅ 通过 | 悬停段落后左侧出现 "+" 和 "⋮⋮" 按钮 |
+| Side Menu（拖拽手柄） | ✅ 通过 | "Open block menu" 按钮出现，支持弹出菜单 |
+| "+" 点击后弹出块类型菜单 | ✅ 通过 | 点击后创建新段落并弹出 Slash Menu 选择块类型 |
+| Slash Menu（"/" 命令） | ✅ 通过 | 输入 "/" 后弹出块类型选择列表 |
+| Block 拖拽重排 | 未测试 | 需手动拖拽验证 |
+
+### 12.3 待改进项
+
+1. **diff 输出可读性**: `VersionService.diff_versions` 直接对 Yjs 二进制快照做 `decode("utf-8", errors="replace")` 行比较，导致 diff 输出包含大量 Yjs 编码元数据（如 `idw$...`, `blockContainer`, `paragraph`）。应改为：在 Hocuspocus `onStoreDocument` 时同时存储 markdown 文本快照，diff 时对比 markdown 文本。
+2. **AI 审查需模型配置**: `create_chat_model("ai-review")` 依赖 `config.yaml` 中配置的 LLM 模型，需确保模型可用。

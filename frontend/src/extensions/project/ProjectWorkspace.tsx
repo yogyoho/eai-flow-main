@@ -4,7 +4,7 @@ import { ArrowLeft, FileText, Loader2, MessageSquare, Settings } from "lucide-re
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const WorkflowEditor = dynamic(
   () => import("@/extensions/workflow/WorkflowEditor").then((m) => ({ default: m.WorkflowEditor })),
@@ -68,6 +68,26 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   // Derive visible tabs from identity
   const visibleTabs = identity ? getVisibleTabs(identity) : [];
+
+  // Derive visible chapter IDs from permissions for chapter-level filtering.
+  // When user has chapter:write_any or is owner, all chapters are visible (undefined).
+  // When user only has chapter:write_own, only their assigned chapters are visible.
+  const visibleChapterIds = useMemo(() => {
+    if (!identity) return undefined;
+    if (identity.projectRole === "owner") return undefined;
+    if (identity.hasAnyPermission(["chapter:write_any"])) return undefined;
+
+    // Extract chapter IDs from phase_duties where duty is "writer" or "write"
+    if (!identity.phaseDuties) return undefined;
+    const ids: string[] = [];
+    for (const [key, info] of Object.entries(identity.phaseDuties)) {
+      if (info.duty === "writer" || info.duty === "write") {
+        // Key format: "chapter-<id>" or just an ID — strip prefix if present
+        ids.push(key.replace(/^chapter-/, ""));
+      }
+    }
+    return ids.length > 0 ? ids : undefined;
+  }, [identity]);
 
   // If activeTab is no longer visible, reset to first visible tab
   useEffect(() => {

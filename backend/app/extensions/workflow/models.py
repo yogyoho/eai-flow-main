@@ -1,9 +1,9 @@
 """SQLAlchemy models for the workflow engine."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -79,3 +79,21 @@ class PhaseReview(Base):
 
     def __repr__(self) -> str:
         return f"<PhaseReview {self.review_type}:{self.phase_node} reviewer={self.reviewer_id} status={self.status}>"
+
+
+class ProjectTimeline(Base):
+    """Project timeline entries for gantt chart."""
+
+    __tablename__ = "project_timeline"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("report_projects.id"), nullable=False)
+    phase_node: Mapped[str] = mapped_column(String(50), nullable=False)
+    planned_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    planned_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    actual_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    actual_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    depends_on: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    milestones: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    progress_pct: Mapped[int] = mapped_column(Integer, default=0)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)

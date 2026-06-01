@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Background, Controls, MiniMap, ReactFlow, type NodeTypes, type EdgeTypes } from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, type NodeTypes, type EdgeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { AIGenerateNode } from "./nodes/AIGenerateNode";
@@ -9,6 +9,7 @@ import { ConditionNode } from "./nodes/ConditionNode";
 import { MergeNode } from "./nodes/MergeNode";
 import { PhaseNode } from "./nodes/PhaseNode";
 import { ReviewNode } from "./nodes/ReviewNode";
+import { SubWorkflowNode } from "./nodes/SubWorkflowNode";
 import { ConditionEdge } from "./edges/ConditionEdge";
 import { NodePalette } from "./panels/NodePalette";
 import { PhaseConfigPanel } from "./panels/PhaseConfigPanel";
@@ -24,6 +25,7 @@ const nodeTypes: NodeTypes = {
   condition: ConditionNode,
   ai_generate: AIGenerateNode,
   merge: MergeNode,
+  sub_workflow: SubWorkflowNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -64,6 +66,7 @@ export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   }, [name, toGraphJson]);
 
   return (
+    <ReactFlowProvider>
     <div className="relative flex h-full border rounded-lg overflow-hidden">
       {/* Left: Node Palette */}
       <div className="w-48 shrink-0 border-r bg-muted/30 p-3">
@@ -184,5 +187,6 @@ export function WorkflowEditor({ projectId }: WorkflowEditorProps) {
         </div>
       )}
     </div>
+    </ReactFlowProvider>
   );
 }

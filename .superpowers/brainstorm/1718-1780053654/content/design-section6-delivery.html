@@ -1,0 +1,171 @@
+<h2>设计 Section 6: 分阶段交付计划</h2>
+<p class="subtitle">4 个 Phase，每个可独立上线，渐进式交付价值</p>
+
+<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px;">
+
+  <!-- Phase 1 -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #eff6ff; border-color: #3b82f6;">
+      <span style="color: #1d4ed8; font-weight: bold;">Phase 1: 工作流引擎 + React Flow 编辑器</span>
+      <span style="float: right; font-size: 12px; color: #6b7280;">~3 周</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1;">
+          <strong>后端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>Docker 新增 temporal-auto-setup 容器</li>
+            <li>FastAPI lifespan 集成 Temporal Client + Worker</li>
+            <li><code>workflow_definitions</code> 模型 + CRUD API</li>
+            <li><code>DynamicGraphWorkflow</code> 解释器</li>
+            <li>Phase/Review/Merge Activity 实现</li>
+            <li>DAG 校验服务（环检测、孤立节点）</li>
+            <li>Signal 处理（phase_complete, review_action）</li>
+          </ul>
+        </div>
+        <div style="flex: 1;">
+          <strong>前端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>React Flow 编辑器（5 种节点类型）</li>
+            <li>NodePalette 拖拽面板</li>
+            <li>PhaseConfigPanel / ReviewConfigPanel</li>
+            <li>DAG 校验反馈 UI</li>
+            <li>存为模板 / 加载模板</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top: 12px; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; color: #166534;">
+        <strong>交付价值：</strong>项目经理可以可视化编排工作流，系统按 DAG 自动推进阶段。替代原有固定 6 阶段。
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #fff7ed; border-color: #f59e0b;">
+      <span style="color: #92400e; font-weight: bold;">Phase 2: AI 内容溯源</span>
+      <span style="float: right; font-size: 12px; color: #6b7280;">~2 周</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1;">
+          <strong>后端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li><code>content_sources</code> 模型 + API</li>
+            <li>溯源解析服务（解析 [source] 标记）</li>
+            <li>MCP <code>write_chapter</code> Activity 集成溯源解析</li>
+            <li>report-write Skill 更新（要求 AI 输出溯源标记）</li>
+            <li>溯源缺失检测 API</li>
+          </ul>
+        </div>
+        <div style="flex: 1;">
+          <strong>前端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>BlockNote 自定义扩展：溯源标注渲染</li>
+            <li>SourceFootnote 脚注列表组件</li>
+            <li>SourceAnnotation 悬浮提示组件</li>
+            <li>溯源统计面板（按类型/章节）</li>
+            <li>溯源缺失预警提示</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top: 12px; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; color: #166534;">
+        <strong>交付价值：</strong>每个数据/段落可追溯到知识库文档、法规、AI 模型或人工输入。审核人可以验证引用准确性。
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #fef2f2; border-color: #ef4444;">
+      <span style="color: #991b1b; font-weight: bold;">Phase 3: 多人分章节/维度混合审核</span>
+      <span style="float: right; font-size: 12px; color: #6b7280;">~2 周</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1;">
+          <strong>后端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li><code>phase_reviews</code> 模型 + API</li>
+            <li>Review Activity 创建分配记录</li>
+            <li>Signal review_action 处理通过/退回</li>
+            <li>退回时工作流回退到目标节点</li>
+            <li>审核维度配置（技术/合规/语言/...）</li>
+          </ul>
+        </div>
+        <div style="flex: 1;">
+          <strong>前端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>PhaseReviewPanel 审核工作台</li>
+            <li>ReviewAssignmentDialog 分配对话框</li>
+            <li>ChapterReviewCard 章节审核卡片</li>
+            <li>DimensionReviewCard 维度审核卡片</li>
+            <li>审核进度可视化</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top: 12px; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; color: #166534;">
+        <strong>交付价值：</strong>大型报告审核不再是一个人通读全文，而是多人并行按章节/维度分工审核，效率提升数倍。
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 4 -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #f0fdf4; border-color: #22c55e;">
+      <span style="color: #166534; font-weight: bold;">Phase 4: 工作流监控 + 条件分支 + 子工作流</span>
+      <span style="float: right; font-size: 12px; color: #6b7280;">~2 周</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1;">
+          <strong>后端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>Condition Activity 评估表达式路由</li>
+            <li>Child Workflow 支持（子项目作为子工作流）</li>
+            <li>工作流状态查询 API（含 Temporal history）</li>
+            <li>工作流暂停/恢复/取消 API</li>
+          </ul>
+        </div>
+        <div style="flex: 1;">
+          <strong>前端：</strong>
+          <ul style="margin: 4px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li>WorkflowMonitor 执行监控面板</li>
+            <li>PhaseStatusCard 状态卡片</li>
+            <li>TimelineView 时间线视图</li>
+            <li>ConditionNode 条件分支 UI</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top: 12px; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; color: #166534;">
+        <strong>交付价值：</strong>项目经理实时监控工作流执行，条件分支支持差异化流程，子工作流支持子项目嵌套。完整工作流引擎能力闭环。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Summary -->
+<div style="margin-top: 20px; display: flex; gap: 12px;">
+  <div style="flex: 1; text-align: center; padding: 12px; background: #eff6ff; border-radius: 8px;">
+    <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">~9 周</div>
+    <div style="font-size: 12px; color: #6b7280;">总开发量</div>
+  </div>
+  <div style="flex: 1; text-align: center; padding: 12px; background: #f0fdf4; border-radius: 8px;">
+    <div style="font-size: 24px; font-weight: bold; color: #22c55e;">4 张</div>
+    <div style="font-size: 12px; color: #6b7280;">新增数据表</div>
+  </div>
+  <div style="flex: 1; text-align: center; padding: 12px; background: #faf5ff; border-radius: 8px;">
+    <div style="font-size: 24px; font-weight: bold; color: #8b5cf6;">11 个</div>
+    <div style="font-size: 12px; color: #6b7280;">新增 API 端点</div>
+  </div>
+  <div style="flex: 1; text-align: center; padding: 12px; background: #fefce8; border-radius: 8px;">
+    <div style="font-size: 24px; font-weight: bold; color: #eab308;">+1</div>
+    <div style="font-size: 12px; color: #6b7280;">新增容器</div>
+  </div>
+</div>
+
+<div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #94a3b8; font-size: 12px;">
+  <strong>与现有系统的关系：</strong>
+  Phase 1 完成后，原有固定 6 阶段可继续使用（无 workflow_id 的项目走旧逻辑），新项目可选择工作流模式。完全向后兼容，零迁移成本。
+</div>

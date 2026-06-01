@@ -56,12 +56,12 @@ if [ -z "$CONFIG" ]; then
 fi
 
 # Convert Unix-style paths to Windows paths for Python
-# /mnt/d/... -> D:\...  or /mnt/c/... -> C:\...
+# /d/... or /mnt/d/... -> D:\...  (same for other drive letters)
 unix_to_windows_path() {
     local path="$1"
     case "$path" in
-        /mnt/d/*) echo "D:${path#/mnt/d}" ;;
-        /mnt/c/*) echo "C:${path#/mnt/c}" ;;
+        /mnt/?/*) echo "$(echo "${path#/mnt/}" | cut -c1 | tr '[:lower:]' '[:upper:]'):${path#/mnt/?}" | tr '/' '\\' ;;
+        /?/*)     echo "$(echo "${path#/}" | cut -c1 | tr '[:lower:]' '[:upper:]'):${path#/?}" | tr '/' '\\' ;;
         *) echo "$path" ;;
     esac
 }

@@ -4,10 +4,22 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
-const COLLAB_URL =
-  typeof window !== "undefined"
-    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/collab`
-    : "ws://localhost:2026/api/collab";
+function getCollabUrl(): string {
+  if (typeof window === "undefined") {
+    return "ws://localhost:8002";
+  }
+
+  const configured = process.env.NEXT_PUBLIC_COLLAB_WS_URL;
+  if (configured) {
+    return configured;
+  }
+
+  if (window.location.hostname === "localhost" && window.location.port === "3000") {
+    return "ws://localhost:8002";
+  }
+
+  return `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/collab`;
+}
 
 export interface CollabUser {
   name: string;
@@ -21,14 +33,14 @@ export function useCollab(docId: string | null) {
   const [users, setUsers] = useState<CollabUser[]>([]);
   const providerRef = useRef<HocuspocusProvider | null>(null);
 
-  // Create Y.Doc synchronously so it's available on first render
-  const ydoc = useMemo(() => new Y.Doc(), []);
+  // Create a separate Y.Doc for each collaborative document.
+  const ydoc = useMemo(() => new Y.Doc(), [docId]);
 
   useEffect(() => {
     if (!docId) return;
 
     const provider = new HocuspocusProvider({
-      url: COLLAB_URL,
+      url: getCollabUrl(),
       name: docId,
       document: ydoc,
       onConnect: () => setConnected(true),

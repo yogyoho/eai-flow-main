@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { projectApi } from "@/extensions/project/api";
+import { workflowApi } from "@/extensions/workflow/api";
 import {
   MEMBER_ROLE_LABELS,
   REPORT_TYPE_LABELS,
@@ -64,19 +65,21 @@ const REPORT_TYPE_TO_DOMAIN: Record<string, string[]> = {
   energy_assessment: ["energy_assessment", "energy"],
 };
 
-const BLANK_TEMPLATE = {
-  id: "tpl_blank",
-  name: "空白模板",
-  description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
-  domain: "",
-};
-
 interface TemplateOption {
   id: string;
   name: string;
   description: string;
   domain: string;
+  /** Non-empty when this is a workflow template (WorkflowDefinition id). */
+  workflowDefId?: string;
 }
+
+const BLANK_TEMPLATE: TemplateOption = {
+  id: "tpl_blank",
+  name: "空白模板",
+  description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
+  domain: "",
+};
 
 async function fetchPublishedTemplates(): Promise<TemplateOption[]> {
   try {
@@ -90,6 +93,21 @@ async function fetchPublishedTemplates(): Promise<TemplateOption[]> {
       name: t.name,
       description: t.name,
       domain: t.domain,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchWorkflowTemplates(reportType?: string): Promise<TemplateOption[]> {
+  try {
+    const res = await workflowApi.listTemplates(reportType);
+    return res.items.map((t) => ({
+      id: `wf_${t.id}`,
+      name: t.name,
+      description: t.name,
+      domain: t.reportType ?? "",
+      workflowDefId: t.id,
     }));
   } catch {
     return [];
@@ -354,7 +372,7 @@ function StepTemplate({
       <div>
         <h3 className="text-base font-semibold text-foreground">选择报告模板</h3>
         <p className="mt-1 text-[13px] text-[#475569]">
-          选择一个来自知识工厂的报告模板作为项目基础结构，或跳过此步骤
+          选择一个工作流模板或知识工厂模板作为项目基础结构，或跳过此步骤
         </p>
       </div>
 
@@ -381,14 +399,21 @@ function StepTemplate({
                 <FileText className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    "text-sm font-medium",
-                    templateId === tpl.id ? "text-blue-600" : "text-foreground",
+                <div className="flex items-center gap-1.5">
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      templateId === tpl.id ? "text-blue-600" : "text-foreground",
+                    )}
+                  >
+                    {tpl.name}
+                  </p>
+                  {tpl.workflowDefId && (
+                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 border border-violet-200">
+                      工作流
+                    </span>
                   )}
-                >
-                  {tpl.name}
-                </p>
+                </div>
                 <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
               </div>
             </div>
@@ -701,13 +726,22 @@ export function ProjectCreateWizard() {
 
   // Fetch published templates on mount
   React.useEffect(() => {
-    fetchPublishedTemplates().then((fetched) => {
-      setTemplates(fetched);
-      // Auto-select a template matching the current report type
-      const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
-      const match = fetched.find((t) => domains.includes(t.domain));
-      if (match) setTemplateId(match.id);
-    });
+    Promise.all([fetchPublishedTemplates(), fetchWorkflowTemplates(reportType)]).then(
+      ([kfTemplates, wfTemplates]) => {
+        const combined = [...wfTemplates, ...kfTemplates];
+        setTemplates(combined);
+        // Auto-select a workflow template matching the current report type first
+        const wfMatch = wfTemplates.find((t) => t.domain === reportType);
+        if (wfMatch) {
+          setTemplateId(wfMatch.id);
+        } else {
+          // Fall back to KF template
+          const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
+          const kfMatch = kfTemplates.find((t) => domains.includes(t.domain));
+          if (kfMatch) setTemplateId(kfMatch.id);
+        }
+      },
+    );
   }, []);
 
   // Step 3: Team
@@ -768,7 +802,16 @@ export function ProjectCreateWizard() {
   // Resolve template_id for submission: match by domain if using a real template
   const resolveTemplateId = useCallback((): string | undefined => {
     if (templateId === "tpl_blank") return undefined;
+    if (templateId.startsWith("wf_")) return undefined; // workflow templates don't use templateId
     return templateId || undefined;
+  }, [templateId]);
+
+  // Resolve workflow_id for submission: extract from workflow template selection
+  const resolveWorkflowId = useCallback((): string | undefined => {
+    if (templateId.startsWith("wf_")) {
+      return templateId.slice(3); // strip "wf_" prefix to get the UUID
+    }
+    return undefined;
   }, [templateId]);
 
   // Submit
@@ -787,6 +830,7 @@ export function ProjectCreateWizard() {
         name: name.trim(),
         reportType,
         templateId: resolveTemplateId(),
+        workflowId: resolveWorkflowId(),
         members: memberList.length > 0 ? memberList : undefined,
       });
 

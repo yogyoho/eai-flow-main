@@ -1,0 +1,37 @@
+
+> deer-flow-frontend@0.1.0 dev D:\eai\eai-flow-main\frontend
+> next dev --turbo
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.103.90.142:3000
+- Environments: .env
+✓ Ready in 831ms
+- [36minfo[0m [nextra] You have Next.js i18n enabled, read here https://nextjs.org/docs/app/building-your-application/routing/internationalization for the docs.
+Creating turbopack project { dir: 'D:\\eai\\eai-flow-main\\frontend', testMode: true }
+- Experiments (use with caution):
+  · optimizePackageImports
+
+○ Compiling /docmgr ...
+ GET /docmgr 200 in 6.7s (next.js: 6.2s, application-code: 492ms)
+ GET /workspace/chats/new?redirect=%2Fdocmgr 200 in 1320ms (next.js: 739ms, application-code: 581ms)
+ GET /login 200 in 110ms (next.js: 41ms, application-code: 69ms)
+ GET /login 200 in 36ms (next.js: 5ms, application-code: 31ms)
+ GET /login 200 in 108ms (next.js: 6ms, application-code: 101ms)
+ GET /login 200 in 64ms (next.js: 6ms, application-code: 58ms)
+env.NEXT_PUBLIC_LANGGRAPH_BASE_URL undefined
+Creating API client with base URL: http://localhost:4026/api/langgraph
+ GET /workspace/chats/new 200 in 667ms (next.js: 42ms, application-code: 625ms)
+ GET /docmgr 200 in 65ms (next.js: 5ms, application-code: 60ms)
+✓ Compiled in 825ms
+ GET /docmgr 200 in 72ms (next.js: 7ms, application-code: 65ms)
+✓ Compiled in 640ms
+✓ Compiled in 539ms
+✓ Compiled in 918ms
+✓ Compiled in 872ms
+✓ Compiled in 433ms
+✓ Compiled in 363ms
+✓ Compiled in 454ms
+✓ Compiled in 503ms
+✓ Compiled in 423ms
+ GET /docmgr 200 in 1288ms (next.js: 260ms, application-code: 1028ms)

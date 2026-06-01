@@ -29,9 +29,12 @@ export function useVersions(docId: string | null) {
   }, [load]);
 
   const createVersion = useCallback(
-    async (summary?: string) => {
+    async (summary?: string, generateAiSummary?: boolean) => {
       if (!docId) return;
-      const version = await docmgrApi.createVersion(docId, summary ? { summary } : undefined);
+      const version = await docmgrApi.createVersion(docId, {
+        summary: summary ?? null,
+        generate_summary: generateAiSummary,
+      });
       setVersions((prev) => [version, ...prev]);
       return version;
     },

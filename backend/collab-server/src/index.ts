@@ -1,9 +1,24 @@
+import type { Document } from "@hocuspocus/server";
 import { Server } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { authenticateConnection, validateOrigin } from "./auth.js";
-import { loadDocument, storeDocument, canAccessDocument, recordUpdate, createVersion } from "./persistence.js";
+import {
+  canAccessDocument,
+  createVersion,
+  getDocumentVersion,
+  loadDocument,
+  loadMarkdownForDoc,
+  recordUpdate,
+  storeDocument,
+} from "./persistence.js";
 
 const PORT = parseInt(process.env.COLLAB_PORT || "8002", 10);
+const SNAPSHOT_INTERVAL_MS = parseInt(process.env.SNAPSHOT_INTERVAL_MS || "1800000", 10);
+
+const activeDocuments = new Map<
+  string,
+  { doc: Document; lastSnapshotVersion: number; lastUserId: string }
+>();
 
 const server = Server.configure({
   port: PORT,
@@ -34,6 +49,23 @@ const server = Server.configure({
     const existing = await loadDocument(documentName);
     if (existing) {
       Y.applyUpdate(document, existing);
+    } else {
+      // First open: load markdown from ai_documents and store in Yjs metadata
+      // so the client can seed the BlockNote editor from it.
+      const markdown = await loadMarkdownForDoc(documentName);
+      if (markdown && markdown.trim()) {
+        const meta = document.getMap("_collabMeta");
+        meta.set("pendingMarkdown", markdown);
+      }
+    }
+
+    const currentVer = await getDocumentVersion(documentName);
+    if (!activeDocuments.has(documentName)) {
+      activeDocuments.set(documentName, {
+        doc: document,
+        lastSnapshotVersion: currentVer,
+        lastUserId: "unknown",
+      });
     }
   },
 
@@ -42,20 +74,53 @@ const server = Server.configure({
     const userId = (context as { userId: string })?.userId || "unknown";
     await storeDocument(documentName, state, userId);
     await recordUpdate(documentName, state, userId, 0);
+
+    const entry = activeDocuments.get(documentName);
+    if (entry) {
+      entry.lastUserId = userId;
+    }
   },
 
   async onDisconnect({ document, documentName, context }) {
     const userId = (context as { userId: string })?.userId || "unknown";
     const state = Y.encodeStateAsUpdate(document);
     await createVersion(documentName, state, userId, "Auto-save on disconnect");
+
+    if (activeDocuments.has(documentName)) {
+      const connections = document.connections;
+      if (!connections || connections.size === 0) {
+        activeDocuments.delete(documentName);
+      }
+    }
+  },
+
+  async afterUnloadDocument({ documentName }: { documentName: string }) {
+    activeDocuments.delete(documentName);
   },
 });
 
+async function periodicSnapshot() {
+  if (activeDocuments.size === 0) return;
+
+  console.log(`[snapshot] Checking ${activeDocuments.size} active document(s)...`);
+  for (const [docId, entry] of activeDocuments) {
+    try {
+      const currentVer = await getDocumentVersion(docId);
+      if (currentVer > entry.lastSnapshotVersion) {
+        const state = Y.encodeStateAsUpdate(entry.doc);
+        const version = await createVersion(docId, state, entry.lastUserId, "Auto-save (periodic)");
+        entry.lastSnapshotVersion = version;
+        console.log(`[snapshot] Created version ${version} for doc ${docId}`);
+      }
+    } catch (err) {
+      console.error(`[snapshot] Failed for doc ${docId}:`, err);
+    }
+  }
+}
+
 server.listen().then(() => {
   console.log(`Hocuspocus collaboration server running on port ${PORT}`);
-});
+  console.log(`[snapshot] Periodic snapshots every ${SNAPSHOT_INTERVAL_MS / 1000}s`);
 
-const SNAPSHOT_INTERVAL_MS = parseInt(process.env.SNAPSHOT_INTERVAL_MS || "1800000", 10);
-setInterval(() => {
-  console.log("[snapshot] Periodic snapshot check running...");
-}, SNAPSHOT_INTERVAL_MS);
+  setInterval(periodicSnapshot, SNAPSHOT_INTERVAL_MS);
+});

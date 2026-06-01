@@ -10,14 +10,18 @@ import { DefaultChatTransport } from "ai";
 import "@blocknote/react/style.css";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/xl-ai/style.css";
-import { MessageSquare, History, Sparkles, MessageCircle } from "lucide-react";
+import { BookOpen, History, MessageSquare, Sparkles } from "lucide-react";
+import { OutlinePanel } from "./OutlinePanel";
 import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
 import type { CollabComment } from "../types";
 import { AIDocumentReview } from "./AIDocumentReview";
 import { getCollabAIMenuItems } from "./aiMenuItems";
+import { TraceabilityPanel } from "@/extensions/workflow/TraceabilityPanel";
 import { BlockCommentAnchor } from "./BlockCommentAnchor";
 import { CommentSidebar } from "./CommentSidebar";
 import { InlineCommentThread } from "./InlineCommentThread";
@@ -26,6 +30,13 @@ import { useCollab } from "./useCollab";
 import { useComments } from "./useComments";
 import { useVersions } from "./useVersions";
 import { VersionPanel } from "./VersionPanel";
+import {
+  type TraceabilitySource,
+  registerTraceabilityPlugin,
+  updateTraceabilitySources,
+} from "./traceability-extension";
+import { registerHumanWrittenPlugin, resetHumanWrittenTracking } from "./human-written-plugin";
+import { workflowApi } from "@/extensions/workflow/api";
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
@@ -36,9 +47,16 @@ export interface BlockNoteEditorRef {
 interface BlockNoteEditorProps {
   documentId: string;
   initialContent?: string;
+  projectId?: string;
+  chapterId?: string;
+  /**
+   * Optional list of block IDs to show in the outline panel.
+   * When provided, only headings whose block ID is in this list will be displayed.
+   */
+  visibleChapterIds?: string[];
 }
 
-type SidePanel = "comments" | "versions" | "ai" | null;
+type SidePanel = "comments" | "versions" | "ai" | "traceability" | null;
 
 const COLLAB_USER_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6", "#3b82f6"];
 
@@ -79,52 +97,157 @@ class EditorErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-function CommentPopoverButton({ editor, onSubmit }: {
+function CommentToolbarButton({ editor, onOpen }: {
   editor: ReturnType<typeof useCreateBlockNote>;
-  onSubmit: (blockId: string, content: string) => Promise<void>;
+  onOpen: (savedRange: Range) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const Components = useComponentsContext();
-
-  const handleSubmit = async () => {
-    if (!text.trim()) return;
-    setSubmitting(true);
-    try {
-      const cursorBlock = editor.getTextCursorPosition().block;
-      await onSubmit(cursorBlock.id, text.trim());
-      setText("");
-      setOpen(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (!Components) return null;
 
+  // Intercept mousedown + click so BlockNote's toolbar controller never
+  // sees this interaction.  We save the selection range synchronously
+  // (before BlockNote can clear it) and pass it to onOpen.  The toolbar is
+  // dismissed programmatically after the popover mounts.
+  const blockToolbarEvents = (e: React.MouseEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    onOpen(range);
+    // Dismiss the formatting toolbar once React has flushed the popover
+    setTimeout(() => {
+      const editable = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
+      editable?.blur();
+    }, 80);
+  };
+
   return (
-    <Components.FormattingToolbar.Button
-      onClick={() => setOpen(!open)}
-      isSelected={open}
-      mainTooltip={"评论"}
+    <span
+      onMouseDown={blockToolbarEvents}
+      onMouseUp={blockToolbarEvents}
+      onClick={blockToolbarEvents}
     >
-      <MessageCircle className="w-4 h-4" />
-    </Components.FormattingToolbar.Button>
+      <Components.FormattingToolbar.Button
+        mainTooltip={"评论"}
+      >
+        <MessageSquare style={{ width: 14, height: 14 }} />
+      </Components.FormattingToolbar.Button>
+    </span>
   );
 }
 
 export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorProps>(
-  function BlockNoteEditor({ documentId, initialContent }, ref) {
+  function BlockNoteEditor({ documentId, initialContent, projectId, chapterId, visibleChapterIds }, ref) {
     const { ydoc, connected, synced, users, broadcastEvent } = useCollab(documentId);
     const { comments, createComment, resolveComment, reopenComment, deleteComment } = useComments(documentId, broadcastEvent);
     const { versions, loading: versionsLoading, createVersion, restoreVersion, diffResult, diffLoading, diffVersions } = useVersions(documentId);
     const { user: currentUser } = useAuth();
     const [sidePanel, setSidePanel] = useState<SidePanel>(null);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+    const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
     const [inlineThreadBlockId, setInlineThreadBlockId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const seededDocsRef = useRef<Set<string>>(new Set());
+
+    // Comment popover state (lifted above FormattingToolbar so it survives toolbar close)
+    const [commentOpen, setCommentOpen] = useState(false);
+    const [commentText, setCommentText] = useState("");
+    const [commentSubmitting, setCommentSubmitting] = useState(false);
+    const highlightRef = useRef<HTMLSpanElement | null>(null);
+    const popoverVirtualRef = useRef<{ getBoundingClientRect: () => DOMRect } | null>(null);
+
+    const applyHighlight = (savedRange: Range) => {
+      const rangeRect = savedRange.getBoundingClientRect();
+      try {
+        const span = document.createElement("span");
+        span.style.backgroundColor = "#fef9c3";
+        span.style.borderRadius = "2px";
+        span.dataset.collabCommentHighlight = "true";
+        savedRange.surroundContents(span);
+        highlightRef.current = span;
+        popoverVirtualRef.current = {
+          getBoundingClientRect: () => {
+            if (highlightRef.current?.isConnected) {
+              return highlightRef.current.getBoundingClientRect();
+            }
+            return rangeRect;
+          },
+        };
+      } catch {
+        // surroundContents fails when selection crosses element boundaries —
+        // fall back to the raw range rect so the popover still has an anchor
+        popoverVirtualRef.current = {
+          getBoundingClientRect: () => rangeRect,
+        };
+      }
+    };
+
+    const removeHighlight = () => {
+      const span = highlightRef.current;
+      if (span && span.parentNode) {
+        const parent = span.parentNode;
+        while (span.firstChild) {
+          parent.insertBefore(span.firstChild, span);
+        }
+        parent.removeChild(span);
+        parent.normalize();
+      }
+      highlightRef.current = null;
+      popoverVirtualRef.current = null;
+    };
+
+    const handleCommentOpen = (savedRange: Range) => {
+      const rangeRect = savedRange.getBoundingClientRect();
+      // Always provide a fallback so the popover has somewhere to anchor
+      const fallbackRect: DOMRect = (rangeRect.width > 0 ? rangeRect : {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 3,
+        width: 1,
+        height: 1,
+        top: window.innerHeight / 3,
+        right: window.innerWidth / 2 + 1,
+        bottom: window.innerHeight / 3 + 1,
+        left: window.innerWidth / 2,
+      }) as DOMRect;
+      popoverVirtualRef.current = {
+        getBoundingClientRect: () => fallbackRect,
+      };
+      applyHighlight(savedRange);
+      setCommentOpen(true);
+    };
+
+    const handleCommentOpenChange = (open: boolean) => {
+      if (!open) {
+        removeHighlight();
+        setCommentOpen(false);
+      }
+      // Opening is handled by handleCommentOpen (called from toolbar button)
+    };
+
+    const dismissToolbar = () => {
+      window.getSelection()?.removeAllRanges();
+      // Blur the editor's contenteditable element to dismiss the formatting toolbar
+      const editable = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
+      editable?.blur();
+    };
+
+    const handleCommentSubmit = async () => {
+      if (!commentText.trim()) return;
+      setCommentSubmitting(true);
+      try {
+        const cursorBlock = editor.getTextCursorPosition().block;
+        await createComment({ block_id: cursorBlock.id, content: commentText.trim() });
+        setCommentText("");
+        // Keep the highlight after submission so it persists as a visual
+        // indicator that the text has an associated comment.
+        setCommentOpen(false);
+        dismissToolbar();
+        setSidePanel("comments");
+      } finally {
+        setCommentSubmitting(false);
+      }
+    };
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -241,6 +364,55 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
       return unsubscribe;
     }, [editor]);
 
+    // ── Traceability: register ProseMirror plugins on mount ──
+    useEffect(() => {
+      const view = (editor as any)._tiptapEditor?.view;
+      if (view) {
+        registerTraceabilityPlugin(view);
+        registerHumanWrittenPlugin(view);
+      }
+    }, [editor]);
+
+    // ── Human-written: reset tracking when chapter changes ──
+    useEffect(() => {
+      const view = (editor as any)._tiptapEditor?.view;
+      if (view && chapterId) {
+        resetHumanWrittenTracking(view);
+      }
+    }, [editor, chapterId]);
+
+    // ── Traceability: fetch sources and push decorations ──
+    useEffect(() => {
+      if (!projectId || !chapterId) return;
+
+      let cancelled = false;
+      const view = (editor as any)._tiptapEditor?.view;
+      if (!view) return;
+
+      workflowApi
+        .getSources(projectId, chapterId)
+        .then((data) => {
+          if (cancelled) return;
+          const sources: TraceabilitySource[] = (data.sources || []).map(
+            (s: any, i: number) => ({
+              index: (s.blockIndex ?? i) + 1, // block_index is 0-based; markers are 1-based
+              sourceType: s.sourceType ?? "ai_generated",
+              sourceRef: s.sourceRef ?? "",
+              snippet: s.snippet ?? null,
+              confidence: s.confidence ?? null,
+            }),
+          );
+          updateTraceabilitySources(view, sources);
+        })
+        .catch((err) => {
+          console.warn("[BlockNoteEditor] Failed to fetch traceability sources:", err);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [projectId, chapterId, editor]);
+
     useImperativeHandle(ref, () => ({
       getMarkdown: () => {
         return editor.blocksToMarkdownLossy();
@@ -323,6 +495,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
 
     return (
       <div className="flex-1 flex h-full min-h-0">
+        {/* Left: Chapter outline */}
+        <OutlinePanel editor={editor} onChapterSelect={setSelectedChapterId} visibleChapterIds={visibleChapterIds} />
+
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-center justify-between px-4 py-2 border-b border-border">
             <div className="flex items-center gap-2">
@@ -342,6 +517,12 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                 onClick={() => setSidePanel(sidePanel === "ai" ? null : "ai")} title="AI 文档审查">
                 <Sparkles className="w-4 h-4" />
               </Button>
+              {projectId && (
+                <Button size="icon" variant={sidePanel === "traceability" ? "secondary" : "ghost"}
+                  onClick={() => setSidePanel(sidePanel === "traceability" ? null : "traceability")} title="溯源">
+                  <BookOpen className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -360,12 +541,9 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                     formattingToolbar={() => (
                       <FormattingToolbar>
                         {...getFormattingToolbarItems()}
-                        <CommentPopoverButton
+                        <CommentToolbarButton
                           editor={editor}
-                          onSubmit={async (blockId, content) => {
-                            await handleCreateComment(blockId, content);
-                            setSidePanel("comments");
-                          }}
+                          onOpen={handleCommentOpen}
                         />
                         <AIToolbarButton />
                       </FormattingToolbar>
@@ -407,6 +585,56 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                 />
               )}
             </div>
+
+            {/* Comment popover — rendered outside the formatting toolbar so it
+                survives the toolbar closing on click. Opens from the toolbar
+                button via handleCommentOpen.
+                PopoverAnchor uses a virtual ref tracking the highlight span
+                so the popover positions itself next to the selected text.
+                Always render the anchor (Radix needs a stable ref), and
+                pass the RefObject itself (not .current). */}
+            <Popover open={commentOpen} onOpenChange={handleCommentOpenChange} modal={false}>
+              <PopoverAnchor virtualRef={popoverVirtualRef} />
+              <PopoverContent className="w-72" align="center" side="bottom" sideOffset={8}>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">添加评论</p>
+                  <Textarea
+                    placeholder="输入评论内容..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        handleCommentSubmit();
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        removeHighlight();
+                        setCommentText("");
+                        setCommentOpen(false);
+                        dismissToolbar();
+                      }}
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleCommentSubmit}
+                      disabled={commentSubmitting || !commentText.trim()}
+                    >
+                      {commentSubmitting ? "提交中..." : "提交评论"}
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -451,6 +679,19 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                   setSidePanel("comments");
                 }}
               />
+            </div>
+          </div>
+        )}
+        {sidePanel === "traceability" && projectId && (
+          <div className="w-80 border-l border-border bg-background flex flex-col h-full">
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <span className="font-medium text-sm">溯源</span>
+              <Button size="icon" variant="ghost" onClick={() => setSidePanel(null)}>
+                ×
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <TraceabilityPanel projectId={projectId} chapterId={selectedChapterId} />
             </div>
           </div>
         )}

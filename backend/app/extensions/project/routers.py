@@ -80,6 +80,7 @@ async def create_project(
         name=body.name,
         report_type=body.report_type,
         template_id=body.template_id,
+        workflow_id=body.workflow_id,
         created_by=_user.id,
     )
 

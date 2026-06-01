@@ -1,7 +1,7 @@
 "use client";
 
-import { Eye, GitCompare, History, RotateCcw, Save } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Eye, GitCompare, History, RotateCcw, Save, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,7 @@ interface VersionPanelProps {
   loading: boolean;
   diffLoading: boolean;
   diffResult: VersionDiffResponse | null;
-  onCreateVersion: (summary?: string) => Promise<void>;
+  onCreateVersion: (summary?: string, generateAiSummary?: boolean) => Promise<void>;
   onRestoreVersion: (version: number) => Promise<void>;
   onPreviewVersion: (version: number) => Promise<void>;
   onDiffVersions: (from: number, to: number) => Promise<void>;
@@ -34,6 +34,9 @@ export function VersionPanel({
 }: VersionPanelProps) {
   const [diffMode, setDiffMode] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
+  const [aiSummaryEnabled, setAiSummaryEnabled] = useState(false);
+  const onDiffVersionsRef = useRef(onDiffVersions);
+  onDiffVersionsRef.current = onDiffVersions;
 
   // Reset selection when exiting diff mode
   useEffect(() => {
@@ -60,9 +63,9 @@ export function VersionPanel({
   // Auto-trigger diff when 2 versions are selected
   useEffect(() => {
     if (diffMode && selectedVersions.length === 2) {
-      void onDiffVersions(selectedVersions[0]!, selectedVersions[1]!);
+      void onDiffVersionsRef.current(selectedVersions[0]!, selectedVersions[1]!);
     }
-  }, [diffMode, selectedVersions, onDiffVersions]);
+  }, [diffMode, selectedVersions]);
 
   return (
     <div className="w-80 border-l border-border flex flex-col h-full bg-background">
@@ -88,11 +91,26 @@ export function VersionPanel({
         </div>
       </div>
 
-      <div className="p-3 border-b border-border">
-        <Button size="sm" className="w-full" variant="outline" onClick={() => onCreateVersion()}>
+      <div className="p-3 border-b border-border space-y-2">
+        <Button
+          size="sm"
+          className="w-full"
+          variant="outline"
+          onClick={() => onCreateVersion(undefined, aiSummaryEnabled)}
+        >
           <Save className="w-3 h-3 mr-1" />
           保存当前版本
         </Button>
+        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={aiSummaryEnabled}
+            onChange={(e) => setAiSummaryEnabled(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-border"
+          />
+          <Sparkles className="w-3 h-3" />
+          AI 生成变更摘要
+        </label>
       </div>
 
       {diffMode && (

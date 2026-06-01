@@ -1,0 +1,189 @@
+<h2>设计 Section 3: 工作流执行引擎</h2>
+<p class="subtitle">Temporal DynamicGraphWorkflow 解释器 + 三大核心流程</p>
+
+<div class="mockup">
+  <div class="mockup-header">引擎核心：DAG → Temporal Workflow 映射</div>
+  <div class="mockup-body" style="padding: 20px; font-size: 13px;">
+
+    <div style="padding: 12px; background: #eff6ff; border-radius: 8px; margin-bottom: 16px;">
+      <strong>设计思路：</strong>DAG JSON 存在应用库，Temporal 只负责执行。
+      <code style="background: #e0e7ff; padding: 2px 6px; border-radius: 3px;">DynamicGraphWorkflow</code> 是一个通用工作流，读取 DAG JSON 拓扑排序后逐步执行节点。
+    </div>
+
+    <!-- DAG Node Types -->
+    <h4 style="margin-bottom: 8px;">DAG 节点类型 → Temporal 行为映射</h4>
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e5e7eb; background: #f8fafc;">
+          <th style="padding: 8px; text-align: left;">节点类型</th>
+          <th style="padding: 8px; text-align: left;">Temporal 行为</th>
+          <th style="padding: 8px; text-align: left;">信号/等待机制</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f3f4f6;">
+          <td style="padding: 8px;"><strong>phase</strong></td>
+          <td style="padding: 8px;">执行阶段 Activity（创建子项目、分配团队、AI 撰写）</td>
+          <td style="padding: 8px;">wait_condition 等待 phase:complete 信号</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f3f4f6;">
+          <td style="padding: 8px;"><strong>review</strong></td>
+          <td style="padding: 8px;">创建审核分配（phase_reviews），等待所有人完成</td>
+          <td style="padding: 8px;">wait_condition 等待 review:complete 信号<br><span style="color: #ef4444;">rejected → 沿边回退到目标节点</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f3f4f6;">
+          <td style="padding: 8px;"><strong>condition</strong></td>
+          <td style="padding: 8px;">评估表达式，选择分支</td>
+          <td style="padding: 8px;">无等待，立即路由</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f3f4f6;">
+          <td style="padding: 8px;"><strong>ai_generate</strong></td>
+          <td style="padding: 8px;">调用 DeerFlow Agent 撰写章节</td>
+          <td style="padding: 8px;">wait_condition 等待 ai:complete 信号</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px;"><strong>merge</strong></td>
+          <td style="padding: 8px;">汇聚并行分支的输出，作为下一阶段的上下文</td>
+          <td style="padding: 8px;">wait_condition 等待所有上游分支完成</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<!-- Three core flows -->
+<h3 style="margin-top: 24px;">三大核心流程</h3>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 12px;">
+
+  <!-- Flow 1: Multi-Phase -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #faf5ff; border-color: #8b5cf6;">
+      <span style="color: #6d28d9;">Flow 1: 多阶段项目（串行 + 并行 + 上下文传递）</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 2;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">阶段A</div>
+              <div style="color: #6b7280; font-size: 12px;">→ Activity: init_phase(team-a, chapters-a)</div>
+              <div style="color: #6b7280; font-size: 12px;">→ wait signal: phase:complete</div>
+            </div>
+            <div style="text-align: center; color: #6b7280; font-size: 12px;">↓ 自动传递上下文 ↓</div>
+            <div style="display: flex; gap: 8px;">
+              <div style="flex: 1; background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; text-align: center;">阶段B<br><span style="font-size: 10px;">asyncio.gather()</span></div>
+              <div style="flex: 1; background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; text-align: center;">阶段C<br><span style="font-size: 10px;">asyncio.gather()</span></div>
+            </div>
+            <div style="text-align: center; color: #6b7280; font-size: 12px;">↓ merge 节点汇聚 ↓</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="background: #8b5cf6; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">阶段D</div>
+              <div style="color: #6b7280; font-size: 12px;">→ 上下文包含 B+C 全部输出</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 12px;">
+          <strong style="color: #166534;">上下文传递机制</strong>
+          <div style="margin-top: 6px;">
+            每个阶段完成时，Activity 将阶段产物（章节内容、关键结论、数据摘要）写入 <code style="background: #dcfce7; padding: 1px 4px; border-radius: 2px;">phase_context</code> JSON 字段。<br><br>
+            下游阶段启动时，Temporal 将上游 context 作为输入传给 Activity。<br><br>
+            并行汇聚时，merge 节点合并所有上游 context 为数组。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow 2: Traceability -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #fff7ed; border-color: #f59e0b;">
+      <span style="color: #92400e;">Flow 2: AI 内容溯源（段落级）</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 1;">
+          <strong>溯源采集流程：</strong>
+          <ol style="margin: 8px 0 0 16px; font-size: 12px; line-height: 1.8;">
+            <li><strong>Agent 生成内容时</strong>：report-write Skill 要求 AI 在输出中标注 <code>[source:type:id]</code> 标记</li>
+            <li><strong>写入章节时</strong>：MCP write_chapter Activity 解析标记，提取到 content_sources 表</li>
+            <li><strong>编辑器展示时</strong>：BlockNote 自定义扩展渲染溯源标注（类似 Wikipedia 脚注）</li>
+            <li><strong>人工编辑时</strong>：自动标记为 human_written 类型</li>
+          </ol>
+        </div>
+        <div style="flex: 1;">
+          <div style="padding: 12px; background: #1e293b; border-radius: 8px; color: #e2e8f0; font-family: monospace; font-size: 11px; line-height: 1.6;">
+            <div style="color: #94a3b8;">// AI 生成时的标注格式</div>
+            <div>该区域 SO₂ 日均浓度为</div>
+            <div style="background: #422006; padding: 2px 4px; border-radius: 3px;">0.045mg/m³<sup style="color: #fbbf24;">[1]</sup></div>
+            <div>，低于国家标准限值</div>
+            <div style="background: #422006; padding: 2px 4px; border-radius: 3px;">0.15mg/m³<sup style="color: #fbbf24;">[2]</sup></div>
+            <div style="margin-top: 8px; color: #94a3b8;">// 溯源脚注（自动提取到 content_sources）</div>
+            <div style="color: #fbbf24;">[1] 知识库「监测数据库」/ 文档「2024年度监测报告.pdf」p.23</div>
+            <div style="color: #fbbf24;">[2] 法规库 / GB 3095-2012 表2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow 3: Multi-Reviewer -->
+  <div class="mockup">
+    <div class="mockup-header" style="background: #fef2f2; border-color: #ef4444;">
+      <span style="color: #991b1b;">Flow 3: 多人分章节/维度混合审核</span>
+    </div>
+    <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 1;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <div style="flex: 1; padding: 8px; background: #dbeafe; border-radius: 6px; font-size: 12px; text-align: center;">
+              <strong>模式A: 按章节</strong><br>
+              <span style="color: #6b7280;">review_type=chapter</span><br>
+              张三→第1-3章<br>
+              李四→第4-6章
+            </div>
+            <div style="flex: 1; padding: 8px; background: #fef3c7; border-radius: 6px; font-size: 12px; text-align: center;">
+              <strong>模式B: 按维度</strong><br>
+              <span style="color: #6b7280;">review_type=dimension</span><br>
+              张三→技术维度<br>
+              李四→合规维度
+            </div>
+            <div style="flex: 1; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; text-align: center;">
+              <strong>模式C: 混合</strong><br>
+              <span style="color: #6b7280;">同一个 review 节点</span><br>
+              既有章节分配<br>
+              也有维度分工
+            </div>
+          </div>
+          <div style="font-size: 12px; padding: 8px; background: #f8fafc; border-radius: 6px;">
+            <strong>Temporal 执行逻辑：</strong>
+            <ol style="margin: 4px 0 0 16px; line-height: 1.8;">
+              <li>review 节点 Activity 创建 N 条 phase_records</li>
+              <li>Temporal wait_condition 等待所有 records 完成</li>
+              <li>任一 rejected → signal 回退到配置的目标阶段</li>
+              <li>全部 approved → 工作流推进到下游节点</li>
+            </ol>
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <div style="font-size: 12px;">
+            <strong>phase_reviews 表查询示例：</strong>
+            <div style="padding: 8px; background: #1e293b; border-radius: 6px; color: #e2e8f0; font-family: monospace; margin-top: 6px; font-size: 11px;">
+              <div style="color: #94a3b8;">-- 按章节审核</div>
+              <div>WHERE phase_node='review-1'</div>
+              <div>  AND project_id='...'</div>
+              <div>  AND review_type='chapter'</div>
+              <div>  AND chapter_id IS NOT NULL</div>
+              <div style="margin-top: 6px; color: #94a3b8;">-- 按维度审核</div>
+              <div>WHERE phase_node='review-1'</div>
+              <div>  AND project_id='...'</div>
+              <div>  AND review_type='dimension'</div>
+              <div>  AND dimension='compliance'</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

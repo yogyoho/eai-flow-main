@@ -1,0 +1,617 @@
+Failed to proxy http://127.0.0.1:8001/api/extensions/users/me Error: connect ECONNREFUSED 127.0.0.1:8001
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8001) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8001
+}
+Error: connect ECONNREFUSED 127.0.0.1:8001
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8001) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8001
+}
+Failed to proxy http://127.0.0.1:8001/api/v1/auth/login/local Error: connect ECONNREFUSED 127.0.0.1:8001
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8001) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8001
+}
+Error: connect ECONNREFUSED 127.0.0.1:8001
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8001) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8001
+}
+[browser] [tiptap warn]: Duplicate extension names found: ['link', 'underline']. This can lead to issues.
+[browser] Uncaught ReferenceError: BlockNoteViewRaw is not defined
+    at BlockNoteEditor (src/extensions/collab/BlockNoteEditor.tsx:259:18)
+    at CollabEditor (src/extensions/collab/BlockNoteEditor.tsx:108:38)
+    at DocumentEditor (src/extensions/docmgr/DocumentManagement.tsx:962:15)
+    at DocumentManagement (src/extensions/docmgr/DocumentManagement.tsx:57:13)
+    at DocMgrContent (src/app/docmgr/page.tsx:12:10)
+    at DocMgrPage (src/app/docmgr/page.tsx:19:9)
+  257 |             <div className="mx-auto px-8 pt-10 pb-32 relative" style={{ maxWidth: 780 }}>
+  258 |               <EditorErrorBoundary fallback={<div className="text-muted-foreground text-s...
+> 259 |                 <BlockNoteViewRaw editor={editor} />
+      |                  ^
+  260 |               </EditorErrorBoundary>
+  261 |
+  262 |               {/* Comment anchors for each block with unresolved comments */}
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+[browser] ./src/extensions/collab/BlockNoteEditor.tsx:4:1
+Export BlockNoteView doesn't exist in target module
+  2 |
+  3 | import "./patch-prosemirror";
+> 4 | import { useCreateBlockNote, BlockNoteView } from "@blocknote/react";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import "@blocknote/react/style.css";
+  7 | import { MessageSquare, History, Sparkles } from "lucide-react";
+
+The export BlockNoteView was not found in module [project]/node_modules/.pnpm/@blocknote+react@0.51.3_@fl_4ffcbd5414f4265a563b17a9e4f78e07/node_modules/@blocknote/react/dist/blocknote-react.js [app-client] (ecmascript).
+Did you mean to import BlockNoteViewRaw?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  Client Component Browser:
+    ./src/extensions/collab/BlockNoteEditor.tsx [Client Component Browser]
+    ./src/extensions/collab/CollabEditor.tsx [Client Component Browser]
+    ./src/extensions/docmgr/DocumentManagement.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Client Component Browser]
+    ./src/app/docmgr/page.tsx [Server Component] 
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+    at Set.forEach (<anonymous>) (<anonymous>)

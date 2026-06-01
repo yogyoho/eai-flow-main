@@ -82,6 +82,7 @@ export interface CreateProjectRequest {
   name: string;
   reportType: ReportType;
   templateId?: string | null;
+  workflowId?: string | null;
   members?: { userId: string; role: MemberRole }[];
 }
 

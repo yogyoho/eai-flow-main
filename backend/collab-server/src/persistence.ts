@@ -59,6 +59,47 @@ export async function createVersion(
   return result.rows[0]?.version || 1;
 }
 
+export async function getDocumentVersion(docId: string): Promise<number> {
+  const result = await pool.query(
+    "SELECT version FROM collab_documents WHERE doc_id = $1",
+    [docId],
+  );
+  return result.rows[0]?.version || 0;
+}
+
+export async function loadMarkdownForDoc(docId: string): Promise<string | null> {
+  const result = await pool.query(
+    "SELECT content, doc_type, file_ref_path FROM ai_documents WHERE id = $1",
+    [docId],
+  );
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+
+  if (row.content) return row.content;
+
+  if (row.doc_type === "file_ref" && row.file_ref_path) {
+    try {
+      const fs = await import("fs");
+      if (fs.existsSync(row.file_ref_path)) {
+        const stat = fs.statSync(row.file_ref_path);
+        if (stat.size <= 10 * 1024 * 1024) {
+          return fs.readFileSync(row.file_ref_path, "utf-8");
+        }
+      }
+    } catch { /* file missing or unreadable */ }
+  }
+
+  return null;
+}
+
+export async function hasCollabData(docId: string): Promise<boolean> {
+  const result = await pool.query(
+    "SELECT 1 FROM collab_documents WHERE doc_id = $1",
+    [docId],
+  );
+  return result.rows.length > 0;
+}
+
 export async function canAccessDocument(userId: string, docId: string): Promise<boolean> {
   // The userId comes from Gateway Auth JWT (sub field) and is the Gateway's internal user ID,
   // which differs from the Extensions PostgreSQL user ID. We resolve by:

@@ -30,6 +30,7 @@ from app.gateway.routers import (
 from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.routers import router as docmgr_router
 from app.extensions.docmgr.collab_routers import router as collab_router
+from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.database import init_db, migrate_db, seed_db
 from app.extensions.user.routers import router as user_router
@@ -44,6 +45,8 @@ from app.extensions.project import router as project_router
 from app.extensions.approval import router as approval_router
 from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.workflow import router as workflow_router
+from app.extensions.workflow.timeline.routers import router as timeline_router
+from app.extensions.dashboard.routers import router as dashboard_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -438,6 +441,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Collab API (comments + versions) is mounted at /api/extensions/docmgr
     app.include_router(collab_router)
 
+    # Collab AI Chat — proxied through nginx, uses default_model from Settings
+    app.include_router(collab_ai_chat_router)
+
     # Knowledge Bases API is mounted at /knowledge
     app.include_router(knowledge_router)
 
@@ -464,6 +470,12 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Workflow definition API is mounted at /api/extensions/workflow
     app.include_router(workflow_router)
+
+    # Project timeline API is mounted at /api/extensions/workflow/projects/{project_id}/timeline
+    app.include_router(timeline_router)
+
+    # Dashboard (task console, stats, calendar, notifications)
+    app.include_router(dashboard_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:

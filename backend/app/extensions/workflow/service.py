@@ -1,4 +1,13 @@
 from collections import defaultdict
+from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .models import WorkflowDefinition
+
+
+# ── DAG Validation ──
 
 
 def validate_dag(graph: dict) -> dict:
@@ -85,3 +94,94 @@ def topological_sort(graph: dict) -> list[str]:
                 queue.append(neighbor)
 
     return result
+
+
+# ── Workflow Definition CRUD ──
+
+
+async def list_definitions(
+    db: AsyncSession,
+    is_template: bool | None = None,
+    report_type: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> tuple[list[WorkflowDefinition], int]:
+    """List workflow definitions with optional filters. Returns (items, total)."""
+    stmt = select(WorkflowDefinition)
+    count_stmt = select(func.count()).select_from(WorkflowDefinition)
+
+    if is_template is not None:
+        stmt = stmt.where(WorkflowDefinition.is_template == is_template)
+        count_stmt = count_stmt.where(WorkflowDefinition.is_template == is_template)
+    if report_type is not None:
+        stmt = stmt.where(WorkflowDefinition.report_type == report_type)
+        count_stmt = count_stmt.where(WorkflowDefinition.report_type == report_type)
+
+    total = (await db.execute(count_stmt)).scalar_one()
+    stmt = stmt.order_by(WorkflowDefinition.created_at.desc()).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all(), total
+
+
+async def get_definition(db: AsyncSession, definition_id: UUID) -> WorkflowDefinition | None:
+    """Get a single workflow definition by ID."""
+    return await db.get(WorkflowDefinition, definition_id)
+
+
+async def create_definition(
+    db: AsyncSession,
+    name: str,
+    graph_json: dict,
+    created_by: UUID,
+    report_type: str | None = None,
+    is_template: bool = False,
+) -> WorkflowDefinition:
+    """Create a new workflow definition."""
+    definition = WorkflowDefinition(
+        name=name,
+        report_type=report_type,
+        graph_json=graph_json,
+        is_template=is_template,
+        created_by=created_by,
+    )
+    db.add(definition)
+    await db.commit()
+    await db.refresh(definition)
+    return definition
+
+
+async def update_definition(
+    db: AsyncSession,
+    definition_id: UUID,
+    update_data: dict,
+) -> WorkflowDefinition | None:
+    """Update an existing workflow definition. Returns None if not found."""
+    definition = await db.get(WorkflowDefinition, definition_id)
+    if not definition:
+        return None
+    for key, value in update_data.items():
+        setattr(definition, key, value)
+    await db.commit()
+    await db.refresh(definition)
+    return definition
+
+
+async def delete_definition(db: AsyncSession, definition_id: UUID) -> bool:
+    """Delete a workflow definition. Returns True if deleted, False if not found."""
+    definition = await db.get(WorkflowDefinition, definition_id)
+    if not definition:
+        return False
+    await db.delete(definition)
+    await db.commit()
+    return True
+
+
+async def publish_as_template(db: AsyncSession, definition_id: UUID) -> WorkflowDefinition | None:
+    """Mark a workflow definition as a published template."""
+    definition = await db.get(WorkflowDefinition, definition_id)
+    if not definition:
+        return None
+    definition.is_template = True
+    await db.commit()
+    await db.refresh(definition)
+    return definition

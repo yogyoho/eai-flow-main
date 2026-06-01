@@ -1,6 +1,6 @@
 // ── DAG Node Types ──
 
-export type DAGNodeType = "phase" | "review" | "condition" | "ai_generate" | "merge";
+export type DAGNodeType = "phase" | "review" | "condition" | "ai_generate" | "merge" | "sub_workflow";
 
 export interface DAGNodeData {
   label: string;
@@ -10,6 +10,8 @@ export interface DAGNodeData {
   inputFrom?: string[];
   mode?: "chapter" | "dimension" | "mixed";
   expression?: string;
+  /** Embedded sub-workflow graph definition (for sub_workflow nodes). */
+  graphJson?: WorkflowGraph;
   [key: string]: unknown;
 }
 

@@ -1,0 +1,105 @@
+<h2>设计 Section 1: 整体架构</h2>
+<p class="subtitle">Temporal + 现有系统的集成拓扑</p>
+
+<div class="mockup">
+  <div class="mockup-header">运行时架构（新增部分标紫）</div>
+  <div class="mockup-body" style="padding: 24px; font-size: 13px;">
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Layer 1: Browser -->
+      <div style="padding: 16px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px;">
+        <strong style="color: #1d4ed8;">Browser</strong>
+        <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            React Flow 工作流编辑器<br><span style="font-size: 11px; color: #6b7280;">拖拽编排阶段/审核/AI节点</span>
+          </div>
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            BlockNote 协作编辑器<br><span style="font-size: 11px; color: #6b7280;">段落溯源标注、评论</span>
+          </div>
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            审核工作台<br><span style="font-size: 11px; color: #6b7280;">按章节/维度审核</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 2: Existing infra -->
+      <div style="display: flex; gap: 12px; align-items: center; justify-content: center; color: #6b7280; font-size: 12px;">
+        ↓ Nginx :2026 ↓
+      </div>
+
+      <!-- Layer 3: Backend -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <!-- Existing -->
+        <div style="flex: 1; min-width: 200px; padding: 16px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px;">
+          <strong style="color: #166534;">Gateway FastAPI (:8001)</strong>
+          <div style="margin-top: 8px; font-size: 12px;">
+            <div>✅ 现有 routers (docmgr, project, auth...)</div>
+            <div>✅ DeerFlow Agent 运行时</div>
+            <div>✅ Hocuspocus 协作服务</div>
+          </div>
+        </div>
+        <!-- NEW -->
+        <div style="flex: 1; min-width: 200px; padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+          <strong style="color: #6d28d9;">🆕 Workflow Service</strong>
+          <div style="margin-top: 8px; font-size: 12px;">
+            <div>• Temporal Client (启动/查询工作流)</div>
+            <div>• Workflow API routers</div>
+            <div>• Activity 实现 (DB操作、AI调用)</div>
+            <div>• 嵌入式 Worker (同进程)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 4: Temporal -->
+      <div style="padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+        <strong style="color: #6d28d9;">🆕 Temporal Server (:7233)</strong>
+        <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #c4b5fd; font-size: 12px;">
+            temporal-postgresql<br><span style="color: #6b7280; font-size: 11px;">Temporal 自身持久化</span>
+          </div>
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #c4b5fd; font-size: 12px;">
+            temporal-auto-setup<br><span style="color: #6b7280; font-size: 11px;">Server + 自动建库</span>
+          </div>
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #c4b5fd; font-size: 12px;">
+            temporal-ui (:8080)<br><span style="color: #6b7280; font-size: 11px;">工作流监控面板</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 5: App DB -->
+      <div style="padding: 16px; background: #fefce8; border: 2px solid #eab308; border-radius: 8px;">
+        <strong style="color: #854d0e;">PostgreSQL (应用库)</strong>
+        <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px;">
+          <div>✅ report_projects</div>
+          <div>✅ project_chapters</div>
+          <div>✅ approval_workflows</div>
+          <div style="color: #6d28d9;">🆕 workflow_definitions (DAG JSON)</div>
+          <div style="color: #6d28d9;">🆕 workflow_instances</div>
+          <div style="color: #6d28d9;">🆕 content_sources (溯源)</div>
+          <div style="color: #6d28d9;">🆕 phase_review_assignments</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 24px;">核心设计原则</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+  <div style="padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <strong>1. 工作流定义 vs 执行分离</strong>
+    <p style="font-size: 13px; margin-top: 4px;">DAG JSON 存在应用库，Temporal 只管执行。用户编辑的是 JSON，不是 Temporal 工作流代码。</p>
+  </div>
+  <div style="padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <strong>2. 现有模型扩展而非替换</strong>
+    <p style="font-size: 13px; margin-top: 4px;">ReportProject 保留但增加 workflow_id。阶段从硬编码 6 步变为由工作流定义驱动。</p>
+  </div>
+  <div style="padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <strong>3. Activity 做所有副作用</strong>
+    <p style="font-size: 13px; margin-top: 4px;">Temporal Workflow 内不做 DB 操作。所有 DB/AI/通知操作都在 Activity 中执行。</p>
+  </div>
+  <div style="padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <strong>4. 渐进式部署</strong>
+    <p style="font-size: 13px; margin-top: 4px;">Temporal 可独立启停。工作流定义存在应用库，即使 Temporal 未启动也能查看配置。</p>
+  </div>
+</div>

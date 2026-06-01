@@ -673,3 +673,31 @@ class ApprovalRecord(Base):
 
     def __repr__(self) -> str:
         return f"<ApprovalRecord(id={self.id}, action={self.action})>"
+
+
+class Notification(Base):
+    """In-app notification for users."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="notifications")
+
+    def __repr__(self) -> str:
+        return f"<Notification(id={self.id}, type={self.type}, title={self.title})>"
+
+
+User.notifications: Mapped[list["Notification"]] = relationship(
+    "Notification",
+    back_populates="user",
+    cascade="all, delete-orphan",
+)

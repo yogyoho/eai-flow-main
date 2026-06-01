@@ -956,17 +956,64 @@ async def migrate_db() -> None:
         ))
 
         # --- Extend Department with unit_type and metadata ---
-        _add_column_if_not_exists(cur, "departments", "unit_type", "VARCHAR(20) NOT NULL DEFAULT 'internal'")
-        _add_column_if_not_exists(cur, "departments", "metadata", "JSONB")
+        await conn.execute(text(
+            "ALTER TABLE departments ADD COLUMN IF NOT EXISTS unit_type VARCHAR(20) NOT NULL DEFAULT 'internal'"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE departments ADD COLUMN IF NOT EXISTS metadata JSONB"
+        ))
 
         # --- Extend project_members with phase_duties and source_org_unit_id ---
-        _add_column_if_not_exists(cur, "project_members", "source_org_unit_id", "UUID REFERENCES departments(id)")
-        _add_column_if_not_exists(cur, "project_members", "phase_duties", "JSONB")
+        await conn.execute(text(
+            "ALTER TABLE project_members ADD COLUMN IF NOT EXISTS source_org_unit_id UUID REFERENCES departments(id)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE project_members ADD COLUMN IF NOT EXISTS phase_duties JSONB"
+        ))
 
         # --- Add composite indexes for existing tables ---
-        cur.execute(text(
+        await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_content_sources_chapter_block "
             "ON content_sources (chapter_id, block_index)"
+        ))
+
+        # --- Notifications table ---
+
+        # --- Project timeline table ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS project_timeline (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id),
+                phase_node VARCHAR(50) NOT NULL,
+                planned_start DATE,
+                planned_end DATE,
+                actual_start DATE,
+                actual_end DATE,
+                depends_on JSONB,
+                milestones JSONB,
+                progress_pct INTEGER NOT NULL DEFAULT 0,
+                owner_id UUID REFERENCES users(id)
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_project_timeline_project ON project_timeline(project_id, phase_node)"
+        ))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL REFERENCES users(id),
+                type VARCHAR(50) NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                body TEXT,
+                project_id UUID,
+                link VARCHAR(500),
+                is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, is_read, created_at DESC)"
         ))
 
 
