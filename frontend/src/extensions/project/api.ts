@@ -6,6 +6,7 @@ import type {
   ApprovalStatusResponse,
   CreateProjectRequest,
   ProjectListItem,
+  ProjectPermissions,
   ReportProject,
   UpdateProjectRequest,
 } from "./types";
@@ -120,5 +121,14 @@ export const projectApi = {
       `${API_BASE}/projects/${projectId}/approval-status`,
     );
     return toCamelCase<ApprovalStatusResponse>(data);
+  },
+
+  // ── Permissions ──
+
+  getMyPermissions: async (projectId: string): Promise<ProjectPermissions> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/my-permissions`,
+    );
+    return toCamelCase<ProjectPermissions>(data);
   },
 };

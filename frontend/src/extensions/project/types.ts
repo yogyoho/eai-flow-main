@@ -150,3 +150,12 @@ export interface ApprovalStatusResponse {
   steps: ApprovalWorkflowWithRecords[];
   allApproved: boolean;
 }
+
+// ── Project Permissions ──
+
+export interface ProjectPermissions {
+  role: string | null;
+  permissions: string[];
+  phaseDuties: Record<string, { duty: string; role?: string }> | null;
+  isAdmin: boolean;
+}
