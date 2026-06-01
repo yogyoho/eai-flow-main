@@ -31,6 +31,14 @@ export const workflowApi = {
     return toCamelCase<WorkflowDefinitionListResponse>(data);
   },
 
+  listTemplates: async (reportType?: string): Promise<WorkflowDefinitionListResponse> => {
+    const query = new URLSearchParams();
+    query.set("is_template", "true");
+    if (reportType) query.set("report_type", reportType);
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions?${query}`);
+    return toCamelCase<WorkflowDefinitionListResponse>(data);
+  },
+
   get: async (id: string): Promise<WorkflowDefinition> => {
     const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}`);
     return toCamelCase<WorkflowDefinition>(data);
@@ -62,6 +70,21 @@ export const workflowApi = {
       body: JSON.stringify(graph),
     });
     return toCamelCase<DAGValidationResult>(data);
+  },
+
+  publishTemplate: async (id: string): Promise<WorkflowDefinition> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}/publish-template`, {
+      method: "POST",
+    });
+    return toCamelCase<WorkflowDefinition>(data);
+  },
+
+  unpublishTemplate: async (id: string): Promise<WorkflowDefinition> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ is_template: false }),
+    });
+    return toCamelCase<WorkflowDefinition>(data);
   },
 
   // ── Traceability / Sources ──

@@ -147,7 +147,7 @@ export default function LandingNew() {
             ) : (
               <button
                 onClick={() => router.push("/login")}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-all duration-200 font-medium"
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm whitespace-nowrap"
               >
                 <LogIn className="w-4 h-4" />
                 登录

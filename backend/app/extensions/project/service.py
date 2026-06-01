@@ -298,6 +298,7 @@ async def create_project(
     report_type: str,
     created_by=None,
     template_id=None,
+    workflow_id=None,
 ) -> ProjectOut:
     has_template = bool(template_id)
     project = ReportProject(
@@ -305,6 +306,7 @@ async def create_project(
         report_type=report_type,
         created_by=created_by,
         template_id=template_id,
+        workflow_id=workflow_id,
         status="active",
     )
     db.add(project)
@@ -521,6 +523,57 @@ async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
         "steps": steps,
         "all_approved": len(steps) > 0 and all(s.status == "approved" for s in steps),
     }
+
+
+# ── Project file aggregation ──
+
+
+# ── Chapter updates ──
+
+
+async def update_chapter(db: AsyncSession, chapter_id, **kwargs) -> ProjectChapter | None:
+    """Update a chapter's fields and auto-parse traceability sources if content changes."""
+    chapter = await db.get(ProjectChapter, chapter_id)
+    if not chapter:
+        return None
+
+    content_changed = "content" in kwargs and kwargs["content"] != chapter.content
+
+    for k, v in kwargs.items():
+        setattr(chapter, k, v)
+
+    await db.flush()
+
+    if content_changed and chapter.content:
+        await _auto_parse_sources(db, chapter_id, chapter.content)
+
+    return chapter
+
+
+async def _auto_parse_sources(db: AsyncSession, chapter_id, content: str) -> None:
+    """Parse [source:type:ref] markers and persist to content_sources table."""
+    from app.extensions.workflow.traceability import parse_source_markers
+    from app.extensions.workflow.models import ContentSource
+
+    parsed = parse_source_markers(content)
+    if not parsed:
+        return
+
+    await db.execute(
+        ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id)
+    )
+
+    for s in parsed:
+        source = ContentSource(
+            chapter_id=chapter_id,
+            block_index=s.block_index,
+            source_type=s.source_type,
+            source_ref=s.source_ref,
+            snippet=s.snippet,
+        )
+        db.add(source)
+
+    await db.flush()
 
 
 # ── Project file aggregation ──

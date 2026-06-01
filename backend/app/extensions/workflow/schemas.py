@@ -56,11 +56,6 @@ class WorkflowStartRequest(BaseModel):
     workflow_id: UUID
 
 
-class WorkflowSignalRequest(BaseModel):
-    signal_name: str
-    signal_payload: dict | None = None
-
-
 class ContentSourceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -159,3 +154,9 @@ class WorkflowStatusResponse(BaseModel):
     current_phase_node: str | None = None
     status: str = "idle"  # idle | running | completed | failed
     nodes: list[WorkflowNodeStatus] = Field(default_factory=list)
+
+
+class WorkflowSignalRequest(BaseModel):
+    """Send a signal to a running Temporal workflow."""
+    signal_name: str = Field(..., min_length=1)
+    args: dict = Field(default_factory=dict)

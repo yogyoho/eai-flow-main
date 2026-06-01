@@ -54,6 +54,14 @@ _AUTH_EXEMPT_PATHS: frozenset[str] = frozenset(
     }
 )
 
+# POST endpoints that don't modify server state (proxies, searches, etc.)
+# and are safe to exempt from CSRF double-submit cookie check.
+_CSRF_EXEMPT_PATHS: frozenset[str] = frozenset(
+    {
+        "/api/collab/ai-chat",
+    }
+)
+
 
 def is_auth_endpoint(request: Request) -> bool:
     """Check if the request is to an auth endpoint.
@@ -179,6 +187,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         _is_auth = is_auth_endpoint(request)
+        _is_csrf_exempt = request.url.path.rstrip("/") in _CSRF_EXEMPT_PATHS
 
         if should_check_csrf(request) and _is_auth and not is_allowed_auth_origin(request):
             return JSONResponse(
@@ -186,7 +195,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Cross-site auth request denied."},
             )
 
-        if should_check_csrf(request) and not _is_auth:
+        if should_check_csrf(request) and not _is_auth and not _is_csrf_exempt:
             cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
             header_token = request.headers.get(CSRF_HEADER_NAME)
 

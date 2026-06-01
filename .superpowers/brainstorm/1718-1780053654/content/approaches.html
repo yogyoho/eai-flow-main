@@ -1,0 +1,143 @@
+<h2>三种架构方案对比</h2>
+<p class="subtitle">核心决策：自研 vs 集成 vs 混合 — 点击选择你倾向的方案</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>集成 Temporal.io 工作流引擎</h3>
+      <p><strong>思路：</strong>用 Temporal 作为工作流运行时，前端用 React Flow 构建可视化编辑器，后端通过 Temporal SDK 定义工作流。报告项目是 Temporal 工作流的一个实例。</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros">
+          <h4>优势</h4>
+          <ul>
+            <li>生产级工作流引擎，可靠的状态持久化</li>
+            <li>原生支持串行/并行/条件/子流程/错误处理</li>
+            <li>工作流版本控制和演进能力</li>
+            <li>成熟的可视化和监控工具</li>
+            <li>Python + TypeScript SDK 都有</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>代价</h4>
+          <ul>
+            <li>新增基础设施依赖（Temporal Server）</li>
+            <li>学习曲线：Temporal 的概念模型需要团队掌握</li>
+            <li>工作流代码是确定性约束的，开发模式不同</li>
+            <li>Docker 部署增加 3 个容器</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top: 8px; font-size: 13px; color: #6b7280;"><strong>开发量：</strong>前端 React Flow 编辑器 (~2周) + Temporal 集成 (~1周) + 业务逻辑 (~1周) = ~4周</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>自研轻量工作流引擎 + React Flow</h3>
+      <p><strong>思路：</strong>后端用 PostgreSQL 存储工作流定义（DAG JSON），自研执行引擎处理节点状态转换。前端用 React Flow 做可视化编辑器。不引入外部工作流引擎。</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros">
+          <h4>优势</h4>
+          <ul>
+            <li>零外部依赖，不需要新增基础设施</li>
+            <li>完全控制数据模型，与现有 ReportProject 无缝融合</li>
+            <li>渐进式扩展：先做 DAG，后加条件分支</li>
+            <li>对团队来说概念简单，就是状态机 + DAG</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>代价</h4>
+          <ul>
+            <li>条件分支、错误恢复、并发控制需要自己实现</li>
+            <li>工作流引擎的边界情况多，测试量大</li>
+            <li>没有现成的监控/调试工具</li>
+            <li>如果需求继续复杂化，可能最终还是要迁移到 Temporal</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top: 8px; font-size: 13px; color: #6b7280;"><strong>开发量：</strong>React Flow 编辑器 (~2周) + 引擎核心 (~2周) + 业务集成 (~1周) = ~5周</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>渐进式混合：先自研核心 + 预留 Temporal 接口</h3>
+      <p><strong>思路：</strong>Phase 1 用自研 DAG 引擎 + React Flow 跑通核心场景（串行/并行/审核/子项目）。设计好 WorkflowEngine 抽象接口，Phase 2 可平滑迁移到 Temporal。</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros">
+          <h4>优势</h4>
+          <ul>
+            <li>Phase 1 快速交付（无新基础设施）</li>
+            <li>抽象接口确保未来可替换引擎</li>
+            <li>先用真实业务验证需求，再决定是否上 Temporal</li>
+            <li>降低一次性投入风险</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>代价</h4>
+          <ul>
+            <li>自研引擎可能需要在迁移时重写</li>
+            <li>抽象层增加一点复杂度</li>
+            <li>如果业务爆发式增长，迁移窗口不好找</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top: 8px; font-size: 13px; color: #6b7280;"><strong>开发量：</strong>Phase 1 ~3周（自研 DAG + React Flow）→ Phase 2 可选迁移 ~2周</p>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">三个方案的决策矩阵</h3>
+<div style="overflow-x: auto;">
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #e5e7eb;">
+        <th style="text-align: left; padding: 8px;">维度</th>
+        <th style="text-align: center; padding: 8px;">A: Temporal</th>
+        <th style="text-align: center; padding: 8px;">B: 纯自研</th>
+        <th style="text-align: center; padding: 8px;">C: 渐进混合</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #f3f4f6;">
+        <td style="padding: 8px;">基础设施复杂度</td>
+        <td style="text-align: center; padding: 8px; color: #ef4444;">高 (+3容器)</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">零</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">零 → 可选</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f3f4f6;">
+        <td style="padding: 8px;">条件分支/循环</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">原生支持</td>
+        <td style="text-align: center; padding: 8px; color: #f59e0b;">需自研</td>
+        <td style="text-align: center; padding: 8px; color: #f59e0b;">Phase 1 无 → Phase 2 有</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f3f4f6;">
+        <td style="padding: 8px;">与现有模型融合</td>
+        <td style="text-align: center; padding: 8px; color: #f59e0b;">需要适配层</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">无缝</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">无缝</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f3f4f6;">
+        <td style="padding: 8px;">首版交付速度</td>
+        <td style="text-align: center; padding: 8px; color: #f59e0b;">~4周</td>
+        <td style="text-align: center; padding: 8px; color: #ef4444;">~5周</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">~3周</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f3f4f6;">
+        <td style="padding: 8px;">长期可维护性</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">强（社区+文档）</td>
+        <td style="text-align: center; padding: 8px; color: #ef4444;">弱（自研代码）</td>
+        <td style="text-align: center; padding: 8px; color: #f59e0b;">中（可迁移）</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;">溯源 + 审核集成</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">通过 Activity API</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">直接数据库操作</td>
+        <td style="text-align: center; padding: 8px; color: #22c55e;">直接数据库操作</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

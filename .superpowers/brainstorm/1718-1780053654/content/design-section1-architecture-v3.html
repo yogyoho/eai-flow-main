@@ -1,0 +1,113 @@
+<h2>设计 Section 1 (v3): 最小基础设施增量</h2>
+<p class="subtitle">新增仅 +1 容器，UI 融入现有前端</p>
+
+<div class="mockup">
+  <div class="mockup-header">最终架构 — 新增基础设施仅 Temporal Server</div>
+  <div class="mockup-body" style="padding: 24px; font-size: 13px;">
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Frontend extensions -->
+      <div style="padding: 16px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px;">
+        <strong style="color: #1d4ed8;">Frontend (Next.js :4000)</strong>
+        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #93c5fd; font-size: 12px;">
+            ✅ extensions/collab/
+          </div>
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #93c5fd; font-size: 12px;">
+            ✅ extensions/project/
+          </div>
+          <div style="background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #c4b5fd; font-size: 12px;">
+            🆕 extensions/workflow/
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding: 12px; background: #faf5ff; border-radius: 6px;">
+          <strong>extensions/workflow/ 包含：</strong>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-size: 12px;">
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;">
+              <strong>WorkflowEditor.tsx</strong><br>
+              React Flow 可视化编排器
+            </div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;">
+              <strong>WorkflowMonitor.tsx</strong><br>
+              工作流执行状态面板（替代 temporal-ui）
+            </div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;">
+              <strong>TraceabilityPanel.tsx</strong><br>
+              AI 内容溯源标注面板
+            </div>
+            <div style="padding: 6px 8px; background: white; border-radius: 4px;">
+              <strong>PhaseReviewPanel.tsx</strong><br>
+              多人分章节审核面板
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backend -->
+      <div style="padding: 16px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px;">
+        <strong style="color: #166534;">Gateway FastAPI (:8001) + Temporal Worker</strong>
+        <div style="margin-top: 8px; display: flex; gap: 12px; font-size: 12px;">
+          <div style="padding: 8px; background: white; border-radius: 6px; border: 1px solid #86efac; flex: 1;">
+            <strong>Workflow Routers (新增)</strong><br>
+            • POST /workflows/definitions — 保存 DAG<br>
+            • GET /workflows/definitions/{id} — 读取 DAG<br>
+            • POST /workflows/instances — 启动工作流<br>
+            • GET /workflows/instances/{id} — 查询状态<br>
+            • POST /workflows/instances/{id}/signal — 发信号
+          </div>
+          <div style="padding: 8px; background: white; border-radius: 6px; border: 1px solid #c4b5fd; flex: 1;">
+            <strong>Temporal 集成层</strong><br>
+            • TemporalClient 管理器 (lifespan)<br>
+            • 嵌入式 Worker (同进程)<br>
+            • Activities (DB/AI/通知)<br>
+            • DynamicGraphWorkflow 解释器
+          </div>
+        </div>
+      </div>
+
+      <!-- Infrastructure diff -->
+      <div style="padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+        <strong style="color: #6d28d9;">基础设施变更：+1 容器，-0 容器</strong>
+        <div style="margin-top: 12px; display: flex; gap: 12px;">
+          <div style="padding: 12px; background: #fef2f2; border-radius: 6px; flex: 1; font-size: 12px;">
+            <strong style="color: #dc2626;">❌ 不需要的</strong>
+            <div style="margin-top: 6px; text-decoration: line-through; color: #999;">
+              temporal-postgresql (复用 postgres-ext)<br>
+              temporal-ui (融入前端)<br>
+              temporal-admin-tools (可选)
+            </div>
+          </div>
+          <div style="padding: 12px; background: #dcfce7; border-radius: 6px; flex: 1; font-size: 12px;">
+            <strong style="color: #16a34a;">✅ 实际新增</strong>
+            <div style="margin-top: 6px; color: #166534;">
+              <strong>temporal-auto-setup:1.27.0</strong><br>
+              连接 postgres-ext，自动建库<br>
+              唯一新增容器
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Summary metrics -->
+    <div style="margin-top: 20px; display: flex; gap: 12px;">
+      <div style="flex: 1; text-align: center; padding: 12px; background: #f0fdf4; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: bold; color: #22c55e;">+1</div>
+        <div style="font-size: 12px; color: #6b7280;">新增容器</div>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 12px; background: #eff6ff; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: bold; color: #3b82f6;">+4</div>
+        <div style="font-size: 12px; color: #6b7280;">新增数据表</div>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 12px; background: #faf5ff; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">+5</div>
+        <div style="font-size: 12px; color: #6b7280;">新增 API 端点</div>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 12px; background: #fefce8; border-radius: 8px;">
+        <div style="font-size: 28px; font-weight: bold; color: #eab308;">0</div>
+        <div style="font-size: 12px; color: #6b7280;">容器移除</div>
+      </div>
+    </div>
+  </div>
+</div>

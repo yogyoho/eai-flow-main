@@ -73,6 +73,7 @@ class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     report_type: str = Field(..., min_length=1)
     template_id: UUID | None = None
+    workflow_id: UUID | None = None
 
 
 class ProjectUpdate(BaseModel):

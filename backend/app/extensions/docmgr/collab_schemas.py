@@ -43,6 +43,7 @@ class VersionResponse(BaseModel):
 
 class VersionCreateRequest(BaseModel):
     summary: str | None = Field(None, max_length=500)
+    generate_summary: bool = Field(False, description="Use AI to generate a change summary")
 
 
 class VersionRestoreResponse(BaseModel):
@@ -67,6 +68,7 @@ class VersionDiffResponse(BaseModel):
 class AIReviewRequest(BaseModel):
     doc_id: UUID
     review_type: str = Field(default="full", description="full | style | logic | completeness")
+    content: str | None = Field(None, description="Document content (markdown) from frontend editor")
 
 
 class AIReviewComment(BaseModel):

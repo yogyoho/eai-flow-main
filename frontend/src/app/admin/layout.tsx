@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Shield, Network } from "lucide-react";
+import { Users, Shield, Network, FileText } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/roles", label: "角色管理", icon: Shield },
   { href: "/admin/departments", label: "部门管理", icon: Network },
+  { href: "/admin/templates", label: "模板管理", icon: FileText },
 ];
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {

@@ -154,7 +154,11 @@ class AIReviewService:
     async def ai_review_document(db: AsyncSession, doc_id: UUID, content: str, review_type: str) -> dict:
         from deerflow.models import create_chat_model
 
-        model = create_chat_model("ai-review", thinking_enabled=False)
+        from app.extensions.settings.service import SystemConfigService
+
+        sys_config = await SystemConfigService.get_all(db)
+        default_model = sys_config.get("default_model") or None
+        model = create_chat_model(name=default_model, thinking_enabled=False)
 
         prompts = {
             "full": "请审查以下文档，从逻辑一致性、语言风格统一性、缺失章节、数据准确性四个维度给出建议。对每个问题指出具体段落位置和修改建议。",
@@ -311,6 +315,49 @@ class VersionService:
             "diff_blocks": diff_blocks,
             "ai_summary": None,
         }
+
+    @staticmethod
+    async def generate_ai_summary(db: AsyncSession, doc_id: UUID, new_version: int) -> str | None:
+        prev_version = new_version - 1
+        if prev_version < 1:
+            return None
+
+        prev_snap = await VersionService.get_snapshot(db, doc_id, prev_version)
+        curr_snap = await VersionService.get_snapshot(db, doc_id, new_version)
+        if not prev_snap or not curr_snap:
+            return None
+
+        prev_text = prev_snap.decode("utf-8", errors="replace")[:4000]
+        curr_text = curr_snap.decode("utf-8", errors="replace")[:4000]
+
+        try:
+            from deerflow.models import create_chat_model
+
+            from app.extensions.settings.service import SystemConfigService
+
+            sys_config = await SystemConfigService.get_all(db)
+            default_model = sys_config.get("default_model") or None
+            model = create_chat_model(name=default_model, thinking_enabled=False)
+            response = await model.ainvoke(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。"
+                            "只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"【旧版本】\n{prev_text}\n\n【新版本】\n{curr_text}",
+                    },
+                ]
+            )
+            summary = response.content if isinstance(response.content, str) else str(response.content)
+            return summary[:500] if summary else None
+        except Exception:
+            logger.warning("AI version summary generation failed for doc %s v%s", doc_id, new_version)
+            return None
 
     @staticmethod
     async def get_snapshot(db: AsyncSession, doc_id: UUID, version: int) -> bytes | None:

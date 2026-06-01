@@ -1,0 +1,100 @@
+<h2>设计 Section 1 (修订): 共享 PostgreSQL 的架构</h2>
+<p class="subtitle">复用现有 postgres-ext，容器新增从 +3 降到 +2</p>
+
+<div class="mockup">
+  <div class="mockup-header">修订后的运行时架构</div>
+  <div class="mockup-body" style="padding: 24px; font-size: 13px;">
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Layer 1: Browser -->
+      <div style="padding: 16px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px;">
+        <strong style="color: #1d4ed8;">Browser</strong>
+        <div style="margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            React Flow 工作流编辑器<br><span style="font-size: 11px; color: #6b7280;">拖拽编排阶段/审核/AI节点</span>
+          </div>
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            BlockNote 协作编辑器<br><span style="font-size: 11px; color: #6b7280;">段落溯源标注、评论</span>
+          </div>
+          <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            审核工作台<br><span style="font-size: 11px; color: #6b7280;">按章节/维度审核</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrow -->
+      <div style="text-align: center; color: #6b7280; font-size: 12px;">↓ Nginx :2026 ↓</div>
+
+      <!-- Layer 2: Backend -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; padding: 16px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px;">
+          <strong style="color: #166534;">Gateway FastAPI (:8001)</strong>
+          <div style="margin-top: 8px; font-size: 12px;">
+            <div>✅ 现有 routers</div>
+            <div>✅ DeerFlow Agent 运行时</div>
+            <div style="color: #6d28d9;">🆕 Temporal Client + 嵌入式 Worker</div>
+            <div style="color: #6d28d9;">🆕 Workflow routers</div>
+          </div>
+        </div>
+        <div style="flex: 1; min-width: 200px; padding: 16px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px;">
+          <strong style="color: #6d28d9;">🆕 Temporal Server (仅 +2 容器)</strong>
+          <div style="margin-top: 8px; font-size: 12px;">
+            <div>• temporal-auto-setup → 指向现有 PG</div>
+            <div>• temporal-ui (:8080) → 监控面板</div>
+            <div style="margin-top: 6px; padding: 6px 8px; background: #dcfce7; border-radius: 4px; color: #166534;">
+              ✓ 不需要新增 PG 容器
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer 3: Shared PostgreSQL -->
+      <div style="padding: 16px; background: #fefce8; border: 2px solid #eab308; border-radius: 8px;">
+        <strong style="color: #854d0e;">postgres-ext (共享，已有)</strong>
+        <div style="margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px;">
+          <div style="padding: 8px; background: white; border-radius: 6px; border: 1px solid #fde68a;">
+            <strong>应用库 (agentflow)</strong><br>
+            ✅ report_projects<br>
+            ✅ project_chapters<br>
+            ✅ approval_workflows<br>
+            <span style="color: #6d28d9;">🆕 workflow_definitions</span><br>
+            <span style="color: #6d28d9;">🆕 content_sources</span><br>
+            <span style="color: #6d28d9;">🆕 phase_reviews</span>
+          </div>
+          <div style="padding: 8px; background: white; border-radius: 6px; border: 1px solid #e9d5ff;">
+            <strong>Temporal 库 (自动创建)</strong><br>
+            🆕 temporal<br>
+            🆕 temporal_visibility
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Docker Compose diff -->
+    <div style="margin-top: 20px; padding: 16px; background: #1e293b; border-radius: 8px; color: #e2e8f0; font-family: monospace; font-size: 12px; line-height: 1.6;">
+      <div style="color: #94a3b8;"># docker-compose.temporal.yaml (新增)</div>
+      <div style="color: #fbbf24;">services:</div>
+      <div>  <span style="color: #fbbf24;">temporal:</span></div>
+      <div>    image: temporalio/auto-setup:1.27.0</div>
+      <div>    environment:</div>
+      <div>      - DB=postgres12</div>
+      <div>      - <span style="color: #4ade80;">POSTGRES_SEEDS=postgres-ext</span>  <span style="color: #94a3b8;"># 指向现有 PG</span></div>
+      <div>      - DB_PORT=5432</div>
+      <div>      - POSTGRES_USER=temporal</div>
+      <div>      - POSTGRES_PWD=temporal_password</div>
+      <div>    networks:</div>
+      <div>      - eai-flow-net</div>
+      <div>    <span style="color: #94a3b8;"># auto-setup 自动在 postgres-ext 上创建 temporal 库</span></div>
+      <div></div>
+      <div>  <span style="color: #fbbf24;">temporal-ui:</span></div>
+      <div>    image: temporalio/ui:2.34.0</div>
+      <div>    environment:</div>
+      <div>      - TEMPORAL_ADDRESS=temporal:7233</div>
+      <div>    ports:</div>
+      <div>      - "8080:8080"</div>
+      <div>    networks:</div>
+      <div>      - eai-flow-net</div>
+    </div>
+  </div>
+</div>

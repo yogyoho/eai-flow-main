@@ -23,17 +23,21 @@ export function TraceabilityPanel({ projectId, chapterId }: TraceabilityPanelPro
   const [stats, setStats] = useState<Record<string, number>>({});
   const [missing, setMissing] = useState<Array<{ blockIndex: number; preview: string }>>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!chapterId) return;
     setLoading(true);
+    setError(null);
     Promise.all([
-      workflowApi.getSources(projectId, chapterId),
-      workflowApi.getMissingSources(projectId, chapterId),
+      workflowApi.getSources(projectId, chapterId).catch(() => ({ sources: [], stats: {} })),
+      workflowApi.getMissingSources(projectId, chapterId).catch(() => ({ missing: [] })),
     ]).then(([sourceRes, missingRes]) => {
       setSources(sourceRes.sources);
       setStats(sourceRes.stats);
       setMissing(missingRes.missing);
+    }).catch(() => {
+      setError("无法加载溯源数据");
     }).finally(() => setLoading(false));
   }, [projectId, chapterId]);
 
@@ -41,6 +45,9 @@ export function TraceabilityPanel({ projectId, chapterId }: TraceabilityPanelPro
     return <div className="p-4 text-sm text-muted-foreground">选择章节查看溯源信息</div>;
   }
   if (loading) return <div className="p-4 text-sm text-muted-foreground">加载中...</div>;
+  if (error) {
+    return <div className="p-4 text-sm text-muted-foreground">{error}</div>;
+  }
 
   return (
     <div className="p-4 space-y-4">

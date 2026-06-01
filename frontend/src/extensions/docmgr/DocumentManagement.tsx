@@ -963,6 +963,7 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
                 ref={editorRef as React.Ref<CollabEditorRef>}
                 documentId={docId}
                 initialContent={doc.content ?? ""}
+                projectId={doc.project_id}
                 onChange={scheduleSave}
                 className="flex-1"
               />

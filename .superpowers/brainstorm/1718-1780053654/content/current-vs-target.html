@@ -1,0 +1,63 @@
+<h2>当前架构 vs 目标架构</h2>
+<p class="subtitle">理解从固定6阶段到灵活工作流引擎的演进</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前：固定 6 阶段线性流</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">Setup</div>
+        <div style="color: #666;">→</div>
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">Outline</div>
+        <div style="color: #666;">→</div>
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">AI Writing</div>
+        <div style="color: #666;">→</div>
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">Collab Edit</div>
+        <div style="color: #666;">→</div>
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">Approval</div>
+        <div style="color: #666;">→</div>
+        <div style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px;">Export</div>
+      </div>
+      <div style="margin-top: 20px; padding: 16px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <strong>局限：</strong>
+        <ul style="margin: 8px 0 0 16px; font-size: 13px; color: #92400e;">
+          <li>阶段固定，无法增减或并行</li>
+          <li>一条审批链，无法分章节审核</li>
+          <li>无阶段间上下文传递</li>
+          <li>无子项目概念</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">目标：灵活工作流引擎</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="position: relative;">
+        <!-- Phase 1: Serial -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <div style="background: #8b5cf6; color: white; padding: 8px 14px; border-radius: 8px; font-size: 12px;">阶段A: 现状调查</div>
+          <div style="color: #666; font-size: 12px;">→</div>
+          <div style="background: #8b5cf6; color: white; padding: 8px 14px; border-radius: 8px; font-size: 12px;">阶段B: 影响预测</div>
+        </div>
+        <!-- Phase 2: Parallel -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <div style="flex: 1; background: #8b5cf6; color: white; padding: 8px 14px; border-radius: 8px; font-size: 12px; text-align: center;">阶段C: 措施设计</div>
+          <div style="flex: 1; background: #8b5cf6; color: white; padding: 8px 14px; border-radius: 8px; font-size: 12px; text-align: center;">阶段D: 监测方案</div>
+        </div>
+        <div style="text-align: center; color: #666; font-size: 12px;">↓ 汇合 ↓</div>
+        <div style="margin-top: 8px; background: #8b5cf6; color: white; padding: 8px 14px; border-radius: 8px; font-size: 12px; text-align: center;">阶段E: 综合报告</div>
+      </div>
+      <div style="margin-top: 20px; padding: 16px; background: #dcfce7; border-radius: 8px; border-left: 4px solid #22c55e;">
+        <strong>能力：</strong>
+        <ul style="margin: 8px 0 0 16px; font-size: 13px; color: #166534;">
+          <li>阶段可配置（2-10+步），串行/并行</li>
+          <li>每阶段独立团队、独立审核</li>
+          <li>阶段间自动传递上下文</li>
+          <li>子项目作为工作流节点</li>
+          <li>AI 内容溯源标注</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

@@ -80,6 +80,39 @@ async def submit_action(
     return PhaseReviewOut.model_validate(review), all_done
 
 
+async def apply_rejection_rollback(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    phase_node: str,
+) -> str | None:
+    """If all reviews for a phase node were rejected, find the rollback target
+    from the DAG definition and update current_phase_node.
+
+    Returns the rollback target node ID, or None if no rollback applied.
+    """
+    from app.extensions.models import ReportProject
+    from .models import WorkflowDefinition
+
+    project = await db.get(ReportProject, project_id)
+    if not project or not project.workflow_id:
+        return None
+
+    definition = await db.get(WorkflowDefinition, project.workflow_id)
+    if not definition or not definition.graph_json:
+        return None
+
+    edges = definition.graph_json.get("edges", [])
+    for edge in edges:
+        if edge.get("source") == phase_node and edge.get("label") == "rejected":
+            target = edge.get("target")
+            if target:
+                project.current_phase_node = target
+                await db.commit()
+                return target
+
+    return None
+
+
 async def get_review_status(
     db: AsyncSession,
     project_id: uuid.UUID,

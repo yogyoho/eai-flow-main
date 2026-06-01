@@ -1,0 +1,172 @@
+<h2>设计 Section 5: 后端 API + Temporal 集成</h2>
+<p class="subtitle">新增 API 端点、Temporal Activities、目录结构</p>
+
+<div class="mockup">
+  <div class="mockup-header">后端新增目录结构</div>
+  <div class="mockup-body" style="padding: 16px; font-family: monospace; font-size: 12px; line-height: 1.8; background: #1e293b; color: #e2e8f0; border-radius: 0 0 8px 8px;">
+    <div style="color: #fbbf24;">backend/app/extensions/workflow/</div>
+    <div>├── <span style="color: #4ade80;">__init__.py</span></div>
+    <div>├── <span style="color: #60a5fa;">routers.py</span>            <span style="color: #94a3b8;"># API 端点</span></div>
+    <div>├── <span style="color: #60a5fa;">schemas.py</span>            <span style="color: #94a3b8;"># Pydantic models</span></div>
+    <div>├── <span style="color: #60a5fa;">service.py</span>            <span style="color: #94a3b8;"># 业务逻辑（DAG 校验、状态管理）</span></div>
+    <div>├── <span style="color: #60a5fa;">permissions.py</span>        <span style="color: #94a3b8;"># 工作流权限（复用 project permissions）</span></div>
+    <div>├── <span style="color: #60a5fa;">models.py</span>             <span style="color: #94a3b8;"># SQLAlchemy models（4 新表）</span></div>
+    <div>│</div>
+    <div style="color: #fbbf24;">├── temporal/                 <span style="color: #94a3b8;"># Temporal 集成层</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">__init__.py</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">client.py</span>         <span style="color: #94a3b8;"># Temporal Client 管理器（lifespan 启停）</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">workflows.py</span>      <span style="color: #94a3b8;"># DynamicGraphWorkflow 定义</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">activities.py</span>     <span style="color: #94a3b8;"># 全部 Activity 实现</span></div>
+    <div>│   └── <span style="color: #60a5fa;">signals.py</span>        <span style="color: #94a3b8;"># Signal 定义（phase:complete, review:complete 等）</span></div>
+    <div>│</div>
+    <div>├── <span style="color: #60a5fa;">traceability.py</span>       <span style="color: #94a3b8;"># 溯源解析服务（解析 [source] 标记）</span></div>
+    <div>└── <span style="color: #60a5fa;">review.py</span>              <span style="color: #94a3b8;"># 阶段审核服务（分配、状态、结果）</span></div>
+  </div>
+</div>
+
+<!-- API Endpoints -->
+<h3 style="margin-top: 24px;">新增 API 端点</h3>
+<table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px;">
+  <thead>
+    <tr style="border-bottom: 2px solid #e5e7eb; background: #f8fafc;">
+      <th style="padding: 8px; text-align: left;">方法</th>
+      <th style="padding: 8px; text-align: left;">路径</th>
+      <th style="padding: 8px; text-align: left;">说明</th>
+      <th style="padding: 8px; text-align: left;">权限</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #f3f4f6;">
+      <td style="padding: 6px 8px; color: #22c55e; font-weight: bold;">GET</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/workflow/definitions</td>
+      <td style="padding: 6px 8px;">工作流模板列表</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:list</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6;">
+      <td style="padding: 6px 8px; color: #3b82f6; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/workflow/definitions</td>
+      <td style="padding: 6px 8px;">创建/保存工作流定义</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:create</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6;">
+      <td style="padding: 6px 8px; color: #22c55e; font-weight: bold;">GET</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/workflow/definitions/{id}</td>
+      <td style="padding: 6px 8px;">获取工作流 DAG JSON</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:read</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6;">
+      <td style="padding: 6px 8px; color: #3b82f6; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/workflow/definitions/{id}/validate</td>
+      <td style="padding: 6px 8px;">校验 DAG（环检测、孤立节点）</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:read</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #faf5ff;">
+      <td style="padding: 6px 8px; color: #8b5cf6; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/start-workflow</td>
+      <td style="padding: 6px 8px;">启动 Temporal 工作流实例</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:advance</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #faf5ff;">
+      <td style="padding: 6px 8px; color: #22c55e; font-weight: bold;">GET</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/workflow-status</td>
+      <td style="padding: 6px 8px;">查询当前工作流执行状态</td>
+      <td style="padding: 6px 8px; font-size: 11px;">project:read</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #faf5ff;">
+      <td style="padding: 6px 8px; color: #3b82f6; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/workflow-signal</td>
+      <td style="padding: 6px 8px;">向工作流发送信号（phase:complete 等）</td>
+      <td style="padding: 6px 8px; font-size: 11px;">视信号类型</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #fff7ed;">
+      <td style="padding: 6px 8px; color: #f59e0b; font-weight: bold;">GET</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/chapters/{ch_id}/sources</td>
+      <td style="padding: 6px 8px;">获取章节的溯源标注</td>
+      <td style="padding: 6px 8px; font-size: 11px;">chapter:view_all</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #fef2f2;">
+      <td style="padding: 6px 8px; color: #ef4444; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/phase-reviews/assign</td>
+      <td style="padding: 6px 8px;">经理分配阶段审核人</td>
+      <td style="padding: 6px 8px; font-size: 11px;">approval:submit</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #f3f4f6; background: #fef2f2;">
+      <td style="padding: 6px 8px; color: #ef4444; font-weight: bold;">POST</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/phase-reviews/{rev_id}/action</td>
+      <td style="padding: 6px 8px;">审核人执行审核动作</td>
+      <td style="padding: 6px 8px; font-size: 11px;">approval:review/approve</td>
+    </tr>
+    <tr style="background: #fef2f2;">
+      <td style="padding: 6px 8px; color: #22c55e; font-weight: bold;">GET</td>
+      <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">/projects/{id}/phase-reviews</td>
+      <td style="padding: 6px 8px;">获取当前阶段的审核状态</td>
+      <td style="padding: 6px 8px; font-size: 11px;">approval:view</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Temporal Activities -->
+<h3 style="margin-top: 24px;">Temporal Activities 定义</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+  <div style="padding: 12px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #22c55e;">
+    <strong style="color: #166534;">阶段管理 Activities</strong>
+    <ul style="margin: 6px 0 0 16px; font-size: 12px; line-height: 1.8;">
+      <li><code>init_phase</code> — 初始化阶段（创建章节、分配团队）</li>
+      <li><code>gather_phase_context</code> — 收集阶段产物作为上下文</li>
+      <li><code>advance_phase</code> — 推进阶段状态，更新 report_project.current_phase_node</li>
+    </ul>
+  </div>
+  <div style="padding: 12px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+    <strong style="color: #1d4ed8;">AI 生成 Activities</strong>
+    <ul style="margin: 6px 0 0 16px; font-size: 12px; line-height: 1.8;">
+      <li><code>start_ai_writing</code> — 调用 DeerFlow Agent 撰写</li>
+      <li><code>parse_sources</code> — 解析 AI 输出中的溯源标记</li>
+      <li><code>store_sources</code> — 批量写入 content_sources 表</li>
+    </ul>
+  </div>
+  <div style="padding: 12px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #ef4444;">
+    <strong style="color: #991b1b;">审核 Activities</strong>
+    <ul style="margin: 6px 0 0 16px; font-size: 12px; line-height: 1.8;">
+      <li><code>create_review_assignments</code> — 创建 phase_reviews 记录</li>
+      <li><code>check_reviews_complete</code> — 查询是否所有审核已完成</li>
+      <li><code>handle_rejection</code> — 处理退回，回退工作流到目标节点</li>
+    </ul>
+  </div>
+  <div style="padding: 12px; background: #fefce8; border-radius: 8px; border-left: 4px solid #eab308;">
+    <strong style="color: #854d0e;">通知 Activities</strong>
+    <ul style="margin: 6px 0 0 16px; font-size: 12px; line-height: 1.8;">
+      <li><code>notify_phase_start</code> — 通知团队阶段启动</li>
+      <li><code>notify_review_pending</code> — 通知审核人有待审核</li>
+      <li><code>notify_workflow_complete</code> — 通知经理工作流完成</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Signals -->
+<h3 style="margin-top: 24px;">Temporal Signals（外部事件驱动）</h3>
+<div style="padding: 16px; background: #1e293b; border-radius: 8px; color: #e2e8f0; font-family: monospace; font-size: 11px; line-height: 1.6; margin-top: 8px;">
+  <div style="color: #94a3b8;"># 工作流通过 signal 接收外部事件，不做 DB 操作</div>
+  <div style="color: #fbbf24;">@workflow.signal</div>
+  <div style="color: #4ade80;">async def phase_complete</div>
+  <div>(self, phase_node: str, context: dict):</div>
+  <div>    """人工/系统标记阶段完成，传入阶段产物"""</div>
+  <div>    self.pending_phases[phase_node] = context</div>
+  <div></div>
+  <div style="color: #fbbf24;">@workflow.signal</div>
+  <div style="color: #ef4444;">async def review_action</div>
+  <div>(self, review_id: str, action: str):</div>
+  <div>    """审核人通过/退回，触发等待条件检查"""</div>
+  <div>    self.review_results[review_id] = action</div>
+  <div></div>
+  <div style="color: #fbbf24;">@workflow.signal</div>
+  <div style="color: #60a5fa;">async def ai_complete</div>
+  <div>(self, chapter_id: str, result: dict):</div>
+  <div>    """AI 生成完成回调"""</div>
+  <div>    self.ai_results[chapter_id] = result</div>
+</div>
+
+<!-- Existing APIs: unchanged -->
+<div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #94a3b8;">
+  <strong style="color: #475569;">现有 project API 完全保留：</strong>
+  <span style="font-size: 12px; color: #6b7280;">CRUD、outline、chapters、members、start-writing、start-editing — 均不修改，新功能通过 /workflow/* 和 /phase-reviews/* 端点扩展</span>
+</div>

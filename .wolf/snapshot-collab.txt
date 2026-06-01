@@ -1,0 +1,3947 @@
+uid=4_0 RootWebArea "EAIFlow" url="http://localhost:2026/docmgr"
+  uid=4_1 alert atomic live="assertive" relevant="additions text"
+  uid=4_2 link "Logo" url="http://localhost:2026/"
+    uid=4_3 image "Logo" url="http://localhost:2026/favicon.svg"
+  uid=4_4 navigation
+    uid=4_5 link url="http://localhost:2026/writing"
+    uid=4_6 link url="http://localhost:2026/projects"
+    uid=4_7 link url="http://localhost:2026/docmgr"
+    uid=4_8 link url="http://localhost:2026/knowledge-factory"
+    uid=4_9 link url="http://localhost:2026/knowledge"
+    uid=4_10 link url="http://localhost:2026/output"
+    uid=4_11 link url="http://localhost:2026/admin"
+  uid=4_12 navigation
+    uid=4_13 link url="http://localhost:2026/settings"
+  uid=4_14 button expandable haspopup="menu"
+  uid=4_15 main
+    uid=4_16 button
+    uid=4_17 textbox "无标题文档" value="fire_report.md"
+    uid=4_18 button "AI 润色"
+    uid=4_19 button "复制内容"
+    uid=4_20 button "导出"
+    uid=4_21 StaticText "协作中"
+    uid=4_22 button "评论"
+    uid=4_23 button "版本历史"
+    uid=4_24 button "AI 助手"
+    uid=4_25 textbox autocomplete="list" focusable focused haspopup="listbox" multiline value="张三
+第1章 设计依据及采用的标准
+1.1 设计依据
+
+a） 华宇大厦项目可行性研究报告及批复；
+ b） 项目用地规划许可证及相关政府批文；
+ c） 建
+
+
+ e） 工程设计开工会会议纪要及相关技术往来文件。
+
+1.2 设计采用的技术标准、规范
+
+1） 石油化工企业设计防火标准（2018版） GB50160-2008
+ 2） 建筑设计防火规范（2018版） GB50016-2014
+ 3） 爆炸危险环境电力装置设计规范 GB50058-2014
+ 4） 火灾自动报警系统设计规范 GB50116-2013
+ 5） 建筑灭火器配置设计规范 GB50140-2005
+ 6） 消防给水及消火栓系统技术规范 GB50974-2014
+ 7） 自动喷水灭火系统设计规范 GB50084-2017
+ 8） 建筑防烟排烟系统技术标准 GB51251-2017
+ 9） 消防应急照明和疏散指示系统技术标准 GB51309-2018
+ 10） 建筑物防雷设计规范 GB50057-2010
+ 11） 供配电系统设计规范 GB50052-2009
+ 12） 建筑照明设计标准 GB50034-2013
+
+1.3 地方相关法规
+
+a） 中华人民共和国消防法（2019年4月23日修订）
+ b） 建设工程消防设计审查验收管理暂行规定
+ c） 项目所在地消防管理条例及相关地方法规
+
+第2章 概述
+2.1 项目位置
+
+华宇大厦位于市中心商务区核心地段，东临城市主干道，北接商业步行街，南靠城市公园，西侧为规划市政道路。项目总占地面积约8500平方米，周边市政配套设施完善，交通便利。
+
+/
+
+2.2 项目建设功能定位
+
+本项目定位为集商业、办公、会议、餐饮于一体的综合性高层建筑，旨在打造区域性地标建筑，满足高端商务办公及商业配套需求。建筑功能包括：地下两层停车场及设备用房，地上裙房商业区及塔楼办公区。
+
+2.3 建设规模
+
+序号
+
+	
+
+项目
+
+	
+
+数值
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+总占地面积
+
+	
+
+8500.00
+
+	
+
+m2
+
+
+
+
+2
+
+	
+
+总建筑面积
+
+	
+
+48650.00
+
+	
+
+m2
+
+
+
+
+3
+
+	
+
+地上建筑面积
+
+	
+
+36800.00
+
+	
+
+m2
+
+
+
+
+4
+
+	
+
+地下建筑面积
+
+	
+
+11850.00
+
+	
+
+m2
+
+
+
+
+5
+
+	
+
+建筑高度
+
+	
+
+98.60
+
+	
+
+m
+
+
+
+
+6
+
+	
+
+建筑层数（地上）
+
+	
+
+26
+
+	
+
+层
+
+
+
+
+7
+
+	
+
+建筑层数（地下）
+
+	
+
+2
+
+	
+
+层
+
+
+
+
+8
+
+	
+
+容积率
+
+	
+
+4.33
+
+	
+
+
+
+
+2.4 建设内容
+
+序号
+
+	
+
+功能区域
+
+	
+
+楼层范围
+
+	
+
+建筑面积（m2）
+
+
+
+
+1
+
+	
+
+地下停车场及设备用房
+
+	
+
+B1-B2
+
+	
+
+11850.00
+
+
+
+
+2
+
+	
+
+商业裙房
+
+	
+
+1-4层
+
+	
+
+12500.00
+
+
+
+
+3
+
+	
+
+办公塔楼
+
+	
+
+5-26层
+
+	
+
+24300.00
+
+
+
+
+4
+
+	
+
+屋顶设备层
+
+	
+
+屋顶层
+
+	
+
+—
+
+2.5 建设性质
+
+新建项目。
+
+2.6 工程所在地气象条件
+
+序号
+
+	
+
+条件
+
+	
+
+单位
+
+	
+
+数值
+
+
+
+
+1
+
+	
+
+温度
+
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+年平均气温
+
+	
+
+℃
+
+	
+
+16.5
+
+
+
+
+
+
+
+	
+
+最热月平均气温
+
+	
+
+℃
+
+	
+
+28.8
+
+
+
+
+
+
+
+	
+
+最冷月平均气温
+
+	
+
+℃
+
+	
+
+3.2
+
+
+
+
+
+
+
+	
+
+极端最高气温
+
+	
+
+℃
+
+	
+
+40.6
+
+
+
+
+
+
+
+	
+
+极端最低气温
+
+	
+
+℃
+
+	
+
+-10.1
+
+
+
+
+2
+
+	
+
+湿度
+
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+年平均相对湿度
+
+	
+
+%
+
+	
+
+76
+
+
+
+
+
+
+
+	
+
+最热月平均相对湿度
+
+	
+
+%
+
+	
+
+83
+
+
+
+
+3
+
+	
+
+年平均降水量
+
+	
+
+mm
+
+	
+
+1100
+
+
+
+
+4
+
+	
+
+最大积雪深度
+
+	
+
+cm
+
+	
+
+15
+
+
+
+
+5
+
+	
+
+常年主导风向
+
+	
+
+
+
+
+	
+
+东南风
+
+
+
+
+6
+
+	
+
+夏季平均风速
+
+	
+
+m/s
+
+	
+
+2.8
+
+
+
+
+7
+
+	
+
+冬季平均风速
+
+	
+
+m/s
+
+	
+
+3.2
+
+
+
+
+8
+
+	
+
+基本风压
+
+	
+
+kN/m2
+
+	
+
+0.45
+
+
+
+
+9
+
+	
+
+基本雪压
+
+	
+
+kN/m2
+
+	
+
+0.35
+
+
+
+
+10
+
+	
+
+年平均雷暴日数
+
+	
+
+天
+
+	
+
+35.6
+
+
+
+
+11
+
+	
+
+抗震设防烈度
+
+	
+
+度
+
+	
+
+7
+
+
+
+
+12
+
+	
+
+设计基本地震加速度值
+
+	
+
+g
+
+	
+
+0.10
+
+2.7 周围消防站情况
+
+项目周边3公里范围内设有两座消防站，其中最近消防站距离约1.2公里，消防响应时间可控制在5分钟以内，满足规范要求。
+
+第3章 火灾危险性分析
+3.1 项目主项表
+
+序号
+
+	
+
+主项代号
+
+	
+
+名称
+
+	
+
+数量
+
+	
+
+主项专业
+
+	
+
+备注
+
+
+
+
+1
+
+	
+
+100
+
+	
+
+地下车库及设备用房
+
+	
+
+1
+
+	
+
+建筑
+
+	
+
+B1-B2层
+
+
+
+
+2
+
+	
+
+200
+
+	
+
+商业裙房
+
+	
+
+1
+
+	
+
+建筑
+
+	
+
+1-4层
+
+
+
+
+3
+
+	
+
+300
+
+	
+
+办公塔楼
+
+	
+
+1
+
+	
+
+建筑
+
+	
+
+5-26层
+
+
+
+
+4
+
+	
+
+400
+
+	
+
+屋顶设备层
+
+	
+
+1
+
+	
+
+设备
+
+	
+
+屋顶层
+
+
+
+
+5
+
+	
+
+500
+
+	
+
+消防水池及泵房
+
+	
+
+1
+
+	
+
+给排水
+
+	
+
+地下B2层
+
+
+
+
+6
+
+	
+
+600
+
+	
+
+消防控制室
+
+	
+
+1
+
+	
+
+电气
+
+	
+
+首层
+
+3.2 火灾危险性分类
+
+根据GB50016-2014（2018版）及GB50160-2008相关规定，本项目的火灾危险性分类如下：
+
+序号
+
+	
+
+建筑/区域
+
+	
+
+火灾危险性分类
+
+	
+
+依据标准
+
+
+
+
+1
+
+	
+
+地下车库
+
+	
+
+中危险级
+
+	
+
+GB50016 第5.1.1条
+
+
+
+
+2
+
+	
+
+商业裙房
+
+	
+
+中危险级
+
+	
+
+GB50016 第5.1.1条
+
+
+
+
+3
+
+	
+
+办公塔楼
+
+	
+
+轻危险级
+
+	
+
+GB50016 第5.1.1条
+
+
+
+
+4
+
+	
+
+设备用房（变配电室）
+
+	
+
+丙类
+
+	
+
+GB50016 第3.1.1条
+
+
+
+
+5
+
+	
+
+消防水泵房
+
+	
+
+戊类
+
+	
+
+GB50016 第3.1.1条
+
+第4章 防火安全措施
+4.1 总平面布置、防火间距及消防通道
+
+本项目总平面布置严格按照GB50016-2014要求执行：
+
+1） 建筑退让红线距离：东侧退让城市主干道15米，北侧退让步行街10米，南侧退让公园边界12米，西侧退让规划道路8米；
+ 2） 与相邻建筑的防火间距均满足规范要求，最小防火间距为13米；
+ 3） 沿建筑周边设置环形消防车道，车道宽度不小于4米，转弯半径不小于12米；
+ 4） 消防车道与建筑外墙间距控制在5-15米范围内，满足消防车通行及作业要求。
+
+4.2 防雷、接地的设计原则
+4.2.1 防雷设计原则
+
+1） 本建筑按二类防雷建筑设防，依据GB50057-2010确定防雷等级；
+ 2） 屋面设置避雷带作为接闪器，网格尺寸不大于10m×10m或12m×8m；
+ 3） 利用建筑物柱内主筋作为引下线，间距不大于18米；
+ 4） 利用建筑物基础钢筋网作为接地体，形成自然接地装置。
+
+4.2.2 接地设计原则
+
+1） 本工程采用TN-S接地系统，工作接地、保护接地、防雷接地、防静电接地共用一套接地装置；
+ 2） 接地电阻要求不大于1欧姆；
+ 3） 建筑内实施总等电位联结，卫生间等场所实施辅助等电位联结；
+ 4） 强弱电竖井内设置接地干线，每层设接地端子箱。
+
+4.3 供电安全
+
+1） 本建筑为一类高层建筑，消防用电设备按一级负荷等级供电；
+ 2） 供电电源采用双重电源供电，引自两个不同区域变电站，一用一备；
+ 3） 消防水泵、防排烟风机、应急照明等重要消防负荷采用双电源末端自动切换；
+ 4） 设置柴油发电机组作为应急备用电源，容量满足消防负荷需求；
+ 5） 消防控制室、消防水泵房、变配电室等重要部位设置消防应急照明及疏散指示系统。
+
+4.4 建、构筑物防火
+
+序号
+
+	
+
+名称
+
+	
+
+占地面积(m2)
+
+	
+
+建筑面积(m2)
+
+	
+
+层数/高度(m)
+
+	
+
+火灾危险性
+
+	
+
+耐火等级
+
+	
+
+结构类型
+
+	
+
+备注
+
+
+
+
+1
+
+	
+
+地下车库
+
+	
+
+5925.00
+
+	
+
+11850.00
+
+	
+
+B1-B2 / 8.4
+
+	
+
+中危险级
+
+	
+
+一级
+
+	
+
+框架剪力墙
+
+	
+
+含设备用房
+
+
+
+
+2
+
+	
+
+商业裙房
+
+	
+
+4250.00
+
+	
+
+12500.00
+
+	
+
+1-4F / 18.0
+
+	
+
+中危险级
+
+	
+
+一级
+
+	
+
+框架剪力墙
+
+	
+
+含中庭
+
+
+
+
+3
+
+	
+
+办公塔楼
+
+	
+
+1950.00
+
+	
+
+24300.00
+
+	
+
+5-26F / 98.6
+
+	
+
+轻危险级
+
+	
+
+一级
+
+	
+
+框架核心筒
+
+	
+
+标准办公层
+
+建筑防火主要措施：
+
+1） 地下车库与地上部分之间设置耐火极限不低于3.00h的楼板进行分隔；
+ 2） 商业裙房与办公塔楼之间设置耐火极限不低于2.00h的防火隔墙；
+ 3） 所有防火分区之间采用防火墙和甲级防火门分隔；
+ 4） 疏散楼梯间采用防烟楼梯间，楼梯间门为乙级防火门；
+ 5） 消防电梯前室设置甲级防火门，消防电梯载重量不小于800kg；
+ 6） 所有建筑构件耐火等级均按一级耐火等级要求执行。
+
+4.5 建筑物通风措施
+
+建筑物名称
+
+	
+
+生产类别
+
+	
+
+电气防爆等级
+
+	
+
+主要有害物
+
+	
+
+换气次数(次/h)
+
+	
+
+通风方式
+
+	
+
+风量(m3/h)
+
+	
+
+系统编号
+
+	
+
+设备规格
+
+
+
+
+地下车库
+
+	
+
+戊类
+
+	
+
+—
+
+	
+
+CO、汽车尾气
+
+	
+
+6
+
+	
+
+机械排风
+
+	
+
+60000
+
+	
+
+EF-01~06
+
+	
+
+离心风机箱
+
+
+
+
+变配电室
+
+	
+
+丙类
+
+	
+
+—
+
+	
+
+热量
+
+	
+
+8
+
+	
+
+机械通风
+
+	
+
+12000
+
+	
+
+EF-07~08
+
+	
+
+轴流风机
+
+
+
+
+消防水泵房
+
+	
+
+戊类
+
+	
+
+—
+
+	
+
+潮气
+
+	
+
+5
+
+	
+
+机械通风
+
+	
+
+5000
+
+	
+
+EF-09
+
+	
+
+轴流风机
+
+
+
+
+卫生间
+
+	
+
+—
+
+	
+
+—
+
+	
+
+异味
+
+	
+
+10
+
+	
+
+机械排风
+
+	
+
+3000
+
+	
+
+EF-10~15
+
+	
+
+排气扇
+
+
+
+
+商业区域
+
+	
+
+—
+
+	
+
+—
+
+	
+
+CO2、热量
+
+	
+
+6
+
+	
+
+空调新风
+
+	
+
+45000
+
+	
+
+AHU-01~08
+
+	
+
+组合式空调机组
+
+
+
+
+办公区域
+
+	
+
+—
+
+	
+
+—
+
+	
+
+CO2、热量
+
+	
+
+6
+
+	
+
+空调新风
+
+	
+
+50000
+
+	
+
+AHU-09~20
+
+	
+
+组合式空调机组
+
+第5章 消防设施
+5.1 室外消防水系统
+
+1） 室外消防用水量为30L/s，火灾延续时间2小时，一次灭火用水量216m3；
+ 2） 从市政给水管网引入两根DN200给水管，在建筑周边形成环状供水管网；
+ 3） 沿建筑周边环形消防车道设置室外消火栓，间距不超过120米，保护半径不超过150米；
+ 4） 共设置4座地上式室外消火栓，型号SS150/80-1.6。
+
+5.2 室内水消防系统
+
+1） 室内消火栓用水量为40L/s，火灾延续时间2小时，一次灭火用水量288m3；
+ 2） 采用临时高压消防给水系统，屋顶设置18m3消防水箱；
+ 3） 设置消防水池一座，有效容积504m3，位于地下B2层；
+ 4） 设置消防水泵两台（一用一备），参数Q=40L/s，H=70m；
+ 5） 室内消火栓布置保证任何一点有两股水柱同时到达，水柱充实长度不小于13m；
+ 6） 自动喷水灭火系统设置于地下车库及商业区域，喷水强度8L/min·m2，作用面积160m2。
+
+5.3 移动式灭火器
+
+序号
+
+	
+
+设备名称
+
+	
+
+型号
+
+	
+
+单位
+
+	
+
+数量
+
+
+
+
+1
+
+	
+
+手提式干粉灭火器
+
+	
+
+MF/ABC5
+
+	
+
+具
+
+	
+
+200
+
+
+
+
+2
+
+	
+
+手提式二氧化碳灭火器
+
+	
+
+MT5
+
+	
+
+具
+
+	
+
+30
+
+
+
+
+3
+
+	
+
+推车式干粉灭火器
+
+	
+
+MFT/ABC20
+
+	
+
+台
+
+	
+
+10
+
+
+
+
+4
+
+	
+
+灭火器箱
+
+	
+
+—
+
+	
+
+个
+
+	
+
+120
+
+5.4 火灾报警系统
+
+序号
+
+	
+
+安装地点
+
+	
+
+感烟探测器(个)
+
+	
+
+感温探测器(个)
+
+	
+
+手动报警按钮(个)
+
+	
+
+消防电话(个)
+
+	
+
+警报装置(个)
+
+
+
+
+1
+
+	
+
+地下车库
+
+	
+
+85
+
+	
+
+20
+
+	
+
+12
+
+	
+
+4
+
+	
+
+20
+
+
+
+
+2
+
+	
+
+商业裙房(1-4F)
+
+	
+
+120
+
+	
+
+—
+
+	
+
+16
+
+	
+
+6
+
+	
+
+30
+
+
+
+
+3
+
+	
+
+办公塔楼(5-26F)
+
+	
+
+260
+
+	
+
+—
+
+	
+
+26
+
+	
+
+10
+
+	
+
+52
+
+
+
+
+4
+
+	
+
+设备用房
+
+	
+
+15
+
+	
+
+10
+
+	
+
+4
+
+	
+
+4
+
+	
+
+6
+
+
+
+
+5
+
+	
+
+公共走道及楼梯间
+
+	
+
+30
+
+	
+
+—
+
+	
+
+10
+
+	
+
+6
+
+	
+
+15
+
+系统说明：
+ 1） 采用集中报警控制系统，消防控制室设于首层；
+ 2） 系统由火灾探测器、手动报警按钮、声光警报器、消防广播及联动控制器组成；
+ 3） 联动控制功能包括：自动喷淋灭火、防排烟系统、消防广播、切除非消防电源、电梯迫降等；
+ 4） 系统采用双电源供电，并配置UPS不间断电源。
+
+5.5 视频监控系统
+
+1） 在建筑主要出入口、电梯厅、疏散通道、地下车库等关键部位设置视频监控摄像机；
+ 2） 监控中心与消防控制室合用，实现消防与安防联动；
+ 3） 共配置高清网络摄像机120台，录像存储时间不少于30天；
+ 4） 系统具备智能分析功能，支持火灾早期探测联动确认。
+
+第6章 灭火救援设施
+6.1 消防车道
+
+本项目沿建筑周边设置环形消防车道，车道宽度4米，净空高度不小于4.5米。消防车道转弯半径不小于12米，满足大型消防车通行要求。消防车道与建筑外墙之间设置5-15米的作业场地。
+
+6.2 消防车回转场地
+
+在建筑北侧设置消防车回转场地，场地尺寸不小于18m×18m，满足消防车回车要求。场地承载力满足消防车最大荷载要求。
+
+6.3 消防登高操作场地
+
+1） 沿建筑长边设置消防车登高操作场地，宽度不小于10米，长度不小于建筑长边的1/4；
+ 2） 登高场地距建筑外墙5-10米，坡度不大于3%；
+ 3） 对应登高操作场地的建筑外立面设置消防救援窗，间距不大于20米。
+
+6.4 疏散设施
+
+1） 设置防烟楼梯间3部，疏散宽度满足规范要求；
+ 2） 设置消防电梯1部，载重量1000kg，速度2.5m/s；
+ 3） 首层设置直通室外的安全出口不少于2个；
+ 4） 屋顶设置直升机停机坪，满足消防救援需求。
+
+第7章 消防设施专项投资概算
+
+序号
+
+	
+
+消防系统名称
+
+	
+
+投资(万元)
+
+	
+
+备注
+
+
+
+
+1
+
+	
+
+室外消防水系统
+
+	
+
+85.00
+
+	
+
+含管网及消火栓
+
+
+
+
+2
+
+	
+
+室内消火栓系统
+
+	
+
+120.00
+
+	
+
+含管道、阀门及消火栓箱
+
+
+
+
+3
+
+	
+
+自动喷水灭火系统
+
+	
+
+260.00
+
+	
+
+含喷头、管网及水泵
+
+
+
+
+4
+
+	
+
+消防水池及泵房
+
+	
+
+180.00
+
+	
+
+含水池、水泵及控制柜
+
+
+
+
+5
+
+	
+
+火灾自动报警系统
+
+	
+
+195.00
+
+	
+
+含探测器、控制器及联动设备
+
+
+
+
+6
+
+	
+
+防排烟系统
+
+	
+
+210.00
+
+	
+
+含风机、风管及防火阀
+
+
+
+
+7
+
+	
+
+移动式灭火器
+
+	
+
+12.00
+
+	
+
+含灭火器及灭火器箱
+
+
+
+
+8
+
+	
+
+消防应急照明及疏散指示
+
+	
+
+45.00
+
+	
+
+含应急灯及标志灯
+
+
+
+
+9
+
+	
+
+消防广播及消防电话
+
+	
+
+28.00
+
+	
+
+含广播系统及电话系统
+
+
+
+
+10
+
+	
+
+视频监控系统
+
+	
+
+55.00
+
+	
+
+含摄像机及录像设备
+
+
+
+
+11
+
+	
+
+消防电梯
+
+	
+
+95.00
+
+	
+
+含电梯及联动功能
+
+
+
+
+
+
+
+	
+
+合计
+
+	
+
+1285.00
+
+	
+
+
+
+
+第8章 图纸及表格
+8.1 附图清单
+
+1） 区域位置图
+ 2） 总平面布置图
+ 3） 各层消防设施平面布置图
+ 4） 火灾自动报警系统图
+ 5） 消防给水系统图
+ 6） 自动喷水灭火系统图
+ 7） 防排烟系统图
+ 8） 疏散指示系统图
+
+8.2 主要消防设备一览表
+
+序号
+
+	
+
+设备名称
+
+	
+
+型号规格
+
+	
+
+单位
+
+	
+
+数量
+
+	
+
+备注
+
+
+
+
+1
+
+	
+
+消防水泵
+
+	
+
+XBD7.0/40-150L
+
+	
+
+台
+
+	
+
+2
+
+	
+
+一用一备
+
+
+
+
+2
+
+	
+
+喷淋泵
+
+	
+
+XBD8.0/30-150L
+
+	
+
+台
+
+	
+
+2
+
+	
+
+一用一备
+
+
+
+
+3
+
+	
+
+消防水箱
+
+	
+
+18m3
+
+	
+
+座
+
+	
+
+1
+
+	
+
+屋顶
+
+
+
+
+4
+
+	
+
+消防水池
+
+	
+
+504m3
+
+	
+
+座
+
+	
+
+1
+
+	
+
+B2层
+
+
+
+
+5
+
+	
+
+火灾报警控制器
+
+	
+
+JB-QG-GST5000
+
+	
+
+台
+
+	
+
+1
+
+	
+
+消防控制室
+
+
+
+
+6
+
+	
+
+消防广播主机
+
+	
+
+GST-GBFX
+
+	
+
+台
+
+	
+
+1
+
+	
+
+消防控制室
+
+
+
+
+7
+
+	
+
+防排烟风机
+
+	
+
+HTF-Ⅱ型
+
+	
+
+台
+
+	
+
+12
+
+	
+
+各层
+
+
+
+
+8
+
+	
+
+防火阀
+
+	
+
+70℃/280℃
+
+	
+
+个
+
+	
+
+85
+
+	
+
+各系统
+
+
+
+
+9
+
+	
+
+消防应急灯具
+
+	
+
+集中控制型
+
+	
+
+套
+
+	
+
+350
+
+	
+
+各层
+
+
+
+
+10
+
+	
+
+消防电话主机
+
+	
+
+GST-TS-Z01
+
+	
+
+台
+
+	
+
+1
+
+	
+
+消防控制室"
+      uid=4_26 heading "张三" level="1"
+      uid=4_27 heading "第1章 设计依据及采用的标准" level="2"
+      uid=4_28 heading "1.1 设计依据" level="3"
+      uid=4_29 paragraph
+        uid=4_30 StaticText "a） 华宇大厦项目可行性研究报告及批复；"
+        uid=4_31 StaticText " b） 项目用地规划许可证及相关政府批文；"
+        uid=4_32 StaticText " c） 建"
+      uid=4_33 paragraph
+        uid=4_34 StaticText " e） 工程设计开工会会议纪要及相关技术往来文件。"
+      uid=4_35 heading "1.2 设计采用的技术标准、规范" level="3"
+      uid=4_36 paragraph
+        uid=4_37 StaticText "1） 石油化工企业设计防火标准（2018版） GB50160-2008"
+        uid=4_38 StaticText " 2） 建筑设计防火规范（2018版） GB50016-2014"
+        uid=4_39 StaticText " 3） 爆炸危险环境电力装置设计规范 GB50058-2014"
+        uid=4_40 StaticText " 4） 火灾自动报警系统设计规范 GB50116-2013"
+        uid=4_41 StaticText " 5） 建筑灭火器配置设计规范 GB50140-2005"
+        uid=4_42 StaticText " 6） 消防给水及消火栓系统技术规范 GB50974-2014"
+        uid=4_43 StaticText " 7） 自动喷水灭火系统设计规范 GB50084-2017"
+        uid=4_44 StaticText " 8） 建筑防烟排烟系统技术标准 GB51251-2017"
+        uid=4_45 StaticText " 9） 消防应急照明和疏散指示系统技术标准 GB51309-2018"
+        uid=4_46 StaticText " 10） 建筑物防雷设计规范 GB50057-2010"
+        uid=4_47 StaticText " 11） 供配电系统设计规范 GB50052-2009"
+        uid=4_48 StaticText " 12） 建筑照明设计标准 GB50034-2013"
+      uid=4_49 heading "1.3 地方相关法规" level="3"
+      uid=4_50 paragraph
+        uid=4_51 StaticText "a） 中华人民共和国消防法（2019年4月23日修订）"
+        uid=4_52 StaticText " b） 建设工程消防设计审查验收管理暂行规定"
+        uid=4_53 StaticText " c） 项目所在地消防管理条例及相关地方法规"
+      uid=4_54 heading "第2章 概述" level="2"
+      uid=4_55 heading "2.1 项目位置" level="3"
+      uid=4_56 paragraph
+        uid=4_57 StaticText "华宇大厦位于市中心商务区核心地段，东临城市主干道，北接商业步行街，南靠城市公园，西侧为规划市政道路。项目总占地面积约8500平方米，周边市政配套设施完善，交通便利。"
+      uid=4_58 paragraph
+        uid=4_59 StaticText "/"
+      uid=4_60 heading "2.2 项目建设功能定位" level="3"
+      uid=4_61 paragraph
+        uid=4_62 StaticText "本项目定位为集商业、办公、会议、餐饮于一体的综合性高层建筑，旨在打造区域性地标建筑，满足高端商务办公及商业配套需求。建筑功能包括：地下两层停车场及设备用房，地上裙房商业区及塔楼办公区。"
+      uid=4_63 heading "2.3 建设规模" level="3"
+      uid=4_64 generic
+        uid=4_65 table
+          uid=4_66 row
+            uid=4_67 columnheader "序号"
+              uid=4_68 paragraph
+                uid=4_69 StaticText "序号"
+            uid=4_70 columnheader "项目"
+              uid=4_71 paragraph
+                uid=4_72 StaticText "项目"
+            uid=4_73 columnheader "数值"
+              uid=4_74 paragraph
+                uid=4_75 StaticText "数值"
+            uid=4_76 columnheader "单位"
+              uid=4_77 paragraph
+                uid=4_78 StaticText "单位"
+          uid=4_79 row
+            uid=4_80 cell "1"
+              uid=4_81 paragraph
+                uid=4_82 StaticText "1"
+            uid=4_83 cell "总占地面积"
+              uid=4_84 paragraph
+                uid=4_85 StaticText "总占地面积"
+            uid=4_86 cell "8500.00"
+              uid=4_87 paragraph
+                uid=4_88 StaticText "8500.00"
+            uid=4_89 cell "m2"
+              uid=4_90 paragraph
+                uid=4_91 StaticText "m2"
+          uid=4_92 row
+            uid=4_93 cell "2"
+              uid=4_94 paragraph
+                uid=4_95 StaticText "2"
+            uid=4_96 cell "总建筑面积"
+              uid=4_97 paragraph
+                uid=4_98 StaticText "总建筑面积"
+            uid=4_99 cell "48650.00"
+              uid=4_100 paragraph
+                uid=4_101 StaticText "48650.00"
+            uid=4_102 cell "m2"
+              uid=4_103 paragraph
+                uid=4_104 StaticText "m2"
+          uid=4_105 row
+            uid=4_106 cell "3"
+              uid=4_107 paragraph
+                uid=4_108 StaticText "3"
+            uid=4_109 cell "地上建筑面积"
+              uid=4_110 paragraph
+                uid=4_111 StaticText "地上建筑面积"
+            uid=4_112 cell "36800.00"
+              uid=4_113 paragraph
+                uid=4_114 StaticText "36800.00"
+            uid=4_115 cell "m2"
+              uid=4_116 paragraph
+                uid=4_117 StaticText "m2"
+          uid=4_118 row
+            uid=4_119 cell "4"
+              uid=4_120 paragraph
+                uid=4_121 StaticText "4"
+            uid=4_122 cell "地下建筑面积"
+              uid=4_123 paragraph
+                uid=4_124 StaticText "地下建筑面积"
+            uid=4_125 cell "11850.00"
+              uid=4_126 paragraph
+                uid=4_127 StaticText "11850.00"
+            uid=4_128 cell "m2"
+              uid=4_129 paragraph
+                uid=4_130 StaticText "m2"
+          uid=4_131 row
+            uid=4_132 cell "5"
+              uid=4_133 paragraph
+                uid=4_134 StaticText "5"
+            uid=4_135 cell "建筑高度"
+              uid=4_136 paragraph
+                uid=4_137 StaticText "建筑高度"
+            uid=4_138 cell "98.60"
+              uid=4_139 paragraph
+                uid=4_140 StaticText "98.60"
+            uid=4_141 cell "m"
+              uid=4_142 paragraph
+                uid=4_143 StaticText "m"
+          uid=4_144 row
+            uid=4_145 cell "6"
+              uid=4_146 paragraph
+                uid=4_147 StaticText "6"
+            uid=4_148 cell "建筑层数（地上）"
+              uid=4_149 paragraph
+                uid=4_150 StaticText "建筑层数（地上）"
+            uid=4_151 cell "26"
+              uid=4_152 paragraph
+                uid=4_153 StaticText "26"
+            uid=4_154 cell "层"
+              uid=4_155 paragraph
+                uid=4_156 StaticText "层"
+          uid=4_157 row
+            uid=4_158 cell "7"
+              uid=4_159 paragraph
+                uid=4_160 StaticText "7"
+            uid=4_161 cell "建筑层数（地下）"
+              uid=4_162 paragraph
+                uid=4_163 StaticText "建筑层数（地下）"
+            uid=4_164 cell "2"
+              uid=4_165 paragraph
+                uid=4_166 StaticText "2"
+            uid=4_167 cell "层"
+              uid=4_168 paragraph
+                uid=4_169 StaticText "层"
+          uid=4_170 row
+            uid=4_171 cell "8"
+              uid=4_172 paragraph
+                uid=4_173 StaticText "8"
+            uid=4_174 cell "容积率"
+              uid=4_175 paragraph
+                uid=4_176 StaticText "容积率"
+            uid=4_177 cell "4.33"
+              uid=4_178 paragraph
+                uid=4_179 StaticText "4.33"
+            uid=4_180 cell "  "
+              uid=4_181 paragraph
+        uid=4_182 generic
+      uid=4_183 heading "2.4 建设内容" level="3"
+      uid=4_184 generic
+        uid=4_185 table
+          uid=4_186 row
+            uid=4_187 columnheader "序号"
+              uid=4_188 paragraph
+                uid=4_189 StaticText "序号"
+            uid=4_190 columnheader "功能区域"
+              uid=4_191 paragraph
+                uid=4_192 StaticText "功能区域"
+            uid=4_193 columnheader "楼层范围"
+              uid=4_194 paragraph
+                uid=4_195 StaticText "楼层范围"
+            uid=4_196 columnheader "建筑面积（m2）"
+              uid=4_197 paragraph
+                uid=4_198 StaticText "建筑面积（m2）"
+          uid=4_199 row
+            uid=4_200 cell "1"
+              uid=4_201 paragraph
+                uid=4_202 StaticText "1"
+            uid=4_203 cell "地下停车场及设备用房"
+              uid=4_204 paragraph
+                uid=4_205 StaticText "地下停车场及设备用房"
+            uid=4_206 cell "B1-B2"
+              uid=4_207 paragraph
+                uid=4_208 StaticText "B1-B2"
+            uid=4_209 cell "11850.00"
+              uid=4_210 paragraph
+                uid=4_211 StaticText "11850.00"
+          uid=4_212 row
+            uid=4_213 cell "2"
+              uid=4_214 paragraph
+                uid=4_215 StaticText "2"
+            uid=4_216 cell "商业裙房"
+              uid=4_217 paragraph
+                uid=4_218 StaticText "商业裙房"
+            uid=4_219 cell "1-4层"
+              uid=4_220 paragraph
+                uid=4_221 StaticText "1-4层"
+            uid=4_222 cell "12500.00"
+              uid=4_223 paragraph
+                uid=4_224 StaticText "12500.00"
+          uid=4_225 row
+            uid=4_226 cell "3"
+              uid=4_227 paragraph
+                uid=4_228 StaticText "3"
+            uid=4_229 cell "办公塔楼"
+              uid=4_230 paragraph
+                uid=4_231 StaticText "办公塔楼"
+            uid=4_232 cell "5-26层"
+              uid=4_233 paragraph
+                uid=4_234 StaticText "5-26层"
+            uid=4_235 cell "24300.00"
+              uid=4_236 paragraph
+                uid=4_237 StaticText "24300.00"
+          uid=4_238 row
+            uid=4_239 cell "4"
+              uid=4_240 paragraph
+                uid=4_241 StaticText "4"
+            uid=4_242 cell "屋顶设备层"
+              uid=4_243 paragraph
+                uid=4_244 StaticText "屋顶设备层"
+            uid=4_245 cell "屋顶层"
+              uid=4_246 paragraph
+                uid=4_247 StaticText "屋顶层"
+            uid=4_248 cell "—"
+              uid=4_249 paragraph
+                uid=4_250 StaticText "—"
+        uid=4_251 generic
+      uid=4_252 heading "2.5 建设性质" level="3"
+      uid=4_253 paragraph
+        uid=4_254 StaticText "新建项目。"
+      uid=4_255 heading "2.6 工程所在地气象条件" level="3"
+      uid=4_256 generic
+        uid=4_257 table
+          uid=4_258 row
+            uid=4_259 columnheader "序号"
+              uid=4_260 paragraph
+                uid=4_261 StaticText "序号"
+            uid=4_262 columnheader "条件"
+              uid=4_263 paragraph
+                uid=4_264 StaticText "条件"
+            uid=4_265 columnheader "单位"
+              uid=4_266 paragraph
+                uid=4_267 StaticText "单位"
+            uid=4_268 columnheader "数值"
+              uid=4_269 paragraph
+                uid=4_270 StaticText "数值"
+          uid=4_271 row
+            uid=4_272 cell "1"
+              uid=4_273 paragraph
+                uid=4_274 StaticText "1"
+            uid=4_275 cell "温度"
+              uid=4_276 paragraph
+                uid=4_277 StaticText "温度"
+            uid=4_278 cell "  "
+              uid=4_279 paragraph
+            uid=4_280 cell "  "
+              uid=4_281 paragraph
+          uid=4_282 row
+            uid=4_283 cell "  "
+              uid=4_284 paragraph
+            uid=4_285 cell "年平均气温"
+              uid=4_286 paragraph
+                uid=4_287 StaticText "年平均气温"
+            uid=4_288 cell "℃"
+              uid=4_289 paragraph
+                uid=4_290 StaticText "℃"
+            uid=4_291 cell "16.5"
+              uid=4_292 paragraph
+                uid=4_293 StaticText "16.5"
+          uid=4_294 row
+            uid=4_295 cell "  "
+              uid=4_296 paragraph
+            uid=4_297 cell "最热月平均气温"
+              uid=4_298 paragraph
+                uid=4_299 StaticText "最热月平均气温"
+            uid=4_300 cell "℃"
+              uid=4_301 paragraph
+                uid=4_302 StaticText "℃"
+            uid=4_303 cell "28.8"
+              uid=4_304 paragraph
+                uid=4_305 StaticText "28.8"
+          uid=4_306 row
+            uid=4_307 cell "  "
+              uid=4_308 paragraph
+            uid=4_309 cell "最冷月平均气温"
+              uid=4_310 paragraph
+                uid=4_311 StaticText "最冷月平均气温"
+            uid=4_312 cell "℃"
+              uid=4_313 paragraph
+                uid=4_314 StaticText "℃"
+            uid=4_315 cell "3.2"
+              uid=4_316 paragraph
+                uid=4_317 StaticText "3.2"
+          uid=4_318 row
+            uid=4_319 cell "  "
+              uid=4_320 paragraph
+            uid=4_321 cell "极端最高气温"
+              uid=4_322 paragraph
+                uid=4_323 StaticText "极端最高气温"
+            uid=4_324 cell "℃"
+              uid=4_325 paragraph
+                uid=4_326 StaticText "℃"
+            uid=4_327 cell "40.6"
+              uid=4_328 paragraph
+                uid=4_329 StaticText "40.6"
+          uid=4_330 row
+            uid=4_331 cell "  "
+              uid=4_332 paragraph
+            uid=4_333 cell "极端最低气温"
+              uid=4_334 paragraph
+                uid=4_335 StaticText "极端最低气温"
+            uid=4_336 cell "℃"
+              uid=4_337 paragraph
+                uid=4_338 StaticText "℃"
+            uid=4_339 cell "-10.1"
+              uid=4_340 paragraph
+                uid=4_341 StaticText "-10.1"
+          uid=4_342 row
+            uid=4_343 cell "2"
+              uid=4_344 paragraph
+                uid=4_345 StaticText "2"
+            uid=4_346 cell "湿度"
+              uid=4_347 paragraph
+                uid=4_348 StaticText "湿度"
+            uid=4_349 cell "  "
+              uid=4_350 paragraph
+            uid=4_351 cell "  "
+              uid=4_352 paragraph
+          uid=4_353 row
+            uid=4_354 cell "  "
+              uid=4_355 paragraph
+            uid=4_356 cell "年平均相对湿度"
+              uid=4_357 paragraph
+                uid=4_358 StaticText "年平均相对湿度"
+            uid=4_359 cell "%"
+              uid=4_360 paragraph
+                uid=4_361 StaticText "%"
+            uid=4_362 cell "76"
+              uid=4_363 paragraph
+                uid=4_364 StaticText "76"
+          uid=4_365 row
+            uid=4_366 cell "  "
+              uid=4_367 paragraph
+            uid=4_368 cell "最热月平均相对湿度"
+              uid=4_369 paragraph
+                uid=4_370 StaticText "最热月平均相对湿度"
+            uid=4_371 cell "%"
+              uid=4_372 paragraph
+                uid=4_373 StaticText "%"
+            uid=4_374 cell "83"
+              uid=4_375 paragraph
+                uid=4_376 StaticText "83"
+          uid=4_377 row
+            uid=4_378 cell "3"
+              uid=4_379 paragraph
+                uid=4_380 StaticText "3"
+            uid=4_381 cell "年平均降水量"
+              uid=4_382 paragraph
+                uid=4_383 StaticText "年平均降水量"
+            uid=4_384 cell "mm"
+              uid=4_385 paragraph
+                uid=4_386 StaticText "mm"
+            uid=4_387 cell "1100"
+              uid=4_388 paragraph
+                uid=4_389 StaticText "1100"
+          uid=4_390 row
+            uid=4_391 cell "4"
+              uid=4_392 paragraph
+                uid=4_393 StaticText "4"
+            uid=4_394 cell "最大积雪深度"
+              uid=4_395 paragraph
+                uid=4_396 StaticText "最大积雪深度"
+            uid=4_397 cell "cm"
+              uid=4_398 paragraph
+                uid=4_399 StaticText "cm"
+            uid=4_400 cell "15"
+              uid=4_401 paragraph
+                uid=4_402 StaticText "15"
+          uid=4_403 row
+            uid=4_404 cell "5"
+              uid=4_405 paragraph
+                uid=4_406 StaticText "5"
+            uid=4_407 cell "常年主导风向"
+              uid=4_408 paragraph
+                uid=4_409 StaticText "常年主导风向"
+            uid=4_410 cell "  "
+              uid=4_411 paragraph
+            uid=4_412 cell "东南风"
+              uid=4_413 paragraph
+                uid=4_414 StaticText "东南风"
+          uid=4_415 row
+            uid=4_416 cell "6"
+              uid=4_417 paragraph
+                uid=4_418 StaticText "6"
+            uid=4_419 cell "夏季平均风速"
+              uid=4_420 paragraph
+                uid=4_421 StaticText "夏季平均风速"
+            uid=4_422 cell "m/s"
+              uid=4_423 paragraph
+                uid=4_424 StaticText "m/s"
+            uid=4_425 cell "2.8"
+              uid=4_426 paragraph
+                uid=4_427 StaticText "2.8"
+          uid=4_428 row
+            uid=4_429 cell "7"
+              uid=4_430 paragraph
+                uid=4_431 StaticText "7"
+            uid=4_432 cell "冬季平均风速"
+              uid=4_433 paragraph
+                uid=4_434 StaticText "冬季平均风速"
+            uid=4_435 cell "m/s"
+              uid=4_436 paragraph
+                uid=4_437 StaticText "m/s"
+            uid=4_438 cell "3.2"
+              uid=4_439 paragraph
+                uid=4_440 StaticText "3.2"
+          uid=4_441 row
+            uid=4_442 cell "8"
+              uid=4_443 paragraph
+                uid=4_444 StaticText "8"
+            uid=4_445 cell "基本风压"
+              uid=4_446 paragraph
+                uid=4_447 StaticText "基本风压"
+            uid=4_448 cell "kN/m2"
+              uid=4_449 paragraph
+                uid=4_450 StaticText "kN/m2"
+            uid=4_451 cell "0.45"
+              uid=4_452 paragraph
+                uid=4_453 StaticText "0.45"
+          uid=4_454 row
+            uid=4_455 cell "9"
+              uid=4_456 paragraph
+                uid=4_457 StaticText "9"
+            uid=4_458 cell "基本雪压"
+              uid=4_459 paragraph
+                uid=4_460 StaticText "基本雪压"
+            uid=4_461 cell "kN/m2"
+              uid=4_462 paragraph
+                uid=4_463 StaticText "kN/m2"
+            uid=4_464 cell "0.35"
+              uid=4_465 paragraph
+                uid=4_466 StaticText "0.35"
+          uid=4_467 row
+            uid=4_468 cell "10"
+              uid=4_469 paragraph
+                uid=4_470 StaticText "10"
+            uid=4_471 cell "年平均雷暴日数"
+              uid=4_472 paragraph
+                uid=4_473 StaticText "年平均雷暴日数"
+            uid=4_474 cell "天"
+              uid=4_475 paragraph
+                uid=4_476 StaticText "天"
+            uid=4_477 cell "35.6"
+              uid=4_478 paragraph
+                uid=4_479 StaticText "35.6"
+          uid=4_480 row
+            uid=4_481 cell "11"
+              uid=4_482 paragraph
+                uid=4_483 StaticText "11"
+            uid=4_484 cell "抗震设防烈度"
+              uid=4_485 paragraph
+                uid=4_486 StaticText "抗震设防烈度"
+            uid=4_487 cell "度"
+              uid=4_488 paragraph
+                uid=4_489 StaticText "度"
+            uid=4_490 cell "7"
+              uid=4_491 paragraph
+                uid=4_492 StaticText "7"
+          uid=4_493 row
+            uid=4_494 cell "12"
+              uid=4_495 paragraph
+                uid=4_496 StaticText "12"
+            uid=4_497 cell "设计基本地震加速度值"
+              uid=4_498 paragraph
+                uid=4_499 StaticText "设计基本地震加速度值"
+            uid=4_500 cell "g"
+              uid=4_501 paragraph
+                uid=4_502 StaticText "g"
+            uid=4_503 cell "0.10"
+              uid=4_504 paragraph
+                uid=4_505 StaticText "0.10"
+        uid=4_506 generic
+      uid=4_507 heading "2.7 周围消防站情况" level="3"
+      uid=4_508 paragraph
+        uid=4_509 StaticText "项目周边3公里范围内设有两座消防站，其中最近消防站距离约1.2公里，消防响应时间可控制在5分钟以内，满足规范要求。"
+      uid=4_510 heading "第3章 火灾危险性分析" level="2"
+      uid=4_511 heading "3.1 项目主项表" level="3"
+      uid=4_512 generic
+        uid=4_513 table
+          uid=4_514 row
+            uid=4_515 columnheader "序号"
+              uid=4_516 paragraph
+                uid=4_517 StaticText "序号"
+            uid=4_518 columnheader "主项代号"
+              uid=4_519 paragraph
+                uid=4_520 StaticText "主项代号"
+            uid=4_521 columnheader "名称"
+              uid=4_522 paragraph
+                uid=4_523 StaticText "名称"
+            uid=4_524 columnheader "数量"
+              uid=4_525 paragraph
+                uid=4_526 StaticText "数量"
+            uid=4_527 columnheader "主项专业"
+              uid=4_528 paragraph
+                uid=4_529 StaticText "主项专业"
+            uid=4_530 columnheader "备注"
+              uid=4_531 paragraph
+                uid=4_532 StaticText "备注"
+          uid=4_533 row
+            uid=4_534 cell "1"
+              uid=4_535 paragraph
+                uid=4_536 StaticText "1"
+            uid=4_537 cell "100"
+              uid=4_538 paragraph
+                uid=4_539 StaticText "100"
+            uid=4_540 cell "地下车库及设备用房"
+              uid=4_541 paragraph
+                uid=4_542 StaticText "地下车库及设备用房"
+            uid=4_543 cell "1"
+              uid=4_544 paragraph
+                uid=4_545 StaticText "1"
+            uid=4_546 cell "建筑"
+              uid=4_547 paragraph
+                uid=4_548 StaticText "建筑"
+            uid=4_549 cell "B1-B2层"
+              uid=4_550 paragraph
+                uid=4_551 StaticText "B1-B2层"
+          uid=4_552 row
+            uid=4_553 cell "2"
+              uid=4_554 paragraph
+                uid=4_555 StaticText "2"
+            uid=4_556 cell "200"
+              uid=4_557 paragraph
+                uid=4_558 StaticText "200"
+            uid=4_559 cell "商业裙房"
+              uid=4_560 paragraph
+                uid=4_561 StaticText "商业裙房"
+            uid=4_562 cell "1"
+              uid=4_563 paragraph
+                uid=4_564 StaticText "1"
+            uid=4_565 cell "建筑"
+              uid=4_566 paragraph
+                uid=4_567 StaticText "建筑"
+            uid=4_568 cell "1-4层"
+              uid=4_569 paragraph
+                uid=4_570 StaticText "1-4层"
+          uid=4_571 row
+            uid=4_572 cell "3"
+              uid=4_573 paragraph
+                uid=4_574 StaticText "3"
+            uid=4_575 cell "300"
+              uid=4_576 paragraph
+                uid=4_577 StaticText "300"
+            uid=4_578 cell "办公塔楼"
+              uid=4_579 paragraph
+                uid=4_580 StaticText "办公塔楼"
+            uid=4_581 cell "1"
+              uid=4_582 paragraph
+                uid=4_583 StaticText "1"
+            uid=4_584 cell "建筑"
+              uid=4_585 paragraph
+                uid=4_586 StaticText "建筑"
+            uid=4_587 cell "5-26层"
+              uid=4_588 paragraph
+                uid=4_589 StaticText "5-26层"
+          uid=4_590 row
+            uid=4_591 cell "4"
+              uid=4_592 paragraph
+                uid=4_593 StaticText "4"
+            uid=4_594 cell "400"
+              uid=4_595 paragraph
+                uid=4_596 StaticText "400"
+            uid=4_597 cell "屋顶设备层"
+              uid=4_598 paragraph
+                uid=4_599 StaticText "屋顶设备层"
+            uid=4_600 cell "1"
+              uid=4_601 paragraph
+                uid=4_602 StaticText "1"
+            uid=4_603 cell "设备"
+              uid=4_604 paragraph
+                uid=4_605 StaticText "设备"
+            uid=4_606 cell "屋顶层"
+              uid=4_607 paragraph
+                uid=4_608 StaticText "屋顶层"
+          uid=4_609 row
+            uid=4_610 cell "5"
+              uid=4_611 paragraph
+                uid=4_612 StaticText "5"
+            uid=4_613 cell "500"
+              uid=4_614 paragraph
+                uid=4_615 StaticText "500"
+            uid=4_616 cell "消防水池及泵房"
+              uid=4_617 paragraph
+                uid=4_618 StaticText "消防水池及泵房"
+            uid=4_619 cell "1"
+              uid=4_620 paragraph
+                uid=4_621 StaticText "1"
+            uid=4_622 cell "给排水"
+              uid=4_623 paragraph
+                uid=4_624 StaticText "给排水"
+            uid=4_625 cell "地下B2层"
+              uid=4_626 paragraph
+                uid=4_627 StaticText "地下B2层"
+          uid=4_628 row
+            uid=4_629 cell "6"
+              uid=4_630 paragraph
+                uid=4_631 StaticText "6"
+            uid=4_632 cell "600"
+              uid=4_633 paragraph
+                uid=4_634 StaticText "600"
+            uid=4_635 cell "消防控制室"
+              uid=4_636 paragraph
+                uid=4_637 StaticText "消防控制室"
+            uid=4_638 cell "1"
+              uid=4_639 paragraph
+                uid=4_640 StaticText "1"
+            uid=4_641 cell "电气"
+              uid=4_642 paragraph
+                uid=4_643 StaticText "电气"
+            uid=4_644 cell "首层"
+              uid=4_645 paragraph
+                uid=4_646 StaticText "首层"
+        uid=4_647 generic
+      uid=4_648 heading "3.2 火灾危险性分类" level="3"
+      uid=4_649 paragraph
+        uid=4_650 StaticText "根据GB50016-2014（2018版）及GB50160-2008相关规定，本项目的火灾危险性分类如下："
+      uid=4_651 generic
+        uid=4_652 table
+          uid=4_653 row
+            uid=4_654 columnheader "序号"
+              uid=4_655 paragraph
+                uid=4_656 StaticText "序号"
+            uid=4_657 columnheader "建筑/区域"
+              uid=4_658 paragraph
+                uid=4_659 StaticText "建筑/区域"
+            uid=4_660 columnheader "火灾危险性分类"
+              uid=4_661 paragraph
+                uid=4_662 StaticText "火灾危险性分类"
+            uid=4_663 columnheader "依据标准"
+              uid=4_664 paragraph
+                uid=4_665 StaticText "依据标准"
+          uid=4_666 row
+            uid=4_667 cell "1"
+              uid=4_668 paragraph
+                uid=4_669 StaticText "1"
+            uid=4_670 cell "地下车库"
+              uid=4_671 paragraph
+                uid=4_672 StaticText "地下车库"
+            uid=4_673 cell "中危险级"
+              uid=4_674 paragraph
+                uid=4_675 StaticText "中危险级"
+            uid=4_676 cell "GB50016 第5.1.1条"
+              uid=4_677 paragraph
+                uid=4_678 StaticText "GB50016 第5.1.1条"
+          uid=4_679 row
+            uid=4_680 cell "2"
+              uid=4_681 paragraph
+                uid=4_682 StaticText "2"
+            uid=4_683 cell "商业裙房"
+              uid=4_684 paragraph
+                uid=4_685 StaticText "商业裙房"
+            uid=4_686 cell "中危险级"
+              uid=4_687 paragraph
+                uid=4_688 StaticText "中危险级"
+            uid=4_689 cell "GB50016 第5.1.1条"
+              uid=4_690 paragraph
+                uid=4_691 StaticText "GB50016 第5.1.1条"
+          uid=4_692 row
+            uid=4_693 cell "3"
+              uid=4_694 paragraph
+                uid=4_695 StaticText "3"
+            uid=4_696 cell "办公塔楼"
+              uid=4_697 paragraph
+                uid=4_698 StaticText "办公塔楼"
+            uid=4_699 cell "轻危险级"
+              uid=4_700 paragraph
+                uid=4_701 StaticText "轻危险级"
+            uid=4_702 cell "GB50016 第5.1.1条"
+              uid=4_703 paragraph
+                uid=4_704 StaticText "GB50016 第5.1.1条"
+          uid=4_705 row
+            uid=4_706 cell "4"
+              uid=4_707 paragraph
+                uid=4_708 StaticText "4"
+            uid=4_709 cell "设备用房（变配电室）"
+              uid=4_710 paragraph
+                uid=4_711 StaticText "设备用房（变配电室）"
+            uid=4_712 cell "丙类"
+              uid=4_713 paragraph
+                uid=4_714 StaticText "丙类"
+            uid=4_715 cell "GB50016 第3.1.1条"
+              uid=4_716 paragraph
+                uid=4_717 StaticText "GB50016 第3.1.1条"
+          uid=4_718 row
+            uid=4_719 cell "5"
+              uid=4_720 paragraph
+                uid=4_721 StaticText "5"
+            uid=4_722 cell "消防水泵房"
+              uid=4_723 paragraph
+                uid=4_724 StaticText "消防水泵房"
+            uid=4_725 cell "戊类"
+              uid=4_726 paragraph
+                uid=4_727 StaticText "戊类"
+            uid=4_728 cell "GB50016 第3.1.1条"
+              uid=4_729 paragraph
+                uid=4_730 StaticText "GB50016 第3.1.1条"
+        uid=4_731 generic
+      uid=4_732 heading "第4章 防火安全措施" level="2"
+      uid=4_733 heading "4.1 总平面布置、防火间距及消防通道" level="3"
+      uid=4_734 paragraph
+        uid=4_735 StaticText "本项目总平面布置严格按照GB50016-2014要求执行："
+      uid=4_736 paragraph
+        uid=4_737 StaticText "1） 建筑退让红线距离：东侧退让城市主干道15米，北侧退让步行街10米，南侧退让公园边界12米，西侧退让规划道路8米；"
+        uid=4_738 StaticText " 2） 与相邻建筑的防火间距均满足规范要求，最小防火间距为13米；"
+        uid=4_739 StaticText " 3） 沿建筑周边设置环形消防车道，车道宽度不小于4米，转弯半径不小于12米；"
+        uid=4_740 StaticText " 4） 消防车道与建筑外墙间距控制在5-15米范围内，满足消防车通行及作业要求。"
+      uid=4_741 heading "4.2 防雷、接地的设计原则" level="3"
+      uid=4_742 heading "4.2.1 防雷设计原则" level="4"
+      uid=4_743 paragraph
+        uid=4_744 StaticText "1） 本建筑按二类防雷建筑设防，依据GB50057-2010确定防雷等级；"
+        uid=4_745 StaticText " 2） 屋面设置避雷带作为接闪器，网格尺寸不大于10m×10m或12m×8m；"
+        uid=4_746 StaticText " 3） 利用建筑物柱内主筋作为引下线，间距不大于18米；"
+        uid=4_747 StaticText " 4） 利用建筑物基础钢筋网作为接地体，形成自然接地装置。"
+      uid=4_748 heading "4.2.2 接地设计原则" level="4"
+      uid=4_749 paragraph
+        uid=4_750 StaticText "1） 本工程采用TN-S接地系统，工作接地、保护接地、防雷接地、防静电接地共用一套接地装置；"
+        uid=4_751 StaticText " 2） 接地电阻要求不大于1欧姆；"
+        uid=4_752 StaticText " 3） 建筑内实施总等电位联结，卫生间等场所实施辅助等电位联结；"
+        uid=4_753 StaticText " 4） 强弱电竖井内设置接地干线，每层设接地端子箱。"
+      uid=4_754 heading "4.3 供电安全" level="3"
+      uid=4_755 paragraph
+        uid=4_756 StaticText "1） 本建筑为一类高层建筑，消防用电设备按一级负荷等级供电；"
+        uid=4_757 StaticText " 2） 供电电源采用双重电源供电，引自两个不同区域变电站，一用一备；"
+        uid=4_758 StaticText " 3） 消防水泵、防排烟风机、应急照明等重要消防负荷采用双电源末端自动切换；"
+        uid=4_759 StaticText " 4） 设置柴油发电机组作为应急备用电源，容量满足消防负荷需求；"
+        uid=4_760 StaticText " 5） 消防控制室、消防水泵房、变配电室等重要部位设置消防应急照明及疏散指示系统。"
+      uid=4_761 heading "4.4 建、构筑物防火" level="3"
+      uid=4_762 generic
+        uid=4_763 table
+          uid=4_764 row
+            uid=4_765 columnheader "序号"
+              uid=4_766 paragraph
+                uid=4_767 StaticText "序号"
+            uid=4_768 columnheader "名称"
+              uid=4_769 paragraph
+                uid=4_770 StaticText "名称"
+            uid=4_771 columnheader "占地面积(m2)"
+              uid=4_772 paragraph
+                uid=4_773 StaticText "占地面积(m2)"
+            uid=4_774 columnheader "建筑面积(m2)"
+              uid=4_775 paragraph
+                uid=4_776 StaticText "建筑面积(m2)"
+            uid=4_777 columnheader "层数/高度(m)"
+              uid=4_778 paragraph
+                uid=4_779 StaticText "层数/高度(m)"
+            uid=4_780 columnheader "火灾危险性"
+              uid=4_781 paragraph
+                uid=4_782 StaticText "火灾危险性"
+            uid=4_783 columnheader "耐火等级"
+              uid=4_784 paragraph
+                uid=4_785 StaticText "耐火等级"
+            uid=4_786 columnheader "结构类型"
+              uid=4_787 paragraph
+                uid=4_788 StaticText "结构类型"
+            uid=4_789 columnheader "备注"
+              uid=4_790 paragraph
+                uid=4_791 StaticText "备注"
+          uid=4_792 row
+            uid=4_793 cell "1"
+              uid=4_794 paragraph
+                uid=4_795 StaticText "1"
+            uid=4_796 cell "地下车库"
+              uid=4_797 paragraph
+                uid=4_798 StaticText "地下车库"
+            uid=4_799 cell "5925.00"
+              uid=4_800 paragraph
+                uid=4_801 StaticText "5925.00"
+            uid=4_802 cell "11850.00"
+              uid=4_803 paragraph
+                uid=4_804 StaticText "11850.00"
+            uid=4_805 cell "B1-B2 / 8.4"
+              uid=4_806 paragraph
+                uid=4_807 StaticText "B1-B2 / 8.4"
+            uid=4_808 cell "中危险级"
+              uid=4_809 paragraph
+                uid=4_810 StaticText "中危险级"
+            uid=4_811 cell "一级"
+              uid=4_812 paragraph
+                uid=4_813 StaticText "一级"
+            uid=4_814 cell "框架剪力墙"
+              uid=4_815 paragraph
+                uid=4_816 StaticText "框架剪力墙"
+            uid=4_817 cell "含设备用房"
+              uid=4_818 paragraph
+                uid=4_819 StaticText "含设备用房"
+          uid=4_820 row
+            uid=4_821 cell "2"
+              uid=4_822 paragraph
+                uid=4_823 StaticText "2"
+            uid=4_824 cell "商业裙房"
+              uid=4_825 paragraph
+                uid=4_826 StaticText "商业裙房"
+            uid=4_827 cell "4250.00"
+              uid=4_828 paragraph
+                uid=4_829 StaticText "4250.00"
+            uid=4_830 cell "12500.00"
+              uid=4_831 paragraph
+                uid=4_832 StaticText "12500.00"
+            uid=4_833 cell "1-4F / 18.0"
+              uid=4_834 paragraph
+                uid=4_835 StaticText "1-4F / 18.0"
+            uid=4_836 cell "中危险级"
+              uid=4_837 paragraph
+                uid=4_838 StaticText "中危险级"
+            uid=4_839 cell "一级"
+              uid=4_840 paragraph
+                uid=4_841 StaticText "一级"
+            uid=4_842 cell "框架剪力墙"
+              uid=4_843 paragraph
+                uid=4_844 StaticText "框架剪力墙"
+            uid=4_845 cell "含中庭"
+              uid=4_846 paragraph
+                uid=4_847 StaticText "含中庭"
+          uid=4_848 row
+            uid=4_849 cell "3"
+              uid=4_850 paragraph
+                uid=4_851 StaticText "3"
+            uid=4_852 cell "办公塔楼"
+              uid=4_853 paragraph
+                uid=4_854 StaticText "办公塔楼"
+            uid=4_855 cell "1950.00"
+              uid=4_856 paragraph
+                uid=4_857 StaticText "1950.00"
+            uid=4_858 cell "24300.00"
+              uid=4_859 paragraph
+                uid=4_860 StaticText "24300.00"
+            uid=4_861 cell "5-26F / 98.6"
+              uid=4_862 paragraph
+                uid=4_863 StaticText "5-26F / 98.6"
+            uid=4_864 cell "轻危险级"
+              uid=4_865 paragraph
+                uid=4_866 StaticText "轻危险级"
+            uid=4_867 cell "一级"
+              uid=4_868 paragraph
+                uid=4_869 StaticText "一级"
+            uid=4_870 cell "框架核心筒"
+              uid=4_871 paragraph
+                uid=4_872 StaticText "框架核心筒"
+            uid=4_873 cell "标准办公层"
+              uid=4_874 paragraph
+                uid=4_875 StaticText "标准办公层"
+        uid=4_876 generic
+      uid=4_877 paragraph
+        uid=4_878 StaticText "建筑防火主要措施："
+      uid=4_879 paragraph
+        uid=4_880 StaticText "1） 地下车库与地上部分之间设置耐火极限不低于3.00h的楼板进行分隔；"
+        uid=4_881 StaticText " 2） 商业裙房与办公塔楼之间设置耐火极限不低于2.00h的防火隔墙；"
+        uid=4_882 StaticText " 3） 所有防火分区之间采用防火墙和甲级防火门分隔；"
+        uid=4_883 StaticText " 4） 疏散楼梯间采用防烟楼梯间，楼梯间门为乙级防火门；"
+        uid=4_884 StaticText " 5） 消防电梯前室设置甲级防火门，消防电梯载重量不小于800kg；"
+        uid=4_885 StaticText " 6） 所有建筑构件耐火等级均按一级耐火等级要求执行。"
+      uid=4_886 heading "4.5 建筑物通风措施" level="3"
+      uid=4_887 generic
+        uid=4_888 table
+          uid=4_889 row
+            uid=4_890 columnheader "建筑物名称"
+              uid=4_891 paragraph
+                uid=4_892 StaticText "建筑物名称"
+            uid=4_893 columnheader "生产类别"
+              uid=4_894 paragraph
+                uid=4_895 StaticText "生产类别"
+            uid=4_896 columnheader "电气防爆等级"
+              uid=4_897 paragraph
+                uid=4_898 StaticText "电气防爆等级"
+            uid=4_899 columnheader "主要有害物"
+              uid=4_900 paragraph
+                uid=4_901 StaticText "主要有害物"
+            uid=4_902 columnheader "换气次数(次/h)"
+              uid=4_903 paragraph
+                uid=4_904 StaticText "换气次数(次/h)"
+            uid=4_905 columnheader "通风方式"
+              uid=4_906 paragraph
+                uid=4_907 StaticText "通风方式"
+            uid=4_908 columnheader "风量(m3/h)"
+              uid=4_909 paragraph
+                uid=4_910 StaticText "风量(m3/h)"
+            uid=4_911 columnheader "系统编号"
+              uid=4_912 paragraph
+                uid=4_913 StaticText "系统编号"
+            uid=4_914 columnheader "设备规格"
+              uid=4_915 paragraph
+                uid=4_916 StaticText "设备规格"
+          uid=4_917 row
+            uid=4_918 cell "地下车库"
+              uid=4_919 paragraph
+                uid=4_920 StaticText "地下车库"
+            uid=4_921 cell "戊类"
+              uid=4_922 paragraph
+                uid=4_923 StaticText "戊类"
+            uid=4_924 cell "—"
+              uid=4_925 paragraph
+                uid=4_926 StaticText "—"
+            uid=4_927 cell "CO、汽车尾气"
+              uid=4_928 paragraph
+                uid=4_929 StaticText "CO、汽车尾气"
+            uid=4_930 cell "6"
+              uid=4_931 paragraph
+                uid=4_932 StaticText "6"
+            uid=4_933 cell "机械排风"
+              uid=4_934 paragraph
+                uid=4_935 StaticText "机械排风"
+            uid=4_936 cell "60000"
+              uid=4_937 paragraph
+                uid=4_938 StaticText "60000"
+            uid=4_939 cell "EF-01~06"
+              uid=4_940 paragraph
+                uid=4_941 StaticText "EF-01~06"
+            uid=4_942 cell "离心风机箱"
+              uid=4_943 paragraph
+                uid=4_944 StaticText "离心风机箱"
+          uid=4_945 row
+            uid=4_946 cell "变配电室"
+              uid=4_947 paragraph
+                uid=4_948 StaticText "变配电室"
+            uid=4_949 cell "丙类"
+              uid=4_950 paragraph
+                uid=4_951 StaticText "丙类"
+            uid=4_952 cell "—"
+              uid=4_953 paragraph
+                uid=4_954 StaticText "—"
+            uid=4_955 cell "热量"
+              uid=4_956 paragraph
+                uid=4_957 StaticText "热量"
+            uid=4_958 cell "8"
+              uid=4_959 paragraph
+                uid=4_960 StaticText "8"
+            uid=4_961 cell "机械通风"
+              uid=4_962 paragraph
+                uid=4_963 StaticText "机械通风"
+            uid=4_964 cell "12000"
+              uid=4_965 paragraph
+                uid=4_966 StaticText "12000"
+            uid=4_967 cell "EF-07~08"
+              uid=4_968 paragraph
+                uid=4_969 StaticText "EF-07~08"
+            uid=4_970 cell "轴流风机"
+              uid=4_971 paragraph
+                uid=4_972 StaticText "轴流风机"
+          uid=4_973 row
+            uid=4_974 cell "消防水泵房"
+              uid=4_975 paragraph
+                uid=4_976 StaticText "消防水泵房"
+            uid=4_977 cell "戊类"
+              uid=4_978 paragraph
+                uid=4_979 StaticText "戊类"
+            uid=4_980 cell "—"
+              uid=4_981 paragraph
+                uid=4_982 StaticText "—"
+            uid=4_983 cell "潮气"
+              uid=4_984 paragraph
+                uid=4_985 StaticText "潮气"
+            uid=4_986 cell "5"
+              uid=4_987 paragraph
+                uid=4_988 StaticText "5"
+            uid=4_989 cell "机械通风"
+              uid=4_990 paragraph
+                uid=4_991 StaticText "机械通风"
+            uid=4_992 cell "5000"
+              uid=4_993 paragraph
+                uid=4_994 StaticText "5000"
+            uid=4_995 cell "EF-09"
+              uid=4_996 paragraph
+                uid=4_997 StaticText "EF-09"
+            uid=4_998 cell "轴流风机"
+              uid=4_999 paragraph
+                uid=4_1000 StaticText "轴流风机"
+          uid=4_1001 row
+            uid=4_1002 cell "卫生间"
+              uid=4_1003 paragraph
+                uid=4_1004 StaticText "卫生间"
+            uid=4_1005 cell "—"
+              uid=4_1006 paragraph
+                uid=4_1007 StaticText "—"
+            uid=4_1008 cell "—"
+              uid=4_1009 paragraph
+                uid=4_1010 StaticText "—"
+            uid=4_1011 cell "异味"
+              uid=4_1012 paragraph
+                uid=4_1013 StaticText "异味"
+            uid=4_1014 cell "10"
+              uid=4_1015 paragraph
+                uid=4_1016 StaticText "10"
+            uid=4_1017 cell "机械排风"
+              uid=4_1018 paragraph
+                uid=4_1019 StaticText "机械排风"
+            uid=4_1020 cell "3000"
+              uid=4_1021 paragraph
+                uid=4_1022 StaticText "3000"
+            uid=4_1023 cell "EF-10~15"
+              uid=4_1024 paragraph
+                uid=4_1025 StaticText "EF-10~15"
+            uid=4_1026 cell "排气扇"
+              uid=4_1027 paragraph
+                uid=4_1028 StaticText "排气扇"
+          uid=4_1029 row
+            uid=4_1030 cell "商业区域"
+              uid=4_1031 paragraph
+                uid=4_1032 StaticText "商业区域"
+            uid=4_1033 cell "—"
+              uid=4_1034 paragraph
+                uid=4_1035 StaticText "—"
+            uid=4_1036 cell "—"
+              uid=4_1037 paragraph
+                uid=4_1038 StaticText "—"
+            uid=4_1039 cell "CO2、热量"
+              uid=4_1040 paragraph
+                uid=4_1041 StaticText "CO2、热量"
+            uid=4_1042 cell "6"
+              uid=4_1043 paragraph
+                uid=4_1044 StaticText "6"
+            uid=4_1045 cell "空调新风"
+              uid=4_1046 paragraph
+                uid=4_1047 StaticText "空调新风"
+            uid=4_1048 cell "45000"
+              uid=4_1049 paragraph
+                uid=4_1050 StaticText "45000"
+            uid=4_1051 cell "AHU-01~08"
+              uid=4_1052 paragraph
+                uid=4_1053 StaticText "AHU-01~08"
+            uid=4_1054 cell "组合式空调机组"
+              uid=4_1055 paragraph
+                uid=4_1056 StaticText "组合式空调机组"
+          uid=4_1057 row
+            uid=4_1058 cell "办公区域"
+              uid=4_1059 paragraph
+                uid=4_1060 StaticText "办公区域"
+            uid=4_1061 cell "—"
+              uid=4_1062 paragraph
+                uid=4_1063 StaticText "—"
+            uid=4_1064 cell "—"
+              uid=4_1065 paragraph
+                uid=4_1066 StaticText "—"
+            uid=4_1067 cell "CO2、热量"
+              uid=4_1068 paragraph
+                uid=4_1069 StaticText "CO2、热量"
+            uid=4_1070 cell "6"
+              uid=4_1071 paragraph
+                uid=4_1072 StaticText "6"
+            uid=4_1073 cell "空调新风"
+              uid=4_1074 paragraph
+                uid=4_1075 StaticText "空调新风"
+            uid=4_1076 cell "50000"
+              uid=4_1077 paragraph
+                uid=4_1078 StaticText "50000"
+            uid=4_1079 cell "AHU-09~20"
+              uid=4_1080 paragraph
+                uid=4_1081 StaticText "AHU-09~20"
+            uid=4_1082 cell "组合式空调机组"
+              uid=4_1083 paragraph
+                uid=4_1084 StaticText "组合式空调机组"
+        uid=4_1085 generic
+      uid=4_1086 heading "第5章 消防设施" level="2"
+      uid=4_1087 heading "5.1 室外消防水系统" level="3"
+      uid=4_1088 paragraph
+        uid=4_1089 StaticText "1） 室外消防用水量为30L/s，火灾延续时间2小时，一次灭火用水量216m3；"
+        uid=4_1090 StaticText " 2） 从市政给水管网引入两根DN200给水管，在建筑周边形成环状供水管网；"
+        uid=4_1091 StaticText " 3） 沿建筑周边环形消防车道设置室外消火栓，间距不超过120米，保护半径不超过150米；"
+        uid=4_1092 StaticText " 4） 共设置4座地上式室外消火栓，型号SS150/80-1.6。"
+      uid=4_1093 heading "5.2 室内水消防系统" level="3"
+      uid=4_1094 paragraph
+        uid=4_1095 StaticText "1） 室内消火栓用水量为40L/s，火灾延续时间2小时，一次灭火用水量288m3；"
+        uid=4_1096 StaticText " 2） 采用临时高压消防给水系统，屋顶设置18m3消防水箱；"
+        uid=4_1097 StaticText " 3） 设置消防水池一座，有效容积504m3，位于地下B2层；"
+        uid=4_1098 StaticText " 4） 设置消防水泵两台（一用一备），参数Q=40L/s，H=70m；"
+        uid=4_1099 StaticText " 5） 室内消火栓布置保证任何一点有两股水柱同时到达，水柱充实长度不小于13m；"
+        uid=4_1100 StaticText " 6） 自动喷水灭火系统设置于地下车库及商业区域，喷水强度8L/min·m2，作用面积160m2。"
+      uid=4_1101 heading "5.3 移动式灭火器" level="3"
+      uid=4_1102 generic
+        uid=4_1103 table
+          uid=4_1104 row
+            uid=4_1105 columnheader "序号"
+              uid=4_1106 paragraph
+                uid=4_1107 StaticText "序号"
+            uid=4_1108 columnheader "设备名称"
+              uid=4_1109 paragraph
+                uid=4_1110 StaticText "设备名称"
+            uid=4_1111 columnheader "型号"
+              uid=4_1112 paragraph
+                uid=4_1113 StaticText "型号"
+            uid=4_1114 columnheader "单位"
+              uid=4_1115 paragraph
+                uid=4_1116 StaticText "单位"
+            uid=4_1117 columnheader "数量"
+              uid=4_1118 paragraph
+                uid=4_1119 StaticText "数量"
+          uid=4_1120 row
+            uid=4_1121 cell "1"
+              uid=4_1122 paragraph
+                uid=4_1123 StaticText "1"
+            uid=4_1124 cell "手提式干粉灭火器"
+              uid=4_1125 paragraph
+                uid=4_1126 StaticText "手提式干粉灭火器"
+            uid=4_1127 cell "MF/ABC5"
+              uid=4_1128 paragraph
+                uid=4_1129 StaticText "MF/ABC5"
+            uid=4_1130 cell "具"
+              uid=4_1131 paragraph
+                uid=4_1132 StaticText "具"
+            uid=4_1133 cell "200"
+              uid=4_1134 paragraph
+                uid=4_1135 StaticText "200"
+          uid=4_1136 row
+            uid=4_1137 cell "2"
+              uid=4_1138 paragraph
+                uid=4_1139 StaticText "2"
+            uid=4_1140 cell "手提式二氧化碳灭火器"
+              uid=4_1141 paragraph
+                uid=4_1142 StaticText "手提式二氧化碳灭火器"
+            uid=4_1143 cell "MT5"
+              uid=4_1144 paragraph
+                uid=4_1145 StaticText "MT5"
+            uid=4_1146 cell "具"
+              uid=4_1147 paragraph
+                uid=4_1148 StaticText "具"
+            uid=4_1149 cell "30"
+              uid=4_1150 paragraph
+                uid=4_1151 StaticText "30"
+          uid=4_1152 row
+            uid=4_1153 cell "3"
+              uid=4_1154 paragraph
+                uid=4_1155 StaticText "3"
+            uid=4_1156 cell "推车式干粉灭火器"
+              uid=4_1157 paragraph
+                uid=4_1158 StaticText "推车式干粉灭火器"
+            uid=4_1159 cell "MFT/ABC20"
+              uid=4_1160 paragraph
+                uid=4_1161 StaticText "MFT/ABC20"
+            uid=4_1162 cell "台"
+              uid=4_1163 paragraph
+                uid=4_1164 StaticText "台"
+            uid=4_1165 cell "10"
+              uid=4_1166 paragraph
+                uid=4_1167 StaticText "10"
+          uid=4_1168 row
+            uid=4_1169 cell "4"
+              uid=4_1170 paragraph
+                uid=4_1171 StaticText "4"
+            uid=4_1172 cell "灭火器箱"
+              uid=4_1173 paragraph
+                uid=4_1174 StaticText "灭火器箱"
+            uid=4_1175 cell "—"
+              uid=4_1176 paragraph
+                uid=4_1177 StaticText "—"
+            uid=4_1178 cell "个"
+              uid=4_1179 paragraph
+                uid=4_1180 StaticText "个"
+            uid=4_1181 cell "120"
+              uid=4_1182 paragraph
+                uid=4_1183 StaticText "120"
+        uid=4_1184 generic
+      uid=4_1185 heading "5.4 火灾报警系统" level="3"
+      uid=4_1186 generic
+        uid=4_1187 table
+          uid=4_1188 row
+            uid=4_1189 columnheader "序号"
+              uid=4_1190 paragraph
+                uid=4_1191 StaticText "序号"
+            uid=4_1192 columnheader "安装地点"
+              uid=4_1193 paragraph
+                uid=4_1194 StaticText "安装地点"
+            uid=4_1195 columnheader "感烟探测器(个)"
+              uid=4_1196 paragraph
+                uid=4_1197 StaticText "感烟探测器(个)"
+            uid=4_1198 columnheader "感温探测器(个)"
+              uid=4_1199 paragraph
+                uid=4_1200 StaticText "感温探测器(个)"
+            uid=4_1201 columnheader "手动报警按钮(个)"
+              uid=4_1202 paragraph
+                uid=4_1203 StaticText "手动报警按钮(个)"
+            uid=4_1204 columnheader "消防电话(个)"
+              uid=4_1205 paragraph
+                uid=4_1206 StaticText "消防电话(个)"
+            uid=4_1207 columnheader "警报装置(个)"
+              uid=4_1208 paragraph
+                uid=4_1209 StaticText "警报装置(个)"
+          uid=4_1210 row
+            uid=4_1211 cell "1"
+              uid=4_1212 paragraph
+                uid=4_1213 StaticText "1"
+            uid=4_1214 cell "地下车库"
+              uid=4_1215 paragraph
+                uid=4_1216 StaticText "地下车库"
+            uid=4_1217 cell "85"
+              uid=4_1218 paragraph
+                uid=4_1219 StaticText "85"
+            uid=4_1220 cell "20"
+              uid=4_1221 paragraph
+                uid=4_1222 StaticText "20"
+            uid=4_1223 cell "12"
+              uid=4_1224 paragraph
+                uid=4_1225 StaticText "12"
+            uid=4_1226 cell "4"
+              uid=4_1227 paragraph
+                uid=4_1228 StaticText "4"
+            uid=4_1229 cell "20"
+              uid=4_1230 paragraph
+                uid=4_1231 StaticText "20"
+          uid=4_1232 row
+            uid=4_1233 cell "2"
+              uid=4_1234 paragraph
+                uid=4_1235 StaticText "2"
+            uid=4_1236 cell "商业裙房(1-4F)"
+              uid=4_1237 paragraph
+                uid=4_1238 StaticText "商业裙房(1-4F)"
+            uid=4_1239 cell "120"
+              uid=4_1240 paragraph
+                uid=4_1241 StaticText "120"
+            uid=4_1242 cell "—"
+              uid=4_1243 paragraph
+                uid=4_1244 StaticText "—"
+            uid=4_1245 cell "16"
+              uid=4_1246 paragraph
+                uid=4_1247 StaticText "16"
+            uid=4_1248 cell "6"
+              uid=4_1249 paragraph
+                uid=4_1250 StaticText "6"
+            uid=4_1251 cell "30"
+              uid=4_1252 paragraph
+                uid=4_1253 StaticText "30"
+          uid=4_1254 row
+            uid=4_1255 cell "3"
+              uid=4_1256 paragraph
+                uid=4_1257 StaticText "3"
+            uid=4_1258 cell "办公塔楼(5-26F)"
+              uid=4_1259 paragraph
+                uid=4_1260 StaticText "办公塔楼(5-26F)"
+            uid=4_1261 cell "260"
+              uid=4_1262 paragraph
+                uid=4_1263 StaticText "260"
+            uid=4_1264 cell "—"
+              uid=4_1265 paragraph
+                uid=4_1266 StaticText "—"
+            uid=4_1267 cell "26"
+              uid=4_1268 paragraph
+                uid=4_1269 StaticText "26"
+            uid=4_1270 cell "10"
+              uid=4_1271 paragraph
+                uid=4_1272 StaticText "10"
+            uid=4_1273 cell "52"
+              uid=4_1274 paragraph
+                uid=4_1275 StaticText "52"
+          uid=4_1276 row
+            uid=4_1277 cell "4"
+              uid=4_1278 paragraph
+                uid=4_1279 StaticText "4"
+            uid=4_1280 cell "设备用房"
+              uid=4_1281 paragraph
+                uid=4_1282 StaticText "设备用房"
+            uid=4_1283 cell "15"
+              uid=4_1284 paragraph
+                uid=4_1285 StaticText "15"
+            uid=4_1286 cell "10"
+              uid=4_1287 paragraph
+                uid=4_1288 StaticText "10"
+            uid=4_1289 cell "4"
+              uid=4_1290 paragraph
+                uid=4_1291 StaticText "4"
+            uid=4_1292 cell "4"
+              uid=4_1293 paragraph
+                uid=4_1294 StaticText "4"
+            uid=4_1295 cell "6"
+              uid=4_1296 paragraph
+                uid=4_1297 StaticText "6"
+          uid=4_1298 row
+            uid=4_1299 cell "5"
+              uid=4_1300 paragraph
+                uid=4_1301 StaticText "5"
+            uid=4_1302 cell "公共走道及楼梯间"
+              uid=4_1303 paragraph
+                uid=4_1304 StaticText "公共走道及楼梯间"
+            uid=4_1305 cell "30"
+              uid=4_1306 paragraph
+                uid=4_1307 StaticText "30"
+            uid=4_1308 cell "—"
+              uid=4_1309 paragraph
+                uid=4_1310 StaticText "—"
+            uid=4_1311 cell "10"
+              uid=4_1312 paragraph
+                uid=4_1313 StaticText "10"
+            uid=4_1314 cell "6"
+              uid=4_1315 paragraph
+                uid=4_1316 StaticText "6"
+            uid=4_1317 cell "15"
+              uid=4_1318 paragraph
+                uid=4_1319 StaticText "15"
+        uid=4_1320 generic
+      uid=4_1321 paragraph
+        uid=4_1322 StaticText "系统说明："
+        uid=4_1323 StaticText " 1） 采用集中报警控制系统，消防控制室设于首层；"
+        uid=4_1324 StaticText " 2） 系统由火灾探测器、手动报警按钮、声光警报器、消防广播及联动控制器组成；"
+        uid=4_1325 StaticText " 3） 联动控制功能包括：自动喷淋灭火、防排烟系统、消防广播、切除非消防电源、电梯迫降等；"
+        uid=4_1326 StaticText " 4） 系统采用双电源供电，并配置UPS不间断电源。"
+      uid=4_1327 heading "5.5 视频监控系统" level="3"
+      uid=4_1328 paragraph
+        uid=4_1329 StaticText "1） 在建筑主要出入口、电梯厅、疏散通道、地下车库等关键部位设置视频监控摄像机；"
+        uid=4_1330 StaticText " 2） 监控中心与消防控制室合用，实现消防与安防联动；"
+        uid=4_1331 StaticText " 3） 共配置高清网络摄像机120台，录像存储时间不少于30天；"
+        uid=4_1332 StaticText " 4） 系统具备智能分析功能，支持火灾早期探测联动确认。"
+      uid=4_1333 heading "第6章 灭火救援设施" level="2"
+      uid=4_1334 heading "6.1 消防车道" level="3"
+      uid=4_1335 paragraph
+        uid=4_1336 StaticText "本项目沿建筑周边设置环形消防车道，车道宽度4米，净空高度不小于4.5米。消防车道转弯半径不小于12米，满足大型消防车通行要求。消防车道与建筑外墙之间设置5-15米的作业场地。"
+      uid=4_1337 heading "6.2 消防车回转场地" level="3"
+      uid=4_1338 paragraph
+        uid=4_1339 StaticText "在建筑北侧设置消防车回转场地，场地尺寸不小于18m×18m，满足消防车回车要求。场地承载力满足消防车最大荷载要求。"
+      uid=4_1340 heading "6.3 消防登高操作场地" level="3"
+      uid=4_1341 paragraph
+        uid=4_1342 StaticText "1） 沿建筑长边设置消防车登高操作场地，宽度不小于10米，长度不小于建筑长边的1/4；"
+        uid=4_1343 StaticText " 2） 登高场地距建筑外墙5-10米，坡度不大于3%；"
+        uid=4_1344 StaticText " 3） 对应登高操作场地的建筑外立面设置消防救援窗，间距不大于20米。"
+      uid=4_1345 heading "6.4 疏散设施" level="3"
+      uid=4_1346 paragraph
+        uid=4_1347 StaticText "1） 设置防烟楼梯间3部，疏散宽度满足规范要求；"
+        uid=4_1348 StaticText " 2） 设置消防电梯1部，载重量1000kg，速度2.5m/s；"
+        uid=4_1349 StaticText " 3） 首层设置直通室外的安全出口不少于2个；"
+        uid=4_1350 StaticText " 4） 屋顶设置直升机停机坪，满足消防救援需求。"
+      uid=4_1351 heading "第7章 消防设施专项投资概算" level="2"
+      uid=4_1352 generic
+        uid=4_1353 table
+          uid=4_1354 row
+            uid=4_1355 columnheader "序号"
+              uid=4_1356 paragraph
+                uid=4_1357 StaticText "序号"
+            uid=4_1358 columnheader "消防系统名称"
+              uid=4_1359 paragraph
+                uid=4_1360 StaticText "消防系统名称"
+            uid=4_1361 columnheader "投资(万元)"
+              uid=4_1362 paragraph
+                uid=4_1363 StaticText "投资(万元)"
+            uid=4_1364 columnheader "备注"
+              uid=4_1365 paragraph
+                uid=4_1366 StaticText "备注"
+          uid=4_1367 row
+            uid=4_1368 cell "1"
+              uid=4_1369 paragraph
+                uid=4_1370 StaticText "1"
+            uid=4_1371 cell "室外消防水系统"
+              uid=4_1372 paragraph
+                uid=4_1373 StaticText "室外消防水系统"
+            uid=4_1374 cell "85.00"
+              uid=4_1375 paragraph
+                uid=4_1376 StaticText "85.00"
+            uid=4_1377 cell "含管网及消火栓"
+              uid=4_1378 paragraph
+                uid=4_1379 StaticText "含管网及消火栓"
+          uid=4_1380 row
+            uid=4_1381 cell "2"
+              uid=4_1382 paragraph
+                uid=4_1383 StaticText "2"
+            uid=4_1384 cell "室内消火栓系统"
+              uid=4_1385 paragraph
+                uid=4_1386 StaticText "室内消火栓系统"
+            uid=4_1387 cell "120.00"
+              uid=4_1388 paragraph
+                uid=4_1389 StaticText "120.00"
+            uid=4_1390 cell "含管道、阀门及消火栓箱"
+              uid=4_1391 paragraph
+                uid=4_1392 StaticText "含管道、阀门及消火栓箱"
+          uid=4_1393 row
+            uid=4_1394 cell "3"
+              uid=4_1395 paragraph
+                uid=4_1396 StaticText "3"
+            uid=4_1397 cell "自动喷水灭火系统"
+              uid=4_1398 paragraph
+                uid=4_1399 StaticText "自动喷水灭火系统"
+            uid=4_1400 cell "260.00"
+              uid=4_1401 paragraph
+                uid=4_1402 StaticText "260.00"
+            uid=4_1403 cell "含喷头、管网及水泵"
+              uid=4_1404 paragraph
+                uid=4_1405 StaticText "含喷头、管网及水泵"
+          uid=4_1406 row
+            uid=4_1407 cell "4"
+              uid=4_1408 paragraph
+                uid=4_1409 StaticText "4"
+            uid=4_1410 cell "消防水池及泵房"
+              uid=4_1411 paragraph
+                uid=4_1412 StaticText "消防水池及泵房"
+            uid=4_1413 cell "180.00"
+              uid=4_1414 paragraph
+                uid=4_1415 StaticText "180.00"
+            uid=4_1416 cell "含水池、水泵及控制柜"
+              uid=4_1417 paragraph
+                uid=4_1418 StaticText "含水池、水泵及控制柜"
+          uid=4_1419 row
+            uid=4_1420 cell "5"
+              uid=4_1421 paragraph
+                uid=4_1422 StaticText "5"
+            uid=4_1423 cell "火灾自动报警系统"
+              uid=4_1424 paragraph
+                uid=4_1425 StaticText "火灾自动报警系统"
+            uid=4_1426 cell "195.00"
+              uid=4_1427 paragraph
+                uid=4_1428 StaticText "195.00"
+            uid=4_1429 cell "含探测器、控制器及联动设备"
+              uid=4_1430 paragraph
+                uid=4_1431 StaticText "含探测器、控制器及联动设备"
+          uid=4_1432 row
+            uid=4_1433 cell "6"
+              uid=4_1434 paragraph
+                uid=4_1435 StaticText "6"
+            uid=4_1436 cell "防排烟系统"
+              uid=4_1437 paragraph
+                uid=4_1438 StaticText "防排烟系统"
+            uid=4_1439 cell "210.00"
+              uid=4_1440 paragraph
+                uid=4_1441 StaticText "210.00"
+            uid=4_1442 cell "含风机、风管及防火阀"
+              uid=4_1443 paragraph
+                uid=4_1444 StaticText "含风机、风管及防火阀"
+          uid=4_1445 row
+            uid=4_1446 cell "7"
+              uid=4_1447 paragraph
+                uid=4_1448 StaticText "7"
+            uid=4_1449 cell "移动式灭火器"
+              uid=4_1450 paragraph
+                uid=4_1451 StaticText "移动式灭火器"
+            uid=4_1452 cell "12.00"
+              uid=4_1453 paragraph
+                uid=4_1454 StaticText "12.00"
+            uid=4_1455 cell "含灭火器及灭火器箱"
+              uid=4_1456 paragraph
+                uid=4_1457 StaticText "含灭火器及灭火器箱"
+          uid=4_1458 row
+            uid=4_1459 cell "8"
+              uid=4_1460 paragraph
+                uid=4_1461 StaticText "8"
+            uid=4_1462 cell "消防应急照明及疏散指示"
+              uid=4_1463 paragraph
+                uid=4_1464 StaticText "消防应急照明及疏散指示"
+            uid=4_1465 cell "45.00"
+              uid=4_1466 paragraph
+                uid=4_1467 StaticText "45.00"
+            uid=4_1468 cell "含应急灯及标志灯"
+              uid=4_1469 paragraph
+                uid=4_1470 StaticText "含应急灯及标志灯"
+          uid=4_1471 row
+            uid=4_1472 cell "9"
+              uid=4_1473 paragraph
+                uid=4_1474 StaticText "9"
+            uid=4_1475 cell "消防广播及消防电话"
+              uid=4_1476 paragraph
+                uid=4_1477 StaticText "消防广播及消防电话"
+            uid=4_1478 cell "28.00"
+              uid=4_1479 paragraph
+                uid=4_1480 StaticText "28.00"
+            uid=4_1481 cell "含广播系统及电话系统"
+              uid=4_1482 paragraph
+                uid=4_1483 StaticText "含广播系统及电话系统"
+          uid=4_1484 row
+            uid=4_1485 cell "10"
+              uid=4_1486 paragraph
+                uid=4_1487 StaticText "10"
+            uid=4_1488 cell "视频监控系统"
+              uid=4_1489 paragraph
+                uid=4_1490 StaticText "视频监控系统"
+            uid=4_1491 cell "55.00"
+              uid=4_1492 paragraph
+                uid=4_1493 StaticText "55.00"
+            uid=4_1494 cell "含摄像机及录像设备"
+              uid=4_1495 paragraph
+                uid=4_1496 StaticText "含摄像机及录像设备"
+          uid=4_1497 row
+            uid=4_1498 cell "11"
+              uid=4_1499 paragraph
+                uid=4_1500 StaticText "11"
+            uid=4_1501 cell "消防电梯"
+              uid=4_1502 paragraph
+                uid=4_1503 StaticText "消防电梯"
+            uid=4_1504 cell "95.00"
+              uid=4_1505 paragraph
+                uid=4_1506 StaticText "95.00"
+            uid=4_1507 cell "含电梯及联动功能"
+              uid=4_1508 paragraph
+                uid=4_1509 StaticText "含电梯及联动功能"
+          uid=4_1510 row
+            uid=4_1511 cell "  "
+              uid=4_1512 paragraph
+            uid=4_1513 cell "合计"
+              uid=4_1514 paragraph
+                uid=4_1515 strong
+                  uid=4_1516 StaticText "合计"
+            uid=4_1517 cell "1285.00"
+              uid=4_1518 paragraph
+                uid=4_1519 strong
+                  uid=4_1520 StaticText "1285.00"
+            uid=4_1521 cell "  "
+              uid=4_1522 paragraph
+        uid=4_1523 generic
+      uid=4_1524 heading "第8章 图纸及表格" level="2"
+      uid=4_1525 heading "8.1 附图清单" level="3"
+      uid=4_1526 paragraph
+        uid=4_1527 StaticText "1） 区域位置图"
+        uid=4_1528 StaticText " 2） 总平面布置图"
+        uid=4_1529 StaticText " 3） 各层消防设施平面布置图"
+        uid=4_1530 StaticText " 4） 火灾自动报警系统图"
+        uid=4_1531 StaticText " 5） 消防给水系统图"
+        uid=4_1532 StaticText " 6） 自动喷水灭火系统图"
+        uid=4_1533 StaticText " 7） 防排烟系统图"
+        uid=4_1534 StaticText " 8） 疏散指示系统图"
+      uid=4_1535 heading "8.2 主要消防设备一览表" level="3"
+      uid=4_1536 generic
+        uid=4_1537 table
+          uid=4_1538 row
+            uid=4_1539 columnheader "序号"
+              uid=4_1540 paragraph
+                uid=4_1541 StaticText "序号"
+            uid=4_1542 columnheader "设备名称"
+              uid=4_1543 paragraph
+                uid=4_1544 StaticText "设备名称"
+            uid=4_1545 columnheader "型号规格"
+              uid=4_1546 paragraph
+                uid=4_1547 StaticText "型号规格"
+            uid=4_1548 columnheader "单位"
+              uid=4_1549 paragraph
+                uid=4_1550 StaticText "单位"
+            uid=4_1551 columnheader "数量"
+              uid=4_1552 paragraph
+                uid=4_1553 StaticText "数量"
+            uid=4_1554 columnheader "备注"
+              uid=4_1555 paragraph
+                uid=4_1556 StaticText "备注"
+          uid=4_1557 row
+            uid=4_1558 cell "1"
+              uid=4_1559 paragraph
+                uid=4_1560 StaticText "1"
+            uid=4_1561 cell "消防水泵"
+              uid=4_1562 paragraph
+                uid=4_1563 StaticText "消防水泵"
+            uid=4_1564 cell "XBD7.0/40-150L"
+              uid=4_1565 paragraph
+                uid=4_1566 StaticText "XBD7.0/40-150L"
+            uid=4_1567 cell "台"
+              uid=4_1568 paragraph
+                uid=4_1569 StaticText "台"
+            uid=4_1570 cell "2"
+              uid=4_1571 paragraph
+                uid=4_1572 StaticText "2"
+            uid=4_1573 cell "一用一备"
+              uid=4_1574 paragraph
+                uid=4_1575 StaticText "一用一备"
+          uid=4_1576 row
+            uid=4_1577 cell "2"
+              uid=4_1578 paragraph
+                uid=4_1579 StaticText "2"
+            uid=4_1580 cell "喷淋泵"
+              uid=4_1581 paragraph
+                uid=4_1582 StaticText "喷淋泵"
+            uid=4_1583 cell "XBD8.0/30-150L"
+              uid=4_1584 paragraph
+                uid=4_1585 StaticText "XBD8.0/30-150L"
+            uid=4_1586 cell "台"
+              uid=4_1587 paragraph
+                uid=4_1588 StaticText "台"
+            uid=4_1589 cell "2"
+              uid=4_1590 paragraph
+                uid=4_1591 StaticText "2"
+            uid=4_1592 cell "一用一备"
+              uid=4_1593 paragraph
+                uid=4_1594 StaticText "一用一备"
+          uid=4_1595 row
+            uid=4_1596 cell "3"
+              uid=4_1597 paragraph
+                uid=4_1598 StaticText "3"
+            uid=4_1599 cell "消防水箱"
+              uid=4_1600 paragraph
+                uid=4_1601 StaticText "消防水箱"
+            uid=4_1602 cell "18m3"
+              uid=4_1603 paragraph
+                uid=4_1604 StaticText "18m3"
+            uid=4_1605 cell "座"
+              uid=4_1606 paragraph
+                uid=4_1607 StaticText "座"
+            uid=4_1608 cell "1"
+              uid=4_1609 paragraph
+                uid=4_1610 StaticText "1"
+            uid=4_1611 cell "屋顶"
+              uid=4_1612 paragraph
+                uid=4_1613 StaticText "屋顶"
+          uid=4_1614 row
+            uid=4_1615 cell "4"
+              uid=4_1616 paragraph
+                uid=4_1617 StaticText "4"
+            uid=4_1618 cell "消防水池"
+              uid=4_1619 paragraph
+                uid=4_1620 StaticText "消防水池"
+            uid=4_1621 cell "504m3"
+              uid=4_1622 paragraph
+                uid=4_1623 StaticText "504m3"
+            uid=4_1624 cell "座"
+              uid=4_1625 paragraph
+                uid=4_1626 StaticText "座"
+            uid=4_1627 cell "1"
+              uid=4_1628 paragraph
+                uid=4_1629 StaticText "1"
+            uid=4_1630 cell "B2层"
+              uid=4_1631 paragraph
+                uid=4_1632 StaticText "B2层"
+          uid=4_1633 row
+            uid=4_1634 cell "5"
+              uid=4_1635 paragraph
+                uid=4_1636 StaticText "5"
+            uid=4_1637 cell "火灾报警控制器"
+              uid=4_1638 paragraph
+                uid=4_1639 StaticText "火灾报警控制器"
+            uid=4_1640 cell "JB-QG-GST5000"
+              uid=4_1641 paragraph
+                uid=4_1642 StaticText "JB-QG-GST5000"
+            uid=4_1643 cell "台"
+              uid=4_1644 paragraph
+                uid=4_1645 StaticText "台"
+            uid=4_1646 cell "1"
+              uid=4_1647 paragraph
+                uid=4_1648 StaticText "1"
+            uid=4_1649 cell "消防控制室"
+              uid=4_1650 paragraph
+                uid=4_1651 StaticText "消防控制室"
+          uid=4_1652 row
+            uid=4_1653 cell "6"
+              uid=4_1654 paragraph
+                uid=4_1655 StaticText "6"
+            uid=4_1656 cell "消防广播主机"
+              uid=4_1657 paragraph
+                uid=4_1658 StaticText "消防广播主机"
+            uid=4_1659 cell "GST-GBFX"
+              uid=4_1660 paragraph
+                uid=4_1661 StaticText "GST-GBFX"
+            uid=4_1662 cell "台"
+              uid=4_1663 paragraph
+                uid=4_1664 StaticText "台"
+            uid=4_1665 cell "1"
+              uid=4_1666 paragraph
+                uid=4_1667 StaticText "1"
+            uid=4_1668 cell "消防控制室"
+              uid=4_1669 paragraph
+                uid=4_1670 StaticText "消防控制室"
+          uid=4_1671 row
+            uid=4_1672 cell "7"
+              uid=4_1673 paragraph
+                uid=4_1674 StaticText "7"
+            uid=4_1675 cell "防排烟风机"
+              uid=4_1676 paragraph
+                uid=4_1677 StaticText "防排烟风机"
+            uid=4_1678 cell "HTF-Ⅱ型"
+              uid=4_1679 paragraph
+                uid=4_1680 StaticText "HTF-Ⅱ型"
+            uid=4_1681 cell "台"
+              uid=4_1682 paragraph
+                uid=4_1683 StaticText "台"
+            uid=4_1684 cell "12"
+              uid=4_1685 paragraph
+                uid=4_1686 StaticText "12"
+            uid=4_1687 cell "各层"
+              uid=4_1688 paragraph
+                uid=4_1689 StaticText "各层"
+          uid=4_1690 row
+            uid=4_1691 cell "8"
+              uid=4_1692 paragraph
+                uid=4_1693 StaticText "8"
+            uid=4_1694 cell "防火阀"
+              uid=4_1695 paragraph
+                uid=4_1696 StaticText "防火阀"
+            uid=4_1697 cell "70℃/280℃"
+              uid=4_1698 paragraph
+                uid=4_1699 StaticText "70℃/280℃"
+            uid=4_1700 cell "个"
+              uid=4_1701 paragraph
+                uid=4_1702 StaticText "个"
+            uid=4_1703 cell "85"
+              uid=4_1704 paragraph
+                uid=4_1705 StaticText "85"
+            uid=4_1706 cell "各系统"
+              uid=4_1707 paragraph
+                uid=4_1708 StaticText "各系统"
+          uid=4_1709 row
+            uid=4_1710 cell "9"
+              uid=4_1711 paragraph
+                uid=4_1712 StaticText "9"
+            uid=4_1713 cell "消防应急灯具"
+              uid=4_1714 paragraph
+                uid=4_1715 StaticText "消防应急灯具"
+            uid=4_1716 cell "集中控制型"
+              uid=4_1717 paragraph
+                uid=4_1718 StaticText "集中控制型"
+            uid=4_1719 cell "套"
+              uid=4_1720 paragraph
+                uid=4_1721 StaticText "套"
+            uid=4_1722 cell "350"
+              uid=4_1723 paragraph
+                uid=4_1724 StaticText "350"
+            uid=4_1725 cell "各层"
+              uid=4_1726 paragraph
+                uid=4_1727 StaticText "各层"
+          uid=4_1728 row
+            uid=4_1729 cell "10"
+              uid=4_1730 paragraph
+                uid=4_1731 StaticText "10"
+            uid=4_1732 cell "消防电话主机"
+              uid=4_1733 paragraph
+                uid=4_1734 StaticText "消防电话主机"
+            uid=4_1735 cell "GST-TS-Z01"
+              uid=4_1736 paragraph
+                uid=4_1737 StaticText "GST-TS-Z01"
+            uid=4_1738 cell "台"
+              uid=4_1739 paragraph
+                uid=4_1740 StaticText "台"
+            uid=4_1741 cell "1"
+              uid=4_1742 paragraph
+                uid=4_1743 StaticText "1"
+            uid=4_1744 cell "消防控制室"
+              uid=4_1745 paragraph
+                uid=4_1746 StaticText "消防控制室"
+        uid=4_1747 generic

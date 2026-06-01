@@ -538,7 +538,7 @@ export const docmgrApi = {
     return request(`/docmgr/documents/${docId}/versions/diff?from=${fromVer}&to=${toVer}`);
   },
 
-  aiReview: async (data: { doc_id: string; review_type: string }): Promise<any> => {
+  aiReview: async (data: { doc_id: string; review_type: string; content?: string }): Promise<any> => {
     return request(`/docmgr/documents/ai-review`, {
       method: "POST",
       body: JSON.stringify(data),

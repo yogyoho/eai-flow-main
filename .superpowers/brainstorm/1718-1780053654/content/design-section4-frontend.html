@@ -1,0 +1,286 @@
+<h2>设计 Section 4: 前端组件</h2>
+<p class="subtitle">extensions/workflow/ 目录结构 + 三大核心组件交互</p>
+
+<div class="mockup">
+  <div class="mockup-header">extensions/workflow/ 目录结构</div>
+  <div class="mockup-body" style="padding: 16px; font-family: monospace; font-size: 12px; line-height: 1.8; background: #1e293b; color: #e2e8f0; border-radius: 0 0 8px 8px;">
+    <div style="color: #fbbf24;">src/extensions/workflow/</div>
+    <div>├── <span style="color: #4ade80;">api.ts</span>                  <span style="color: #94a3b8;"># Workflow API 客户端</span></div>
+    <div>├── <span style="color: #4ade80;">types.ts</span>               <span style="color: #94a3b8;"># DAG 节点/边/实例类型</span></div>
+    <div>├── <span style="color: #4ade80;">transforms.ts</span>          <span style="color: #94a3b8;"># snake/camel 转换</span></div>
+    <div>│</div>
+    <div>├── <span style="color: #60a5fa;">WorkflowEditor.tsx</span>      <span style="color: #94a3b8;"># 🆕 React Flow 工作流编排器</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">nodes/</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">PhaseNode.tsx</span>     <span style="color: #94a3b8;"># 阶段节点（团队、章节分配）</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">ReviewNode.tsx</span>    <span style="color: #94a3b8;"># 审核节点（章节/维度配置）</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">ConditionNode.tsx</span> <span style="color: #94a3b8;"># 条件分支节点</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">AIGenerateNode.tsx</span><span style="color: #94a3b8;"># AI 生成节点</span></div>
+    <div>│   │   └── <span style="color: #60a5fa;">MergeNode.tsx</span>     <span style="color: #94a3b8;"># 汇聚节点</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">edges/</span></div>
+    <div>│   │   └── <span style="color: #60a5fa;">ConditionEdge.tsx</span> <span style="color: #94a3b8;"># 条件边（true/false 标签）</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">panels/</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">PhaseConfigPanel.tsx</span> <span style="color: #94a3b8;"># 阶段属性配置侧边栏</span></div>
+    <div>│   │   ├── <span style="color: #60a5fa;">ReviewConfigPanel.tsx</span><span style="color: #94a3b8;"># 审核分配配置</span></div>
+    <div>│   │   └── <span style="color: #60a5fa;">NodePalette.tsx</span>   <span style="color: #94a3b8;"># 左侧节点拖拽面板</span></div>
+    <div>│   └── <span style="color: #60a5fa;">hooks/</span></div>
+    <div>│       ├── <span style="color: #60a5fa;">useWorkflowDAG.ts</span> <span style="color: #94a3b8;"># DAG 操作 hook</span></div>
+    <div>│       └── <span style="color: #60a5fa;">useValidation.ts</span>  <span style="color: #94a3b8;"># DAG 校验（环检测、孤立节点）</span></div>
+    <div>│</div>
+    <div>├── <span style="color: #60a5fa;">WorkflowMonitor.tsx</span>     <span style="color: #94a3b8;"># 🆕 工作流执行监控面板</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">PhaseStatusCard.tsx</span>  <span style="color: #94a3b8;"># 阶段状态卡片</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">TimelineView.tsx</span>     <span style="color: #94a3b8;"># 时间线视图</span></div>
+    <div>│   └── <span style="color: #60a5fa;">useWorkflowStatus.ts</span> <span style="color: #94a3b8;"># 轮询工作流状态 hook</span></div>
+    <div>│</div>
+    <div>├── <span style="color: #60a5fa;">TraceabilityPanel.tsx</span>   <span style="color: #94a3b8;"># 🆕 AI 溯源面板</span></div>
+    <div>│   ├── <span style="color: #60a5fa;">SourceAnnotation.tsx</span>  <span style="color: #94a3b8;"># 段落溯源标注组件</span></div>
+    <div>│   └── <span style="color: #60a5fa;">SourceFootnote.tsx</span>    <span style="color: #94a3b8;"># 脚注列表</span></div>
+    <div>│</div>
+    <div>└── <span style="color: #60a5fa;">PhaseReviewPanel.tsx</span>    <span style="color: #94a3b8;"># 🆕 阶段审核工作台</span></div>
+    <div>    ├── <span style="color: #60a5fa;">ChapterReviewCard.tsx</span><span style="color: #94a3b8;"># 章节审核卡片</span></div>
+    <div>    ├── <span style="color: #60a5fa;">DimensionReviewCard.tsx</span><span style="color: #94a3b8;"># 维度审核卡片</span></div>
+    <div>    └── <span style="color: #60a5fa;">ReviewAssignmentDialog.tsx</span><span style="color: #94a3b8;"># 经理分配审核对话框</span></div>
+</div>
+</div>
+
+<!-- Component 1: Workflow Editor -->
+<h3 style="margin-top: 24px;">组件 1: WorkflowEditor（React Flow 编排器）</h3>
+<div class="mockup" style="margin-top: 8px;">
+  <div class="mockup-header">工作流编排器布局</div>
+  <div class="mockup-body" style="padding: 0; font-size: 12px;">
+    <div style="display: flex; height: 420px;">
+      <!-- Left: Node Palette -->
+      <div style="width: 160px; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 12px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #475569;">节点面板</div>
+        <div style="padding: 8px; background: white; border: 1px solid #c4b5fd; border-radius: 6px; margin-bottom: 6px; cursor: grab; font-size: 11px;">
+          <span style="color: #8b5cf6;">⬡</span> 阶段
+        </div>
+        <div style="padding: 8px; background: white; border: 1px solid #fca5a5; border-radius: 6px; margin-bottom: 6px; cursor: grab; font-size: 11px;">
+          <span style="color: #ef4444;">✓</span> 审核
+        </div>
+        <div style="padding: 8px; background: white; border: 1px solid #fde68a; border-radius: 6px; margin-bottom: 6px; cursor: grab; font-size: 11px;">
+          <span style="color: #f59e0b;">◆</span> 条件
+        </div>
+        <div style="padding: 8px; background: white; border: 1px solid #93c5fd; border-radius: 6px; margin-bottom: 6px; cursor: grab; font-size: 11px;">
+          <span style="color: #3b82f6;">⚡</span> AI生成
+        </div>
+        <div style="padding: 8px; background: white; border: 1px solid #86efac; border-radius: 6px; margin-bottom: 6px; cursor: grab; font-size: 11px;">
+          <span style="color: #22c55e;">⊕</span> 汇聚
+        </div>
+        <div style="margin-top: 12px; font-size: 10px; color: #94a3b8;">拖拽节点到画布</div>
+      </div>
+
+      <!-- Center: Canvas -->
+      <div style="flex: 1; background: #ffffff; position: relative;">
+        <!-- Toolbar -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; z-index: 10;">
+          <div style="display: flex; gap: 8px;">
+            <span style="padding: 4px 8px; background: #3b82f6; color: white; border-radius: 4px; font-size: 11px;">环评报告流程 v2</span>
+            <span style="padding: 4px 8px; background: #dcfce7; color: #166534; border-radius: 4px; font-size: 11px;">✓ 校验通过</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <span style="padding: 4px 8px; background: #e2e8f0; border-radius: 4px; font-size: 11px; cursor: pointer;">存为模板</span>
+            <span style="padding: 4px 8px; background: #22c55e; color: white; border-radius: 4px; font-size: 11px; cursor: pointer;">保存</span>
+          </div>
+        </div>
+
+        <!-- Canvas nodes -->
+        <div style="position: absolute; top: 50px; left: 20px; right: 260px; bottom: 0; padding: 20px;">
+          <!-- Phase A -->
+          <div style="position: absolute; left: 40px; top: 30px; background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 8px; padding: 10px 14px; width: 120px;">
+            <div style="font-weight: bold; font-size: 12px; color: #6d28d9;">现状调查</div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">团队: A组 (3人)</div>
+            <div style="font-size: 10px; color: #22c55e;">✅ 已完成</div>
+          </div>
+          <!-- Phase B -->
+          <div style="position: absolute; left: 220px; top: 30px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 10px 14px; width: 120px;">
+            <div style="font-weight: bold; font-size: 12px; color: #1d4ed8;">影响预测</div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">团队: B组 (4人)</div>
+            <div style="font-size: 10px; color: #3b82f6;">🔄 进行中</div>
+          </div>
+          <!-- Phase C parallel -->
+          <div style="position: absolute; left: 400px; top: 0px; background: #fff7ed; border: 2px dashed #f59e0b; border-radius: 8px; padding: 10px 14px; width: 120px;">
+            <div style="font-weight: bold; font-size: 12px; color: #92400e;">措施设计</div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">团队: C组 (2人)</div>
+            <div style="font-size: 10px; color: #94a3b8;">⏳ 待启动</div>
+          </div>
+          <!-- Phase D parallel -->
+          <div style="position: absolute; left: 400px; top: 80px; background: #fff7ed; border: 2px dashed #f59e0b; border-radius: 8px; padding: 10px 14px; width: 120px;">
+            <div style="font-weight: bold; font-size: 12px; color: #92400e;">监测方案</div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">团队: D组 (2人)</div>
+            <div style="font-size: 10px; color: #94a3b8;">⏳ 待启动</div>
+          </div>
+          <!-- Merge -->
+          <div style="position: absolute; left: 570px; top: 40px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #22c55e;">⊕</div>
+          <!-- Review -->
+          <div style="position: absolute; left: 640px; top: 30px; background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 10px 14px; width: 120px;">
+            <div style="font-weight: bold; font-size: 12px; color: #991b1b;">分章节审核</div>
+            <div style="font-size: 10px; color: #6b7280; margin-top: 4px;">5人 · 混合模式</div>
+            <div style="font-size: 10px; color: #94a3b8;">⏳ 待启动</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Config Panel -->
+      <div style="width: 260px; background: #f8fafc; border-left: 1px solid #e2e8f0; padding: 12px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #475569;">节点属性 — 影响预测</div>
+        <div style="font-size: 11px;">
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">阶段名称</label>
+            <div style="padding: 4px 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; margin-top: 2px;">影响预测</div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">团队</label>
+            <div style="padding: 4px 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; margin-top: 2px;">B组 (4人)</div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">章节范围</label>
+            <div style="padding: 4px 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; margin-top: 2px;">第4-6章</div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">输入上下文</label>
+            <div style="font-size: 10px; color: #22c55e;">← 现状调查 阶段输出</div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">AI 辅助</label>
+            <div style="padding: 4px 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; margin-top: 2px;">✅ AI 撰写 + RAG</div>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="color: #6b7280;">完成后动作</label>
+            <div style="padding: 4px 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; margin-top: 2px;">自动通知下游</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Component 2: Traceability -->
+<h3 style="margin-top: 24px;">组件 2: TraceabilityPanel（溯源标注）</h3>
+<div class="mockup" style="margin-top: 8px;">
+  <div class="mockup-header">编辑器内的溯源标注效果</div>
+  <div class="mockup-body" style="padding: 20px; font-size: 13px;">
+    <div style="display: flex; gap: 16px;">
+      <!-- Editor area -->
+      <div style="flex: 2;">
+        <div style="padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; line-height: 2;">
+          <p>该区域 SO₂ 日均浓度为 <span style="background: #fef3c7; border-bottom: 2px dotted #f59e0b; padding: 0 4px;">0.045mg/m³<sup style="color: #f59e0b; font-size: 10px;">[1]</sup></span>，低于国家标准限值 <span style="background: #dcfce7; border-bottom: 2px dotted #22c55e; padding: 0 4px;">0.15mg/m³<sup style="color: #22c55e; font-size: 10px;">[2]</sup></span>。</p>
+          <p>根据现场调查，项目区域内共有 <span style="background: #dbeafe; border-bottom: 2px dotted #3b82f6; padding: 0 4px;">敏感点 12 个<sup style="color: #3b82f6; font-size: 10px;">[3]</sup></span>，其中居民点 8 个，学校 2 个，医院 2 个。</p>
+          <p>预测结果表明，在不利气象条件下，最大落地浓度占标率为 <span style="background: #fef3c7; border-bottom: 2px dotted #f59e0b; padding: 0 4px;">76.3%<sup style="color: #f59e0b; font-size: 10px;">[4]</sup></span>，符合环境空气质量标准要求。</p>
+        </div>
+        <!-- Footnotes -->
+        <div style="margin-top: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px;">
+          <div style="font-weight: bold; margin-bottom: 6px; color: #475569;">溯源标注</div>
+          <div style="display: flex; gap: 6px; align-items: baseline; margin-bottom: 4px;">
+            <span style="color: #f59e0b; font-weight: bold;">[1]</span>
+            <span style="color: #6b7280;"><span style="padding: 1px 4px; background: #dbeafe; border-radius: 2px;">RAG检索</span> 知识库「监测数据库」→「2024年度监测报告」p.23 · 置信度 0.92</span>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: baseline; margin-bottom: 4px;">
+            <span style="color: #22c55e; font-weight: bold;">[2]</span>
+            <span style="color: #6b7280;"><span style="padding: 1px 4px; background: #dcfce7; border-radius: 2px;">法规库</span> GB 3095-2012《环境空气质量标准》表2 · 置信度 1.0</span>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: baseline; margin-bottom: 4px;">
+            <span style="color: #3b82f6; font-weight: bold;">[3]</span>
+            <span style="color: #6b7280;"><span style="padding: 1px 4px; background: #dbeafe; border-radius: 2px;">RAG检索</span> 知识库「项目资料」→「现场调查报告」表3-1 · 置信度 0.88</span>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: baseline;">
+            <span style="color: #f59e0b; font-weight: bold;">[4]</span>
+            <span style="color: #6b7280;"><span style="padding: 1px 4px; background: #fef3c7; border-radius: 2px;">AI生成</span> AERMOD 模型预测结果 · 置信度 0.95</span>
+          </div>
+        </div>
+      </div>
+      <!-- Source stats -->
+      <div style="flex: 1;">
+        <div style="padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 12px;">
+          <div style="font-weight: bold; margin-bottom: 8px;">本章溯源统计</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: #dbeafe; border-radius: 4px;">
+              <span>RAG 检索</span><span style="font-weight: bold;">18 处</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: #fef3c7; border-radius: 4px;">
+              <span>AI 生成</span><span style="font-weight: bold;">12 处</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: #dcfce7; border-radius: 4px;">
+              <span>法规引用</span><span style="font-weight: bold;">6 处</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 8px; background: #f3e8ff; border-radius: 4px;">
+              <span>人工编写</span><span style="font-weight: bold;">3 处</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding: 12px; background: #fef2f2; border-radius: 8px; font-size: 11px;">
+          <div style="font-weight: bold; color: #991b1b;">⚠ 溯源预警</div>
+          <div style="margin-top: 6px; color: #7f1d1d;">第 3 段有 <strong>2 处数据</strong>未标注来源，建议补充。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Component 3: Review Panel -->
+<h3 style="margin-top: 24px;">组件 3: PhaseReviewPanel（审核工作台）</h3>
+<div class="mockup" style="margin-top: 8px;">
+  <div class="mockup-header">经理视角 — 配置审核分配</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <!-- By chapter -->
+      <div style="flex: 1; min-width: 240px; padding: 12px; background: #eff6ff; border-radius: 8px;">
+        <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 8px;">按章节分配</div>
+        <div style="font-size: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <input type="checkbox" checked style="margin: 0;">
+            <span>第1章 概述</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>张三</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <input type="checkbox" checked style="margin: 0;">
+            <span>第2章 现状</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>张三</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <input type="checkbox" checked style="margin: 0;">
+            <span>第3章 预测</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>李四</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <input type="checkbox" checked style="margin: 0;">
+            <span>第4章 措施</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>李四</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <!-- By dimension -->
+      <div style="flex: 1; min-width: 240px; padding: 12px; background: #fef3c7; border-radius: 8px;">
+        <div style="font-weight: bold; color: #92400e; margin-bottom: 8px;">按维度分工（覆盖全文档）</div>
+        <div style="font-size: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <span style="padding: 2px 6px; background: #dbeafe; border-radius: 3px; font-size: 11px;">技术</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>王五</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <span style="padding: 2px 6px; background: #dcfce7; border-radius: 3px; font-size: 11px;">合规</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>赵六</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: white; border-radius: 4px;">
+            <span style="padding: 2px 6px; background: #f3e8ff; border-radius: 3px; font-size: 11px;">语言</span>
+            <select style="margin-left: auto; font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #d1d5db;">
+              <option>孙七</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; color: #6b7280;">维度审核人审阅全部章节，但只关注自己负责的维度</div>
+      </div>
+    </div>
+  </div>
+</div>

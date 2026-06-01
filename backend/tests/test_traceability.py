@@ -101,3 +101,35 @@ class TestFindMissingSources:
         missing = find_missing_sources(content)
         assert "block_index" in missing[0]
         assert "preview" in missing[0]
+
+
+class TestAutoParseSources:
+    def test_update_chapter_auto_parse(self):
+        """update_chapter should auto-parse source markers when content changes."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        content_with_markers = (
+            "SO₂ 浓度为 0.045mg/m³[1]。\n\n"
+            "[1] source:rag_retrieval:知识库「监测」p.23"
+        )
+
+        mock_chapter = MagicMock()
+        mock_chapter.content = None
+        mock_chapter.id = "test-chapter-id"
+
+        async def _test():
+            from app.extensions.project.service import _auto_parse_sources
+
+            mock_db = AsyncMock()
+            mock_db.execute = AsyncMock()
+            mock_db.flush = AsyncMock()
+            mock_db.add = MagicMock()
+
+            await _auto_parse_sources(mock_db, "test-chapter-id", content_with_markers)
+
+            mock_db.execute.assert_called_once()
+            assert mock_db.add.call_count == 1
+
+        import asyncio
+
+        asyncio.run(_test())

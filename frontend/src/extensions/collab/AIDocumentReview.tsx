@@ -9,6 +9,7 @@ import { docmgrApi } from "../api";
 
 interface AIDocumentReviewProps {
   docId: string;
+  documentContent: string;
   onInsertComment: (blockId: string | null, comment: string) => void;
 }
 
@@ -32,7 +33,7 @@ interface AIReviewResult {
   error?: string;
 }
 
-export function AIDocumentReview({ docId, onInsertComment }: AIDocumentReviewProps) {
+export function AIDocumentReview({ docId, documentContent, onInsertComment }: AIDocumentReviewProps) {
   const [reviewType, setReviewType] = useState<string>("full");
   const [result, setResult] = useState<AIReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,7 @@ export function AIDocumentReview({ docId, onInsertComment }: AIDocumentReviewPro
     setLoading(true);
     setResult(null);
     try {
-      const res = await docmgrApi.aiReview({ doc_id: docId, review_type: reviewType });
+      const res = await docmgrApi.aiReview({ doc_id: docId, review_type: reviewType, content: documentContent });
       setResult(res);
     } catch {
       setResult({ error: "AI 审查失败，请重试" });

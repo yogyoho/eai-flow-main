@@ -3,7 +3,7 @@
 The graph definition (``graph_json``) follows the React Flow format:
 
 {
-  "nodes": [{"id": "...", "type": "phase|review|condition|merge|ai_generate", "data": {...}}],
+  "nodes": [{"id": "...", "type": "phase|review|condition|merge|ai_generate|sub_workflow", "data": {...}}],
   "edges": [{"source": "...", "target": "..."}]
 }
 
@@ -29,6 +29,9 @@ with workflow.unsafe.imports_passed_through():
         parse_sources as _parse_sources,
         start_ai_writing as _start_ai_writing,
         store_sources as _store_sources,
+        check_reviews_complete as _check_reviews_complete,
+        gather_phase_context as _gather_phase_context,
+        handle_rejection as _handle_rejection,
     )
     from .signals import SIGNAL_AI_COMPLETE, SIGNAL_PHASE_COMPLETE, SIGNAL_REVIEW_ACTION
 
@@ -41,6 +44,7 @@ PHASE_COMPLETION_TIMEOUT = timedelta(days=30)
 REVIEW_COMPLETION_TIMEOUT = timedelta(days=30)
 
 
+@workflow.defn
 class DynamicGraphWorkflow:
     """Walk a user-defined DAG of workflow nodes.
 
@@ -199,6 +203,15 @@ class DynamicGraphWorkflow:
 
                 elif node_type == "ai_generate":
                     await self._execute_ai_generate(
+                        node_id=node_id,
+                        project_id=project_id,
+                        node_data=node_data,
+                        results=results,
+                        completed=completed,
+                    )
+
+                elif node_type == "sub_workflow":
+                    await self._execute_sub_workflow(
                         node_id=node_id,
                         project_id=project_id,
                         node_data=node_data,
@@ -405,25 +418,16 @@ class DynamicGraphWorkflow:
         results: dict,
         completed: set[str],
     ) -> None:
-        """Execute AI generation: start writing, wait for completion, parse and store sources."""
+        """Execute AI generation: start writing, parse and store sources."""
         chapter_id = node_data.get("chapter_id")
 
-        await workflow.execute_activity(
+        ai_result = await workflow.execute_activity(
             _start_ai_writing,
             node_id,
             project_id,
             chapter_id,
-            start_to_close_timeout=timedelta(seconds=30),
+            start_to_close_timeout=timedelta(minutes=5),
         )
-
-        # Wait for ai_complete signal (if not already received).
-        if node_id not in self._completed:
-            await workflow.wait_condition(
-                lambda nid=node_id: nid in self._completed,  # type: ignore[misc]
-                timeout=timedelta(hours=2),
-            )
-
-        ai_result = self._phase_results.get(node_id, {})
         results[node_id] = ai_result
 
         # Parse and store source markers if content is available
@@ -442,5 +446,75 @@ class DynamicGraphWorkflow:
                     parsed["sources"],
                     start_to_close_timeout=timedelta(seconds=30),
                 )
+
+        completed.add(node_id)
+
+    async def _execute_sub_workflow(
+        self,
+        node_id: str,
+        project_id: str,
+        node_data: dict,
+        results: dict,
+        completed: set[str],
+    ) -> None:
+        """Start a child workflow and wait for it to complete.
+
+        The node_data must contain a ``graph_json`` dict with its own
+        ``nodes`` and ``edges``.  The child workflow is another instance of
+        ``DynamicGraphWorkflow``, executing the sub-graph in isolation.
+        Parent context (project_id, upstream results) is forwarded so the
+        child can access prior phase outputs.
+        """
+        sub_graph = node_data.get("graph_json") or node_data.get("graphJson")
+        if not sub_graph:
+            logger.warning(
+                "sub_workflow node %s has no graph_json — skipping", node_id,
+            )
+            completed.add(node_id)
+            return
+
+        child_params: dict = {
+            "graph_json": sub_graph,
+            "project_id": project_id,
+        }
+
+        # Forward parent context so the child workflow can reference
+        # upstream results (e.g. chapter content from prior phases).
+        upstream_context: dict[str, dict] = {}
+        for nid, r in results.items():
+            if nid in completed and isinstance(r, dict):
+                upstream_context[nid] = r
+        if upstream_context:
+            child_params["parent_context"] = upstream_context
+
+        logger.info(
+            "Starting child workflow for node %s (sub_graph has %d nodes)",
+            node_id,
+            len(sub_graph.get("nodes", [])),
+        )
+
+        child_id = f"{project_id}-{node_id}"
+        child_handle = await workflow.start_child_workflow(
+            "DynamicGraphWorkflow",
+            args=[child_params],
+            id=child_id,
+            task_queue="project-workflow-queue",
+        )
+
+        logger.info("Waiting for child workflow %s to complete", child_id)
+        try:
+            child_result = await child_handle.result()
+            results[node_id] = child_result
+            logger.info(
+                "Child workflow %s completed with status=%s",
+                child_id,
+                child_result.get("status", "unknown"),
+            )
+        except Exception:
+            logger.exception("Child workflow %s failed", child_id)
+            results[node_id] = {
+                "status": "error",
+                "error": f"Child workflow {child_id} failed",
+            }
 
         completed.add(node_id)

@@ -10,6 +10,7 @@ const NODE_TYPES: { type: DAGNodeType; label: string; color: string }[] = [
   { type: "condition", label: "条件", color: "amber" },
   { type: "ai_generate", label: "AI生成", color: "blue" },
   { type: "merge", label: "汇聚", color: "green" },
+  { type: "sub_workflow", label: "子流程", color: "indigo" },
 ];
 
 const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string }> = {
@@ -18,6 +19,7 @@ const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string }
   amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
   blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
   green: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700" },
+  indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700" },
 };
 
 export function NodePalette() {
@@ -41,6 +43,7 @@ export function NodePalette() {
       condition: { label: "新条件", expression: "" },
       ai_generate: { label: "AI 生成", aiAssist: true },
       merge: { label: "汇聚" },
+      sub_workflow: { label: "新子流程" },
     };
 
     addNodes({

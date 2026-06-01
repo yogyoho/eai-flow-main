@@ -439,6 +439,7 @@ export interface CommentUpdateRequest {
 
 export interface VersionCreateRequest {
   summary?: string | null;
+  generate_summary?: boolean;
 }
 
 export interface VersionDiffResponse {
