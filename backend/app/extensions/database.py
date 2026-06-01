@@ -955,6 +955,20 @@ async def migrate_db() -> None:
             "ON phase_reviews (project_id, phase_node)"
         ))
 
+        # --- Extend Department with unit_type and metadata ---
+        _add_column_if_not_exists(cur, "departments", "unit_type", "VARCHAR(20) NOT NULL DEFAULT 'internal'")
+        _add_column_if_not_exists(cur, "departments", "metadata", "JSONB")
+
+        # --- Extend project_members with phase_duties and source_org_unit_id ---
+        _add_column_if_not_exists(cur, "project_members", "source_org_unit_id", "UUID REFERENCES departments(id)")
+        _add_column_if_not_exists(cur, "project_members", "phase_duties", "JSONB")
+
+        # --- Add composite indexes for existing tables ---
+        cur.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_content_sources_chapter_block "
+            "ON content_sources (chapter_id, block_index)"
+        ))
+
 
 async def close_db() -> None:
     """Close database connections."""

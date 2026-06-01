@@ -90,6 +90,8 @@ class Department(Base):
     leader_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    unit_type: Mapped[str] = mapped_column(String(20), default="internal")
+    extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships
@@ -597,6 +599,10 @@ class ProjectMember(Base):
     )
     role: Mapped[str] = mapped_column(String(50), default="editor")
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    source_org_unit_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
+    )
+    phase_duties: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     project: Mapped["ReportProject"] = relationship("ReportProject", back_populates="members")
