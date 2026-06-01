@@ -180,3 +180,14 @@ class ApprovalStatusOut(BaseModel):
     total_steps: int
     steps: list[ApprovalWorkflowWithRecords]
     all_approved: bool
+
+
+# ── Project Permissions ──
+
+
+class ProjectPermissionsOut(BaseModel):
+    """User's effective permissions within a project."""
+    role: str | None = None
+    permissions: list[str] = Field(default_factory=list)
+    phase_duties: dict | None = None
+    is_admin: bool = False

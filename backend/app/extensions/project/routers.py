@@ -4,6 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -20,6 +21,7 @@ from .schemas import (
     ProjectCreate,
     ProjectListResponse,
     ProjectOut,
+    ProjectPermissionsOut,
     ProjectUpdate,
 )
 from . import service
@@ -139,6 +141,72 @@ async def get_project_files(
     csrf_token = request.cookies.get("csrf_token")
     return await service.get_project_files(
         db, project_id, cookies=request.cookies, csrf_token=csrf_token,
+    )
+
+
+# ── My Permissions ──
+
+
+@router.get("/projects/{project_id}/my-permissions", response_model=ProjectPermissionsOut)
+async def get_my_permissions(
+    project_id: UUID,
+    user: CurrentUserWithAccess,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current user's effective permissions within a project.
+
+    Returns permissions derived from:
+    1. System Role.permissions (if user has a role)
+    2. Project role (owner gets all, member gets filtered)
+    3. Phase duties bonus (lead/writer/reviewer get extra permissions)
+    """
+    from app.extensions.models import ProjectMember, User
+    from app.extensions.project.project_permissions import (
+        PROJECT_PERMISSIONS,
+        get_project_role_permissions,
+    )
+
+    is_admin = False
+    system_role = None
+    if user.role_id:
+        role_obj = await db.get(Role, user.role_id)
+        if role_obj:
+            permissions = role_obj.permissions or []
+            if "*" in permissions or role_obj.is_system:
+                is_admin = True
+            else:
+                system_role = role_obj
+
+    if is_admin:
+        return ProjectPermissionsOut(
+            role="owner",
+            permissions=list(PROJECT_PERMISSIONS),
+            phase_duties=None,
+            is_admin=True,
+        )
+
+    # Look up project membership
+    stmt = select(ProjectMember).where(
+        ProjectMember.project_id == project_id,
+        ProjectMember.user_id == user.id,
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+
+    if member is None:
+        return ProjectPermissionsOut(role=None, permissions=[], phase_duties=None, is_admin=False)
+
+    permissions = get_project_role_permissions(
+        project_role=member.role,
+        system_role=system_role,
+        phase_duties=member.phase_duties,
+    )
+
+    return ProjectPermissionsOut(
+        role=member.role,
+        permissions=permissions,
+        phase_duties=member.phase_duties,
+        is_admin=False,
     )
 
 
