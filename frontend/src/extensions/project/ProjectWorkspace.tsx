@@ -15,27 +15,36 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { projectApi } from "@/extensions/project/api";
 import { ApprovalFlowEditor } from "@/extensions/project/ApprovalFlowEditor";
-import { type ReportProject } from "@/extensions/project/types";
+import { type ReportProject, type ProjectPermissions } from "@/extensions/project/types";
+import { createProjectIdentity, getVisibleTabs, type ProjectIdentity } from "@/extensions/project/tabRegistry";
 
 interface ProjectWorkspaceProps {
   projectId: string;
 }
 
-type ViewTab = "info" | "files" | "workflow" | "approval";
-
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const router = useRouter();
   const [project, setProject] = useState<ReportProject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ViewTab>("info");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [showApprovalEditor, setShowApprovalEditor] = useState(false);
   const [entering, setEntering] = useState(false);
+  const [identity, setIdentity] = useState<ProjectIdentity | null>(null);
 
   const loadProject = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await projectApi.get(projectId);
+      const [data, perms] = await Promise.all([
+        projectApi.get(projectId),
+        projectApi.getMyPermissions(projectId).catch(() => ({
+          role: null,
+          permissions: [],
+          phaseDuties: null,
+          isAdmin: false,
+        } as ProjectPermissions)),
+      ]);
       setProject(data);
+      setIdentity(createProjectIdentity(perms));
     } catch {
       toast.error("加载项目失败");
     } finally {
@@ -56,6 +65,16 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadProject]);
+
+  // Derive visible tabs from identity
+  const visibleTabs = identity ? getVisibleTabs(identity) : [];
+
+  // If activeTab is no longer visible, reset to first visible tab
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.some((t) => t.id === activeTab)) {
+      setActiveTab(visibleTabs[0]!.id);
+    }
+  }, [visibleTabs, activeTab]);
 
   if (loading) {
     return (
@@ -88,6 +107,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         <span className="inline-flex h-[22px] items-center rounded-[4px] px-2 text-[11px] font-medium bg-[#F9FAFB] text-[#94A3B8]">
           {project.reportType}
         </span>
+        {identity && identity.projectRole && (
+          <span className="inline-flex h-[22px] items-center rounded-[4px] px-2 text-[11px] font-medium bg-primary/10 text-primary ml-2">
+            {identity.projectRole === "owner" ? "负责人" : "成员"}
+          </span>
+        )}
 
         <div className="flex-1" />
 
@@ -116,7 +140,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           className="h-[30px] mr-2"
           onClick={() => {
             setShowApprovalEditor(!showApprovalEditor);
-            if (!showApprovalEditor) setActiveTab("info");
+            if (!showApprovalEditor) setActiveTab("overview");
           }}
         >
           <Settings className="h-3.5 w-3.5 mr-1" />
@@ -124,42 +148,28 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         </Button>
       </header>
 
-      {/* Tab bar */}
+      {/* Tab bar — driven by registry */}
       {!showApprovalEditor && (
         <div className="flex border-b border-border px-6 shrink-0">
-          <button
-            type="button"
-            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              activeTab === "info"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveTab("info")}
-          >
-            项目信息
-          </button>
-          <button
-            type="button"
-            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              activeTab === "files"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveTab("files")}
-          >
-            项目文件
-          </button>
-          <button
-            type="button"
-            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-              activeTab === "workflow"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setActiveTab("workflow")}
-          >
-            工作流
-          </button>
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -173,9 +183,18 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           />
         ) : activeTab === "workflow" ? (
           <WorkflowEditor projectId={projectId} />
-        ) : activeTab === "files" ? (
+        ) : activeTab === "editor" ? (
           <ProjectFilesTab projectId={projectId} />
+        ) : activeTab === "review" ? (
+          <ProjectFilesTab projectId={projectId} />
+        ) : activeTab === "traceability" ? (
+          <ProjectInfoPanel project={project} />
+        ) : activeTab === "history" ? (
+          <ProjectInfoPanel project={project} />
+        ) : activeTab === "settings" ? (
+          <ProjectInfoPanel project={project} />
         ) : (
+          // Default: overview
           <ProjectInfoPanel project={project} />
         )}
       </div>
