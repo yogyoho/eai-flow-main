@@ -12,15 +12,15 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex items-center gap-2">
       {actions.map((a) => (
         <Link
           key={a.label}
           href={a.href}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent/50 transition-colors text-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <a.icon className="h-4 w-4" />
-          {a.label}
+          <span className="hidden sm:inline">{a.label}</span>
         </Link>
       ))}
     </div>
