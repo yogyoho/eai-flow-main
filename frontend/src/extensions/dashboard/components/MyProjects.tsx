@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderOpen } from "lucide-react";
 import { useMyProjects } from "../hooks/useMyProjects";
 import { ProjectMiniCard } from "./ProjectMiniCard";
 
@@ -29,7 +29,10 @@ export function MyProjects() {
 
   if (!data || data.total_count === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">暂无项目</p>
+      <div className="py-6 flex flex-col items-center gap-2">
+        <FolderOpen className="h-10 w-10 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">暂无项目</p>
+      </div>
     );
   }
 
@@ -48,17 +51,22 @@ export function MyProjects() {
         <div key={key}>
           <button
             onClick={() => toggleGroup(key)}
-            className="flex items-center gap-1 text-sm font-medium mb-1 hover:text-primary"
+            className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors"
           >
-            {collapsed.has(key) ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            {GROUP_LABELS[key] || key} ({projects.length})
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              {collapsed.has(key) ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+              {GROUP_LABELS[key] || key}
+            </span>
+            <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
+              {projects.length}
+            </span>
           </button>
           {!collapsed.has(key) && (
-            <div className="space-y-2 ml-2">
+            <div className="space-y-2 mt-2">
               {projects.map((p) => (
                 <ProjectMiniCard key={p.project_id} project={p} />
               ))}
