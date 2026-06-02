@@ -25,10 +25,7 @@ export function DashboardPage() {
         {/* Left column */}
         <div className="space-y-6">
           {/* Today's tasks */}
-          <section>
-            <h2 className="text-lg font-semibold mb-3">今日待办</h2>
-            <TodayTasks />
-          </section>
+          <TodayTasks />
 
           {/* My projects */}
           <section>
