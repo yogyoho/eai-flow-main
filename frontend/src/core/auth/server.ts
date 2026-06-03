@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 
+import { isStaticWebsiteOnly } from "../static-mode";
+
 import { getGatewayConfig } from "./gateway-config";
+import { STATIC_WEBSITE_USER } from "./static-user";
 import { type AuthResult, userSchema } from "./types";
 
 const SSR_AUTH_TIMEOUT_MS = 5_000;
@@ -36,6 +39,13 @@ async function fetchWithRetry(
  * Returns a tagged AuthResult — callers use exhaustive switch, no try/catch.
  */
 export async function getServerSideUser(): Promise<AuthResult> {
+  if (isStaticWebsiteOnly()) {
+    return {
+      tag: "authenticated",
+      user: STATIC_WEBSITE_USER,
+    };
+  }
+
   if (process.env.DEER_FLOW_AUTH_DISABLED === "1") {
     return {
       tag: "authenticated",

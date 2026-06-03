@@ -76,12 +76,11 @@ if [ "$mode" = "docker" ]; then
         all_passed=false
     fi
 else
-    summary_hint="logs/{langgraph,gateway,frontend,nginx}.log"
+    summary_hint="logs/{gateway,frontend,nginx}.log"
     print_step "1. Checking local service ports..."
-    check_listen_port "Nginx" 4026
+    check_listen_port "Nginx" 2026
     check_listen_port "Frontend" 3000
-    check_listen_port "Gateway" 4001
-    check_listen_port "LangGraph" 4024
+    check_listen_port "Gateway" 8001
 fi
 echo ""
 
@@ -90,11 +89,11 @@ sleep 30
 echo ""
 
 echo "3. Checking frontend service..."
-check_http_status "Frontend service" "http://localhost:4026" "200|301|302|307|308"
+check_http_status "Frontend service" "http://localhost:2026" "200|301|302|307|308"
 echo ""
 
 echo "4. Checking API Gateway..."
-health_response=$(curl -s http://localhost:4026/health 2>/dev/null)
+health_response=$(curl -s http://localhost:2026/health 2>/dev/null)
 if [ $? -eq 0 ] && [ -n "$health_response" ]; then
     echo "✓ API Gateway health check passed"
     echo "  Response: $health_response"
@@ -104,8 +103,8 @@ else
 fi
 echo ""
 
-echo "5. Checking LangGraph service..."
-check_http_status "LangGraph service" "http://localhost:4024/" "200|301|302|307|308|404"
+echo "5. Checking LangGraph-compatible Gateway API..."
+check_http_status "LangGraph-compatible Gateway API" "http://localhost:2026/api/langgraph/assistants/lead_agent" "200|401"
 echo ""
 
 echo "=========================================="
@@ -115,7 +114,7 @@ echo ""
 if [ "$all_passed" = true ]; then
     echo "✅ All checks passed!"
     echo ""
-    echo "🌐 Application URL: http://localhost:4026"
+    echo "🌐 Application URL: http://localhost:2026"
     exit 0
 else
     echo "❌ Some checks failed"

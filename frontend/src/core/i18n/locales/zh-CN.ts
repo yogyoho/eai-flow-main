@@ -197,9 +197,11 @@ export const zhCN: Translations = {
     nameStepAlreadyExistsError: "已存在同名智能体",
     nameStepNetworkError: "网络请求失败，请检查网络或后端连接",
     nameStepCheckError: "无法验证名称可用性，请稍后重试",
+    nameStepCheckErrorWithDetail: "名称校验失败：{detail}",
+    nameStepApiDisabledError:
+      "服务器未开启自定义智能体管理功能，请联系管理员。",
     nameStepBootstrapMessage:
       "新智能体的名称是 {name}。请先帮我设计它的用途、行为方式和 SOUL.md，再保存它。",
-    nameStepApiDisabledError: "当前环境不支持创建智能体。",
     save: "保存智能体",
     saving: "正在保存智能体...",
     saveRequested:

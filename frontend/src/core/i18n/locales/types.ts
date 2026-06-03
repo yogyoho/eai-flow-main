@@ -146,6 +146,8 @@ export interface Translations {
     nameStepAlreadyExistsError: string;
     nameStepNetworkError: string;
     nameStepCheckError: string;
+    nameStepCheckErrorWithDetail: string;
+    nameStepApiDisabledError: string;
     nameStepBootstrapMessage: string;
     save: string;
     saving: string;
@@ -153,7 +155,6 @@ export interface Translations {
     saveHint: string;
     saveCommandMessage: string;
     agentCreatedPendingRefresh: string;
-    nameStepApiDisabledError: string;
     more: string;
     agentCreated: string;
     startChatting: string;
