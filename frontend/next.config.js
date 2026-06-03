@@ -18,6 +18,10 @@ const withNextra = nextra({});
 const config = {
   transpilePackages: [],
   serverExternalPackages: ["@blocknote/xl-ai"],
+  output:
+    process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
+      ? "standalone"
+      : undefined,
   i18n: {
     locales: ["en", "zh"],
     defaultLocale: "en",
