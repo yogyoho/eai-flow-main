@@ -1,7 +1,19 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, BellOff, Check, Eye } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  Check,
+  Eye,
+  Rocket,
+  SearchCheck,
+  CheckCircle2,
+  PartyPopper,
+  AlarmClock,
+  MessageCircle,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 // ── API ──
@@ -48,19 +60,19 @@ async function markAllRead(): Promise<void> {
   });
 }
 
-// ── Notification type icons ──
+// ── Notification type icons (Lucide, no emoji) ──
 
-const TYPE_ICONS: Record<string, string> = {
-  phase_start: "🚀",
-  review_pending: "🔍",
-  review_complete: "✅",
-  workflow_complete: "🎉",
-  deadline: "⏰",
-  mention: "💬",
+const TYPE_ICONS: Record<string, LucideIcon> = {
+  phase_start: Rocket,
+  review_pending: SearchCheck,
+  review_complete: CheckCircle2,
+  workflow_complete: PartyPopper,
+  deadline: AlarmClock,
+  mention: MessageCircle,
 };
 
-function getTypeIcon(type: string): string {
-  return TYPE_ICONS[type] || "🔔";
+function getTypeIcon(type: string): LucideIcon {
+  return TYPE_ICONS[type] || Bell;
 }
 
 function formatTimeAgo(dateStr?: string): string {
@@ -130,47 +142,54 @@ export function NotificationFeed() {
           </button>
         </div>
       )}
-      {data.notifications.map((n) => (
-        <div
-          key={n.id}
-          className={`flex items-start gap-2 rounded-md p-2 text-sm transition-colors ${
-            n.is_read ? "opacity-60" : "bg-accent/50"
-          }`}
-        >
-          <span className="text-base mt-0.5 shrink-0">{getTypeIcon(n.type)}</span>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{n.title}</p>
-            {n.body && (
-              <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(n.created_at)}</p>
+      {data.notifications.map((n) => {
+        const Icon = getTypeIcon(n.type);
+        return (
+          <div
+            key={n.id}
+            className={`flex items-start gap-2.5 rounded-md p-2.5 text-sm transition-colors ${
+              n.is_read
+                ? "text-muted-foreground"
+                : "border-l-2 border-primary bg-accent/30"
+            }`}
+          >
+            <Icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{n.title}</p>
+              {n.body && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(n.created_at)}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {!n.is_read && (
+                <button
+                  onClick={() => readMutation.mutate(n.id)}
+                  className="p-1.5 rounded hover:bg-accent"
+                  title="标为已读"
+                >
+                  <Check className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+              {n.link && (
+                <Link
+                  href={n.link}
+                  className="p-1.5 rounded hover:bg-accent"
+                  title="查看"
+                >
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {!n.is_read && (
-              <button
-                onClick={() => readMutation.mutate(n.id)}
-                className="p-1 rounded hover:bg-accent"
-                title="标为已读"
-              >
-                <Check className="h-3 w-3 text-muted-foreground" />
-              </button>
-            )}
-            {n.link && (
-              <Link
-                href={n.link}
-                className="p-1 rounded hover:bg-accent"
-                title="查看"
-              >
-                <Eye className="h-3 w-3 text-muted-foreground" />
-              </Link>
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
       {data.total > 20 && (
-        <p className="text-xs text-center text-muted-foreground mt-2">
-          显示前 20 条，共 {data.total} 条
-        </p>
+        <button
+          className="text-xs text-center text-primary hover:underline w-full mt-2"
+        >
+          查看全部通知 ({data.total} 条)
+        </button>
       )}
     </div>
   );
