@@ -565,6 +565,7 @@ class ProjectChapter(Base):
     word_count_current: Mapped[int] = mapped_column(Integer, default=0)
     purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
     generation_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phase_node: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -578,6 +579,36 @@ class ProjectChapter(Base):
 
     def __repr__(self) -> str:
         return f"<ProjectChapter(id={self.id}, title={self.title})>"
+
+
+class ActivityLog(Base):
+    """Activity log for tracking project actions — who did what when."""
+
+    __tablename__ = "activity_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+    project: Mapped["ReportProject"] = relationship("ReportProject")
+    user: Mapped[Optional["User"]] = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<ActivityLog(id={self.id}, action={self.action})>"
 
 
 class ProjectMember(Base):
@@ -671,6 +702,8 @@ class ApprovalRecord(Base):
 
     workflow: Mapped["ApprovalWorkflow"] = relationship("ApprovalWorkflow", back_populates="records")
 
+    workflow: Mapped["ApprovalWorkflow"] = relationship("ApprovalWorkflow", back_populates="records")
+
     def __repr__(self) -> str:
         return f"<ApprovalRecord(id={self.id}, action={self.action})>"
 
@@ -696,8 +729,40 @@ class Notification(Base):
         return f"<Notification(id={self.id}, type={self.type}, title={self.title})>"
 
 
+class NotificationPreference(Base):
+    """Per-user notification channel and type preferences."""
+
+    __tablename__ = "notification_preferences"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True
+    )
+    channel_in_app: Mapped[bool] = mapped_column(Boolean, default=True)
+    channel_email: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Per-type toggles: {"deadline": true, "review_pending": true, "phase_start": true, "mention": true, "assignment": true, "workflow_complete": true}
+    type_settings: Mapped[dict] = mapped_column(JSONB, default=dict)
+    digest_mode: Mapped[str] = mapped_column(String(20), default="instant")  # instant | daily | off
+    quiet_hours_start: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "22:00"
+    quiet_hours_end: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "08:00"
+    deadline_remind_days: Mapped[int] = mapped_column(Integer, default=3)  # remind N days before deadline
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="notification_preferences")
+
+    def __repr__(self) -> str:
+        return f"<NotificationPreference(user_id={self.user_id}, digest={self.digest_mode})>"
+
+
 User.notifications: Mapped[list["Notification"]] = relationship(
     "Notification",
     back_populates="user",
+    cascade="all, delete-orphan",
+)
+User.notification_preferences: Mapped["NotificationPreference | None"] = relationship(
+    "NotificationPreference",
+    back_populates="user",
+    uselist=False,
     cascade="all, delete-orphan",
 )

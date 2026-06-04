@@ -83,9 +83,26 @@ export function ProjectCard({ project, onClick, onEdit, onDelete, onEnterChat }:
         {/* Middle: 3-column grid */}
         <div className="grid grid-cols-3 gap-3 border-t border-border py-3">
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">章节</div>
-            <div className="truncate text-sm font-medium text-foreground">
-              {project.chapterCount}
+            <div className="mb-1 text-xs text-muted-foreground">进度</div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    (project.progressPercentage ?? 0) >= 100
+                      ? "bg-green-500"
+                      : (project.progressPercentage ?? 0) >= 50
+                        ? "bg-blue-500"
+                        : "bg-amber-500",
+                  )}
+                  style={{ width: `${Math.min(project.progressPercentage ?? 0, 100)}%` }}
+                />
+              </div>
+              <span className="text-xs font-medium text-foreground">
+                {project.chapterCount > 0
+                  ? `${project.completedChapterCount ?? 0}/${project.chapterCount}`
+                  : "-"}
+              </span>
             </div>
           </div>
           <div>

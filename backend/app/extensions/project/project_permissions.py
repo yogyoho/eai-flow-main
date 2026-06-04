@@ -35,6 +35,11 @@ PROJECT_PERMISSIONS = [
     "version:rollback",
     "export:generate",
     "settings:edit",
+    "workflow:start",
+    "workflow:cancel",
+    "workflow:edit",
+    "template:manage",
+    "template:publish",
 ]
 
 # Owner always gets all permissions regardless of system role
@@ -92,7 +97,22 @@ def get_project_role_permissions(
     if project_role == "owner":
         return list(OWNER_PERMISSIONS)
 
-    # Member: derive from system role permissions
+    # Role-based base permissions (non-owner roles)
+    _ROLE_BASE: dict[str, set[str]] = {
+        "manager": {"project:edit", "member:add", "member:remove", "approval:submit", "approval:review",
+                     "approval:approve", "approval:view", "outline:edit", "chapter:write_any",
+                     "chapter:write_own", "chapter:review"},
+        "editor": {"approval:view", "outline:edit", "chapter:write_any", "chapter:write_own"},
+        "reviewer": {"approval:view", "chapter:review", "approval:review"},
+        "approver": {"approval:view", "approval:approve"},
+        "member": set(),  # members only get permissions through phase_duties
+    }
+
+    if project_role in _ROLE_BASE:
+        base_perms = set(_ROLE_BASE[project_role])
+    else:
+        # Fallback: derive from system role permissions
+        base_perms = set(get_effective_permissions(role=system_role))
     base_perms = set(get_effective_permissions(role=system_role))
 
     # If user has phase_duties, grant additional permissions based on duties

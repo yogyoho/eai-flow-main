@@ -20,8 +20,10 @@ import {
   Phone,
   Hash,
   Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,6 +38,8 @@ import type {
 } from "@/extensions/types";
 import { cn } from "@/lib/utils";
 
+const PAGE_SIZE = 20;
+
 function flattenDepts(depts: Department[]): Department[] {
   return depts.reduce((acc: Department[], dept) => {
     acc.push(dept);
@@ -45,15 +49,24 @@ function flattenDepts(depts: Department[]): Department[] {
 }
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Server-side pagination state
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  // Server-side filter state
   const [searchQuery, setSearchQuery] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [filterDept, setFilterDept] = useState<string>("all");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
 
+  // Data
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -74,43 +87,63 @@ export default function AdminUsersPage() {
     status: "active" as "active" | "inactive",
   });
 
-  const loadData = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const loadUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [usersRes, rolesRes, deptsRes] = await Promise.all([
-        userApi.list({
-          limit: 500,
-          dept_id: filterDept && filterDept !== "all" ? filterDept : undefined,
-          role_id: filterRole && filterRole !== "all" ? filterRole : undefined,
-          status: filterStatus && filterStatus !== "all" ? filterStatus : undefined,
-        }),
-        roleApi.list(),
-        deptApi.list(),
-      ]);
-      setUsers(usersRes.users);
-      setRoles(rolesRes.roles);
-      setDepartments(deptsRes.departments);
+      const skip = (page - 1) * PAGE_SIZE;
+      const res = await userApi.list({
+        skip,
+        limit: PAGE_SIZE,
+        keyword: appliedSearch || undefined,
+        dept_id: filterDept && filterDept !== "all" ? filterDept : undefined,
+        role_id: filterRole && filterRole !== "all" ? filterRole : undefined,
+        status: filterStatus && filterStatus !== "all" ? filterStatus : undefined,
+      });
+      setUsers(res.users);
+      setTotal(res.total);
     } catch (err) {
-      console.error("Failed to load data:", err);
+      console.error("Failed to load users:", err);
     } finally {
       setIsLoading(false);
     }
+  }, [page, appliedSearch, filterDept, filterRole, filterStatus]);
+
+  // Load roles and departments once
+  useEffect(() => {
+    const loadMeta = async () => {
+      try {
+        const [rolesRes, deptsRes] = await Promise.all([roleApi.list(), deptApi.list()]);
+        setRoles(rolesRes.roles);
+        setDepartments(deptsRes.departments);
+      } catch (err) {
+        console.error("Failed to load meta data:", err);
+      }
+    };
+    void loadMeta();
+  }, []);
+
+  // Reload users when page or filters change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadUsers(); }, [loadUsers]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [appliedSearch, filterDept, filterRole, filterStatus]);
+
+  const handleSearch = () => {
+    setAppliedSearch(searchQuery);
+    setPage(1);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void loadData(); }, [filterDept, filterRole, filterStatus]);
-
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      (user.full_name ?? user.username).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.email ?? "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
   const flatDepts = flattenDepts(departments);
 
-  const getDepartmentName = (id?: string) => {
+  const getDepartmentName = (id?: string, fallbackName?: string) => {
+    if (fallbackName) return fallbackName;
     if (!id) return "-";
     const dept = flatDepts.find((d) => d.id === id);
     return dept?.name ?? "-";
@@ -120,6 +153,10 @@ export default function AdminUsersPage() {
     if (!id) return "-";
     const role = roles.find((r) => r.id === id);
     return role?.name ?? "-";
+  };
+
+  const reloadAfterMutation = async () => {
+    await loadUsers();
   };
 
   const handleOpenModal = (user?: User) => {
@@ -192,7 +229,7 @@ export default function AdminUsersPage() {
         await userApi.create(createData);
       }
       setIsModalOpen(false);
-      void loadData();
+      void reloadAfterMutation();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "操作失败");
     }
@@ -202,7 +239,7 @@ export default function AdminUsersPage() {
     if (!confirm("确定要删除该用户吗？此操作不可恢复。")) return;
     try {
       await userApi.delete(id);
-      void loadData();
+      void reloadAfterMutation();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "删除失败");
     }
@@ -212,7 +249,7 @@ export default function AdminUsersPage() {
     const newStatus = user.status === "active" ? "inactive" : "active";
     try {
       await userApi.update(user.id, { status: newStatus });
-      void loadData();
+      void reloadAfterMutation();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "更新状态失败");
     }
@@ -236,7 +273,29 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (isLoading) {
+  // Page navigation helpers
+  const goToPage = (p: number) => {
+    if (p >= 1 && p <= totalPages) setPage(p);
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("ellipsis");
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (page < totalPages - 2) pages.push("ellipsis");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  if (isLoading && users.length === 0) {
     return (
       <main className="h-full flex flex-col overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
         <div className="flex-1 flex items-center justify-center">
@@ -268,12 +327,20 @@ export default function AdminUsersPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="搜索姓名或邮箱..."
+              placeholder="搜索姓名、邮箱或用户名..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="w-full pl-9 pr-4 py-2 bg-muted border border-input rounded-lg focus:bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm transition-all outline-none"
             />
           </div>
+
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+          >
+            搜索
+          </button>
 
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
@@ -312,7 +379,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* User Table */}
-      <div className="flex-1 overflow-auto p-8 bg-muted/30">
+      <div className="flex-1 overflow-y-scroll [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-8 bg-muted/30">
         <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -326,8 +393,8 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+              {users.length > 0 ? (
+                users.map((user) => (
                   <tr key={user.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
@@ -359,7 +426,7 @@ export default function AdminUsersPage() {
                       ) : (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-foreground text-sm">
                           <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          {getDepartmentName(user.dept_id)}
+                          {getDepartmentName(user.dept_id, user.dept_name)}
                         </div>
                       )}
                     </td>
@@ -432,6 +499,51 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <div className="text-sm text-muted-foreground">
+              共 <span className="font-medium text-foreground">{total}</span> 条记录，第 {page}/{totalPages} 页
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {getPageNumbers().map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground text-sm">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => goToPage(p)}
+                    className={cn(
+                      "min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors",
+                      p === page
+                        ? "bg-primary text-white"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create/Edit Modal */}

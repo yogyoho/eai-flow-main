@@ -107,10 +107,11 @@ async def generate_report(
     watermark: Optional[str] = Form(None),
     project_id: Optional[str] = Form(None),
     chapter_ids: Optional[str] = Form(None),
+    content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate a report from either a project or an uploaded markdown file."""
+    """Generate a report from a project, uploaded markdown file, or direct content string."""
     # Validate template exists
     try:
         tmpl_uuid = uuid.UUID(layout_template_id)
@@ -130,14 +131,18 @@ async def generate_report(
         # TODO: fetch project chapters and assemble markdown from DB
         markdown_content = f"# 项目报告\n\n> 项目 ID: {project_id}\n\n*（项目章节内容将在此处生成）*\n"
     elif source == "markdown":
-        if not file:
-            raise HTTPException(status_code=400, detail="file is required when source is 'markdown'")
-        raw = await file.read()
-        try:
-            markdown_content = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            markdown_content = raw.decode("gbk", errors="replace")
-        logger.info("Markdown upload received: %s (%d bytes)", file.filename, len(raw))
+        if content:
+            markdown_content = content
+            logger.info("Markdown content received via Form field (%d chars)", len(content))
+        elif file:
+            raw = await file.read()
+            try:
+                markdown_content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                markdown_content = raw.decode("gbk", errors="replace")
+            logger.info("Markdown upload received: %s (%d bytes)", file.filename, len(raw))
+        else:
+            raise HTTPException(status_code=400, detail="content or file is required when source is 'markdown'")
     else:
         raise HTTPException(status_code=400, detail="source must be 'project' or 'markdown'")
 

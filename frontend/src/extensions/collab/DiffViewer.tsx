@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 
 import type { VersionDiffResponse } from "../types";
 
@@ -18,6 +18,23 @@ export function DiffViewer({ diff, loading }: DiffViewerProps) {
     return (
       <div className="p-4 text-center text-sm text-muted-foreground">
         <p>选择两个版本进行差异对比</p>
+      </div>
+    );
+  }
+
+  // Show legacy notice for versions created before text snapshot feature
+  if (diff.legacy_notice) {
+    return (
+      <div className="p-3 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span>v{diff.from_version}</span>
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          <span>v{diff.to_version}</span>
+        </div>
+        <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-200">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <p>{diff.legacy_notice}</p>
+        </div>
       </div>
     );
   }

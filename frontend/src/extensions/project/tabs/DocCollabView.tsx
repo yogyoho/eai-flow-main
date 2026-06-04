@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, History, Link2 } from "lucide-react";
+import { ArrowLeft, Link2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 
@@ -145,16 +145,6 @@ export function DocCollabView({ doc, projectId, onBack }: DocCollabViewProps) {
 				>
 					<Link2 className="size-3.5 mr-1" />
 					溯源
-				</Button>
-				<Button
-					variant={sidebarMode === "versions" ? "secondary" : "ghost"}
-					size="sm"
-					className={cn("h-7 text-xs px-2.5")}
-					onClick={() => toggleSidebar("versions")}
-					title="版本历史"
-				>
-					<History className="size-3.5 mr-1" />
-					版本历史
 				</Button>
 			</div>
 

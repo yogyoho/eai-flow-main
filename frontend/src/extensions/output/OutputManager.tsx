@@ -1,13 +1,15 @@
 "use client";
 
-import { FileText, History, LayoutGrid, Loader2, RefreshCw } from "lucide-react";
+import { FileText, History, LayoutGrid, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
 import { outputApi } from "./api";
+import { LayoutTemplateEditor } from "./components/LayoutTemplateEditor";
 import { LayoutTemplateCard } from "./components/LayoutTemplateCard";
 import { OutputConfigPanel } from "./components/OutputConfigPanel";
 import { OutputProgress } from "./components/OutputProgress";
@@ -25,6 +27,8 @@ function TemplatesTab() {
   const [templates, setTemplates] = useState<LayoutTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<LayoutTemplate | null>(null);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -46,6 +50,27 @@ function TemplatesTab() {
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
+
+  const handleCreateSave = useCallback(
+    async (data: Omit<LayoutTemplate, "id" | "isBuiltin" | "createdAt" | "updatedAt">) => {
+      await outputApi.createTemplate(data);
+      toast.success("模板已创建");
+      setShowEditor(false);
+      loadTemplates();
+    },
+    [loadTemplates],
+  );
+
+  const handleEditSave = useCallback(
+    async (data: Omit<LayoutTemplate, "id" | "isBuiltin" | "createdAt" | "updatedAt">) => {
+      if (!editingTemplate) return;
+      await outputApi.updateTemplate(editingTemplate.id, data);
+      toast.success("模板已更新");
+      setEditingTemplate(null);
+      loadTemplates();
+    },
+    [editingTemplate, loadTemplates],
+  );
 
   if (loading) {
     return (
@@ -72,22 +97,54 @@ function TemplatesTab() {
     );
   }
 
-  if (templates.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <FileText className="mb-4 h-12 w-12" />
-        <span className="mb-2 text-lg">暂无排版模板</span>
-        <span className="text-sm">请先在知识工厂中创建排版模板</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {templates.map((template) => (
-        <LayoutTemplateCard key={template.id} template={template} />
-      ))}
-    </div>
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">共 {templates.length} 个模板</span>
+        <button
+          type="button"
+          onClick={() => setShowEditor(true)}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          新建模板
+        </button>
+      </div>
+
+      {templates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <FileText className="mb-4 h-12 w-12" />
+          <span className="mb-2 text-lg">暂无排版模板</span>
+          <span className="text-sm">点击上方「新建模板」创建第一个排版模板</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {templates.map((template) => (
+            <LayoutTemplateCard
+              key={template.id}
+              template={template}
+              onEdit={(t) => setEditingTemplate(t)}
+              onRefresh={loadTemplates}
+            />
+          ))}
+        </div>
+      )}
+
+      {showEditor && (
+        <LayoutTemplateEditor
+          template={null}
+          onSave={handleCreateSave}
+          onCancel={() => setShowEditor(false)}
+        />
+      )}
+      {editingTemplate && (
+        <LayoutTemplateEditor
+          template={editingTemplate}
+          onSave={handleEditSave}
+          onCancel={() => setEditingTemplate(null)}
+        />
+      )}
+    </>
   );
 }
 

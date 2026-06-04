@@ -120,3 +120,47 @@ class NotificationListResponse(BaseModel):
     notifications: list[NotificationOut] = []
     total: int = 0
     unread_count: int = 0
+
+
+# ── Notification Preferences ──
+
+
+# Default type settings — all enabled
+_DEFAULT_TYPE_SETTINGS = {
+    "deadline": True,
+    "review_pending": True,
+    "phase_start": True,
+    "mention": True,
+    "assignment": True,
+    "workflow_complete": True,
+}
+
+
+class NotificationPreferenceOut(BaseModel):
+    """User's notification preferences."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    channel_in_app: bool = True
+    channel_email: bool = False
+    type_settings: dict = {}
+    digest_mode: str = "instant"  # instant | daily | off
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
+    deadline_remind_days: int = 3
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class NotificationPreferenceUpdate(BaseModel):
+    """Update notification preferences — all fields optional."""
+
+    channel_in_app: bool | None = None
+    channel_email: bool | None = None
+    type_settings: dict | None = None
+    digest_mode: str | None = None
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
+    deadline_remind_days: int | None = None

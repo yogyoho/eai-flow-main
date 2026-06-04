@@ -6,21 +6,53 @@ import uuid
 from sqlalchemy import select, update
 from temporalio import activity
 
+# Ensure all ORM models are registered so SQLAlchemy can resolve FK references
+# during flush. Without this, `get_db_context()` sessions fail with
+# NoReferencedTableError for models not yet imported in the worker process.
+import app.extensions.models  # noqa: F401
+import app.extensions.knowledge_factory.models  # noqa: F401
+
 logger = logging.getLogger(__name__)
 
 
 @activity.defn
 async def init_phase(phase_id: str, project_id: str, config: dict | None = None) -> dict:
-    """Initialise a workflow phase — set project current_phase_node."""
+    """Initialise a workflow phase — set project current_phase_node and tag chapters with phase scope."""
     from app.extensions.database import get_db_context
-    from app.extensions.models import ReportProject
+    from app.extensions.models import ReportProject, ProjectChapter
+    from sqlalchemy import select as sa_select
 
     async with get_db_context() as db:
-        await db.execute(
-            update(ReportProject)
-            .where(ReportProject.id == uuid.UUID(project_id))
-            .values(current_phase_node=phase_id)
-        )
+        project = await db.get(ReportProject, uuid.UUID(project_id))
+        if not project:
+            logger.warning("activity:init_phase project not found: %s", project_id)
+            return {"status": "error", "detail": "Project not found"}
+
+        project.current_phase_node = phase_id
+
+        # Tag chapters belonging to this phase using chapter_range from the workflow graph
+        if project.workflow_id:
+            from app.extensions.workflow.models import WorkflowDefinition
+            defn = await db.get(WorkflowDefinition, project.workflow_id)
+            if defn and defn.graph_json:
+                for node in defn.graph_json.get("nodes", []):
+                    if node["id"] == phase_id:
+                        cr = node.get("data", {}).get("chapter_range")
+                        if cr and len(cr) == 2:
+                            all_stmt = sa_select(ProjectChapter).where(
+                                ProjectChapter.project_id == uuid.UUID(project_id),
+                            ).order_by(ProjectChapter.sort_order)
+                            result = await db.execute(all_stmt)
+                            all_chapters = result.scalars().all()
+                            level1 = [c for c in all_chapters if c.level == 1]
+                            start_idx, end_idx = cr
+                            if 0 <= start_idx < len(level1) and 0 < end_idx <= len(level1):
+                                selected_ids = {c.id for c in level1[start_idx:end_idx]}
+                                for c in all_chapters:
+                                    if c.id in selected_ids or c.parent_id in selected_ids:
+                                        c.phase_node = phase_id
+                        break
+
         await db.commit()
 
     logger.info("activity:init_phase phase_id=%s project_id=%s", phase_id, project_id)
@@ -346,6 +378,87 @@ async def store_sources(chapter_id: str, sources: list[dict]) -> dict:
 
 
 @activity.defn
+async def check_phase_completion(phase_id: str, project_id: str, chapter_range: list[int] | None = None) -> dict:
+    """Check whether all chapters in the current phase are completed.
+
+    Validates that every chapter within the phase's scope has status
+    'completed' or 'approved'. Returns a summary of completion status.
+    If chapter_range is provided, only chapters in that range are checked.
+    """
+    from app.extensions.database import get_db_context
+    from app.extensions.models import ProjectChapter
+
+    async with get_db_context() as db:
+        result = await db.execute(
+            select(ProjectChapter)
+            .where(ProjectChapter.project_id == uuid.UUID(project_id))
+            .where(ProjectChapter.level == 1)
+            .order_by(ProjectChapter.sort_order)
+        )
+        all_level1 = result.scalars().all()
+
+        # Filter by chapter_range if provided
+        if chapter_range and len(chapter_range) == 2:
+            start_idx, end_idx = chapter_range
+            scoped = all_level1[start_idx:end_idx]
+        else:
+            scoped = all_level1
+
+        # Collect all scoped chapter IDs (including children)
+        scoped_ids: set[uuid.UUID] = set()
+        for ch in scoped:
+            scoped_ids.add(ch.id)
+        # Also include children of scoped chapters
+        if scoped_ids:
+            child_result = await db.execute(
+                select(ProjectChapter.id)
+                .where(ProjectChapter.project_id == uuid.UUID(project_id))
+                .where(ProjectChapter.parent_id.in_(scoped_ids))
+            )
+            for row in child_result.all():
+                scoped_ids.add(row[0])
+
+        if not scoped_ids:
+            return {"status": "ok", "phase_id": phase_id, "ready": True, "total": 0, "completed": 0, "pending": 0}
+
+        # Check status of all scoped chapters
+        status_result = await db.execute(
+            select(ProjectChapter.id, ProjectChapter.status)
+            .where(ProjectChapter.id.in_(scoped_ids))
+        )
+        total = 0
+        completed = 0
+        pending = 0
+        incomplete_chapters: list[str] = []
+        for ch_id, ch_status in status_result.all():
+            total += 1
+            if ch_status in ("completed", "approved"):
+                completed += 1
+            else:
+                pending += 1
+                # Get title for incomplete chapters
+                ch = await db.get(ProjectChapter, ch_id)
+                if ch:
+                    incomplete_chapters.append(f"{ch.title} ({ch_status})")
+
+        ready = total > 0 and pending == 0
+
+    logger.info(
+        "activity:check_phase_completion phase_id=%s total=%d completed=%d pending=%d ready=%s",
+        phase_id, total, completed, pending, ready,
+    )
+    return {
+        "status": "ok",
+        "phase_id": phase_id,
+        "ready": ready,
+        "total": total,
+        "completed": completed,
+        "pending": pending,
+        "incomplete_chapters": incomplete_chapters,
+    }
+
+
+@activity.defn
 async def check_reviews_complete(node_id: str, project_id: str) -> dict:
     """Query phase_reviews for a review node and return aggregate status."""
     from app.extensions.database import get_db_context
@@ -468,6 +581,7 @@ ALL_ACTIVITIES = [
     init_phase,
     advance_phase,
     create_review_assignments,
+    check_phase_completion,
     check_reviews_complete,
     handle_rejection,
     gather_phase_context,

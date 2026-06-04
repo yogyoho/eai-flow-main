@@ -20,6 +20,39 @@ const activeDocuments = new Map<
   { doc: Document; lastSnapshotVersion: number; lastUserId: string }
 >();
 
+/**
+ * Extract readable text from a Yjs document for diff/summary purposes.
+ * BlockNote stores content as Y.XmlElement blocks in the "blocks" shared map.
+ */
+function extractTextFromYDoc(ydoc: Y.Doc): string {
+  try {
+    const blocks = ydoc.getMap("blocks");
+    const lines: string[] = [];
+    // Iterate over all block entries in the shared map
+    for (const [key, value] of blocks) {
+      if (value instanceof Y.XmlElement) {
+        lines.push(extractXmlText(value));
+      }
+    }
+    return lines.join("\n");
+  } catch {
+    return "";
+  }
+}
+
+function extractXmlText(el: Y.XmlElement): string {
+  const parts: string[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const child of (el as any)._children ?? []) {
+    if (child instanceof Y.XmlText) {
+      parts.push(child.toString());
+    } else if (child instanceof Y.XmlElement) {
+      parts.push(extractXmlText(child));
+    }
+  }
+  return parts.join("");
+}
+
 const server = Server.configure({
   port: PORT,
 
@@ -84,7 +117,8 @@ const server = Server.configure({
   async onDisconnect({ document, documentName, context }) {
     const userId = (context as { userId: string })?.userId || "unknown";
     const state = Y.encodeStateAsUpdate(document);
-    await createVersion(documentName, state, userId, "Auto-save on disconnect");
+    const snapshotText = extractTextFromYDoc(document);
+    await createVersion(documentName, state, userId, "Auto-save on disconnect", snapshotText);
 
     if (activeDocuments.has(documentName)) {
       const connections = document.connections;
@@ -108,7 +142,8 @@ async function periodicSnapshot() {
       const currentVer = await getDocumentVersion(docId);
       if (currentVer > entry.lastSnapshotVersion) {
         const state = Y.encodeStateAsUpdate(entry.doc);
-        const version = await createVersion(docId, state, entry.lastUserId, "Auto-save (periodic)");
+        const snapshotText = extractTextFromYDoc(entry.doc);
+        const version = await createVersion(docId, state, entry.lastUserId, "Auto-save (periodic)", snapshotText);
         entry.lastSnapshotVersion = version;
         console.log(`[snapshot] Created version ${version} for doc ${docId}`);
       }

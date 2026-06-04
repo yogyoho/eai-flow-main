@@ -1,19 +1,25 @@
 "use client";
 
-import { Users, Shield, Network, FileText } from "lucide-react";
+import { Users, Shield, Network, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
+import { useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/roles", label: "角色管理", icon: Shield },
   { href: "/admin/departments", label: "部门管理", icon: Network },
-  { href: "/admin/templates", label: "模板管理", icon: FileText },
+  { href: "/admin/templates", label: "流程管理", icon: FileText },
 ];
+
+/** Check if the current user has admin privileges. */
+function isAdmin(roleName?: string | null): boolean {
+  return roleName === "Super Admin";
+}
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -51,6 +57,29 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin(user?.role_name)) {
+      router.replace("/dashboard");
+    }
+  }, [isLoading, user, router]);
+
+  if (isLoading) {
+    return (
+      <SimpleShellLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </SimpleShellLayout>
+    );
+  }
+
+  if (!isAdmin(user?.role_name)) {
+    return null;
+  }
+
   return (
     <SimpleShellLayout>
       <AdminLayoutContent>{children}</AdminLayoutContent>

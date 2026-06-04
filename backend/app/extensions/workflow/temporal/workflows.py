@@ -29,6 +29,7 @@ with workflow.unsafe.imports_passed_through():
         parse_sources as _parse_sources,
         start_ai_writing as _start_ai_writing,
         store_sources as _store_sources,
+        check_phase_completion as _check_phase_completion,
         check_reviews_complete as _check_reviews_complete,
         gather_phase_context as _gather_phase_context,
         handle_rejection as _handle_rejection,
@@ -295,6 +296,31 @@ class DynamicGraphWorkflow:
 
         phase_result = self._phase_results.get(node_id, {})
         results[node_id]["result"] = phase_result
+
+        # Check phase completion: verify all scoped chapters are done
+        chapter_range = node_data.get("chapter_range")
+        try:
+            completion = await workflow.execute_activity(
+                _check_phase_completion,
+                node_id,
+                project_id,
+                chapter_range,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+            results[node_id]["completion_check"] = completion
+            if not completion.get("ready", False):
+                logger.warning(
+                    "Phase %s not ready — %d/%d chapters complete, pending: %s",
+                    node_id,
+                    completion.get("completed", 0),
+                    completion.get("total", 0),
+                    completion.get("incomplete_chapters", []),
+                )
+                # Do NOT advance — leave phase active so users can complete their work
+                completed.add(node_id)
+                return
+        except Exception:
+            logger.exception("check_phase_completion failed for %s — proceeding anyway", node_id)
 
         # Advance phase
         try:

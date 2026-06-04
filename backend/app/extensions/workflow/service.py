@@ -1,10 +1,11 @@
 from collections import defaultdict
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import WorkflowDefinition
+from .models import TemplateApproval, WorkflowDefinition
 
 
 # ── DAG Validation ──
@@ -103,6 +104,7 @@ async def list_definitions(
     db: AsyncSession,
     is_template: bool | None = None,
     report_type: str | None = None,
+    template_status: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[WorkflowDefinition], int]:
@@ -116,6 +118,9 @@ async def list_definitions(
     if report_type is not None:
         stmt = stmt.where(WorkflowDefinition.report_type == report_type)
         count_stmt = count_stmt.where(WorkflowDefinition.report_type == report_type)
+    if template_status is not None:
+        stmt = stmt.where(WorkflowDefinition.template_status == template_status)
+        count_stmt = count_stmt.where(WorkflowDefinition.template_status == template_status)
 
     total = (await db.execute(count_stmt)).scalar_one()
     stmt = stmt.order_by(WorkflowDefinition.created_at.desc()).offset(skip).limit(limit)
@@ -135,6 +140,9 @@ async def create_definition(
     created_by: UUID,
     report_type: str | None = None,
     is_template: bool = False,
+    org_bindings: dict | None = None,
+    description: str | None = None,
+    visible_dept_ids: list[str] | None = None,
 ) -> WorkflowDefinition:
     """Create a new workflow definition."""
     definition = WorkflowDefinition(
@@ -142,7 +150,10 @@ async def create_definition(
         report_type=report_type,
         graph_json=graph_json,
         is_template=is_template,
+        org_bindings=org_bindings,
         created_by=created_by,
+        description=description,
+        visible_dept_ids=visible_dept_ids,
     )
     db.add(definition)
     await db.commit()
@@ -182,6 +193,70 @@ async def publish_as_template(db: AsyncSession, definition_id: UUID) -> Workflow
     if not definition:
         return None
     definition.is_template = True
+    definition.template_status = "published"
     await db.commit()
     await db.refresh(definition)
     return definition
+
+
+# ── Template Approval ──
+
+
+async def submit_for_approval(db: AsyncSession, template_id: UUID, requester_id: UUID) -> TemplateApproval:
+    """Submit a template for approval. Only allowed from draft or rejected status."""
+    definition = await db.get(WorkflowDefinition, template_id)
+    if not definition:
+        raise ValueError("Template not found")
+    if definition.template_status not in ("draft", "rejected"):
+        raise ValueError(f"Cannot submit template in status '{definition.template_status}'")
+    definition.template_status = "pending_approval"
+    approval = TemplateApproval(template_id=template_id, requester_id=requester_id, status="pending")
+    db.add(approval)
+    await db.commit()
+    await db.refresh(approval)
+    return approval
+
+
+async def review_approval(db: AsyncSession, approval_id: UUID, reviewer_id: UUID, action: str, comment: str | None = None) -> TemplateApproval:
+    """Review (approve/reject) a pending approval request."""
+    approval = await db.get(TemplateApproval, approval_id)
+    if not approval:
+        raise ValueError("Approval not found")
+    if approval.status != "pending":
+        raise ValueError(f"Approval already {approval.status}")
+    approval.status = action
+    approval.reviewer_id = reviewer_id
+    approval.comment = comment
+    approval.reviewed_at = datetime.now()
+    definition = await db.get(WorkflowDefinition, approval.template_id)
+    if definition:
+        if action == "approved":
+            definition.template_status = "published"
+            definition.is_template = True
+        elif action == "rejected":
+            definition.template_status = "rejected"
+    await db.commit()
+    await db.refresh(approval)
+    return approval
+
+
+async def withdraw_approval(db: AsyncSession, template_id: UUID, requester_id: UUID) -> bool:
+    """Withdraw a pending approval request. Returns True if withdrawn, False if no pending approval."""
+    stmt = select(TemplateApproval).where(TemplateApproval.template_id == template_id).where(TemplateApproval.status == "pending")
+    result = await db.execute(stmt)
+    pending = result.scalars().first()
+    if not pending:
+        return False
+    pending.status = "withdrawn"
+    definition = await db.get(WorkflowDefinition, template_id)
+    if definition:
+        definition.template_status = "draft"
+    await db.commit()
+    return True
+
+
+async def list_approvals(db: AsyncSession, template_id: UUID) -> list[TemplateApproval]:
+    """List all approval records for a template, ordered by creation time."""
+    stmt = select(TemplateApproval).where(TemplateApproval.template_id == template_id).order_by(TemplateApproval.created_at)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

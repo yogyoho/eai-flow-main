@@ -45,12 +45,17 @@ class RoleService:
 
         return list(roles), total
 
+    # Base permissions that every custom role must include to access extension APIs
+    BASE_PERMISSIONS = {"system:access", "kb:read", "doc:read"}
+
     @staticmethod
     async def create_role(db: AsyncSession, data: RoleCreate) -> Role:
+        # Auto-merge base permissions so custom roles can access extension APIs
+        merged = set(data.permissions) | RoleService.BASE_PERMISSIONS
         role = Role(
             name=data.name,
             code=data.code,
-            permissions=data.permissions,
+            permissions=sorted(merged),
             description=data.description,
             level=data.level,
             parent_role_id=data.parent_role_id,
@@ -67,7 +72,8 @@ class RoleService:
         if data.description is not None:
             role.description = data.description
         if data.permissions is not None:
-            role.permissions = data.permissions
+            merged = set(data.permissions) | RoleService.BASE_PERMISSIONS
+            role.permissions = sorted(merged)
         if data.level is not None:
             role.level = data.level
         if data.parent_role_id is not None:

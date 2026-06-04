@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Environment — IMPORTANT
+
+**The dev environment runs in Docker (`docker compose -p eai-docker`).** After modifying backend Python code, restart: `docker compose -p eai-docker restart gateway`. The database is PostgreSQL inside Docker — use `docker exec <postgres-container> psql -U agentflow -d agentflow` to query. See root CLAUDE.md for full Docker details.
+
 ## Project Overview
 
 DeerFlow is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.

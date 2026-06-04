@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Environment — IMPORTANT
+
+**The dev environment runs in Docker (`docker compose -p eai-docker`).** After modifying frontend code, restart: `docker compose -p eai-docker restart frontend`. HMR may be unreliable in Docker — if changes aren't picked up, restart the container. See root CLAUDE.md for full Docker details.
+
 ## Project Overview
 
 DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.

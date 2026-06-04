@@ -48,13 +48,14 @@ export async function createVersion(
   snapshot: Uint8Array,
   userId: string,
   summary?: string,
+  snapshotText?: string,
 ): Promise<number> {
   const result = await pool.query(
-    `INSERT INTO collab_versions (doc_id, version, snapshot, summary, created_by, created_at)
-     SELECT $1, COALESCE(MAX(v.version), 0) + 1, $2, $3, $4, NOW()
+    `INSERT INTO collab_versions (doc_id, version, snapshot, snapshot_text, summary, created_by, created_at)
+     SELECT $1, COALESCE(MAX(v.version), 0) + 1, $2, $3, $4, $5, NOW()
      FROM collab_versions v WHERE v.doc_id = $1
      RETURNING version`,
-    [docId, Buffer.from(snapshot), summary || null, userId],
+    [docId, Buffer.from(snapshot), snapshotText || null, summary || null, userId],
   );
   return result.rows[0]?.version || 1;
 }

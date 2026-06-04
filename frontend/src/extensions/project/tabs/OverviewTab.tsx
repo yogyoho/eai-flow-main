@@ -6,57 +6,70 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  MessageSquare,
+  Trash2,
   Users,
-  type LucideIcon,
+  UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+
+import { projectApi } from "@/extensions/project/api";
+import { AddMemberDialog } from "@/extensions/project/components/AddMemberDialog";
+import { StatusDistribution } from "@/extensions/project/components/StatusDistribution";
+import { WorkflowProgressCompact } from "@/extensions/project/components/WorkflowProgressCompact";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard/KanbanBoard";
 import type { KanbanCardData } from "@/extensions/project/components/KanbanBoard/types";
-import { projectApi } from "@/extensions/project/api";
+import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
   MEMBER_ROLE_LABELS,
-  PROJECT_STATUS_LABELS,
-  REPORT_TYPE_LABELS,
+  type MemberRole,
   type ProjectChapter,
   type ReportProject,
 } from "@/extensions/project/types";
-import { type ProjectIdentity } from "@/extensions/project/tabRegistry";
+import {
+  activityLabel,
+  aggregateWordCount,
+  type ChapterStatus,
+  flattenChapters,
+  inferStatus,
+} from "@/extensions/project/utils";
 
 interface OverviewTabProps {
   project: ReportProject;
   projectId: string;
   onRefresh: () => void;
   identity: ProjectIdentity | null;
+  visibleChapterIds?: string[];
+  workflowGraph?: any;
 }
 
-// ── Helpers ──
+// ── Status Badge Styles ──
 
-function flattenChapters(chapters: ProjectChapter[]): ProjectChapter[] {
-  const result: ProjectChapter[] = [];
-  for (const ch of chapters) {
-    result.push(ch);
-    if (ch.children?.length) result.push(...flattenChapters(ch.children));
-  }
-  return result;
-}
+const STATUS_BADGE_STYLES: Record<ChapterStatus, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  writing: "bg-blue-100 text-blue-600",
+  review: "bg-amber-100 text-amber-600",
+  completed: "bg-emerald-100 text-emerald-600",
+};
 
-function aggregateWordProgress(chapters: ProjectChapter[]) {
-  let current = 0;
-  let target = 0;
-  for (const ch of flattenChapters(chapters)) {
-    current += ch.wordCountCurrent ?? 0;
-    target += ch.wordCountTarget ?? 0;
-  }
-  return { current, target };
-}
+const STATUS_LABELS: Record<ChapterStatus, string> = {
+  draft: "待编写",
+  writing: "编写中",
+  review: "审核中",
+  completed: "已完成",
+};
 
 // ── Stat Card ──
 
@@ -66,7 +79,7 @@ function StatCard({
   value,
   sub,
 }: {
-  icon: LucideIcon;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number | string;
   sub?: string;
@@ -87,14 +100,11 @@ function StatCard({
   );
 }
 
-// ── Chapter Progress Node ──
+// ── Chapter Node (list view) ──
 
 function ChapterNode({ chapter, depth }: { chapter: ProjectChapter; depth: number }) {
-  const progress =
-    chapter.wordCountTarget > 0
-      ? Math.min(100, Math.round(((chapter.wordCountCurrent ?? 0) / chapter.wordCountTarget) * 100))
-      : 0;
-  const hasContent = (chapter.wordCountCurrent ?? 0) > 0;
+  const status = inferStatus(chapter);
+  const activity = activityLabel(chapter.updatedAt);
 
   return (
     <>
@@ -104,11 +114,11 @@ function ChapterNode({ chapter, depth }: { chapter: ProjectChapter; depth: numbe
       >
         <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <span className="flex-1 truncate text-sm text-foreground">{chapter.title}</span>
-        {hasContent && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Progress value={progress} className="h-1.5 w-16" />
-            <span className="text-[11px] text-muted-foreground w-8 text-right">{progress}%</span>
-          </div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_STYLES[status]}`}>
+          {STATUS_LABELS[status]}
+        </span>
+        {activity && (
+          <span className="text-[11px] text-muted-foreground/70 shrink-0">{activity}</span>
         )}
         {chapter.assignedName && (
           <span className="text-[11px] text-muted-foreground/70 shrink-0">{chapter.assignedName}</span>
@@ -123,28 +133,27 @@ function ChapterNode({ chapter, depth }: { chapter: ProjectChapter; depth: numbe
 
 // ── Main Component ──
 
-export function OverviewTab({ project, projectId, onRefresh, identity }: OverviewTabProps) {
+export function OverviewTab({ project, projectId, onRefresh, identity, workflowGraph }: OverviewTabProps) {
   const [fileCount, setFileCount] = useState<number | null>(null);
-  const [entering, setEntering] = useState(false);
   const [kanbanView, setKanbanView] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const canManageMembers = identity?.isAdmin || identity?.hasAnyPermission(["member:add", "member:remove"]);
 
   // Convert chapters to kanban card data
   const kanbanCards = useMemo<KanbanCardData[]>(() => {
     const flat = flattenChapters(project.chapters ?? []);
-    const statusMap: Record<string, KanbanCardData["status"]> = {
-      not_started: "draft",
-      pending: "draft",
+    const statusMap: Record<ChapterStatus, KanbanCardData["status"]> = {
+      draft: "draft",
       writing: "writing",
-      in_review: "review",
-      pending_review: "review",
-      approved: "completed",
+      review: "review",
       completed: "completed",
-      signed: "completed",
     };
     return flat.map((ch) => ({
       id: ch.id,
       title: ch.title,
-      status: statusMap[ch.status] ?? "draft",
+      status: statusMap[inferStatus(ch)],
       assignee: ch.assignedName ?? undefined,
       wordCount: ch.wordCountCurrent ?? undefined,
       targetWordCount: ch.wordCountTarget > 0 ? ch.wordCountTarget : undefined,
@@ -153,7 +162,6 @@ export function OverviewTab({ project, projectId, onRefresh, identity }: Overvie
 
   const handleCardMove = useCallback(
     async (cardId: string, newStatus: string) => {
-      // Reverse-map kanban status back to chapter status
       const reverseMap: Record<string, string> = {
         draft: "pending",
         writing: "writing",
@@ -184,88 +192,72 @@ export function OverviewTab({ project, projectId, onRefresh, identity }: Overvie
     loadFiles();
   }, [loadFiles]);
 
-  const { current: wordCurrent, target: wordTarget } = useMemo(
-    () => aggregateWordProgress(project.chapters ?? []),
-    [project.chapters],
+  // Derived stats
+  const flatChapters = useMemo(() => flattenChapters(project.chapters ?? []), [project.chapters]);
+  const activeCount = useMemo(
+    () => flatChapters.filter((ch) => inferStatus(ch) === "writing").length,
+    [flatChapters],
   );
-  const wordPercent = wordTarget > 0 ? Math.round((wordCurrent / wordTarget) * 100) : 0;
+  const totalCount = flatChapters.length;
+  const totalWords = useMemo(() => aggregateWordCount(project.chapters ?? []), [project.chapters]);
+
+  // Member management handlers
+  const handleRoleChange = async (userId: string, role: MemberRole) => {
+    try {
+      await projectApi.updateMember(projectId, userId, { role });
+      onRefresh();
+      toast.success("角色已更新");
+    } catch {
+      toast.error("更新角色失败");
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    setRemovingId(userId);
+    try {
+      await projectApi.removeMember(projectId, userId);
+      onRefresh();
+      toast.success("成员已移除");
+    } catch {
+      toast.error("移除失败");
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   return (
     <ScrollArea className="h-full">
       <div className="p-6 space-y-6 max-w-5xl">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-foreground">{project.name}</h2>
-              <Badge variant="secondary" className="text-[11px] font-normal">
-                {REPORT_TYPE_LABELS[project.reportType] ?? project.reportType}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={`text-[11px] font-normal ${
-                  project.status === "completed"
-                    ? "border-emerald-300 text-emerald-700 bg-emerald-50"
-                    : project.status === "archived"
-                      ? "border-gray-300 text-gray-600 bg-gray-50"
-                      : "border-blue-300 text-blue-700 bg-blue-50"
-                }`}
-              >
-                {PROJECT_STATUS_LABELS[project.status] ?? project.status}
-              </Badge>
-            </div>
-            <p className="text-[13px] text-muted-foreground">
-              创建于{" "}
-              {project.createdAt
-                ? new Date(project.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
-                : "未知"}
-            </p>
-          </div>
-          <Button
-            size="sm"
-            className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={entering}
-            onClick={async () => {
-              setEntering(true);
-              try {
-                const { threadId } = await projectApi.enter(projectId);
-                window.location.href = `/workspace/chats/${threadId}?from=project&projectId=${projectId}&projectName=${encodeURIComponent(project.name)}`;
-              } catch {
-                /* toast handled by parent */
-              } finally {
-                setEntering(false);
-              }
-            }}
-          >
-            <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-            {entering ? "进入中..." : "进入对话"}
-          </Button>
+        {/* Header — simplified, no duplicates */}
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground">项目概览</h2>
+          <p className="text-[13px] text-muted-foreground">
+            创建于{" "}
+            {project.createdAt
+              ? new Date(project.createdAt).toLocaleDateString("zh-CN", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              : "未知"}
+          </p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            icon={BookOpen}
-            label="章节数"
-            value={project.chapterCount ?? project.chapters?.length ?? 0}
-          />
-          <StatCard
-            icon={Users}
-            label="成员数"
-            value={project.members?.length ?? 0}
-          />
-          <StatCard
-            icon={FileText}
-            label="文件数"
-            value={fileCount !== null ? String(fileCount) : "..."}
-          />
-          <StatCard
-            icon={FileText}
-            label="字数进度"
-            value={`${wordPercent}%`}
-            sub={`${wordCurrent.toLocaleString()} / ${wordTarget.toLocaleString()}`}
-          />
+          <StatCard icon={BookOpen} label="活跃章节" value={`${activeCount}/${totalCount}`} sub="编写中" />
+          <StatCard icon={Users} label="成员数" value={project.members?.length ?? 0} />
+          <StatCard icon={FileText} label="文件数" value={fileCount !== null ? String(fileCount) : "..."} />
+          <StatCard icon={FileText} label="已写字数" value={totalWords.toLocaleString()} sub="累计" />
         </div>
+
+        {/* Chapter Status Distribution */}
+        {totalCount > 0 && <StatusDistribution chapters={project.chapters ?? []} />}
+
+        {/* Workflow Progress (conditional) */}
+        {project.workflowId && (
+          <WorkflowProgressCompact projectId={projectId} workflowGraph={workflowGraph ?? null} />
+        )}
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -318,11 +310,23 @@ export function OverviewTab({ project, projectId, onRefresh, identity }: Overvie
             )}
           </div>
 
-          {/* Right Sidebar — 2 cols */}
+          {/* Right Sidebar — Members — 2 cols */}
           <div className="lg:col-span-2 space-y-5">
-            {/* Members */}
             <div>
-              <h3 className="text-sm font-medium text-foreground mb-3">项目成员</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-foreground">项目成员</h3>
+                {canManageMembers && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[12px]"
+                    onClick={() => setAddMemberOpen(true)}
+                  >
+                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                    添加成员
+                  </Button>
+                )}
+              </div>
               <div className="rounded-lg border border-border/60 bg-card divide-y divide-border/40">
                 {project.members?.length > 0 ? (
                   project.members.map((m) => (
@@ -331,9 +335,44 @@ export function OverviewTab({ project, projectId, onRefresh, identity }: Overvie
                         {(m.username ?? "?").charAt(0).toUpperCase()}
                       </div>
                       <span className="flex-1 text-sm text-foreground truncate">{m.username}</span>
-                      <Badge variant="secondary" className="text-[10px] font-normal">
-                        {MEMBER_ROLE_LABELS[m.role as keyof typeof MEMBER_ROLE_LABELS] ?? m.role}
-                      </Badge>
+                      {canManageMembers && m.role !== "owner" ? (
+                        <Select
+                          value={m.role}
+                          onValueChange={(role) => handleRoleChange(m.userId, role as MemberRole)}
+                        >
+                          <SelectTrigger className="h-6 w-20 text-[11px] border-none bg-secondary p-0 pl-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(MEMBER_ROLE_LABELS)
+                              .filter(([key]) => key !== "owner")
+                              .map(([key, label]) => (
+                                <SelectItem key={key} value={key}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {MEMBER_ROLE_LABELS[m.role as keyof typeof MEMBER_ROLE_LABELS] ?? m.role}
+                        </Badge>
+                      )}
+                      {canManageMembers && m.role !== "owner" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          disabled={removingId === m.userId}
+                          onClick={() => handleRemoveMember(m.userId)}
+                        >
+                          {removingId === m.userId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -347,6 +386,14 @@ export function OverviewTab({ project, projectId, onRefresh, identity }: Overvie
           </div>
         </div>
       </div>
+
+      {/* Add Member Dialog */}
+      <AddMemberDialog
+        projectId={projectId}
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+        onAdded={onRefresh}
+      />
     </ScrollArea>
   );
 }

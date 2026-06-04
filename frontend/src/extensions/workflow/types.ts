@@ -2,6 +2,12 @@
 
 export type DAGNodeType = "phase" | "review" | "condition" | "ai_generate" | "merge" | "sub_workflow";
 
+export interface RoleSlot {
+  roleKey: string;
+  count: number;
+  label: string;
+}
+
 export interface DAGNodeData {
   label: string;
   team?: string;
@@ -10,6 +16,8 @@ export interface DAGNodeData {
   inputFrom?: string[];
   mode?: "chapter" | "dimension" | "mixed";
   expression?: string;
+  /** Required roles for this phase — who needs to be assigned before work can start. */
+  requiredRoles?: RoleSlot[];
   /** Embedded sub-workflow graph definition (for sub_workflow nodes). */
   graphJson?: WorkflowGraph;
   [key: string]: unknown;
@@ -42,9 +50,14 @@ export interface WorkflowDefinition {
   reportType: string | null;
   graphJson: WorkflowGraph;
   isTemplate: boolean;
+  orgBindings: Record<string, { deptCode?: string; departmentCode?: string }> | null;
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  description: string | null;
+  templateStatus: string | null;
+  visibleDeptIds: string[] | null;
+  version: number;
 }
 
 export interface WorkflowDefinitionListItem {
@@ -53,6 +66,8 @@ export interface WorkflowDefinitionListItem {
   reportType: string | null;
   isTemplate: boolean;
   createdAt: string | null;
+  templateStatus: string | null;
+  description: string | null;
 }
 
 export interface WorkflowDefinitionListResponse {
@@ -67,6 +82,9 @@ export interface CreateWorkflowRequest {
   reportType?: string | null;
   graphJson: WorkflowGraph;
   isTemplate?: boolean;
+  orgBindings?: Record<string, { deptCode?: string }> | null;
+  description?: string | null;
+  visibleDeptIds?: string[] | null;
 }
 
 export interface UpdateWorkflowRequest {
@@ -74,6 +92,10 @@ export interface UpdateWorkflowRequest {
   reportType?: string | null;
   graphJson?: WorkflowGraph;
   isTemplate?: boolean;
+  orgBindings?: Record<string, { deptCode?: string }> | null;
+  description?: string | null;
+  templateStatus?: string | null;
+  visibleDeptIds?: string[] | null;
 }
 
 // ── Validation ──
@@ -131,6 +153,12 @@ export interface WorkflowNodeStatus {
   status: "pending" | "running" | "completed" | "error";
   startedAt: string | null;
   completedAt: string | null;
+  // Phase enrichment
+  chapterTotal?: number | null;
+  chapterCompleted?: number | null;
+  // Review/Approval enrichment
+  reviewTotal?: number | null;
+  reviewApproved?: number | null;
 }
 
 export interface WorkflowStatusResponse {
@@ -140,4 +168,19 @@ export interface WorkflowStatusResponse {
   currentPhaseNode: string | null;
   status: "idle" | "running" | "completed" | "failed";
   nodes: WorkflowNodeStatus[];
+  workflowName?: string | null;
+  graphJson?: WorkflowGraph | null;
+}
+
+// ── Template Approval ──
+
+export interface TemplateApproval {
+  id: string;
+  templateId: string;
+  requesterId: string;
+  reviewerId: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
+  comment: string | null;
+  createdAt: string | null;
+  reviewedAt: string | null;
 }

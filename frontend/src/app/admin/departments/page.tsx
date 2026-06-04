@@ -98,6 +98,17 @@ function DeptTreeNode({ dept, level, selectedId, expandedIds, searchKeyword, onT
         </div>
         <Building2 className={cn("w-4 h-4 mr-2", isSelected ? "text-primary" : "text-muted-foreground")} />
         <span className="truncate flex-1">{dept.name}</span>
+        {dept.unit_type && dept.unit_type !== "internal" && (
+          <span className={cn(
+            "text-[10px] px-1.5 py-0 rounded-full font-medium",
+            dept.unit_type === "external" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700",
+          )}>
+            {dept.unit_type === "external" ? "外部" : "虚拟"}
+          </span>
+        )}
+        {dept.status === "inactive" && (
+          <span className="text-[10px] px-1.5 py-0 rounded-full bg-gray-100 text-gray-500">停用</span>
+        )}
       </div>
       {hasChildren && isExpanded &&
         visibleChildren.map((child) => (
@@ -146,31 +157,38 @@ export default function AdminDepartmentsPage() {
     status: undefined,
   });
 
-  const loadData = async () => {
+  const loadData = async (retries = 2, delay = 1500) => {
     setIsLoading(true);
-    try {
-      const [deptsRes, usersRes] = await Promise.all([
-        deptApi.list(),
-        userApi.list({ limit: 1000 }),
-      ]);
-      setDepartments(deptsRes.departments);
-      setUsers(usersRes.users);
-      if (deptsRes.departments.length > 0 && expandedIds.size === 0) {
-        setExpandedIds(new Set(deptsRes.departments.map((d) => d.id)));
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const [deptsRes, usersRes] = await Promise.all([
+          deptApi.list(),
+          userApi.list({ limit: 1000 }),
+        ]);
+        setDepartments(deptsRes.departments);
+        setUsers(usersRes.users);
+        if (deptsRes.departments.length > 0 && expandedIds.size === 0) {
+          setExpandedIds(new Set(deptsRes.departments.map((d) => d.id)));
+        }
+        if (deptsRes.departments.length > 0) {
+          const flat = flattenDepts(deptsRes.departments);
+          setSelectedDept((prev) =>
+            prev
+              ? (flat.find((x) => x.dept.id === prev.id)?.dept ?? prev)
+              : (deptsRes.departments[0] ?? null)
+          );
+        }
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, delay));
+        } else {
+          console.error(err);
+        }
       }
-      if (deptsRes.departments.length > 0) {
-        const flat = flattenDepts(deptsRes.departments);
-        setSelectedDept((prev) =>
-          prev
-            ? (flat.find((x) => x.dept.id === prev.id)?.dept ?? prev)
-            : (deptsRes.departments[0] ?? null)
-        );
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {

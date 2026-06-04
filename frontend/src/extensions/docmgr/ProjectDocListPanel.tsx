@@ -1,6 +1,7 @@
 "use client";
 
 import { Archive, ChevronLeft, ChevronRight, FileText, Grid3X3, List, Search } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import React, { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,30 +13,33 @@ import type { AIDocument } from "../types";
 import { formatFileSize } from "./FilePreviewModal";
 import { useDocuments } from "./useDocuments";
 
-// ─── File Type Helpers (lightweight, reused from DocumentManagement) ──────────
+// ─── File Type Helpers (rich SVG icon system, matching FileRefCard) ─────────
 
 interface FileIconConfig {
   primary: string;
+  secondary: string;
   label: string;
+  dark?: boolean;
+  symbol: "doc" | "code" | "data" | "image" | "terminal";
 }
 
-const FILE_TYPE_CONFIG: Record<string, FileIconConfig> = {
-  markdown: { primary: "#0EA5E9", label: "MD" },
-  python: { primary: "#8B5CF6", label: "PY" },
-  javascript: { primary: "#EAB308", label: "JS" },
-  typescript: { primary: "#3B82F6", label: "TS" },
-  json: { primary: "#F97316", label: "JSON" },
-  html: { primary: "#EF4444", label: "HTML" },
-  css: { primary: "#06B6D4", label: "CSS" },
-  pdf: { primary: "#DC2626", label: "PDF" },
-  word: { primary: "#2563EB", label: "DOC" },
-  excel: { primary: "#16A34A", label: "XLS" },
-  csv: { primary: "#65A30D", label: "CSV" },
-  image: { primary: "#D946EF", label: "IMG" },
-  text: { primary: "#94A3B8", label: "TXT" },
-  xml: { primary: "#EA580C", label: "XML" },
-  yaml: { primary: "#EC4899", label: "YML" },
-  shell: { primary: "#22C55E", label: "SH" },
+const FILE_ICON_CONFIG: Record<string, FileIconConfig> = {
+  markdown:   { primary: "#0EA5E9", secondary: "#FFFFFF", label: "MD",  symbol: "doc" },
+  python:     { primary: "#8B5CF6", secondary: "#FDE68A", label: "PY",  symbol: "code" },
+  javascript: { primary: "#EAB308", secondary: "#1E293B", label: "JS",  dark: true, symbol: "code" },
+  typescript: { primary: "#3B82F6", secondary: "#FFFFFF", label: "TS",  symbol: "code" },
+  json:       { primary: "#F97316", secondary: "#FFFFFF", label: "JSON", symbol: "data" },
+  html:       { primary: "#EF4444", secondary: "#FFFFFF", label: "HTML", symbol: "code" },
+  css:        { primary: "#06B6D4", secondary: "#FFFFFF", label: "CSS",  symbol: "code" },
+  pdf:        { primary: "#DC2626", secondary: "#FFFFFF", label: "PDF",  symbol: "doc" },
+  word:       { primary: "#2563EB", secondary: "#FFFFFF", label: "DOC",  symbol: "doc" },
+  excel:      { primary: "#16A34A", secondary: "#FFFFFF", label: "XLS",  symbol: "data" },
+  csv:        { primary: "#65A30D", secondary: "#FFFFFF", label: "CSV",  symbol: "data" },
+  image:      { primary: "#D946EF", secondary: "#FFFFFF", label: "IMG",  symbol: "image" },
+  text:       { primary: "#94A3B8", secondary: "#FFFFFF", label: "TXT",  symbol: "doc" },
+  xml:        { primary: "#EA580C", secondary: "#FFFFFF", label: "XML",  symbol: "code" },
+  yaml:       { primary: "#EC4899", secondary: "#FFFFFF", label: "YML",  symbol: "data" },
+  shell:      { primary: "#22C55E", secondary: "#FFFFFF", label: "SH",   symbol: "terminal" },
 };
 
 function getFileType(mime: string | undefined | null, title: string | undefined | null): string {
@@ -77,22 +81,112 @@ function formatUpdatedAt(dateStr: string | undefined): string {
   }).replace(/\//g, "/");
 }
 
+// ─── SVG Symbol Paths ────────────────────────────────────────────────────────
+
+const SymbolPaths = {
+  doc: (fill: string) => (
+    <g>
+      <rect x="8" y="11" width="24" height="2" rx="1" fill={fill} opacity="0.5" />
+      <rect x="8" y="16" width="18" height="2" rx="1" fill={fill} opacity="0.35" />
+      <rect x="8" y="21" width="12" height="2" rx="1" fill={fill} opacity="0.2" />
+    </g>
+  ),
+  code: (fill: string) => (
+    <g>
+      <polyline points="10,12 6,17 10,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <polyline points="30,12 34,17 30,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <line x1="24" y1="10" x2="16" y2="24" stroke={fill} strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+    </g>
+  ),
+  data: (fill: string) => (
+    <g>
+      <rect x="8" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.4" />
+      <rect x="19" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
+      <rect x="8" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
+      <rect x="19" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.2" />
+    </g>
+  ),
+  image: (fill: string) => (
+    <g>
+      <circle cx="16" cy="15" r="3.5" fill={fill} opacity="0.45" />
+      <polyline points="8,26 16,19 21,23 26,18 32,24 32,27 8,27" fill={fill} opacity="0.3" />
+    </g>
+  ),
+  terminal: (fill: string) => (
+    <g>
+      <polyline points="9,13 15,18 9,23" fill="none" stroke={fill} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+      <rect x="19" y="22" width="8" height="2.5" rx="1" fill={fill} opacity="0.35" />
+    </g>
+  ),
+};
+
+function FileTypeIcon({ mime, title, size = "lg" }: { mime?: string | null; title?: string | null; size?: "sm" | "lg" }) {
+  const fileType = getFileType(mime, title);
+  const config = FILE_ICON_CONFIG[fileType]!;
+  const labelFill = config.dark ? config.secondary : "#fff";
+  const symbolFill = config.dark ? config.secondary : "#fff";
+  const gid = size === "lg" ? `psheen-${fileType}` : `psheen-sm-${fileType}`;
+  const cid = size === "lg" ? `pfold-${fileType}` : `pfold-sm-${fileType}`;
+
+  if (size === "lg") {
+    return (
+      <svg className="w-12 h-14" viewBox="0 0 40 48" fill="none">
+        <defs>
+          <clipPath id={cid}>
+            <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z" />
+          </clipPath>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="white" stopOpacity="0.28" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="black" stopOpacity="0.06" />
+          </linearGradient>
+        </defs>
+        <g clipPath={`url(#${cid})`}>
+          <rect width="40" height="48" fill={config.primary} />
+          <rect width="40" height="48" fill={`url(#${gid})`} />
+          <path d="M26 2V12C26 14.2 27.8 16 30 16H40V16L26 2Z" fill="rgba(0,0,0,0.12)" />
+        </g>
+        <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z"
+          className="stroke-black/8" strokeWidth="0.5" fill="none" />
+        {SymbolPaths[config.symbol](symbolFill)}
+        <rect x="5" y="34" width="30" height="11" rx="3" fill="rgba(0,0,0,0.18)" />
+        <text x="20" y="43" textAnchor="middle" fill={labelFill} fontSize="10" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="0.5">{config.label}</text>
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="w-5 h-6" viewBox="0 0 20 24" fill="none">
+      <defs>
+        <clipPath id={cid}>
+          <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${cid})`}>
+        <rect width="20" height="24" fill={config.primary} />
+        <path d="M13 1V5.5C13 7.4 14.6 9 16.5 9H20V9L13 1Z" fill="rgba(0,0,0,0.12)" />
+      </g>
+      <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z"
+        className="stroke-black/8" strokeWidth="0.3" fill="none" />
+    </svg>
+  );
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 interface ProjectDocListPanelProps {
   projectId: string;
-  projectName: string;
   onSelectDoc: (doc: AIDocument) => void;
 }
 
-export default function ProjectDocListPanel({ projectId, projectName, onSelectDoc }: ProjectDocListPanelProps) {
+export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectDocListPanelProps) {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const { docs, total, loading, page, pageSize, setPage, setFilter } = useDocuments({
     project_scope: "project",
-    folder: projectName,
+    project_id: projectId,
   });
 
   const totalPages = Math.ceil(total / pageSize);
@@ -163,11 +257,13 @@ export default function ProjectDocListPanel({ projectId, projectName, onSelectDo
             <p className="text-xs text-muted-foreground/70 mt-1">项目工作流产出的文件会出现在这里</p>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {docs.map((doc) => (
-              <ProjectDocCard key={doc.id} doc={doc} onClick={() => onSelectDoc(doc)} />
-            ))}
-          </div>
+          <AnimatePresence>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {docs.map((doc) => (
+                <ProjectDocCard key={doc.id} doc={doc} onClick={() => onSelectDoc(doc)} />
+              ))}
+            </div>
+          </AnimatePresence>
         ) : (
           <div className="bg-background border border-border rounded-lg shadow-sm overflow-hidden">
             <table className="w-full text-left border-collapse">
@@ -181,9 +277,9 @@ export default function ProjectDocListPanel({ projectId, projectName, onSelectDo
               </thead>
               <tbody className="divide-y divide-border">
                 {docs.map((doc) => {
-                  const isFileRef = doc.doc_type === "file_ref";
                   const ft = getFileType(doc.file_mime, doc.title);
-                  const cfg = FILE_TYPE_CONFIG[ft] ?? FILE_TYPE_CONFIG.text!;
+                  const cfg = FILE_ICON_CONFIG[ft] ?? FILE_ICON_CONFIG.text!;
+                  const fileSize = formatFileSize(doc.file_size);
                   return (
                     <tr
                       key={doc.id}
@@ -192,32 +288,22 @@ export default function ProjectDocListPanel({ projectId, projectName, onSelectDo
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {isFileRef ? (
-                            <FileTypeBadge config={cfg} />
-                          ) : (
-                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                          )}
+                          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="sm" />
                           <span className="font-medium text-foreground text-sm truncate group-hover:text-primary transition-colors">
                             {doc.title || "无标题"}
                           </span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {isFileRef ? (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
-                            style={{ backgroundColor: cfg.primary + "18", color: cfg.primary }}
-                          >
-                            {cfg.label}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400 text-[11px] font-semibold">
-                            DOC
-                          </span>
-                        )}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                          style={{ backgroundColor: cfg.primary + "18", color: cfg.primary }}
+                        >
+                          {cfg.label}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-sm text-muted-foreground">
-                        {isFileRef ? formatFileSize(doc.file_size) : "—"}
+                        {fileSize || "—"}
                       </td>
                       <td className="py-3 px-4 text-sm text-muted-foreground">
                         {formatUpdatedAt(doc.updated_at)}
@@ -251,27 +337,30 @@ export default function ProjectDocListPanel({ projectId, projectName, onSelectDo
   );
 }
 
-// ─── Grid Card ──────────────────────────────────────────────────────────────
+// ─── Grid Card (matches FileRefCard style from DocumentManagement) ──────────
 
 function ProjectDocCard({ doc, onClick }: { doc: AIDocument; onClick: () => void }) {
   const isFileRef = doc.doc_type === "file_ref";
-  const ft = getFileType(doc.file_mime, doc.title);
-  const cfg = FILE_TYPE_CONFIG[ft] ?? FILE_TYPE_CONFIG.text!;
-  const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
+  const fileSize = formatFileSize(doc.file_size);
   const updatedAt = formatUpdatedAt(doc.updated_at);
 
   return (
-    <div
-      className="bg-background rounded-xl border border-border p-3.5 cursor-pointer transition-all flex flex-col h-44 group hover:shadow-md hover:border-primary/50"
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-48 group hover:shadow-md hover:border-primary/50"
       onClick={onClick}
     >
       {/* Icon area */}
-      <div className="flex-1 mb-3 flex items-center justify-center overflow-hidden">
+      <div className="flex-1 mb-4 flex items-center justify-center overflow-hidden">
         {isFileRef ? (
-          <FileTypeBadge config={cfg} large />
+          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-primary" />
+          <div className="w-12 h-14 rounded-lg bg-primary/10 flex items-center justify-center">
+            <FileText className="w-6 h-6 text-primary" />
           </div>
         )}
       </div>
@@ -282,35 +371,12 @@ function ProjectDocCard({ doc, onClick }: { doc: AIDocument; onClick: () => void
       </h3>
 
       {/* Meta */}
-      <div className="flex items-center justify-between text-muted-foreground text-xs mt-auto">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between text-muted-foreground mt-auto">
+        <div className="flex items-center gap-2 text-xs">
           {fileSize && <span>{fileSize}</span>}
+          {updatedAt && <span>{updatedAt}</span>}
         </div>
-        {updatedAt && <span>{updatedAt}</span>}
       </div>
-    </div>
-  );
-}
-
-// ─── File Type Badge ────────────────────────────────────────────────────────
-
-function FileTypeBadge({ config, large }: { config: FileIconConfig; large?: boolean }) {
-  if (large) {
-    return (
-      <div
-        className="w-14 h-14 rounded-xl flex items-center justify-center text-base font-bold"
-        style={{ backgroundColor: config.primary + "18", color: config.primary }}
-      >
-        {config.label}
-      </div>
-    );
-  }
-  return (
-    <span
-      className="inline-flex items-center justify-center w-5 h-6 rounded-sm text-[8px] font-bold shrink-0"
-      style={{ backgroundColor: config.primary + "18", color: config.primary }}
-    >
-      {config.label}
-    </span>
+    </motion.div>
   );
 }

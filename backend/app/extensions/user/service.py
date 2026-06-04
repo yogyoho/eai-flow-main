@@ -48,14 +48,24 @@ class UserService:
         db: AsyncSession,
         skip: int = 0,
         limit: int = 100,
+        keyword: str | None = None,
         dept_id: UUID | None = None,
         role_id: UUID | None = None,
         status: str | None = None,
         include_deleted: bool = False,
     ) -> tuple[list[User], int]:
-        """List users with filters."""
+        """List users with filters and optional keyword search."""
         query = select(User).where(User.is_deleted == False if not include_deleted else True)
         count_query = select(func.count(User.id)).where(User.is_deleted == False if not include_deleted else True)
+
+        if keyword:
+            keyword_filter = or_(
+                User.username.ilike(f"%{keyword}%"),
+                User.email.ilike(f"%{keyword}%"),
+                User.full_name.ilike(f"%{keyword}%"),
+            )
+            query = query.where(keyword_filter)
+            count_query = count_query.where(keyword_filter)
 
         if dept_id:
             query = query.where(User.dept_id == dept_id)
@@ -334,6 +344,8 @@ class UserService:
         dept_name = None
         dept_ids = []
         primary_dept_id = None
+        permissions: list[str] = []
+        is_admin = False
 
         if user.role_id:
             stmt = select(Role).where(Role.id == user.role_id)
@@ -341,6 +353,8 @@ class UserService:
             role = result.scalar_one_or_none()
             if role:
                 role_name = role.name
+                permissions = list(role.permissions or [])
+                is_admin = "*" in permissions or bool(role.is_system)
 
         if user.dept_id:
             stmt = select(Department).where(Department.id == user.dept_id)
@@ -367,6 +381,8 @@ class UserService:
             primary_dept_id=primary_dept_id,
             role_id=user.role_id,
             role_name=role_name,
+            permissions=permissions,
+            is_admin=is_admin,
             status=user.status,
             last_login_at=user.last_login_at,
             created_at=user.created_at,

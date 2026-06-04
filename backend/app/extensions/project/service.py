@@ -3,12 +3,13 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import Integer, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.models import (
     ApprovalRecord,
     ApprovalWorkflow,
+    Department,
     ProjectChapter,
     ProjectMember,
     ReportProject,
@@ -167,20 +168,74 @@ async def list_projects(
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
+    # Batch-resolve creator info (user name + department) for all projects
+    creator_ids = {p.created_by for p in projects if p.created_by}
+    creator_names: dict = {}
+    creator_depts: dict = {}
+    if creator_ids:
+        user_stmt = select(User.id, User.username, User.full_name, User.dept_id).where(User.id.in_(creator_ids))
+        user_result = await db.execute(user_stmt)
+        dept_ids: set = set()
+        for uid, username, full_name, dept_id in user_result.all():
+            creator_names[uid] = full_name or username
+            if dept_id:
+                dept_ids.add(dept_id)
+                creator_depts[uid] = dept_id
+        if dept_ids:
+            dept_stmt = select(Department.id, Department.name).where(Department.id.in_(dept_ids))
+            dept_result = await db.execute(dept_stmt)
+            dept_name_map = dict(dept_result.all())
+            creator_depts = {uid: dept_name_map[did] for uid, did in creator_depts.items() if did in dept_name_map}
+
     items = []
+    project_ids = [p.id for p in projects]
+
+    # Batch query: chapter counts and completed counts per project
+    chapter_stats: dict = {}
+    if project_ids:
+        ch_stmt = (
+            select(
+                ProjectChapter.project_id,
+                func.count(ProjectChapter.id).label("total"),
+                func.sum(
+                    func.cast(
+                        ProjectChapter.status.in_(("completed", "approved")),
+                        Integer,
+                    )
+                ).label("completed"),
+            )
+            .where(ProjectChapter.project_id.in_(project_ids))
+            .group_by(ProjectChapter.project_id)
+        )
+        ch_result = await db.execute(ch_stmt)
+        for pid, total, done in ch_result.all():
+            chapter_stats[pid] = {"total": total or 0, "completed": done or 0}
+
+    # Batch query: member counts per project
+    member_stats: dict = {}
+    if project_ids:
+        m_stmt = (
+            select(ProjectMember.project_id, func.count(ProjectMember.id).label("count"))
+            .where(ProjectMember.project_id.in_(project_ids))
+            .group_by(ProjectMember.project_id)
+        )
+        m_result = await db.execute(m_stmt)
+        member_stats = dict(m_result.all())
+
+    # Batch query: template names
+    template_ids = {p.template_id for p in projects if p.template_id}
+    template_names: dict = {}
+    if template_ids:
+        from app.extensions.knowledge_factory.models import ExtractionTemplate
+        tmpl_stmt = select(ExtractionTemplate.id, ExtractionTemplate.name).where(ExtractionTemplate.id.in_(template_ids))
+        tmpl_result = await db.execute(tmpl_stmt)
+        template_names = dict(tmpl_result.all())
+
     for p in projects:
-        chapter_count_stmt = select(func.count(ProjectChapter.id)).where(ProjectChapter.project_id == p.id)
-        cc = (await db.execute(chapter_count_stmt)).scalar() or 0
-
-        member_count_stmt = select(func.count(ProjectMember.id)).where(ProjectMember.project_id == p.id)
-        mc = (await db.execute(member_count_stmt)).scalar() or 0
-
-        template_name = None
-        if p.template_id:
-            from app.extensions.knowledge_factory.models import ExtractionTemplate
-            tmpl = await db.get(ExtractionTemplate, p.template_id)
-            if tmpl:
-                template_name = tmpl.name
+        stats = chapter_stats.get(p.id, {"total": 0, "completed": 0})
+        cc = stats["total"]
+        done = stats["completed"]
+        pct = round(done / cc * 100, 1) if cc > 0 else 0.0
 
         items.append(ProjectListItem(
             id=p.id,
@@ -188,10 +243,14 @@ async def list_projects(
             report_type=p.report_type,
             status=p.status,
             template_id=p.template_id,
-            template_name=template_name,
+            template_name=template_names.get(p.template_id) if p.template_id else None,
             chapter_count=cc,
-            member_count=mc,
+            completed_chapter_count=done,
+            progress_percentage=pct,
+            member_count=member_stats.get(p.id, 0),
             created_by=p.created_by,
+            created_by_name=creator_names.get(p.created_by) if p.created_by else None,
+            created_by_dept=creator_depts.get(p.created_by) if p.created_by else None,
             created_at=p.created_at,
             updated_at=p.updated_at,
         ))
@@ -238,6 +297,9 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         chapter_count=len(chapters),
         created_at=project.created_at,
         updated_at=project.updated_at,
+        workflow_id=project.workflow_id,
+        temporal_workflow_id=project.temporal_workflow_id,
+        current_phase_node=project.current_phase_node,
     )
 
 
@@ -256,7 +318,7 @@ async def enter_project(
         ProjectMember.user_id == user_id,
     )
     result = await db.execute(stmt)
-    member = result.scalar_one_or_none()
+    member = result.scalars().first()
     if not member:
         raise ValueError("Not a project member")
 
@@ -299,6 +361,7 @@ async def create_project(
     created_by=None,
     template_id=None,
     workflow_id=None,
+    members_data: list[dict] | None = None,
 ) -> ProjectOut:
     has_template = bool(template_id)
     project = ReportProject(
@@ -321,10 +384,111 @@ async def create_project(
         db.add(member)
         await db.flush()
 
+    # Add members with duties if provided
+    if members_data:
+        for md in members_data:
+            m = ProjectMember(
+                project_id=project.id,
+                user_id=md["user_id"],
+                role=md.get("role", "member"),
+                source_org_unit_id=md.get("source_org_unit_id"),
+                phase_duties=md.get("phase_duties"),
+            )
+            db.add(m)
+        await db.flush()
+    elif workflow_id:
+        # Auto-assign org_bindings from workflow definition
+        await _auto_assign_org_bindings(db, project, workflow_id)
+
     if template_id:
         await _import_template_outline(db, project.id, template_id)
 
     return await get_project(db, project.id)
+
+
+async def copy_project(
+    db: AsyncSession,
+    *,
+    source_project_id,
+    name: str,
+    created_by=None,
+    copy_members: bool = True,
+    copy_outline: bool = True,
+    copy_workflow: bool = True,
+) -> ProjectOut | None:
+    """Create a new project by copying structure from an existing one."""
+    source = await db.get(ReportProject, source_project_id)
+    if not source:
+        return None
+
+    new_project = ReportProject(
+        name=name,
+        report_type=source.report_type,
+        created_by=created_by,
+        template_id=source.template_id,
+        workflow_id=source.workflow_id if copy_workflow else None,
+        status="active",
+    )
+    db.add(new_project)
+    await db.flush()
+
+    # Add creator as owner
+    if created_by:
+        member = ProjectMember(
+            project_id=new_project.id,
+            user_id=created_by,
+            role="owner",
+        )
+        db.add(member)
+        await db.flush()
+
+    # Copy members
+    if copy_members:
+        stmt = select(ProjectMember).where(ProjectMember.project_id == source_project_id)
+        result = await db.execute(stmt)
+        for m in result.scalars().all():
+            if m.user_id == created_by:
+                continue  # Skip creator — already added as owner
+            new_member = ProjectMember(
+                project_id=new_project.id,
+                user_id=m.user_id,
+                role=m.role,
+                source_org_unit_id=m.source_org_unit_id,
+                phase_duties=m.phase_duties,
+            )
+            db.add(new_member)
+        await db.flush()
+
+    # Copy outline (chapters)
+    if copy_outline:
+        stmt = (
+            select(ProjectChapter)
+            .where(ProjectChapter.project_id == source_project_id)
+            .order_by(ProjectChapter.sort_order)
+        )
+        result = await db.execute(stmt)
+        source_chapters = result.scalars().all()
+
+        # Map old chapter IDs to new chapter IDs for parent_id resolution
+        id_map: dict = {}
+        for ch in source_chapters:
+            new_ch = ProjectChapter(
+                project_id=new_project.id,
+                parent_id=id_map.get(ch.parent_id) if ch.parent_id else None,
+                title=ch.title,
+                level=ch.level,
+                sort_order=ch.sort_order,
+                status="pending",  # Reset status for new project
+                purpose=ch.purpose,
+                generation_hint=ch.generation_hint,
+                word_count_target=ch.word_count_target,
+                phase_node=ch.phase_node if copy_workflow else None,
+            )
+            db.add(new_ch)
+            await db.flush()
+            id_map[ch.id] = new_ch.id
+
+    return await get_project(db, new_project.id)
 
 
 async def _import_template_outline(db: AsyncSession, project_id, template_id) -> None:
@@ -358,6 +522,76 @@ async def _import_template_outline(db: AsyncSession, project_id, template_id) ->
 
     for i, sec in enumerate(section_list):
         await _create_from_section(sec, order=i)
+
+
+async def _auto_assign_org_bindings(db: AsyncSession, project: ReportProject, workflow_id) -> None:
+    """Auto-assign org unit bindings from workflow template to project members.
+
+    If the workflow has org_bindings mapping phase nodes to department codes,
+    look up users in those departments and auto-create ProjectMember rows
+    with source_org_unit_id set.
+    """
+    from app.extensions.workflow.models import WorkflowDefinition
+
+    defn = await db.get(WorkflowDefinition, workflow_id)
+    if not defn or not defn.org_bindings:
+        return
+
+    from app.extensions.models import Department, User, UserDepartment
+
+    for phase_node, binding in defn.org_bindings.items():
+        dept_code = binding.get("dept_code") or binding.get("department_code")
+        if not dept_code:
+            continue
+
+        # Resolve department by code
+        dept_stmt = select(Department).where(Department.code == dept_code)
+        dept_result = await db.execute(dept_stmt)
+        dept = dept_result.scalar_one_or_none()
+        if not dept:
+            continue
+
+        # Find users in this department
+        ud_stmt = select(UserDepartment.user_id).where(UserDepartment.dept_id == dept.id)
+        ud_result = await db.execute(ud_stmt)
+        dept_user_ids = [row[0] for row in ud_result.all()]
+
+        if not dept_user_ids:
+            continue
+
+        # Get department manager (leader_id) if set
+        leader_id = dept.leader_id
+
+        # Auto-assign department members to project
+        for uid in dept_user_ids:
+            # Check if already a member
+            existing_stmt = select(ProjectMember).where(
+                ProjectMember.project_id == project.id,
+                ProjectMember.user_id == uid,
+            )
+            existing_result = await db.execute(existing_stmt)
+            if existing_result.scalar_one_or_none():
+                continue
+
+            # Determine role and duties
+            role = "member"
+            phase_duties = {}
+            if uid == leader_id:
+                phase_duties[phase_node] = {"duty": "lead", "role": "阶段负责人"}
+                role = "manager"
+            else:
+                phase_duties[phase_node] = {"duty": "writer", "role": "撰写人"}
+
+            member = ProjectMember(
+                project_id=project.id,
+                user_id=uid,
+                role=role,
+                source_org_unit_id=dept.id,
+                phase_duties=phase_duties if phase_duties else None,
+            )
+            db.add(member)
+
+    await db.flush()
 
 
 async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut | None:
@@ -422,6 +656,26 @@ async def remove_member(db: AsyncSession, project_id, user_id) -> bool:
     return True
 
 
+async def update_member(
+    db: AsyncSession, project_id, user_id, *, role: str | None = None, phase_duties: dict | None = None,
+) -> bool:
+    """Update a project member's role and/or phase_duties."""
+    stmt = select(ProjectMember).where(
+        ProjectMember.project_id == project_id,
+        ProjectMember.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    member = result.scalar_one_or_none()
+    if not member:
+        return False
+    if role is not None:
+        member.role = role
+    if phase_duties is not None:
+        member.phase_duties = phase_duties
+    await db.flush()
+    return True
+
+
 # ── Approval workflow ──
 
 
@@ -455,12 +709,13 @@ async def submit_approval(
 async def approval_action(
     db: AsyncSession, project_id: UUID, workflow_id: UUID,
     reviewer_id: UUID, action: str, comment: str | None,
+    is_admin: bool = False,
 ) -> dict:
     workflow = await db.get(ApprovalWorkflow, workflow_id)
     if not workflow or workflow.project_id != project_id:
         raise HTTPException(status_code=404, detail="审核步骤不存在")
 
-    if workflow.reviewer_id != reviewer_id:
+    if not is_admin and workflow.reviewer_id != reviewer_id:
         raise HTTPException(status_code=403, detail="您不是此步骤的指定审核人")
 
     if workflow.status != "pending":
@@ -503,9 +758,12 @@ async def approval_action(
 
 
 async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
+    from sqlalchemy.orm import selectinload
+
     all_steps = await db.execute(
         select(ApprovalWorkflow)
         .where(ApprovalWorkflow.project_id == project_id)
+        .options(selectinload(ApprovalWorkflow.records))
         .order_by(ApprovalWorkflow.step_order)
     )
     steps = all_steps.scalars().all()
@@ -615,3 +873,132 @@ async def get_project_files(db: AsyncSession, project_id, *, cookies=None, csrf_
                 pass
 
     return files
+
+
+# ── Phase Board ──
+
+
+async def get_phase_board(db: AsyncSession, project_id: UUID, phase_node: str) -> dict | None:
+    """Get phase board data: chapters, members, and review summary for a specific phase."""
+    project = await _get_project_or_404(db, project_id)
+    if not project:
+        return None
+
+    # Resolve phase label from workflow graph
+    phase_label = phase_node
+    if project.workflow_id:
+        from app.extensions.workflow.models import WorkflowDefinition
+
+        defn = await db.get(WorkflowDefinition, project.workflow_id)
+        if defn and defn.graph_json:
+            for node in defn.graph_json.get("nodes", []):
+                if node["id"] == phase_node:
+                    phase_label = node.get("data", {}).get("label", phase_node)
+                    break
+
+    # Get chapters — optionally filter by phase's chapter_range if defined in the graph node
+    chapter_stmt = select(ProjectChapter).where(
+        ProjectChapter.project_id == project_id,
+    ).order_by(ProjectChapter.sort_order)
+    chapter_result = await db.execute(chapter_stmt)
+    all_chapters = chapter_result.scalars().all()
+
+    # Try to filter by chapter_range from the workflow node
+    filtered_chapters = all_chapters
+    if project.workflow_id:
+        from app.extensions.workflow.models import WorkflowDefinition
+
+        defn = await db.get(WorkflowDefinition, project.workflow_id)
+        if defn and defn.graph_json:
+            for node in defn.graph_json.get("nodes", []):
+                if node["id"] == phase_node:
+                    cr = node.get("data", {}).get("chapter_range")
+                    if cr and len(cr) == 2:
+                        # Filter by level-1 chapter sort_order range
+                        level1_chapters = [c for c in all_chapters if c.level == 1]
+                        start_idx, end_idx = cr
+                        if 0 <= start_idx < len(level1_chapters) and 0 < end_idx <= len(level1_chapters):
+                            selected_ids = {c.id for c in level1_chapters[start_idx:end_idx]}
+                            # Include children of selected chapters too
+                            filtered_chapters = [
+                                c for c in all_chapters
+                                if c.id in selected_ids or c.parent_id in selected_ids
+                            ]
+                    break
+
+    # Build assigned names map
+    assigned_ids = {c.assigned_to for c in filtered_chapters if c.assigned_to}
+    assigned_names = {}
+    for uid in assigned_ids:
+        assigned_names[uid] = await _resolve_username(db, uid)
+
+    chapters_out = [
+        {
+            "id": c.id,
+            "title": c.title,
+            "status": c.status,
+            "assigned_to": c.assigned_to,
+            "assigned_name": assigned_names.get(c.assigned_to),
+            "level": c.level,
+            "sort_order": c.sort_order,
+            "word_count_target": c.word_count_target,
+            "word_count_current": c.word_count_current,
+        }
+        for c in filtered_chapters
+    ]
+
+    # Get members with duties for this phase
+    member_stmt = select(ProjectMember).where(ProjectMember.project_id == project_id)
+    member_result = await db.execute(member_stmt)
+    members = member_result.scalars().all()
+
+    members_out = []
+    for m in members:
+        duty = None
+        if m.phase_duties and phase_node in m.phase_duties:
+            duty = m.phase_duties[phase_node].get("duty")
+        username = await _resolve_username(db, m.user_id)
+        members_out.append({
+            "user_id": m.user_id,
+            "username": username,
+            "role": m.role,
+            "duty": duty,
+        })
+
+    total = len(filtered_chapters)
+    completed = sum(1 for c in filtered_chapters if c.status == "completed")
+
+    return {
+        "phase_node": phase_node,
+        "phase_label": phase_label,
+        "chapters": chapters_out,
+        "members": members_out,
+        "total_chapters": total,
+        "completed_chapters": completed,
+    }
+
+
+async def batch_assign_chapters(
+    db: AsyncSession,
+    project_id: UUID,
+    assignments: list[dict],
+) -> dict:
+    """Batch assign chapters to users. Each assignment: {chapter_id, assigned_to}."""
+    updated = 0
+    for a in assignments:
+        chapter_id = a.get("chapter_id")
+        assigned_to = a.get("assigned_to")
+        if not chapter_id:
+            continue
+
+        stmt = (
+            ProjectChapter.__table__.update()
+            .where(ProjectChapter.id == chapter_id)
+            .where(ProjectChapter.project_id == project_id)
+            .values(assigned_to=assigned_to)
+        )
+        result = await db.execute(stmt)
+        updated += result.rowcount
+
+    await db.commit()
+    return {"updated": updated, "total": len(assignments)}

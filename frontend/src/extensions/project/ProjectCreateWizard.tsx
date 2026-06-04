@@ -28,11 +28,10 @@ import { projectApi } from "@/extensions/project/api";
 import { workflowApi } from "@/extensions/workflow/api";
 import {
   MEMBER_ROLE_LABELS,
-  REPORT_TYPE_LABELS,
   type MemberRole,
-  type ReportType,
 } from "@/extensions/project/types";
 import { authFetch } from "@/extensions/api/client";
+import { kfApi } from "@/extensions/api";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -42,20 +41,26 @@ interface SelectOption {
   label: string;
 }
 
-type WizardStep = 1 | 2 | 3 | 4;
+type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 // ─── Constants ───────────────────────────────────────────────────────────────────
 
 const STEPS: { step: WizardStep; key: string; label: string }[] = [
   { step: 1, key: "1", label: "基本信息" },
-  { step: 2, key: "2", label: "选择模板" },
-  { step: 3, key: "3", label: "组建团队" },
-  { step: 4, key: "4", label: "确认创建" },
+  { step: 2, key: "2", label: "内容大纲" },
+  { step: 3, key: "3", label: "工作流" },
+  { step: 4, key: "4", label: "组建团队" },
+  { step: 5, key: "5", label: "确认创建" },
 ];
 
-const REPORT_TYPE_OPTIONS: SelectOption[] = Object.entries(REPORT_TYPE_LABELS).map(
-  ([value, label]) => ({ value, label }),
-);
+const REPORT_TYPE_OPTIONS_FALLBACK: SelectOption[] = [
+  { value: "environmental_impact", label: "环境影响评价" },
+  { value: "geological_survey", label: "地质勘查" },
+  { value: "feasibility_study", label: "可行性研究" },
+  { value: "safety_assessment", label: "安全评价" },
+  { value: "energy_assessment", label: "节能评价" },
+  { value: "other", label: "其他" },
+];
 
 const REPORT_TYPE_TO_DOMAIN: Record<string, string[]> = {
   environmental_impact: ["environmental_impact", "environmental_impact_assessment", "environmental"],
@@ -78,6 +83,13 @@ const BLANK_TEMPLATE: TemplateOption = {
   id: "tpl_blank",
   name: "空白模板",
   description: "从零开始创建报告大纲，适用于没有固定模板的特殊项目。",
+  domain: "",
+};
+
+const SKIP_WORKFLOW: TemplateOption = {
+  id: "wf_skip",
+  name: "跳过工作流",
+  description: "不使用自动化工作流，手动管理项目进度和章节写作。",
   domain: "",
 };
 
@@ -242,6 +254,7 @@ function StepBasicInfo({
   targetStandard,
   deadline,
   errors,
+  reportTypeOptions,
   onNameChange,
   onReportTypeChange,
   onClientChange,
@@ -249,11 +262,12 @@ function StepBasicInfo({
   onDeadlineChange,
 }: {
   name: string;
-  reportType: ReportType;
+  reportType: string;
   client: string;
   targetStandard: string;
   deadline: string;
   errors: { name?: string; client?: string };
+  reportTypeOptions: SelectOption[];
   onNameChange: (v: string) => void;
   onReportTypeChange: (v: string) => void;
   onClientChange: (v: string) => void;
@@ -291,7 +305,7 @@ function StepBasicInfo({
           <CustomSelect
             value={reportType}
             onChange={onReportTypeChange}
-            options={REPORT_TYPE_OPTIONS}
+            options={reportTypeOptions}
             placeholder="请选择报告类型"
           />
         </div>
@@ -365,14 +379,15 @@ function StepTemplate({
   onTemplateChange: (id: string) => void;
   onSkip: () => void;
 }) {
-  const options = [...templates, BLANK_TEMPLATE];
+  // Only KF templates (no workflow templates) + blank
+  const options = [...templates.filter((t) => !t.workflowDefId), BLANK_TEMPLATE];
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">选择报告模板</h3>
+        <h3 className="text-base font-semibold text-foreground">选择内容大纲模板</h3>
         <p className="mt-1 text-[13px] text-[#475569]">
-          选择一个工作流模板或知识工厂模板作为项目基础结构，或跳过此步骤
+          选择一个内容模板定义报告的章节大纲结构，或使用空白模板从零开始
         </p>
       </div>
 
@@ -399,26 +414,100 @@ function StepTemplate({
                 <FileText className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      templateId === tpl.id ? "text-blue-600" : "text-foreground",
-                    )}
-                  >
-                    {tpl.name}
-                  </p>
-                  {tpl.workflowDefId && (
-                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 border border-violet-200">
-                      工作流
-                    </span>
+                <p
+                  className={cn(
+                    "text-sm font-medium",
+                    templateId === tpl.id ? "text-blue-600" : "text-foreground",
                   )}
-                </div>
+                >
+                  {tpl.name}
+                </p>
                 <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
               </div>
             </div>
             {templateId === tpl.id && (
               <div className="mt-2 flex w-full items-center gap-1 text-xs text-blue-600">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                已选择
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-sm text-gray-400 transition-colors hover:text-blue-500"
+        >
+          跳过此步骤
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 3: Workflow Template ──────────────────────────────────────────────────
+
+function StepWorkflow({
+  workflowId,
+  workflowTemplates,
+  onWorkflowChange,
+  onSkip,
+}: {
+  workflowId: string;
+  workflowTemplates: TemplateOption[];
+  onWorkflowChange: (id: string) => void;
+  onSkip: () => void;
+}) {
+  const options = [...workflowTemplates, SKIP_WORKFLOW];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">选择工作流模板</h3>
+        <p className="mt-1 text-[13px] text-[#475569]">
+          工作流定义项目的写作流程：分阶段写作、AI 生成初稿、人工审阅等。选择一个适合项目类型的流程模板，或跳过手动管理
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((tpl) => (
+          <button
+            key={tpl.id}
+            type="button"
+            onClick={() => onWorkflowChange(tpl.id)}
+            className={cn(
+              "flex flex-col items-start rounded-lg border-2 p-4 text-left transition-all",
+              workflowId === tpl.id
+                ? "border-violet-500 bg-violet-50/50"
+                : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm",
+            )}
+          >
+            <div className="flex w-full items-start gap-3">
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                  workflowId === tpl.id ? "bg-violet-100 text-violet-600" : "bg-gray-100 text-gray-500",
+                )}
+              >
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    "text-sm font-medium",
+                    workflowId === tpl.id ? "text-violet-600" : "text-foreground",
+                  )}
+                >
+                  {tpl.name}
+                </p>
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
+              </div>
+            </div>
+            {workflowId === tpl.id && (
+              <div className="mt-2 flex w-full items-center gap-1 text-xs text-violet-600">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 已选择
               </div>
@@ -595,19 +684,32 @@ function StepConfirm({
   templates,
   leader,
   teamMembers,
+  reportTypeOptions,
+  autoStartWorkflow,
+  onAutoStartChange,
+  workflowId,
+  workflowTemplates,
 }: {
   name: string;
-  reportType: ReportType;
+  reportType: string;
   client: string;
   targetStandard: string;
   templateId: string;
   templates: TemplateOption[];
   leader: string;
   teamMembers: string[];
+  reportTypeOptions: SelectOption[];
+  autoStartWorkflow: boolean;
+  onAutoStartChange: (v: boolean) => void;
+  workflowId: string;
+  workflowTemplates: TemplateOption[];
 }) {
   const allTemplates = [...templates, BLANK_TEMPLATE];
   const selectedTemplate = allTemplates.find((t) => t.id === templateId);
+  const allWorkflows = [...workflowTemplates, SKIP_WORKFLOW];
+  const selectedWorkflow = allWorkflows.find((t) => t.id === workflowId);
   const totalMembers = (leader ? 1 : 0) + teamMembers.length;
+  const hasWorkflow = workflowId !== "wf_skip";
 
   return (
     <div className="space-y-6">
@@ -632,7 +734,7 @@ function StepConfirm({
             </div>
             <div>
               <span className="text-gray-400">报告类型</span>
-              <p className="mt-0.5 text-foreground">{REPORT_TYPE_LABELS[reportType]}</p>
+              <p className="mt-0.5 text-foreground">{reportTypeOptions.find((o) => o.value === reportType)?.label ?? reportType}</p>
             </div>
             <div>
               <span className="text-gray-400">客户单位</span>
@@ -647,18 +749,46 @@ function StepConfirm({
           </div>
         </div>
 
-        {/* Template card */}
+        {/* Content template card */}
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-50">
               <FileText className="h-4 w-4 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-foreground">报告模板</span>
+            <span className="text-sm font-medium text-foreground">内容大纲模板</span>
           </div>
           <div className="text-sm">
             <span className="text-gray-400">选用模板</span>
             <p className="mt-0.5 text-foreground">{selectedTemplate?.name ?? "未选择模板"}</p>
           </div>
+        </div>
+
+        {/* Workflow template card */}
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-50">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+            </div>
+            <span className="text-sm font-medium text-foreground">工作流模板</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-400">选用工作流</span>
+            <p className="mt-0.5 text-foreground">{selectedWorkflow?.name ?? "未选择工作流"}</p>
+          </div>
+          {hasWorkflow && (
+            <label className="mt-3 flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm cursor-pointer select-none border border-amber-200">
+              <input
+                type="checkbox"
+                checked={autoStartWorkflow}
+                onChange={(e) => onAutoStartChange(e.target.checked)}
+                className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              />
+              <div>
+                <span className="font-medium text-amber-800">创建后自动启动工作流</span>
+                <p className="text-xs text-amber-600">勾选后项目创建完成将立即启动工作流引擎，无需手动操作</p>
+              </div>
+            </label>
+          )}
         </div>
 
         {/* Team card */}
@@ -715,38 +845,54 @@ export function ProjectCreateWizard() {
 
   // Step 1: Basic info
   const [name, setName] = useState("");
-  const [reportType, setReportType] = useState<ReportType>("environmental_impact");
+  const [reportType, setReportType] = useState<string>("environmental_impact");
   const [client, setClient] = useState("");
   const [targetStandard, setTargetStandard] = useState("");
   const [deadline, setDeadline] = useState("");
 
-  // Step 2: Template
-  const [templateId, setTemplateId] = useState<string>("tpl_blank");
-  const [templates, setTemplates] = useState<TemplateOption[]>([]);
+  // Dynamic report type options from business dictionary
+  const [reportTypeOptions, setReportTypeOptions] = useState<SelectOption[]>(REPORT_TYPE_OPTIONS_FALLBACK);
 
-  // Fetch published templates on mount
   React.useEffect(() => {
-    Promise.all([fetchPublishedTemplates(), fetchWorkflowTemplates(reportType)]).then(
-      ([kfTemplates, wfTemplates]) => {
-        const combined = [...wfTemplates, ...kfTemplates];
-        setTemplates(combined);
-        // Auto-select a workflow template matching the current report type first
-        const wfMatch = wfTemplates.find((t) => t.domain === reportType);
-        if (wfMatch) {
-          setTemplateId(wfMatch.id);
-        } else {
-          // Fall back to KF template
-          const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
-          const kfMatch = kfTemplates.find((t) => domains.includes(t.domain));
-          if (kfMatch) setTemplateId(kfMatch.id);
-        }
-      },
-    );
+    kfApi.listDictItems("industry", { limit: 200 }).then((res) => {
+      const items = res.items.filter((i) => i.enabled);
+      if (items.length > 0) {
+        setReportTypeOptions(items.map((i) => ({ value: i.id, label: i.label })));
+      }
+    }).catch(() => { /* keep fallback */ });
   }, []);
 
-  // Step 3: Team
+  // Step 2: Content template (KF templates only)
+  const [templateId, setTemplateId] = useState<string>("tpl_blank");
+  const [kfTemplates, setKfTemplates] = useState<TemplateOption[]>([]);
+
+  // Step 3: Workflow template (workflow definitions only)
+  const [workflowId, setWorkflowId] = useState<string>("wf_skip");
+  const [workflowTemplates, setWorkflowTemplates] = useState<TemplateOption[]>([]);
+
+  // Fetch templates on mount
+  React.useEffect(() => {
+    Promise.all([fetchPublishedTemplates(), fetchWorkflowTemplates(reportType)]).then(
+      ([kfs, wfs]) => {
+        setKfTemplates(kfs);
+        setWorkflowTemplates(wfs);
+        // Auto-select KF template matching report type
+        const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
+        const kfMatch = kfs.find((t) => domains.includes(t.domain));
+        if (kfMatch) setTemplateId(kfMatch.id);
+        // Auto-select workflow template matching report type
+        const wfMatch = wfs.find((t) => t.domain === reportType);
+        if (wfMatch) setWorkflowId(wfMatch.id);
+      },
+    );
+  }, [reportType]);
+
+  // Step 4: Team
   const [leader, setLeader] = useState("");
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
+
+  // Auto-start workflow option
+  const [autoStartWorkflow, setAutoStartWorkflow] = useState(true);
 
   // Submitting
   const [submitting, setSubmitting] = useState(false);
@@ -770,7 +916,7 @@ export function ProjectCreateWizard() {
       }
       setErrors({});
     }
-    if (step < 4) {
+    if (step < 5) {
       setStep((s) => (s + 1) as WizardStep);
     }
   }, [step, name, client]);
@@ -785,7 +931,7 @@ export function ProjectCreateWizard() {
 
   // Skip helpers
   const skipToNext = useCallback(() => {
-    if (step < 4) {
+    if (step < 5) {
       setStep((s) => (s + 1) as WizardStep);
     }
   }, [step]);
@@ -799,20 +945,21 @@ export function ProjectCreateWizard() {
     setTeamMembers((prev) => prev.filter((id) => id !== userId));
   }, []);
 
-  // Resolve template_id for submission: match by domain if using a real template
+  // Resolve template_id for submission
   const resolveTemplateId = useCallback((): string | undefined => {
     if (templateId === "tpl_blank") return undefined;
-    if (templateId.startsWith("wf_")) return undefined; // workflow templates don't use templateId
     return templateId || undefined;
   }, [templateId]);
 
-  // Resolve workflow_id for submission: extract from workflow template selection
+  // Resolve workflow_id for submission
   const resolveWorkflowId = useCallback((): string | undefined => {
-    if (templateId.startsWith("wf_")) {
-      return templateId.slice(3); // strip "wf_" prefix to get the UUID
+    if (workflowId === "wf_skip") return undefined;
+    // Workflow IDs are stored as "wf_<uuid>" — strip the prefix
+    if (workflowId.startsWith("wf_")) {
+      return workflowId.slice(3);
     }
-    return undefined;
-  }, [templateId]);
+    return workflowId || undefined;
+  }, [workflowId]);
 
   // Submit
   const handleCreate = async () => {
@@ -826,15 +973,22 @@ export function ProjectCreateWizard() {
         memberList.push({ userId, role: "member" });
       }
 
+      const workflowId = resolveWorkflowId();
       const project = await projectApi.create({
         name: name.trim(),
-        reportType,
+        reportType: reportType as import("@/extensions/project/types").ReportType,
         templateId: resolveTemplateId(),
-        workflowId: resolveWorkflowId(),
+        workflowId,
+        autoStartWorkflow: autoStartWorkflow && !!workflowId,
         members: memberList.length > 0 ? memberList : undefined,
       });
 
-      toast.success("项目创建成功");
+      if (workflowId && autoStartWorkflow) {
+        toast.success("项目创建成功，工作流已启动");
+      } else {
+        toast.success("项目创建成功");
+      }
+
       router.push(`/projects/${project.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "项目创建失败";
@@ -866,7 +1020,7 @@ export function ProjectCreateWizard() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h2 className="text-base font-semibold text-foreground">新建项目</h2>
-            <span className="text-sm text-gray-400">步骤 {step}/4</span>
+            <span className="text-sm text-gray-400">步骤 {step}/5</span>
           </div>
 
           {/* Content */}
@@ -879,8 +1033,9 @@ export function ProjectCreateWizard() {
                 targetStandard={targetStandard}
                 deadline={deadline}
                 errors={errors}
+                reportTypeOptions={reportTypeOptions}
                 onNameChange={(v) => { setName(v); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
-                onReportTypeChange={(v) => setReportType(v as ReportType)}
+                onReportTypeChange={(v) => setReportType(v )}
                 onClientChange={(v) => { setClient(v); if (errors.client) setErrors((e) => ({ ...e, client: undefined })); }}
                 onTargetStandardChange={setTargetStandard}
                 onDeadlineChange={setDeadline}
@@ -889,12 +1044,20 @@ export function ProjectCreateWizard() {
             {step === 2 && (
               <StepTemplate
                 templateId={templateId}
-                templates={templates}
+                templates={kfTemplates}
                 onTemplateChange={setTemplateId}
                 onSkip={skipToNext}
               />
             )}
             {step === 3 && (
+              <StepWorkflow
+                workflowId={workflowId}
+                workflowTemplates={workflowTemplates}
+                onWorkflowChange={setWorkflowId}
+                onSkip={skipToNext}
+              />
+            )}
+            {step === 4 && (
               <StepTeam
                 leader={leader}
                 members={teamMembers}
@@ -904,16 +1067,21 @@ export function ProjectCreateWizard() {
                 onSkip={skipToNext}
               />
             )}
-            {step === 4 && (
+            {step === 5 && (
               <StepConfirm
                 name={name}
                 reportType={reportType}
                 client={client}
                 targetStandard={targetStandard}
                 templateId={templateId}
-                templates={templates}
+                templates={kfTemplates}
                 leader={leader}
                 teamMembers={teamMembers}
+                reportTypeOptions={reportTypeOptions}
+                autoStartWorkflow={autoStartWorkflow}
+                onAutoStartChange={setAutoStartWorkflow}
+                workflowId={workflowId}
+                workflowTemplates={workflowTemplates}
               />
             )}
           </div>
@@ -933,7 +1101,7 @@ export function ProjectCreateWizard() {
                   上一步
                 </Button>
               )}
-              {step < 4 ? (
+              {step < 5 ? (
                 <Button type="button" onClick={goNext} className="gap-1 bg-blue-600 hover:bg-blue-700">
                   下一步
                   <ChevronRight className="h-4 w-4" />

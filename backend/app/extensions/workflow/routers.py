@@ -4,10 +4,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import require_permission
+from app.extensions.auth.middleware import require_permission, require_super_admin
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -22,6 +22,8 @@ from .schemas import (
     ReviewActionRequest,
     ReviewAssignmentCreate,
     ReviewStatusResponse,
+    TemplateApprovalAction,
+    TemplateApprovalOut,
     WorkflowDefinitionCreate,
     WorkflowDefinitionListItem,
     WorkflowDefinitionListResponse,
@@ -36,9 +38,13 @@ from .service import (
     create_definition as _create_definition_svc,
     delete_definition as _delete_definition_svc,
     get_definition as _get_definition_svc,
+    list_approvals as _list_approvals_svc,
     list_definitions as _list_definitions_svc,
+    review_approval as _review_approval_svc,
+    submit_for_approval as _submit_approval_svc,
     update_definition as _update_definition_svc,
     validate_dag,
+    withdraw_approval as _withdraw_approval_svc,
 )
 from .traceability import find_missing_sources
 
@@ -48,6 +54,7 @@ CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("syste
 WorkflowReader = Annotated[CurrentUser, Depends(require_permission("project:read"))]
 WorkflowWriter = Annotated[CurrentUser, Depends(require_permission("project:create"))]
 WorkflowAdmin = Annotated[CurrentUser, Depends(require_permission("project:advance"))]
+WorkflowSuperAdmin = Annotated[CurrentUser, Depends(require_super_admin())]
 ReviewSubmitter = Annotated[CurrentUser, Depends(require_permission("approval:submit"))]
 ReviewActor = Annotated[CurrentUser, Depends(require_permission("approval:review"))]
 ReviewViewer = Annotated[CurrentUser, Depends(require_permission("approval:view"))]
@@ -62,10 +69,11 @@ async def list_definitions(
     db: AsyncSession = Depends(get_db),
     is_template: bool | None = Query(None),
     report_type: str | None = Query(None),
+    template_status: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    items, total = await _list_definitions_svc(db, is_template=is_template, report_type=report_type, skip=skip, limit=limit)
+    items, total = await _list_definitions_svc(db, is_template=is_template, report_type=report_type, template_status=template_status, skip=skip, limit=limit)
     return WorkflowDefinitionListResponse(
         items=[WorkflowDefinitionListItem.model_validate(w) for w in items],
         total=total,
@@ -96,7 +104,10 @@ async def create_definition(
         report_type=body.report_type,
         graph_json=body.graph_json,
         is_template=body.is_template,
+        org_bindings=body.org_bindings,
         created_by=user.id,
+        description=body.description,
+        visible_dept_ids=body.visible_dept_ids,
     )
     return WorkflowDefinitionOut.model_validate(definition)
 
@@ -105,7 +116,7 @@ async def create_definition(
 async def update_definition(
     definition_id: UUID,
     body: WorkflowDefinitionUpdate,
-    _user: WorkflowWriter,
+    _user: WorkflowSuperAdmin,
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -118,7 +129,7 @@ async def update_definition(
 @router.delete("/definitions/{definition_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_definition(
     definition_id: UUID,
-    _user: WorkflowWriter,
+    _user: WorkflowSuperAdmin,
     db: AsyncSession = Depends(get_db),
 ):
     deleted = await _delete_definition_svc(db, definition_id)
@@ -138,7 +149,7 @@ async def validate_definition(
 @router.post("/definitions/{definition_id}/publish-template", response_model=WorkflowDefinitionOut)
 async def publish_template(
     definition_id: UUID,
-    _user: WorkflowWriter,
+    _user: WorkflowSuperAdmin,
     db: AsyncSession = Depends(get_db),
 ):
     """Publish a workflow definition as a reusable template."""
@@ -148,6 +159,60 @@ async def publish_template(
     if not definition:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
     return WorkflowDefinitionOut.model_validate(definition)
+
+
+# ── Template Approval ──
+
+
+@router.post("/definitions/{definition_id}/submit-approval", response_model=TemplateApprovalOut)
+async def submit_template_approval(
+    definition_id: UUID,
+    user: WorkflowWriter,
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a template for approval."""
+    approval = await _submit_approval_svc(db, definition_id, user.id)
+    return TemplateApprovalOut.model_validate(approval)
+
+
+@router.post("/definitions/{definition_id}/review-approval", response_model=TemplateApprovalOut)
+async def review_template_approval(
+    definition_id: UUID,
+    body: TemplateApprovalAction,
+    user: WorkflowWriter,
+    db: AsyncSession = Depends(get_db),
+):
+    """Review (approve/reject) a pending approval request for a template."""
+    approvals = await _list_approvals_svc(db, definition_id)
+    pending = next((a for a in approvals if a.status == "pending"), None)
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending approval for this template")
+    result = await _review_approval_svc(db, pending.id, user.id, body.action, body.comment)
+    return TemplateApprovalOut.model_validate(result)
+
+
+@router.get("/definitions/{definition_id}/approvals", response_model=list[TemplateApprovalOut])
+async def get_template_approvals(
+    definition_id: UUID,
+    _user: WorkflowReader,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all approval records for a template."""
+    approvals = await _list_approvals_svc(db, definition_id)
+    return [TemplateApprovalOut.model_validate(a) for a in approvals]
+
+
+@router.post("/definitions/{definition_id}/withdraw-approval")
+async def withdraw_template_approval(
+    definition_id: UUID,
+    user: WorkflowWriter,
+    db: AsyncSession = Depends(get_db),
+):
+    """Withdraw a pending approval request for a template."""
+    success = await _withdraw_approval_svc(db, definition_id, user.id)
+    if not success:
+        raise HTTPException(status_code=400, detail="No pending approval to withdraw")
+    return {"status": "withdrawn"}
 
 
 # ── Source Traceability ──
@@ -370,47 +435,152 @@ async def get_my_reviews(
 # ── Workflow Monitoring ──
 
 
-@router.get("/projects/{project_id}/workflow-status", response_model=WorkflowStatusResponse)
+@router.get("/projects/{project_id}/workflow-status")
 async def get_workflow_status_endpoint(
     project_id: UUID,
-    user: WorkflowReader,
-    db: AsyncSession = Depends(get_db),
+    user: CurrentUserWithAccess,
 ):
     """Get the current workflow execution status for a project."""
-    from app.extensions.models import ReportProject
+    from app.extensions.database import get_db_context
+    from app.extensions.models import ProjectChapter, ReportProject
 
-    project = await db.get(ReportProject, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    async with get_db_context() as db:
+        project = await db.get(ReportProject, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
-    from .temporal.client import get_workflow_status as _get_wf_status
-    temporal_status = await _get_wf_status(str(project_id))
+        temporal_status = None
+        if project.workflow_id:
+            try:
+                from .temporal.client import get_workflow_status as _get_wf_status
+                temporal_status = await _get_wf_status(str(project_id))
+            except Exception:
+                pass
 
-    nodes: list[WorkflowNodeStatus] = []
-    if project.workflow_id:
-        definition = await db.get(WorkflowDefinition, project.workflow_id)
-        if definition and definition.graph_json:
-            graph = definition.graph_json
-            current = project.current_phase_node
-            for n in graph.get("nodes", []):
-                nid = n["id"]
-                node_status = "completed" if nid == current else "pending"
-                if temporal_status and temporal_status.get("status") == "running" and nid == current:
-                    node_status = "running"
-                nodes.append(WorkflowNodeStatus(
-                    node_id=nid,
-                    node_type=n.get("type", "phase"),
-                    label=n.get("data", {}).get("label", nid),
-                    status=node_status,
-                ))
+        nodes: list[WorkflowNodeStatus] = []
+        wf_name: str | None = None
+        wf_graph: dict | None = None
+        if project.workflow_id:
+            definition = await db.get(WorkflowDefinition, project.workflow_id)
+            if definition and definition.graph_json:
+                graph = definition.graph_json
+                wf_name = definition.name
+                wf_graph = graph
+                current = project.current_phase_node
+                project_done = project.status == "completed"
+
+                from .service import topological_sort
+
+                topo_order = topological_sort(graph)
+                topo_index = {nid: idx for idx, nid in enumerate(topo_order)}
+
+                phase_node_ids = [n["id"] for n in graph.get("nodes", []) if n.get("type") == "phase"]
+                chapter_counts: dict[str, tuple[int, int]] = {}
+                if phase_node_ids:
+                    ch_count_stmt = (
+                        select(
+                            ProjectChapter.phase_node,
+                            func.count(ProjectChapter.id).label("total"),
+                            func.sum(
+                                func.cast(ProjectChapter.status.in_(("completed", "approved", "reviewed")), Integer)
+                            ).label("done"),
+                        )
+                        .where(ProjectChapter.project_id == project_id)
+                        .where(ProjectChapter.phase_node.in_(phase_node_ids))
+                        .group_by(ProjectChapter.phase_node)
+                    )
+                    ch_result = await db.execute(ch_count_stmt)
+                    for phase_node_val, total, done in ch_result.all():
+                        chapter_counts[phase_node_val] = (total, done or 0)
+
+                review_node_ids = [n["id"] for n in graph.get("nodes", []) if n.get("type") == "review"]
+                review_counts: dict[str, tuple[int, int]] = {}
+                if review_node_ids:
+                    from app.extensions.workflow.models import PhaseReview
+
+                    rv_count_stmt = (
+                        select(
+                            PhaseReview.phase_node,
+                            func.count(PhaseReview.id).label("total"),
+                            func.sum(func.cast(PhaseReview.status == "approved", Integer)).label("approved"),
+                        )
+                        .where(PhaseReview.project_id == project_id)
+                        .where(PhaseReview.phase_node.in_(review_node_ids))
+                        .group_by(PhaseReview.phase_node)
+                    )
+                    rv_result = await db.execute(rv_count_stmt)
+                    for phase_node_val, total, approved in rv_result.all():
+                        review_counts[phase_node_val] = (total, approved or 0)
+
+                for n in graph.get("nodes", []):
+                    nid = n["id"]
+                    node_type = n.get("type", "phase")
+
+                    if project_done:
+                        node_status = "completed"
+                    elif current is None:
+                        node_status = "pending"
+                    elif nid == current:
+                        node_status = "running"
+                    elif topo_index.get(nid, 0) < topo_index.get(current, 0):
+                        node_status = "completed"
+                    else:
+                        node_status = "pending"
+
+                    if temporal_status and temporal_status.get("status") == "running" and nid == current:
+                        node_status = "running"
+
+                    kwargs: dict = {}
+                    if node_type == "phase" and nid in chapter_counts:
+                        total, done = chapter_counts[nid]
+                        kwargs["chapter_total"] = total
+                        kwargs["chapter_completed"] = done
+                    if node_type == "review" and nid in review_counts:
+                        total, approved = review_counts[nid]
+                        kwargs["review_total"] = total
+                        kwargs["review_approved"] = approved
+
+                    nodes.append(WorkflowNodeStatus(
+                        node_id=nid,
+                        node_type=node_type,
+                        label=n.get("data", {}).get("label", nid),
+                        status=node_status,
+                        **kwargs,
+                    ))
+
+        # Determine overall workflow status
+        wf_status = "idle"
+        project_done = project.status == "completed"
+        if project_done:
+            wf_status = "completed"
+        elif temporal_status:
+            wf_status = temporal_status.get("status", "idle")
+
+        return WorkflowStatusResponse(
+            project_id=project_id,
+            workflow_id=project.workflow_id,
+            temporal_workflow_id=project.temporal_workflow_id,
+            current_phase_node=project.current_phase_node,
+            status=wf_status,
+            nodes=nodes,
+            workflow_name=wf_name,
+            graph_json=wf_graph,
+        )
+    wf_status = "idle"
+    if project_done:
+        wf_status = "completed"
+    elif temporal_status:
+        wf_status = temporal_status.get("status", "idle")
 
     return WorkflowStatusResponse(
         project_id=project_id,
         workflow_id=project.workflow_id,
         temporal_workflow_id=project.temporal_workflow_id,
         current_phase_node=project.current_phase_node,
-        status=temporal_status.get("status", "idle") if temporal_status else "idle",
+        status=wf_status,
         nodes=nodes,
+        workflow_name=wf_name,
+        graph_json=wf_graph,
     )
 
 

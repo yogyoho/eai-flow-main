@@ -19,6 +19,8 @@ export interface CurrentUser {
   role_name?: string;
   dept_id?: string;
   dept_name?: string;
+  permissions: string[];
+  is_admin: boolean;
   status: string;
 }
 
@@ -126,6 +128,7 @@ export interface Department {
   sort_order: number;
   code?: string;
   status?: string;
+  unit_type?: string; // "internal" | "external" | "virtual"
   created_at: string;
   children?: Department[];
 }
@@ -440,6 +443,7 @@ export interface CommentUpdateRequest {
 export interface VersionCreateRequest {
   summary?: string | null;
   generate_summary?: boolean;
+  content?: string | null;
 }
 
 export interface VersionDiffResponse {
@@ -457,4 +461,5 @@ export interface VersionDiffResponse {
     to_content?: string;
   }>;
   ai_summary: string | null;
+  legacy_notice: string | null;
 }

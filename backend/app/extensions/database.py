@@ -311,6 +311,36 @@ async def migrate_db() -> None:
         )
         # === End RBAC Enhancement Migration ===
 
+        # === Collab Version snapshot_text Migration ===
+        await conn.execute(
+            text("ALTER TABLE collab_versions ADD COLUMN IF NOT EXISTS snapshot_text TEXT")
+        )
+
+        # === Phase-scoped Chapter Access Migration ===
+        await conn.execute(
+            text("ALTER TABLE project_chapters ADD COLUMN IF NOT EXISTS phase_node VARCHAR(100)")
+        )
+
+        # === Activity Log Migration ===
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
+                user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                action VARCHAR(100) NOT NULL,
+                target_type VARCHAR(50),
+                target_id VARCHAR(100),
+                detail TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_activity_logs_project ON activity_logs(project_id)")
+        )
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC)")
+        )
+
         # Create ai_documents table if not exists (for existing deployments)
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS ai_documents (
@@ -817,12 +847,17 @@ async def migrate_db() -> None:
                 step_order INT NOT NULL,
                 step_name VARCHAR(200) NOT NULL,
                 role_required VARCHAR(50) NOT NULL,
+                reviewer_id UUID REFERENCES users(id),
                 status VARCHAR(20) NOT NULL DEFAULT 'pending',
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
         """))
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_approval_workflows_project ON approval_workflows(project_id)"
+        ))
+        # Add reviewer_id column if missing (migration for existing DBs)
+        await conn.execute(text(
+            "ALTER TABLE approval_workflows ADD COLUMN IF NOT EXISTS reviewer_id UUID REFERENCES users(id)"
         ))
 
         await conn.execute(text("""
@@ -1016,6 +1051,58 @@ async def migrate_db() -> None:
             "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, is_read, created_at DESC)"
         ))
 
+        # ── Notification Preferences ──
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS notification_preferences (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL REFERENCES users(id) UNIQUE,
+                channel_in_app BOOLEAN NOT NULL DEFAULT TRUE,
+                channel_email BOOLEAN NOT NULL DEFAULT FALSE,
+                type_settings JSONB NOT NULL DEFAULT '{}',
+                digest_mode VARCHAR(20) NOT NULL DEFAULT 'instant',
+                quiet_hours_start VARCHAR(5),
+                quiet_hours_end VARCHAR(5),
+                deadline_remind_days INTEGER NOT NULL DEFAULT 3,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_notification_prefs_user ON notification_preferences(user_id)"
+        ))
+
+        # ── Index for deadline-based reminder queries ──
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_project_timeline_planned_end ON project_timeline(planned_end)"
+        ))
+
+        # ── Org bindings for workflow definitions ──
+        await conn.execute(text(
+            "ALTER TABLE workflow_definitions ADD COLUMN IF NOT EXISTS org_bindings JSONB"
+        ))
+
+        # ── Layout templates for report output ──
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS layout_templates (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(200) NOT NULL,
+                report_type VARCHAR(100) NOT NULL,
+                is_builtin BOOLEAN NOT NULL DEFAULT FALSE,
+                page_settings JSONB NOT NULL,
+                cover_template JSONB,
+                toc_settings JSONB,
+                body_styles JSONB NOT NULL,
+                heading_styles JSONB NOT NULL DEFAULT '[]',
+                table_styles JSONB,
+                figure_styles JSONB,
+                header_footer JSONB,
+                reference_style VARCHAR(50) NOT NULL DEFAULT 'gb7714',
+                appendix_rules JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+
 
 async def close_db() -> None:
     """Close database connections."""
@@ -1123,5 +1210,13 @@ async def seed_db() -> None:
                 await DomainService.init_default_domains(session)
             except Exception as e:
                 logger.warning(f"Failed to seed dictionary data: {e}")
+
+            # Seed built-in layout templates for report output
+            try:
+                from app.extensions.output.seed import seed_builtin_templates
+
+                await seed_builtin_templates(session)
+            except Exception as e:
+                logger.warning(f"Failed to seed layout templates: {e}")
     finally:
         await engine.dispose()

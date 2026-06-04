@@ -17,16 +17,21 @@ from .schemas import (
     MyStatsResponse,
     MyTasksResponse,
     NotificationListResponse,
+    NotificationPreferenceOut,
+    NotificationPreferenceUpdate,
 )
 from .service import (
     get_my_calendar,
     get_my_projects,
     get_my_stats,
     get_my_tasks,
+    get_notification_preferences,
     get_notifications,
     mark_all_notifications_read,
     mark_notification_read,
+    update_notification_preferences,
 )
+from .reminder_service import check_deadline_reminders
 
 router = APIRouter(prefix="/api/extensions/dashboard", tags=["dashboard"])
 
@@ -110,3 +115,38 @@ async def read_all_notifications(
     """Mark all notifications as read."""
     count = await mark_all_notifications_read(db, user.id)
     return {"status": "all_read", "count": count}
+
+
+# ── Notification Preferences ──
+
+
+@router.get("/notification-preferences", response_model=NotificationPreferenceOut)
+async def get_prefs(
+    user: DashboardUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current user's notification preferences (auto-created with defaults)."""
+    return await get_notification_preferences(db, user.id)
+
+
+@router.put("/notification-preferences", response_model=NotificationPreferenceOut)
+async def update_prefs(
+    body: NotificationPreferenceUpdate,
+    user: DashboardUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user's notification preferences."""
+    return await update_notification_preferences(db, user.id, body)
+
+
+# ── Reminder Triggers (system/cron endpoint) ──
+
+
+@router.post("/check-reminders")
+async def trigger_reminder_check(
+    user: DashboardUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually trigger deadline reminder check. Creates Notification rows for approaching/overdue deadlines."""
+    result = await check_deadline_reminders(db)
+    return result

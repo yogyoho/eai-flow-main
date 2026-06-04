@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-01T05:40:58.140Z
-> Files: 901 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-04T04:13:31.088Z
+> Files: 984 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -45,7 +45,7 @@
 - `手动差分技术方案.md` — 手动差分技术方案：将 bytedance/deer-flow 同步到 feature/extensions-migration (~3219 tok)
 - `AGENTS.md` — MCP Tools: code-review-graph (~438 tok)
 - `body.txt` (~19 tok)
-- `CLAUDE.md` — OpenWolf (~2308 tok)
+- `CLAUDE.md` — page login info (~2818 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~12188 tok)
@@ -65,6 +65,9 @@
 - `README_zh.md` — 🦌 DeerFlow - 2.0 (~4785 tok)
 - `README.md` — Project documentation (~9610 tok)
 - `SECURITY.md` — Security Policy (~99 tok)
+- `test_fixes.py` — log, login, fetch_json (~3379 tok)
+- `test_tabs.py` — Quick browser test of all 7 tabs in the project workspace. (~1228 tok)
+- `test-upload.md` — 测试报告 (~45 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -193,12 +196,25 @@
 - `calm-conjuring-bubble.md` — Fix: Multi-user project management access control (~738 tok)
 - `declarative-mixing-lamport.md` — 报告大纲 AI 自动提取章节功能 (~987 tok)
 - `deep-wobbling-dragon.md` — AI 从文档自动提取合规规则 — 实施计划 (~965 tok)
+- `goofy-foraging-puzzle.md` — Fix: Admin API Security + Role System Enhancement (~1487 tok)
+- `harmonic-twirling-crab.md` — Implementation Plan: Close Spec Gaps Across 4 Domains (~2160 tok)
 - `lazy-exploring-liskov.md` — Knowledge Factory Card Beautification Plan (~1240 tok)
+- `lexical-puzzling-wreath.md` — Plan: Implement 6 Project Workspace Tabs with Polished UI (~2467 tok)
+- `magical-popping-sloth.md` — 流程看板 — 工作流执行进度可视化 (~1195 tok)
 - `piped-dazzling-raven.md` — Plan: Drag-and-Drop Block Reordering for Tiptap Editor (~1104 tok)
+- `sharded-drifting-wolf.md` — Fix Plan: 3 Workflow Bugs (~1676 tok)
+- `tab-ok-explore-review-version-fizzy-token.md` — Version History Panel Improvements (~1244 tok)
 - `ticklish-mixing-wirth.md` — Plan: 法规标准库注册到 KnowledgeBase 表 (~711 tok)
 - `tranquil-doodling-spring.md` — Plan: Refactor Frontend Theme Based on Yuxi Color System (~1614 tok)
+- `typed-cooking-quilt.md` — Plan: EditorTab 改造 — 横向章节栏 → 左侧树形大纲 (~803 tok)
 - `velvety-waddling-hopcroft.md` — Plan: Add `cwd` support to MCP server config (方案3) (~916 tok)
+- `vivid-wishing-hippo.md` — Plan: 完善协同编辑器版本历史面板 (~179 tok)
 - `wiggly-whistling-fern.md` — Plan: Fix Collab AI Chat Endpoint (~991 tok)
+
+## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
+
+- `docker-dev-environment.md` — Docker Development Environment (~389 tok)
+- `MEMORY.md` (~102 tok)
 
 ## _workspace_temp/
 
@@ -337,7 +353,7 @@
 - `.gitignore` — Git ignore rules (~86 tok)
 - `.python-version` (~2 tok)
 - `AGENTS.md` (~16 tok)
-- `CLAUDE.md` — CLAUDE.md (~9608 tok)
+- `CLAUDE.md` — CLAUDE.md (~10296 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow Backend (~2414 tok)
 - `debug.py` — main (~1415 tok)
 - `Dockerfile` — Docker container definition (~1121 tok)
@@ -909,16 +925,21 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2047 tok)
-- `database.py` — Database connection and session management for extensions module. (~13494 tok)
-- `models.py` — SQLAlchemy data models for extensions module. (~9095 tok)
-- `schemas.py` — Pydantic schemas for extensions module. (~4316 tok)
+- `database.py` — Database connection and session management for extensions module. (~14695 tok)
+- `models.py` — SQLAlchemy data models for extensions module. (~10003 tok)
+- `schemas.py` — Pydantic schemas for extensions module. (~4373 tok)
+
+## backend/app/extensions/auth/
+
+- `middleware.py` — Authentication middleware for extensions module. (~2925 tok)
 
 ## backend/app/extensions/dashboard/
 
 - `__init__.py` (~0 tok)
-- `routers.py` — Dashboard API routers — task console, projects, stats, calendar, notifications. (~941 tok)
-- `schemas.py` — Pydantic schemas for dashboard API. (~786 tok)
-- `service.py` — Dashboard service — aggregates tasks, projects, stats, and calendar events for a user. (~5162 tok)
+- `reminder_service.py` — Deadline-based reminder trigger service. (~2556 tok)
+- `routers.py` — Dashboard API routers — task console, projects, stats, calendar, notifications. (~1299 tok)
+- `schemas.py` — Pydantic schemas for dashboard API. (~1118 tok)
+- `service.py` — Dashboard service — aggregates tasks, projects, stats, and calendar events for a user. (~5586 tok)
 
 ## backend/app/extensions/data_source/
 
@@ -928,11 +949,12 @@
 ## backend/app/extensions/docmgr/
 
 - `collab_ai_chat.py` — AI chat endpoint for collaborative editor. (~4110 tok)
-- `collab_routers.py` — Routers for collaborative editing: comments and versions. (~2679 tok)
-- `collab_schemas.py` — Pydantic schemas for collaborative editing endpoints. (~686 tok)
-- `collab_service.py` — Services for collaborative editing: comments and versions. (~3899 tok)
-- `routers.py` — AI Document routers for extensions module. (~4340 tok)
-- `service.py` — AI Document service for extensions module. (~3096 tok)
+- `collab_models.py` — SQLAlchemy models for collaborative editing tables. (~1082 tok)
+- `collab_routers.py` — Routers for collaborative editing: comments and versions. (~2729 tok)
+- `collab_schemas.py` — Pydantic schemas for collaborative editing endpoints. (~745 tok)
+- `collab_service.py` — Services for collaborative editing: comments and versions. (~4941 tok)
+- `routers.py` — AI Document routers for extensions module. (~4456 tok)
+- `service.py` — AI Document service for extensions module. (~4093 tok)
 - `share_models.py` — Document share model. (~351 tok)
 - `share_schemas.py` — Document share schemas. (~176 tok)
 - `share_service.py` — Document share service. (~1295 tok)
@@ -962,32 +984,53 @@
 - `schemas.py` — Pydantic schemas for law management. (~1760 tok)
 - `service.py` — Business logic for law management. (~8177 tok)
 
+## backend/app/extensions/output/
+
+- `__init__.py` (~0 tok)
+- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~3858 tok)
+- `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
+- `routers.py` — FastAPI router for layout template CRUD and report generation. (~2215 tok)
+- `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
+- `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~2445 tok)
+- `service.py` — Business logic for layout template CRUD. (~1135 tok)
+
 ## backend/app/extensions/project/
 
-- `permissions.py` — Project RBAC permission matrix — simplified owner/member model. (~1029 tok)
-- `project_permissions.py` — Project-level permission system. (~983 tok)
-- `routers.py` — FastAPI routers for report project management. (~2563 tok)
-- `schemas.py` — Pydantic schemas for report project management. (~1281 tok)
-- `service.py` — Database-backed service for report project management. (~5520 tok)
+- `permissions.py` — Project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model. (~1304 tok)
+- `project_permissions.py` — Project-level permission system. (~1255 tok)
+- `routers.py` — FastAPI routers for report project management. (~6389 tok)
+- `schemas.py` — Pydantic schemas for report project management. (~2067 tok)
+- `service.py` — Database-backed service for report project management. (~9585 tok)
+- `slot_filling.py` — Runtime slot-filling service — checks if required roles for a phase are filled. (~1456 tok)
+
+## backend/app/extensions/role/
+
+- `service.py` — Role service for extensions module. (~1483 tok)
+
+## backend/app/extensions/user/
+
+- `routers.py` — User routers for extensions module. (~2856 tok)
+- `service.py` — User service for extensions module. (~3991 tok)
 
 ## backend/app/extensions/workflow/
 
 - `__init__.py` — Workflow engine extension for EAI Flow. (~28 tok)
-- `models.py` — SQLAlchemy models for the workflow engine. (~1390 tok)
+- `migration.py` — Migration: add template metadata fields and template_approvals table. (~510 tok)
+- `models.py` — SQLAlchemy models for the workflow engine. (~1795 tok)
 - `permissions.py` — Workflow permission constants. (~236 tok)
 - `review.py` — Service layer for phase review operations. (~1408 tok)
-- `routers.py` — FastAPI routers for workflow definitions. (~5021 tok)
-- `schemas.py` — Pydantic: WorkflowDefinitionCreate (~1236 tok)
-- `service.py` — ── DAG Validation ── (~1689 tok)
+- `routers.py` — FastAPI routers for workflow definitions. (~7082 tok)
+- `schemas.py` — Pydantic: WorkflowDefinitionCreate (~1603 tok)
+- `service.py` — ── DAG Validation ── (~2634 tok)
 - `traceability.py` — ParsedSource: parse_source_markers, find_missing_sources (~700 tok)
 
 ## backend/app/extensions/workflow/temporal/
 
 - `__init__.py` (~0 tok)
-- `activities.py` — Real activity implementations for the workflow engine. (~4741 tok)
-- `client.py` — get_temporal_client, temporal_lifespan, send_signal, get_workflow_status (~1662 tok)
+- `activities.py` — Real activity implementations for the workflow engine. (~6172 tok)
+- `client.py` — get_temporal_client, temporal_lifespan, send_signal, get_workflow_status (~1759 tok)
 - `signals.py` — Signal name constants for the DynamicGraphWorkflow. (~90 tok)
-- `workflows.py` — DynamicGraphWorkflow — a Temporal workflow that walks a DAG of nodes. (~5552 tok)
+- `workflows.py` — DynamicGraphWorkflow — a Temporal workflow that walks a DAG of nodes. (~5885 tok)
 
 ## backend/app/extensions/workflow/timeline/
 
@@ -998,7 +1041,7 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan, create_app (~5272 tok)
+- `app.py` — lifespan, create_app (~5317 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1541 tok)
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2384 tok)
 
@@ -1016,9 +1059,9 @@
 
 - `auth.ts` — Exports AuthenticatedUser, validateOrigin, authenticateConnection (~521 tok)
 - `index.test.ts` — --- Mocks --- (~1700 tok)
-- `index.ts` — PORT: periodicSnapshot (~1219 tok)
+- `index.ts` — Extract readable text from a Yjs document for diff/summary purposes. (~1533 tok)
 - `persistence.test.ts` — Mock pg — Pool must be a constructable function (~1488 tok)
-- `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 4 more (~1443 tok)
+- `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 4 more (~1462 tok)
 
 ## backend/packages/harness/deerflow/agents/middlewares/
 
@@ -1034,12 +1077,12 @@
 
 ## backend/packages/harness/deerflow/persistence/
 
-- `engine.py` — Async SQLAlchemy engine lifecycle management. (~2217 tok)
+- `engine.py` — Async SQLAlchemy engine lifecycle management. (~2320 tok)
 
 ## backend/tests/
 
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2106 tok)
-- `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8435 tok)
+- `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8977 tok)
 - `test_dashboard.py` — Tests for dashboard service and API endpoints. (~1396 tok)
 - `test_document_space.py` — test_ai_document_model_has_new_fields, test_ai_document_create_schema_accepts_file_ref_fields, test_ (~5554 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
@@ -1047,11 +1090,12 @@
 - `test_missing_activities.py` — TDD tests for missing activities from spec §4.4. (~2122 tok)
 - `test_model_extensions.py` — Tests for extended Department and ProjectMember models. (~711 tok)
 - `test_notification_activities.py` — Tests for notification activities. (~1512 tok)
+- `test_p0_permission_gates.py` — Tests for P0 permission gates: (~1741 tok)
 - `test_phase_review.py` — Tests for PhaseReview model, schemas, and DAG validation. (~1052 tok)
 - `test_project_permissions_new.py` — Tests for the new project-level permission system (project_permissions.py). (~1360 tok)
-- `test_project_permissions.py` — Tests for project RBAC permission matrix — simplified owner/member model. (~3699 tok)
+- `test_project_permissions.py` — Tests for project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model. (~4369 tok)
 - `test_project_routers.py` — Tests for project FastAPI routers: endpoint wiring and status codes. (~4602 tok)
-- `test_project_schemas.py` — Tests for project Pydantic schemas: validation, defaults, serialization. (~1834 tok)
+- `test_project_schemas.py` — Tests for project Pydantic schemas: validation, defaults, serialization. (~1846 tok)
 - `test_project_service.py` — Tests for enter_project and get_project_files service functions. (~4352 tok)
 - `test_review_rollback.py` — Tests for review rejection rollback — apply_rejection_rollback. (~1667 tok)
 - `test_review_service.py` — Tests for the review service layer. (~2020 tok)
@@ -1061,11 +1105,12 @@
 - `test_traceability.py` — Tests for AI content traceability parsing and missing source detection. (~1447 tok)
 - `test_update_chapter_auto_parse.py` — Tests for update_chapter auto-parse traceability sources. (~1622 tok)
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
+- `test_workflow_template.py` — Tests for workflow template management — approval workflow, visibility, state transitions. (~3015 tok)
 
 ## docker/
 
 - `dev-entrypoint.sh` — DeerFlow gateway dev entrypoint — runs inside the docker-compose-dev gateway (~1045 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~2187 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~2221 tok)
 - `docker-compose.ragflow.yaml` — RAGFlow Service Stack (~1410 tok)
 - `docker-compose.temporal.yaml` — docker/docker-compose.temporal.yaml (~218 tok)
 
@@ -1092,6 +1137,11 @@
 - `2026-05-30-workflow-phase3-phase4.md` — Phase 3 + Phase 4: Multi-Person Mixed Review & Workflow Monitoring (~15298 tok)
 - `2026-05-30-workflow-traceability-phase2.md` — Phase 2: AI Content Traceability Implementation Plan (~5155 tok)
 - `2026-06-01-collaboration-system-plan.md` — 项目协作体系细化设计 Implementation Plan (~13165 tok)
+- `2026-06-02-dashboard-ui-uplift.md` — Dashboard UI Uplift Implementation Plan (~5183 tok)
+- `2026-06-02-template-management-redesign.md` — Template Management Redesign — Implementation Plan (~19440 tok)
+- `2026-06-03-layout-template-system.md` — Layout Template System Implementation Plan (~17806 tok)
+- `2026-06-03-project-doc-tab-unification.md` — Project Doc Tab Unification — Implementation Plan (~5259 tok)
+- `2026-06-04-project-overview-tab-merge.md` — 项目概览 Tab 合并实施计划 (~14745 tok)
 
 ## docs/superpowers/specs/
 
@@ -1106,9 +1156,17 @@
 - `2026-05-29-workflow-engine-traceability-review-design.md` — 项目工作流引擎 + AI 溯源 + 多人审核 设计方案 (~6164 tok)
 - `2026-05-30-collab-ai-comment-toolbar-design.md` — 协同编辑器 AI 功能整合与评论工具栏设计 (~692 tok)
 - `2026-06-01-workflow-project-collaboration-system-refinement-design.md` — 项目协作体系细化设计：组织 · 角色 · 任务控制台 · 项目跟踪 (~4136 tok)
+- `2026-06-02-dashboard-ui-uplift-design.md` — Dashboard UI Uplift Design (~950 tok)
+- `2026-06-02-template-management-redesign.md` — 模板管理重构设计 (~1899 tok)
+- `2026-06-03-layout-template-system-design.md` — Layout Template System Design (~2503 tok)
+- `2026-06-03-project-doc-tab-unification-design.md` — Design: Unify Project Doc Tab with Document Space (~1719 tok)
+- `2026-06-03-workflow-collaboration-test-plan.md` — 工作流协作体系 — 分角色功能测试计划 (~1637 tok)
+- `2026-06-03-workflow-collaboration-test-report.md` — 工作流协作体系 — 分角色功能测试报告 (~2206 tok)
+- `2026-06-04-project-overview-tab-redesign.md` — 项目概览 Tab 重设计 + Tab 合并 (~1067 tok)
 
 ## frontend/
 
+- `CLAUDE.md` — CLAUDE.md (~1303 tok)
 - `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~630 tok)
 - `package.json` — Node.js package manifest (~1441 tok)
 - `test_debug_login.py` — Login via form submission (handles CSRF automatically) then test plugin tabs. (~2055 tok)
@@ -1121,11 +1179,38 @@
 
 ## frontend/src/app/admin/
 
-- `layout.tsx` — navItems (~575 tok)
+- `layout.tsx` — Check if the current user has admin privileges. (~794 tok)
+
+## frontend/src/app/admin/departments/
+
+- `page.tsx` — flattenDepts (~9626 tok)
+
+## frontend/src/app/admin/roles/
+
+- `page.tsx` — PERMISSION_CATEGORIES (~12297 tok)
 
 ## frontend/src/app/admin/templates/
 
-- `page.tsx` — REPORT_TYPE_FILTERS (~3211 tok)
+- `page.tsx` — REPORT_TYPE_FILTERS (~3892 tok)
+
+## frontend/src/app/admin/templates/[templateId]/
+
+- `page.tsx` — EditTemplatePage (~90 tok)
+
+## frontend/src/app/admin/templates/components/
+
+- `ApprovalDialog.tsx` — ApprovalDialog (~849 tok)
+- `ApprovalHistoryPanel.tsx` — ACTION_CONFIG (~543 tok)
+- `SubmitApprovalDialog.tsx` — SubmitApprovalDialog (~551 tok)
+- `TemplateEditorPage.tsx` — TemplateEditorPage (~3401 tok)
+
+## frontend/src/app/admin/templates/new/
+
+- `page.tsx` — NewTemplatePage (~48 tok)
+
+## frontend/src/app/admin/users/
+
+- `page.tsx` — PAGE_SIZE (~10770 tok)
 
 ## frontend/src/app/api/collab/ai-chat/
 
@@ -1142,6 +1227,10 @@
 ## frontend/src/app/knowledge/
 
 - `page.tsx` — formatDate (~19688 tok)
+
+## frontend/src/app/login/
+
+- `page.tsx` — LoginPage — renders form (~1686 tok)
 
 ## frontend/src/app/projects/approval-settings/
 
@@ -1169,6 +1258,8 @@
 
 ## frontend/src/components/ui/
 
+- `admin-select.tsx` — AdminSelect (~1022 tok)
+- `calendar.tsx` — Calendar (~2226 tok)
 - `magic-bento.css` — Styles: 28 rules, 19 vars (~1250 tok)
 - `sonner.tsx` — Toaster (~317 tok)
 
@@ -1199,11 +1290,11 @@
 
 ## frontend/src/extensions/
 
-- `types.ts` — Exports LoginRequest, LoginResponse, CurrentUser, User + 50 more (~2752 tok)
+- `types.ts` — Exports LoginRequest, LoginResponse, CurrentUser, User + 50 more (~2799 tok)
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~10612 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~10663 tok)
 
 ## frontend/src/extensions/collab/
 
@@ -1211,9 +1302,9 @@
 - `aiMenuItems.tsx` — getCollabAIMenuItems (~826 tok)
 - `aiTransport.ts` — Exports createCollabAITransport (~740 tok)
 - `BlockCommentAnchor.tsx` — BlockCommentAnchor (~313 tok)
-- `BlockNoteEditor.tsx` — BlockNote editor with collab, outline, comments, versions, AI review, traceability. Accepts visibleChapterIds prop for outline filtering. (~7635 tok)
+- `BlockNoteEditor.tsx` — Optional list of block IDs to show in the outline panel. (~7652 tok)
 - `CollabEditor.tsx` — Wrapper around BlockNoteEditor. Forwards visibleChapterIds for chapter permission filtering. (~445 tok)
-- `DiffViewer.tsx` — DiffViewer (~532 tok)
+- `DiffViewer.tsx` — DiffViewer (~729 tok)
 - `human-written-plugin.ts` — ProseMirror plugin for detecting and marking human-written blocks. (~1693 tok)
 - `InlineCommentThread.tsx` — InlineCommentThread (~758 tok)
 - `OutlinePanel.tsx` — Document heading outline with scroll-spy. Filters headings via visibleChapterIds prop for permission-based visibility. (~3290 tok)
@@ -1221,8 +1312,8 @@
 - `traceability-extension.ts` — ProseMirror plugin for inline traceability decorations. (~2026 tok)
 - `useCollab.ts` — Exports CollabUser, useCollab (~905 tok)
 - `useComments.ts` — Exports useComments (~901 tok)
-- `useVersions.ts` — Exports useVersions (~600 tok)
-- `VersionPanel.tsx` — VersionPanel (~2120 tok)
+- `useVersions.ts` — Exports useVersions (~720 tok)
+- `VersionPanel.tsx` — VersionPanel — renders modal (~2709 tok)
 
 ## frontend/src/extensions/collab/__tests__/
 
@@ -1230,22 +1321,25 @@
 
 ## frontend/src/extensions/dashboard/
 
-- `api.ts` — Exports dashboardApi (~417 tok)
-- `DashboardPage.tsx` — DashboardPage (~350 tok)
-- `types.ts` — Exports TaskItem, MyTasksResponse, MyProjectItem, MyProjectsResponse + 3 more (~397 tok)
+- `api.ts` — Exports dashboardApi (~563 tok)
+- `DashboardPage.tsx` — DashboardPage (~805 tok)
+- `types.ts` — Exports TaskItem, MyTasksResponse, MyProjectItem, MyProjectsResponse + 5 more (~596 tok)
 
 ## frontend/src/extensions/dashboard/components/
 
-- `MyProjects.tsx` — GROUP_LABELS (~549 tok)
-- `NotificationFeed.tsx` — BASE (~1649 tok)
-- `ProjectMiniCard.tsx` — ROLE_LABELS (~471 tok)
-- `QuickActions.tsx` — actions (~223 tok)
-- `StatsPanel.tsx` — StatsPanel (~235 tok)
-- `TaskItemCard.tsx` — TYPE_ICONS (~389 tok)
-- `TodayTasks.tsx` — TodayTasks (~292 tok)
+- `MiniCalendar.tsx` — COLOR_MAP (~1246 tok)
+- `MyProjects.tsx` — GROUP_LABELS (~666 tok)
+- `NotificationFeed.tsx` — BASE (~2217 tok)
+- `NotificationPreferencePanel.tsx` — NOTIFICATION_TYPES (~1597 tok)
+- `ProjectMiniCard.tsx` — ROLE_LABELS (~692 tok)
+- `QuickActions.tsx` — actions (~255 tok)
+- `StatsPanel.tsx` — StatsPanel (~631 tok)
+- `TaskItemCard.tsx` — TYPE_ICONS (~480 tok)
+- `TodayTasks.tsx` — TodayTasks (~468 tok)
 
 ## frontend/src/extensions/dashboard/hooks/
 
+- `useMyCalendar.ts` — Exports useMyCalendar (~111 tok)
 - `useMyProjects.ts` — Exports useMyProjects (~75 tok)
 - `useMyStats.ts` — Exports useMyStats (~72 tok)
 - `useMyTasks.ts` — Exports useMyTasks (~72 tok)
@@ -1253,12 +1347,13 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocumentManagement.tsx` — CollabEditor (~18040 tok)
+- `DocumentManagement.tsx` — CollabEditor (~18008 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
+- `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4856 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
 - `TiptapEditor.tsx` — SCROLL_OFFSET_TOP — renders table (~5417 tok)
-- `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1278 tok)
+- `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1374 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1313,6 +1408,19 @@
 
 - `useTemplateEditor.ts` — 将后端 TemplateSection（snake_case API 响应）转换为前端 EditorSection（camelCase） (~4378 tok)
 
+## frontend/src/extensions/output/
+
+- `api.ts` — Exports outputApi (~1661 tok)
+- `OutputManager.tsx` — NAV_ITEMS — renders table (~3592 tok)
+- `transforms.ts` — Exports transformTemplate (~334 tok)
+- `types.ts` — Exports OutputFormat, WatermarkType, GenerateSource, LayoutTemplate + 13 more (~770 tok)
+
+## frontend/src/extensions/output/components/
+
+- `LayoutTemplateCard.tsx` — LayoutTemplateCard (~1376 tok)
+- `LayoutTemplateEditor.tsx` — Section — renders table (~6065 tok)
+- `OutputConfigPanel.tsx` — FORMAT_OPTIONS (~2334 tok)
+
 ## frontend/src/extensions/plugin/
 
 - `PluginMarketplace.tsx` — NAV_ITEMS — renders table (~5074 tok)
@@ -1320,17 +1428,19 @@
 ## frontend/src/extensions/project/
 
 - `AiToolbox.tsx` — TOOLS (~4097 tok)
-- `api.ts` — Exports projectApi (~1294 tok)
+- `api.ts` — Exports projectApi (~1773 tok)
 - `OutlineEditor.tsx` — ExpandCtx (~3522 tok)
 - `OutlinePreview.tsx` — PreviewNode (~682 tok)
-- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~9317 tok)
-- `ProjectList.tsx` — REPORT_TYPE_COLORS (~4667 tok)
-- `ProjectWorkspace.tsx` — Project workspace with tab registry, permissions-based tabs. Computes visibleChapterIds from phase_duties for chapter filtering. (~3474 tok)
-- `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~1095 tok)
-- `types.ts` — ── Enums ── (~972 tok)
+- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11055 tok)
+- `ProjectList.tsx` — TYPE_PALETTE (~6357 tok)
+- `ProjectWorkspace.tsx` — OverviewTab (~2412 tok)
+- `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~864 tok)
+- `types.ts` — ── Enums ── (~1466 tok)
+- `utils.ts` — Flatten nested chapters into a flat array (depth-first). (~457 tok)
 
 ## frontend/src/extensions/project/components/
 
+- `AddMemberDialog.tsx` — AddMemberDialog — renders modal (~1473 tok)
 - `AiToolsTab.tsx` — AiToolsTab: accepts can prop for RBAC (~182 tok)
 - `ApprovalTab.tsx` — StepIndicator (~4775 tok)
 - `DashboardTab.tsx` — flattenChapters (~2670 tok)
@@ -1339,7 +1449,10 @@
 - `MembersTab.tsx` — MembersTab with canManage prop (~220 tok)
 - `MemberWorkspace.tsx` — Dual-mode: standalone dashboard or project-scoped chapter view with RBAC (~6320 tok)
 - `OutlineTab.tsx` — chaptersToTreeNodes (~931 tok)
-- `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1522 tok)
+- `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1748 tok)
+- `SettingsDialog.tsx` — SettingsDialog — renders modal (~2399 tok)
+- `StatusDistribution.tsx` — STATUS_ITEMS (~464 tok)
+- `WorkflowProgressCompact.tsx` — WorkflowProgressView — renders modal (~1009 tok)
 - `WorkspaceTabs.tsx` — ICON_MAP (~348 tok)
 
 ## frontend/src/extensions/project/components/GanttChart/
@@ -1350,22 +1463,32 @@
 
 ## frontend/src/extensions/project/components/KanbanBoard/
 
-- `KanbanBoard.tsx` — COLUMNS (~385 tok)
-- `KanbanCard.tsx` — KanbanCard (~423 tok)
-- `KanbanColumn.tsx` — KanbanColumn (~344 tok)
+- `KanbanBoard.tsx` — COLUMNS (~542 tok)
+- `KanbanCard.tsx` — KanbanCard (~680 tok)
+- `KanbanColumn.tsx` — KanbanColumn (~579 tok)
 - `types.ts` — Exports KanbanCardData (~62 tok)
 
 ## frontend/src/extensions/project/hooks/
 
 - `useProjectPermissions.ts` — Exports useProjectPermissions (~251 tok)
 
+## frontend/src/extensions/project/tabs/
+
+- `DocCollabView.tsx` — CollabEditor (~1525 tok)
+- `EditorTab.tsx` — EditorTab (~264 tok)
+- `HistoryTab.tsx` — HistoryTab — renders modal (~3433 tok)
+- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~4167 tok)
+- `ReviewTab.tsx` — STATUS_CONFIG (~3638 tok)
+- `SettingsTab.tsx` — SECTIONS (~5643 tok)
+- `TraceabilityTab.tsx` — SOURCE_TYPE_CONFIG (~3379 tok)
+
 ## frontend/src/extensions/shell/
 
-- `Sidebar.tsx` — navItems (~1579 tok)
+- `Sidebar.tsx` — allNavItems (~1654 tok)
 
 ## frontend/src/extensions/workflow/
 
-- `api.ts` — Exports workflowApi (~1889 tok)
+- `api.ts` — Exports workflowApi (~2219 tok)
 - `ChapterReviewCard.tsx` — ChapterReviewCard (~707 tok)
 - `DimensionReviewCard.tsx` — DIMENSION_LABELS (~330 tok)
 - `PhaseReviewPanel.tsx` — PhaseReviewPanel (~948 tok)
@@ -1376,12 +1499,14 @@
 - `TimelineView.tsx` — STATUS_COLORS (~990 tok)
 - `TraceabilityPanel.tsx` — TraceabilityPanel (~781 tok)
 - `transforms.ts` — Exports toCamelCase, toSnakeCase (~307 tok)
-- `types.ts` — Embedded sub-workflow graph definition (for sub_workflow nodes). (~869 tok)
-- `WorkflowEditor.tsx` — nodeTypes (~1803 tok)
+- `types.ts` — Required roles for this phase — who needs to be assigned before work can start. (~1245 tok)
+- `WorkflowEditor.tsx` — Imperative handle exposed via ref when hideToolbar is true. (~3456 tok)
 - `WorkflowMonitor.tsx` — WorkflowMonitor (~792 tok)
+- `WorkflowProgressView.tsx` — nodeTypes (~1790 tok)
 
 ## frontend/src/extensions/workflow/edges/
 
+- `AnimatedFlowEdge.tsx` — EDGE_STYLES (~290 tok)
 - `ConditionEdge.tsx` — ConditionEdge (~298 tok)
 
 ## frontend/src/extensions/workflow/hooks/
@@ -1395,19 +1520,21 @@
 - `AIGenerateNode.tsx` — AIGenerateNode (~268 tok)
 - `ConditionNode.tsx` — ConditionNode (~278 tok)
 - `MergeNode.tsx` — MergeNode (~194 tok)
-- `PhaseNode.tsx` — PhaseNode (~268 tok)
+- `PhaseNode.tsx` — ROLE_COLORS (~515 tok)
+- `ProgressPhaseNode.tsx` — STATUS_CONFIG (~1003 tok)
+- `ProgressReviewNode.tsx` — STATUS_CONFIG (~1061 tok)
 - `ReviewNode.tsx` — ReviewNode (~247 tok)
 - `SubWorkflowNode.tsx` — SubWorkflowNode (~316 tok)
 
 ## frontend/src/extensions/workflow/panels/
 
-- `NodePalette.tsx` — NODE_TYPES (~769 tok)
-- `PhaseConfigPanel.tsx` — PhaseConfigPanel (~486 tok)
-- `ReviewConfigPanel.tsx` — MODES (~436 tok)
+- `NodePalette.tsx` — NODE_TYPES (~967 tok)
+- `PhaseConfigPanel.tsx` — PRESET_ROLES (~2418 tok)
+- `ReviewConfigPanel.tsx` — MODES (~874 tok)
 
 ## frontend/src/styles/
 
-- `globals.css` — Styles: 62 rules, 182 vars (~7991 tok)
+- `globals.css` — Styles: 64 rules, 171 vars (~8220 tok)
 
 ## frontend/tests/e2e/
 
@@ -1430,6 +1557,7 @@
 
 - `api.test.ts` — Mock authFetch before importing api (~1332 tok)
 - `types.test.ts` — Declares labels (~251 tok)
+- `utils.test.ts` — Declares ChapterStatus (~1258 tok)
 
 ## frontend/tests/unit/extensions/workflow/
 
@@ -1437,7 +1565,7 @@
 
 ## frontend/tests/unit/project/
 
-- `tabRegistry.test.ts` — Helper to create identity from partial permissions (~1514 tok)
+- `tabRegistry.test.ts` — Helper to create identity from partial permissions (~1510 tok)
 
 ## scripts/
 

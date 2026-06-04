@@ -172,6 +172,7 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - RAGFLOW_BASE_URL=http://eai-flow-ragflow:9380
+      - TEMPORAL_URL=eai-flow-temporal:7233
     env_file:
       - ../.env
     extra_hosts:
