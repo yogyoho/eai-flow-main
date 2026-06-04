@@ -11,6 +11,7 @@ import {
   FolderCheck,
   ClipboardList,
   FileOutput,
+  LayoutDashboard,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,14 +33,15 @@ import {
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-const navItems: { href: string; label: string; icon: React.ElementType }[] = [
+const allNavItems: { href: string; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
+  { href: "/dashboard", label: "工作台", icon: LayoutDashboard },
   { href: "/writing", label: "智能写作", icon: Bot },
   { href: "/projects", label: "报告项目", icon: ClipboardList },
   { href: "/docmgr", label: "文档空间", icon: FolderCheck },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory },
   { href: "/knowledge", label: "知识库", icon: BookOpen },
   { href: "/output", label: "报告输出", icon: FileOutput },
-  { href: "/admin", label: "系统管理", icon: Settings2 },
+  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true },
 ];
 
 const bottomNavItems: { href: string; label: string; icon: React.ElementType }[] = [
@@ -83,6 +85,9 @@ export function ExtensionsSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
+
+  const isAdmin = user?.role_name === "Super Admin";
+  const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
 
   useEffect(() => {
     setMounted(true);
@@ -167,7 +172,6 @@ export function ExtensionsSidebar() {
                     {user?.role_name ?? ""}
                   </div>
                 </div>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer text-destructive focus:text-destructive"
                   onClick={handleLogout}

@@ -1,9 +1,11 @@
 "use client";
 
-import { Eye, GitCompare, History, RotateCcw, Save, Sparkles } from "lucide-react";
+import { Eye, GitCompare, History, Loader2, RotateCcw, Save, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import type { CollabVersion, VersionDiffResponse } from "../types";
 
@@ -14,7 +16,7 @@ interface VersionPanelProps {
   loading: boolean;
   diffLoading: boolean;
   diffResult: VersionDiffResponse | null;
-  onCreateVersion: (summary?: string, generateAiSummary?: boolean) => Promise<void>;
+  onCreateVersion: (summary?: string, generateAiSummary?: boolean, content?: string) => Promise<void>;
   onRestoreVersion: (version: number) => Promise<void>;
   onPreviewVersion: (version: number) => Promise<void>;
   onDiffVersions: (from: number, to: number) => Promise<void>;
@@ -35,6 +37,8 @@ export function VersionPanel({
   const [diffMode, setDiffMode] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
   const [aiSummaryEnabled, setAiSummaryEnabled] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<CollabVersion | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const onDiffVersionsRef = useRef(onDiffVersions);
   onDiffVersionsRef.current = onDiffVersions;
 
@@ -66,6 +70,19 @@ export function VersionPanel({
       void onDiffVersionsRef.current(selectedVersions[0]!, selectedVersions[1]!);
     }
   }, [diffMode, selectedVersions]);
+
+  const handleRestore = useCallback(async () => {
+    if (!restoreTarget) return;
+    setRestoring(true);
+    try {
+      await onRestoreVersion(restoreTarget.version);
+      setRestoreTarget(null);
+    } catch {
+      // toast already shown by useVersions
+    } finally {
+      setRestoring(false);
+    }
+  }, [restoreTarget, onRestoreVersion]);
 
   return (
     <div className="w-80 border-l border-border flex flex-col h-full bg-background">
@@ -126,8 +143,9 @@ export function VersionPanel({
           <p className="text-sm text-muted-foreground text-center py-8">暂无版本记录</p>
         ) : (
           <div className="divide-y divide-border">
-            {versions.map((v) => {
+            {versions.map((v, idx) => {
               const isSelected = selectedVersions.includes(v.version);
+              const isCurrent = idx === 0;
 
               return (
                 <div
@@ -155,6 +173,14 @@ export function VersionPanel({
                         />
                       )}
                       <span className="text-xs font-medium">v{v.version}</span>
+                      {isCurrent && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 border-0"
+                        >
+                          当前
+                        </Badge>
+                      )}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
                       {new Date(v.created_at).toLocaleString("zh-CN", {
@@ -190,7 +216,7 @@ export function VersionPanel({
                           className="h-6 text-[10px] px-2"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`确定恢复到版本 v${v.version}？`)) void onRestoreVersion(v.version);
+                            setRestoreTarget(v);
                           }}
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />
@@ -205,6 +231,32 @@ export function VersionPanel({
           </div>
         )}
       </div>
+
+      {/* Restore Confirmation Dialog */}
+      <Dialog open={!!restoreTarget} onOpenChange={(open) => !open && setRestoreTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认恢复版本</DialogTitle>
+            <DialogDescription>
+              将文档内容恢复到版本 v{restoreTarget?.version}，当前内容将被覆盖。恢复后会自动创建一个新版本记录。
+            </DialogDescription>
+          </DialogHeader>
+          {restoreTarget?.summary && (
+            <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+              {restoreTarget.summary}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoreTarget(null)} disabled={restoring}>
+              取消
+            </Button>
+            <Button onClick={handleRestore} disabled={restoring}>
+              {restoring && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              确认恢复
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -20,12 +20,37 @@ class WorkflowDefinition(Base):
     report_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     graph_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
     is_template: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    org_bindings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
+    visible_dept_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     def __repr__(self) -> str:
         return f"<WorkflowDefinition {self.name!r}>"
+
+
+class TemplateApproval(Base):
+    """Approval record for template publishing — workflow-style approval chain."""
+
+    __tablename__ = "template_approvals"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workflow_definitions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    requester_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class ContentSource(Base):

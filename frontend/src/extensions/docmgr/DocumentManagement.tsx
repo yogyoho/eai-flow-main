@@ -294,18 +294,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
             <AnimatePresence>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {docs.map((doc) => (
-                  doc.doc_type === "file_ref" ? (
-                    <FileRefCard key={doc.id} doc={doc}
-                      isMenuOpen={openMenuId === doc.id}
-                      onOpenMenu={handleOpenMenu}
-                      menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
-                      onToggleStar={() => toggleStar(doc.id, doc.is_starred ?? false)}
-                      onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文件？")) await deleteDoc(doc.id); }}
-                      onSelect={() => onSelectDoc(doc)}
-                      onShare={() => { setShareDoc(doc); setShowShareDialog(true); }}
-                      selected={selectedIds.has(doc.id)}
-                      onToggleSelect={() => handleToggleSelect(doc.id)} />
-                  ) : (
                     <DocCard key={doc.id} doc={doc}
                       isMenuOpen={openMenuId === doc.id}
                       onOpenMenu={handleOpenMenu}
@@ -316,7 +304,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                       onShare={() => { setShareDoc(doc); setShowShareDialog(true); }}
                       selected={selectedIds.has(doc.id)}
                       onToggleSelect={() => handleToggleSelect(doc.id)} />
-                  )
                 ))}
               </div>
             </AnimatePresence>
@@ -335,7 +322,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 <tbody className="divide-y divide-border">
                   {docs.map((doc) => {
                     const isFileRef = doc.doc_type === "file_ref";
-                    const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
+                    const fileSize = formatFileSize(doc.file_size);
                     const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
                     const handleClick = (e: React.MouseEvent) => {
                       if (e.ctrlKey || e.metaKey) { e.preventDefault(); handleToggleSelect(doc.id); }
@@ -486,18 +473,33 @@ function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggl
   onSelect: () => void; onToggleStar: () => void; onDelete: () => void; onShare?: () => void;
   selected?: boolean; onToggleSelect?: () => void;
 }) {
+  const isFileRef = doc.doc_type === "file_ref";
   const preview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim().slice(0, 120);
   const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
+  const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
+
+  // For file_ref without content, build a file-info preview line
+  const fileInfoLine = isFileRef
+    ? [getFileType(doc.file_mime, doc.title).toUpperCase(), fileSize].filter(Boolean).join(" · ")
+    : "";
+
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-primary/50"
+      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-primary/50 relative"
       onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
       <div className="flex-1 mb-4 relative overflow-hidden">
-        <div className="bg-muted/50 rounded-lg p-4 h-full border border-border relative overflow-hidden">
-          <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 dark:bg-purple-500/50 rounded-r-full" />
-          <p className="text-sm text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview || "（空文档）"}</p>
-        </div>
+        {preview ? (
+          <div className="bg-muted/50 rounded-lg p-4 h-full border border-border relative overflow-hidden">
+            <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 dark:bg-purple-500/50 rounded-r-full" />
+            <p className="text-sm text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview}</p>
+          </div>
+        ) : (
+          <div className="bg-muted/50 rounded-lg h-full border border-border relative overflow-hidden flex flex-col items-center justify-center gap-2">
+            <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
+            {fileInfoLine && <span className="text-xs text-muted-foreground">{fileInfoLine}</span>}
+          </div>
+        )}
       </div>
       <h3 className="font-bold text-foreground text-base line-clamp-1 mb-4 group-hover:text-primary transition-colors">
         {doc.title || "无标题"}

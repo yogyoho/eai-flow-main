@@ -56,7 +56,7 @@ export default function LoginPage() {
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("redirect")
           : null;
-      window.location.href = redirectUrl ?? "/workspace/chats/new";
+      window.location.href = redirectUrl ?? "/dashboard";
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Network error"

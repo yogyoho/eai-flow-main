@@ -8,6 +8,7 @@ import type {
   ReviewActionRequest,
   ReviewAssignmentItem,
   ReviewStatus,
+  TemplateApproval,
   UpdateWorkflowRequest,
   WorkflowDefinition,
   WorkflowDefinitionListResponse,
@@ -15,7 +16,7 @@ import type {
   WorkflowStatusResponse,
 } from "./types";
 
-const API_BASE = "/api/extensions/workflow";
+const API_BASE = "/workflow";
 
 export const workflowApi = {
   // ── Definitions ──
@@ -34,6 +35,7 @@ export const workflowApi = {
   listTemplates: async (reportType?: string): Promise<WorkflowDefinitionListResponse> => {
     const query = new URLSearchParams();
     query.set("is_template", "true");
+    query.set("template_status", "published");
     if (reportType) query.set("report_type", reportType);
     const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions?${query}`);
     return toCamelCase<WorkflowDefinitionListResponse>(data);
@@ -82,7 +84,7 @@ export const workflowApi = {
   unpublishTemplate: async (id: string): Promise<WorkflowDefinition> => {
     const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ is_template: false }),
+      body: JSON.stringify({ template_status: "draft" }),
     });
     return toCamelCase<WorkflowDefinition>(data);
   },
@@ -167,5 +169,33 @@ export const workflowApi = {
       { method: "POST" },
     );
     return toCamelCase<{ status: string }>(data);
+  },
+
+  // ── Template Approval ──
+
+  submitApproval: async (id: string): Promise<TemplateApproval> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}/submit-approval`, {
+      method: "POST",
+    });
+    return toCamelCase<TemplateApproval>(data);
+  },
+
+  reviewApproval: async (id: string, action: "approved" | "rejected", comment?: string): Promise<TemplateApproval> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/definitions/${id}/review-approval`, {
+      method: "POST",
+      body: JSON.stringify({ action, comment }),
+    });
+    return toCamelCase<TemplateApproval>(data);
+  },
+
+  getApprovals: async (id: string): Promise<TemplateApproval[]> => {
+    const data = await authFetch<Record<string, unknown>[]>(`${API_BASE}/definitions/${id}/approvals`);
+    return data.map((d) => toCamelCase<TemplateApproval>(d));
+  },
+
+  withdrawApproval: async (id: string): Promise<{ status: string }> => {
+    return authFetch<{ status: string }>(`${API_BASE}/definitions/${id}/withdraw-approval`, {
+      method: "POST",
+    });
   },
 };

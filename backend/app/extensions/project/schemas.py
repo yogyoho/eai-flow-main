@@ -17,9 +17,9 @@ VALID_REPORT_TYPES = [
     "other",
 ]
 
-VALID_PROJECT_STATUSES = ["active", "completed", "archived"]
+VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "active", "completed", "archived"]
 
-VALID_MEMBER_ROLES = ["owner", "member"]
+VALID_MEMBER_ROLES = ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
 VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
 
@@ -66,6 +66,11 @@ class MemberCreate(BaseModel):
     role: str = "member"
 
 
+class MemberUpdate(BaseModel):
+    role: str | None = None
+    phase_duties: dict | None = None
+
+
 # ── Project ──
 
 
@@ -74,11 +79,37 @@ class ProjectCreate(BaseModel):
     report_type: str = Field(..., min_length=1)
     template_id: UUID | None = None
     workflow_id: UUID | None = None
+    auto_start_workflow: bool = False
+    members: list["MemberWithDuties"] | None = None
+
+
+class MemberWithDuties(BaseModel):
+    """A member to add during project creation, with optional org unit and phase duties."""
+
+    user_id: UUID
+    role: str = "member"
+    source_org_unit_id: UUID | None = None
+    phase_duties: dict | None = None
+
+
+class ProjectCopyFrom(BaseModel):
+    """Request to create a new project by copying from an existing one."""
+    name: str = Field(..., min_length=1, max_length=255)
+    source_project_id: UUID
+    copy_members: bool = True
+    copy_outline: bool = True
+    copy_workflow: bool = True
+
+
+# Resolve forward references
+ProjectCreate.model_rebuild()
 
 
 class ProjectUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     status: str | None = None
+    workflow_id: UUID | None = None
+    current_phase_node: str | None = None
 
 
 class ProjectOut(BaseModel):
@@ -96,6 +127,9 @@ class ProjectOut(BaseModel):
     chapter_count: int = 0
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    workflow_id: UUID | None = None
+    temporal_workflow_id: str | None = None
+    current_phase_node: str | None = None
 
 
 class ProjectListItem(BaseModel):
@@ -108,8 +142,12 @@ class ProjectListItem(BaseModel):
     template_id: UUID | None = None
     template_name: str | None = None
     chapter_count: int = 0
+    completed_chapter_count: int = 0
+    progress_percentage: float = 0.0
     member_count: int = 0
     created_by: UUID | None = None
+    created_by_name: str | None = None
+    created_by_dept: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -192,3 +230,64 @@ class ProjectPermissionsOut(BaseModel):
     permissions: list[str] = Field(default_factory=list)
     phase_duties: dict | None = None
     is_admin: bool = False
+
+
+# ── Phase Board ──
+
+
+class PhaseBoardChapter(BaseModel):
+    """A chapter in the phase board view."""
+
+    id: UUID
+    title: str
+    status: str = "pending"
+    assigned_to: UUID | None = None
+    assigned_name: str | None = None
+    level: int = 1
+    sort_order: int = 0
+    word_count_target: int = 3000
+    word_count_current: int = 0
+
+
+class PhaseBoardMember(BaseModel):
+    """A project member with duties for this phase."""
+
+    user_id: UUID
+    username: str = ""
+    role: str
+    duty: str | None = None  # lead / writer / reviewer — from phase_duties
+
+
+class PhaseBoardResponse(BaseModel):
+    """Phase board data: chapters + members + review summary."""
+
+    phase_node: str
+    phase_label: str = ""
+    chapters: list[PhaseBoardChapter] = Field(default_factory=list)
+    members: list[PhaseBoardMember] = Field(default_factory=list)
+    total_chapters: int = 0
+    completed_chapters: int = 0
+
+
+class BatchAssignRequest(BaseModel):
+    """Batch assign chapters to users."""
+
+    assignments: list[dict] = Field(
+        ...,
+        description="List of {chapter_id: UUID, assigned_to: UUID | None}",
+    )
+
+
+# ── Phase Readiness ──
+
+
+class PhaseReadinessResponse(BaseModel):
+    """Phase readiness check result."""
+
+    ready: bool
+    phase_node: str
+    phase_label: str = ""
+    filled_roles: list[dict] = Field(default_factory=list)
+    missing_roles: list[dict] = Field(default_factory=list)
+    suggested_members: list[dict] = Field(default_factory=list)
+    error: str | None = None

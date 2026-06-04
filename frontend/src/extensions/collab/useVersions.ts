@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { docmgrApi } from "../api";
 import type { CollabVersion, VersionDiffResponse } from "../types";
@@ -18,7 +19,7 @@ export function useVersions(docId: string | null) {
       const list = await docmgrApi.listVersions(docId);
       setVersions(list);
     } catch {
-      // handle error
+      toast.error("加载版本列表失败");
     } finally {
       setLoading(false);
     }
@@ -29,14 +30,21 @@ export function useVersions(docId: string | null) {
   }, [load]);
 
   const createVersion = useCallback(
-    async (summary?: string, generateAiSummary?: boolean) => {
+    async (summary?: string, generateAiSummary?: boolean, content?: string) => {
       if (!docId) return;
-      const version = await docmgrApi.createVersion(docId, {
-        summary: summary ?? null,
-        generate_summary: generateAiSummary,
-      });
-      setVersions((prev) => [version, ...prev]);
-      return version;
+      try {
+        const version = await docmgrApi.createVersion(docId, {
+          summary: summary ?? null,
+          generate_summary: generateAiSummary,
+          content: content ?? null,
+        });
+        setVersions((prev) => [version, ...prev]);
+        toast.success("版本已保存");
+        return version;
+      } catch {
+        toast.error("创建版本失败");
+        throw new Error("create version failed");
+      }
     },
     [docId],
   );
@@ -44,9 +52,15 @@ export function useVersions(docId: string | null) {
   const restoreVersion = useCallback(
     async (version: number) => {
       if (!docId) return;
-      const result = await docmgrApi.restoreVersion(docId, version);
-      await load();
-      return result;
+      try {
+        const result = await docmgrApi.restoreVersion(docId, version);
+        await load();
+        toast.success("版本已恢复");
+        return result;
+      } catch {
+        toast.error("恢复版本失败");
+        throw new Error("restore version failed");
+      }
     },
     [docId, load],
   );
@@ -60,7 +74,7 @@ export function useVersions(docId: string | null) {
         const result = await docmgrApi.diffVersions(docId, fromOrVersion, to);
         setDiffResult(result);
       } catch {
-        // handle error
+        toast.error("加载差异对比失败");
       } finally {
         setDiffLoading(false);
       }

@@ -32,6 +32,7 @@ class AIDocumentService:
         shared: bool | None = None,
         doc_type: str | None = None,
         project_scope: str | None = None,
+        project_id: UUID | None = None,
         q: str | None = None,
         skip: int = 0,
         limit: int = 12,
@@ -40,6 +41,7 @@ class AIDocumentService:
 
         Shows user's own documents plus documents from projects the user is a member of.
         project_scope: "personal" = no project, "project" = has project, None = both.
+        project_id: filter to a specific project (takes precedence over project_scope).
         """
         # Base visibility: own docs OR docs from user's projects
         own_docs = AIDocument.user_id == user_id
@@ -72,6 +74,10 @@ class AIDocumentService:
         elif project_scope == "project":
             query = query.where(AIDocument.project_id.isnot(None))
             count_query = count_query.where(AIDocument.project_id.isnot(None))
+
+        if project_id is not None:
+            query = query.where(AIDocument.project_id == project_id)
+            count_query = count_query.where(AIDocument.project_id == project_id)
 
         if q is not None:
             search_filter = AIDocument.title.ilike(f"%{q}%")

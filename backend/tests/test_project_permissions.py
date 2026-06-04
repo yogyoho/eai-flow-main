@@ -1,4 +1,4 @@
-"""Tests for project RBAC permission matrix — simplified owner/member model."""
+"""Tests for project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model."""
 
 from __future__ import annotations
 
@@ -22,14 +22,14 @@ from app.extensions.project.permissions import (
 
 
 class TestPermissionMatrix:
-    """Verify the simplified permission matrix structure."""
+    """Verify the permission matrix structure."""
 
-    def test_role_order_has_two_roles(self):
-        assert ROLE_ORDER == ["owner", "member"]
+    def test_role_order_has_six_roles(self):
+        assert ROLE_ORDER == ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
-    def test_all_actions_have_two_bools(self):
+    def test_all_actions_have_six_bools(self):
         for action, perms in PERMISSION_MATRIX.items():
-            assert len(perms) == 2, f"Action '{action}' has {len(perms)} permissions, expected 2"
+            assert len(perms) == len(ROLE_ORDER), f"Action '{action}' has {len(perms)} permissions, expected {len(ROLE_ORDER)}"
             for i, p in enumerate(perms):
                 assert isinstance(p, bool), f"Action '{action}' index {i} is {type(p).__name__}, expected bool"
 
@@ -40,8 +40,8 @@ class TestPermissionMatrix:
     def test_unknown_action_returns_false(self):
         assert check_permission("owner", "nonexistent:action") is False
 
-    def test_has_seven_actions(self):
-        assert len(PERMISSION_MATRIX) == 7
+    def test_has_thirteen_actions(self):
+        assert len(PERMISSION_MATRIX) == 13
 
 
 # ── TestCheckPermission ──
@@ -72,7 +72,7 @@ class TestCheckPermission:
     def test_owner_can_view_approval(self):
         assert check_permission("owner", "approval:view") is True
 
-    # -- Member: limited permissions --
+    # -- Member: no direct permissions (only through phase_duties) --
     def test_member_cannot_edit_project(self):
         assert check_permission("member", "project:edit") is False
 
@@ -88,11 +88,38 @@ class TestCheckPermission:
     def test_member_cannot_submit_approval(self):
         assert check_permission("member", "approval:submit") is False
 
-    def test_member_can_review(self):
-        assert check_permission("member", "approval:review") is True
+    def test_member_cannot_review(self):
+        assert check_permission("member", "approval:review") is False
 
     def test_member_can_view_approval(self):
         assert check_permission("member", "approval:view") is True
+
+    # -- Reviewer: can review and view --
+    def test_reviewer_can_review(self):
+        assert check_permission("reviewer", "approval:review") is True
+
+    def test_reviewer_can_view_approval(self):
+        assert check_permission("reviewer", "approval:view") is True
+
+    def test_reviewer_cannot_edit_project(self):
+        assert check_permission("reviewer", "project:edit") is False
+
+    # -- Editor: can write chapters --
+    def test_editor_can_write_any(self):
+        assert check_permission("editor", "chapter:write_any") is True
+
+    def test_editor_can_edit_outline(self):
+        assert check_permission("editor", "outline:edit") is True
+
+    def test_editor_cannot_manage_members(self):
+        assert check_permission("editor", "member:add") is False
+
+    # -- Approver: can approve --
+    def test_approver_can_approve(self):
+        assert check_permission("approver", "approval:approve") is True
+
+    def test_approver_cannot_edit(self):
+        assert check_permission("approver", "project:edit") is False
 
     # -- Unknown role --
     def test_unknown_role_returns_false(self):
@@ -111,12 +138,27 @@ class TestGetPermissionsForRole:
         perms = get_permissions_for_role("owner")
         assert set(perms) == set(PERMISSION_MATRIX.keys())
 
-    def test_member_has_review_and_view_only(self):
+    def test_member_has_view_only(self):
         perms = set(get_permissions_for_role("member"))
-        assert "approval:review" in perms
         assert "approval:view" in perms
         assert "project:edit" not in perms
         assert "member:add" not in perms
+        assert "approval:review" not in perms
+
+    def test_reviewer_has_review_and_view(self):
+        perms = set(get_permissions_for_role("reviewer"))
+        assert "approval:review" in perms
+        assert "approval:view" in perms
+        assert "chapter:review" in perms
+        assert "project:edit" not in perms
+
+    def test_editor_has_write_permissions(self):
+        perms = set(get_permissions_for_role("editor"))
+        assert "chapter:write_any" in perms
+        assert "chapter:write_own" in perms
+        assert "outline:edit" in perms
+        assert "approval:view" in perms
+        assert "project:edit" not in perms
 
     def test_unknown_role_returns_empty(self):
         assert get_permissions_for_role("unknown") == []
@@ -331,7 +373,21 @@ class TestRequireResourcePermission:
         assert "not a member" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_member_can_review_approval(self):
+    async def test_reviewer_can_review_approval(self):
+        dep = require_resource_permission("approval:review")
+        mock_db = AsyncMock()
+        self._mock_non_admin_db(mock_db)
+        self._mock_project_member(mock_db, "reviewer")
+        mock_user = self._make_non_admin_user()
+        mock_request = self._make_request(str(uuid.uuid4()))
+
+        role = await dep(current_user=mock_user, request=mock_request, db=mock_db)
+        assert role == "reviewer"
+
+    @pytest.mark.asyncio
+    async def test_member_cannot_review_approval(self):
+        from fastapi import HTTPException
+
         dep = require_resource_permission("approval:review")
         mock_db = AsyncMock()
         self._mock_non_admin_db(mock_db)
@@ -339,8 +395,9 @@ class TestRequireResourcePermission:
         mock_user = self._make_non_admin_user()
         mock_request = self._make_request(str(uuid.uuid4()))
 
-        role = await dep(current_user=mock_user, request=mock_request, db=mock_db)
-        assert role == "member"
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(current_user=mock_user, request=mock_request, db=mock_db)
+        assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_member_cannot_add_member(self):

@@ -119,9 +119,18 @@ async def init_engine(
                 try:
                     cursor.execute("PRAGMA journal_mode=WAL;")
                 except Exception:
-                    cursor.execute("PRAGMA journal_mode=DELETE;")
-                cursor.execute("PRAGMA synchronous=NORMAL;")
-                cursor.execute("PRAGMA foreign_keys=ON;")
+                    try:
+                        cursor.execute("PRAGMA journal_mode=DELETE;")
+                    except Exception:
+                        logger.warning("SQLite journal_mode WAL/DELETE both failed (bind-mount filesystem?) — using default")
+                try:
+                    cursor.execute("PRAGMA synchronous=NORMAL;")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("PRAGMA foreign_keys=ON;")
+                except Exception:
+                    pass
             finally:
                 cursor.close()
     elif backend == "postgres":

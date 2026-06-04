@@ -35,11 +35,17 @@ async def temporal_lifespan(app: FastAPI):
         from .workflows import DynamicGraphWorkflow
         from .activities import ALL_ACTIVITIES
 
+        # Use unsandboxed runner — the workflow module transitively imports
+        # FastAPI (via __init__.py → routers.py) which is incompatible with
+        # Temporal's sandbox restrictions (sniffio._ThreadLocal).
+        from temporalio.worker import UnsandboxedWorkflowRunner
+
         worker = Worker(
             client,
             task_queue=TEMPORAL_TASK_QUEUE,
             workflows=[DynamicGraphWorkflow],
             activities=ALL_ACTIVITIES,
+            workflow_runner=UnsandboxedWorkflowRunner(),
         )
         worker_task = asyncio.create_task(worker.run())
 

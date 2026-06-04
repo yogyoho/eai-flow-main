@@ -15,7 +15,6 @@ from app.extensions.database import get_db
 from app.extensions.docmgr.collab_routers import router
 from app.extensions.schemas import CurrentUser
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
@@ -216,18 +215,11 @@ class TestVersionServiceDiff:
         """Lines in 'to' but not in 'from' appear as 'added' blocks."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        from_snap = b"line A\nline B"
-        to_snap = b"line A\nline B\nline C"
-
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": "v1", "created_at": "2026-01-01"},
-                {"summary": "v2", "created_at": "2026-01-02"},
+                {"summary": "v1", "created_at": "2026-01-01", "snapshot_text": "line A\nline B", "snapshot": None},
+                {"summary": "v2", "created_at": "2026-01-02", "snapshot_text": "line A\nline B\nline C", "snapshot": None},
             ]
-            mock_get_snap.side_effect = [from_snap, to_snap]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
@@ -244,18 +236,11 @@ class TestVersionServiceDiff:
         """Lines in 'from' but not in 'to' appear as 'removed' blocks."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        from_snap = b"line A\nline B\nline C"
-        to_snap = b"line A\nline B"
-
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": None, "created_at": None},
-                {"summary": None, "created_at": None},
+                {"summary": None, "created_at": None, "snapshot_text": "line A\nline B\nline C", "snapshot": None},
+                {"summary": None, "created_at": None, "snapshot_text": "line A\nline B", "snapshot": None},
             ]
-            mock_get_snap.side_effect = [from_snap, to_snap]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
@@ -277,16 +262,11 @@ class TestVersionServiceDiff:
         """Identical snapshots produce no diff blocks."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        snap = b"line A\nline B"
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": None, "created_at": None},
-                {"summary": None, "created_at": None},
+                {"summary": None, "created_at": None, "snapshot_text": "line A\nline B", "snapshot": None},
+                {"summary": None, "created_at": None, "snapshot_text": "line A\nline B", "snapshot": None},
             ]
-            mock_get_snap.side_effect = [snap, snap]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
@@ -297,15 +277,11 @@ class TestVersionServiceDiff:
         """Diff result includes summary metadata from both versions."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": "first draft", "created_at": "2026-01-01"},
-                {"summary": "revised", "created_at": "2026-01-02"},
+                {"summary": "first draft", "created_at": "2026-01-01", "snapshot_text": "a", "snapshot": None},
+                {"summary": "revised", "created_at": "2026-01-02", "snapshot_text": "a", "snapshot": None},
             ]
-            mock_get_snap.side_effect = [b"a", b"a"]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
@@ -317,37 +293,27 @@ class TestVersionServiceDiff:
         """Empty/None snapshots produce no diff blocks."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": None, "created_at": None},
-                {"summary": None, "created_at": None},
+                {"summary": None, "created_at": None, "snapshot_text": None, "snapshot": None},
+                {"summary": None, "created_at": None, "snapshot_text": None, "snapshot": None},
             ]
-            mock_get_snap.side_effect = [None, None]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
         assert result["diff_blocks"] == []
+        assert result["legacy_notice"] is not None
 
     @pytest.mark.asyncio
     async def test_diff_detects_both_added_and_removed(self, mock_db):
         """Diff correctly identifies simultaneous additions and removals."""
         from app.extensions.docmgr.collab_service import VersionService
 
-        from_snap = b"alpha\nbeta\ngamma"
-        to_snap = b"alpha\ndelta\nepsilon"
-
-        with (
-            patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver,
-            patch.object(VersionService, "get_snapshot", new_callable=AsyncMock) as mock_get_snap,
-        ):
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
             mock_get_ver.side_effect = [
-                {"summary": None, "created_at": None},
-                {"summary": None, "created_at": None},
+                {"summary": None, "created_at": None, "snapshot_text": "alpha\nbeta\ngamma", "snapshot": None},
+                {"summary": None, "created_at": None, "snapshot_text": "alpha\ndelta\nepsilon", "snapshot": None},
             ]
-            mock_get_snap.side_effect = [from_snap, to_snap]
 
             result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
 
@@ -355,6 +321,58 @@ class TestVersionServiceDiff:
         removed = {b["content"] for b in result["diff_blocks"] if b["type"] == "removed"}
         assert added == {"delta", "epsilon"}
         assert removed == {"beta", "gamma"}
+
+    @pytest.mark.asyncio
+    async def test_diff_prefers_snapshot_text_over_binary(self, mock_db):
+        """Diff uses snapshot_text when available instead of binary snapshot."""
+        from app.extensions.docmgr.collab_service import VersionService
+
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
+            mock_get_ver.side_effect = [
+                {"summary": None, "created_at": None, "snapshot_text": "hello\nworld", "snapshot": b"\x00\x01garbage"},
+                {"summary": None, "created_at": None, "snapshot_text": "hello\nchanged", "snapshot": b"\x00\x02garbage"},
+            ]
+
+            result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
+
+        assert result["diff_blocks"] == [
+            {"type": "removed", "content": "world"},
+            {"type": "added", "content": "changed"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_diff_returns_legacy_notice_without_text(self, mock_db):
+        """Legacy versions without snapshot_text get a notice instead of garbled diff."""
+        from app.extensions.docmgr.collab_service import VersionService
+
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
+            mock_get_ver.side_effect = [
+                {"summary": None, "created_at": None, "snapshot_text": None, "snapshot": b"\x00\x01garbage"},
+                {"summary": None, "created_at": None, "snapshot_text": "hello world", "snapshot": None},
+            ]
+
+            result = await VersionService.diff_versions(mock_db, uuid4(), 1, 2)
+
+        assert result["diff_blocks"] == []
+        assert result["legacy_notice"] is not None
+        assert "v1" in result["legacy_notice"]
+
+    @pytest.mark.asyncio
+    async def test_diff_both_legacy_returns_notice(self, mock_db):
+        """Both legacy versions produce notice mentioning both."""
+        from app.extensions.docmgr.collab_service import VersionService
+
+        with patch.object(VersionService, "get_version", new_callable=AsyncMock) as mock_get_ver:
+            mock_get_ver.side_effect = [
+                {"summary": None, "created_at": None, "snapshot_text": None, "snapshot": b"\x00\x01"},
+                {"summary": None, "created_at": None, "snapshot_text": None, "snapshot": b"\x00\x02"},
+            ]
+
+            result = await VersionService.diff_versions(mock_db, uuid4(), 104, 126)
+
+        assert result["legacy_notice"] is not None
+        assert "v104" in result["legacy_notice"]
+        assert "v126" in result["legacy_notice"]
 
 
 # ── 3. Router endpoint tests ────────────────────────────────────────────────
@@ -377,6 +395,7 @@ class TestCollabRouters:
             "to_created_at": None,
             "diff_blocks": [{"type": "added", "content": "new line"}],
             "ai_summary": None,
+            "legacy_notice": None,
         }
 
         with (

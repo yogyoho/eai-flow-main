@@ -9,6 +9,9 @@ class WorkflowDefinitionCreate(BaseModel):
     report_type: str | None = None
     graph_json: dict = Field(..., description="DAG nodes and edges from React Flow")
     is_template: bool = False
+    org_bindings: dict | None = None
+    description: str | None = None
+    visible_dept_ids: list[str] | None = None
 
 
 class WorkflowDefinitionUpdate(BaseModel):
@@ -16,6 +19,10 @@ class WorkflowDefinitionUpdate(BaseModel):
     report_type: str | None = None
     graph_json: dict | None = None
     is_template: bool | None = None
+    org_bindings: dict | None = None
+    description: str | None = None
+    template_status: str | None = None
+    visible_dept_ids: list[str] | None = None
 
 
 class WorkflowDefinitionOut(BaseModel):
@@ -26,6 +33,11 @@ class WorkflowDefinitionOut(BaseModel):
     report_type: str | None = None
     graph_json: dict
     is_template: bool = False
+    org_bindings: dict | None = None
+    description: str | None = None
+    template_status: str | None = None
+    visible_dept_ids: list[str] | None = None
+    version: int = 1
     created_by: UUID | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -38,6 +50,8 @@ class WorkflowDefinitionListItem(BaseModel):
     name: str
     report_type: str | None = None
     is_template: bool = False
+    template_status: str | None = None
+    description: str | None = None
     created_at: datetime | None = None
 
 
@@ -77,6 +91,26 @@ class ContentSourceListResponse(BaseModel):
 class SourceMissingResult(BaseModel):
     block_index: int
     preview: str = ""
+
+
+# ── Template Approval ──
+
+
+class TemplateApprovalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    template_id: UUID
+    requester_id: UUID
+    reviewer_id: UUID | None = None
+    status: str
+    comment: str | None = None
+    created_at: datetime | None = None
+    reviewed_at: datetime | None = None
+
+
+class TemplateApprovalAction(BaseModel):
+    action: str = Field(..., pattern=r"^(approved|rejected)$")
+    comment: str | None = None
 
 
 # ── Phase Review ──
@@ -144,6 +178,12 @@ class WorkflowNodeStatus(BaseModel):
     status: str = "pending"  # pending | running | completed | error
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    # Phase enrichment
+    chapter_total: int | None = None
+    chapter_completed: int | None = None
+    # Review/Approval enrichment
+    review_total: int | None = None
+    review_approved: int | None = None
 
 
 class WorkflowStatusResponse(BaseModel):
@@ -154,6 +194,8 @@ class WorkflowStatusResponse(BaseModel):
     current_phase_node: str | None = None
     status: str = "idle"  # idle | running | completed | failed
     nodes: list[WorkflowNodeStatus] = Field(default_factory=list)
+    workflow_name: str | None = None
+    graph_json: dict | None = None
 
 
 class WorkflowSignalRequest(BaseModel):

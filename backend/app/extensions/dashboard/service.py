@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.extensions.models import (
     Notification,
+    NotificationPreference,
     ProjectChapter,
     ProjectMember,
     ReportProject,
@@ -26,7 +27,9 @@ from .schemas import (
     MyTasksResponse,
     NotificationListResponse,
     NotificationOut,
+    NotificationPreferenceUpdate,
     TaskItem,
+    _DEFAULT_TYPE_SETTINGS,
 )
 
 logger = logging.getLogger(__name__)
@@ -353,7 +356,7 @@ async def get_my_stats(db: AsyncSession, user_id: UUID) -> MyStatsResponse:
         pending_writing = (await db.execute(writing_stmt)).scalar_one()
 
     # Completed this week
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    week_ago = datetime.utcnow() - timedelta(days=7)
     completed_reviews_stmt = select(func.count()).select_from(PhaseReview).where(
         PhaseReview.reviewer_id == user_id,
         PhaseReview.status.in_(["approved", "rejected"]),
@@ -522,3 +525,49 @@ async def mark_all_notifications_read(db: AsyncSession, user_id: UUID) -> int:
         count += 1
     await db.commit()
     return count
+
+
+# ── Notification Preferences ──
+
+
+async def get_notification_preferences(db: AsyncSession, user_id: UUID) -> NotificationPreference:
+    """Get notification preferences for a user. Auto-creates with defaults if missing."""
+    stmt = select(NotificationPreference).where(NotificationPreference.user_id == user_id)
+    result = await db.execute(stmt)
+    pref = result.scalar_one_or_none()
+
+    if pref is None:
+        # Auto-create with defaults
+        pref = NotificationPreference(
+            user_id=user_id,
+            type_settings=dict(_DEFAULT_TYPE_SETTINGS),
+        )
+        db.add(pref)
+        await db.commit()
+        await db.refresh(pref)
+
+    # Ensure type_settings has all default keys
+    merged = dict(_DEFAULT_TYPE_SETTINGS)
+    merged.update(pref.type_settings or {})
+    if pref.type_settings != merged:
+        pref.type_settings = merged
+        await db.commit()
+
+    return pref
+
+
+async def update_notification_preferences(
+    db: AsyncSession,
+    user_id: UUID,
+    data: NotificationPreferenceUpdate,
+) -> NotificationPreference:
+    """Update notification preferences for a user. Creates if missing."""
+    pref = await get_notification_preferences(db, user_id)
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(pref, field, value)
+
+    await db.commit()
+    await db.refresh(pref)
+    return pref

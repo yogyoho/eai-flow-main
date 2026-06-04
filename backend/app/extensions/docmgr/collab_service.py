@@ -1,5 +1,6 @@
 """Services for collaborative editing: comments and versions."""
 
+import difflib
 import json
 import logging
 from uuid import UUID, uuid4
@@ -152,9 +153,8 @@ class CommentService:
 class AIReviewService:
     @staticmethod
     async def ai_review_document(db: AsyncSession, doc_id: UUID, content: str, review_type: str) -> dict:
-        from deerflow.models import create_chat_model
-
         from app.extensions.settings.service import SystemConfigService
+        from deerflow.models import create_chat_model
 
         sys_config = await SystemConfigService.get_all(db)
         default_model = sys_config.get("default_model") or None
@@ -230,7 +230,12 @@ class VersionService:
 
     @staticmethod
     async def create_version(
-        db: AsyncSession, doc_id: UUID, user_id: UUID, snapshot: bytes, summary: str | None = None
+        db: AsyncSession,
+        doc_id: UUID,
+        user_id: UUID,
+        snapshot: bytes,
+        summary: str | None = None,
+        snapshot_text: str | None = None,
     ) -> dict:
         stmt = select(func.coalesce(func.max(CollabVersion.version), 0) + 1).where(CollabVersion.doc_id == doc_id)
         result = await db.execute(stmt)
@@ -240,6 +245,7 @@ class VersionService:
             doc_id=doc_id,
             version=next_version,
             snapshot=snapshot,
+            snapshot_text=snapshot_text,
             summary=summary,
             created_by=user_id,
         )
@@ -273,6 +279,7 @@ class VersionService:
             "doc_id": v.doc_id,
             "version": v.version,
             "snapshot": v.snapshot,
+            "snapshot_text": v.snapshot_text,
             "summary": v.summary,
             "created_by": v.created_by,
             "created_at": v.created_at,
@@ -287,23 +294,56 @@ class VersionService:
         if not from_meta or not to_meta:
             return None
 
-        from_snap = await VersionService.get_snapshot(db, doc_id, from_ver)
-        to_snap = await VersionService.get_snapshot(db, doc_id, to_ver)
+        # Require snapshot_text (markdown) for readable diffs.
+        # Binary Yjs snapshots cannot be decoded as text — they produce garbage.
+        from_text = from_meta.get("snapshot_text")
+        to_text = to_meta.get("snapshot_text")
 
-        from_lines = (from_snap or b"").decode("utf-8", errors="replace").splitlines()
-        to_lines = (to_snap or b"").decode("utf-8", errors="replace").splitlines()
+        # For legacy versions without snapshot_text, return a hint instead of garbled output
+        missing_text = []
+        if not from_text:
+            missing_text.append(f"v{from_ver}")
+        if not to_text:
+            missing_text.append(f"v{to_ver}")
 
-        from_set = set(from_lines)
-        to_set = set(to_lines)
+        if missing_text:
+            return {
+                "from_version": from_ver,
+                "to_version": to_ver,
+                "from_summary": from_meta.get("summary"),
+                "to_summary": to_meta.get("summary"),
+                "from_created_at": from_meta.get("created_at"),
+                "to_created_at": to_meta.get("created_at"),
+                "diff_blocks": [],
+                "ai_summary": None,
+                "legacy_notice": f"版本 {' 和 '.join(missing_text)} 是在文本对比功能上线前创建的，无法进行差异对比。请新建版本来使用对比功能。",
+            }
 
-        added = to_set - from_set
-        removed = from_set - to_set
+        from_lines = from_text.splitlines()
+        to_lines = to_text.splitlines()
 
+        # Use SequenceMatcher for order-preserving, context-aware diff
+        matcher = difflib.SequenceMatcher(None, from_lines, to_lines)
         diff_blocks = []
-        for line in sorted(added):
-            diff_blocks.append({"type": "added", "content": line})
-        for line in sorted(removed):
-            diff_blocks.append({"type": "removed", "content": line})
+        for op, i1, i2, j1, j2 in matcher.get_opcodes():
+            if op == "equal":
+                continue
+            elif op == "replace":
+                for line in from_lines[i1:i2]:
+                    diff_blocks.append({"type": "removed", "content": line})
+                for line in to_lines[j1:j2]:
+                    diff_blocks.append({"type": "added", "content": line})
+            elif op == "delete":
+                for line in from_lines[i1:i2]:
+                    diff_blocks.append({"type": "removed", "content": line})
+            elif op == "insert":
+                for line in to_lines[j1:j2]:
+                    diff_blocks.append({"type": "added", "content": line})
+
+        # Generate AI summary when there are actual changes
+        ai_summary = None
+        if diff_blocks:
+            ai_summary = await VersionService._generate_diff_summary(db, from_text, to_text)
 
         return {
             "from_version": from_ver,
@@ -313,7 +353,7 @@ class VersionService:
             "from_created_at": from_meta.get("created_at"),
             "to_created_at": to_meta.get("created_at"),
             "diff_blocks": diff_blocks,
-            "ai_summary": None,
+            "ai_summary": ai_summary,
         }
 
     @staticmethod
@@ -322,18 +362,31 @@ class VersionService:
         if prev_version < 1:
             return None
 
-        prev_snap = await VersionService.get_snapshot(db, doc_id, prev_version)
-        curr_snap = await VersionService.get_snapshot(db, doc_id, new_version)
-        if not prev_snap or not curr_snap:
+        # Prefer snapshot_text over binary snapshot
+        prev_meta = await VersionService.get_version(db, doc_id, prev_version)
+        curr_meta = await VersionService.get_version(db, doc_id, new_version)
+        if not prev_meta or not curr_meta:
             return None
 
-        prev_text = prev_snap.decode("utf-8", errors="replace")[:4000]
-        curr_text = curr_snap.decode("utf-8", errors="replace")[:4000]
+        prev_text = prev_meta.get("snapshot_text")
+        if not prev_text:
+            prev_snap = prev_meta.get("snapshot") or b""
+            prev_text = prev_snap.decode("utf-8", errors="replace") if prev_snap else ""
+
+        curr_text = curr_meta.get("snapshot_text")
+        if not curr_text:
+            curr_snap = curr_meta.get("snapshot") or b""
+            curr_text = curr_snap.decode("utf-8", errors="replace") if curr_snap else ""
+
+        if not prev_text or not curr_text:
+            return None
+
+        prev_text = prev_text[:4000]
+        curr_text = curr_text[:4000]
 
         try:
-            from deerflow.models import create_chat_model
-
             from app.extensions.settings.service import SystemConfigService
+            from deerflow.models import create_chat_model
 
             sys_config = await SystemConfigService.get_all(db)
             default_model = sys_config.get("default_model") or None
@@ -357,6 +410,39 @@ class VersionService:
             return summary[:500] if summary else None
         except Exception:
             logger.warning("AI version summary generation failed for doc %s v%s", doc_id, new_version)
+            return None
+
+    @staticmethod
+    async def _generate_diff_summary(db: AsyncSession, from_text: str, to_text: str) -> str | None:
+        """Generate AI summary for arbitrary two-version diff (text, not binary)."""
+        from_text = from_text[:4000]
+        to_text = to_text[:4000]
+        try:
+            from app.extensions.settings.service import SystemConfigService
+            from deerflow.models import create_chat_model
+
+            sys_config = await SystemConfigService.get_all(db)
+            default_model = sys_config.get("default_model") or None
+            model = create_chat_model(name=default_model, thinking_enabled=False)
+            response = await model.ainvoke(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。"
+                            "只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"【版本A】\n{from_text}\n\n【版本B】\n{to_text}",
+                    },
+                ]
+            )
+            summary = response.content if isinstance(response.content, str) else str(response.content)
+            return summary[:500] if summary else None
+        except Exception:
+            logger.warning("AI diff summary generation failed")
             return None
 
     @staticmethod

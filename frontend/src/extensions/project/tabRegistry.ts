@@ -3,11 +3,7 @@
 import {
   CheckCircle,
   FileText,
-  GitBranch,
-  History,
   LayoutDashboard,
-  Link,
-  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,15 +53,6 @@ export const TAB_REGISTRY: TabDefinition[] = [
     order: 1,
   },
   {
-    id: "workflow",
-    label: "流程看板",
-    icon: GitBranch,
-    componentKey: "workflow",
-    visibleWhen: (ctx) =>
-      ctx.hasAnyPermission(["project:edit", "outline:edit", "ai:start_writing", "member:add"]),
-    order: 2,
-  },
-  {
     id: "editor",
     label: "文档编辑",
     icon: FileText,
@@ -80,7 +67,7 @@ export const TAB_REGISTRY: TabDefinition[] = [
         "approval:approve",
         "source:view",
       ]),
-    order: 3,
+    order: 2,
   },
   {
     id: "review",
@@ -89,32 +76,7 @@ export const TAB_REGISTRY: TabDefinition[] = [
     componentKey: "review",
     visibleWhen: (ctx) =>
       ctx.hasAnyPermission(["approval:review", "approval:approve", "approval:submit"]),
-    order: 4,
-  },
-  {
-    id: "traceability",
-    label: "溯源",
-    icon: Link,
-    componentKey: "traceability",
-    visibleWhen: () => true,
-    order: 5,
-  },
-  {
-    id: "history",
-    label: "版本历史",
-    icon: History,
-    componentKey: "history",
-    visibleWhen: () => true,
-    order: 6,
-  },
-  {
-    id: "settings",
-    label: "项目设置",
-    icon: Settings,
-    componentKey: "settings",
-    visibleWhen: (ctx) =>
-      ctx.hasAnyPermission(["settings:edit", "project:edit", "project:delete", "member:add", "member:remove"]),
-    order: 99,
+    order: 3,
   },
 ];
 

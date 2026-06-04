@@ -44,6 +44,7 @@ class VersionResponse(BaseModel):
 class VersionCreateRequest(BaseModel):
     summary: str | None = Field(None, max_length=500)
     generate_summary: bool = Field(False, description="Use AI to generate a change summary")
+    content: str | None = Field(None, description="Current document content as markdown text")
 
 
 class VersionRestoreResponse(BaseModel):
@@ -60,6 +61,7 @@ class VersionDiffResponse(BaseModel):
     to_created_at: datetime | None = None
     diff_blocks: list[dict] = Field(default_factory=list, description="Block-level diff entries")
     ai_summary: str | None = Field(None, description="AI-generated summary of changes")
+    legacy_notice: str | None = Field(None, description="Shown when one or both versions lack text snapshots")
 
 
 # ─── AI Document-Level Review ─────────────────────────────────────────────

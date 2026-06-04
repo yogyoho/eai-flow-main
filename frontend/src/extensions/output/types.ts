@@ -1,10 +1,12 @@
 export type OutputFormat = "docx" | "pdf" | "preview";
 export type WatermarkType = "draft" | "review" | "final";
+export type GenerateSource = "project" | "markdown";
 
 export interface LayoutTemplate {
   id: string;
   name: string;
   reportType: string;
+  isBuiltin: boolean;
   pageSettings: PageSettings;
   coverTemplate: CoverTemplate | null;
   tocSettings: TocSettings | null;
@@ -86,7 +88,9 @@ export interface AppendixRules {
 }
 
 export interface GenerateOutputRequest {
-  projectId: string;
+  source: GenerateSource;
+  projectId?: string;
+  markdownFile?: File;
   format: OutputFormat;
   layoutTemplateId: string;
   watermark?: WatermarkType;

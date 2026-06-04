@@ -21,6 +21,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Frontend**: TypeScript — Next.js 16, React 19, Tailwind CSS 4
 - **Infrastructure**: Docker, nginx reverse proxy (unified entry point on port 2026)
 
+## Development Environment — IMPORTANT
+
+**The development environment runs entirely in Docker under the `eai-docker` project group.** This is NOT a local dev setup.
+
+```bash
+# All docker compose commands MUST use the eai-docker project name
+docker compose -p eai-docker ps              # List running containers
+docker compose -p eai-docker restart gateway  # Restart gateway after backend code changes
+docker compose -p eai-docker restart frontend # Restart frontend after code changes
+docker compose -p eai-docker restart collab   # Restart collab-server after changes
+docker compose -p eai-docker logs -f gateway  # View gateway logs
+docker compose -p eai-docker down             # Stop all services
+docker compose -p eai-docker up -d            # Start all services
+```
+
+### Container Names
+- `deer-flow-gateway` — FastAPI backend (port 8001)
+- `deer-flow-frontend` — Next.js frontend (port 4000)
+- `deer-flow-nginx` — Reverse proxy (port 2026, the unified entry point)
+- `deer-flow-collab` — Hocuspocus collab-server (port 8002)
+- `eai-docker-postgres-ext-1` — PostgreSQL for extensions module
+
+### Key Implications
+- **Code changes require container restart** — the backend/frontend run inside Docker, not locally. After modifying backend Python code, run `docker compose -p eai-docker restart gateway`.
+- **Database is PostgreSQL inside Docker** — cannot connect from host directly. Use `docker exec` to query: `docker exec <postgres-container> psql -U agentflow -d agentflow -c "SELECT ..."`
+- **Collab-server is a separate Node.js service** — at `backend/collab-server/`. After modifying its TypeScript source, rebuild and restart: `cd backend/collab-server && npx tsc && docker compose -p eai-docker restart collab`
+- **Frontend HMR may be unreliable in Docker** — if hot reload doesn't pick up changes, restart the frontend container.
+- **The `make dev` / `make stop` commands handle Docker orchestration** — use them instead of raw docker commands when possible.
+
 ## Commands
 
 ### Quick Start (from project root)

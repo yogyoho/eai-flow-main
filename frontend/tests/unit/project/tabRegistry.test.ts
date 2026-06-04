@@ -95,18 +95,18 @@ describe("tabRegistry", () => {
       expect(ids).not.toContain("settings");
     });
 
-    it("member with no permissions still sees overview, traceability, history", () => {
+    it("member with no permissions only sees overview", () => {
       const ctx = makeIdentity({ role: "member", permissions: [] });
       const tabs = getVisibleTabs(ctx);
       const ids = tabs.map((t) => t.id);
       expect(ids).toContain("overview");
-      expect(ids).toContain("traceability");
-      expect(ids).toContain("history");
-      // Should NOT see workflow, editor, review, settings
+      // Should NOT see workflow, editor, review, settings, traceability, history
       expect(ids).not.toContain("workflow");
       expect(ids).not.toContain("editor");
       expect(ids).not.toContain("review");
       expect(ids).not.toContain("settings");
+      expect(ids).not.toContain("traceability");
+      expect(ids).not.toContain("history");
     });
 
     it("phase lead gets workflow tab via member:add permission", () => {
@@ -129,10 +129,10 @@ describe("tabRegistry", () => {
       }
     });
 
-    it("always has at least 3 tabs (overview, traceability, history)", () => {
+    it("always has at least 1 tab (overview)", () => {
       const ctx = makeIdentity({ role: "member", permissions: [], phaseDuties: null });
       const tabs = getVisibleTabs(ctx);
-      expect(tabs.length).toBeGreaterThanOrEqual(3);
+      expect(tabs.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

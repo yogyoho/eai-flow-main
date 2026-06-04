@@ -472,10 +472,11 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     );
 
     const handleCreateVersion = useCallback(
-      async (summary?: string): Promise<void> => {
-        await createVersion(summary);
+      async (summary?: string, generateAiSummary?: boolean): Promise<void> => {
+        const content = editor.blocksToMarkdownLossy();
+        await createVersion(summary, generateAiSummary, content);
       },
-      [createVersion],
+      [createVersion, editor],
     );
 
     const handleRestoreVersion = useCallback(

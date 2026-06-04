@@ -38,8 +38,8 @@ class TestValidationConstants:
     def test_project_statuses_simplified(self):
         assert VALID_PROJECT_STATUSES == ["active", "completed", "archived"]
 
-    def test_member_roles_simplified(self):
-        assert VALID_MEMBER_ROLES == ["owner", "member"]
+    def test_member_roles_expanded(self):
+        assert VALID_MEMBER_ROLES == ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
     def test_workflow_statuses(self):
         assert VALID_WORKFLOW_STATUSES == ["pending", "in_progress", "approved", "rejected"]

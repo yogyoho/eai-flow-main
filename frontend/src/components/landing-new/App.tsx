@@ -111,7 +111,7 @@ export default function LandingNew() {
               mounted ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 hover:bg-primary/20 text-muted-foreground dark:text-muted-foreground hover:text-primary transition-all duration-200">
+                    <button className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm whitespace-nowrap">
                       <UserCircle className="w-6 h-6" strokeWidth={1.5} />
                     </button>
                   </DropdownMenuTrigger>

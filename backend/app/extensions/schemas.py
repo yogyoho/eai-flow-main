@@ -107,6 +107,8 @@ class UserResponse(UserBase):
     primary_dept_id: UUID | None = None
     role_id: UUID | None = None
     role_name: str | None = None
+    permissions: list[str] = []
+    is_admin: bool = False
     status: str
     last_login_at: datetime | None = None
     created_at: datetime

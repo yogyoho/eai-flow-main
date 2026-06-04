@@ -138,7 +138,7 @@ async def create_version(
         snapshot = doc.content.encode("utf-8")
 
     result = await VersionService.create_version(
-        db, doc_id, current_user.id, snapshot, summary=data.summary
+        db, doc_id, current_user.id, snapshot, summary=data.summary, snapshot_text=data.content
     )
 
     if data.generate_summary and not data.summary:
@@ -200,9 +200,11 @@ async def restore_version(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    snapshot = await VersionService.get_snapshot(db, doc_id, version)
-    if not snapshot:
+    version_meta = await VersionService.get_version(db, doc_id, version)
+    if not version_meta:
         raise HTTPException(status_code=404, detail="Version not found")
+    snapshot = version_meta["snapshot"]
+    snapshot_text = version_meta.get("snapshot_text")
 
     collab_doc = await db.get(CollabDocument, doc_id)
     if collab_doc:
@@ -218,7 +220,9 @@ async def restore_version(
         await db.commit()
 
     await VersionService.create_version(
-        db, doc_id, current_user.id, snapshot, summary=f"Restored to version {version}"
+        db, doc_id, current_user.id, snapshot,
+        summary=f"Restored to version {version}",
+        snapshot_text=snapshot_text,
     )
 
     return VersionRestoreResponse(version=version, message=f"Restored to version {version}")

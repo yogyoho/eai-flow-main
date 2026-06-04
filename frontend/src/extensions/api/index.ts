@@ -182,10 +182,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 // ===== User API =====
 
 export const userApi = {
-  list: (params?: { skip?: number; limit?: number; dept_id?: string; role_id?: string; status?: string }) => {
+  list: (params?: { skip?: number; limit?: number; keyword?: string; dept_id?: string; role_id?: string; status?: string }) => {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.keyword) query.set("keyword", params.keyword);
     if (params?.dept_id) query.set("dept_id", params.dept_id);
     if (params?.role_id) query.set("role_id", params.role_id);
     if (params?.status) query.set("status", params.status);
@@ -377,6 +378,7 @@ export const docmgrApi = {
     q?: string;
     doc_type?: string;
     project_scope?: string;
+    project_id?: string;
     skip?: number;
     limit?: number;
   }) => {
@@ -387,6 +389,7 @@ export const docmgrApi = {
     if (params?.q) query.set("q", params.q);
     if (params?.doc_type) query.set("doc_type", params.doc_type);
     if (params?.project_scope) query.set("project_scope", params.project_scope);
+    if (params?.project_id) query.set("project_id", params.project_id);
     if (params?.skip !== undefined) query.set("skip", String(params.skip));
     if (params?.limit !== undefined) query.set("limit", String(params.limit));
     return request<AIDocumentListResponse>(`/docmgr/documents?${query}`);

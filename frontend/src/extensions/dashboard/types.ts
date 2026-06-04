@@ -60,3 +60,29 @@ export interface CalendarEvent {
 export interface MyCalendarResponse {
   events: CalendarEvent[];
 }
+
+// ── Notification Preferences ──
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  channel_in_app: boolean;
+  channel_email: boolean;
+  type_settings: Record<string, boolean>;
+  digest_mode: "instant" | "daily" | "off";
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  deadline_remind_days: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NotificationPreferenceUpdate {
+  channel_in_app?: boolean;
+  channel_email?: boolean;
+  type_settings?: Record<string, boolean>;
+  digest_mode?: "instant" | "daily" | "off";
+  quiet_hours_start?: string | null;
+  quiet_hours_end?: string | null;
+  deadline_remind_days?: number;
+}

@@ -24,19 +24,49 @@ ACCESS_TOKEN_COOKIE = "access_token"
 
 # Role definitions for on-demand creation when seed_db hasn't run yet.
 _ROLE_DEFAULTS = {
-    "user": {"name": "普通用户", "permissions": ["kb:read", "kb:create", "kb:upload"], "level": 1},
+    "user": {
+        "name": "普通用户",
+        "permissions": [
+            "model:read", "model:create", "model:update", "model:delete",
+            "kb:read", "kb:create", "kb:update", "kb:delete",
+            "doc:read", "doc:upload", "doc:delete",
+            "skill:read", "skill:install", "skill:uninstall",
+            "system:access",
+        ],
+        "level": 1,
+    },
     "superadmin": {"name": "Super Admin", "permissions": ["*"], "is_system": True, "level": 100},
 }
 
 
 async def _ensure_role(db: AsyncSession, code: str) -> Role | None:
-    """Look up a role by code, creating it on-the-fly if missing."""
+    """Look up a role by code, creating it on-the-fly if missing.
+
+    Also detects when a non-system role (e.g. "user") has been given
+    overly broad permissions such as ``system:*`` and resets them to
+    the coded defaults.  This prevents privilege escalation if the DB
+    was manually modified during development.
+    """
     result = await db.execute(select(Role).where(Role.code == code))
     role = result.scalar_one_or_none()
-    if role is not None:
-        return role
 
     defaults = _ROLE_DEFAULTS.get(code)
+
+    if role is not None:
+        # Guard: if a non-system role has system-level wildcard, reset it.
+        if defaults and not role.is_system:
+            expected = set(defaults["permissions"])
+            actual = set(role.permissions or [])
+            if actual != expected and (actual - expected):
+                # Has extra permissions beyond the coded default → reset
+                logger.warning(
+                    "Role '%s' (code=%s) has drifted from defaults: %s → resetting to %s",
+                    role.name, code, list(actual), list(expected),
+                )
+                role.permissions = defaults["permissions"]
+                await db.commit()
+        return role
+
     if defaults is None:
         return None
 
@@ -61,6 +91,10 @@ async def _bridge_user(gw_user, db: AsyncSession) -> User:
     ext_user = result.scalar_one_or_none()
 
     if ext_user is not None:
+        # Always validate the user's role to detect permission drift.
+        role_code = "superadmin" if gw_user.system_role == "admin" else "user"
+        await _ensure_role(db, role_code)
+
         if ext_user.role_id is None:
             role_code = "superadmin" if gw_user.system_role == "admin" else "user"
             role = await _ensure_role(db, role_code)
@@ -226,3 +260,38 @@ def require_role(*roles: str):
         )
 
     return check_role
+
+
+def require_super_admin():
+    """Dependency that only allows system admin users (is_system or wildcard permissions).
+
+    Used for operations that should be locked to super admins only,
+    e.g. editing/deleting workflow definitions after creation.
+    """
+
+    async def check_super_admin(
+        current_user: CurrentUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> CurrentUser:
+        if current_user.role_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Super admin access required.",
+            )
+
+        role = await db.get(Role, current_user.role_id)
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Role not found.",
+            )
+
+        if role.is_system or "*" in (role.permissions or []):
+            return current_user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin access required. Only system administrators can perform this action.",
+        )
+
+    return check_super_admin

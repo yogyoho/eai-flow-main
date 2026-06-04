@@ -4,7 +4,10 @@ import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
   ApprovalStepConfig,
   ApprovalStatusResponse,
+  BatchAssignRequest,
   CreateProjectRequest,
+  PhaseBoardResponse,
+  PhaseReadinessResponse,
   ProjectListItem,
   ProjectPermissions,
   ReportProject,
@@ -84,6 +87,17 @@ export const projectApi = {
     await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
   },
 
+  updateMember: async (
+    projectId: string,
+    userId: string,
+    data: { role?: string; phase_duties?: Record<string, unknown> },
+  ): Promise<{ success: boolean }> => {
+    return authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
   // ── Approval workflow ──
 
   submitApproval: async (
@@ -130,5 +144,43 @@ export const projectApi = {
       `${API_BASE}/projects/${projectId}/my-permissions`,
     );
     return toCamelCase<ProjectPermissions>(data);
+  },
+
+  // ── Chapters ──
+
+  updateChapterStatus: async (projectId: string, chapterId: string, status: string): Promise<void> => {
+    await authFetch(`${API_BASE}/projects/${projectId}/chapters/${chapterId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // ── Phase Board ──
+
+  getPhaseBoard: async (projectId: string, phaseNode: string): Promise<PhaseBoardResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/phases/${phaseNode}/board`,
+    );
+    return toCamelCase<PhaseBoardResponse>(data);
+  },
+
+  batchAssign: async (
+    projectId: string,
+    phaseNode: string,
+    assignments: BatchAssignRequest["assignments"],
+  ): Promise<{ updated: number; total: number }> => {
+    return authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseNode}/batch-assign`, {
+      method: "POST",
+      body: JSON.stringify({ assignments }),
+    });
+  },
+
+  // ── Phase Readiness ──
+
+  getPhaseReadiness: async (projectId: string, phaseNode: string): Promise<PhaseReadinessResponse> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${projectId}/phases/${phaseNode}/readiness`,
+    );
+    return toCamelCase<PhaseReadinessResponse>(data);
   },
 };

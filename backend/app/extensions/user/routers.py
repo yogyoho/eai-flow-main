@@ -32,14 +32,15 @@ router = APIRouter(prefix="/api/extensions/users", tags=["Users"])
 async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    keyword: str | None = Query(None, description="Search keyword for username, email, full_name"),
     dept_id: UUID | None = None,
     role_id: UUID | None = None,
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("user:read")),
 ):
-    """List all users with pagination and filters."""
-    is_admin = current_user.role_name in ["超级管理员", "管理员", "admin"] or await _is_admin_role(db, current_user)
+    """List all users with pagination, keyword search and filters."""
+    is_admin = await _is_admin_role(db, current_user)
 
     if not is_admin:
         if current_user.dept_id:
@@ -52,7 +53,7 @@ async def list_users(
         else:
             dept_id = None
 
-    users, total = await UserService.list_users(db, skip=skip, limit=limit, dept_id=dept_id, role_id=role_id, status=status)
+    users, total = await UserService.list_users(db, skip=skip, limit=limit, keyword=keyword, dept_id=dept_id, role_id=role_id, status=status)
     return UserListResponse(
         users=[await UserService.to_response(db, u) for u in users],
         total=total,
@@ -76,7 +77,7 @@ async def _is_admin_role(db: AsyncSession, current_user: CurrentUser) -> bool:
         return False
 
     permissions = role.permissions or []
-    return "user:read" in permissions or any(p.endswith(":read") for p in permissions) or "*" in permissions
+    return "*" in permissions or role.is_system
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -263,7 +264,7 @@ async def search_users(
     role_id: UUID | None = None,
     status_filter: str | None = Query(None, alias="status", description="Filter by status"),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("user:read")),
 ):
     """Search users by keyword."""
     users, total = await UserService.search_users(

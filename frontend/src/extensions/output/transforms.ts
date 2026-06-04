@@ -5,6 +5,7 @@ export function transformTemplate(data: Record<string, unknown>): LayoutTemplate
     id: data.id as string,
     name: data.name as string,
     reportType: data.report_type as string,
+    isBuiltin: (data.is_builtin as boolean) ?? false,
     pageSettings: data.page_settings as LayoutTemplate["pageSettings"],
     coverTemplate: (data.cover_template as LayoutTemplate["coverTemplate"]) ?? null,
     tocSettings: (data.toc_settings as LayoutTemplate["tocSettings"]) ?? null,

@@ -1,4 +1,4 @@
-"""Project RBAC permission matrix — simplified owner/member model."""
+"""Project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model."""
 
 from __future__ import annotations
 
@@ -12,16 +12,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-ROLE_ORDER = ["owner", "member"]
+# Order: most privileged → least privileged
+ROLE_ORDER = ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
+# Permission matrix — each column maps to ROLE_ORDER index.
+#                      owner  manager  editor  reviewer  approver  member
 PERMISSION_MATRIX: dict[str, list[bool]] = {
-    "project:edit":    [True,  False],
-    "project:delete":  [True,  False],
-    "member:add":      [True,  False],
-    "member:remove":   [True,  False],
-    "approval:submit": [True,  False],
-    "approval:review": [True,  True],
-    "approval:view":   [True,  True],
+    "project:edit":    [True,  True,    False,  False,    False,    False],
+    "project:delete":  [True,  False,   False,  False,    False,    False],
+    "member:add":      [True,  True,    False,  False,    False,    False],
+    "member:remove":   [True,  True,    False,  False,    False,    False],
+    "approval:submit": [True,  True,    False,  False,    False,    False],
+    "approval:review": [True,  True,    False,  True,     False,    False],
+    "approval:approve":[True,  True,    False,  False,    True,     False],
+    "approval:view":   [True,  True,    True,   True,     True,     True],
+    "outline:edit":    [True,  True,    True,   False,    False,    False],
+    "chapter:write_any":[True, True,    True,   False,    False,    False],
+    "chapter:write_own":[True, True,    True,   False,    False,    False],
+    "chapter:review":  [True,  True,    False,  True,     False,    False],
+    "settings:edit":   [True,  False,   False,  False,    False,    False],
 }
 
 

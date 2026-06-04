@@ -12,6 +12,7 @@ export interface DocumentFilter {
   shared?: boolean;
   doc_type?: "document" | "file_ref";
   project_scope?: "personal" | "project";
+  project_id?: string;
   q?: string;
 }
 
@@ -39,6 +40,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
         shared: filterRef.current.shared,
         doc_type: filterRef.current.doc_type,
         project_scope: filterRef.current.project_scope,
+        project_id: filterRef.current.project_id,
         q: filterRef.current.q,
         skip: (pageRef.current - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,

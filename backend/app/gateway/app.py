@@ -47,6 +47,7 @@ from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.workflow import router as workflow_router
 from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.extensions.dashboard.routers import router as dashboard_router
+from app.extensions.output.routers import router as output_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -482,6 +483,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Dashboard (task console, stats, calendar, notifications)
     app.include_router(dashboard_router)
+
+    # Layout template management for report output
+    app.include_router(output_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
