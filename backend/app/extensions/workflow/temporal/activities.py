@@ -131,7 +131,7 @@ async def notify_phase_start(phase_id: str, project_id: str) -> dict:
                     title=f"Phase {phase_id} started",
                     body=f"Workflow phase {phase_id} has started for this project.",
                     project_id=uuid.UUID(project_id),
-                    link=f"/project/{project_id}",
+                    link=f"/projects/{project_id}",
                 )
             )
             count += 1
@@ -166,7 +166,7 @@ async def notify_review_pending(node_id: str, project_id: str) -> dict:
                     title=f"Review pending for phase {node_id}",
                     body=f"A review at phase {node_id} is awaiting your action.",
                     project_id=uuid.UUID(project_id),
-                    link=f"/project/{project_id}/review/{node_id}",
+                    link=f"/projects/{project_id}?tab=review",
                 )
             )
             count += 1
@@ -204,7 +204,7 @@ async def notify_workflow_complete(project_id: str) -> dict:
                     title="Workflow completed",
                     body="The workflow for this project has been completed successfully.",
                     project_id=uuid.UUID(project_id),
-                    link=f"/project/{project_id}",
+                    link=f"/projects/{project_id}",
                 )
             )
             count += 1
