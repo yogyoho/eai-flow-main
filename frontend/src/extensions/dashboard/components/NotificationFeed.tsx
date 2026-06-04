@@ -227,7 +227,7 @@ export function NotificationFeed() {
 
               {/* Unread dot indicator */}
               {!n.is_read && (
-                <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-primary" />
+                <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-red-500" />
               )}
             </div>
           );
