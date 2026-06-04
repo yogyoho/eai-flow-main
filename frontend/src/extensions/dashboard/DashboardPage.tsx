@@ -13,6 +13,7 @@ import { MiniCalendar } from "./components/MiniCalendar";
 import { DashboardCard } from "./components/DashboardCard";
 import { useMyTasks } from "./hooks/useMyTasks";
 import { useMyProjects } from "./hooks/useMyProjects";
+import { useAuth } from "@/extensions/hooks/useAuth";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -30,11 +31,14 @@ function formatDate(): string {
 function DashboardHeader() {
   const { data: tasksData } = useMyTasks();
   const { data: projectsData } = useMyProjects();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const displayName = user?.full_name || user?.username || "";
 
   const taskSummary = useMemo(() => {
     if (!tasksData || tasksData.total_count === 0) return "没有待办任务";
@@ -51,7 +55,7 @@ function DashboardHeader() {
       <div className="flex items-start justify-between max-w-7xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {mounted ? getGreeting() : "你好"}，Admin
+            {mounted ? getGreeting() : "你好"}{displayName ? `，${displayName}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {taskSummary}
@@ -68,11 +72,11 @@ function DashboardHeader() {
             <span className="hidden sm:inline">新建项目</span>
           </Link>
           <Link
-            href="/"
+            href="/knowledge-factory"
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-[#4F6AF6] text-sm font-medium border border-indigo-200 hover:bg-indigo-50 transition-colors"
           >
             <Pen className="h-4 w-4" />
-            <span className="hidden sm:inline">AI 写作</span>
+            <span className="hidden sm:inline">知识加工</span>
           </Link>
         </div>
       </div>
