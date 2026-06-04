@@ -14,7 +14,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -71,7 +70,7 @@ const STATUS_LABELS: Record<ChapterStatus, string> = {
   completed: "已完成",
 };
 
-// ── Stat Card ──
+// ── Stat Card (matches ProjectCard style) ──
 
 function StatCard({
   icon: Icon,
@@ -85,18 +84,24 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <Card className="border-border/60 shadow-none hover:shadow-sm transition-shadow">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8">
-          <Icon className="h-[18px] w-[18px] text-primary" />
+    <div className="flex cursor-default flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
+      <div className="flex-1 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-bold text-primary">
+            <Icon className="h-[18px] w-[18px]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[22px] font-semibold text-foreground leading-tight">{value}</p>
+            <p className="text-[12px] text-muted-foreground">{label}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[22px] font-semibold text-foreground leading-tight">{value}</p>
-          <p className="text-[12px] text-muted-foreground">{label}</p>
-          {sub && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{sub}</p>}
+      </div>
+      {sub && (
+        <div className="border-t border-border bg-muted/50 px-5 py-2">
+          <p className="text-[11px] text-muted-foreground">{sub}</p>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
