@@ -269,7 +269,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
           {/* Chapter Progress — 3 cols */}
           <div className="lg:col-span-3">
             <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-center justify-between p-5 pb-0">
+              <div className="flex items-center justify-between px-5 pt-4 pb-0">
                 <h3 className="text-sm font-medium text-foreground">章节进度</h3>
                 {kanbanCards.length > 0 && (
                   <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
@@ -294,11 +294,11 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
               </div>
 
               {kanbanView ? (
-                <div className="p-5 pt-3 overflow-x-auto">
+                <div className="px-5 pb-4 pt-2 overflow-x-auto">
                   <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} />
                 </div>
               ) : (
-                <div className="p-5 pt-3">
+                <div className="px-5 pb-4 pt-2">
                   {project.chapters?.length > 0 ? (
                     <div className="divide-y divide-border/40">
                       {project.chapters.map((ch) => (
@@ -320,7 +320,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
           {/* Right Sidebar — Members — 2 cols */}
           <div className="lg:col-span-2">
             <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-center justify-between p-5 pb-0">
+              <div className="flex items-center justify-between px-5 pt-4 pb-0">
                 <h3 className="text-sm font-medium text-foreground">项目成员</h3>
                 {canManageMembers && (
                   <Button
@@ -334,7 +334,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                   </Button>
                 )}
               </div>
-              <div className="p-5 pt-3 divide-y divide-border/40">
+              <div className="px-5 pb-4 pt-2 divide-y divide-border/40">
                 {project.members?.length > 0 ? (
                   project.members.map((m) => (
                     <div key={m.id} className="flex items-center gap-2.5 px-3 py-2.5">
