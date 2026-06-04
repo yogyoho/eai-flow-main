@@ -47,7 +47,7 @@ function DashboardHeader() {
   const projectCount = projectsData?.total_count ?? 0;
 
   return (
-    <div className="relative -mx-4 -mt-6 px-6 pt-6 pb-6 bg-[#EEF2FF]">
+    <div className="relative -mx-4 -mt-6 px-6 pt-6 pb-6">
       <div className="flex items-start justify-between max-w-7xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -76,7 +76,7 @@ function DashboardHeader() {
           </Link>
         </div>
       </div>
-      <div className="absolute bottom-0 left-6 right-6 max-w-7xl mx-auto h-px bg-gradient-to-r from-indigo-300/60 via-indigo-200/40 to-transparent" />
+      <div className="absolute bottom-0 left-6 right-6 max-w-7xl mx-auto h-[2px] bg-gradient-to-r from-indigo-400/70 via-indigo-300/50 to-transparent" />
     </div>
   );
 }
