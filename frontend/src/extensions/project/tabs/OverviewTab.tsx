@@ -268,57 +268,59 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Chapter Progress — 3 cols */}
           <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-foreground">章节进度</h3>
-              {kanbanCards.length > 0 && (
-                <div className="flex items-center gap-1 rounded-md border border-border/60 p-0.5">
-                  <Button
-                    variant={kanbanView ? "ghost" : "secondary"}
-                    size="icon-sm"
-                    onClick={() => setKanbanView(false)}
-                    title="列表视图"
-                  >
-                    <List className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant={kanbanView ? "secondary" : "ghost"}
-                    size="icon-sm"
-                    onClick={() => setKanbanView(true)}
-                    title="看板视图"
-                  >
-                    <LayoutGrid className="size-3.5" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {kanbanView ? (
-              <div className="rounded-lg border border-border/60 bg-card p-4 overflow-x-auto">
-                <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} />
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border/60 bg-card">
-                {project.chapters?.length > 0 ? (
-                  <div className="divide-y divide-border/40">
-                    {project.chapters.map((ch) => (
-                      <ChapterNode key={ch.id} chapter={ch} depth={0} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">暂无章节</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">从模板创建项目或手动添加章节</p>
+            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between p-5 pb-0">
+                <h3 className="text-sm font-medium text-foreground">章节进度</h3>
+                {kanbanCards.length > 0 && (
+                  <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+                    <Button
+                      variant={kanbanView ? "ghost" : "secondary"}
+                      size="icon-sm"
+                      onClick={() => setKanbanView(false)}
+                      title="列表视图"
+                    >
+                      <List className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant={kanbanView ? "secondary" : "ghost"}
+                      size="icon-sm"
+                      onClick={() => setKanbanView(true)}
+                      title="看板视图"
+                    >
+                      <LayoutGrid className="size-3.5" />
+                    </Button>
                   </div>
                 )}
               </div>
-            )}
+
+              {kanbanView ? (
+                <div className="p-5 pt-3 overflow-x-auto">
+                  <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} />
+                </div>
+              ) : (
+                <div className="p-5 pt-3">
+                  {project.chapters?.length > 0 ? (
+                    <div className="divide-y divide-border/40">
+                      {project.chapters.map((ch) => (
+                        <ChapterNode key={ch.id} chapter={ch} depth={0} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-sm text-muted-foreground">暂无章节</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">从模板创建项目或手动添加章节</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Sidebar — Members — 2 cols */}
-          <div className="lg:col-span-2 space-y-5">
-            <div>
-              <div className="flex items-center justify-between mb-3">
+          <div className="lg:col-span-2">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between p-5 pb-0">
                 <h3 className="text-sm font-medium text-foreground">项目成员</h3>
                 {canManageMembers && (
                   <Button
@@ -332,7 +334,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                   </Button>
                 )}
               </div>
-              <div className="rounded-lg border border-border/60 bg-card divide-y divide-border/40">
+              <div className="p-5 pt-3 divide-y divide-border/40">
                 {project.members?.length > 0 ? (
                   project.members.map((m) => (
                     <div key={m.id} className="flex items-center gap-2.5 px-3 py-2.5">
