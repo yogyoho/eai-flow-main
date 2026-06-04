@@ -1,14 +1,14 @@
 "use client";
 
 import { Check, ChevronRight, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
-import { useWorkflowStatus } from "@/extensions/workflow/hooks/useWorkflowStatus";
-import type { WorkflowGraph } from "@/extensions/workflow/types";
+import { workflowApi } from "@/extensions/workflow/api";
+import type { WorkflowGraph, WorkflowStatusResponse, WorkflowNodeStatus } from "@/extensions/workflow/types";
 
 const WorkflowProgressView = dynamic(
   () => import("@/extensions/workflow/WorkflowProgressView").then((m) => ({ default: m.WorkflowProgressView })),
@@ -20,12 +20,7 @@ interface WorkflowProgressCompactProps {
   workflowGraph: WorkflowGraph | null;
 }
 
-function getNodeDetail(node: {
-  chapterTotal?: number | null;
-  chapterCompleted?: number | null;
-  reviewTotal?: number | null;
-  reviewApproved?: number | null;
-}) {
+function getNodeDetail(node: WorkflowNodeStatus) {
   if (node.chapterTotal) return `${node.chapterCompleted ?? 0}/${node.chapterTotal}`;
   if (node.reviewTotal) return `${node.reviewApproved ?? 0}/${node.reviewTotal}`;
   return null;
@@ -39,13 +34,26 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function WorkflowProgressCompact({ projectId, workflowGraph }: WorkflowProgressCompactProps) {
-  const { status, loading } = useWorkflowStatus(projectId, 30000);
+  const [status, setStatus] = useState<WorkflowStatusResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Fetch once on mount — no polling in overview
+  useEffect(() => {
+    let cancelled = false;
+    workflowApi
+      .getWorkflowStatus(projectId)
+      .then((data) => { if (!cancelled) setStatus(data); })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   const nodes = useMemo(() => status?.nodes ?? [], [status?.nodes]);
 
-  // Don't render if no workflow or still loading
-  if (loading || nodes.length === 0) return null;
+  // Don't render if loading, errored, or no nodes
+  if (loading || error || nodes.length === 0) return null;
 
   return (
     <>
