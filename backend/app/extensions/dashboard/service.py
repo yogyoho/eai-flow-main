@@ -93,7 +93,9 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
         .where(PhaseReview.reviewer_id == user_id, PhaseReview.status == "pending")
     )
     review_result = await db.execute(review_stmt)
-    for review, proj_name in review_result.all():
+    review_rows = review_result.all()
+    logger.info("my-tasks: user=%s reviews_found=%d", user_id, len(review_rows))
+    for review, proj_name in review_rows:
         tasks.append(
             TaskItem(
                 id=f"review-{review.id}",
@@ -112,6 +114,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
     member_stmt = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
     member_result = await db.execute(member_stmt)
     project_ids = [row[0] for row in member_result.all()]
+    logger.info("my-tasks: user=%s project_ids=%d", user_id, len(project_ids))
 
     for pid in project_ids:
         chapter_stmt = (
@@ -144,7 +147,9 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
         ProjectMember.phase_duties.isnot(None),
     )
     duties_result = await db.execute(duties_stmt)
-    for member in duties_result.scalars().all():
+    duties_rows = duties_result.scalars().all()
+    logger.info("my-tasks: user=%s duties_found=%d", user_id, len(duties_rows))
+    for member in duties_rows:
         if not member.phase_duties:
             continue
         for phase_key, duty_info in member.phase_duties.items():
@@ -186,6 +191,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
     tasks.sort(key=lambda t: t.priority_score, reverse=True)
 
     urgent_count = sum(1 for t in tasks if t.priority_score >= 50)
+    logger.info("my-tasks: user=%s total=%d urgent=%d", user_id, len(tasks), urgent_count)
 
     return MyTasksResponse(
         tasks=tasks,
