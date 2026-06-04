@@ -26,16 +26,23 @@ export function StatsPanel() {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      {stats.map((s) => (
-        <div
-          key={s.label}
-          className={`flex flex-col items-center gap-1 rounded-lg border border-border p-3 ${s.bg}`}
-        >
-          <s.icon className={`h-4 w-4 ${s.color}`} />
-          <span className={`text-lg font-semibold ${s.color}`}>{s.value}</span>
-          <span className="text-[11px] text-muted-foreground">{s.label}</span>
-        </div>
-      ))}
+      {stats.map((s) => {
+        const Icon = s.icon;
+        return (
+          <div
+            key={s.label}
+            className={`flex items-center gap-3 rounded-lg border border-border p-3 ${s.bg}`}
+          >
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70 ${s.color}`}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className={`text-lg font-semibold leading-tight ${s.color}`}>{s.value}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{s.label}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
