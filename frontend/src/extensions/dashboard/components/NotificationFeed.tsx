@@ -175,30 +175,30 @@ export function NotificationFeed() {
           return (
             <div
               key={n.id}
-              className={`group relative flex gap-3 rounded-lg p-3 transition-colors ${
+              className={`group relative flex gap-2 rounded-lg px-2 py-2 transition-colors ${
                 n.is_read
                   ? "bg-muted/30"
                   : "bg-primary/5 ring-1 ring-primary/20"
               }`}
             >
               {/* Type icon with colored background */}
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg}`}>
-                <Icon className={`h-4 w-4 ${config.text}`} />
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${config.bg}`}>
+                <Icon className={`h-3.5 w-3.5 ${config.text}`} />
               </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm leading-snug ${n.is_read ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                <p className={`text-sm leading-snug truncate ${n.is_read ? "text-muted-foreground" : "text-foreground font-medium"}`}>
                   {n.title}
                 </p>
                 {n.body && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.body}</p>
                 )}
-                <p className="text-[11px] text-muted-foreground/60 mt-1">{formatTimeAgo(n.created_at)}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatTimeAgo(n.created_at)}</p>
               </div>
 
-              {/* Actions — visible on hover or for unread */}
-              <div className="flex flex-col gap-1 shrink-0">
+              {/* Actions — icon only */}
+              <div className="flex items-center gap-0.5 shrink-0 self-center">
                 {!n.is_read && (
                   <button
                     onClick={(e) => {
@@ -206,28 +206,26 @@ export function NotificationFeed() {
                       readMutation.mutate(n.id);
                     }}
                     disabled={readMutation.isPending}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
                     title="标为已读"
                   >
                     <Check className="h-3.5 w-3.5" />
-                    <span>已读</span>
                   </button>
                 )}
                 {n.link && (
                   <Link
                     href={n.link}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                     title="查看详情"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    <span>查看</span>
                   </Link>
                 )}
               </div>
 
               {/* Unread dot indicator */}
               {!n.is_read && (
-                <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-red-500" />
+                <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-red-500" />
               )}
             </div>
           );
