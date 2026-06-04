@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Pen, ListTodo, FolderKanban, Bell, BarChart3, CalendarDays, Compass } from "lucide-react";
 import Link from "next/link";
 import { TodayTasks } from "./components/TodayTasks";
@@ -30,6 +30,11 @@ function formatDate(): string {
 function DashboardHeader() {
   const { data: tasksData } = useMyTasks();
   const { data: projectsData } = useMyProjects();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const taskSummary = useMemo(() => {
     if (!tasksData || tasksData.total_count === 0) return "没有待办任务";
@@ -45,12 +50,12 @@ function DashboardHeader() {
     <div className="flex items-start justify-between mb-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {getGreeting()}，Admin
+          {mounted ? getGreeting() : "你好"}，Admin
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {taskSummary}
           {projectCount > 0 && ` · ${projectCount} 个项目`}
-          <span className="ml-3 text-muted-foreground/60">{formatDate()}</span>
+          <span className="ml-3 text-muted-foreground/60">{mounted ? formatDate() : ""}</span>
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
