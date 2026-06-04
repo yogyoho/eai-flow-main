@@ -5,7 +5,7 @@ import {
   Bell,
   BellOff,
   Check,
-  Eye,
+  ExternalLink,
   Rocket,
   SearchCheck,
   CheckCircle2,
@@ -38,6 +38,12 @@ interface NotificationListResponse {
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "";
 
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 async function fetchNotifications(page = 0): Promise<NotificationListResponse> {
   const res = await fetch(`${BASE}/api/extensions/dashboard/notifications?skip=${page * 20}&limit=20`, {
     credentials: "include",
@@ -47,32 +53,42 @@ async function fetchNotifications(page = 0): Promise<NotificationListResponse> {
 }
 
 async function markRead(id: string): Promise<void> {
-  await fetch(`${BASE}/api/extensions/dashboard/notifications/${id}/read`, {
+  const csrf = getCsrfToken();
+  const headers: Record<string, string> = {};
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  const res = await fetch(`${BASE}/api/extensions/dashboard/notifications/${id}/read`, {
     method: "PATCH",
     credentials: "include",
+    headers,
   });
+  if (!res.ok) throw new Error("Failed to mark as read");
 }
 
 async function markAllRead(): Promise<void> {
-  await fetch(`${BASE}/api/extensions/dashboard/notifications/read-all`, {
+  const csrf = getCsrfToken();
+  const headers: Record<string, string> = {};
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  const res = await fetch(`${BASE}/api/extensions/dashboard/notifications/read-all`, {
     method: "POST",
     credentials: "include",
+    headers,
   });
+  if (!res.ok) throw new Error("Failed to mark all as read");
 }
 
-// ── Notification type icons (Lucide, no emoji) ──
+// ── Notification type config ──
 
-const TYPE_ICONS: Record<string, LucideIcon> = {
-  phase_start: Rocket,
-  review_pending: SearchCheck,
-  review_complete: CheckCircle2,
-  workflow_complete: PartyPopper,
-  deadline: AlarmClock,
-  mention: MessageCircle,
+const TYPE_CONFIG: Record<string, { icon: LucideIcon; bg: string; text: string }> = {
+  phase_start: { icon: Rocket, bg: "bg-blue-50", text: "text-blue-600" },
+  review_pending: { icon: SearchCheck, bg: "bg-amber-50", text: "text-amber-600" },
+  review_complete: { icon: CheckCircle2, bg: "bg-emerald-50", text: "text-emerald-600" },
+  workflow_complete: { icon: PartyPopper, bg: "bg-violet-50", text: "text-violet-600" },
+  deadline: { icon: AlarmClock, bg: "bg-rose-50", text: "text-rose-600" },
+  mention: { icon: MessageCircle, bg: "bg-sky-50", text: "text-sky-600" },
 };
 
-function getTypeIcon(type: string): LucideIcon {
-  return TYPE_ICONS[type] || Bell;
+function getTypeConfig(type: string) {
+  return TYPE_CONFIG[type] || { icon: Bell, bg: "bg-gray-50", text: "text-gray-600" };
 }
 
 function formatTimeAgo(dateStr?: string): string {
@@ -103,18 +119,26 @@ export function NotificationFeed() {
   const readMutation = useMutation({
     mutationFn: markRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onError: (err) => console.error("Mark read failed:", err),
   });
 
   const readAllMutation = useMutation({
     mutationFn: markAllRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onError: (err) => console.error("Mark all read failed:", err),
   });
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />
+          <div key={i} className="flex gap-3">
+            <div className="h-9 w-9 rounded-lg bg-muted animate-pulse shrink-0" />
+            <div className="flex-1 space-y-1.5 py-1">
+              <div className="h-3.5 rounded bg-muted animate-pulse w-3/4" />
+              <div className="h-3 rounded bg-muted animate-pulse w-1/2" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -122,71 +146,96 @@ export function NotificationFeed() {
 
   if (!data || data.notifications.length === 0) {
     return (
-      <div className="text-center py-4 text-muted-foreground">
-        <BellOff className="h-6 w-6 mx-auto mb-1 opacity-50" />
+      <div className="text-center py-8 text-muted-foreground">
+        <BellOff className="h-8 w-8 mx-auto mb-2 opacity-40" />
         <p className="text-sm">暂无通知</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">有新消息时会在这里提醒你</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {data.unread_count > 0 && (
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">{data.unread_count} 条未读</span>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-foreground">{data.unread_count} 条未读</span>
           <button
             onClick={() => readAllMutation.mutate()}
-            className="text-xs text-primary hover:underline"
+            disabled={readAllMutation.isPending}
+            className="text-xs text-primary hover:underline disabled:opacity-50"
           >
-            全部标为已读
+            {readAllMutation.isPending ? "处理中..." : "全部已读"}
           </button>
         </div>
       )}
-      {data.notifications.map((n) => {
-        const Icon = getTypeIcon(n.type);
-        return (
-          <div
-            key={n.id}
-            className={`flex items-start gap-2.5 rounded-md p-2.5 text-sm transition-colors ${
-              n.is_read
-                ? "text-muted-foreground"
-                : "border-l-2 border-primary bg-accent/30"
-            }`}
-          >
-            <Icon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{n.title}</p>
-              {n.body && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(n.created_at)}</p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
+      <div className="space-y-2">
+        {data.notifications.map((n) => {
+          const config = getTypeConfig(n.type);
+          const Icon = config.icon;
+          return (
+            <div
+              key={n.id}
+              className={`group relative flex gap-3 rounded-lg p-3 transition-colors ${
+                n.is_read
+                  ? "bg-muted/30"
+                  : "bg-primary/5 ring-1 ring-primary/20"
+              }`}
+            >
+              {/* Type icon with colored background */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg}`}>
+                <Icon className={`h-4 w-4 ${config.text}`} />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm leading-snug ${n.is_read ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                  {n.title}
+                </p>
+                {n.body && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
+                )}
+                <p className="text-[11px] text-muted-foreground/60 mt-1">{formatTimeAgo(n.created_at)}</p>
+              </div>
+
+              {/* Actions — visible on hover or for unread */}
+              <div className="flex flex-col gap-1 shrink-0">
+                {!n.is_read && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      readMutation.mutate(n.id);
+                    }}
+                    disabled={readMutation.isPending}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                    title="标为已读"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    <span>已读</span>
+                  </button>
+                )}
+                {n.link && (
+                  <Link
+                    href={n.link}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    title="查看详情"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>查看</span>
+                  </Link>
+                )}
+              </div>
+
+              {/* Unread dot indicator */}
               {!n.is_read && (
-                <button
-                  onClick={() => readMutation.mutate(n.id)}
-                  className="p-1.5 rounded hover:bg-accent"
-                  title="标为已读"
-                >
-                  <Check className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-              {n.link && (
-                <Link
-                  href={n.link}
-                  className="p-1.5 rounded hover:bg-accent"
-                  title="查看"
-                >
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                </Link>
+                <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-primary" />
               )}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       {data.total > 20 && (
         <button
-          className="text-xs text-center text-primary hover:underline w-full mt-2"
+          className="text-xs text-center text-primary hover:underline w-full pt-2"
         >
           查看全部通知 ({data.total} 条)
         </button>
