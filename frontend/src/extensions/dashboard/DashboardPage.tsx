@@ -47,32 +47,34 @@ function DashboardHeader() {
   const projectCount = projectsData?.total_count ?? 0;
 
   return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {mounted ? getGreeting() : "你好"}，Admin
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {taskSummary}
-          {projectCount > 0 && ` · ${projectCount} 个项目`}
-          <span className="ml-3 text-muted-foreground/60">{mounted ? formatDate() : ""}</span>
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Link
-          href="/projects?action=create"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">新建项目</span>
-        </Link>
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-md border border-border text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <Pen className="h-4 w-4" />
-          <span className="hidden sm:inline">AI 写作</span>
-        </Link>
+    <div className="relative -mx-4 -mt-6 px-6 pt-6 pb-8 mb-0 bg-gradient-to-r from-[#4F6AF6] to-[#7C5CFC] rounded-b-2xl">
+      <div className="flex items-start justify-between max-w-7xl mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            {mounted ? getGreeting() : "你好"}，Admin
+          </h1>
+          <p className="text-sm text-white/70 mt-1">
+            {taskSummary}
+            {projectCount > 0 && ` · ${projectCount} 个项目`}
+            <span className="ml-3 text-white/50">{mounted ? formatDate() : ""}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/projects?action=create"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-[#4F6AF6] text-sm font-medium hover:bg-white/90 shadow-sm transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">新建项目</span>
+          </Link>
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/30 text-sm text-white hover:bg-white/10 transition-colors"
+          >
+            <Pen className="h-4 w-4" />
+            <span className="hidden sm:inline">AI 写作</span>
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -95,79 +97,84 @@ export function DashboardPage() {
   const projectCountBadge = useMemo(() => {
     if (!projectsData || projectsData.total_count === 0) return undefined;
     return (
-      <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
+      <span className="bg-violet-100 text-violet-700 text-xs px-2 py-0.5 rounded-full font-medium">
         {projectsData.total_count}
       </span>
     );
   }, [projectsData]);
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-7xl">
-      <DashboardHeader />
+    <div className="min-h-full bg-[#F8F9FC]">
+      <div className="container mx-auto py-6 px-4 max-w-7xl">
+        <DashboardHeader />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-        {/* Left column */}
-        <div className="space-y-5 min-w-0">
-          {/* 我的待办 */}
-          <DashboardCard
-            title="我的待办"
-            icon={ListTodo}
-            badge={urgentBadge}
-          >
-            <TodayTasks />
-          </DashboardCard>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mt-5">
+          {/* Left column */}
+          <div className="space-y-5 min-w-0">
+            {/* 我的待办 */}
+            <DashboardCard
+              title="我的待办"
+              icon={ListTodo}
+              iconColor="text-blue-600"
+              badge={urgentBadge}
+            >
+              <TodayTasks />
+            </DashboardCard>
 
-          {/* 我的项目 */}
-          <DashboardCard
-            title="我的项目"
-            icon={FolderKanban}
-            badge={projectCountBadge}
-          >
-            <MyProjects />
-          </DashboardCard>
+            {/* 我的项目 */}
+            <DashboardCard
+              title="我的项目"
+              icon={FolderKanban}
+              iconColor="text-violet-600"
+              badge={projectCountBadge}
+            >
+              <MyProjects />
+            </DashboardCard>
+          </div>
+
+          {/* Right sidebar */}
+          <aside className="space-y-5">
+            {/* 快捷入口 */}
+            <DashboardCard title="快捷入口" icon={Compass} iconColor="text-emerald-600">
+              <QuickLinks />
+            </DashboardCard>
+
+            {/* 消息通知 */}
+            <DashboardCard
+              title="消息通知"
+              icon={Bell}
+              iconColor="text-amber-600"
+            >
+              <NotificationFeed />
+            </DashboardCard>
+
+            {/* 我的统计 */}
+            <DashboardCard title="我的统计" icon={BarChart3} iconColor="text-indigo-600">
+              <StatsPanel />
+            </DashboardCard>
+
+            {/* 日程 */}
+            <DashboardCard title="日程" icon={CalendarDays} iconColor="text-rose-600">
+              <MiniCalendar />
+            </DashboardCard>
+
+            {/* Notification preferences (collapsible) */}
+            <DashboardCard
+              title="通知偏好设置"
+              action={
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setPrefsOpen(!prefsOpen)}
+                >
+                  {prefsOpen ? "收起" : "展开"}
+                </button>
+              }
+            >
+              {prefsOpen && <NotificationPreferencePanel />}
+            </DashboardCard>
+          </aside>
         </div>
-
-        {/* Right sidebar */}
-        <aside className="space-y-5">
-          {/* 快捷入口 */}
-          <DashboardCard title="快捷入口" icon={Compass}>
-            <QuickLinks />
-          </DashboardCard>
-
-          {/* 消息通知 */}
-          <DashboardCard
-            title="消息通知"
-            icon={Bell}
-          >
-            <NotificationFeed />
-          </DashboardCard>
-
-          {/* 我的统计 */}
-          <DashboardCard title="我的统计" icon={BarChart3}>
-            <StatsPanel />
-          </DashboardCard>
-
-          {/* 日程 */}
-          <DashboardCard title="日程" icon={CalendarDays}>
-            <MiniCalendar />
-          </DashboardCard>
-
-          {/* Notification preferences (collapsible) */}
-          <DashboardCard
-            title="通知偏好设置"
-            action={
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setPrefsOpen(!prefsOpen)}
-              >
-                {prefsOpen ? "收起" : "展开"}
-              </button>
-            }
-          >
-            {prefsOpen && <NotificationPreferencePanel />}
-          </DashboardCard>
-        </aside>
       </div>
     </div>
   );
