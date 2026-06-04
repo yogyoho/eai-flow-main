@@ -232,7 +232,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 space-y-6 max-w-5xl">
+      <div className="p-6 space-y-6 max-w-6xl mx-auto">
         {/* Header — simplified, no duplicates */}
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground">项目概览</h2>
