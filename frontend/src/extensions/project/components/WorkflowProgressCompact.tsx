@@ -50,18 +50,18 @@ export function WorkflowProgressCompact({ projectId, workflowGraph }: WorkflowPr
   return (
     <>
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
-        <div className="flex items-center justify-between p-5 pb-0">
+        <div className="flex items-center justify-between px-5 pt-4 pb-0">
           <h3 className="text-sm font-medium text-foreground">流程进度</h3>
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-[12px] text-primary"
+            className="h-7 text-[12px] text-primary rounded-md hover:bg-primary/10"
             onClick={() => setDetailOpen(true)}
           >
-            查看详情 →
+            查看详情
           </Button>
         </div>
-        <div className="flex items-center flex-wrap gap-1 p-5 pt-3">
+        <div className="flex items-center flex-wrap gap-1 px-5 pb-4 pt-2">
           {nodes.map((node, i) => (
             <div key={node.nodeId} className="flex items-center">
               <span
