@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox } from "lucide-react";
+import { CheckCircle2, ListTodo, Inbox } from "lucide-react";
 import { useMyTasks } from "../hooks/useMyTasks";
 import { TaskItemCard } from "./TaskItemCard";
 
@@ -9,47 +9,34 @@ export function TodayTasks() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-card shadow-sm p-5 space-y-2">
+      <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} />
+          <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
     );
   }
 
+  // Empty state — no tasks at all
   if (!data || data.tasks.length === 0) {
     return (
-      <div className="rounded-xl border bg-card shadow-sm">
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">今日待办</h2>
-        </div>
-        <div className="py-10 flex flex-col items-center gap-2">
-          <Inbox className="h-10 w-10 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">暂无待办任务</p>
-        </div>
+      <div className="py-8 flex flex-col items-center gap-2">
+        <CheckCircle2 className="h-8 w-8 text-green-500/60" />
+        <p className="text-sm text-muted-foreground">所有任务已完成</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border bg-card shadow-sm">
-      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold">今日待办</h2>
-        {data.urgent_count > 0 && (
-          <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium">
-            紧急 {data.urgent_count}
-          </span>
-        )}
-      </div>
-      <div className="space-y-2 px-5 pb-5">
-        {data.tasks.map((task) => (
-          <TaskItemCard key={task.id} task={task} />
-        ))}
-      </div>
+    <div className="space-y-2">
+      {data.tasks.map((task) => (
+        <TaskItemCard key={task.id} task={task} />
+      ))}
+      {data.total_count > data.tasks.length && (
+        <p className="text-xs text-center text-muted-foreground pt-1">
+          还有 {data.total_count - data.tasks.length} 项任务
+        </p>
+      )}
     </div>
   );
-}
-
-function Skeleton() {
-  return <div className="h-14 rounded-lg bg-muted animate-pulse" />;
 }
