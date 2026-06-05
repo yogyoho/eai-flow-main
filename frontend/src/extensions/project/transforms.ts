@@ -22,7 +22,17 @@ export function toSnakeCase(data: Record<string, unknown>): Record<string, unkno
   for (const [key, value] of Object.entries(data)) {
     const snakeKey = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
     if (value === undefined) continue;
-    result[snakeKey] = value;
+    if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+      result[snakeKey] = toSnakeCase(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      result[snakeKey] = value.map((item) =>
+        item && typeof item === "object" && !Array.isArray(item)
+          ? toSnakeCase(item as Record<string, unknown>)
+          : item
+      );
+    } else {
+      result[snakeKey] = value;
+    }
   }
   return result;
 }

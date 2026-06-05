@@ -8,14 +8,14 @@ permission namespace.
 # Workflow definition permissions
 WORKFLOW_LIST = "project:list"
 WORKFLOW_CREATE = "project:create"
-WORKFLOW_READ = "project:read"
+WORKFLOW_READ = "workflow:read"
 WORKFLOW_UPDATE = "project:update"
 WORKFLOW_DELETE = "project:delete"
-WORKFLOW_VALIDATE = "project:read"
+WORKFLOW_VALIDATE = "workflow:read"
 
 # Workflow execution permissions
 WORKFLOW_START = "project:advance"
-WORKFLOW_STATUS = "project:read"
+WORKFLOW_STATUS = "workflow:read"
 WORKFLOW_SIGNAL = "project:advance"
 WORKFLOW_CANCEL = "project:advance"
 
