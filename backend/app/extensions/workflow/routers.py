@@ -51,7 +51,7 @@ from .traceability import find_missing_sources
 router = APIRouter(prefix="/api/extensions/workflow", tags=["workflow"])
 
 CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("system:access"))]
-WorkflowReader = Annotated[CurrentUser, Depends(require_permission("project:read"))]
+WorkflowReader = Annotated[CurrentUser, Depends(require_permission("workflow:read"))]
 WorkflowWriter = Annotated[CurrentUser, Depends(require_permission("project:create"))]
 WorkflowAdmin = Annotated[CurrentUser, Depends(require_permission("project:advance"))]
 WorkflowSuperAdmin = Annotated[CurrentUser, Depends(require_super_admin())]

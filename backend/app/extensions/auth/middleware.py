@@ -32,6 +32,7 @@ _ROLE_DEFAULTS = {
             "doc:read", "doc:upload", "doc:delete",
             "skill:read", "skill:install", "skill:uninstall",
             "system:access",
+            "workflow:read",
         ],
         "level": 1,
     },
