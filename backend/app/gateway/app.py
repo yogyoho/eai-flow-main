@@ -47,6 +47,7 @@ from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.workflow import router as workflow_router
 from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.extensions.dashboard.routers import router as dashboard_router
+from app.extensions.license.routers import router as license_router
 from app.extensions.output.routers import router as output_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
@@ -486,6 +487,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Layout template management for report output
     app.include_router(output_router)
+
+    # License management API is mounted at /api/license
+    app.include_router(license_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
