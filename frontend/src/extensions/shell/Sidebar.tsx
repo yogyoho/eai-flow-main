@@ -31,16 +31,26 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/extensions/hooks/useAuth";
+import { useLicense } from "@/extensions/license/useLicense";
 import { cn } from "@/lib/utils";
 
-const allNavItems: { href: string; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  adminOnly?: boolean;
+  /** If set, this nav item is hidden when the license module is not authorized */
+  licenseModule?: string;
+}
+
+const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard },
   { href: "/writing", label: "智能写作", icon: Bot },
-  { href: "/projects", label: "报告项目", icon: ClipboardList },
-  { href: "/docmgr", label: "文档空间", icon: FolderCheck },
-  { href: "/knowledge-factory", label: "知识工厂", icon: Factory },
-  { href: "/knowledge", label: "知识库", icon: BookOpen },
-  { href: "/output", label: "报告输出", icon: FileOutput },
+  { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project" },
+  { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "docmgr" },
+  { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "knowledge" },
+  { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "knowledge" },
+  { href: "/output", label: "报告输出", icon: FileOutput, licenseModule: "report" },
   { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true },
 ];
 
@@ -84,10 +94,19 @@ function NavIcon({
 export function ExtensionsSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { hasModule, isLoading: licenseLoading } = useLicense();
   const [mounted, setMounted] = useState(false);
 
   const isAdmin = user?.role_name === "Super Admin";
-  const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
+
+  // Filter by admin role + license module authorization
+  const navItems = allNavItems.filter((item) => {
+    // Admin-only items: skip if not admin
+    if (item.adminOnly && !isAdmin) return false;
+    // License-gated items: skip if module not authorized (show during loading)
+    if (item.licenseModule && !licenseLoading && !hasModule(item.licenseModule)) return false;
+    return true;
+  });
 
   useEffect(() => {
     setMounted(true);
