@@ -1190,3 +1190,18 @@ run_events:
 #   failure_threshold: 5
 #   # Time in seconds before attempting to recover (default: 60)
 #   recovery_timeout_sec: 60
+
+# =============================================================================
+# License Control — offline JWT+RSA license verification
+# =============================================================================
+# The license system requires a valid license.lic file (JWT signed with RSA-2048).
+# First deployment without a license gets a 7-day grace period.
+# Set DEER_FLOW_DEV_MODE=true to bypass in development environments.
+#
+# license:
+#   # Path to the RSA public key used for JWT signature verification
+#   public_key_path: backend/app/extensions/license/public_key.pem
+#   # Path to the license file provided by the vendor
+#   license_file_path: /etc/deerflow/license.lic
+#   # Days of grace period when no license file is found (default: 7)
+#   grace_period_days: 7
