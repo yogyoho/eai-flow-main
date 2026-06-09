@@ -5,9 +5,11 @@ import type { SetStateAction } from "react";
 
 import { docmgrApi } from "../api";
 import type { AIDocument, CreateAIDocumentRequest, UpdateAIDocumentRequest } from "../types";
+import { useFolderTree } from "./useFolderTree";
 
 export interface DocumentFilter {
   folder?: string;
+  folder_id?: string;
   starred?: boolean;
   shared?: boolean;
   doc_type?: "document" | "file_ref";
@@ -19,6 +21,7 @@ export interface DocumentFilter {
 const PAGE_SIZE = 12;
 
 export function useDocuments(initialFilter?: DocumentFilter) {
+  const folderTree = useFolderTree("project");
   const [docs, setDocs] = useState<AIDocument[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,6 +39,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     try {
       const res = await docmgrApi.list({
         folder: filterRef.current.folder,
+        folder_id: filterRef.current.folder_id,
         starred: filterRef.current.starred,
         shared: filterRef.current.shared,
         doc_type: filterRef.current.doc_type,
@@ -166,5 +170,6 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     renameDoc,
     batchDeleteDocs,
     previewDoc,
+    folderTree,
   };
 }

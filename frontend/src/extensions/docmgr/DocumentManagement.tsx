@@ -29,9 +29,11 @@ import type { AIDocument } from "../types";
 import BatchActionBar from "./BatchActionBar";
 import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./FilePreviewModal";
 import FolderPickerDialog from "./FolderPickerDialog";
+import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
+import { ExportDocxDialog } from "./ExportDocxDialog";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
@@ -84,7 +86,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareDoc, setShareDoc] = useState<AIDocument | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
-  const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
@@ -222,25 +225,36 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               activeNav === "file_ref" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
             <Archive className="w-4 h-4" />个人文件夹
           </button>
-          <button onClick={() => setArchiveOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors">
-            <div className="flex items-center gap-2">
-              <Archive className="w-3.5 h-3.5" />
-              <span>项目文件夹</span>
-            </div>
-            {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </button>
-          {archiveOpen && (
-            <div className="pl-4 space-y-0.5">
-              {projectFolders.map((f) => (
-                <button key={f} onClick={() => handleNavClick("file_ref_folder", f)}
-                  className={cn("w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors",
-                    activeNav === "file_ref_folder" && currentFolder === f ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* 项目文件夹 - 树形结构 */}
+          <div className="border-t border-border/50 pt-2 mt-2">
+            <button
+              onClick={() => setArchiveOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Archive className="w-3.5 h-3.5" />
+                <span>项目文件夹</span>
+              </div>
+              {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {archiveOpen && (
+              <ProjectFolderTree
+                folders={folderTree.folders}
+                expandedKeys={folderTree.expandedKeys}
+                onToggleExpand={folderTree.toggleExpand}
+                onSelectFolder={(folderId, folderName) => {
+                  onNavChange("file_ref_folder");
+                  onFolderChange(folderName);
+                  setActiveFolderId(folderId);
+                  setFilter({ project_scope: "project", folder_id: folderId });
+                }}
+                onCreateFolder={async (name, parentId, projectId) => { await folderTree.createFolder(name, parentId, projectId) }}
+                onRenameFolder={folderTree.renameFolder}
+                onDeleteFolder={folderTree.deleteFolder}
+                activeFolderId={activeFolderId}
+              />
+            )}
+          </div>
         </nav>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -853,6 +867,7 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
   const [saved, setSaved] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<TiptapEditorRef | CollabEditorRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -899,6 +914,10 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
   };
 
   const handleExport = async (fmt: "md" | "docx") => {
+    if (fmt === "docx") {
+      setShowExportDialog(true);
+      return;
+    }
     const res = await docmgrApi.export(docId, fmt);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -993,6 +1012,7 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
           )}
         </AnimatePresence>
       </div>
+      <ExportDocxDialog docId={docId} docTitle={title} open={showExportDialog} onOpenChange={setShowExportDialog} />
     </div>
   );
 }

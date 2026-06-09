@@ -399,6 +399,7 @@ export const conversationApi = {
 export const docmgrApi = {
   list: (params?: {
     folder?: string;
+    folder_id?: string;
     starred?: boolean;
     shared?: boolean;
     q?: string;
@@ -410,6 +411,7 @@ export const docmgrApi = {
   }) => {
     const query = new URLSearchParams();
     if (params?.folder) query.set("folder", params.folder);
+    if (params?.folder_id) query.set("folder_id", params.folder_id);
     if (params?.starred !== undefined) query.set("starred", String(params.starred));
     if (params?.shared !== undefined) query.set("shared", String(params.shared));
     if (params?.q) query.set("q", params.q);
