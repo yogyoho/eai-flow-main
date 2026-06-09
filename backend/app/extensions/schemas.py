@@ -609,3 +609,50 @@ class FolderListResponse(BaseModel):
     """Folder list response schema."""
 
     folders: list[str]
+
+
+class FolderCreate(BaseModel):
+    """Folder create schema."""
+    name: str = Field(..., min_length=1, max_length=255)
+    parent_id: UUID | None = Field(None, description="Parent folder ID (null = root)")
+    project_id: UUID | None = Field(None, description="Project ID to bind root folder")
+
+
+class FolderUpdate(BaseModel):
+    """Folder update schema."""
+    name: str = Field(..., min_length=1, max_length=255)
+
+
+class FolderSortUpdate(BaseModel):
+    """Folder sort order update."""
+    sort_order: int = Field(..., ge=0)
+
+
+class FolderResponse(BaseModel):
+    """Folder response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    parent_id: UUID | None = None
+    project_id: UUID | None = None
+    owner_id: UUID
+    sort_order: int = 0
+    is_system: bool = False
+    doc_count: int = 0
+    children: list["FolderResponse"] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class FolderTreeResponse(BaseModel):
+    """Folder tree response."""
+    folders: list[FolderResponse]
+
+
+class FolderDeleteConfirm(BaseModel):
+    """Response showing what will be deleted."""
+    folder_id: UUID
+    folder_name: str
+    subfolder_count: int
+    doc_count: int
