@@ -161,7 +161,7 @@ async def update_project(
     _user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_project(db, project_id, **body.model_dump(exclude_unset=True))
+    result = await service.update_project(db, project_id, user_id=_user.id if _user else None, **body.model_dump(exclude_unset=True))
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     return result

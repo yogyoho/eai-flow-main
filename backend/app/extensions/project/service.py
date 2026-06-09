@@ -1,11 +1,13 @@
 """Database-backed service for report project management."""
 
+import logging
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import Integer, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.docmgr.folder_service import FolderService
 from app.extensions.models import (
     ApprovalRecord,
     ApprovalWorkflow,
@@ -15,6 +17,8 @@ from app.extensions.models import (
     ReportProject,
     User,
 )
+
+logger = logging.getLogger(__name__)
 
 from .schemas import (
     ChapterOut,
@@ -403,6 +407,19 @@ async def create_project(
     if template_id:
         await _import_template_outline(db, project.id, template_id)
 
+    # Auto-create project root folder in document space
+    if created_by:
+        try:
+            await FolderService.create_folder(
+                db,
+                user_id=created_by,
+                name=name,
+                project_id=project.id,
+                is_system=False,
+            )
+        except Exception as e:
+            logger.warning("Failed to create project root folder: %s", e)
+
     return await get_project(db, project.id)
 
 
@@ -594,18 +611,37 @@ async def _auto_assign_org_bindings(db: AsyncSession, project: ReportProject, wo
     await db.flush()
 
 
-async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut | None:
+async def update_project(db: AsyncSession, project_id, user_id=None, **kwargs) -> ProjectOut | None:
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
     if not project:
         return None
 
+    new_name = kwargs.get("name")
+
     for k, v in kwargs.items():
         if v is not None:
             setattr(project, k, v)
 
     await db.flush()
+
+    # Sync folder name with project name
+    if new_name and user_id:
+        try:
+            from app.extensions.models import Folder as FolderModel
+
+            folder_stmt = select(FolderModel).where(
+                FolderModel.project_id == project_id,
+                FolderModel.parent_id.is_(None),
+            )
+            folder_result = await db.execute(folder_stmt)
+            root_folder = folder_result.scalar_one_or_none()
+            if root_folder:
+                await FolderService.rename_folder(db, root_folder.id, user_id, new_name)
+        except Exception as e:
+            logger.warning("Failed to sync folder name: %s", e)
+
     return await get_project(db, project_id)
 
 
@@ -615,6 +651,13 @@ async def delete_project(db: AsyncSession, project_id) -> bool:
     project = result.scalar_one_or_none()
     if not project:
         return False
+
+    # Delete project folder tree (and all documents within)
+    try:
+        await FolderService.delete_project_folder_tree(db, project_id)
+    except Exception as e:
+        logger.warning("Failed to delete project folder tree: %s", e)
+
     await db.delete(project)
     return True
 
