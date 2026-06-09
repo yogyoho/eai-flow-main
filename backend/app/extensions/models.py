@@ -206,6 +206,9 @@ class AIDocument(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     folder: Mapped[str] = mapped_column(String(255), default="默认文件夹", nullable=False)
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     is_starred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
@@ -220,6 +223,33 @@ class AIDocument(Base):
 
     def __repr__(self) -> str:
         return f"<AIDocument(id={self.id}, title={self.title})>"
+
+
+class Folder(Base):
+    """Folder for organizing documents — supports tree structure and project binding."""
+
+    __tablename__ = "folders"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("folders.id", ondelete="CASCADE"), nullable=True, index=True,
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("report_projects.id", ondelete="CASCADE"), nullable=True, index=True,
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    parent: Mapped[Optional["Folder"]] = relationship("Folder", remote_side=[id], back_populates="children")
+    children: Mapped[list["Folder"]] = relationship("Folder", back_populates="parent", cascade="all, delete-orphan")
+    owner: Mapped["User"] = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<Folder(id={self.id}, name={self.name})>"
 
 
 class Conversation(Base):

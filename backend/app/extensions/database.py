@@ -875,6 +875,28 @@ async def migrate_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id)"
         ))
 
+        # --- Folders table for document organization ---
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS folders (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(255) NOT NULL,
+                parent_id UUID REFERENCES folders(id) ON DELETE CASCADE,
+                project_id UUID REFERENCES report_projects(id) ON DELETE CASCADE,
+                owner_id UUID NOT NULL REFERENCES users(id),
+                sort_order INT NOT NULL DEFAULT 0,
+                is_system BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_project_id ON folders(project_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_owner_id ON folders(owner_id)"))
+
+        # --- AIDocument: folder_id FK to folders table ---
+        await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES folders(id) ON DELETE SET NULL"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_folder_id ON ai_documents(folder_id)"))
+
         # --- Collaborative editing tables ---
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS collab_documents (
