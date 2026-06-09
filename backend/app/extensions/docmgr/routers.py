@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
+from app.extensions.docmgr.folder_service import FolderService
 from app.extensions.docmgr.service import AIDocumentService
 from app.extensions.docmgr.share_schemas import ShareCreateRequest, ShareResponse
 from app.extensions.docmgr.share_service import ShareService
@@ -20,7 +21,13 @@ from app.extensions.schemas import (
     AIDocumentResponse,
     AIDocumentUpdate,
     CurrentUser,
+    FolderCreate,
+    FolderDeleteConfirm,
     FolderListResponse,
+    FolderResponse,
+    FolderSortUpdate,
+    FolderTreeResponse,
+    FolderUpdate,
     MessageResponse,
 )
 
@@ -46,9 +53,16 @@ class BatchDeleteRequest(BaseModel):
     ids: list[UUID] = Field(..., min_length=1, max_length=50)
 
 
+class CreateFolderRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    parent_id: UUID | None = Field(None, description="Parent folder ID")
+    project_id: UUID | None = Field(None, description="Project ID for root folder binding")
+
+
 @router.get("/documents", response_model=AIDocumentListResponse)
 async def list_documents(
     folder: str | None = Query(None, description="Filter by folder name"),
+    folder_id: UUID | None = Query(None, description="Filter by folder ID (new)"),
     starred: bool | None = Query(None, description="Filter by starred status"),
     shared: bool | None = Query(None, description="Filter by shared status"),
     doc_type: str | None = Query(None, description="Filter by doc_type: document or file_ref"),
@@ -65,6 +79,7 @@ async def list_documents(
         db,
         user_id=current_user.id,
         folder=folder,
+        folder_id=folder_id,
         starred=starred,
         shared=shared,
         doc_type=doc_type,
@@ -213,6 +228,87 @@ async def list_folders(
     """List all folders for the current user."""
     folders = await AIDocumentService.list_folders(db, current_user.id, project_scope=project_scope)
     return FolderListResponse(folders=folders)
+
+
+@router.get("/folders/tree", response_model=FolderTreeResponse)
+async def get_folder_tree(
+    project_id: UUID | None = Query(None, description="Filter by project ID"),
+    project_scope: str | None = Query(None, description="Filter: personal or project"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Get folder tree for the current user."""
+    folders = await FolderService.get_folder_tree(
+        db, current_user.id, project_id=project_id, project_scope=project_scope,
+    )
+    return FolderTreeResponse(
+        folders=[await FolderService.to_response(f) for f in folders]
+    )
+
+
+@router.post("/folders", response_model=FolderResponse, status_code=status.HTTP_201_CREATED)
+async def create_folder(
+    data: CreateFolderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Create a new folder or sub-folder."""
+    try:
+        folder = await FolderService.create_folder(
+            db, current_user.id, data.name, parent_id=data.parent_id, project_id=data.project_id,
+        )
+        return await FolderService.to_response(folder)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.patch("/folders/{folder_id}", response_model=FolderResponse)
+async def rename_folder(
+    folder_id: UUID,
+    data: FolderUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Rename a folder."""
+    try:
+        folder = await FolderService.rename_folder(db, folder_id, current_user.id, data.name)
+        return await FolderService.to_response(folder)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.get("/folders/{folder_id}/delete-info", response_model=FolderDeleteConfirm)
+async def get_folder_delete_info(
+    folder_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Get deletion preview for a folder."""
+    try:
+        info = await FolderService.get_delete_info(db, folder_id)
+        return FolderDeleteConfirm(**info)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/folders/{folder_id}", response_model=MessageResponse)
+async def delete_folder(
+    folder_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Delete a folder and all its contents."""
+    try:
+        await FolderService.delete_folder(db, folder_id, current_user.id)
+        return MessageResponse(message="Folder deleted successfully")
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ─── AI Operations ────────────────────────────────────────────────────────────

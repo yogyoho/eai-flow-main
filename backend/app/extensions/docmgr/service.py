@@ -28,6 +28,7 @@ class AIDocumentService:
         db: AsyncSession,
         user_id: UUID,
         folder: str | None = None,
+        folder_id: UUID | None = None,
         starred: bool | None = None,
         shared: bool | None = None,
         doc_type: str | None = None,
@@ -55,6 +56,10 @@ class AIDocumentService:
         if folder is not None:
             query = query.where(AIDocument.folder == folder)
             count_query = count_query.where(AIDocument.folder == folder)
+
+        if folder_id is not None:
+            query = query.where(AIDocument.folder_id == folder_id)
+            count_query = count_query.where(AIDocument.folder_id == folder_id)
 
         if starred is not None:
             query = query.where(AIDocument.is_starred == starred)
