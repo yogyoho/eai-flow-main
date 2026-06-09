@@ -58,6 +58,32 @@ import type {
   RAGChatResponse,
 } from "../types";
 
+// Folder types
+export interface FolderNode {
+  id: string
+  name: string
+  parent_id: string | null
+  project_id: string | null
+  owner_id: string
+  sort_order: number
+  is_system: boolean
+  doc_count: number
+  children: FolderNode[]
+  created_at: string
+  updated_at: string
+}
+
+export interface FolderTreeResponse {
+  folders: FolderNode[]
+}
+
+export interface FolderDeleteInfo {
+  folder_id: string
+  folder_name: string
+  subfolder_count: number
+  doc_count: number
+}
+
 const API_BASE = "/api/extensions";
 const KF_API_BASE = "/api/kf";
 
@@ -546,6 +572,40 @@ export const docmgrApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+};
+
+// ===== Folder API =====
+
+export const folderApi = {
+  getTree: async (params?: { project_id?: string; project_scope?: string }): Promise<FolderTreeResponse> => {
+    const searchParams = new URLSearchParams()
+    if (params?.project_id) searchParams.set("project_id", params.project_id)
+    if (params?.project_scope) searchParams.set("project_scope", params.project_scope)
+    const qs = searchParams.toString()
+    return request(`/docmgr/folders/tree${qs ? `?${qs}` : ""}`)
+  },
+
+  create: async (data: { name: string; parent_id?: string; project_id?: string }): Promise<FolderNode> => {
+    return request("/docmgr/folders", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  rename: async (folderId: string, name: string): Promise<FolderNode> => {
+    return request(`/docmgr/folders/${folderId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    })
+  },
+
+  getDeleteInfo: async (folderId: string): Promise<FolderDeleteInfo> => {
+    return request(`/docmgr/folders/${folderId}/delete-info`)
+  },
+
+  delete: async (folderId: string): Promise<void> => {
+    await request<{ message: string }>(`/docmgr/folders/${folderId}`, { method: "DELETE" })
   },
 };
 
