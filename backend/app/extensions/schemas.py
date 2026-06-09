@@ -587,6 +587,7 @@ class AIDocumentResponse(BaseModel):
     title: str
     content: str | None = None
     folder: str
+    folder_id: UUID | None = None
     is_starred: bool
     is_shared: bool
     status: str

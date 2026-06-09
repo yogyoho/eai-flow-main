@@ -199,6 +199,7 @@ class AIDocumentService:
             title=doc.title,
             content=doc.content,
             folder=doc.folder,
+            folder_id=doc.folder_id,
             is_starred=doc.is_starred,
             is_shared=doc.is_shared,
             status=doc.status,
