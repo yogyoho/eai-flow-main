@@ -6,6 +6,13 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class SystemInfo(BaseModel):
+    """System information for license request."""
+
+    hostname: str = ""
+    platform: str = ""
+
+
 class LicenseStatusResponse(BaseModel):
     """GET /api/license/status response."""
 
@@ -23,6 +30,7 @@ class LicenseStatusResponse(BaseModel):
     grace_period_remaining_days: int | None = None
     warnings: list[str] = Field(default_factory=list)
     is_dev_mode: bool = False
+    system_info: SystemInfo = Field(default_factory=SystemInfo)
 
 
 class LicenseImportResponse(BaseModel):

@@ -200,6 +200,18 @@ class LicenseService:
                 "LICENSE_INVALID", f"License verification failed: {e}"
             ) from e
 
+        # Check machine_id binding
+        current_machine_id = LicenseService._generate_machine_id()
+        license_machine_id = claims.get("sub", "")
+        if license_machine_id != current_machine_id:
+            logger.warning(
+                f"License machine_id mismatch: license={license_machine_id}, current={current_machine_id}"
+            )
+            raise LicenseError(
+                "MACHINE_MISMATCH",
+                f"License is bound to machine {license_machine_id}, but current machine is {current_machine_id}",
+            )
+
         # Check expiry
         expires_at = None
         exp_ts = claims.get("exp")
@@ -226,6 +238,13 @@ class LicenseService:
         current_user_count: int = 0,
     ) -> dict[str, Any]:
         """Build full status response for the frontend."""
+        # Always compute machine_id and system info — needed for license requests
+        machine_id = LicenseService._generate_machine_id()
+        system_info = {
+            "hostname": platform.node(),
+            "platform": platform.system(),
+        }
+
         try:
             if payload is None:
                 payload = LicenseService.verify()
@@ -233,7 +252,7 @@ class LicenseService:
             in_grace, remaining = LicenseService._compute_grace_period()
             return {
                 "valid": False,
-                "machine_id": None,
+                "machine_id": machine_id,
                 "type": None,
                 "customer": None,
                 "max_users": None,
@@ -246,6 +265,7 @@ class LicenseService:
                 "grace_period_remaining_days": remaining if in_grace else None,
                 "warnings": [],
                 "is_dev_mode": False,
+                "system_info": system_info,
             }
 
         # Handle grace period payload
@@ -253,7 +273,7 @@ class LicenseService:
             _, remaining = LicenseService._compute_grace_period()
             return {
                 "valid": False,
-                "machine_id": None,
+                "machine_id": machine_id,
                 "type": None,
                 "customer": None,
                 "max_users": None,
@@ -266,6 +286,7 @@ class LicenseService:
                 "grace_period_remaining_days": remaining,
                 "warnings": ["grace_period_active"],
                 "is_dev_mode": False,
+                "system_info": system_info,
             }
 
         # Compute warnings
@@ -298,6 +319,7 @@ class LicenseService:
             "grace_period_remaining_days": None,
             "warnings": warnings,
             "is_dev_mode": payload.machine_id == "DEV-MODE",
+            "system_info": system_info,
         }
 
     @staticmethod
