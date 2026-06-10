@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, FileDown } from "lucide-react";
 import {
   exportLicense,
   getLicenseHistory,
@@ -63,6 +64,27 @@ export default function LicensePage() {
     }
   };
 
+  const handleDownloadRequest = () => {
+    const requestData = {
+      machine_id: status?.machine_id ?? "",
+      generated_at: new Date().toISOString(),
+      system_info: {
+        hostname: status?.system_info?.hostname ?? "",
+        platform: status?.system_info?.platform ?? navigator.platform ?? "",
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(requestData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "license_request.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("zh-CN");
@@ -104,6 +126,10 @@ export default function LicensePage() {
                 <span className="text-red-600">无效</span>
               )}
             </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-gray-500">机器ID</dt>
+            <dd className="font-mono text-xs break-all mt-1">{status?.machine_id ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-gray-500">类型</dt>
@@ -168,15 +194,29 @@ export default function LicensePage() {
       {/* Import */}
       <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-lg font-semibold">导入许可证</h2>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          选择 .lic 文件
-          <input
-            type="file"
-            accept=".lic"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </label>
+        <p className="mb-4 text-sm text-gray-500">
+          如已获取 <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">license.lic</code> 文件，可直接导入。如尚未申请，请先下载申请文件并提交给厂商制作许可证。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <FileDown className="h-4 w-4" />
+            选择 .lic 文件
+            <input
+              type="file"
+              accept=".lic"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleDownloadRequest}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            <Download className="h-4 w-4" />
+            申请许可证
+          </button>
+        </div>
         {importMutation.isPending && (
           <span className="ml-3 text-sm text-gray-500">导入中...</span>
         )}

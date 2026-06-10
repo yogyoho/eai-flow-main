@@ -1,5 +1,10 @@
 // frontend/src/extensions/license/api.ts
 
+export interface LicenseSystemInfo {
+  hostname: string;
+  platform: string;
+}
+
 export interface LicenseStatus {
   valid: boolean;
   machine_id: string | null;
@@ -15,6 +20,7 @@ export interface LicenseStatus {
   grace_period_remaining_days: number | null;
   warnings: string[];
   is_dev_mode: boolean;
+  system_info: LicenseSystemInfo;
 }
 
 export interface LicenseImportResult {
