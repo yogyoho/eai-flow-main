@@ -17,7 +17,6 @@ const withNextra = nextra({});
 /** @type {import("next").NextConfig} */
 const config = {
   transpilePackages: [],
-  serverExternalPackages: ["@blocknote/xl-ai"],
   output:
     process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
       ? "standalone"
