@@ -1,0 +1,28 @@
+"use client";
+
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { FileEdit } from "lucide-react";
+
+import type { DAGNodeData } from "../types";
+
+export function ManualEditNode({ data, selected }: NodeProps & { data: DAGNodeData }) {
+  return (
+    <div
+      className={`px-3 py-2.5 rounded-lg border-2 bg-white min-w-[140px] transition-shadow ${
+        selected ? "border-amber-400 shadow-lg ring-2 ring-amber-200" : "border-amber-200 hover:shadow-sm"
+      }`}
+    >
+      <Handle type="target" position={Position.Top} className="!bg-amber-400 !w-2.5 !h-2.5" />
+      <div className="flex items-center gap-2.5">
+        <span className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+          <FileEdit className="w-4 h-4 text-amber-600" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-amber-700 truncate">{data.label || "人工编辑"}</div>
+          {data.team && <div className="text-[10px] text-gray-500">团队: {data.team}</div>}
+        </div>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-amber-400 !w-2.5 !h-2.5" />
+    </div>
+  );
+}

@@ -1,40 +1,40 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Users } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 
 import type { DAGNodeData } from "../types";
-
-const ROLE_COLORS: Record<string, string> = {
-  lead: "bg-amber-100 text-amber-700",
-  writer: "bg-blue-100 text-blue-700",
-  reviewer: "bg-green-100 text-green-700",
-  data_reviewer: "bg-teal-100 text-teal-700",
-  approver: "bg-red-100 text-red-700",
-};
 
 export function PhaseNode({ data, selected }: NodeProps & { data: DAGNodeData }) {
   const roles = data.requiredRoles || [];
 
   return (
     <div
-      className={`px-3 py-2 rounded-lg border-2 bg-white min-w-[140px] ${
-        selected ? "border-purple-500 shadow-lg" : "border-purple-300"
+      className={`px-3 py-2.5 rounded-lg border-2 bg-white min-w-[150px] transition-shadow ${
+        selected ? "border-purple-400 shadow-lg ring-2 ring-purple-200" : "border-purple-200 hover:shadow-sm"
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-purple-400 !w-2 !h-2" />
-      <div className="text-xs font-semibold text-purple-700">{data.label || "阶段"}</div>
-      {data.team && <div className="text-[10px] text-gray-500 mt-1">团队: {data.team}</div>}
-      {data.chapterRange && data.chapterRange.length > 0 && (
-        <div className="text-[10px] text-gray-500">章节: {data.chapterRange.join("-")}</div>
+      <Handle type="target" position={Position.Top} className="!bg-purple-400 !w-2.5 !h-2.5" />
+      <div className="flex items-center gap-2.5">
+        <span className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+          <FolderOpen className="w-4 h-4 text-purple-600" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-purple-700 truncate">{data.label || "阶段"}</div>
+          {data.team && <div className="text-[10px] text-gray-500">团队: {data.team}</div>}
+        </div>
+      </div>
+      {data.chapterRange && data.chapterRange.length >= 2 && (
+        <div className="text-[10px] text-purple-500 mt-1 ml-[38px]">
+          章节 {data.chapterRange[0]}–{data.chapterRange[1]}
+        </div>
       )}
       {roles.length > 0 && (
-        <div className="flex flex-wrap gap-0.5 mt-1">
-          <Users className="h-2.5 w-2.5 text-gray-400 mr-0.5" />
+        <div className="flex flex-wrap gap-0.5 mt-1 ml-[38px]">
           {roles.map((slot) => (
             <span
               key={slot.roleKey}
-              className={`text-[9px] px-1 py-px rounded ${ROLE_COLORS[slot.roleKey] || "bg-gray-100 text-gray-600"}`}
+              className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium"
               title={`${slot.label} ×${slot.count}`}
             >
               {slot.label.slice(0, 2)}×{slot.count}
@@ -42,7 +42,7 @@ export function PhaseNode({ data, selected }: NodeProps & { data: DAGNodeData })
           ))}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-purple-400 !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} className="!bg-purple-400 !w-2.5 !h-2.5" />
     </div>
   );
 }

@@ -2,9 +2,12 @@
 
 import { Building2, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import { AdminSelect } from "@/components/ui/admin-select";
+import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 import { deptApi } from "@/extensions/api/index";
-import type { DAGNodeData, RoleSlot } from "../types";
+import type { DAGNodeData, RoleSlot, NotificationConfig } from "../types";
+import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 const PRESET_ROLES: { roleKey: string; label: string }[] = [
   { roleKey: "lead", label: "阶段负责人" },
@@ -22,8 +25,8 @@ interface DeptItem {
 
 interface PhaseConfigPanelProps {
   data: DAGNodeData;
+  nodeId: string;
   onUpdate: (partial: Partial<DAGNodeData>) => void;
-  nodeId?: string;
   orgDeptCode?: string;
   onOrgBindingChange?: (nodeId: string, deptCode: string | null) => void;
 }
@@ -33,12 +36,7 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
   const [departments, setDepartments] = useState<DeptItem[]>([]);
 
   const roles = data.requiredRoles || [];
-
-  // Options for the org binding select
   const orgDeptOptions = departments.map((d) => ({ value: d.code || d.id, label: d.name }));
-  // The "unbound" state is represented by an empty orgDeptCode; AdminSelect shows placeholder when value doesn't match any option.
-
-  // Options for the role add select (exclude already-added roles)
   const availableRoleOptions = PRESET_ROLES.filter((pr) => !roles.some((r) => r.roleKey === pr.roleKey))
     .map((pr) => ({ value: pr.roleKey, label: pr.label }));
 
@@ -65,8 +63,7 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
     const preset = PRESET_ROLES.find((r) => r.roleKey === newRoleKey);
     if (!preset) return;
     if (roles.some((r) => r.roleKey === newRoleKey)) return;
-    const updated = [...roles, { roleKey: preset.roleKey, count: 1, label: preset.label }];
-    onUpdate({ requiredRoles: updated });
+    onUpdate({ requiredRoles: [...roles, { roleKey: preset.roleKey, count: 1, label: preset.label }] });
   }
 
   function removeRole(roleKey: string) {
@@ -81,13 +78,11 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
 
   return (
     <div className="p-4 space-y-4">
-      {/* Section header */}
       <div className="flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-purple-500" />
         <span className="text-xs font-semibold uppercase tracking-wider text-purple-600">阶段属性</span>
       </div>
 
-      {/* Phase name */}
       <div className="space-y-1.5">
         <label className="text-[11px] font-medium text-muted-foreground">阶段名称</label>
         <input
@@ -97,53 +92,35 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
         />
       </div>
 
-      {/* Team */}
       <div className="space-y-1.5">
         <label className="text-[11px] font-medium text-muted-foreground">团队</label>
         <input
           value={data.team || ""}
-          onChange={(e) => onUpdate({ team: e.target.value })}
+          onChange={(e) => onUpdate({ team: e.target.value || undefined })}
+          placeholder="如: 撰写组"
           className="w-full px-2.5 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-colors"
-          placeholder="如: A组"
         />
       </div>
 
-      {/* AI Assist toggle */}
-      <label className="flex items-center gap-2.5 cursor-pointer group">
-        <div className="relative">
-          <input
-            type="checkbox"
-            checked={data.aiAssist ?? false}
-            onChange={(e) => onUpdate({ aiAssist: e.target.checked })}
-            className="peer sr-only"
-          />
-          <div className="w-8 h-[18px] rounded-full bg-muted border border-border transition-colors peer-checked:bg-purple-500 peer-checked:border-purple-500 peer-focus-visible:ring-2 peer-focus-visible:ring-purple-500/20" />
-          <div className="absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-[14px]" />
-        </div>
-        <span className="text-sm text-foreground group-hover:text-purple-600 transition-colors">AI 辅助</span>
-      </label>
+      <StyledCheckbox checked={data.aiAssist ?? false} onChange={(v) => onUpdate({ aiAssist: v })} label="AI 辅助" />
 
-      {/* Org Unit Binding */}
-      {onOrgBindingChange && departments.length > 0 && (
+      {departments.length > 0 && (
         <div className="space-y-1.5">
           <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
             <Building2 className="h-3 w-3" />
             绑定组织单元
           </label>
           <AdminSelect
-            value={orgDeptCode || ""}
-            onChange={(v) => nodeId && onOrgBindingChange(nodeId, v || null)}
+            value={orgDeptCode ?? ""}
+            onChange={(v) => onOrgBindingChange?.(nodeId, v || null)}
             options={orgDeptOptions}
             placeholder="— 不绑定 —"
             className="w-full"
           />
-          <p className="text-[10px] text-muted-foreground">
-            绑定后，该阶段自动分配部门成员到项目
-          </p>
+          <p className="text-[10px] text-muted-foreground">绑定后自动分配部门成员到项目</p>
         </div>
       )}
 
-      {/* Required Roles */}
       <div className="space-y-2">
         <label className="text-[11px] font-medium text-muted-foreground block">必需角色槽位</label>
         {roles.length > 0 && (
@@ -177,9 +154,7 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
           <div className="flex-1 min-w-0">
             <AdminSelect
               value={newRoleKey}
-              onChange={(v) => {
-                setNewRoleKey(v);
-              }}
+              onChange={(v) => setNewRoleKey(v)}
               options={availableRoleOptions}
               className="w-full"
               placeholder="添加角色..."
@@ -196,18 +171,10 @@ export function PhaseConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBin
         </div>
       </div>
 
-      {data.inputFrom && data.inputFrom.length > 0 && (
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-muted-foreground">输入上下文</label>
-          <div className="space-y-1">
-            {data.inputFrom.map((id) => (
-              <div key={id} className="text-xs bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-md">
-                ← {id}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <NotificationsConfigPanel
+        notifications={data.notifications ?? []}
+        onUpdate={(notifications: NotificationConfig[]) => onUpdate({ notifications })}
+      />
     </div>
   );
 }
