@@ -1,9 +1,10 @@
 """Pydantic schemas for license module."""
 
+import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SystemInfo(BaseModel):
@@ -59,6 +60,13 @@ class LicenseHistoryItem(BaseModel):
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def coerce_id(cls, v: Any) -> str:
+        if isinstance(v, uuid.UUID):
+            return str(v)
+        return v
 
 
 class LicenseHistoryResponse(BaseModel):

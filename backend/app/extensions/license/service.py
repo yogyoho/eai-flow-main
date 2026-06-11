@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 PUBLIC_KEY_PATH = Path(__file__).parent / "public_key.pem"
 DEERFLOW_DIR = Path("backend/.deer-flow")
+MACHINE_ID_FILE = DEERFLOW_DIR / "machine_id"
 GRACE_PERIOD_DAYS = int(os.getenv("GRACE_PERIOD_DAYS", "7"))
 DEFAULT_LICENSE_PATH = Path(os.getenv("LICENSE_FILE_PATH", "/etc/deerflow/license.lic"))
 ALGORITHM = "RS256"
@@ -151,9 +152,19 @@ class LicenseService:
 
     @staticmethod
     def _generate_machine_id() -> str:
-        """Generate a stable machine identifier."""
+        """Generate a stable machine identifier.
+
+        Persisted to disk on first call so the ID survives container
+        restarts where MAC addresses (uuid.getnode()) may change.
+        """
+        _ = LicenseService._ensure_deerflow_dir()
+        if MACHINE_ID_FILE.exists():
+            return MACHINE_ID_FILE.read_text().strip()
+
         raw = platform.node() + str(uuid_mod.getnode())
-        return hashlib.sha256(raw.encode()).hexdigest()[:32]
+        machine_id = hashlib.sha256(raw.encode()).hexdigest()[:32]
+        MACHINE_ID_FILE.write_text(machine_id)
+        return machine_id
 
     @staticmethod
     def verify() -> LicensePayload:
@@ -357,7 +368,7 @@ class LicenseService:
         exp_ts = claims.get("exp")
         expires_at = None
         if exp_ts:
-            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc).replace(tzinfo=None)
 
         license_record = License(
             jwt_jti=jti,
@@ -367,7 +378,7 @@ class LicenseService:
             max_users=claims.get("max_users"),
             modules=claims.get("modules", {}),
             features=claims.get("features", {}),
-            issued_at=datetime.fromtimestamp(claims.get("iat", 0), tz=timezone.utc),
+            issued_at=datetime.fromtimestamp(claims.get("iat", 0), tz=timezone.utc).replace(tzinfo=None),
             expires_at=expires_at,
             meta=claims.get("meta", {}),
             jwt_raw=jwt_raw,
@@ -375,6 +386,11 @@ class LicenseService:
         )
         db.add(license_record)
         await db.commit()
+
+        # Write license file to disk so verify() can read it
+        project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+        license_file = project_root / "license.lic"
+        license_file.write_text(jwt_raw)
 
         # Clear grace period on successful import
         stamp_file = DEERFLOW_DIR / "license_start.log"
