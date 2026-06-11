@@ -1,5 +1,7 @@
 // frontend/src/extensions/license/api.ts
 
+import { fetch as csrfFetch } from "@/core/api/fetcher";
+
 export interface LicenseSystemInfo {
   hostname: string;
   platform: string;
@@ -48,7 +50,7 @@ export interface LicenseHistoryItem {
 const BASE = "/api/license";
 
 export async function getLicenseStatus(): Promise<LicenseStatus> {
-  const res = await fetch(`${BASE}/status`);
+  const res = await csrfFetch(`${BASE}/status`);
   if (!res.ok) throw new Error(`License status failed: ${res.status}`);
   return res.json();
 }
@@ -56,7 +58,7 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
 export async function importLicense(file: File): Promise<LicenseImportResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${BASE}/import`, {
+  const res = await csrfFetch(`${BASE}/import`, {
     method: "POST",
     body: form,
   });
@@ -71,13 +73,13 @@ export async function getLicenseHistory(
   skip = 0,
   limit = 20
 ): Promise<{ items: LicenseHistoryItem[]; total: number }> {
-  const res = await fetch(`${BASE}/history?skip=${skip}&limit=${limit}`);
+  const res = await csrfFetch(`${BASE}/history?skip=${skip}&limit=${limit}`);
   if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);
   return res.json();
 }
 
 export async function exportLicense(): Promise<Blob> {
-  const res = await fetch(`${BASE}/export`);
+  const res = await csrfFetch(`${BASE}/export`);
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
   return res.blob();
 }
