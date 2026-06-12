@@ -1,0 +1,115 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/allowed/files"
+      ],
+      "env": {},
+      "cwd": null,
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Provides filesystem access within allowed directories"
+    },
+    "github": {
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": ""
+      },
+      "cwd": null,
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "GitHub MCP server for repository operations"
+    },
+    "postgres": {
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/mydb"
+      ],
+      "env": {},
+      "cwd": null,
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "PostgreSQL database access"
+    },
+    "project": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.project.mcp"
+      ],
+      "env": {
+        "PROJECT_DB_URL": "postgresql+asyncpg://project:project123@project-db:5432/project"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Project chapter read/write tools for report writing agent"
+    },
+    "knowledge-factory": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.knowledge_factory.mcp_server.server"
+      ],
+      "env": {
+        "KF_DATABASE_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Knowledge factory template resolution and domain listing tools for report generation"
+    },
+    "word-document-server": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "/app/mcp-server/Office-Word-MCP-Server/word_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/app/mcp-server/Office-Word-MCP-Server",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "cwd": "/app/mcp-server/Office-Word-MCP-Server",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Word document creation (54 tools)"
+    }
+  },
+  "skills": {
+    "fire-protection-report": {
+      "enabled": true
+    },
+    "fire-protection-report-v2": {
+      "enabled": false
+    },
+    "coal-eia-report": {
+      "enabled": true
+    }
+  }
+}
