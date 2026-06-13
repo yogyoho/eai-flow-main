@@ -1,10 +1,15 @@
 """Real activity implementations for the workflow engine."""
 
+import asyncio
 import logging
 import uuid
 
 from sqlalchemy import select, update
 from temporalio import activity
+
+from app.extensions.writing.generation_strategy import select_strategy, GenerationStrategy
+from app.extensions.writing.dependency_graph import topological_order
+from app.extensions.writing.state_machine import validate_chapter_transition
 
 # Ensure all ORM models are registered so SQLAlchemy can resolve FK references
 # during flush. Without this, `get_db_context()` sessions fail with
@@ -13,6 +18,16 @@ import app.extensions.models  # noqa: F401
 import app.extensions.knowledge_factory.models  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+
+def _get_member_duty(member, node_id: str) -> str | None:
+    """Extract a member's duty string for a given workflow node.
+
+    Returns the ``duty`` value from the member's ``phase_duties`` dict
+    for *node_id*, or ``None`` if the member has no duties for that node.
+    """
+    duties = getattr(member, "phase_duties", None) or {}
+    return duties.get(node_id, {}).get("duty")
 
 
 @activity.defn
@@ -78,28 +93,153 @@ async def advance_phase(phase_id: str, project_id: str) -> dict:
 
 
 @activity.defn
+async def init_task(node_id: str, project_id: str, config: dict | None = None) -> dict:
+    """Initialize a task node — set current_phase_node and auto-assign required roles to project members.
+
+    Reads ``requiredRoles`` from the workflow DAG node and maps each role to
+    the first available project member who isn't already assigned to this phase.
+    Updates ``ProjectMember.phase_duties`` for the assigned members.
+    """
+    from app.extensions.database import get_db_context
+    from app.extensions.models import ProjectMember, ReportProject
+
+    config = config or {}
+    required_roles: list[dict] = config.get("requiredRoles", [])
+
+    async with get_db_context() as db:
+        project = await db.get(ReportProject, uuid.UUID(project_id))
+        if not project:
+            logger.warning("activity:init_task project not found: %s", project_id)
+            return {"status": "error", "detail": "Project not found"}
+
+        project.current_phase_node = node_id
+
+        # Auto-assign required roles to project members
+        assigned_count = 0
+        if required_roles:
+            member_result = await db.execute(
+                select(ProjectMember).where(ProjectMember.project_id == uuid.UUID(project_id))
+            )
+            members = member_result.scalars().all()
+
+            for role_spec in required_roles:
+                role_key = role_spec.get("roleKey", role_spec.get("role_key", ""))
+                needed = role_spec.get("count", 1)
+                if not role_key or needed <= 0:
+                    continue
+
+                # Single-pass: count already-assigned and fill remaining slots
+                remaining = needed
+                for member in members:
+                    if _get_member_duty(member, node_id) == role_key:
+                        remaining -= 1
+
+                for member in members:
+                    if remaining <= 0:
+                        break
+                    if _get_member_duty(member, node_id) is None:
+                        duties = member.phase_duties or {}
+                        duties[node_id] = {"duty": role_key}
+                        member.phase_duties = duties
+                        assigned_count += 1
+                        remaining -= 1
+
+                if remaining > 0:
+                    logger.info(
+                        "activity:init_task node_id=%s role=%s unfilled=%d",
+                        node_id, role_key, remaining,
+                    )
+
+        await db.commit()
+
+    logger.info(
+        "activity:init_task node_id=%s project_id=%s assigned=%d roles=%d",
+        node_id, project_id, assigned_count, len(required_roles),
+    )
+    return {
+        "status": "ok",
+        "node_id": node_id,
+        "project_id": project_id,
+        "assigned_count": assigned_count,
+    }
+
+
+@activity.defn
 async def create_review_assignments(
     node_id: str,
     project_id: str,
     reviewers: list[str] | None = None,
 ) -> dict:
-    """Create review assignments from DAG node config."""
-    count = 0
-    if reviewers:
-        from app.extensions.database import get_db_context
-        from app.extensions.workflow.models import PhaseReview
+    """Create review assignments from DAG node config.
 
-        async with get_db_context() as db:
-            for reviewer_id in reviewers:
-                review = PhaseReview(
-                    project_id=uuid.UUID(project_id),
-                    phase_node=node_id,
-                    reviewer_id=uuid.UUID(reviewer_id),
-                    review_type="chapter",
-                    status="pending",
+    When *reviewers* is empty or None, auto-resolves reviewers from project
+    members whose ``phase_duties`` for the current phase include duty="reviewer".
+    Falls back to phase lead, then project owner.
+    Existing assignments for the same (project, node, reviewer) are skipped
+    to avoid duplicates on workflow restart.
+    """
+    from app.extensions.database import get_db_context
+    from app.extensions.models import ProjectMember
+    from app.extensions.workflow.models import PhaseReview
+
+    count = 0
+
+    async with get_db_context() as db:
+        # Gather explicit or auto-resolved reviewer user IDs
+        resolved: list[str] = list(reviewers) if reviewers else []
+
+        if not resolved:
+            member_result = await db.execute(
+                select(ProjectMember).where(
+                    ProjectMember.project_id == uuid.UUID(project_id),
                 )
-                db.add(review)
-                count += 1
+            )
+            members = member_result.scalars().all()
+
+            # Priority 1: explicit "reviewer" duty for this phase
+            for member in members:
+                if _get_member_duty(member, node_id) == "reviewer":
+                    resolved.append(str(member.user_id))
+
+            # Priority 2: fall back to phase lead
+            if not resolved:
+                for member in members:
+                    if _get_member_duty(member, node_id) == "lead":
+                        resolved.append(str(member.user_id))
+
+            # Priority 3: fall back to project owner
+            if not resolved:
+                for member in members:
+                    if member.role == "owner":
+                        resolved.append(str(member.user_id))
+
+            logger.info(
+                "activity:create_review_assignments auto-resolved %d reviewers (phase=%s)",
+                len(resolved), node_id,
+            )
+
+        # Create PhaseReview rows, skipping existing duplicates
+        if resolved:
+            pid = uuid.UUID(project_id)
+            for reviewer_id in resolved:
+                rid = uuid.UUID(reviewer_id)
+                existing = await db.execute(
+                    select(PhaseReview).where(
+                        PhaseReview.project_id == pid,
+                        PhaseReview.phase_node == node_id,
+                        PhaseReview.reviewer_id == rid,
+                    )
+                )
+                if existing.scalar_one_or_none() is None:
+                    db.add(PhaseReview(
+                        project_id=pid,
+                        phase_node=node_id,
+                        reviewer_id=rid,
+                        review_type="chapter",
+                        status="pending",
+                    ))
+                    count += 1
+
             await db.commit()
 
     logger.info(
@@ -261,27 +401,142 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
         return {"status": "skipped", "node_id": node_id, "reason": "no chapter_id"}
 
     from app.extensions.database import get_db_context
-    from app.extensions.models import ProjectChapter
+    from app.extensions.models import ProjectChapter, ProjectMember
 
     async with get_db_context() as db:
         chapter = await db.get(ProjectChapter, uuid.UUID(chapter_id))
         if not chapter:
             return {"status": "error", "node_id": node_id, "reason": "chapter not found"}
 
+        # Auto-assign chapter to a writer if not already assigned
+        if not chapter.assigned_to:
+            writer_id = await _resolve_writer_for_chapter(db, project_id, chapter)
+            if writer_id:
+                chapter.assigned_to = writer_id
+
+        # Validate chapter state transition
+        if chapter:
+            err = validate_chapter_transition(chapter.status, "draft")
+            if err:
+                logger.warning("activity:start_ai_writing invalid transition: %s", err)
+                return {"status": "skipped", "node_id": node_id, "chapter_id": chapter_id, "reason": err}
+
         prompt = _build_writing_prompt(chapter)
-        content = await _generate_content(prompt)
+        content, error_code = await _generate_content(prompt)
 
         if content:
             chapter.content = content
             chapter.status = "draft"
             await db.commit()
+        else:
+            # Record failure on the chapter so the UI can surface it
+            chapter.status = "error"
+            chapter.generation_hint = (chapter.generation_hint or "") + f"\n[AI generation failed: {error_code}]"
+            await db.commit()
 
         return {
-            "status": "ok",
+            "status": "ok" if content else "error",
             "node_id": node_id,
             "chapter_id": chapter_id,
             "content": content or "",
+            "error_code": error_code,
         }
+
+
+@activity.defn
+async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
+    """Batch AI generation for all chapters in a phase (simple report path).
+
+    For complex reports, generates chapters in dependency order.
+    For simple reports, parallel batch generation.
+    """
+    from app.extensions.database import get_db_context
+    from app.extensions.models import ProjectChapter, ReportProject
+
+    async with get_db_context() as db:
+        project = await db.get(ReportProject, uuid.UUID(project_id))
+        if not project or not project.template_id:
+            return {"status": "error", "reason": "no template"}
+
+        # Fetch template sections for dependency derivation
+        from app.extensions.knowledge_factory.models import ExtractionTemplate
+        tmpl = await db.get(ExtractionTemplate, project.template_id)
+        sections = (tmpl.root_sections_json or {}).get("sections", []) if tmpl else []
+
+        # Get chapters in this phase, ordered
+        chapters_result = await db.execute(
+            select(ProjectChapter)
+            .where(ProjectChapter.project_id == uuid.UUID(project_id))
+            .where(ProjectChapter.phase_node == phase_id)
+            .order_by(ProjectChapter.sort_order)
+        )
+        chapters = chapters_result.scalars().all()
+
+        if not chapters:
+            return {"status": "ok", "phase_id": phase_id, "results": [], "reason": "no chapters"}
+
+        # Determine strategy
+        strategy = select_strategy(
+            sections,
+            project.report_type,
+            manual_override=None,  # Can be extended to read from node config
+        )
+
+        results = []
+        if strategy == GenerationStrategy.BATCH:
+            # Parallel generation for all chapters (simple reports)
+            for ch in chapters:
+                if ch.status not in ("pending", "error"):
+                    results.append({"chapter_id": str(ch.id), "status": ch.status, "reason": "skipped"})
+                    continue
+                content, error_code = await _generate_content(_build_writing_prompt(ch))
+                if content:
+                    ch.content = content
+                    ch.status = "draft"
+                else:
+                    ch.status = "error"
+                    ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
+                results.append({"chapter_id": str(ch.id), "status": ch.status})
+            await db.commit()
+        else:
+            # Sequential — respect dependency order (complex reports)
+            if sections:
+                batches = topological_order(sections)
+                for batch in batches:
+                    batch_chapters = [c for c in chapters if c.title in batch]
+                    for ch in batch_chapters:
+                        if ch.status not in ("pending", "error"):
+                            results.append({"chapter_id": str(ch.id), "status": ch.status, "reason": "skipped"})
+                            continue
+                        content, error_code = await _generate_content(_build_writing_prompt(ch))
+                        if content:
+                            ch.content = content
+                            ch.status = "draft"
+                        else:
+                            ch.status = "error"
+                            ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
+                        results.append({"chapter_id": str(ch.id), "status": ch.status})
+                    await db.commit()  # Commit after each batch so subsequent batches see updated data
+            else:
+                # No template sections — fall back to simple sequential
+                for ch in chapters:
+                    if ch.status not in ("pending", "error"):
+                        continue
+                    content, error_code = await _generate_content(_build_writing_prompt(ch))
+                    if content:
+                        ch.content = content
+                        ch.status = "draft"
+                    else:
+                        ch.status = "error"
+                        ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
+                    results.append({"chapter_id": str(ch.id), "status": ch.status})
+                await db.commit()
+
+        logger.info(
+            "activity:start_phase_ai_writing phase_id=%s strategy=%s chapters=%d",
+            phase_id, strategy.value, len(results),
+        )
+        return {"status": "ok", "phase_id": phase_id, "strategy": strategy.value, "results": results}
 
 
 def _build_writing_prompt(chapter) -> str:
@@ -315,19 +570,80 @@ def _build_writing_prompt(chapter) -> str:
     return "\n".join(parts)
 
 
-async def _generate_content(prompt: str) -> str | None:
-    """Call the default LLM to generate content."""
-    try:
-        from deerflow.models import create_chat_model
+async def _resolve_writer_for_chapter(
+    db, project_id: str, chapter
+) -> uuid.UUID | None:
+    """Resolve a writer for a chapter from project members' phase_duties.
 
-        model = create_chat_model("ai-writing")
-        from langchain_core.messages import HumanMessage
+    Looks for members with ``duty="writer"`` for the chapter's ``phase_node``.
+    If no phase-scoped writer is found, falls back to any member with role="writer".
+    """
+    from app.extensions.models import ProjectMember
 
-        response = await model.ainvoke([HumanMessage(content=prompt)])
-        return response.content
-    except Exception:
-        logger.exception("AI content generation failed")
-        return None
+    phase_node = getattr(chapter, "phase_node", None)
+
+    member_result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == uuid.UUID(project_id),
+        )
+    )
+    members = member_result.scalars().all()
+
+    # Priority 1: phase-scoped writer
+    if phase_node:
+        for member in members:
+            duty = _get_member_duty(member, phase_node)
+            if duty in ("writer", "write"):
+                return member.user_id
+
+    # Priority 2: any member with role="writer"
+    for member in members:
+        if member.role == "writer":
+            return member.user_id
+
+    # Priority 3: first project owner
+    for member in members:
+        if member.role == "owner":
+            return member.user_id
+
+    return None
+
+
+async def _generate_content(prompt: str, *, timeout: float = 60.0, retries: int = 1) -> tuple[str | None, str | None]:
+    """Call the default LLM to generate content with timeout and retry.
+
+    Returns (content, error_code).  error_code is None on success.
+    """
+    from langchain_core.messages import HumanMessage
+
+    for attempt in range(retries + 1):
+        try:
+            from deerflow.models import create_chat_model
+
+            model = create_chat_model("ai-writing")
+            response = await asyncio.wait_for(
+                model.ainvoke([HumanMessage(content=prompt)]),
+                timeout=timeout,
+            )
+            return response.content, None
+        except asyncio.TimeoutError:
+            logger.warning("AI content generation timed out (attempt %d/%d, timeout=%.0fs)", attempt + 1, retries + 1, timeout)
+            if attempt == retries:
+                return None, "timeout"
+            await asyncio.sleep(3)
+        except Exception as exc:
+            exc_msg = str(exc).lower()
+            if "auth" in exc_msg or "401" in exc_msg or "403" in exc_msg or "api_key" in exc_msg:
+                logger.error("AI content generation auth error: %s", exc)
+                return None, "auth_error"
+            if "quota" in exc_msg or "429" in exc_msg or "rate" in exc_msg:
+                logger.error("AI content generation quota error: %s", exc)
+                return None, "quota_error"
+            logger.exception("AI content generation failed (attempt %d/%d)", attempt + 1, retries + 1)
+            if attempt == retries:
+                return None, "generation_error"
+            await asyncio.sleep(3)
+    return None, "generation_error"
 
 
 @activity.defn
@@ -421,25 +737,22 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
         if not scoped_ids:
             return {"status": "ok", "phase_id": phase_id, "ready": True, "total": 0, "completed": 0, "pending": 0}
 
-        # Check status of all scoped chapters
+        # Check status of all scoped chapters — single batch query with title
         status_result = await db.execute(
-            select(ProjectChapter.id, ProjectChapter.status)
+            select(ProjectChapter.id, ProjectChapter.status, ProjectChapter.title)
             .where(ProjectChapter.id.in_(scoped_ids))
         )
         total = 0
         completed = 0
         pending = 0
         incomplete_chapters: list[str] = []
-        for ch_id, ch_status in status_result.all():
+        for ch_id, ch_status, ch_title in status_result.all():
             total += 1
             if ch_status in ("completed", "approved"):
                 completed += 1
             else:
                 pending += 1
-                # Get title for incomplete chapters
-                ch = await db.get(ProjectChapter, ch_id)
-                if ch:
-                    incomplete_chapters.append(f"{ch.title} ({ch_status})")
+                incomplete_chapters.append(f"{ch_title or ch_id} ({ch_status})")
 
         ready = total > 0 and pending == 0
 
@@ -504,7 +817,8 @@ async def handle_rejection(
     """Handle review rejection: update project current_phase_node and reset reviews.
 
     Resets rejected reviews back to 'pending' and moves the project to the
-    rollback target phase node.
+    rollback target phase node.  Also resets chapter statuses in the rollback
+    phase back to 'pending' so the writing team can re-edit them.
     """
     from app.extensions.database import get_db_context
     from app.extensions.workflow.models import PhaseReview
@@ -526,6 +840,17 @@ async def handle_rejection(
             update(ReportProject)
             .where(ReportProject.id == uuid.UUID(project_id))
             .values(current_phase_node=rollback_to)
+        )
+
+        # Reset chapter statuses in the rollback phase back to 'pending'
+        from app.extensions.models import ProjectChapter
+
+        await db.execute(
+            update(ProjectChapter)
+            .where(ProjectChapter.project_id == uuid.UUID(project_id))
+            .where(ProjectChapter.phase_node == rollback_to)
+            .where(ProjectChapter.status.in_(("completed", "approved", "reviewed")))
+            .values(status="pending")
         )
 
         await db.commit()
@@ -579,6 +904,7 @@ async def gather_phase_context(phase_id: str, project_id: str) -> dict:
 
 ALL_ACTIVITIES = [
     init_phase,
+    init_task,
     advance_phase,
     create_review_assignments,
     check_phase_completion,
@@ -586,6 +912,7 @@ ALL_ACTIVITIES = [
     handle_rejection,
     gather_phase_context,
     start_ai_writing,
+    start_phase_ai_writing,
     parse_sources,
     store_sources,
     notify_phase_start,
