@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
-from app.extensions.models import Role
+from app.extensions.models import ProjectMember, ReportProject, Role, User
 from app.extensions.schemas import CurrentUser
 
 from .permissions import require_resource_permission
@@ -70,9 +70,28 @@ async def list_projects(
 @router.get("/projects/{project_id}", response_model=ProjectOut)
 async def get_project(
     project_id: UUID,
-    _user: CurrentUserWithAccess,
+    user: CurrentUserWithAccess,
     db: AsyncSession = Depends(get_db),
 ):
+    # Check admin status — admins can see any project
+    is_admin = False
+    if user.role_id:
+        role = await db.get(Role, user.role_id)
+        if role and (role.is_system or "*" in (role.permissions or [])):
+            is_admin = True
+
+    if not is_admin:
+        # Verify membership
+        member_check = await db.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == user.id,
+            )
+        )
+        is_member = member_check.scalar_one_or_none() is not None
+        if not is_member:
+            raise HTTPException(status_code=403, detail="You are not a member of this project")
+
     result = await service.get_project(db, project_id)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -85,6 +104,18 @@ async def create_project(
     _user: ProjectCreator,
     db: AsyncSession = Depends(get_db),
 ):
+    # FK existence checks for template and workflow
+    if body.template_id:
+        from app.extensions.knowledge_factory.models import ExtractionTemplate
+        tmpl = await db.get(ExtractionTemplate, body.template_id)
+        if not tmpl:
+            raise HTTPException(status_code=422, detail=f"Template {body.template_id} not found")
+    if body.workflow_id:
+        from app.extensions.workflow.models import WorkflowDefinition
+        wf = await db.get(WorkflowDefinition, body.workflow_id)
+        if not wf:
+            raise HTTPException(status_code=422, detail=f"Workflow definition {body.workflow_id} not found")
+
     members_data = None
     if body.members:
         members_data = [m.model_dump() for m in body.members]
@@ -487,8 +518,11 @@ async def submit_approval(
     db: AsyncSession = Depends(get_db),
     user: CurrentUserWithAccess = None,
 ):
-    steps = [s.model_dump() for s in body.steps]
-    return await service.submit_approval(db, project_id, user.id, steps)
+    """DEPRECATED (2026-06-13): Use /projects/{id}/finalize instead."""
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Use /projects/{id}/finalize instead.",
+    )
 
 
 @router.post("/projects/{project_id}/approval-action")
@@ -499,9 +533,11 @@ async def approval_action(
     user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
-    if body.action not in ("approve", "reject"):
-        raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
-    return await service.approval_action(db, project_id, body.workflow_id, user.id, body.action, body.comment, is_admin=(_role == "owner"))
+    """DEPRECATED (2026-06-13): Use /projects/{id}/phase-reviews/{id}/action instead."""
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Use /projects/{id}/phase-reviews/{id}/action instead.",
+    )
 
 
 @router.get("/projects/{project_id}/approval-status", response_model=ApprovalStatusOut)
@@ -510,7 +546,11 @@ async def get_approval_status(
     _role: str = Depends(require_resource_permission("approval:view")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await service.get_approval_status(db, project_id)
+    """DEPRECATED (2026-06-13): Use /projects/{id}/phase-reviews instead."""
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Use /projects/{id}/phase-reviews instead.",
+    )
 
 
 # ── Phase Board ──
