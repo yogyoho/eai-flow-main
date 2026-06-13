@@ -1,0 +1,116 @@
+# =============================================================================
+# EAI-Flow 生产离线部署 — 核心服务
+# =============================================================================
+# 使用方式:
+#   docker compose -p eai-prod \
+#     -f docker-compose.yaml \
+#     -f docker-compose.extensions.yaml \
+#     -f docker-compose.temporal.yaml \
+#     -f docker-compose.ragflow.yaml \
+#     up -d
+#
+# 访问: http://<服务器IP>:${PORT:-4026}
+#
+# 注意: 此文件与开发环境 (eai-docker) 完全隔离，可同时运行。
+#       所有镜像均为预构建镜像，不包含 build 指令。
+# =============================================================================
+
+services:
+  # ── Reverse Proxy ──────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: prod-eai-flow-nginx
+    ports:
+      - "${PORT:-4026}:2026"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - gateway
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2026/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Frontend: Next.js Production Server ────────────────────────────────────
+  frontend:
+    image: deer-flow-frontend:latest
+    container_name: prod-eai-flow-frontend
+    command: sh -c "cd /app/frontend && pnpm dev --port 3000 --hostname 0.0.0.0"
+    environment:
+      # 关键：告诉 Next.js 服务端如何访问 Gateway（Docker 内部网络）
+      - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
+      - DEER_FLOW_TRUSTED_ORIGINS=http://localhost:${PORT:-4026}
+      # 前端通过 nginx 代理访问后端，无需直接端口
+      - NEXT_PUBLIC_BACKEND_BASE_URL=
+      - NEXT_PUBLIC_LANGGRAPH_BASE_URL=
+      # 协同编辑通过 nginx 代理
+      - NEXT_PUBLIC_COLLAB_WS_URL=
+      # 知识库 API 通过 nginx 代理
+      - NEXT_PUBLIC_KF_API_BASE_URL=
+      # 其他
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - NODE_ENV=production
+      - SKIP_ENV_VALIDATION=1
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+  # ── Gateway API ────────────────────────────────────────────────────────────
+  gateway:
+    image: deer-flow-gateway:latest
+    container_name: prod-eai-flow-gateway
+    command: sh -c "cd backend && uv sync --all-packages && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
+    volumes:
+      # 配置文件（必须预先存在，否则 Docker 会创建同名目录）
+      - ./config.yaml:/app/backend/config.yaml:ro
+      - ./extensions_config.json:/app/backend/extensions_config.json:ro
+      # 持久化数据
+      - ./skills:/app/skills:ro
+      - ./data:/app/backend/.deer-flow
+      - ./logs:/app/logs
+      - ./mcp-server:/app/mcp-server:ro
+      # Docker socket（用于 Sandbox 容器管理）
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /app
+    environment:
+      - CI=true
+      - DEER_FLOW_ENV=production
+      - DEER_FLOW_PROJECT_ROOT=/app
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      # 内部服务地址（Docker DNS 解析）
+      - DEER_FLOW_CHANNELS_LANGGRAPH_URL=http://gateway:8001/api
+      - DEER_FLOW_CHANNELS_GATEWAY_URL=http://gateway:8001
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT}/data
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
+      - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+      # RAGFlow & Temporal 内部服务地址（使用 Docker 服务名而非容器名，避免耦合）
+      - RAGFLOW_BASE_URL=http://ragflow:9380
+      - TEMPORAL_URL=temporal:7233
+      # 数据库连接（通过 Docker 服务名）
+      - KF_DATABASE_URL=postgresql+asyncpg://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  prod-eai-flow-net:
+    external: true
+    name: eai-prod_eai-flow-net

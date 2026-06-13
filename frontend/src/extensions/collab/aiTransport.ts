@@ -4,9 +4,10 @@ import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 import { fetch as fetchWithAuth } from "@/core/api/fetcher";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (typeof window !== "undefined" && window.location.port === "4000"
-    ? "http://localhost:8001"
+  process.env.NEXT_PUBLIC_API_BASE_URL
+  || process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL
+  || (typeof window !== "undefined" && (window.location.port === "4000" || window.location.port === "3000")
+    ? "http://127.0.0.1:8001"
     : "/api");
 
 function getBaseUrl(): string {

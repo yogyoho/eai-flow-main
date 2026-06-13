@@ -13,7 +13,11 @@ function getLawLibraryApiBase(): string {
     return `${window.location.origin}/api`;
   }
 
-  return "http://localhost:4026/api";
+  // SSR fallback: use internal Gateway URL if available
+  if (process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL) {
+    return process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL;
+  }
+  return "http://127.0.0.1:8001/api";
 }
 
 export function buildLawLibraryUrl(

@@ -1,7 +1,8 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
-import type { DAGNodeData } from "../types";
+import type { DAGNodeData, NotificationConfig } from "../types";
+import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface ReviewConfigPanelProps {
   data: DAGNodeData;
@@ -75,6 +76,11 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
         <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
         <span>审核人分配将在工作流启动后，由经理在工作台配置</span>
       </div>
+
+      <NotificationsConfigPanel
+        notifications={data.notifications ?? []}
+        onUpdate={(notifications: NotificationConfig[]) => onUpdate({ notifications })}
+      />
     </div>
   );
 }

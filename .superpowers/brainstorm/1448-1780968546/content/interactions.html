@@ -1,0 +1,88 @@
+<h2>项目文件夹交互细节</h2>
+<p class="subtitle">右键菜单 / 悬浮操作 / 内联编辑 — 选择你偏好的操作方式</p>
+
+<div class="cards">
+  <!-- 方案 1：右键菜单 -->
+  <div class="card" data-choice="context-menu" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;padding:12px;font-size:13px;border-radius:6px;min-height:260px;">
+        <div style="color:#aaa;font-size:11px;margin-bottom:6px;">📂 项目文件夹</div>
+
+        <!-- 项目节点：高亮状态 -->
+        <div style="margin-bottom:8px;position:relative;">
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;background:#2a2a4a;font-size:13px;border:1px solid #7c8cf8;">
+            <span style="color:#7c8cf8;">▼</span>
+            <span style="color:#fff;">🏗️ 城市规划研究</span>
+            <span style="margin-left:auto;color:#666;font-size:11px;">12</span>
+          </div>
+
+          <!-- 右键菜单弹出 -->
+          <div style="position:absolute;left:140px;top:30px;background:#2a2a3e;border:1px solid #444;border-radius:8px;padding:4px 0;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:10;">
+            <div style="padding:6px 12px;font-size:12px;color:#ccc;cursor:pointer;border-radius:4px;margin:0 4px;">📁 新建子文件夹</div>
+            <div style="padding:6px 12px;font-size:12px;color:#ccc;cursor:pointer;border-radius:4px;margin:0 4px;">✏️ 重命名</div>
+            <div style="height:1px;background:#333;margin:4px 8px;"></div>
+            <div style="padding:6px 12px;font-size:12px;color:#f87171;cursor:pointer;border-radius:4px;margin:0 4px;">🗑️ 删除文件夹</div>
+          </div>
+        </div>
+
+        <!-- 子文件夹 -->
+        <div style="margin-left:18px;">
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;">📂 阶段一：调研</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;">📂 阶段二：分析</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;">📂 阶段三：报告</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>右键上下文菜单</h3>
+      <p>右键点击文件夹弹出操作菜单。桌面端友好，移动端需长按触发。类似文件管理器的操作习惯。</p>
+    </div>
+  </div>
+
+  <!-- 方案 2：悬浮按钮 -->
+  <div class="card" data-choice="hover-actions" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;padding:12px;font-size:13px;border-radius:6px;min-height:260px;">
+        <div style="color:#aaa;font-size:11px;margin-bottom:6px;">📂 项目文件夹</div>
+
+        <!-- 项目节点：悬浮显示操作按钮 -->
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;font-size:13px;color:#ccc;position:relative;" onmouseover="this.style.background='#2a2a4a'" onmouseout="this.style.background='transparent'">
+            <span style="color:#7c8cf8;">▼</span>
+            <span>🏗️ 城市规划研究</span>
+            <span style="margin-left:auto;color:#666;font-size:11px;">12</span>
+            <!-- 悬浮按钮组 -->
+            <div style="display:flex;gap:2px;margin-left:4px;">
+              <span style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#333;font-size:14px;cursor:pointer;" title="新建子文件夹">+</span>
+              <span style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#333;font-size:12px;cursor:pointer;" title="更多操作">⋯</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 子文件夹也带悬浮按钮 -->
+        <div style="margin-left:18px;">
+          <div style="display:flex;align-items:center;gap:4px;padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;" onmouseover="this.style.background='#2a2a4a'" onmouseout="this.style.background='transparent'">
+            <span>📂 阶段一：调研</span>
+            <span style="margin-left:auto;font-size:11px;color:#666;cursor:pointer;" title="操作">⋯</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;background:#2a2a4a;">
+            <span>📂 阶段二：分析</span>
+            <span style="margin-left:auto;font-size:11px;color:#666;cursor:pointer;" title="操作">⋯</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">
+            <span>📂 阶段三：报告</span>
+            <span style="margin-left:auto;font-size:11px;color:#666;cursor:pointer;" title="操作">⋯</span>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;color:#555;text-align:center;">
+          ↑ 鼠标悬浮时显示操作按钮
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>悬浮操作按钮</h3>
+      <p>鼠标悬浮时在右侧显示 "+" 和 "⋯" 按钮。点击 "+" 新建子文件夹，点击 "⋯" 展开更多操作（重命名/删除）。移动端始终显示按钮。</p>
+    </div>
+  </div>
+</div>

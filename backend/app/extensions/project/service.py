@@ -850,11 +850,20 @@ async def _auto_assign_org_bindings(db: AsyncSession, project: ReportProject, wo
 
 
 async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut | None:
+    from .schemas import validate_status_transition
+
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
     project = result.scalar_one_or_none()
     if not project:
         return None
+
+    # Validate status transition if status is being changed
+    new_status = kwargs.get("status")
+    if new_status is not None and new_status != project.status:
+        err = validate_status_transition(project.status, new_status)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
 
     for k, v in kwargs.items():
         if v is not None:

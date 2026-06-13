@@ -46,20 +46,18 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
   const handleSelectDoc = (doc: AIDocument) => { setActiveDocId(doc.id); setView("editor"); };
   const handleBack = () => { setActiveDocId(null); setView("list"); };
   return (
-    <div className="h-full flex overflow-hidden bg-background">
-      <AnimatePresence mode="wait">
-        {view === "list" ? (
-          <motion.div key="list" className="flex-1 flex overflow-hidden"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
-          </motion.div>
-        ) : activeDocId ? (
-          <motion.div key="editor" className="flex-1 flex overflow-hidden"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-            <DocumentEditor docId={activeDocId} onBack={handleBack} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+    <div className="h-full flex overflow-hidden bg-background relative">
+      {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
+      <div className={cn("h-full w-full flex overflow-hidden", view === "editor" && "hidden")}>
+        <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
+      </div>
+      {/* Editor slides in on top when active */}
+      {view === "editor" && activeDocId && (
+        <motion.div key={activeDocId} className="absolute inset-0 z-10 flex overflow-hidden"
+          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+          <DocumentEditor docId={activeDocId} onBack={handleBack} />
+        </motion.div>
+      )}
     </div>
   );
 }

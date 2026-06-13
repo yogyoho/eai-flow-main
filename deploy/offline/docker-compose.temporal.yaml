@@ -1,0 +1,27 @@
+# =============================================================================
+# EAI-Flow 生产离线部署 — Temporal 工作流引擎
+# =============================================================================
+
+services:
+  temporal:
+    image: temporalio/auto-setup:1.27.0
+    container_name: prod-eai-flow-temporal
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal_password
+      - POSTGRES_SEEDS=postgres-ext
+    networks:
+      - prod-eai-flow-net
+    ports:
+      - "${TEMPORAL_PORT:-17233}:7233"
+    restart: unless-stopped
+
+networks:
+  prod-eai-flow-net:
+    external: true
+    name: eai-prod_eai-flow-net

@@ -133,6 +133,7 @@ class ExtractionConfig(BaseModel):
     chunk_strategy: str = "semantic"  # semantic | fixed | section
     merge_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
     min_section_length: int = Field(default=100, ge=10)
+    max_depth: int = Field(default=4, ge=1, le=6, description="章节层级深度（1-6，默认4）")
 
 
 # ============== Step Status ==============

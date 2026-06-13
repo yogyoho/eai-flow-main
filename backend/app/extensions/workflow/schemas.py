@@ -1,7 +1,23 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _validate_graph_json(graph: dict) -> dict:
+    """Validate that graph_json has a v2 hierarchical structure with mainGraph."""
+    if not isinstance(graph, dict):
+        raise ValueError("graph_json must be a JSON object")
+    if "mainGraph" not in graph:
+        raise ValueError("graph_json must contain a 'mainGraph' key")
+    mg = graph["mainGraph"]
+    if not isinstance(mg, dict):
+        raise ValueError("graph_json.mainGraph must be an object")
+    if "nodes" not in mg or not isinstance(mg["nodes"], list):
+        raise ValueError("graph_json.mainGraph.nodes must be an array")
+    if "edges" not in mg or not isinstance(mg["edges"], list):
+        raise ValueError("graph_json.mainGraph.edges must be an array")
+    return graph
 
 
 class WorkflowDefinitionCreate(BaseModel):
@@ -13,6 +29,11 @@ class WorkflowDefinitionCreate(BaseModel):
     description: str | None = None
     visible_dept_ids: list[str] | None = None
 
+    @field_validator("graph_json")
+    @classmethod
+    def validate_graph_json_create(cls, v: dict) -> dict:
+        return _validate_graph_json(v)
+
 
 class WorkflowDefinitionUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=200)
@@ -23,6 +44,13 @@ class WorkflowDefinitionUpdate(BaseModel):
     description: str | None = None
     template_status: str | None = None
     visible_dept_ids: list[str] | None = None
+
+    @field_validator("graph_json")
+    @classmethod
+    def validate_graph_json_update(cls, v: dict | None) -> dict | None:
+        if v is not None:
+            return _validate_graph_json(v)
+        return v
 
 
 class WorkflowDefinitionOut(BaseModel):

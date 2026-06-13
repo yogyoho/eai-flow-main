@@ -78,8 +78,12 @@ async def get_user_permissions(
     """Return the effective permission set for a user in a project."""
     from app.extensions.models.role_permission import RolePermission
 
-    # Admin bypass
-    user_role = await db.get(Role, user_id)
+    # Admin bypass — look up user's system role
+    from app.extensions.models import User
+    user = await db.get(User, user_id)
+    user_role = None
+    if user and user.role_id:
+        user_role = await db.get(Role, user.role_id)
     if user_role and (user_role.is_system or "*" in (user_role.permissions or [])):
         result = await db.execute(select(RolePermission.permission))
         return {row[0] for row in result.all()}

@@ -1,6 +1,6 @@
 HTTP/1.1 401 Unauthorized
-Server: nginx/1.29.6
-Date: Sat, 09 May 2026 13:25:58 GMT
+Server: nginx/1.31.1
+Date: Fri, 12 Jun 2026 02:04:06 GMT
 Content-Type: application/json
 Content-Length: 75
 Connection: keep-alive

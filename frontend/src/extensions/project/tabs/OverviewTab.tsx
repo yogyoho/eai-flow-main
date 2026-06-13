@@ -204,14 +204,16 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const handleEditChapter = useCallback(
     async (chapterId: string) => {
       try {
-        const doc = await projectApi.openChapter(projectId, chapterId);
-        // Find chapter title for scroll-to-section anchor
+        // Try backend openChapter API — falls back gracefully if unavailable
+        try {
+          const doc = await projectApi.openChapter(projectId, chapterId);
+          sessionStorage.setItem("openChapterDoc", JSON.stringify(doc));
+        } catch {
+          // Backend endpoint not available — proceed with tab switch only
+        }
         const flat = flattenChapters(project.chapters ?? []);
         const chapter = flat.find((c) => c.id === chapterId);
-        // Store doc info + chapter title in sessionStorage so EditorTab can pick it up
-        sessionStorage.setItem("openChapterDoc", JSON.stringify(doc));
         sessionStorage.setItem("openChapterTitle", chapter?.title ?? "");
-        // Trigger tab switch by dispatching a custom event
         window.dispatchEvent(new CustomEvent("switchTab", { detail: { tab: "editor" } }));
       } catch {
         toast.error("打开章节失败");
@@ -369,20 +371,18 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
         {/* Chapter Status Distribution */}
         {totalCount > 0 && <StatusDistribution chapters={project.chapters ?? []} />}
 
-        {/* Workflow Progress (conditional) */}
-        {project.workflowId && (
-          <WorkflowProgressCompact
-            projectId={projectId}
-            workflowGraph={workflowGraph ?? null}
-            canAdvancePhase={
-              identity?.isAdmin ||
-              identity?.role === "owner" ||
-              identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
-              false
-            }
-            onPhaseCompleted={onRefresh}
-          />
-        )}
+        {/* Workflow Progress — always show card; prompts setup if no workflow */}
+        <WorkflowProgressCompact
+          projectId={projectId}
+          workflowGraph={workflowGraph ?? null}
+          canAdvancePhase={
+            identity?.isAdmin ||
+            identity?.projectRole === "owner" ||
+            identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
+            false
+          }
+          onPhaseCompleted={onRefresh}
+        />
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

@@ -61,10 +61,10 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
 
   // Derive ReactFlow nodes from graph + status
   const rfNodes: Node[] = useMemo(() => {
-    if (!effectiveGraph) return [];
-    return effectiveGraph.nodes.map((graphNode) => {
+    if (!effectiveGraph?.mainGraph) return [];
+    return effectiveGraph.mainGraph.nodes.map((graphNode) => {
       const nodeStatus = statusMap.get(graphNode.id);
-      const nodeType = graphNode.type === "review" ? "review" : "phase";
+      const nodeType = graphNode.type === "review" ? "review" : "phase"; // "phase" node type is used for progress rendering — maps to subflow too
 
       return {
         id: graphNode.id,
@@ -84,9 +84,9 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
 
   // Derive ReactFlow edges with edge state
   const rfEdges: Edge[] = useMemo(() => {
-    if (!effectiveGraph) return [];
+    if (!effectiveGraph?.mainGraph) return [];
 
-    return effectiveGraph.edges.map((graphEdge) => {
+    return effectiveGraph.mainGraph.edges.map((graphEdge) => {
       const sourceStatus = statusMap.get(graphEdge.source)?.status ?? "pending";
       const targetStatus = statusMap.get(graphEdge.target)?.status ?? "pending";
 

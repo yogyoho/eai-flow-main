@@ -376,6 +376,8 @@ async def run_pipeline_background(
                         "kb_id": str(kb.id),
                         "ragflow_document_id": doc.ragflow_document_id,
                         "ragflow_dataset_id": kb.ragflow_dataset_id,
+                        "file_path": doc.file_path,
+                        "file_type": doc.file_type,
                     })
 
             # 解析 LLM 模型：优先使用系统基本设置中的默认模型

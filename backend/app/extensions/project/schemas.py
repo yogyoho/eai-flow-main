@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ── Enums ──
@@ -17,13 +17,44 @@ VALID_REPORT_TYPES = [
     "other",
 ]
 
-VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "active", "completed", "archived"]
+VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "in_progress", "active", "completed", "archived"]
 
 VALID_MEMBER_ROLES = ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
 VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
 
 VALID_APPROVAL_ACTIONS = ["approve", "reject", "comment"]
+
+VALID_DUTY_KEYS = {"leader", "writer", "dept_reviewer", "company_reviewer", "lead", "reviewer", "approver", "data_reviewer", "write"}
+
+
+# ── State transitions ──
+
+VALID_STATE_TRANSITIONS: dict[str, set[str]] = {
+    "setup": {"outline", "active", "in_progress"},
+    "outline": {"writing", "setup"},
+    "writing": {"editing", "setup"},
+    "editing": {"approval", "writing", "setup"},
+    "approval": {"completed", "editing"},
+    "in_progress": {"editing", "approval", "completed", "active"},
+    "active": {"setup", "in_progress", "completed", "archived"},
+    "completed": {"archived", "setup"},
+    "archived": {"setup"},
+}
+
+
+def validate_status_transition(current: str, target: str) -> str | None:
+    """Return error message if transition is invalid, None if valid.
+
+    Admin/bypass callers can ignore the result; this is a guard for
+    normal state-machine progression.
+    """
+    if target not in VALID_PROJECT_STATUSES:
+        return f"Unknown status: {target!r}"
+    allowed = VALID_STATE_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        return f"Cannot transition from {current!r} to {target!r}"
+    return None
 
 
 # ── Chapter (kept for ProjectOut compatibility) ──
@@ -82,6 +113,13 @@ class ProjectCreate(BaseModel):
     auto_start_workflow: bool = False
     members: list["MemberWithDuties"] | None = None
 
+    @field_validator("report_type")
+    @classmethod
+    def validate_report_type(cls, v: str) -> str:
+        if v not in VALID_REPORT_TYPES:
+            raise ValueError(f"report_type must be one of {VALID_REPORT_TYPES}, got {v!r}")
+        return v
+
 
 class MemberWithDuties(BaseModel):
     """A member to add during project creation, with optional org unit and phase duties."""
@@ -90,6 +128,22 @@ class MemberWithDuties(BaseModel):
     role: str = "member"
     source_org_unit_id: UUID | None = None
     phase_duties: dict | None = None
+
+    @field_validator("phase_duties")
+    @classmethod
+    def validate_phase_duties(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return v
+        for node_id, duties in v.items():
+            if not isinstance(duties, dict):
+                raise ValueError(f"phase_duties[{node_id!r}] must be a dict, got {type(duties).__name__}")
+            duty = duties.get("duty")
+            if duty is not None and duty not in VALID_DUTY_KEYS:
+                raise ValueError(
+                    f"phase_duties[{node_id!r}].duty = {duty!r} is not valid. "
+                    f"Expected one of: {sorted(VALID_DUTY_KEYS)}"
+                )
+        return v
 
 
 class ProjectCopyFrom(BaseModel):

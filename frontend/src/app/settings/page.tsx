@@ -8,6 +8,7 @@ import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
 import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 import { useI18n } from "@/core/i18n/hooks";
 
+import LicensePage from "@/extensions/license/LicensePage";
 import { BasicSettings } from "./basic-settings";
 
 export default function SettingsPage() {
@@ -18,6 +19,7 @@ export default function SettingsPage() {
     { id: "basic", label: t.settings.sections.basic },
     { id: "data-sources", label: "数据源" },
     { id: "plugins", label: "插件" },
+    { id: "license", label: "许可证" },
   ];
 
   return (
@@ -78,6 +80,13 @@ export default function SettingsPage() {
             >
               <PluginMarketplace />
             </Suspense>
+          )}
+          {activeTab === "license" && (
+            <div className="p-6">
+              <div className="max-w-4xl mx-auto">
+                <LicensePage />
+              </div>
+            </div>
           )}
         </div>
       </div>

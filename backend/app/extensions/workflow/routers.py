@@ -4,7 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Integer, func, select
+from sqlalchemy import Integer, func, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission, require_super_admin
@@ -344,12 +344,19 @@ async def submit_review_action(
     if not review or review.project_id != project_id:
         raise HTTPException(status_code=404, detail="Review assignment not found")
 
-    if review.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Review already {review.status}")
+    # Verify the current user is the assigned reviewer
+    if review.reviewer_id != user.id:
+        raise HTTPException(status_code=403, detail="You are not the assigned reviewer for this review")
 
-    review.status = body.action
-    review.comment = body.comment
-    review.updated_at = func.now()
+    # Optimistic lock: conditional UPDATE — only succeeds if status is still "pending"
+    result = await db.execute(
+        sa_update(PhaseReview)
+        .where(PhaseReview.id == review_id, PhaseReview.status == "pending")
+        .values(status=body.action, comment=body.comment, updated_at=func.now())
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=400, detail="Review already acted on")
+
     await db.commit()
     await db.refresh(review)
 
@@ -450,7 +457,7 @@ async def get_workflow_status_endpoint(
             raise HTTPException(status_code=404, detail="Project not found")
 
         temporal_status = None
-        if project.workflow_id:
+        if project.workflow_id or project.temporal_workflow_id:
             try:
                 from .temporal.client import get_workflow_status as _get_wf_status
                 temporal_status = await _get_wf_status(str(project_id))
@@ -474,7 +481,7 @@ async def get_workflow_status_endpoint(
                 topo_order = topological_sort(graph)
                 topo_index = {nid: idx for idx, nid in enumerate(topo_order)}
 
-                phase_node_ids = [n["id"] for n in graph.get("nodes", []) if n.get("type") == "phase"]
+                phase_node_ids = [n["id"] for n in graph.get("nodes", []) if n.get("type") in ("phase", "subflow")]
                 chapter_counts: dict[str, tuple[int, int]] = {}
                 if phase_node_ids:
                     ch_count_stmt = (
@@ -514,7 +521,7 @@ async def get_workflow_status_endpoint(
 
                 for n in graph.get("nodes", []):
                     nid = n["id"]
-                    node_type = n.get("type", "phase")
+                    node_type = n.get("type", "subflow")
 
                     if project_done:
                         node_status = "completed"
@@ -531,7 +538,7 @@ async def get_workflow_status_endpoint(
                         node_status = "running"
 
                     kwargs: dict = {}
-                    if node_type == "phase" and nid in chapter_counts:
+                    if node_type in ("phase", "subflow") and nid in chapter_counts:
                         total, done = chapter_counts[nid]
                         kwargs["chapter_total"] = total
                         kwargs["chapter_completed"] = done
@@ -547,6 +554,46 @@ async def get_workflow_status_endpoint(
                         status=node_status,
                         **kwargs,
                     ))
+
+        # Fallback: no workflow definition linked, but project has a phase node
+        # Build a synthetic node list from current_phase_node so the UI can still
+        # display progress and allow manual phase completion.
+        if not project.workflow_id and project.current_phase_node:
+            current = project.current_phase_node
+            project_done = project.status == "completed"
+
+            # Collect chapter counts for the current phase
+            chapter_counts: dict[str, tuple[int, int]] = {}
+            ch_count_stmt = (
+                select(
+                    ProjectChapter.phase_node,
+                    func.count(ProjectChapter.id).label("total"),
+                    func.sum(
+                        func.cast(ProjectChapter.status.in_(("completed", "approved", "reviewed")), Integer)
+                    ).label("done"),
+                )
+                .where(ProjectChapter.project_id == project_id)
+                .where(ProjectChapter.phase_node == current)
+                .group_by(ProjectChapter.phase_node)
+            )
+            ch_result = await db.execute(ch_count_stmt)
+            for phase_node_val, total, done in ch_result.all():
+                chapter_counts[phase_node_val] = (total, done or 0)
+
+            node_status = "completed" if project_done else "running"
+            kwargs: dict = {}
+            if current in chapter_counts:
+                total, done = chapter_counts[current]
+                kwargs["chapter_total"] = total
+                kwargs["chapter_completed"] = done
+
+            nodes.append(WorkflowNodeStatus(
+                node_id=current,
+                node_type="subflow",
+                label=current.replace("-", " ").replace("_", " ").title(),
+                status=node_status,
+                **kwargs,
+            ))
 
         # Determine overall workflow status
         wf_status = "idle"
@@ -566,22 +613,6 @@ async def get_workflow_status_endpoint(
             workflow_name=wf_name,
             graph_json=wf_graph,
         )
-    wf_status = "idle"
-    if project_done:
-        wf_status = "completed"
-    elif temporal_status:
-        wf_status = temporal_status.get("status", "idle")
-
-    return WorkflowStatusResponse(
-        project_id=project_id,
-        workflow_id=project.workflow_id,
-        temporal_workflow_id=project.temporal_workflow_id,
-        current_phase_node=project.current_phase_node,
-        status=wf_status,
-        nodes=nodes,
-        workflow_name=wf_name,
-        graph_json=wf_graph,
-    )
 
 
 @router.post("/projects/{project_id}/workflow-cancel")
@@ -610,6 +641,10 @@ async def start_workflow(
     project = await db.get(ReportProject, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Prevent duplicate workflow start
+    if project.temporal_workflow_id:
+        raise HTTPException(status_code=400, detail="Workflow already started for this project")
 
     definition = await db.get(WorkflowDefinition, body.workflow_id)
     if not definition:

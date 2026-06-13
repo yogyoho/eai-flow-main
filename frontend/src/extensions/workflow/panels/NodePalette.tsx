@@ -5,12 +5,12 @@ import { useReactFlow } from "@xyflow/react";
 import type { DAGNodeData, DAGNodeType } from "../types";
 
 const NODE_TYPES: { type: DAGNodeType; label: string; color: string; icon: string }[] = [
-  { type: "phase", label: "阶段", color: "purple", icon: "⬡" },
+  { type: "subflow", label: "子流程", color: "violet", icon: "▤" },
+  { type: "task", label: "任务", color: "teal", icon: "✎" },
   { type: "review", label: "审核", color: "red", icon: "✓" },
-  { type: "condition", label: "条件", color: "amber", icon: "◇" },
   { type: "ai_generate", label: "AI生成", color: "blue", icon: "✦" },
+  { type: "condition", label: "条件", color: "amber", icon: "◇" },
   { type: "merge", label: "汇聚", color: "green", icon: "⊕" },
-  { type: "sub_workflow", label: "子流程", color: "indigo", icon: "⊞" },
 ];
 
 const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; hover: string; iconBg: string }> = {
@@ -20,6 +20,9 @@ const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; 
   blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", hover: "hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm", iconBg: "bg-blue-100" },
   green: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700", hover: "hover:bg-green-100 hover:border-green-300 hover:shadow-sm", iconBg: "bg-green-100" },
   indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", hover: "hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm", iconBg: "bg-indigo-100" },
+  teal: { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-700", hover: "hover:bg-teal-100 hover:border-teal-300 hover:shadow-sm", iconBg: "bg-teal-100" },
+  violet: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", hover: "hover:bg-violet-100 hover:border-violet-300 hover:shadow-sm", iconBg: "bg-violet-100" },
+  slate: { bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-700", hover: "hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm", iconBg: "bg-slate-100" },
 };
 
 export function NodePalette() {
@@ -37,12 +40,12 @@ export function NodePalette() {
 
     const id = `${type}-${Date.now()}`;
     const defaultData: Record<DAGNodeType, DAGNodeData> = {
-      phase: { label: "新阶段" },
+      subflow: { label: "新子流程" },
+      task: { label: "新任务", aiAssist: true },
       review: { label: "新审核", mode: "chapter" },
-      condition: { label: "新条件", expression: "" },
       ai_generate: { label: "AI 生成", aiAssist: true },
+      condition: { label: "新条件", expression: "" },
       merge: { label: "汇聚" },
-      sub_workflow: { label: "新子流程" },
     };
 
     addNodes({

@@ -7,6 +7,8 @@ import { KanbanColumn } from "./KanbanColumn";
 export interface KanbanBoardProps {
   cards: KanbanCardData[];
   onCardMove?: (cardId: string, newStatus: string) => void;
+  /** Called when user clicks edit on a card */
+  onCardEdit?: (cardId: string) => void;
 }
 
 const COLUMNS = [
@@ -16,7 +18,7 @@ const COLUMNS = [
   { id: "completed", label: "已完成", color: "border-t-green-500" },
 ] as const;
 
-export function KanbanBoard({ cards, onCardMove }: KanbanBoardProps) {
+export function KanbanBoard({ cards, onCardMove, onCardEdit: _onCardEdit }: KanbanBoardProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
 

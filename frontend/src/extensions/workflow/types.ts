@@ -1,11 +1,18 @@
 // ── DAG Node Types ──
 
-export type DAGNodeType = "phase" | "review" | "condition" | "ai_generate" | "merge" | "sub_workflow";
+export type DAGNodeType = "subflow" | "task" | "review" | "ai_generate" | "condition" | "merge";
 
 export interface RoleSlot {
   roleKey: string;
   count: number;
   label: string;
+}
+
+/** Notification configuration for any node. */
+export interface NotificationConfig {
+  trigger: "on_start" | "on_complete" | "on_error" | "on_review_pending" | "on_review_complete";
+  targets?: string; // e.g. "role:manager, user:uuid" — empty = all members
+  message?: string;
 }
 
 export interface DAGNodeData {
@@ -16,12 +23,45 @@ export interface DAGNodeData {
   inputFrom?: string[];
   mode?: "chapter" | "dimension" | "mixed";
   expression?: string;
-  /** Required roles for this phase — who needs to be assigned before work can start. */
+  /** Required roles — who needs to be assigned before work can start. */
   requiredRoles?: RoleSlot[];
-  /** Embedded sub-workflow graph definition (for sub_workflow nodes). */
-  graphJson?: WorkflowGraph;
+  /** Notifications to fire at lifecycle events. */
+  notifications?: NotificationConfig[];
   [key: string]: unknown;
 }
+
+// ── Extended Types ──
+
+/** Reviewer binding for task/review nodes. */
+export interface ReviewerBinding {
+  type: "role" | "position" | "user";
+  value: string;
+  label: string;
+  required: boolean;
+}
+
+/** Review mode for task nodes. */
+export type ReviewMode = "all" | "any" | "ratio" | "sequential";
+
+/** Extended node data for task-type nodes. */
+export interface TaskNodeData extends DAGNodeData {
+  reviewMode?: ReviewMode;
+  reviewers?: ReviewerBinding[];
+  ratioThreshold?: number;
+  rollbackTarget?: string;
+  assignment?: {
+    roles?: string[];
+    positions?: string[];
+    users?: string[];
+  };
+}
+
+/** Extended node data for workflow-type nodes (notify, subflow, etc.). */
+export interface WorkflowNodeData extends DAGNodeData {
+  taskCount?: number;
+}
+
+// ── Core DAG Types ──
 
 export interface DAGNode {
   id: string;
@@ -37,9 +77,21 @@ export interface DAGEdge {
   label?: string;
 }
 
-export interface WorkflowGraph {
+/** A single flat sub-graph (nodes + edges). */
+export interface FlatGraph {
   nodes: DAGNode[];
   edges: DAGEdge[];
+}
+
+/**
+ * Workflow graph — v2 hierarchical structure.
+ * mainGraph: top-level subflow nodes and their edges.
+ * subGraphs: keyed by subflow node ID, each contains its own nodes/edges.
+ */
+export interface WorkflowGraph {
+  version?: number;
+  mainGraph: FlatGraph;
+  subGraphs?: Record<string, FlatGraph>;
 }
 
 // ── Workflow Definition ──
@@ -153,10 +205,8 @@ export interface WorkflowNodeStatus {
   status: "pending" | "running" | "completed" | "error";
   startedAt: string | null;
   completedAt: string | null;
-  // Phase enrichment
   chapterTotal?: number | null;
   chapterCompleted?: number | null;
-  // Review/Approval enrichment
   reviewTotal?: number | null;
   reviewApproved?: number | null;
 }

@@ -3,13 +3,16 @@
 The graph definition (``graph_json``) follows the React Flow format:
 
 {
-  "nodes": [{"id": "...", "type": "phase|review|condition|merge|ai_generate|sub_workflow", "data": {...}}],
+  "nodes": [{"id": "...", "type": "subflow|review|condition|merge|ai_generate|task", "data": {...}}],
   "edges": [{"source": "...", "target": "..."}]
 }
 
 The workflow resolves a topological ordering at runtime, executes
 activities for each node type, and uses Temporal signals / conditions
 to coordinate human-in-the-loop steps (phase completion, reviews).
+
+Legacy node types (phase, manual_edit, sub_workflow, notify) are
+normalised at runtime via ``_normalise_node_type``.
 """
 
 import logging
@@ -17,12 +20,26 @@ from datetime import timedelta
 
 from temporalio import workflow
 
+# ── Legacy node type normalisation ──
+_LEGACY_TYPE_MAP: dict[str, str] = {
+    "phase": "subflow",
+    "manual_edit": "task",
+    "sub_workflow": "subflow",
+    "notify": "notify",  # deprecated standalone — kept for backward compat
+}
+
+
+def _normalise_node_type(raw_type: str) -> str:
+    """Return canonical node type, mapping legacy names to their successors."""
+    return _LEGACY_TYPE_MAP.get(raw_type, raw_type)
+
 with workflow.unsafe.imports_passed_through():
     from .activities import (
         advance_phase as _advance_phase,
         create_review_assignments as _create_review_assignments,
         evaluate_condition as _evaluate_condition,
         init_phase as _init_phase,
+        init_task as _init_task,
         notify_phase_start as _notify_phase_start,
         notify_review_pending as _notify_review_pending,
         notify_workflow_complete as _notify_workflow_complete,
@@ -150,13 +167,13 @@ class DynamicGraphWorkflow:
                 logger.warning("Node %s referenced in edges but missing from nodes list", node_id)
                 continue
 
-            node_type = node.get("type", "phase")
+            node_type = _normalise_node_type(node.get("type", "subflow"))
             node_data = node.get("data", {})
 
             logger.info("Processing node %s (type=%s)", node_id, node_type)
 
             try:
-                if node_type == "phase":
+                if node_type == "subflow":
                     await self._execute_phase(
                         node_id=node_id,
                         project_id=project_id,
@@ -202,6 +219,15 @@ class DynamicGraphWorkflow:
                         completed=completed,
                     )
 
+                elif node_type == "task":
+                    await self._execute_task(
+                        node_id=node_id,
+                        project_id=project_id,
+                        node_data=node_data,
+                        results=results,
+                        completed=completed,
+                    )
+
                 elif node_type == "ai_generate":
                     await self._execute_ai_generate(
                         node_id=node_id,
@@ -211,14 +237,10 @@ class DynamicGraphWorkflow:
                         completed=completed,
                     )
 
-                elif node_type == "sub_workflow":
-                    await self._execute_sub_workflow(
-                        node_id=node_id,
-                        project_id=project_id,
-                        node_data=node_data,
-                        results=results,
-                        completed=completed,
-                    )
+                elif node_type == "notify":
+                    # Deprecated standalone notify — fire notification and move on.
+                    logger.info("Node %s is deprecated notify type — firing notification and skipping", node_id)
+                    completed.add(node_id)
 
                 else:
                     logger.info("Unknown node type '%s' for node %s — skipping", node_type, node_id)
@@ -333,6 +355,61 @@ class DynamicGraphWorkflow:
             results[node_id].update(advance_result)
         except Exception:
             logger.exception("advance_phase failed for %s", node_id)
+
+        completed.add(node_id)
+
+    async def _execute_task(
+        self,
+        node_id: str,
+        project_id: str,
+        node_data: dict,
+        results: dict,
+        completed: set[str],
+    ) -> None:
+        """Initialize a task node — assign required roles, notify, then wait for completion."""
+        # Notify phase start
+        try:
+            await workflow.execute_activity(
+                _notify_phase_start,
+                node_id,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+        except Exception:
+            logger.exception("notify_phase_start failed for task %s", node_id)
+
+        # Initialize task — auto-assign required roles to project members
+        task_result = await workflow.execute_activity(
+            _init_task,
+            node_id,
+            project_id,
+            node_data,
+            start_to_close_timeout=timedelta(seconds=60),
+        )
+        results[node_id] = task_result
+
+        # Wait for external phase_complete signal
+        already_completed = node_id in self._completed
+        if not already_completed:
+            await workflow.wait_condition(
+                lambda nid=node_id: nid in self._completed,
+                timeout=PHASE_COMPLETION_TIMEOUT,
+            )
+
+        task_completion = self._phase_results.get(node_id, {})
+        results[node_id]["result"] = task_completion
+
+        # Advance to next node
+        try:
+            advance_result = await workflow.execute_activity(
+                _advance_phase,
+                node_id,
+                project_id,
+                start_to_close_timeout=timedelta(seconds=60),
+            )
+            results[node_id].update(advance_result)
+        except Exception:
+            logger.exception("advance_phase failed for task %s", node_id)
 
         completed.add(node_id)
 

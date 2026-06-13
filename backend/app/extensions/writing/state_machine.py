@@ -23,7 +23,7 @@ VALID_CHAPTER_TRANSITIONS: dict[str, set[str]] = {
     ChapterStatus.DRAFT: {ChapterStatus.COMPLETED, ChapterStatus.PENDING},
     ChapterStatus.COMPLETED: {ChapterStatus.APPROVED, ChapterStatus.PENDING},
     ChapterStatus.APPROVED: {ChapterStatus.PENDING},
-    ChapterStatus.ERROR: {ChapterStatus.PENDING},
+    ChapterStatus.ERROR: {ChapterStatus.PENDING, ChapterStatus.DRAFT},
 }
 
 

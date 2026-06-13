@@ -32,7 +32,16 @@ const DEFAULT_CONFIG: ExtractionConfig = {
   chunk_strategy: "semantic",
   merge_threshold: 0.85,
   min_section_length: 100,
+  max_depth: 4,
 };
+
+const MAX_DEPTH_OPTIONS = [
+  { value: 2, label: "H2（2级）", description: "章、节" },
+  { value: 3, label: "H3（3级）", description: "章、节、条" },
+  { value: 4, label: "H4（4级）", description: "章、节、条、款" },
+  { value: 5, label: "H5（5级）", description: "章、节、条、款、项" },
+  { value: 6, label: "H6（6级）", description: "最深层级" },
+];
 
 const CHUNK_STRATEGY_OPTIONS = [
   { value: "semantic", label: "语义切分" },
@@ -454,6 +463,27 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
                     onChange={(value) => setConfig((c) => ({ ...c, llm_model: value }))}
                     options={modelOptions}
                     placeholder="选择模型"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">章节深度</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="font-medium mb-1">章节深度</p>
+                        <p className="text-muted-foreground text-xs">控制 LLM 推断模板章节时的最大层级深度。深度越大，识别的子章节越细。</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <AdminSelect
+                    value={String(config.max_depth)}
+                    onChange={(value) => setConfig((c) => ({ ...c, max_depth: parseInt(value) || 4 }))}
+                    options={MAX_DEPTH_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+                    placeholder="选择深度"
                     className="w-full"
                   />
                 </div>

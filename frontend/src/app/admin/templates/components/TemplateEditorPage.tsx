@@ -12,6 +12,7 @@ import { deptApi } from "@/extensions/api/index";
 import { workflowApi } from "@/extensions/workflow/api";
 import { WorkflowEditor, type WorkflowEditorHandle } from "@/extensions/workflow/WorkflowEditor";
 import type { WorkflowGraph } from "@/extensions/workflow/types";
+import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
@@ -76,7 +77,15 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         setTemplateStatus(def.templateStatus || "draft");
         setOrgBindings(def.orgBindings || {});
         if (def.graphJson) {
-          setInitialGraphJson(def.graphJson);
+          // Auto-migrate legacy v1 flat graphs to v2
+          const raw = def.graphJson as Record<string, unknown>;
+          let graph: WorkflowGraph;
+          if (isLegacyGraph(raw)) {
+            graph = migrateLegacyToUnified(raw as Parameters<typeof migrateLegacyToUnified>[0]);
+          } else {
+            graph = def.graphJson;
+          }
+          setInitialGraphJson(graph);
         }
       })
       .catch((err) => {

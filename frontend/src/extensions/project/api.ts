@@ -74,6 +74,34 @@ export const projectApi = {
     return data;
   },
 
+  /** Get project stats (file count, doc size). Falls back to getFiles count. */
+  getStats: async (id: string): Promise<{ documentCount: number; documentTotalSize: number }> => {
+    try {
+      const data = await authFetch<{ document_count: number; document_total_size: number }>(
+        `${API_BASE}/projects/${id}/stats`,
+      );
+      return { documentCount: data.document_count ?? 0, documentTotalSize: data.document_total_size ?? 0 };
+    } catch {
+      // Fallback: count from getFiles
+      const files = await projectApi.getFiles(id);
+      return { documentCount: files.length, documentTotalSize: 0 };
+    }
+  },
+
+  /** Sync project output docs to document space. Non-critical, no-op if endpoint unavailable. */
+  syncDocs: async (_id: string): Promise<{ synced: number }> => {
+    // No backend endpoint yet — auto-sync happens via present_files callback
+    return { synced: 0 };
+  },
+
+  /** Open a chapter's associated document. Returns basic doc info for tab switch. */
+  openChapter: async (projectId: string, chapterId: string): Promise<{ documentId: string; chapterId: string }> => {
+    const data = await authFetch<{ document_id: string; chapter_id: string }>(
+      `${API_BASE}/projects/${projectId}/chapters/${chapterId}/open`,
+    );
+    return { documentId: data.document_id, chapterId: data.chapter_id };
+  },
+
   // ── Members ──
 
   addMember: async (projectId: string, userId: string, role: string): Promise<void> => {

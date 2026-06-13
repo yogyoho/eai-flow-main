@@ -1,0 +1,52 @@
+# =============================================================================
+# EAI-Flow 生产离线部署 — 扩展服务
+# =============================================================================
+# 包含: PostgreSQL 数据库 + 协同编辑 WebSocket 服务器
+
+services:
+  # ── Extensions PostgreSQL ──────────────────────────────────────────────────
+  postgres-ext:
+    image: postgres:16-alpine
+    container_name: prod-eai-flow-postgres-ext
+    environment:
+      - POSTGRES_USER=${POSTGRES_EXT_USER:-agentflow}
+      - POSTGRES_PASSWORD=${POSTGRES_EXT_PASSWORD:-agentflow123}
+      - POSTGRES_DB=${POSTGRES_EXT_DB:-agentflow}
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    volumes:
+      - prod-postgres-ext-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_EXT_PORT:-15432}:5432"
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_EXT_USER:-agentflow} -d ${POSTGRES_EXT_DB:-agentflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  # ── Collaboration WebSocket Server (Hocuspocus) ────────────────────────────
+  collab:
+    image: eai-flow-collab:latest
+    container_name: prod-eai-flow-collab
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - COLLAB_PORT=8002
+      - DATABASE_URL=postgresql://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
+    env_file:
+      - .env
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+volumes:
+  prod-postgres-ext-data:
+
+networks:
+  prod-eai-flow-net:
+    external: true
+    name: eai-prod_eai-flow-net

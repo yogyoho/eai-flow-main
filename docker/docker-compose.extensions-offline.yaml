@@ -1,0 +1,57 @@
+# DeerFlow Extensions Services — Offline Version
+# Usage: docker compose -p eai-docker -f docker-compose-offline.yaml -f docker-compose.extensions-offline.yaml up -d
+#
+# Services:
+#   - postgres-ext: Extensions PostgreSQL (auth, knowledge, etc.)
+#   - collab: Real-time collaboration WebSocket server (Hocuspocus)
+#
+# This is the offline variant: all services use pre-built images (no build: directives).
+
+services:
+  # ── Extensions PostgreSQL ──────────────────────────────────────────────
+  postgres-ext:
+    image: postgres:16-alpine
+    container_name: eai-flow-postgres-ext
+    environment:
+      - POSTGRES_USER=${POSTGRES_EXT_USER:-agentflow}
+      - POSTGRES_PASSWORD=${POSTGRES_EXT_PASSWORD:-agentflow123}
+      - POSTGRES_DB=${POSTGRES_EXT_DB:-agentflow}
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    volumes:
+      - postgres-ext-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_EXT_PORT:-15432}:5432"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_EXT_USER:-agentflow} -d ${POSTGRES_EXT_DB:-agentflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  # ── Collaboration WebSocket Server (Hocuspocus) ──────────────────────
+  # Pre-built image loaded from offline package — no source code mount.
+  collab:
+    image: eai-flow-collab:latest
+    container_name: eai-flow-collab
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - COLLAB_PORT=8002
+      - DATABASE_URL=postgresql://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
+    env_file:
+      - .env
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+volumes:
+  postgres-ext-data:
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net

@@ -440,7 +440,13 @@ class ExtractionPipeline:
     # ── Step 0: 文档解析 ─────────────────────────────────────────
 
     async def _step_parse(self, ctx: dict[str, Any]) -> list[dict]:
-        """Step 0: 通过 RAGFlow API 获取文本块。"""
+        """Step 0: 通过 RAGFlow API 获取文本块。
+
+        对于纯文本格式（.md/.txt），当 RAGFlow 返回 0 chunks 时，
+        回退为直接读取文件内容并生成人工 chunks。
+        RAGFlow v0.25.3 的 manual chunk_method 仅支持 pdf/docx，
+        不支持 .md 文件。
+        """
         from app.extensions.knowledge.client import RAGFlowClient
         from app.extensions.models import KnowledgeBase, Document
         from sqlalchemy import select
@@ -516,17 +522,172 @@ class ExtractionPipeline:
 
                 total_chunks += len(chunks)
                 if not chunks:
-                    logger.warning(f"文档 {doc_name} 在 RAGFlow 中没有 chunks - 报告可能尚未解析完成")
-                    enriched.append({**doc, "chunks": chunks, "chunk_count": len(chunks), "_skip_reason": "无 chunks"})
+                    # 回退：对于纯文本格式（.md/.txt），直接读取文件内容生成 chunks
+                    fallback_chunks = await self._fallback_read_plain_text(doc, ctx)
+                    if fallback_chunks:
+                        total_chunks += len(fallback_chunks)
+                        enriched.append({**doc, "chunks": fallback_chunks, "chunk_count": len(fallback_chunks), "ragflow_document_id": rf_doc_id})
+                    else:
+                        logger.warning(f"文档 {doc_name} 在 RAGFlow 中没有 chunks - 报告可能尚未解析完成")
+                        enriched.append({**doc, "chunks": chunks, "chunk_count": len(chunks), "_skip_reason": "无 chunks"})
                 else:
                     enriched.append({**doc, "chunks": chunks, "chunk_count": len(chunks), "ragflow_document_id": rf_doc_id})
             except Exception as e:
                 logger.error(f"[Task {ctx.get('_task_id', 'unknown')}] 获取文档 {doc_name} 的 chunks 失败: {e}")
-                enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": f"错误: {str(e)}"})
+                # Try plain-text fallback even when RAGFlow call fails
+                fallback_chunks = await self._fallback_read_plain_text(doc, ctx)
+                if fallback_chunks:
+                    total_chunks += len(fallback_chunks)
+                    enriched.append({**doc, "chunks": fallback_chunks, "chunk_count": len(fallback_chunks)})
+                else:
+                    enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": f"错误: {str(e)}"})
 
         ctx["_documents"] = enriched
         logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] Step 0 完成: 处理了 {len(enriched)} 份文档，共 {total_chunks} 个 chunks")
         return enriched
+
+    # ── Plain-text fallback ──────────────────────────────────────
+
+    # File types that are plain text and can be read directly
+    _PLAIN_TEXT_EXTENSIONS = {"md", "txt", "markdown", "text"}
+
+    async def _fallback_read_plain_text(self, doc: dict, ctx: dict[str, Any]) -> list[dict]:
+        """Fallback: read plain-text file directly when RAGFlow returns 0 chunks.
+
+        RAGFlow v0.25.3's 'manual' chunk_method only supports pdf/docx.
+        For .md/.txt files, we read the file content directly and create
+        synthetic chunks by splitting on double-newlines (paragraphs).
+
+        Returns a list of chunks (each with a 'content' key), or an empty
+        list if the fallback cannot be applied.
+        """
+        task_id = ctx.get("_task_id", "unknown")
+        doc_name = doc.get("name", "未知文档")
+        file_type = (doc.get("file_type") or "").lower().strip().lstrip(".")
+        file_path = doc.get("file_path", "")
+
+        # Only apply fallback for plain text formats
+        if file_type not in self._PLAIN_TEXT_EXTENSIONS:
+            logger.info(f"[Task {task_id}] Fallback skipped for {doc_name}: file_type={file_type!r} is not plain text")
+            return []
+
+        if not file_path:
+            # Try to get file_path from DB
+            from app.extensions.models import Document as DocModel
+            from app.extensions.database import get_db_context
+            from sqlalchemy import select as sa_select
+
+            doc_id = doc.get("id")
+            if not doc_id:
+                return []
+            try:
+                async with get_db_context() as db:
+                    result = await db.execute(sa_select(DocModel.file_path, DocModel.file_type).where(DocModel.id == doc_id))
+                    row = result.first()
+                    if row:
+                        file_path = row.file_path
+                        file_type = (row.file_type or "").lower().strip().lstrip(".")
+            except Exception as e:
+                logger.warning(f"[Task {task_id}] Fallback DB query failed for {doc_name}: {e}")
+                return []
+
+        if file_type not in self._PLAIN_TEXT_EXTENSIONS:
+            logger.info(f"[Task {task_id}] Fallback skipped for {doc_name}: file_type={file_type!r} from DB is not plain text")
+            return []
+
+        if not file_path:
+            logger.warning(f"[Task {task_id}] Fallback: no file_path for {doc_name}")
+            return []
+
+        logger.info(f"[Task {task_id}] Fallback: reading {doc_name} directly from {file_path}")
+
+        try:
+            content = await asyncio.to_thread(self._read_file_sync, file_path)
+        except Exception as e:
+            logger.warning(f"[Task {task_id}] Fallback: failed to read {file_path}: {e}")
+            return []
+
+        if not content.strip():
+            logger.warning(f"[Task {task_id}] Fallback: file {doc_name} is empty")
+            return []
+
+        # Split content into chunks by paragraphs (double newline)
+        # Each chunk gets a synthetic structure matching RAGFlow's format
+        chunks = self._split_text_to_chunks(content, max_chars=2000)
+        logger.info(f"[Task {task_id}] Fallback: created {len(chunks)} chunks from {doc_name} ({len(content)} chars)")
+        return chunks
+
+    @staticmethod
+    def _read_file_sync(file_path: str) -> str:
+        """Read file content synchronously (called via asyncio.to_thread)."""
+        from pathlib import Path
+
+        p = Path(file_path)
+        if p.is_absolute() and p.exists():
+            return p.read_text(encoding="utf-8", errors="replace")
+
+        # Relative path — try from CWD first (gateway runs in /app/backend/),
+        # then from storage base_path as fallback
+        if p.exists():
+            return p.read_text(encoding="utf-8", errors="replace")
+
+        from app.extensions.config import get_extensions_config
+        config = get_extensions_config()
+        p2 = Path(config.storage.base_path) / file_path
+        if p2.exists():
+            return p2.read_text(encoding="utf-8", errors="replace")
+
+        raise FileNotFoundError(f"File not found: tried {p} and {p2}")
+
+    @staticmethod
+    def _split_text_to_chunks(text: str, max_chars: int = 2000) -> list[dict]:
+        """Split plain text into chunks by paragraphs.
+
+        Strategy:
+        1. Split on double-newlines (paragraph boundaries)
+        2. Merge short paragraphs into chunks up to max_chars
+        3. Each chunk gets a synthetic ID and content field matching
+           RAGFlow's chunk format.
+        """
+        # Split by double newline
+        paragraphs = re.split(r"\n\s*\n", text)
+        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+
+        if not paragraphs:
+            return []
+
+        chunks = []
+        current_content = ""
+        chunk_idx = 0
+
+        for para in paragraphs:
+            # If adding this paragraph would exceed max_chars and we already have content,
+            # flush the current chunk
+            if current_content and len(current_content) + len(para) + 2 > max_chars:
+                chunks.append({
+                    "id": f"chunk_{chunk_idx}",
+                    "content": current_content.strip(),
+                    "content_with_weight": current_content.strip(),
+                    "doc_name": "",
+                })
+                chunk_idx += 1
+                current_content = para
+            else:
+                if current_content:
+                    current_content += "\n\n" + para
+                else:
+                    current_content = para
+
+        # Flush remaining content
+        if current_content.strip():
+            chunks.append({
+                "id": f"chunk_{chunk_idx}",
+                "content": current_content.strip(),
+                "content_with_weight": current_content.strip(),
+                "doc_name": "",
+            })
+
+        return chunks
 
     # ── Step 1: 章节推断 ─────────────────────────────────────────
 
@@ -576,9 +737,10 @@ class ExtractionPipeline:
             try:
                 logger.info(f"[Task {task_id}] Step 1: 调用 LLM infer_schema...")
                 ref_chapters = ctx.get("_reference_chapters")
+                max_depth = config.max_depth if config.max_depth else 4
                 schema = await loop.run_in_executor(
                     None,
-                    lambda d=doc_name, c=content, r=ref_chapters: self.llm.infer_schema(d, c, reference_chapters=r)
+                    lambda d=doc_name, c=content, md=max_depth, r=ref_chapters: self.llm.infer_schema(d, c, max_depth=md, reference_chapters=r)
                 )
                 logger.info(f"[Task {task_id}] Step 1: LLM infer_schema 返回")
                 sections = schema.get("sections", [])

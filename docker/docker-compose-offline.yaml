@@ -1,0 +1,91 @@
+# DeerFlow Offline Deployment
+# Usage: docker compose -p eai-docker -f docker-compose-offline.yaml up -d
+#
+# This compose file is specifically designed for air-gapped / offline deployments.
+# All images are pre-built and loaded from .tar files (no source code mounts).
+#
+# Prerequisites:
+#   - All images loaded via load-images.sh
+#   - .env file configured (paths, API keys)
+#   - config.yaml configured (internal LLM endpoint)
+#   - Docker network created: docker network create eai-docker_eai-flow-net
+#
+# Access: http://localhost:12026
+
+services:
+  # ── Reverse Proxy ──────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: deer-flow-nginx
+    ports:
+      - "${PORT:-12026}:2026"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
+    command: >
+      sh -c "cp /etc/nginx/nginx.conf.template /etc/nginx/nginx.conf
+      && (test -e /proc/net/if_inet6 || sed -i '/^\s*listen\s\+\[::\]:2026/d' /etc/nginx/nginx.conf)
+      && nginx -g 'daemon off;'"
+    depends_on:
+      - frontend
+      - gateway
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── Frontend: Next.js Dev Server ────────────────────────────────────────────
+  frontend:
+    image: deer-flow-frontend:latest
+    container_name: deer-flow-frontend
+    # Dev image (deps only) — run dev server with HMR disabled for offline deploy
+    command: sh -c "cd /app/frontend && pnpm dev --port 3000 --hostname 0.0.0.0"
+    environment:
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
+      - WATCHPACK_POLLING=true
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── Gateway API ────────────────────────────────────────────────────────────
+  gateway:
+    image: deer-flow-gateway:latest
+    container_name: deer-flow-gateway
+    command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
+    volumes:
+      # Runtime config (not source code)
+      - ./config.yaml:/app/backend/config.yaml:ro
+      - ./extensions_config.json:/app/backend/extensions_config.json:ro
+      # Persistent data
+      - ./skills:/app/skills:ro
+      - ./data:/app/backend/.deer-flow
+      - ./logs:/app/logs
+      - ./mcp-server:/app/mcp-server:ro
+      # Docker socket for sandbox (optional — remove if not using AioSandboxProvider)
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /app
+    environment:
+      - CI=true
+      - DEER_FLOW_PROJECT_ROOT=/app
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      - DEER_FLOW_CHANNELS_LANGGRAPH_URL=http://gateway:8001/api
+      - DEER_FLOW_CHANNELS_GATEWAY_URL=http://gateway:8001
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT}/data
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
+      - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+      # RAGFlow & Temporal (internal service names)
+      - RAGFLOW_BASE_URL=http://ragflow:9380
+      - TEMPORAL_URL=temporal:7233
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net

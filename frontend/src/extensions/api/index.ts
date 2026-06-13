@@ -369,6 +369,10 @@ export const kbApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // List available RAGFlow embedding models
+  listEmbeddingModels: () =>
+    request<{ models: string[]; error?: string }>("/knowledge-bases/ragflow/embedding-models"),
 };
 
 // ===== Conversation API =====

@@ -3,16 +3,16 @@
 import { useState } from "react";
 
 import { workflowApi } from "../api";
-import type { DAGValidationResult } from "../types";
+import type { DAGValidationResult, WorkflowGraph } from "../types";
 
 export function useValidation() {
   const [result, setResult] = useState<DAGValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
 
-  const validate = async (graph: { nodes: unknown[]; edges: unknown[] }) => {
+  const validate = async (graph: WorkflowGraph) => {
     setIsValidating(true);
     try {
-      const r = await workflowApi.validate(graph as Parameters<typeof workflowApi.validate>[0]);
+      const r = await workflowApi.validate(graph);
       setResult(r);
       return r;
     } finally {

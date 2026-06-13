@@ -170,6 +170,7 @@ export interface KnowledgeBase {
   allowed_depts?: string[];
   embedding_model?: string;
   chunk_method: string;
+  language?: string;
   status: string;
   created_at: string;
 }
@@ -187,6 +188,7 @@ export interface CreateKnowledgeBaseRequest {
   allowed_depts?: string[];
   embedding_model?: string;
   chunk_method?: string;
+  language?: string;
 }
 
 export interface UpdateKnowledgeBaseRequest {

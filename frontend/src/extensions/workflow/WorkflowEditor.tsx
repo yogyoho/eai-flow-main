@@ -3,34 +3,40 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, type NodeTypes, type EdgeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Trash2 } from "lucide-react";
+import { ChevronRight, Layers, Trash2 } from "lucide-react";
 
 import { AIGenerateNode } from "./nodes/AIGenerateNode";
 import { ConditionNode } from "./nodes/ConditionNode";
 import { MergeNode } from "./nodes/MergeNode";
-import { PhaseNode } from "./nodes/PhaseNode";
 import { ReviewNode } from "./nodes/ReviewNode";
-import { SubWorkflowNode } from "./nodes/SubWorkflowNode";
+import { SubflowNode } from "./nodes/SubflowNode";
+import { TaskNode } from "./nodes/TaskNode";
+import { AnimatedFlowEdge } from "./edges/AnimatedFlowEdge";
 import { ConditionEdge } from "./edges/ConditionEdge";
 import { NodePalette } from "./panels/NodePalette";
-import { PhaseConfigPanel } from "./panels/PhaseConfigPanel";
+import { AIGenerateConfigPanel } from "./panels/AIGenerateConfigPanel";
+import { ConditionConfigPanel } from "./panels/ConditionConfigPanel";
+import { MergeConfigPanel } from "./panels/MergeConfigPanel";
 import { ReviewConfigPanel } from "./panels/ReviewConfigPanel";
+import { SubflowConfigPanel } from "./panels/SubflowConfigPanel";
+import { TaskConfigPanel } from "./panels/TaskConfigPanel";
 import { useValidation } from "./hooks/useValidation";
 import { useWorkflowDAG } from "./hooks/useWorkflowDAG";
 import { workflowApi } from "./api";
 import type { DAGNode, DAGNodeData, WorkflowGraph } from "./types";
 
 const nodeTypes: NodeTypes = {
-  phase: PhaseNode,
   review: ReviewNode,
   condition: ConditionNode,
   ai_generate: AIGenerateNode,
   merge: MergeNode,
-  sub_workflow: SubWorkflowNode,
+  task: TaskNode,
+  subflow: SubflowNode,
 };
 
 const edgeTypes: EdgeTypes = {
   condition: ConditionEdge,
+  animated: AnimatedFlowEdge,
 };
 
 /** Imperative handle exposed via ref when hideToolbar is true. */
@@ -53,6 +59,15 @@ export interface WorkflowEditorProps {
   readOnly?: boolean;
 }
 
+const NODE_TYPE_LABELS: Record<string, string> = {
+  review: "审核节点",
+  condition: "条件节点",
+  ai_generate: "AI 生成节点",
+  merge: "汇聚节点",
+  task: "任务节点",
+  subflow: "子流程",
+};
+
 export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorProps>(function WorkflowEditor(
   {
     projectId,
@@ -67,11 +82,22 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
   },
   ref,
 ) {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, updateNodeData, removeNode, toGraphJson, fromGraphJson } = useWorkflowDAG();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, updateNodeData, removeNode, toGraphJson, fromGraphJson, enterSubflow, exitSubflow } = useWorkflowDAG();
   const { result: validationResult, isValidating, validate } = useValidation();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(initialName || "新工作流");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  /** ID of the subflow node we are currently inside, or null when on main graph. */
+  const [activeSubflowId, setActiveSubflowId] = useState<string | null>(null);
+  /** Label of the active subflow for the breadcrumb. */
+  const activeSubflowLabel = useMemo(() => {
+    if (!activeSubflowId) return null;
+    // Find the label from the main graph's node data
+    const graphJson = toGraphJson();
+    const mainNode = graphJson.mainGraph?.nodes?.find((n) => n.id === activeSubflowId);
+    return mainNode?.data?.label ?? activeSubflowId;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubflowId]);
 
   // Derive selected node from the latest nodes array so the property panel
   // always reflects the current data (including edits made via updateNodeData).
@@ -143,6 +169,62 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
     }
   }, [selectedNodeId, removeNode]);
 
+  /** Double-click a subflow node → enter its inner graph. */
+  const handleNodeDoubleClick = useCallback((_event: React.MouseEvent, node: DAGNode) => {
+    if (node.type !== "subflow" || readOnly) return;
+    enterSubflow(node.id);
+    setActiveSubflowId(node.id);
+    setSelectedNodeId(null);
+  }, [enterSubflow, readOnly]);
+
+  /** Exit subflow → return to main graph. */
+  const handleExitSubflow = useCallback(() => {
+    if (!activeSubflowId) return;
+    exitSubflow(activeSubflowId);
+    setActiveSubflowId(null);
+    setSelectedNodeId(null);
+  }, [activeSubflowId, exitSubflow]);
+
+  /** Render the appropriate config panel for the selected node type. */
+  const renderConfigPanel = (node: DAGNode) => {
+    switch (node.type) {
+      case "review":
+        return <ReviewConfigPanel data={node.data} onUpdate={(partial) => updateNodeData(node.id, partial)} />;
+      case "condition":
+        return <ConditionConfigPanel data={node.data} onUpdate={(partial) => updateNodeData(node.id, partial)} />;
+      case "ai_generate":
+        return <AIGenerateConfigPanel data={node.data} onUpdate={(partial) => updateNodeData(node.id, partial)} />;
+      case "merge":
+        return <MergeConfigPanel data={node.data} onUpdate={(partial) => updateNodeData(node.id, partial)} />;
+      case "task":
+        return (
+          <TaskConfigPanel
+            data={node.data}
+            nodeId={node.id}
+            onUpdate={(partial) => updateNodeData(node.id, partial)}
+            orgDeptCode={getOrgDeptCode(node.id)}
+            onOrgBindingChange={onOrgBindingChange}
+          />
+        );
+      case "subflow":
+        return (
+          <SubflowConfigPanel
+            data={node.data}
+            nodeId={node.id}
+            onUpdate={(partial) => updateNodeData(node.id, partial)}
+            orgDeptCode={getOrgDeptCode(node.id)}
+            onOrgBindingChange={onOrgBindingChange}
+          />
+        );
+      default:
+        return (
+          <div className="p-4 text-xs text-muted-foreground">
+            {node.type} 节点暂无可配置属性
+          </div>
+        );
+    }
+  };
+
   return (
     <ReactFlowProvider>
     <div className="relative flex h-full overflow-hidden">
@@ -169,6 +251,7 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
           onNodeClick={(_event, node) => {
             setSelectedNodeId(node.id);
           }}
+          onNodeDoubleClick={handleNodeDoubleClick}
           onPaneClick={() => {
             setSelectedNodeId(null);
           }}
@@ -185,7 +268,33 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
           <Controls showInteractive={false} />
           <MiniMap />
         </ReactFlow>
-        {readOnly && (
+
+        {/* Subflow breadcrumb navigation */}
+        {activeSubflowId && (
+          <div className="absolute left-4 top-4 z-10 flex items-center gap-1 rounded-lg bg-background/90 backdrop-blur-sm border border-violet-200 px-3 py-1.5 shadow-sm">
+            <button
+              type="button"
+              onClick={handleExitSubflow}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              主流程
+            </button>
+            <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700">
+              <Layers className="w-3 h-3" />
+              {activeSubflowLabel}
+            </div>
+            <button
+              type="button"
+              onClick={handleExitSubflow}
+              className="ml-2 px-2 py-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded-md hover:bg-violet-100 transition-colors"
+            >
+              ← 返回主流程
+            </button>
+          </div>
+        )}
+
+        {readOnly && !activeSubflowId && (
           <div className="pointer-events-none absolute left-4 top-4 rounded-md bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-sm border border-border">
             只读模式 — 工作流已锁定
           </div>
@@ -202,12 +311,7 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
                   {selectedNode.data.label || selectedNode.id}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {selectedNode.type === "phase" && "阶段节点"}
-                  {selectedNode.type === "review" && "审核节点"}
-                  {selectedNode.type === "condition" && "条件节点"}
-                  {selectedNode.type === "ai_generate" && "AI 生成节点"}
-                  {selectedNode.type === "merge" && "汇聚节点"}
-                  {selectedNode.type === "sub_workflow" && "子流程节点"}
+                  {NODE_TYPE_LABELS[selectedNode.type] ?? selectedNode.type}
                 </div>
               </div>
               <button
@@ -219,26 +323,7 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
               </button>
             </div>
             <div>
-              {selectedNode.type === "phase" && (
-                <PhaseConfigPanel
-                  data={selectedNode.data}
-                  nodeId={selectedNode.id}
-                  onUpdate={(partial) => updateNodeData(selectedNode.id, partial)}
-                  orgDeptCode={getOrgDeptCode(selectedNode.id)}
-                  onOrgBindingChange={onOrgBindingChange}
-                />
-              )}
-              {selectedNode.type === "review" && (
-                <ReviewConfigPanel
-                  data={selectedNode.data}
-                  onUpdate={(partial) => updateNodeData(selectedNode.id, partial)}
-                />
-              )}
-              {selectedNode.type !== "phase" && selectedNode.type !== "review" && (
-                <div className="p-4 text-xs text-muted-foreground">
-                  {selectedNode.type} 节点暂无可配置属性
-                </div>
-              )}
+              {renderConfigPanel(selectedNode)}
             </div>
           </div>
         ) : (

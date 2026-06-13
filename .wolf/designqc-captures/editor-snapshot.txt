@@ -1,0 +1,68 @@
+Note: there is a selected element in the DevTools Elements panel but it is not included into the current a11y tree snapshot.
+Get a verbose snapshot to include all elements if you are interested in the selected element.
+
+uid=52_0 RootWebArea "EAIFlow" url="http://localhost:2026/docmgr"
+  uid=52_1 alert atomic live="assertive" relevant="additions text"
+  uid=52_2 link "Logo" url="http://localhost:2026/"
+    uid=52_3 image "Logo" url="http://localhost:2026/favicon.svg"
+  uid=52_4 navigation
+    uid=52_5 link url="http://localhost:2026/dashboard"
+    uid=52_6 link url="http://localhost:2026/writing"
+    uid=52_7 link url="http://localhost:2026/projects"
+    uid=52_8 link url="http://localhost:2026/docmgr"
+    uid=52_9 link url="http://localhost:2026/knowledge-factory"
+    uid=52_10 link url="http://localhost:2026/knowledge"
+    uid=52_11 link url="http://localhost:2026/output"
+    uid=52_12 link url="http://localhost:2026/admin"
+  uid=52_13 navigation
+    uid=52_14 link url="http://localhost:2026/settings"
+  uid=52_15 button expandable haspopup="menu"
+  uid=52_16 main
+    uid=52_17 StaticText "文档空间"
+    uid=52_18 navigation
+      uid=52_19 StaticText "我的文件夹"
+      uid=52_20 button "我的文档"
+      uid=52_21 button "我的收藏"
+      uid=52_22 button "我的分享"
+      uid=52_23 StaticText "AI任务存档"
+      uid=52_24 button "个人文件夹"
+      uid=52_25 button "项目文件夹"
+      uid=52_26 button "默认文件夹"
+      uid=52_27 button "project-chapters"
+      uid=52_28 button "辽阳石化消防设计专篇编写"
+    uid=52_29 textbox "搜索文档..."
+    uid=52_30 button
+    uid=52_31 button
+    uid=52_32 StaticText "共 "
+    uid=52_33 StaticText "6"
+    uid=52_34 StaticText " 篇文档"
+    uid=52_35 StaticText "辽阳石化炼化一体化新装置建设项目 消防设计专篇 编制单位： 中国石油辽阳石化分公司设计院 编制日期： 2026年6月 版 本 号： V1.0 | 版本 | 日期 | 修订内容 | 编制人 | ||||| | V1.0 |"
+    uid=52_36 heading "辽阳石化炼化一体化新装置建设项目_消防设计专篇" level="3"
+    uid=52_37 StaticText "2026/06/03 14:55"
+    uid=52_38 button
+    uid=52_39 button
+    uid=52_40 StaticText "抚顺石化分公司40万吨/年高性能聚丙烯装置 消防设计专篇 编制单位：中石油华东设计院有限公司 编制日期：2026年4月 H1 H2 H3 H4 H5 H6 第1章 设计依据及采用的标准 1.1 设计依"
+    uid=52_41 heading "消防设计专篇" level="3"
+    uid=52_42 StaticText "2026/06/01 03:16"
+    uid=52_43 button
+    uid=52_44 button
+    uid=52_45 StaticText "消防设计专篇按照国家标准规范，需要包含 8个主要章节，以下是完整的章节结构： 第一章：设计依据及采用的标准 项目的设计依据、批复文件、引用的GB国家标准（如GB50160、GB50016等）、地方法规等。项目概况，包括位置、功能定"
+    uid=52_46 heading "第一章：设计依据及采用的标准" level="3"
+    uid=52_47 StaticText "2026/05/21 05:22"
+    uid=52_48 button
+    uid=52_49 button
+    uid=52_50 StaticText "报告文件已成功生成。该报告以系统化、高度可读的方式，全面汇总了本次数据处理的完整成果。报告正文部分包含三大核心板块：第一板块为详细的数据分析结果，涵盖原始数据统计描述、异常值检测、相关性矩阵以及多维指标对比，所有数据均经过清洗与校验，确保其"
+    uid=52_51 heading "报告已生成完毕" level="3"
+    uid=52_52 StaticText "2026/05/20 08:42"
+    uid=52_53 button
+    uid=52_54 button
+    uid=52_55 StaticText "辽阳石化乙烯装置项目消防设计专篇 第1章 设计依据及采用的标准 1.1 设计依据 a）《辽阳石化乙烯装置项目可行性研究报告》及批复； b）《辽阳市安全生产监督管理局关于辽阳石化乙烯装置项目的函》； c）《中国石油天然气集团公司"
+    uid=52_56 heading "消防设计专篇测试" level="3"
+    uid=52_57 StaticText "2026/05/06 02:55"
+    uid=52_58 button
+    uid=52_59 button
+    uid=52_60 StaticText "你好！请问有什么我可以帮你的？我看到你之前在准备辽阳石化新建乙烯装置的消防设计专篇，需要我继续协助吗？"
+    uid=52_61 heading "你好！请问有什么我可以帮你的？我看到你之前在准备辽阳石化新建乙烯装置的消防设计专篇，需要我继续协助吗？" level="3"
+    uid=52_62 StaticText "2026/04/30 06:12"
+    uid=52_63 button
+    uid=52_64 button

@@ -4,8 +4,11 @@ function getBaseOrigin() {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  // Fallback for SSR
-  return "http://localhost:4026";
+  // Fallback for SSR — prefer env-configured Gateway URL, then sensible default
+  if (process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL) {
+    return process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL;
+  }
+  return "http://127.0.0.1:8001";
 }
 
 export function getBackendBaseURL() {
@@ -39,6 +42,9 @@ export function getLangGraphBaseURL(isMock?: boolean) {
       return `${window.location.origin}/api/langgraph`;
     }
     // Fallback for SSR
-    return "http://localhost:4026/api/langgraph";
+    if (process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL) {
+      return `${process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL}/api`;
+    }
+    return "http://127.0.0.1:8001/api";
   }
 }

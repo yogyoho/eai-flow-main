@@ -333,6 +333,8 @@ class KnowledgeBaseBase(BaseModel):
     allowed_depts: list[UUID] | None = None
     embedding_model: str | None = None
     chunk_method: str = "naive"
+    parser_config: dict | None = None
+    language: str = "Chinese"
 
     @field_validator("kb_type")
     @classmethod
@@ -356,6 +358,8 @@ class KnowledgeBaseUpdate(BaseModel):
     allowed_depts: list[UUID] | None = None
     embedding_model: str | None = None
     chunk_method: str | None = None
+    parser_config: dict | None = None
+    language: str | None = None
 
     @field_validator("kb_type")
     @classmethod
@@ -376,6 +380,7 @@ class KnowledgeBaseResponse(KnowledgeBaseBase):
     ragflow_dataset_id: str | None = None
     owner_id: UUID
     owner_name: str | None = None
+    language: str = "Chinese"
     status: str
     created_at: datetime
 

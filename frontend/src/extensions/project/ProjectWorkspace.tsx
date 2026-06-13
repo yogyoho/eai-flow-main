@@ -19,6 +19,7 @@ import {
 import { createProjectIdentity, getVisibleTabs, type ProjectIdentity } from "@/extensions/project/tabRegistry";
 import { workflowApi } from "@/extensions/workflow/api";
 import type { WorkflowGraph } from "@/extensions/workflow/types";
+import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
 
 const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then((m) => ({ default: m.OverviewTab })), { ssr: false });
 const EditorTab = dynamic(() => import("./tabs/EditorTab").then((m) => ({ default: m.EditorTab })), { ssr: false });
@@ -56,11 +57,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       }
       setProject(data);
       setIdentity(createProjectIdentity(perms));
-      // Load workflow graph if project has an associated workflow
+      // Load workflow graph if project has an associated workflow definition
       if (data.workflowId) {
         workflowApi.get(data.workflowId).then((def) => {
-          setWorkflowGraph(def.graphJson ?? null);
+          if (!def.graphJson) { setWorkflowGraph(null); return; }
+          const raw = def.graphJson as unknown as Record<string, unknown>;
+          setWorkflowGraph(isLegacyGraph(raw)
+            ? migrateLegacyToUnified(raw as Parameters<typeof migrateLegacyToUnified>[0])
+            : def.graphJson);
         }).catch(() => setWorkflowGraph(null));
+      } else if (data.currentPhaseNode || data.temporalWorkflowId) {
+        // No workflow_id linked, but project has active Temporal workflow —
+        // leave workflowGraph null; WorkflowProgressCompact will fetch status via project-scoped API
+        setWorkflowGraph(null);
       } else {
         setWorkflowGraph(null);
       }
@@ -110,6 +119,18 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       setActiveTab(visibleTabs[0]!.id);
     }
   }, [visibleTabs, activeTab]);
+
+  // Listen for switchTab custom events (from OverviewTab chapter edit)
+  useEffect(() => {
+    const handleSwitchTab = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.tab && visibleTabs.some((t) => t.id === detail.tab)) {
+        setActiveTab(detail.tab);
+      }
+    };
+    window.addEventListener("switchTab", handleSwitchTab);
+    return () => window.removeEventListener("switchTab", handleSwitchTab);
+  }, [visibleTabs]);
 
   const canSeeSettings = identity?.isAdmin ||
     identity?.hasAnyPermission(["settings:edit", "project:edit", "project:delete"]);

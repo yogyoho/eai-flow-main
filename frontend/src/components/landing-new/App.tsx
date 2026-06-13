@@ -170,18 +170,18 @@ export default function LandingNew() {
             <motion.div variants={itemVariants}>
               <span className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
                 <Sparkles className="w-4 h-4" />
-                <span>Harness驱动的Agent平台</span>
+                <span>企业智能体平台套件，融合知识工厂与RAG知识库</span>
               </span>
             </motion.div>
 
             <motion.div variants={itemVariants} className="space-y-6">
               <h1 className="text-3xl md:text-6xl font-extrabold text-foreground dark:text-white leading-[1.15] tracking-tight">
-                华宇工程: 煤矿设计领域智能应用平台
+                北京华宇工程: 煤炭设计领域智能应用平台
               </h1>
               {/* 渐变装饰线 */}
               <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/70 to-teal-400 rounded-full"></div>
               <p className="text-xl text-muted-foreground dark:text-muted-foreground font-medium">
-                Harness驱动的智能体平台
+                统一编排 Agent、知识库、skills、MCP与工具链
               </p>
             </motion.div>
 

@@ -1,0 +1,147 @@
+<h2>项目文件夹侧边栏设计</h2>
+<p class="subtitle">三种布局方案对比 — 选择你偏好的侧边栏交互方式</p>
+
+<div class="cards">
+  <!-- 方案 A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;padding:12px;font-size:13px;border-radius:6px;min-height:280px;">
+        <div style="margin-bottom:12px;">
+          <div style="color:#888;font-size:11px;text-transform:uppercase;margin-bottom:8px;">📁 文档空间</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">我的文档</div>
+          <div style="padding:4px 8px;border-radius:4px;font-size:13px;color:#ccc;">📄 默认文件夹</div>
+        </div>
+
+        <div style="border-top:1px solid #333;padding-top:12px;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span>📂 项目文件夹</span>
+            <span style="color:#666;font-size:10px;">2 个项目</span>
+          </div>
+
+          <!-- 项目 A：展开状态 -->
+          <div style="margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;background:#2a2a4a;font-size:13px;">
+              <span style="color:#7c8cf8;">▼</span>
+              <span style="color:#fff;">🏗️ 城市规划研究</span>
+              <span style="margin-left:auto;color:#666;font-size:11px;">12</span>
+              <span style="color:#555;font-size:14px;cursor:pointer;" title="更多操作">⋯</span>
+            </div>
+            <div style="margin-left:18px;margin-top:2px;">
+              <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">📂 阶段一：调研</div>
+              <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;background:#2a2a4a;">📂 阶段二：分析</div>
+              <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">📂 阶段三：报告</div>
+            </div>
+          </div>
+
+          <!-- 项目 B：折叠状态 -->
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;font-size:13px;color:#ccc;">
+              <span style="color:#7c8cf8;">▶</span>
+              <span>📊 数据可视化项目</span>
+              <span style="margin-left:auto;color:#666;font-size:11px;">8</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 内联树形展开</h3>
+      <p>项目作为可展开的树节点，子文件夹缩进显示。每个项目右侧有⋯菜单（重命名/删除/新建子文件夹）。与当前侧边栏风格一致。</p>
+    </div>
+  </div>
+
+  <!-- 方案 B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;padding:12px;font-size:13px;border-radius:6px;min-height:280px;">
+        <div style="margin-bottom:12px;">
+          <div style="color:#888;font-size:11px;text-transform:uppercase;margin-bottom:8px;">📁 文档空间</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">我的文档</div>
+          <div style="padding:4px 8px;border-radius:4px;font-size:13px;color:#ccc;">📄 默认文件夹</div>
+        </div>
+
+        <div style="border-top:1px solid #333;padding-top:12px;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">📂 项目文件夹</div>
+
+          <!-- 项目列表（卡片式） -->
+          <div style="margin-bottom:6px;padding:8px;border-radius:6px;background:#2a2a4a;border-left:3px solid #7c8cf8;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;color:#fff;">🏗️ 城市规划研究</span>
+              <span style="color:#555;font-size:14px;cursor:pointer;">⋯</span>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:4px;">12 文档 · 3 子文件夹</div>
+          </div>
+
+          <div style="margin-bottom:6px;padding:8px;border-radius:6px;background:#1f1f38;border-left:3px solid #f87171;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;color:#ccc;">📊 数据可视化项目</span>
+              <span style="color:#555;font-size:14px;cursor:pointer;">⋯</span>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:4px;">8 文档 · 2 子文件夹</div>
+          </div>
+
+          <!-- 选中项目后展示子文件夹 -->
+          <div style="margin-top:10px;border-top:1px dashed #333;padding-top:10px;">
+            <div style="font-size:11px;color:#888;margin-bottom:4px;">📋 城市规划研究 — 子文件夹</div>
+            <div style="padding:3px 8px;font-size:12px;color:#bbb;">📂 阶段一：调研</div>
+            <div style="padding:3px 8px;font-size:12px;color:#bbb;background:#2a2a4a;border-radius:3px;">📂 阶段二：分析</div>
+            <div style="padding:3px 8px;font-size:12px;color:#bbb;">📂 阶段三：报告</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 卡片式项目列表 + 子面板</h3>
+      <p>项目以卡片形式展示，点击后下方展开子文件夹。视觉层次更丰富，但占用垂直空间更多。</p>
+    </div>
+  </div>
+
+  <!-- 方案 C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;padding:12px;font-size:13px;border-radius:6px;min-height:280px;">
+        <div style="margin-bottom:12px;">
+          <div style="color:#888;font-size:11px;text-transform:uppercase;margin-bottom:8px;">📁 文档空间</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">我的文档</div>
+          <div style="padding:4px 8px;border-radius:4px;font-size:13px;color:#ccc;">📄 默认文件夹</div>
+        </div>
+
+        <div style="border-top:1px solid #333;padding-top:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="color:#aaa;font-size:11px;">📂 项目文件夹</span>
+            <span style="font-size:14px;color:#7c8cf8;cursor:pointer;" title="管理项目文件夹">⚙️</span>
+          </div>
+
+          <!-- 下拉选择器 -->
+          <div style="padding:6px 8px;border-radius:4px;background:#2a2a4a;font-size:13px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span>🏗️ 城市规划研究</span>
+            <span style="color:#888;">▼</span>
+          </div>
+
+          <!-- 选中项目的子文件夹 -->
+          <div style="font-size:11px;color:#888;margin-bottom:4px;">子文件夹</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">📂 全部文档</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">📂 阶段一：调研</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;background:#2a2a4a;border-radius:3px;">📂 阶段二：分析</div>
+          <div style="padding:3px 8px;font-size:12px;color:#bbb;border-radius:3px;">📂 阶段三：报告</div>
+          <div style="margin-top:6px;">
+            <div style="padding:3px 8px;font-size:12px;color:#7c8cf8;border-radius:3px;cursor:pointer;">+ 新建子文件夹</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 下拉切换 + 子文件夹列表</h3>
+      <p>用下拉选择器切换项目，下方列出子文件夹。侧边栏最紧凑，但需要额外点击切换项目。</p>
+    </div>
+  </div>
+</div>

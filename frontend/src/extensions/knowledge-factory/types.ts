@@ -25,6 +25,7 @@ export interface ExtractionConfig {
   chunk_strategy: "semantic" | "fixed" | "section";
   merge_threshold: number;
   min_section_length: number;
+  max_depth: number;
 }
 
 export interface StepStatus {

@@ -5,17 +5,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 
 function getCollabUrl(): string {
-  if (typeof window === "undefined") {
-    return "ws://localhost:8002";
-  }
-
   const configured = process.env.NEXT_PUBLIC_COLLAB_WS_URL;
   if (configured) {
     return configured;
   }
 
-  if (window.location.hostname === "localhost" && window.location.port === "3000") {
-    return "ws://localhost:8002";
+  if (typeof window === "undefined") {
+    // SSR: use the internal gateway URL to derive collab URL, or fall back to nginx proxy path
+    return "/api/collab";
+  }
+
+  if (window.location.hostname === "localhost") {
+    const port = window.location.port;
+    if (port === "3000" || port === "4000") {
+      return "ws://localhost:8002";
+    }
   }
 
   return `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/collab`;

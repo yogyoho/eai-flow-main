@@ -102,13 +102,17 @@ class RAGFlowClient:
             response.raise_for_status()
             return response.json()
 
-    async def update_dataset(self, dataset_id: str, name: str = None, description: str = None) -> dict:
+    async def update_dataset(self, dataset_id: str, name: str = None, description: str = None, chunk_method: str = None, parser_config: dict = None) -> dict:
         """Update dataset info."""
         payload = {}
         if name:
             payload["name"] = name
         if description:
             payload["description"] = description
+        if chunk_method:
+            payload["chunk_method"] = chunk_method
+        if parser_config:
+            payload["parser_config"] = parser_config
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.put(
