@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-13T11:58:26.315Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-13T12:05:18.724Z
 > Files: 1105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1166,7 +1166,7 @@
 - `test_phase_review.py` — Tests for PhaseReview model, schemas, and DAG validation. (~1148 tok)
 - `test_project_permissions_new.py` — Tests for the new project-level permission system (project_permissions.py). (~1360 tok)
 - `test_project_permissions.py` — Tests for project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model. (~4369 tok)
-- `test_project_routers.py` — Tests for project FastAPI routers: endpoint wiring and status codes. (~4602 tok)
+- `test_project_routers.py` — Tests for project FastAPI routers: endpoint wiring and status codes. (~4638 tok)
 - `test_project_schemas.py` — Tests for project Pydantic schemas: validation, defaults, serialization. (~1846 tok)
 - `test_project_service.py` — Tests for enter_project and get_project_files service functions. (~4352 tok)
 - `test_review_rollback.py` — Tests for review rejection rollback — apply_rejection_rollback. (~1667 tok)

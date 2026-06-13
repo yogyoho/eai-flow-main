@@ -367,14 +367,14 @@ class TestRoleBasedAccess:
                 f"/api/extensions/project/projects/{pid}/approval-action",
                 json={"workflow_id": str(wid), "action": "approve"},
             )
-        assert response.status_code == 200
+        assert response.status_code == 410  # endpoint deprecated — returns 410 Gone
 
     def test_member_can_view_approval_status(self, client):
         pid = uuid4()
         with patch("app.extensions.project.permissions.get_project_role", new_callable=AsyncMock, return_value="member"), \
              patch("app.extensions.project.service.get_approval_status", new_callable=AsyncMock, return_value={"project_id": str(pid), "current_step": None, "total_steps": 0, "steps": [], "all_approved": False}):
             response = client.get(f"/api/extensions/project/projects/{pid}/approval-status")
-        assert response.status_code == 200
+        assert response.status_code == 410  # endpoint deprecated — returns 410 Gone
 
     def test_member_cannot_submit_approval(self, client):
         pid = uuid4()
@@ -397,4 +397,4 @@ class TestRoleBasedAccess:
                 f"/api/extensions/project/projects/{pid}/submit-approval",
                 json={"steps": [{"step_order": 1, "step_name": "Review", "reviewer_id": str(uuid4())}]},
             )
-        assert response.status_code == 200
+        assert response.status_code == 410  # endpoint deprecated — returns 410 Gone

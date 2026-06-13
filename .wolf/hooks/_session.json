@@ -121,6 +121,11 @@
       "count": 1,
       "tokens": 1667,
       "first_read": "2026-06-13T11:54:19.094Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_project_routers.py": {
+      "count": 2,
+      "tokens": 4626,
+      "first_read": "2026-06-13T12:04:53.484Z"
     }
   },
   "files_written": [
@@ -147,17 +152,30 @@
       "action": "edit",
       "tokens": 20,
       "at": "2026-06-13T11:58:26.333Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_project_routers.py",
+      "action": "edit",
+      "tokens": 195,
+      "at": "2026-06-13T12:05:03.473Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_project_routers.py",
+      "action": "edit",
+      "tokens": 196,
+      "at": "2026-06-13T12:05:18.742Z"
     }
   ],
   "edit_counts": {
     "backend/scripts/migrate_phase_duties.py": 1,
     "backend/app/extensions/project/routers.py": 1,
     "backend/app/extensions/auth/unified_permissions.py": 1,
-    "backend/app/extensions/writing/state_machine.py": 1
+    "backend/app/extensions/writing/state_machine.py": 1,
+    "backend/tests/test_project_routers.py": 2
   },
-  "anatomy_hits": 21,
+  "anatomy_hits": 22,
   "anatomy_misses": 3,
-  "repeated_reads_warned": 16,
+  "repeated_reads_warned": 17,
   "cerebrum_warnings": 0,
-  "stop_count": 5
+  "stop_count": 6
 }
