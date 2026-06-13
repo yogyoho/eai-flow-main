@@ -90,10 +90,14 @@ class TestDAGValidation:
     def test_review_node_in_dag(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "phase-1", "type": "phase", "data": {"label": "Write"}},
                 {"id": "review-1", "type": "review", "data": {"label": "Review", "mode": "mixed"}},
             ],
-            "edges": [{"source": "phase-1", "target": "review-1"}],
+            "edges": [
+                {"source": "start-node", "target": "phase-1"},
+                {"source": "phase-1", "target": "review-1"},
+            ],
         }
         result = validate_dag(graph)
         assert result["valid"]
@@ -101,11 +105,13 @@ class TestDAGValidation:
     def test_dag_with_condition_and_review(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "cond-1", "type": "condition", "data": {"label": "Type?"}},
                 {"id": "review-a", "type": "review", "data": {"label": "Review A"}},
                 {"id": "review-b", "type": "review", "data": {"label": "Review B"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "cond-1"},
                 {"source": "cond-1", "target": "review-a", "label": "true"},
                 {"source": "cond-1", "target": "review-b", "label": "false"},
             ],

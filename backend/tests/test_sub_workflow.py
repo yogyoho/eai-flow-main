@@ -21,6 +21,7 @@ from app.extensions.workflow.service import validate_dag, topological_sort
 def _make_sub_workflow_graph(extra_nodes=None, extra_edges=None, sub_graph=None):
     """Build a minimal DAG with a sub_workflow node."""
     nodes = [
+        {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
         {"id": "phase-start", "type": "phase", "data": {"label": "开始"}},
         {
             "id": "sub-1",
@@ -41,6 +42,7 @@ def _make_sub_workflow_graph(extra_nodes=None, extra_edges=None, sub_graph=None)
         {"id": "phase-end", "type": "phase", "data": {"label": "结束"}},
     ]
     edges = [
+        {"source": "start-node", "target": "phase-start"},
         {"source": "phase-start", "target": "sub-1"},
         {"source": "sub-1", "target": "phase-end"},
     ]
@@ -55,6 +57,7 @@ def _make_sub_workflow_node_only():
     """Single sub_workflow node with embedded graph_json."""
     return {
         "nodes": [
+            {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
             {
                 "id": "sub-only",
                 "type": "sub_workflow",
@@ -69,7 +72,9 @@ def _make_sub_workflow_node_only():
                 },
             },
         ],
-        "edges": [],
+        "edges": [
+            {"source": "start-node", "target": "sub-only"},
+        ],
     }
 
 
@@ -90,11 +95,13 @@ class TestSubWorkflowDAGValidation:
         """sub_workflow without graph_json is valid (handled gracefully at runtime)."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "start", "type": "phase", "data": {"label": "开始"}},
                 {"id": "sub", "type": "sub_workflow", "data": {"label": "空子流程"}},
                 {"id": "end", "type": "phase", "data": {"label": "结束"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "start"},
                 {"source": "start", "target": "sub"},
                 {"source": "sub", "target": "end"},
             ],
@@ -106,11 +113,13 @@ class TestSubWorkflowDAGValidation:
         """A sub_workflow node with no connections triggers a warning."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "phase-a", "type": "phase", "data": {"label": "A"}},
                 {"id": "phase-b", "type": "phase", "data": {"label": "B"}},
                 {"id": "sub-disconnected", "type": "sub_workflow", "data": {"label": "未连接"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "phase-a"},
                 {"source": "phase-a", "target": "phase-b"},
             ],
         }
@@ -120,13 +129,15 @@ class TestSubWorkflowDAGValidation:
         assert len(disconnected_warnings) >= 1
 
     def test_sub_workflow_can_be_start_node(self):
-        """A sub_workflow node with no incoming edges is a valid start node."""
+        """A sub_workflow node directly after START is a valid entry point."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "sub-start", "type": "sub_workflow", "data": {"label": "起始子流程"}},
                 {"id": "phase-after", "type": "phase", "data": {"label": "后续"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "sub-start"},
                 {"source": "sub-start", "target": "phase-after"},
             ],
         }
@@ -134,9 +145,10 @@ class TestSubWorkflowDAGValidation:
         assert result["valid"] is True
 
     def test_mixed_node_types_with_sub_workflow(self):
-        """DAG containing all 6 node types including sub_workflow validates."""
+        """DAG containing all node types including sub_workflow validates."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "p1", "type": "phase", "data": {"label": "阶段"}},
                 {"id": "r1", "type": "review", "data": {"label": "审核", "mode": "chapter"}},
                 {"id": "c1", "type": "condition", "data": {"label": "条件", "expression": "report.subtype"}},
@@ -145,6 +157,7 @@ class TestSubWorkflowDAGValidation:
                 {"id": "sw1", "type": "sub_workflow", "data": {"label": "子流程"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "p1"},
                 {"source": "p1", "target": "c1"},
                 {"source": "c1", "target": "ai1", "label": "true"},
                 {"source": "c1", "target": "sw1", "label": "false"},
@@ -179,27 +192,34 @@ class TestSubWorkflowTopologicalSort:
         assert sub_idx < order.index("phase-end")
 
     def test_sub_workflow_as_first_node(self):
-        """sub_workflow as start node should be first in order."""
+        """sub_workflow directly after START should be second in order."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "sw", "type": "sub_workflow", "data": {"label": "子流程"}},
                 {"id": "p2", "type": "phase", "data": {"label": "后续"}},
             ],
-            "edges": [{"source": "sw", "target": "p2"}],
+            "edges": [
+                {"source": "start-node", "target": "sw"},
+                {"source": "sw", "target": "p2"},
+            ],
         }
         order = topological_sort(graph)
-        assert order[0] == "sw"
+        assert order[0] == "start-node"
+        assert order[1] == "sw"
 
     def test_multiple_sub_workflows_in_parallel(self):
         """Two sub_workflow nodes in parallel branches."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "start", "type": "phase", "data": {"label": "开始"}},
                 {"id": "sw-a", "type": "sub_workflow", "data": {"label": "子流程A"}},
                 {"id": "sw-b", "type": "sub_workflow", "data": {"label": "子流程B"}},
                 {"id": "end", "type": "merge", "data": {"label": "汇聚"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "start"},
                 {"source": "start", "target": "sw-a"},
                 {"source": "start", "target": "sw-b"},
                 {"source": "sw-a", "target": "end"},
@@ -227,11 +247,11 @@ class TestSubWorkflowSchemas:
         graph = _make_sub_workflow_graph()
         req = WorkflowDefinitionCreate(
             name="子流程测试",
-            graph_json=graph,
+            graph_json={"mainGraph": graph},
         )
         assert req.name == "子流程测试"
         assert req.graph_json is not None
-        nodes = req.graph_json.get("nodes", [])
+        nodes = req.graph_json["mainGraph"].get("nodes", [])
         sub_nodes = [n for n in nodes if n["type"] == "sub_workflow"]
         assert len(sub_nodes) == 1
         assert sub_nodes[0]["id"] == "sub-1"
@@ -244,12 +264,12 @@ class TestSubWorkflowSchemas:
         out = WorkflowDefinitionOut(
             id=uuid.uuid4(),
             name="子流程测试",
-            graph_json=graph,
+            graph_json={"mainGraph": graph},
             is_template=False,
             created_by=uuid.uuid4(),
         )
-        assert len(out.graph_json["nodes"]) == 3
-        node_types = {n["type"] for n in out.graph_json["nodes"]}
+        main_nodes = out.graph_json["mainGraph"]["nodes"]
+        node_types = {n["type"] for n in main_nodes}
         assert "sub_workflow" in node_types
 
     def test_workflow_definition_update_preserves_sub_workflow(self):

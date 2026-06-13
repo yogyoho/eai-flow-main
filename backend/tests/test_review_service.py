@@ -81,6 +81,7 @@ class TestDAGValidation:
     def test_complex_dag(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "phase-1", "type": "phase", "data": {"label": "Write"}},
                 {"id": "phase-2", "type": "phase", "data": {"label": "Review Phase"}},
                 {"id": "review-1", "type": "review", "data": {"label": "Review", "mode": "mixed"}},
@@ -91,6 +92,7 @@ class TestDAGValidation:
                 {"id": "ai-1", "type": "ai_generate", "data": {"label": "AI Write"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "phase-1"},
                 {"source": "phase-1", "target": "phase-2"},
                 {"source": "phase-2", "target": "review-1"},
                 {"source": "review-1", "target": "cond-1"},
@@ -108,11 +110,13 @@ class TestDAGValidation:
     def test_cycle_detected(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "a", "type": "phase", "data": {"label": "A"}},
                 {"id": "b", "type": "phase", "data": {"label": "B"}},
                 {"id": "c", "type": "phase", "data": {"label": "C"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "a"},
                 {"source": "a", "target": "b"},
                 {"source": "b", "target": "c"},
                 {"source": "c", "target": "a"},
@@ -125,11 +129,13 @@ class TestDAGValidation:
     def test_disconnected_node_warning(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "a", "type": "phase", "data": {"label": "A"}},
                 {"id": "b", "type": "phase", "data": {"label": "B"}},
                 {"id": "c", "type": "phase", "data": {"label": "C"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "a"},
                 {"source": "a", "target": "b"},
             ],
         }
@@ -144,9 +150,11 @@ class TestDAGValidation:
     def test_unknown_edge_target_error(self):
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "a", "type": "phase", "data": {"label": "A"}},
             ],
             "edges": [
+                {"source": "start-node", "target": "a"},
                 {"source": "a", "target": "nonexistent"},
             ],
         }
@@ -155,11 +163,15 @@ class TestDAGValidation:
         assert any("unknown" in e.lower() for e in result["errors"])
 
     def test_single_node_valid(self):
+        """Minimal valid DAG: START node with one outgoing edge."""
         graph = {
             "nodes": [
+                {"id": "start-node", "type": "system:start", "data": {"label": "项目启动"}},
                 {"id": "only", "type": "phase", "data": {"label": "Only"}},
             ],
-            "edges": [],
+            "edges": [
+                {"source": "start-node", "target": "only"},
+            ],
         }
         result = validate_dag(graph)
         assert result["valid"]

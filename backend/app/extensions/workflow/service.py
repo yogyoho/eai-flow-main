@@ -12,12 +12,14 @@ from .models import TemplateApproval, WorkflowDefinition
 
 
 def validate_dag(graph: dict) -> dict:
-    """Validate a DAG graph_json structure. Returns {valid, errors, warnings}."""
+    """Validate a DAG graph_json structure (v2 hierarchical). Returns {valid, errors, warnings}."""
     errors: list[str] = []
     warnings: list[str] = []
 
-    nodes = graph.get("nodes", [])
-    edges = graph.get("edges", [])
+    # v2: extract mainGraph
+    main_graph = graph.get("mainGraph", graph)
+    nodes = main_graph.get("nodes", [])
+    edges = main_graph.get("edges", [])
 
     if not nodes:
         return {"valid": False, "errors": ["Graph is empty — must have at least one node"], "warnings": []}
@@ -64,7 +66,36 @@ def validate_dag(graph: dict) -> dict:
         if node["id"] not in connected and len(nodes) > 1:
             warnings.append(f"Node '{node['id']}' ({node.get('data', {}).get('label', '')}) is disconnected")
 
+    # START node validation
+    start_errors = _validate_start_node(graph)
+    errors.extend(start_errors)
+
     return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+
+
+def _validate_start_node(graph: dict) -> list[str]:
+    """Validate that the DAG has exactly one system:start node with in-degree 0."""
+    # v2: extract mainGraph
+    main_graph = graph.get("mainGraph", graph)
+    nodes = main_graph.get("nodes", [])
+    edges = main_graph.get("edges", [])
+
+    start_nodes = [n for n in nodes if n.get("type") == "system:start"]
+    if len(start_nodes) == 0:
+        return ["DAG 缺少 START 节点 (type='system:start')"]
+    if len(start_nodes) > 1:
+        return [f"DAG 包含 {len(start_nodes)} 个 START 节点，只允许 1 个"]
+
+    start_id = start_nodes[0]["id"]
+    incoming = [e for e in edges if e.get("target") == start_id]
+    if incoming:
+        return ["START 节点不能有入边"]
+
+    outgoing = [e for e in edges if e.get("source") == start_id]
+    if not outgoing:
+        return ["START 节点必须有至少 1 条出边"]
+
+    return []
 
 
 def topological_sort(graph: dict) -> list[str]:
