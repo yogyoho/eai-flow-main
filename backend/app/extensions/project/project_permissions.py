@@ -15,6 +15,17 @@ from __future__ import annotations
 
 from typing import Optional
 
+# DEPRECATED (2026-06-13): This module is superseded by
+# app.extensions.auth.unified_permissions.  It is kept for backward
+# compatibility during migration and will be removed after all callers
+# are migrated.
+import warnings
+warnings.warn(
+    "project_permissions.py is deprecated; use unified_permissions instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 # All project-level permission actions
 PROJECT_PERMISSIONS = [
     "project:create",
@@ -30,6 +41,7 @@ PROJECT_PERMISSIONS = [
     "chapter:write_any",
     "chapter:write_own",
     "chapter:review",
+    "chapter:confirm",
     "ai:start_writing",
     "source:view",
     "version:rollback",
@@ -40,6 +52,8 @@ PROJECT_PERMISSIONS = [
     "workflow:edit",
     "template:manage",
     "template:publish",
+    "report:submit",
+    "report:final_approve",
 ]
 
 # Owner always gets all permissions regardless of system role

@@ -10,6 +10,15 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# DEPRECATED (2026-06-13): This module is superseded by
+# app.extensions.auth.unified_permissions.
+import warnings
+warnings.warn(
+    "permissions.py is deprecated; use unified_permissions instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 logger = logging.getLogger(__name__)
 
 # Order: most privileged → least privileged
