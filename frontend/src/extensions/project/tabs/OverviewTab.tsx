@@ -15,13 +15,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 
 import { projectApi } from "@/extensions/project/api";
@@ -33,7 +26,6 @@ import type { KanbanCardData } from "@/extensions/project/components/KanbanBoard
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
   MEMBER_ROLE_LABELS,
-  type MemberRole,
   type ProjectChapter,
   type ReportProject,
 } from "@/extensions/project/types";
@@ -107,14 +99,28 @@ function StatCard({
 
 // ── Chapter Node (list view) ──
 
-function ChapterNode({ chapter, depth }: { chapter: ProjectChapter; depth: number }) {
+function ChapterNode({
+  chapter,
+  depth,
+  onMarkComplete,
+  onEdit,
+  completingId,
+}: {
+  chapter: ProjectChapter;
+  depth: number;
+  onMarkComplete?: (chapterId: string) => void;
+  onEdit?: (chapterId: string) => void;
+  completingId?: string | null;
+}) {
   const status = inferStatus(chapter);
   const activity = activityLabel(chapter.updatedAt);
+  const isCompleting = completingId === chapter.id;
+  const canComplete = status !== "completed" && status !== "review";
 
   return (
     <>
       <div
-        className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent/40 transition-colors"
+        className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent/40 transition-colors group"
         style={{ paddingLeft: `${depth * 20 + 12}px` }}
       >
         <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -128,9 +134,38 @@ function ChapterNode({ chapter, depth }: { chapter: ProjectChapter; depth: numbe
         {chapter.assignedName && (
           <span className="text-[11px] text-muted-foreground/70 shrink-0">{chapter.assignedName}</span>
         )}
+        {/* Hover actions */}
+        <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onEdit && (
+            <button
+              type="button"
+              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={() => onEdit(chapter.id)}
+            >
+              编辑
+            </button>
+          )}
+          {onMarkComplete && canComplete && (
+            <button
+              type="button"
+              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+              disabled={isCompleting}
+              onClick={() => onMarkComplete(chapter.id)}
+            >
+              {isCompleting ? "..." : "完成"}
+            </button>
+          )}
+        </div>
       </div>
       {chapter.children?.map((child) => (
-        <ChapterNode key={child.id} chapter={child} depth={depth + 1} />
+        <ChapterNode
+          key={child.id}
+          chapter={child}
+          depth={depth + 1}
+          onMarkComplete={onMarkComplete}
+          onEdit={onEdit}
+          completingId={completingId}
+        />
       ))}
     </>
   );
@@ -143,8 +178,47 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const [kanbanView, setKanbanView] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [lastSync, setLastSync] = useState<{ time: string; synced: number } | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const canManageMembers = identity?.isAdmin || identity?.hasAnyPermission(["member:add", "member:remove"]);
+
+  const handleMarkComplete = useCallback(
+    async (chapterId: string) => {
+      setCompletingId(chapterId);
+      try {
+        await projectApi.updateChapterStatus(projectId, chapterId, "completed");
+        toast.success("章节已标记为完成");
+        onRefresh();
+      } catch {
+        toast.error("标记完成失败");
+      } finally {
+        setCompletingId(null);
+      }
+    },
+    [projectId, onRefresh],
+  );
+
+  // Handle edit chapter — switch to editor tab with chapter selected
+  const handleEditChapter = useCallback(
+    async (chapterId: string) => {
+      try {
+        const doc = await projectApi.openChapter(projectId, chapterId);
+        // Find chapter title for scroll-to-section anchor
+        const flat = flattenChapters(project.chapters ?? []);
+        const chapter = flat.find((c) => c.id === chapterId);
+        // Store doc info + chapter title in sessionStorage so EditorTab can pick it up
+        sessionStorage.setItem("openChapterDoc", JSON.stringify(doc));
+        sessionStorage.setItem("openChapterTitle", chapter?.title ?? "");
+        // Trigger tab switch by dispatching a custom event
+        window.dispatchEvent(new CustomEvent("switchTab", { detail: { tab: "editor" } }));
+      } catch {
+        toast.error("打开章节失败");
+      }
+    },
+    [projectId, project.chapters],
+  );
 
   // Convert chapters to kanban card data
   const kanbanCards = useMemo<KanbanCardData[]>(() => {
@@ -184,18 +258,55 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
     [projectId, onRefresh],
   );
 
-  const loadFiles = useCallback(async () => {
+  const [docCount, setDocCount] = useState<number | null>(null);
+  const [docTotalSize, setDocTotalSize] = useState<number>(0);
+
+  const loadStats = useCallback(async () => {
     try {
-      const files = await projectApi.getFiles(projectId);
-      setFileCount(files.length);
+      const stats = await projectApi.getStats(projectId);
+      setFileCount(stats.documentCount);
+      setDocCount(stats.documentCount);
+      setDocTotalSize(stats.documentTotalSize);
     } catch {
       setFileCount(0);
     }
   }, [projectId]);
 
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    loadStats();
+  }, [loadStats]);
+
+  // Sync documents on mount and expose for refresh
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await projectApi.syncDocs(projectId);
+      setLastSync({ time: new Date().toLocaleTimeString("zh-CN"), synced: result.synced ?? 0 });
+      loadStats();
+    } catch {
+      // Non-critical
+    } finally {
+      setSyncing(false);
+    }
+  }, [projectId, loadStats]);
+
+  useEffect(() => {
+    handleSync();
+  }, [handleSync]);
+
+  // Listen for phase-advanced and doc-status-changed events to refresh stats
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadStats();
+      onRefresh();
+    };
+    window.addEventListener("phase-advanced", handleRefresh);
+    window.addEventListener("doc-status-changed", handleRefresh as EventListener);
+    return () => {
+      window.removeEventListener("phase-advanced", handleRefresh);
+      window.removeEventListener("doc-status-changed", handleRefresh as EventListener);
+    };
+  }, [loadStats, onRefresh]);
 
   // Derived stats
   const flatChapters = useMemo(() => flattenChapters(project.chapters ?? []), [project.chapters]);
@@ -207,16 +318,6 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const totalWords = useMemo(() => aggregateWordCount(project.chapters ?? []), [project.chapters]);
 
   // Member management handlers
-  const handleRoleChange = async (userId: string, role: MemberRole) => {
-    try {
-      await projectApi.updateMember(projectId, userId, { role });
-      onRefresh();
-      toast.success("角色已更新");
-    } catch {
-      toast.error("更新角色失败");
-    }
-  };
-
   const handleRemoveMember = async (userId: string) => {
     setRemovingId(userId);
     try {
@@ -245,6 +346,15 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                   day: "numeric",
                 })
               : "未知"}
+            {lastSync && (
+              <span className="ml-3 text-[11px] text-muted-foreground/70">
+                {syncing ? (
+                  <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />同步中...</span>
+                ) : (
+                  <>· 上次同步: {lastSync.time} · 新增 {lastSync.synced} 个文件</>
+                )}
+              </span>
+            )}
           </p>
         </div>
 
@@ -261,7 +371,17 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
         {/* Workflow Progress (conditional) */}
         {project.workflowId && (
-          <WorkflowProgressCompact projectId={projectId} workflowGraph={workflowGraph ?? null} />
+          <WorkflowProgressCompact
+            projectId={projectId}
+            workflowGraph={workflowGraph ?? null}
+            canAdvancePhase={
+              identity?.isAdmin ||
+              identity?.role === "owner" ||
+              identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
+              false
+            }
+            onPhaseCompleted={onRefresh}
+          />
         )}
 
         {/* Two Column Layout */}
@@ -295,14 +415,21 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
               {kanbanView ? (
                 <div className="px-5 pb-4 pt-2 overflow-x-auto">
-                  <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} />
+                  <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} onCardEdit={handleEditChapter} />
                 </div>
               ) : (
                 <div className="px-5 pb-4 pt-2">
                   {project.chapters?.length > 0 ? (
                     <div className="divide-y divide-border/40">
                       {project.chapters.map((ch) => (
-                        <ChapterNode key={ch.id} chapter={ch} depth={0} />
+                        <ChapterNode
+                          key={ch.id}
+                          chapter={ch}
+                          depth={0}
+                          onMarkComplete={handleMarkComplete}
+                          onEdit={handleEditChapter}
+                          completingId={completingId}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -342,29 +469,9 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                         {(m.username ?? "?").charAt(0).toUpperCase()}
                       </div>
                       <span className="flex-1 text-sm text-foreground truncate">{m.username}</span>
-                      {canManageMembers && m.role !== "owner" ? (
-                        <Select
-                          value={m.role}
-                          onValueChange={(role) => handleRoleChange(m.userId, role as MemberRole)}
-                        >
-                          <SelectTrigger className="h-6 w-20 text-[11px] border-none bg-secondary p-0 pl-2">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(MEMBER_ROLE_LABELS)
-                              .filter(([key]) => key !== "owner")
-                              .map(([key, label]) => (
-                                <SelectItem key={key} value={key}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] font-normal">
-                          {MEMBER_ROLE_LABELS[m.role as keyof typeof MEMBER_ROLE_LABELS] ?? m.role}
-                        </Badge>
-                      )}
+                      <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+                        {MEMBER_ROLE_LABELS[m.role as keyof typeof MEMBER_ROLE_LABELS] ?? m.role}
+                      </Badge>
                       {canManageMembers && m.role !== "owner" && (
                         <Button
                           size="sm"

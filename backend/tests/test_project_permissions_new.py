@@ -77,7 +77,7 @@ class TestGetProjectRolePermissions:
     def test_member_with_lead_duty_gets_extra(self):
         mock_role = MagicMock()
         mock_role.permissions = ["chapter:write_own"]
-        duties = {"phase-a": {"duty": "lead", "role": "阶段负责人"}}
+        duties = {"phase-a": {"duty": "leader", "role": "组长"}}
         result = get_project_role_permissions(
             project_role="member", system_role=mock_role, phase_duties=duties
         )

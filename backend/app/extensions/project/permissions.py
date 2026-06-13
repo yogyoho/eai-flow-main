@@ -1,4 +1,4 @@
-"""Project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model."""
+"""Project RBAC permission matrix — owner/leader/writer/dept_reviewer/co_reviewer model."""
 
 from __future__ import annotations
 
@@ -13,24 +13,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 # Order: most privileged → least privileged
-ROLE_ORDER = ["owner", "manager", "editor", "reviewer", "approver", "member"]
+ROLE_ORDER = ["owner", "leader", "writer", "dept_reviewer", "company_reviewer"]
 
 # Permission matrix — each column maps to ROLE_ORDER index.
-#                      owner  manager  editor  reviewer  approver  member
+#                      owner  leader  writer  dept_reviewer  company_reviewer
 PERMISSION_MATRIX: dict[str, list[bool]] = {
-    "project:edit":    [True,  True,    False,  False,    False,    False],
-    "project:delete":  [True,  False,   False,  False,    False,    False],
-    "member:add":      [True,  True,    False,  False,    False,    False],
-    "member:remove":   [True,  True,    False,  False,    False,    False],
-    "approval:submit": [True,  True,    False,  False,    False,    False],
-    "approval:review": [True,  True,    False,  True,     False,    False],
-    "approval:approve":[True,  True,    False,  False,    True,     False],
-    "approval:view":   [True,  True,    True,   True,     True,     True],
-    "outline:edit":    [True,  True,    True,   False,    False,    False],
-    "chapter:write_any":[True, True,    True,   False,    False,    False],
-    "chapter:write_own":[True, True,    True,   False,    False,    False],
-    "chapter:review":  [True,  True,    False,  True,     False,    False],
-    "settings:edit":   [True,  False,   False,  False,    False,    False],
+    "project:edit":    [True,  True,   False,  False,         False],
+    "project:delete":  [True,  False,  False,  False,         False],
+    "member:add":      [True,  True,   False,  False,         False],
+    "member:remove":   [True,  True,   False,  False,         False],
+    "approval:submit": [True,  True,   False,  False,         False],
+    "approval:review": [True,  False,  False,  True,          True],
+    "approval:approve":[True,  False,  False,  False,         True],
+    "approval:view":   [True,  True,   True,   True,          True],
+    "outline:edit":    [True,  True,   False,  False,         False],
+    "chapter:write_any":[True, True,   False,  False,         False],
+    "chapter:write_own":[True, True,   True,   False,         False],
+    "chapter:review":  [True,  False,  False,  True,          True],
+    "settings:edit":   [True,  False,  False,  False,         False],
 }
 
 

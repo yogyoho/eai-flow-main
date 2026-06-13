@@ -14,8 +14,12 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 
-async def _get_db():
-    """Create a short-lived async database session."""
+async def _run_in_db(func):
+    """Run an async function with a database session, return its result.
+
+    Creates a short-lived engine + session, ensuring engine.dispose() is
+    called even if func raises, so connections are never leaked.
+    """
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
     db_url = os.environ.get("PROJECT_DB_URL", "")
@@ -24,15 +28,11 @@ async def _get_db():
 
     engine = create_async_engine(db_url, pool_size=2, max_overflow=0)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as session:
-        yield session
-    await engine.dispose()
-
-
-async def _run_in_db(func):
-    """Run an async function with a database session, return its result."""
-    async for session in _get_db():
-        return await func(session)
+    try:
+        async with session_factory() as session:
+            return await func(session)
+    finally:
+        await engine.dispose()
 
 
 # ── Tool definitions ──

@@ -45,12 +45,34 @@ PROJECT_PERMISSIONS = [
 # Owner always gets all permissions regardless of system role
 OWNER_PERMISSIONS = set(PROJECT_PERMISSIONS)
 
-# Duty → extra permissions granted for that duty
-_DUTY_BONUS: dict[str, set[str]] = {
-    "lead": {"member:add", "outline:edit", "ai:start_writing"},
-    "writer": {"chapter:write_own"},
-    "reviewer": {"chapter:review", "approval:review"},
+# Slot type → permissions granted for that workflow slot
+SLOT_PERMISSIONS: dict[str, set[str]] = {
+    "leader": {
+        "member:add", "outline:edit", "ai:start_writing",
+        "project:edit", "chapter:write_any", "chapter:confirm",
+        "report:submit",
+    },
+    "writer": {
+        "ai:start_writing", "chapter:write_own", "chapter:confirm",
+    },
+    "dept_reviewer": {
+        "chapter:review", "approval:review",
+    },
+    "company_reviewer": {
+        "chapter:review", "approval:review", "report:final_approve",
+    },
 }
+
+# Backward-compat aliases for old duty key → new slot_type
+_LEGACY_DUTY_MAP: dict[str, str] = {
+    "lead": "leader",
+    "reviewer": "dept_reviewer",
+    "approver": "company_reviewer",
+    "data_reviewer": "dept_reviewer",
+}
+
+# Backward-compat alias
+_DUTY_BONUS = SLOT_PERMISSIONS
 
 
 def get_effective_permissions(
@@ -77,50 +99,42 @@ def get_effective_permissions(
 
 def get_project_role_permissions(
     *,
-    project_role: str = "member",
+    project_role: str = "writer",
     system_role: Optional[object] = None,
     phase_duties: Optional[dict] = None,
 ) -> list[str]:
     """Get permissions for a user within a specific project.
 
-    Combines system role permissions with project-level role overrides
-    and phase duty bonuses.
+    Combines system role permissions with workflow slot-based permissions
+    derived from phase_duties.
 
     Args:
-        project_role: The user's role in this project ("owner" or "member").
+        project_role: Legacy project role string (kept for backward compat).
         system_role: The user's system Role ORM object.
         phase_duties: The user's phase_duties JSONB from project_members.
+            Each entry may have "slot_type" (new) or "duty" (legacy).
 
     Returns:
         List of permission action strings for this project context.
     """
+    # Owner always gets all permissions
     if project_role == "owner":
         return list(OWNER_PERMISSIONS)
 
-    # Role-based base permissions (non-owner roles)
-    _ROLE_BASE: dict[str, set[str]] = {
-        "manager": {"project:edit", "member:add", "member:remove", "approval:submit", "approval:review",
-                     "approval:approve", "approval:view", "outline:edit", "chapter:write_any",
-                     "chapter:write_own", "chapter:review"},
-        "editor": {"approval:view", "outline:edit", "chapter:write_any", "chapter:write_own"},
-        "reviewer": {"approval:view", "chapter:review", "approval:review"},
-        "approver": {"approval:view", "approval:approve"},
-        "member": set(),  # members only get permissions through phase_duties
-    }
+    base_perms: set[str] = set()
 
-    if project_role in _ROLE_BASE:
-        base_perms = set(_ROLE_BASE[project_role])
-    else:
-        # Fallback: derive from system role permissions
-        base_perms = set(get_effective_permissions(role=system_role))
-    base_perms = set(get_effective_permissions(role=system_role))
+    # Merge in any system-role permissions that apply to project scope
+    base_perms |= set(get_effective_permissions(role=system_role))
 
-    # If user has phase_duties, grant additional permissions based on duties
+    # Grant permissions from workflow slot assignments
     if phase_duties:
         for _phase_key, duty_info in phase_duties.items():
-            duty = duty_info.get("duty", "")
-            if duty in _DUTY_BONUS:
-                base_perms |= _DUTY_BONUS[duty]
+            # Support both new "slot_type" and legacy "duty" keys
+            slot_type = duty_info.get("slot_type") or duty_info.get("duty", "")
+            # Map legacy duty names to new slot types
+            slot_type = _LEGACY_DUTY_MAP.get(slot_type, slot_type)
+            if slot_type in SLOT_PERMISSIONS:
+                base_perms |= SLOT_PERMISSIONS[slot_type]
 
     return list(base_perms)
 
