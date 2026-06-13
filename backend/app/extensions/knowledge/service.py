@@ -46,12 +46,67 @@ class KnowledgeBaseService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def list_kbs(db: AsyncSession, owner_id: UUID, skip: int = 0, limit: int = 100) -> tuple[list[KnowledgeBase], int]:
-        query = select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public")).offset(skip).limit(limit).order_by(KnowledgeBase.created_at.desc())
+    async def list_kbs(
+        db: AsyncSession,
+        owner_id: UUID,
+        dept_id: UUID | None = None,
+        *,
+        is_admin: bool = False,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> tuple[list[KnowledgeBase], int]:
+        """List knowledge bases visible to the user.
+
+        Visibility rules:
+        - Admin users (is_admin=True): see all knowledge bases
+        - private: only the owner can see it
+        - dept: users whose dept_id is in allowed_depts can see it
+        - public: everyone can see it
+        """
+        from sqlalchemy import and_, true
+
+        # Super admin sees everything — no visibility filter
+        if is_admin:
+            query = (
+                select(KnowledgeBase)
+                .options(joinedload(KnowledgeBase.owner))
+                .offset(skip)
+                .limit(limit)
+                .order_by(KnowledgeBase.created_at.desc())
+            )
+            result = await db.execute(query)
+            kbs = result.scalars().all()
+            count_result = await db.execute(select(func.count(KnowledgeBase.id)))
+            total = count_result.scalar() or 0
+            return list(kbs), total
+
+        # Build visibility conditions for normal users
+        own_filter = KnowledgeBase.owner_id == owner_id
+        public_filter = KnowledgeBase.access_type == "public"
+
+        conditions = [own_filter, public_filter]
+        if dept_id is not None:
+            conditions.append(
+                and_(
+                    KnowledgeBase.access_type == "dept",
+                    KnowledgeBase.allowed_depts.contains([dept_id]),
+                )
+            )
+
+        visibility = or_(*conditions)
+
+        query = (
+            select(KnowledgeBase)
+            .options(joinedload(KnowledgeBase.owner))
+            .where(visibility)
+            .offset(skip)
+            .limit(limit)
+            .order_by(KnowledgeBase.created_at.desc())
+        )
         result = await db.execute(query)
         kbs = result.scalars().all()
 
-        count_query = select(func.count(KnowledgeBase.id)).where(or_(KnowledgeBase.owner_id == owner_id, KnowledgeBase.access_type == "public"))
+        count_query = select(func.count(KnowledgeBase.id)).where(visibility)
         count_result = await db.execute(count_query)
         total = count_result.scalar() or 0
 
@@ -68,6 +123,8 @@ class KnowledgeBaseService:
             allowed_depts=data.allowed_depts,
             embedding_model=data.embedding_model,
             chunk_method=data.chunk_method,
+            parser_config=data.parser_config,
+            language=data.language,
         )
 
         rf_client = KnowledgeBaseService._get_ragflow_client()
@@ -86,6 +143,8 @@ class KnowledgeBaseService:
                         name=data.name,
                         description=data.description or "",
                         embedding_model=embed_model,
+                        chunk_method=data.chunk_method,
+                        parser_config=data.parser_config,
                     )
                     rf_dataset_id = rf_result.get("data", {}).get("id")
                     if rf_dataset_id:
@@ -98,7 +157,7 @@ class KnowledgeBaseService:
 
         db.add(kb)
         await db.commit()
-        await db.refresh(kb)
+        await db.refresh(kb, attribute_names=["owner"])
 
         config = get_extensions_config()
         if config.storage.type.lower() == "local" or config.storage.retain_local_copy:
@@ -123,6 +182,10 @@ class KnowledgeBaseService:
             kb.embedding_model = data.embedding_model
         if data.chunk_method is not None:
             kb.chunk_method = data.chunk_method
+        if data.parser_config is not None:
+            kb.parser_config = data.parser_config
+        if data.language is not None:
+            kb.language = data.language
 
         if kb.ragflow_dataset_id:
             rf_client = KnowledgeBaseService._get_ragflow_client()
@@ -132,6 +195,8 @@ class KnowledgeBaseService:
                         dataset_id=kb.ragflow_dataset_id,
                         name=kb.name,
                         description=kb.description,
+                        chunk_method=data.chunk_method if data.chunk_method else None,
+                        parser_config=data.parser_config if data.parser_config else None,
                     )
                 except Exception as e:
                     logger.warning(f"Failed to update RAGFlow dataset: {e}")
@@ -201,6 +266,8 @@ class KnowledgeBaseService:
             allowed_depts=kb.allowed_depts,
             embedding_model=kb.embedding_model,
             chunk_method=kb.chunk_method,
+            parser_config=kb.parser_config,
+            language=kb.language,
             status=kb.status,
             created_at=kb.created_at,
         )
@@ -249,6 +316,23 @@ class DocumentService:
         "qa": "qa",
     }
 
+    # Supported file extensions per RAGFlow parser_id
+    # Based on RAGFlow v0.25.3 documentation and actual behavior:
+    # - manual (report): only pdf, docx
+    # - naive: pdf, docx, xlsx, pptx, txt, md, csv, json, html, eml
+    # - laws: pdf, docx
+    # - paper: pdf
+    # - book: pdf, docx, txt, md, epub
+    # - qa: pdf, docx, xlsx, csv
+    _PARSER_SUPPORTED_EXTENSIONS: dict[str, set[str]] = {
+        "naive": {"pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt", "txt", "md", "csv", "json", "html", "eml", "jpeg", "jpg", "png", "gif", "bmp", "tiff"},
+        "manual": {"pdf", "docx", "doc"},
+        "laws": {"pdf", "docx", "doc"},
+        "paper": {"pdf"},
+        "book": {"pdf", "docx", "doc", "txt", "md", "epub"},
+        "qa": {"pdf", "docx", "doc", "xlsx", "xls", "csv"},
+    }
+
     @staticmethod
     def _build_parser_config(chunk_config: dict | None) -> tuple[str | None, dict | None]:
         """Map frontend chunk config to RAGFlow parser_id and parser_config."""
@@ -265,6 +349,24 @@ class DocumentService:
             parser_config["layout_recognize"] = True
 
         return parser_id, parser_config if parser_config else None
+
+    @staticmethod
+    def _validate_file_type(file_ext: str, parser_id: str) -> None:
+        """Validate that the file type is supported by the given RAGFlow parser.
+
+        Raises ValueError if the file type is not supported.
+        """
+        supported = DocumentService._PARSER_SUPPORTED_EXTENSIONS.get(parser_id)
+        if not supported:
+            # Unknown parser — allow all types (best-effort)
+            return
+        if file_ext not in supported:
+            sorted_exts = sorted(supported)
+            ext_list = ", ".join(f".{e}" for e in sorted_exts)
+            raise ValueError(
+                f"当前分片方式不支持 .{file_ext} 格式的文件。"
+                f"支持的格式: {ext_list}"
+            )
 
     @staticmethod
     async def create_doc(
@@ -295,6 +397,9 @@ class DocumentService:
                     parser_id, parser_config = DocumentService._build_parser_config(chunk_config)
                     if not parser_id:
                         parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method, "naive")
+
+                    # Validate file type against parser's supported formats
+                    DocumentService._validate_file_type(file_ext, parser_id)
 
                     rf_result = await rf_client.upload_document(
                         dataset_id=kb.ragflow_dataset_id,

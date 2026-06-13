@@ -381,3 +381,157 @@ class AIDocumentService:
         result = await db.execute(stmt)
         row = result.scalar_one_or_none()
         return row
+
+    # ── Auto-sync: present_files → docmgr ──────────────────────────────
+
+    @staticmethod
+    async def _ensure_subfolder(
+        db: AsyncSession,
+        user_id: UUID,
+        folder_name: str,
+        project_id: UUID | None,
+    ) -> tuple[UUID | None, str]:
+        """Find or create a subfolder named *folder_name* under the appropriate root.
+
+        Returns (folder_id, folder_string) — folder_id may be None if no root
+        folder exists (falls back to folder_string only).
+        """
+        from app.extensions.models import Folder
+
+        # Find root folder (project or personal)
+        if project_id:
+            root_stmt = select(Folder).where(
+                Folder.project_id == project_id,
+                Folder.parent_id.is_(None),
+            ).limit(1)
+        else:
+            root_stmt = select(Folder).where(
+                Folder.owner_id == user_id,
+                Folder.project_id.is_(None),
+                Folder.parent_id.is_(None),
+            ).limit(1)
+
+        root_result = await db.execute(root_stmt)
+        root_folder = root_result.scalar_one_or_none()
+        if root_folder is None:
+            return None, folder_name
+
+        # Find or create subfolder under root
+        sub_stmt = select(Folder).where(
+            Folder.parent_id == root_folder.id,
+            Folder.name == folder_name,
+        ).limit(1)
+        sub_result = await db.execute(sub_stmt)
+        sub_folder = sub_result.scalar_one_or_none()
+
+        if sub_folder is None:
+            sub_folder = Folder(
+                name=folder_name,
+                parent_id=root_folder.id,
+                project_id=project_id,
+                owner_id=user_id,
+                is_system=False,
+            )
+            db.add(sub_folder)
+            await db.flush()
+
+        return sub_folder.id, folder_name
+
+    @staticmethod
+    async def sync_outputs_to_docmgr(
+        user_id: str,
+        thread_id: str,
+        virtual_paths: list[str],
+    ) -> dict[str, any] | None:
+        """Sync presented files into document space (called from present_files callback).
+
+        Receives virtual paths (e.g. /mnt/user-data/outputs/report.md), resolves
+        them to physical paths, and creates file_ref AIDocument records.
+        """
+        from app.extensions.database import get_db_context
+        from deerflow.config.paths import get_paths
+
+        try:
+            user_uuid = UUID(user_id)
+        except (ValueError, TypeError):
+            logger.warning("sync_outputs_to_docmgr: invalid user_id=%s", user_id)
+            return None
+
+        paths = get_paths()
+        synced = 0
+        skipped = 0
+
+        try:
+            async for db in get_db_context():
+                try:
+                    folder_name = await AIDocumentService._get_thread_title(db, thread_id)
+                    project_id = await AIDocumentService._detect_project_from_thread(db, thread_id)
+                    folder_id, folder_str = await AIDocumentService._ensure_subfolder(
+                        db, user_uuid, folder_name, project_id,
+                    )
+
+                    for vpath in virtual_paths:
+                        # Resolve virtual path to physical path
+                        try:
+                            try:
+                                phys_path = paths.resolve_virtual_path(thread_id, vpath, user_id=user_id)
+                            except TypeError:
+                                phys_path = paths.resolve_virtual_path(thread_id, vpath)
+                        except Exception:
+                            logger.debug("Cannot resolve virtual path %s: skipping", vpath, exc_info=True)
+                            continue
+
+                        phys_str = str(phys_path)
+                        if not phys_path.exists():
+                            logger.debug("File does not exist, skipping: %s", phys_str)
+                            continue
+
+                        # Dedup by file_ref_path + source_thread_id
+                        existing = await db.execute(
+                            select(AIDocument).where(
+                                AIDocument.user_id == user_uuid,
+                                AIDocument.file_ref_path == phys_str,
+                                AIDocument.source_thread_id == thread_id,
+                            )
+                        )
+                        if existing.scalar_one_or_none():
+                            skipped += 1
+                            continue
+
+                        file_size = phys_path.stat().st_size
+                        mime_type, _ = mimetypes.guess_type(phys_path.name)
+                        if mime_type is None:
+                            mime_type = "application/octet-stream"
+
+                        doc = AIDocument(
+                            user_id=user_uuid,
+                            title=phys_path.name,
+                            folder=folder_str,
+                            folder_id=folder_id,
+                            source_thread_id=thread_id,
+                            project_id=project_id,
+                            doc_type="file_ref",
+                            file_ref_path=phys_str,
+                            file_size=file_size,
+                            file_mime=mime_type,
+                            status="active",
+                        )
+                        db.add(doc)
+                        synced += 1
+
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    raise
+        except Exception:
+            logger.exception(
+                "sync_outputs_to_docmgr failed (thread=%s, user=%s)",
+                thread_id, user_id,
+            )
+            return None
+
+        logger.info(
+            "sync_outputs_to_docmgr: thread=%s synced=%d skipped=%d",
+            thread_id, synced, skipped,
+        )
+        return {"synced": synced, "skipped": skipped}

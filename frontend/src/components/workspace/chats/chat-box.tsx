@@ -1,6 +1,6 @@
 import { FilesIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GroupImperativeHandle } from "react-resizable-panels";
 
 import { ConversationEmptyState } from "@/components/ai-elements/conversation";
@@ -23,6 +23,54 @@ import { useThread } from "../messages/context";
 const CLOSE_MODE = { chat: 100, artifacts: 0 };
 const OPEN_MODE = { chat: 60, artifacts: 40 };
 
+/**
+ * Auto-sync thread files to document space when the AI finishes responding.
+ * Debounced to avoid redundant calls during rapid interactions.
+ */
+function useAutoSyncToDocSpace(threadId: string, isLoading: boolean) {
+  const wasLoadingRef = useRef(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncedForRunRef = useRef<string>("");
+
+  const sync = useCallback(async () => {
+    // Deduplicate: don't sync again for the same run
+    const runKey = `${threadId}-${Date.now()}`;
+    if (syncedForRunRef.current.startsWith(threadId)) return;
+    syncedForRunRef.current = runKey;
+
+    try {
+      const { docmgrApi } = await import("@/extensions/api");
+      const result = await docmgrApi.syncThreadFiles(threadId);
+      if (result.synced > 0) {
+        console.log(`[auto-sync] Synced ${result.synced} files to doc space (thread=${threadId})`);
+      }
+    } catch {
+      // Non-critical — don't disrupt the UI
+      console.debug("[auto-sync] syncThreadFiles failed (non-critical)");
+    }
+  }, [threadId]);
+
+  useEffect(() => {
+    // Detect stream end: isLoading went from true → false
+    if (wasLoadingRef.current && !isLoading) {
+      // Debounce: wait 2s after stream ends before syncing
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(sync, 2000);
+    }
+    wasLoadingRef.current = isLoading;
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, [isLoading, sync]);
+
+  // Reset on thread change
+  useEffect(() => {
+    syncedForRunRef.current = "";
+    wasLoadingRef.current = false;
+  }, [threadId]);
+}
+
 const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   children,
   threadId,
@@ -43,6 +91,10 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   } = useArtifacts();
 
   const [autoSelectFirstArtifact, setAutoSelectFirstArtifact] = useState(true);
+
+  // Auto-sync files to document space when AI finishes responding
+  useAutoSyncToDocSpace(threadId, thread.isLoading);
+
   useEffect(() => {
     if (threadIdRef.current !== threadId) {
       threadIdRef.current = threadId;

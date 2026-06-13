@@ -70,6 +70,28 @@ const KB_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "pageindex", label: "PageIndex" },
 ];
 
+const CHUNK_METHOD_OPTIONS: { value: string; label: string }[] = [
+  { value: "naive", label: "通用 (General)" },
+  { value: "qa", label: "问答 (Q&A)" },
+  { value: "manual", label: "手册 (Manual)" },
+  { value: "table", label: "表格 (Table)" },
+  { value: "paper", label: "论文 (Paper)" },
+  { value: "book", label: "书籍 (Book)" },
+  { value: "laws", label: "法律 (Laws)" },
+  { value: "presentation", label: "演示文稿 (Presentation)" },
+  { value: "picture", label: "图片 (Picture)" },
+  { value: "one", label: "整篇 (One)" },
+  { value: "tag", label: "标签集 (Tag)" },
+];
+
+const LAYOUT_RECOGNIZE_OPTIONS: { value: string; label: string; desc: string }[] = [
+  { value: "DeepDOC", label: "DeepDOC (默认)", desc: "OCR + TSR + DLR，默认视觉模型，准确但较慢" },
+  { value: "Naive", label: "快速解析 (Naive)", desc: "跳过 OCR/TSR/DLR，仅适用于纯文本 PDF" },
+  { value: "MinerU", label: "MinerU", desc: "开源 PDF 转换工具，将 PDF 转为机器可读格式" },
+  { value: "Docling", label: "Docling", desc: "开源文档处理工具，为生成式 AI 优化" },
+  { value: "OpenDataLoader", label: "OpenDataLoader", desc: "确定性本地 PDF 解析器，输出 JSON + Markdown" },
+];
+
 function knowledgeBaseTypeLabel(kbType: string | undefined): string {
   if (!kbType) return "RAGFlow";
   return KB_TYPE_OPTIONS.find((o) => o.value === kbType)?.label ?? kbType;
@@ -152,6 +174,7 @@ interface SelectOption {
   value: string;
   label: string;
   icon?: React.ReactNode;
+  desc?: string;
 }
 
 function CustomSelect({
@@ -242,7 +265,12 @@ function CustomSelect({
                     {o.icon}
                   </span>
                 )}
-                {o.label}
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{o.label}</span>
+                  {o.desc && (
+                    <span className="mt-0.5 text-xs text-muted-foreground">{o.desc}</span>
+                  )}
+                </span>
                 {o.value === value && (
                   <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
                 )}
@@ -267,15 +295,46 @@ function DocStatusBadge({ status }: { status: string }) {
   return <Clock className="h-4 w-4 text-muted-foreground" />;
 }
 
+// ─── File type support per chunk method ──────────────────────────────────────
+
+const CHUNK_METHOD_ACCEPT: Record<string, { extensions: string; label: string }> = {
+  naive: {
+    extensions: ".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.csv,.json,.html,.eml,.jpg,.jpeg,.png,.gif,.bmp,.tiff",
+    label: "支持 PDF、Word、Excel、PPT、TXT、Markdown、图片等格式",
+  },
+  manual: {
+    extensions: ".pdf,.docx,.doc",
+    label: "仅支持 PDF、Word 格式",
+  },
+  laws: {
+    extensions: ".pdf,.docx,.doc",
+    label: "仅支持 PDF、Word 格式",
+  },
+  paper: {
+    extensions: ".pdf",
+    label: "仅支持 PDF 格式",
+  },
+  book: {
+    extensions: ".pdf,.docx,.doc,.txt,.md,.epub",
+    label: "支持 PDF、Word、TXT、Markdown、EPUB 格式",
+  },
+  qa: {
+    extensions: ".pdf,.docx,.doc,.xlsx,.xls,.csv",
+    label: "支持 PDF、Word、Excel、CSV 格式",
+  },
+};
+
 // ─── Upload Modal ─────────────────────────────────────────────────────────────
 
 function UploadModal({
   kbId,
+  chunkMethod,
   onClose,
   onUploaded,
   toast,
 }: {
   kbId: string;
+  chunkMethod?: string;
   onClose: () => void;
   onUploaded: () => void;
   toast: (msg: string, type?: ToastType) => void;
@@ -285,9 +344,35 @@ function UploadModal({
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const acceptInfo = CHUNK_METHOD_ACCEPT[chunkMethod || "naive"] || CHUNK_METHOD_ACCEPT.naive;
+
+  const getFileExt = (name: string) => name.split(".").pop()?.toLowerCase() || "";
+
+  const isFileAccepted = (file: File): boolean => {
+    const ext = getFileExt(file.name);
+    if (!ext) return false;
+    const allowedExts = acceptInfo.extensions.split(",").map((e) => e.trim().replace(".", ""));
+    return allowedExts.includes(ext);
+  };
+
   const addFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
-    setFiles((prev) => [...prev, ...Array.from(newFiles)]);
+    const incoming = Array.from(newFiles);
+    const rejected: string[] = [];
+    const accepted: File[] = [];
+    for (const f of incoming) {
+      if (isFileAccepted(f)) {
+        accepted.push(f);
+      } else {
+        rejected.push(f.name);
+      }
+    }
+    if (rejected.length > 0) {
+      toast(`${rejected.join("、")} 格式不受支持。${acceptInfo.label}`, "error");
+    }
+    if (accepted.length > 0) {
+      setFiles((prev) => [...prev, ...accepted]);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -362,12 +447,13 @@ function UploadModal({
               拖拽文件到此处，或点击选择
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              支持 PDF、Word、TXT、Markdown 等格式
+              {acceptInfo.label}
             </p>
             <input
               ref={inputRef}
               type="file"
               multiple
+              accept={acceptInfo.extensions}
               className="hidden"
               onChange={(e) => addFiles(e.target.files)}
             />
@@ -1086,6 +1172,14 @@ function KnowledgeBaseDetail({
                     { label: "访问权限", value: kb.access_type },
                     { label: "嵌入模型", value: kb.embedding_model || "默认" },
                     {
+                      label: "分块大小",
+                      value: kb.parser_config?.chunk_token_num ? `${kb.parser_config.chunk_token_num} tokens` : "默认",
+                    },
+                    {
+                      label: "PDF 解析",
+                      value: kb.parser_config?.layout_recognize || "默认",
+                    },
+                    {
                       label: "创建时间",
                       value: new Date(kb.created_at).toLocaleDateString(
                         "zh-CN",
@@ -1114,6 +1208,7 @@ function KnowledgeBaseDetail({
         {showUpload && (
           <UploadModal
             kbId={kb.id}
+            chunkMethod={kb.chunk_method}
             onClose={() => setShowUpload(false)}
             onUploaded={loadDocs}
             toast={toast}
@@ -1250,7 +1345,42 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
     description: "",
     access_type: "private",
     kb_type: "ragflow",
+    chunk_method: "naive",
+    embedding_model: undefined,
+    parser_config: {
+      chunk_token_num: 512,
+      delimiter: "\\n",
+      layout_recognize: "DeepDOC",
+    },
+    language: "Chinese",
   });
+
+  // Embedding models for RAGFlow
+  const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
+  const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(false);
+  const [embeddingModelsError, setEmbeddingModelsError] = useState(false);
+
+  // Fetch embedding models when create dialog opens and kb_type is ragflow
+  useEffect(() => {
+    if (!isCreateOpen || createForm.kb_type !== "ragflow") return;
+    let cancelled = false;
+    setEmbeddingModelsLoading(true);
+    setEmbeddingModelsError(false);
+    kbApi.listEmbeddingModels().then((res) => {
+      if (cancelled) return;
+      setEmbeddingModels(res.models || []);
+      setEmbeddingModelsLoading(false);
+      if (!res.models?.length && res.error) {
+        setEmbeddingModelsError(true);
+      }
+    }).catch(() => {
+      if (cancelled) return;
+      setEmbeddingModels([]);
+      setEmbeddingModelsLoading(false);
+      setEmbeddingModelsError(true);
+    });
+    return () => { cancelled = true; };
+  }, [isCreateOpen, createForm.kb_type]);
 
   // Edit modal
   const [editKb, setEditKb] = useState<KnowledgeBase | null>(null);
@@ -1293,6 +1423,14 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
         description: "",
         access_type: "private",
         kb_type: "ragflow",
+        chunk_method: "naive",
+        embedding_model: undefined,
+        parser_config: {
+          chunk_token_num: 512,
+          delimiter: "\\n",
+          layout_recognize: "DeepDOC",
+        },
+        language: "Chinese",
       });
       toast("知识库创建成功", "success");
     } catch (e: any) {
@@ -1632,9 +1770,9 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-xl"
+              className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-background shadow-xl"
             >
-              <div className="flex items-center gap-3 border-b border-border bg-muted/50 px-6 py-4">
+              <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/50 px-6 py-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                   <Database className="h-5 w-5" />
                 </div>
@@ -1647,7 +1785,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   </div>
                 </div>
               </div>
-              <div className="space-y-5 p-6">
+              <div className="flex-1 space-y-5 overflow-y-auto p-6">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-foreground">
                     知识库名称 <span className="text-destructive">*</span>
@@ -1740,8 +1878,169 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                     placeholder="简要描述该知识库的用途或包含的内容..."
                   />
                 </div>
+
+                {/* RAGFlow Parameters — conditional */}
+                {createForm.kb_type === "ragflow" && (
+                  <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Settings className="h-4 w-4 text-primary" />
+                      RAGFlow 参数
+                    </div>
+
+                    {/* Language */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        语言
+                      </label>
+                      <CustomSelect
+                        value={createForm.language ?? "Chinese"}
+                        onChange={(v) =>
+                          setCreateForm({ ...createForm, language: v })
+                        }
+                        options={[
+                          { value: "Chinese", label: "中文" },
+                          { value: "English", label: "English" },
+                        ]}
+                      />
+                    </div>
+
+                    {/* Chunk Method */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        分块方式
+                      </label>
+                      <CustomSelect
+                        value={createForm.chunk_method ?? "naive"}
+                        onChange={(v) =>
+                          setCreateForm({ ...createForm, chunk_method: v })
+                        }
+                        options={CHUNK_METHOD_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
+                      />
+                    </div>
+
+                    {/* Embedding Model */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        嵌入模型
+                      </label>
+                      {embeddingModelsLoading ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          加载模型列表...
+                        </div>
+                      ) : embeddingModelsError || embeddingModels.length === 0 ? (
+                        <Input
+                          type="text"
+                          value={createForm.embedding_model ?? ""}
+                          onChange={(e) =>
+                            setCreateForm({ ...createForm, embedding_model: e.target.value || undefined })
+                          }
+                          className="w-full"
+                          placeholder="model_name@factory（例如：BAAI/bge-large-zh-v1.5@BAAI）"
+                        />
+                      ) : (
+                        <CustomSelect
+                          value={createForm.embedding_model ?? embeddingModels[0] ?? ""}
+                          onChange={(v) =>
+                            setCreateForm({ ...createForm, embedding_model: v })
+                          }
+                          options={embeddingModels.map((m) => ({
+                            value: m,
+                            label: m,
+                          }))}
+                        />
+                      )}
+                      {embeddingModelsError && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          无法获取模型列表，请手动输入 model_name@factory 格式
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Chunk Size (chunk_token_num) */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        分块大小{" "}
+                        <span className="font-normal text-muted-foreground">
+                          （token 数量）
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={128}
+                          max={2048}
+                          step={128}
+                          value={createForm.parser_config?.chunk_token_num ?? 512}
+                          onChange={(e) =>
+                            setCreateForm({
+                              ...createForm,
+                              parser_config: {
+                                ...createForm.parser_config,
+                                chunk_token_num: Number(e.target.value),
+                              },
+                            })
+                          }
+                          className="flex-1 accent-primary"
+                        />
+                        <span className="w-12 text-center text-sm font-medium text-foreground">
+                          {createForm.parser_config?.chunk_token_num ?? 512}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Delimiter */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        分隔符
+                      </label>
+                      <Input
+                        type="text"
+                        value={createForm.parser_config?.delimiter ?? "\\n"}
+                        onChange={(e) =>
+                          setCreateForm({
+                            ...createForm,
+                            parser_config: {
+                              ...createForm.parser_config,
+                              delimiter: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full"
+                        placeholder="\\n"
+                      />
+                    </div>
+
+                    {/* PDF Parser (layout_recognize) */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        PDF 解析方式
+                      </label>
+                      <CustomSelect
+                        value={createForm.parser_config?.layout_recognize ?? "DeepDOC"}
+                        onChange={(v) =>
+                          setCreateForm({
+                            ...createForm,
+                            parser_config: {
+                              ...createForm.parser_config,
+                              layout_recognize: v,
+                            },
+                          })
+                        }
+                        options={LAYOUT_RECOGNIZE_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                          desc: o.desc,
+                        }))}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
                 <Button
                   variant="outline"
                   onClick={() => setIsCreateOpen(false)}

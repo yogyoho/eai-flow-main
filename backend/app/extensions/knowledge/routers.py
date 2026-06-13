@@ -36,6 +36,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/knowledge-bases", tags=["Knowledge Bases"])
 
 
+@router.get("/ragflow/embedding-models")
+async def list_ragflow_embedding_models(
+    current_user: CurrentUser = Depends(require_permission("kb:create")),
+):
+    """List available embedding models from RAGFlow."""
+    config = get_extensions_config()
+    if not config.ragflow.api_key:
+        return {"models": [], "error": "RAGFlow not configured"}
+    try:
+        rf_client = RAGFlowClient()
+        models = await rf_client.list_available_embedding_models()
+        return {"models": models}
+    except Exception as e:
+        logger.warning(f"Failed to list RAGFlow embedding models: {e}")
+        return {"models": [], "error": str(e)}
+
+
 def _can_access_kb(kb: KnowledgeBase, current_user: CurrentUser) -> bool:
     if kb.owner_id == current_user.id:
         return True
@@ -64,7 +81,14 @@ async def list_knowledge_bases(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
 ):
-    kbs, total = await KnowledgeBaseService.list_kbs(db, current_user.id, skip=skip, limit=limit)
+    is_admin = False
+    if current_user.role_id:
+        from sqlalchemy import select as sa_select
+        from app.extensions.models import Role
+        role = await db.get(Role, current_user.role_id)
+        if role and (role.is_system or "*" in (role.permissions or [])):
+            is_admin = True
+    kbs, total = await KnowledgeBaseService.list_kbs(db, current_user.id, dept_id=current_user.dept_id, is_admin=is_admin, skip=skip, limit=limit)
     return KnowledgeBaseListResponse(knowledge_bases=[KnowledgeBaseService.to_response(kb) for kb in kbs], total=total)
 
 
@@ -87,6 +111,8 @@ async def get_knowledge_base(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -132,6 +158,8 @@ async def upload_document(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     chunk_cfg = None
     if chunk_config:
@@ -149,15 +177,21 @@ async def upload_document(
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
 
-    doc = await DocumentService.create_doc(
-        db,
-        kb,
-        file.filename,
-        str(file_path),
-        file.size,
-        content_type=file.content_type,
-        chunk_config=chunk_cfg,
-    )
+    try:
+        doc = await DocumentService.create_doc(
+            db,
+            kb,
+            file.filename,
+            str(file_path),
+            file.size,
+            content_type=file.content_type,
+            chunk_config=chunk_cfg,
+        )
+    except ValueError as e:
+        # File type validation error — clean up uploaded file and return 400
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return DocumentService.to_response(doc)
 
 
@@ -169,6 +203,12 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
 ):
+    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
+    if not kb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
     docs, total = await DocumentService.list_docs(db, kb_id, skip=skip, limit=limit)
 
     processing_docs = [d for d in docs if d.status in ("uploading", "processing") and d.ragflow_document_id]
@@ -200,6 +240,8 @@ async def delete_document(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -220,6 +262,8 @@ async def list_document_chunks(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -256,6 +300,8 @@ async def chat_with_knowledge_base(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     if not kb.ragflow_dataset_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge base not synced to RAGFlow")
@@ -378,6 +424,8 @@ async def get_knowledge_base_status(
     kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
     if not kb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    if not _can_access_kb(kb, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     status_info = await KnowledgeBaseService.sync_kb_status(kb)
     return status_info
