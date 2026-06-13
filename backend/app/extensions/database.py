@@ -903,6 +903,17 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES folders(id) ON DELETE SET NULL"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_folder_id ON ai_documents(folder_id)"))
 
+        # --- AIDocument: chapter_id FK to project_chapters table ---
+        await conn.execute(text("""
+            ALTER TABLE ai_documents
+            ADD COLUMN IF NOT EXISTS chapter_id UUID
+            REFERENCES project_chapters(id) ON DELETE SET NULL
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_ai_documents_chapter_id
+            ON ai_documents(chapter_id)
+        """))
+
         # --- Collaborative editing tables ---
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS collab_documents (

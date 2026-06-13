@@ -206,6 +206,12 @@ class AIDocument(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     source_thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("report_projects.id"), nullable=True, index=True)
+    chapter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("project_chapters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     folder: Mapped[str] = mapped_column(String(255), default="默认文件夹", nullable=False)
