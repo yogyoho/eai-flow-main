@@ -1027,6 +1027,32 @@ async def migrate_db() -> None:
             "ON phase_reviews (project_id, phase_node)"
         ))
 
+        # === Review Context: ReviewAssignment (unified review model) ===
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS review_assignments (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
+                phase_node VARCHAR(100) NOT NULL,
+                reviewer_id UUID NOT NULL REFERENCES users(id),
+                reviewer_role VARCHAR(50) NOT NULL DEFAULT 'reviewer',
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                comment TEXT,
+                dimensions VARCHAR(50)[] DEFAULT '{}',
+                deadline_at TIMESTAMP,
+                previous_judgments JSONB DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP NOT NULL DEFAULT now(),
+                updated_at TIMESTAMP NOT NULL DEFAULT now()
+            )
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_review_assignments_project_phase
+            ON review_assignments(project_id, phase_node)
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_review_assignments_reviewer
+            ON review_assignments(reviewer_id, status)
+        """))
+
         # --- Extend Department with unit_type and metadata ---
         await conn.execute(text(
             "ALTER TABLE departments ADD COLUMN IF NOT EXISTS unit_type VARCHAR(20) NOT NULL DEFAULT 'internal'"
