@@ -385,6 +385,12 @@ async def migrate_db() -> None:
                 "kb_type VARCHAR(50) NOT NULL DEFAULT 'ragflow'"
             )
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS "
+                "parser_config JSON DEFAULT NULL"
+            )
+        )
 
         # Create scrap_drafts table for web scraper
         await conn.execute(text("""
@@ -966,6 +972,15 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES workflow_definitions(id)"
         ))
+        # Fix FK constraint — change to ON DELETE SET NULL so deleting a workflow
+        # definition doesn't fail when projects reference it.
+        await conn.execute(text(
+            "ALTER TABLE report_projects DROP CONSTRAINT IF EXISTS report_projects_workflow_id_fkey"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE report_projects ADD CONSTRAINT report_projects_workflow_id_fkey"
+            " FOREIGN KEY (workflow_id) REFERENCES workflow_definitions(id) ON DELETE SET NULL"
+        ))
         await conn.execute(text(
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS temporal_workflow_id VARCHAR(100)"
         ))
@@ -1124,6 +1139,43 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+
+        # ── Role Permissions (unified RBAC) ──
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                role VARCHAR(50) NOT NULL,
+                permission VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT now(),
+                UNIQUE(role, permission)
+            )
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_role_permissions_role
+            ON role_permissions(role)
+        """))
+        await _seed_role_permissions(conn)
+
+
+async def _seed_role_permissions(conn):
+    """Insert default role-permission mappings if the table is empty."""
+    from .models.role_permission import DEFAULT_ROLE_PERMISSIONS
+
+    result = await conn.execute(
+        text("SELECT COUNT(*) FROM role_permissions")
+    )
+    if result.scalar() > 0:
+        return
+
+    for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+        for perm in perms:
+            await conn.execute(
+                text(
+                    "INSERT INTO role_permissions (role, permission) "
+                    "VALUES (:role, :perm) ON CONFLICT (role, permission) DO NOTHING"
+                ),
+                {"role": role.value, "perm": perm},
+            )
 
 
 async def close_db() -> None:

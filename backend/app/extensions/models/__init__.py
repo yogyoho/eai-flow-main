@@ -4,11 +4,12 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions.database import Base
+from .role_permission import DEFAULT_ROLE_PERMISSIONS, ProjectRole, RolePermission  # noqa: F401
 
 
 class User(Base):
@@ -153,6 +154,8 @@ class KnowledgeBase(Base):
     allowed_depts: Mapped[list | None] = mapped_column(ARRAY(UUID), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     chunk_method: Mapped[str] = mapped_column(String(50), default="naive")
+    parser_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    language: Mapped[str] = mapped_column(String(20), default="Chinese")
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
@@ -540,7 +543,7 @@ class ReportProject(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    workflow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id"), nullable=True)
+    workflow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id", ondelete="SET NULL"), nullable=True)
     temporal_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_phase_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
@@ -729,8 +732,6 @@ class ApprovalRecord(Base):
     )
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
-
-    workflow: Mapped["ApprovalWorkflow"] = relationship("ApprovalWorkflow", back_populates="records")
 
     workflow: Mapped["ApprovalWorkflow"] = relationship("ApprovalWorkflow", back_populates="records")
 
