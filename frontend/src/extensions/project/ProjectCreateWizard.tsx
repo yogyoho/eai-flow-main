@@ -9,14 +9,13 @@ import {
   ChevronRight,
   FileText,
   Loader2,
-  Plus,
   Search,
   Sparkles,
   UserCircle,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,7 @@ import {
   type MemberRole,
 } from "@/extensions/project/types";
 import { authFetch } from "@/extensions/api/client";
-import { kfApi } from "@/extensions/api";
+import { useReportTypes, getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -52,23 +51,6 @@ const STEPS: { step: WizardStep; key: string; label: string }[] = [
   { step: 4, key: "4", label: "组建团队" },
   { step: 5, key: "5", label: "确认创建" },
 ];
-
-const REPORT_TYPE_OPTIONS_FALLBACK: SelectOption[] = [
-  { value: "environmental_impact", label: "环境影响评价" },
-  { value: "geological_survey", label: "地质勘查" },
-  { value: "feasibility_study", label: "可行性研究" },
-  { value: "safety_assessment", label: "安全评价" },
-  { value: "energy_assessment", label: "节能评价" },
-  { value: "other", label: "其他" },
-];
-
-const REPORT_TYPE_TO_DOMAIN: Record<string, string[]> = {
-  environmental_impact: ["environmental_impact", "environmental_impact_assessment", "environmental"],
-  geological_survey: ["geological_survey", "geological", "geology"],
-  feasibility_study: ["feasibility_study", "feasibility"],
-  safety_assessment: ["safety_assessment", "safety"],
-  energy_assessment: ["energy_assessment", "energy"],
-};
 
 interface TemplateOption {
   id: string;
@@ -127,6 +109,14 @@ async function fetchWorkflowTemplates(reportType?: string): Promise<TemplateOpti
 }
 
 const MEMBER_ROLES: MemberRole[] = ["owner", "member"];
+
+/** A team member carries a display name plus the UUID we submit to the API.
+ *  DF-2: the wizard used to submit usernames and 422 on UUID validation. */
+interface TeamMember {
+  id: string;
+  username: string;
+  fullName?: string;
+}
 
 // ─── CustomSelect ────────────────────────────────────────────────────────────────
 
@@ -539,24 +529,55 @@ function StepTeam({
   onRemoveMember,
   onSkip,
 }: {
-  leader: string;
-  members: string[];
-  onSetLeader: (userId: string) => void;
-  onAddMember: (userId: string) => void;
-  onRemoveMember: (userId: string) => void;
+  leader: TeamMember | null;
+  members: TeamMember[];
+  onSetLeader: (m: TeamMember | null) => void;
+  onAddMember: (m: TeamMember) => void;
+  onRemoveMember: (id: string) => void;
   onSkip: () => void;
 }) {
   const [searchValue, setSearchValue] = useState("");
+  const [results, setResults] = useState<TeamMember[]>([]);
+  const [searching, setSearching] = useState(false);
 
-  const handleAddMember = () => {
-    const trimmed = searchValue.trim();
-    if (!trimmed) return;
-    if (leader === trimmed || members.includes(trimmed)) {
+  // Debounced user search — resolve a display name to a UUID before adding
+  // (DF-2: the wizard previously submitted raw usernames and 422'd).
+  useEffect(() => {
+    const q = searchValue.trim();
+    if (!q) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const resp = await fetch(`/api/extensions/users/search?keyword=${encodeURIComponent(q)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setResults((data.users ?? data.items ?? []).slice(0, 10));
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  const existingIds = new Set([
+    ...members.map((m) => m.id),
+    ...(leader ? [leader.id] : []),
+  ]);
+
+  const pick = (u: TeamMember) => {
+    if (existingIds.has(u.id)) {
       toast.error("该成员已在团队中");
       return;
     }
-    onAddMember(trimmed);
+    onAddMember(u);
     setSearchValue("");
+    setResults([]);
   };
 
   return (
@@ -569,26 +590,38 @@ function StepTeam({
       </div>
 
       {/* Search + Add */}
-      <div className="flex gap-2">
+      <div className="relative flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="搜索或输入成员名称"
+            placeholder="搜索用户名/姓名添加组员"
             className="h-[34px] rounded-md border-gray-200 bg-white pl-9 text-sm"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddMember();
-              }
-            }}
           />
+          {searchValue.trim() && (
+            <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+              {searching && <div className="px-3 py-2 text-xs text-gray-400">搜索中…</div>}
+              {!searching && results.length === 0 && (
+                <div className="px-3 py-2 text-xs text-gray-400">无匹配用户</div>
+              )}
+              {results.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => pick(u)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                    {u.username.charAt(0).toUpperCase()}
+                  </div>
+                  <span>{u.username}</span>
+                  {u.fullName && <span className="text-muted-foreground">({u.fullName})</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <Button type="button" variant="outline" onClick={handleAddMember} className="h-[34px] shrink-0 gap-1">
-          <Plus className="h-3.5 w-3.5" />
-          添加组员
-        </Button>
       </div>
 
       {/* Leader */}
@@ -603,15 +636,15 @@ function StepTeam({
         {!leader ? (
           <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
             <UserCircle className="h-4 w-4" />
-            请点击成员设为组长，或在上方搜索后点击"设为组长"
+            请先添加组员，再在组员卡片上点击"设为组长"
           </div>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
             <UserCircle className="h-3.5 w-3.5" />
-            {leader}
+            {leader.username}
             <button
               type="button"
-              onClick={() => onSetLeader("")}
+              onClick={() => onSetLeader(null)}
               className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-blue-100"
             >
               <X className="h-3 w-3" />
@@ -633,23 +666,23 @@ function StepTeam({
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {members.map((userId) => (
+            {members.map((m) => (
               <span
-                key={userId}
+                key={m.id}
                 className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm font-medium text-foreground"
               >
                 <UserCircle className="h-3.5 w-3.5 text-gray-400" />
-                {userId}
+                {m.username}
                 <button
                   type="button"
-                  onClick={() => onRemoveMember(userId)}
+                  onClick={() => onRemoveMember(m.id)}
                   className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-gray-200"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onSetLeader(userId); onRemoveMember(userId); }}
+                  onClick={() => { onSetLeader(m); onRemoveMember(m.id); }}
                   className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] text-blue-600 transition-colors hover:bg-blue-50"
                 >
                   设为组长
@@ -696,8 +729,8 @@ function StepConfirm({
   targetStandard: string;
   templateId: string;
   templates: TemplateOption[];
-  leader: string;
-  teamMembers: string[];
+  leader: TeamMember | null;
+  teamMembers: TeamMember[];
   reportTypeOptions: SelectOption[];
   autoStartWorkflow: boolean;
   onAutoStartChange: (v: boolean) => void;
@@ -734,7 +767,7 @@ function StepConfirm({
             </div>
             <div>
               <span className="text-gray-400">报告类型</span>
-              <p className="mt-0.5 text-foreground">{reportTypeOptions.find((o) => o.value === reportType)?.label ?? reportType}</p>
+              <p className="mt-0.5 text-foreground">{getReportTypeLabel(reportType)}</p>
             </div>
             <div>
               <span className="text-gray-400">客户单位</span>
@@ -808,7 +841,7 @@ function StepConfirm({
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-gray-400">组长</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
-                    {leader}
+                    {leader.username}
                   </span>
                 </div>
               )}
@@ -816,12 +849,12 @@ function StepConfirm({
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-gray-400">组员</span>
                   <div className="flex gap-1">
-                    {teamMembers.map((userId) => (
+                    {teamMembers.map((m) => (
                       <span
-                        key={userId}
+                        key={m.id}
                         className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-foreground"
                       >
-                        {userId}
+                        {m.username}
                       </span>
                     ))}
                   </div>
@@ -845,22 +878,13 @@ export function ProjectCreateWizard() {
 
   // Step 1: Basic info
   const [name, setName] = useState("");
-  const [reportType, setReportType] = useState<string>("environmental_impact");
+  const [reportType, setReportType] = useState<string>("");
   const [client, setClient] = useState("");
   const [targetStandard, setTargetStandard] = useState("");
   const [deadline, setDeadline] = useState("");
 
-  // Dynamic report type options from business dictionary
-  const [reportTypeOptions, setReportTypeOptions] = useState<SelectOption[]>(REPORT_TYPE_OPTIONS_FALLBACK);
-
-  React.useEffect(() => {
-    kfApi.listDictItems("industry", { limit: 200 }).then((res) => {
-      const items = res.items.filter((i) => i.enabled);
-      if (items.length > 0) {
-        setReportTypeOptions(items.map((i) => ({ value: i.id, label: i.label })));
-      }
-    }).catch(() => { /* keep fallback */ });
-  }, []);
+  // Dynamic report type options from report_type business dictionary
+  const { options: reportTypeOptions } = useReportTypes();
 
   // Step 2: Content template (KF templates only)
   const [templateId, setTemplateId] = useState<string>("tpl_blank");
@@ -876,20 +900,13 @@ export function ProjectCreateWizard() {
       ([kfs, wfs]) => {
         setKfTemplates(kfs);
         setWorkflowTemplates(wfs);
-        // Auto-select KF template matching report type
-        const domains = REPORT_TYPE_TO_DOMAIN[reportType] ?? [];
-        const kfMatch = kfs.find((t) => domains.includes(t.domain));
-        if (kfMatch) setTemplateId(kfMatch.id);
-        // Auto-select workflow template matching report type
-        const wfMatch = wfs.find((t) => t.domain === reportType);
-        if (wfMatch) setWorkflowId(wfMatch.id);
       },
     );
   }, [reportType]);
 
   // Step 4: Team
-  const [leader, setLeader] = useState("");
-  const [teamMembers, setTeamMembers] = useState<string[]>([]);
+  const [leader, setLeader] = useState<TeamMember | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Auto-start workflow option
   const [autoStartWorkflow, setAutoStartWorkflow] = useState(true);
@@ -937,12 +954,12 @@ export function ProjectCreateWizard() {
   }, [step]);
 
   // Team operations
-  const addTeamMember = useCallback((userId: string) => {
-    setTeamMembers((prev) => [...prev, userId]);
+  const addTeamMember = useCallback((m: TeamMember) => {
+    setTeamMembers((prev) => [...prev, m]);
   }, []);
 
-  const removeTeamMember = useCallback((userId: string) => {
-    setTeamMembers((prev) => prev.filter((id) => id !== userId));
+  const removeTeamMember = useCallback((id: string) => {
+    setTeamMembers((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
   // Resolve template_id for submission
@@ -967,10 +984,10 @@ export function ProjectCreateWizard() {
     try {
       const memberList: { userId: string; role: MemberRole }[] = [];
       if (leader) {
-        memberList.push({ userId: leader, role: "owner" });
+        memberList.push({ userId: leader.id, role: "owner" });
       }
-      for (const userId of teamMembers) {
-        memberList.push({ userId, role: "member" });
+      for (const m of teamMembers) {
+        memberList.push({ userId: m.id, role: "member" });
       }
 
       const workflowId = resolveWorkflowId();

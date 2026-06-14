@@ -8,14 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ── Enums ──
 
-VALID_REPORT_TYPES = [
-    "environmental_impact",
-    "geological_survey",
-    "feasibility_study",
-    "safety_assessment",
-    "energy_assessment",
-    "other",
-]
+# Report types are now managed via the business_dictionaries table (category="report_type")
+# and enforced by the frontend dropdown. No hardcoded validation list — the DB is the source of truth.
 
 VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "in_progress", "active", "completed", "archived"]
 
@@ -107,18 +101,11 @@ class MemberUpdate(BaseModel):
 
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    report_type: str = Field(..., min_length=1)
+    report_type: str = Field(..., min_length=1, max_length=100)
     template_id: UUID | None = None
     workflow_id: UUID | None = None
     auto_start_workflow: bool = False
     members: list["MemberWithDuties"] | None = None
-
-    @field_validator("report_type")
-    @classmethod
-    def validate_report_type(cls, v: str) -> str:
-        if v not in VALID_REPORT_TYPES:
-            raise ValueError(f"report_type must be one of {VALID_REPORT_TYPES}, got {v!r}")
-        return v
 
 
 class MemberWithDuties(BaseModel):

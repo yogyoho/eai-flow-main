@@ -13,7 +13,7 @@ import { workflowApi } from "@/extensions/workflow/api";
 import { WorkflowEditor, type WorkflowEditorHandle } from "@/extensions/workflow/WorkflowEditor";
 import type { WorkflowGraph } from "@/extensions/workflow/types";
 import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
-import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
+import { useReportTypes } from "@/extensions/project/hooks/useReportTypes";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
 interface DeptItem {
@@ -30,6 +30,8 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const router = useRouter();
   const { user } = useAuth();
   const isSuperAdmin = user?.role_name === "Super Admin";
+
+  const { options: reportTypeOptions } = useReportTypes();
 
   const editorRef = useRef<WorkflowEditorHandle>(null);
 
@@ -216,9 +218,9 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         <AdminSelect
           value={reportType}
           onChange={(v) => setReportType(v)}
-          options={Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+          options={reportTypeOptions}
           placeholder="选择报告类型"
-          className="w-36"
+          className="w-auto min-w-[6rem]"
         />
 
         <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${st.color}`}>

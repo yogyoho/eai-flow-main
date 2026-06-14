@@ -470,9 +470,13 @@ async def get_workflow_status_endpoint(
         if project.workflow_id:
             definition = await db.get(WorkflowDefinition, project.workflow_id)
             if definition and definition.graph_json:
-                graph = definition.graph_json
+                raw_graph = definition.graph_json
+                # v2 graph_json wraps nodes/edges under "mainGraph". Unwrap for
+                # local node enumeration (status, progress, review edges) while
+                # keeping the v2 structure for the API response.
+                graph = raw_graph.get("mainGraph", raw_graph)
                 wf_name = definition.name
-                wf_graph = graph
+                wf_graph = raw_graph
                 current = project.current_phase_node
                 project_done = project.status == "completed"
 

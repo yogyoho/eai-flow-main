@@ -375,3 +375,61 @@ class TestWriteProjectContext:
             data = json.loads(context_file.read_text())
             assert data["project_id"] == "test-123"
             assert data["project_name"] == "环评报告"
+
+
+class TestCreateProjectOwnerMembership:
+    """DF-3 regression: the project creator must always be a project_member
+    (role=owner), even when the creation wizard passes an explicit members list
+    that includes the owner. Previously the creator was dropped (403 on access)."""
+
+    @pytest.mark.asyncio
+    async def test_creator_owner_when_members_provided(self, mock_db):
+        from app.extensions.project import service as svc
+
+        creator = uuid4()
+        zhangsan = uuid4()
+        wanger = uuid4()
+        added: list = []
+        mock_db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        mock_db.flush = AsyncMock()
+
+        with patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value={"id": "p1"}):
+            await svc.create_project(
+                mock_db,
+                name="辽阳石化消防设计专篇",
+                report_type="fire_protection_design",
+                created_by=creator,
+                members_data=[
+                    {"user_id": creator, "role": "owner"},
+                    {"user_id": zhangsan, "role": "member"},
+                    {"user_id": wanger, "role": "member"},
+                ],
+            )
+
+        members = [o for o in added if isinstance(o, svc.ProjectMember)]
+        owner_rows = [m for m in members if m.user_id == creator]
+        assert len(owner_rows) == 1, "creator must be added exactly once as owner"
+        assert owner_rows[0].role == "owner"
+        assert {m.user_id for m in members} == {creator, zhangsan, wanger}
+
+    @pytest.mark.asyncio
+    async def test_creator_owner_without_members(self, mock_db):
+        """Backward-compat: creator is owner when no members supplied."""
+        from app.extensions.project import service as svc
+
+        creator = uuid4()
+        added: list = []
+        mock_db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        mock_db.flush = AsyncMock()
+
+        with patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value={"id": "p2"}):
+            await svc.create_project(
+                mock_db,
+                name="P",
+                report_type="fire_protection_design",
+                created_by=creator,
+            )
+
+        members = [o for o in added if isinstance(o, svc.ProjectMember)]
+        assert len(members) == 1
+        assert members[0].user_id == creator and members[0].role == "owner"

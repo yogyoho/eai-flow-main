@@ -100,6 +100,8 @@ def _validate_start_node(graph: dict) -> list[str]:
 
 def topological_sort(graph: dict) -> list[str]:
     """Return nodes in topological order."""
+    # Defensive: v2 graph_json wraps nodes/edges under "mainGraph".
+    graph = graph.get("mainGraph", graph)
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
 

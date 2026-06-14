@@ -1,12 +1,8 @@
 // ── Enums ──
 
-export type ReportType =
-  | "environmental_impact"
-  | "geological_survey"
-  | "feasibility_study"
-  | "safety_assessment"
-  | "energy_assessment"
-  | "other";
+// Report types are now managed via the business_dictionaries table (category="report_type")
+// and loaded dynamically by useReportTypes(). Any string is valid.
+export type ReportType = string;
 
 export type ProjectStatus = "setup" | "outline" | "writing" | "editing" | "approval" | "active" | "completed" | "archived";
 

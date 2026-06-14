@@ -45,6 +45,7 @@ with workflow.unsafe.imports_passed_through():
         notify_workflow_complete as _notify_workflow_complete,
         parse_sources as _parse_sources,
         start_ai_writing as _start_ai_writing,
+        start_phase_ai_writing as _start_phase_ai_writing,
         store_sources as _store_sources,
         check_phase_completion as _check_phase_completion,
         check_reviews_complete as _check_reviews_complete,
@@ -124,6 +125,13 @@ class DynamicGraphWorkflow:
         graph: dict = params["graph_json"]
         project_id: str = params.get("project_id", "")
 
+        # graph_json v2 wraps nodes/edges under "mainGraph"; v1 keeps them at the
+        # top level. Unwrap so the DAG walk sees the real nodes. Without this the
+        # workflow saw an empty graph and completed without executing any node —
+        # including the AI-draft node (DF-5).
+        if "mainGraph" in graph:
+            graph = graph["mainGraph"]
+
         nodes: list[dict] = graph.get("nodes", [])
         edges: list[dict] = graph.get("edges", [])
 
@@ -139,6 +147,13 @@ class DynamicGraphWorkflow:
         for edge in edges:
             src = edge.get("source", "")
             tgt = edge.get("target", "")
+            # "rejected" edges are conditional rollback paths, NOT forward
+            # dependencies. Counting them as upstream prerequisites creates a
+            # cycle (review -> edit) that deadlocks the topological walk —
+            # t2-edit would wait forever for t4-review. Rollback is handled
+            # separately by _execute_review via the full edges list.
+            if edge.get("label") == "rejected":
+                continue
             if src and tgt:
                 downstream.setdefault(src, []).append(tgt)
                 upstream.setdefault(tgt, []).append(src)
@@ -266,7 +281,7 @@ class DynamicGraphWorkflow:
         try:
             await workflow.execute_activity(
                 _notify_workflow_complete,
-                project_id,
+                args=[project_id],
                 start_to_close_timeout=timedelta(seconds=30),
             )
         except Exception:
@@ -291,8 +306,7 @@ class DynamicGraphWorkflow:
         try:
             await workflow.execute_activity(
                 _notify_phase_start,
-                node_id,
-                project_id,
+                args=[node_id, project_id],
                 start_to_close_timeout=timedelta(seconds=30),
             )
         except Exception:
@@ -301,9 +315,7 @@ class DynamicGraphWorkflow:
         # Initialise phase
         init_result = await workflow.execute_activity(
             _init_phase,
-            node_id,
-            project_id,
-            node_data,
+            args=[node_id, project_id, node_data],
             start_to_close_timeout=timedelta(seconds=60),
         )
         results[node_id] = init_result
@@ -324,9 +336,7 @@ class DynamicGraphWorkflow:
         try:
             completion = await workflow.execute_activity(
                 _check_phase_completion,
-                node_id,
-                project_id,
-                chapter_range,
+                args=[node_id, project_id, chapter_range],
                 start_to_close_timeout=timedelta(seconds=30),
             )
             results[node_id]["completion_check"] = completion
@@ -348,8 +358,7 @@ class DynamicGraphWorkflow:
         try:
             advance_result = await workflow.execute_activity(
                 _advance_phase,
-                node_id,
-                project_id,
+                args=[node_id, project_id],
                 start_to_close_timeout=timedelta(seconds=60),
             )
             results[node_id].update(advance_result)
@@ -371,8 +380,7 @@ class DynamicGraphWorkflow:
         try:
             await workflow.execute_activity(
                 _notify_phase_start,
-                node_id,
-                project_id,
+                args=[node_id, project_id],
                 start_to_close_timeout=timedelta(seconds=30),
             )
         except Exception:
@@ -381,9 +389,7 @@ class DynamicGraphWorkflow:
         # Initialize task — auto-assign required roles to project members
         task_result = await workflow.execute_activity(
             _init_task,
-            node_id,
-            project_id,
-            node_data,
+            args=[node_id, project_id, node_data],
             start_to_close_timeout=timedelta(seconds=60),
         )
         results[node_id] = task_result
@@ -403,8 +409,7 @@ class DynamicGraphWorkflow:
         try:
             advance_result = await workflow.execute_activity(
                 _advance_phase,
-                node_id,
-                project_id,
+                args=[node_id, project_id],
                 start_to_close_timeout=timedelta(seconds=60),
             )
             results[node_id].update(advance_result)
@@ -432,8 +437,7 @@ class DynamicGraphWorkflow:
         try:
             await workflow.execute_activity(
                 _notify_review_pending,
-                node_id,
-                project_id,
+                args=[node_id, project_id],
                 start_to_close_timeout=timedelta(seconds=30),
             )
         except Exception:
@@ -441,9 +445,7 @@ class DynamicGraphWorkflow:
 
         assignment_result = await workflow.execute_activity(
             _create_review_assignments,
-            node_id,
-            project_id,
-            reviewers,
+            args=[node_id, project_id, reviewers],
             start_to_close_timeout=timedelta(seconds=60),
         )
         results[node_id] = assignment_result
@@ -485,9 +487,7 @@ class DynamicGraphWorkflow:
         condition_expr = node_data.get("condition", None)
         cond_result = await workflow.execute_activity(
             _evaluate_condition,
-            node_id,
-            project_id,
-            condition_expr,
+            args=[node_id, project_id, condition_expr],
             start_to_close_timeout=timedelta(seconds=60),
         )
         results[node_id] = cond_result
@@ -521,34 +521,45 @@ class DynamicGraphWorkflow:
         results: dict,
         completed: set[str],
     ) -> None:
-        """Execute AI generation: start writing, parse and store sources."""
+        """Execute AI generation: start writing, parse and store sources.
+
+        A top-level "AI编写初稿" node omits ``chapter_id`` — in that case we
+        batch-generate every pending chapter in the project (via
+        ``start_phase_ai_writing``). When ``chapter_id`` is set we generate a
+        single chapter and parse/store its traceability sources.
+        """
         chapter_id = node_data.get("chapter_id")
 
-        ai_result = await workflow.execute_activity(
-            _start_ai_writing,
-            node_id,
-            project_id,
-            chapter_id,
-            start_to_close_timeout=timedelta(minutes=5),
-        )
-        results[node_id] = ai_result
-
-        # Parse and store source markers if content is available
-        content = ai_result.get("content", "")
-        if content and chapter_id:
-            parsed = await workflow.execute_activity(
-                _parse_sources,
-                str(chapter_id),
-                content,
-                start_to_close_timeout=timedelta(seconds=30),
+        if chapter_id:
+            ai_result = await workflow.execute_activity(
+                _start_ai_writing,
+                args=[node_id, project_id, chapter_id],
+                start_to_close_timeout=timedelta(minutes=5),
             )
-            if parsed.get("source_count", 0) > 0:
-                await workflow.execute_activity(
-                    _store_sources,
-                    str(chapter_id),
-                    parsed["sources"],
+            results[node_id] = ai_result
+
+            # Parse and store source markers for the generated chapter
+            content = ai_result.get("content", "")
+            if content:
+                parsed = await workflow.execute_activity(
+                    _parse_sources,
+                    args=[str(chapter_id), content],
                     start_to_close_timeout=timedelta(seconds=30),
                 )
+                if parsed.get("source_count", 0) > 0:
+                    await workflow.execute_activity(
+                        _store_sources,
+                        args=[str(chapter_id), parsed["sources"]],
+                        start_to_close_timeout=timedelta(seconds=30),
+                    )
+        else:
+            # No chapter_id on the node → batch-generate all project chapters
+            ai_result = await workflow.execute_activity(
+                _start_phase_ai_writing,
+                args=[node_id, project_id],
+                start_to_close_timeout=timedelta(minutes=30),
+            )
+            results[node_id] = ai_result
 
         completed.add(node_id)
 
