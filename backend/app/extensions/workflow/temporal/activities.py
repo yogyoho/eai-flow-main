@@ -341,7 +341,13 @@ async def notify_review_pending(node_id: str, project_id: str) -> dict:
 async def notify_workflow_complete(project_id: str) -> dict:
     """Notify project members that the workflow has completed. Updates project status."""
     from app.extensions.database import get_db_context
-    from app.extensions.models import Notification, ProjectMember, ReportProject
+    from app.extensions.models import (
+        AIDocument,
+        Notification,
+        ProjectChapter,
+        ProjectMember,
+        ReportProject,
+    )
 
     count = 0
     async with get_db_context() as db:
@@ -369,6 +375,79 @@ async def notify_workflow_complete(project_id: str) -> dict:
                 )
             )
             count += 1
+
+        # TC-4.2: merge generated chapters into a report document and sync to
+        # the document space under the project folder, so the report is visible
+        # in /docmgr immediately after the workflow finishes.  Uses the Folder
+        # model (folder_id) to anchor the document in the project folder tree.
+        try:
+            from sqlalchemy import func as _func
+            from app.extensions.models import Folder
+
+            ch_result = await db.execute(
+                select(ProjectChapter)
+                .where(ProjectChapter.project_id == uuid.UUID(project_id))
+                .where(ProjectChapter.status.in_(("draft", "completed", "approved")))
+                .where(ProjectChapter.content.isnot(None))
+                .where(_func.length(ProjectChapter.content) > 0)
+                .order_by(ProjectChapter.sort_order)
+            )
+            chapters = ch_result.scalars().all()
+            if chapters:
+                proj = await db.get(ReportProject, uuid.UUID(project_id))
+                title = (proj.name if proj else "报告") + "_消防设计报告"
+                parts = [f"# {title}\n\n"]
+                for ch in chapters:
+                    parts.append(f"## {ch.title}\n\n{ch.content or ''}\n\n")
+                merged = "".join(parts)
+                owner_id = user_ids[0] if user_ids else uuid.UUID(int=0)
+
+                # Resolve or create project folder (Folder model, root-level,
+                # bound to this project). The document-space sidebar tree shows
+                # folders — not virtual folder strings — so we must link via
+                # folder_id.
+                proj_folder_id: uuid.UUID | None = None
+                pfx_result = await db.execute(
+                    select(Folder.id)
+                    .where(Folder.project_id == uuid.UUID(project_id))
+                    .where(Folder.parent_id.is_(None))
+                    .limit(1)
+                )
+                pfx_row = pfx_result.first()
+                if pfx_row:
+                    proj_folder_id = pfx_row[0]
+                else:
+                    pfx = Folder(
+                        name=proj.name if proj else "项目报告",
+                        owner_id=owner_id,
+                        project_id=uuid.UUID(project_id),
+                        parent_id=None,
+                    )
+                    db.add(pfx)
+                    await db.flush()
+                    proj_folder_id = pfx.id
+
+                doc = AIDocument(
+                    user_id=owner_id,
+                    project_id=uuid.UUID(project_id),
+                    folder_id=proj_folder_id,
+                    title=title,
+                    content=merged,
+                    folder="项目文件夹",
+                    doc_type="report",
+                    status="draft",
+                )
+                db.add(doc)
+                logger.info(
+                    "notify_workflow_complete: synced %d chapters to docmgr as '%s' (folder_id=%s)",
+                    len(chapters), title, str(proj_folder_id),
+                )
+        except Exception:
+            logger.exception(
+                "notify_workflow_complete: doc-space sync failed for project %s",
+                project_id,
+            )
+
         await db.commit()
 
     logger.info("activity:notify_workflow_complete project_id=%s notified=%d", project_id, count)
@@ -525,6 +604,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                 if content:
                     ch.content = content
                     ch.status = "draft"
+                    ch.word_count_current = len(content)
                 else:
                     ch.status = "error"
                     ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
@@ -544,6 +624,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                         if content:
                             ch.content = content
                             ch.status = "draft"
+                            ch.word_count_current = len(content)
                         else:
                             ch.status = "error"
                             ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
@@ -558,6 +639,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                     if content:
                         ch.content = content
                         ch.status = "draft"
+                        ch.word_count_current = len(content)
                     else:
                         ch.status = "error"
                         ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
