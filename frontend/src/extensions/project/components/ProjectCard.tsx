@@ -6,7 +6,7 @@ import React from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ProjectListItem } from "@/extensions/project/types";
-import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
+import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import { cn } from "@/lib/utils";
 
 import { StatusBadge } from "./StatusBadge";
@@ -49,7 +49,7 @@ function formatDate(dateString: string | null): string {
 export function ProjectCard({ project, onClick, onEdit, onDelete, onEnterChat }: ProjectCardProps) {
   const typeColor = REPORT_TYPE_COLORS[project.reportType] ?? REPORT_TYPE_COLORS.other;
   const typeIcon = REPORT_TYPE_ICONS[project.reportType] ?? REPORT_TYPE_ICONS.other;
-  const typeLabel = REPORT_TYPE_LABELS[project.reportType] ?? project.reportType;
+  const typeLabel = getReportTypeLabel(project.reportType);
 
   return (
     <motion.div

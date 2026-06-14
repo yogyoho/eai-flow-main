@@ -120,6 +120,37 @@ async def get_me(
     return await UserService.to_response(db, user)
 
 
+# Static paths (/search, /statistics) MUST be registered BEFORE the parametrised
+# /{user_id} route. Otherwise FastAPI matches "search"/"statistics" against the
+# {user_id} UUID param and returns 422 — which broke team-building user search
+# (DF-2) and the AddMemberDialog picker alike.
+@router.get("/search", response_model=UserListResponse)
+async def search_users(
+    keyword: str | None = Query(None, description="Search keyword for username, email, full_name"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    dept_id: UUID | None = None,
+    role_id: UUID | None = None,
+    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("user:read")),
+):
+    """Search users by keyword."""
+    users, total = await UserService.search_users(
+        db,
+        keyword=keyword,
+        skip=skip,
+        limit=limit,
+        dept_id=dept_id,
+        role_id=role_id,
+        status=status_filter,
+    )
+    return UserListResponse(
+        users=[await UserService.to_response(db, u) for u in users],
+        total=total,
+    )
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
@@ -253,33 +284,6 @@ async def update_current_user(
 
     user = await UserService.update_user(db, user, body)
     return await UserService.to_response(db, user)
-
-
-@router.get("/search", response_model=UserListResponse)
-async def search_users(
-    keyword: str | None = Query(None, description="Search keyword for username, email, full_name"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    dept_id: UUID | None = None,
-    role_id: UUID | None = None,
-    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("user:read")),
-):
-    """Search users by keyword."""
-    users, total = await UserService.search_users(
-        db,
-        keyword=keyword,
-        skip=skip,
-        limit=limit,
-        dept_id=dept_id,
-        role_id=role_id,
-        status=status_filter,
-    )
-    return UserListResponse(
-        users=[await UserService.to_response(db, u) for u in users],
-        total=total,
-    )
 
 
 @router.post("/batch", response_model=UserBatchResponse)

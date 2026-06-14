@@ -25,10 +25,10 @@ import { toast } from "sonner";
 import { projectApi } from "@/extensions/project/api";
 import {
   PROJECT_STATUS_LABELS,
-  REPORT_TYPE_LABELS,
   type ProjectStatus,
   type ReportProject,
 } from "@/extensions/project/types";
+import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 
 interface SettingsDialogProps {
@@ -165,7 +165,7 @@ export function SettingsDialog({
           {/* Report Type */}
           <div className="space-y-1.5">
             <label className="text-[12px] text-muted-foreground font-medium">报告类型</label>
-            <p className="text-sm text-foreground">{REPORT_TYPE_LABELS[project.reportType] ?? project.reportType}</p>
+            <p className="text-sm text-foreground">{getReportTypeLabel(project.reportType)}</p>
           </div>
 
           {/* Status */}

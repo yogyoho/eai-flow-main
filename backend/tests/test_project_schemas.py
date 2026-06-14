@@ -10,7 +10,6 @@ from app.extensions.project.schemas import (
     VALID_APPROVAL_ACTIONS,
     VALID_MEMBER_ROLES,
     VALID_PROJECT_STATUSES,
-    VALID_REPORT_TYPES,
     VALID_WORKFLOW_STATUSES,
     ApprovalActionRequest,
     ApprovalStepConfig,
@@ -30,13 +29,16 @@ from app.extensions.project.schemas import (
 
 
 class TestValidationConstants:
-    def test_report_types(self):
-        assert "environmental_impact" in VALID_REPORT_TYPES
-        assert "other" in VALID_REPORT_TYPES
-        assert len(VALID_REPORT_TYPES) == 6
+    # test_report_types removed — VALID_REPORT_TYPES is replaced by DB-driven dictionary
+    # (business_dictionaries table, category="report_type"). No hardcoded list to validate.
 
-    def test_project_statuses_simplified(self):
-        assert VALID_PROJECT_STATUSES == ["active", "completed", "archived"]
+    def test_project_statuses(self):
+        # Project status is workflow-driven; the validator allows the full
+        # lifecycle set (routers/service set "active"/"in_progress" on the model).
+        assert VALID_PROJECT_STATUSES == [
+            "setup", "outline", "writing", "editing", "approval",
+            "in_progress", "active", "completed", "archived",
+        ]
 
     def test_member_roles_expanded(self):
         assert VALID_MEMBER_ROLES == ["owner", "manager", "editor", "reviewer", "approver", "member"]

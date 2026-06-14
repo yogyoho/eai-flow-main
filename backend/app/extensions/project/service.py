@@ -540,11 +540,11 @@ async def create_project(
     db.add(project)
     await db.flush()
 
-    if created_by and not members_data:
-        # Only auto-add creator as owner when no explicit members are specified
-        # (backward compatible with API creation without the members field).
-        # When members_data is provided (from the creation wizard), the leader
-        # is already included in the list.
+    # Always ensure the creator is a project member (owner). Previously this only
+    # ran when no members_data was supplied; combined with the creator-skip in the
+    # members loop below, the owner was dropped entirely when the creation wizard
+    # passed an explicit members list (DF-3: owner got 403 "not a member").
+    if created_by:
         member = ProjectMember(
             project_id=project.id,
             user_id=created_by,

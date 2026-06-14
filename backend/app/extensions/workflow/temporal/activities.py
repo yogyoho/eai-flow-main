@@ -50,7 +50,8 @@ async def init_phase(phase_id: str, project_id: str, config: dict | None = None)
             from app.extensions.workflow.models import WorkflowDefinition
             defn = await db.get(WorkflowDefinition, project.workflow_id)
             if defn and defn.graph_json:
-                for node in defn.graph_json.get("nodes", []):
+                _mg = defn.graph_json.get("mainGraph", defn.graph_json)
+                for node in _mg.get("nodes", []):
                     if node["id"] == phase_id:
                         cr = node.get("data", {}).get("chapter_range")
                         if cr and len(cr) == 2:
@@ -149,6 +150,26 @@ async def init_task(node_id: str, project_id: str, config: dict | None = None) -
                         "activity:init_task node_id=%s role=%s unfilled=%d",
                         node_id, role_key, remaining,
                     )
+
+            # Distribute editable chapters among writer-duty members (DF-6):
+            # gives each writer writing todos (chapter.assigned_to) + edit scope,
+            # even for templates without phase/subflow nodes (chapters untagged).
+            writer_ids = [
+                m.user_id for m in members
+                if _get_member_duty(m, node_id) in ("writer", "write")
+            ]
+            if writer_ids:
+                from app.extensions.models import ProjectChapter
+
+                ch_result = await db.execute(
+                    select(ProjectChapter)
+                    .where(ProjectChapter.project_id == uuid.UUID(project_id))
+                    .where(ProjectChapter.assigned_to.is_(None))
+                    .where(ProjectChapter.status.in_(("pending", "draft", "error")))
+                    .order_by(ProjectChapter.sort_order)
+                )
+                for idx, ch in enumerate(ch_result.scalars().all()):
+                    ch.assigned_to = writer_ids[idx % len(writer_ids)]
 
         await db.commit()
 
@@ -473,7 +494,18 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
         chapters = chapters_result.scalars().all()
 
         if not chapters:
-            return {"status": "ok", "phase_id": phase_id, "results": [], "reason": "no chapters"}
+            # No chapters tagged to this phase node — templates without
+            # phase/subflow nodes leave ProjectChapter.phase_node NULL. Fall back
+            # to ALL chapters in the project so a top-level "AI编写初稿" node still
+            # generates the initial report content.
+            all_result = await db.execute(
+                select(ProjectChapter)
+                .where(ProjectChapter.project_id == uuid.UUID(project_id))
+                .order_by(ProjectChapter.sort_order)
+            )
+            chapters = all_result.scalars().all()
+            if not chapters:
+                return {"status": "ok", "phase_id": phase_id, "results": [], "reason": "no chapters"}
 
         # Determine strategy
         strategy = select_strategy(
@@ -620,7 +652,7 @@ async def _generate_content(prompt: str, *, timeout: float = 60.0, retries: int 
         try:
             from deerflow.models import create_chat_model
 
-            model = create_chat_model("ai-writing")
+            model = create_chat_model()  # default (first) configured model
             response = await asyncio.wait_for(
                 model.ainvoke([HumanMessage(content=prompt)]),
                 timeout=timeout,

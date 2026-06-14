@@ -155,8 +155,10 @@ async def create_project(
                         proj.temporal_workflow_id = workflow_id_result
                         proj.status = "in_progress"
                         await db.commit()
-        except Exception:
-            pass  # Auto-start is best-effort; project is still created
+        except Exception as exc:  # Auto-start is best-effort; project is still created
+            import logging as _logging
+
+            _logging.getLogger(__name__).warning("Auto-start workflow failed for project %s: %r", project.id, exc)
 
     return project
 

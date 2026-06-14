@@ -58,7 +58,7 @@ export const TAB_REGISTRY: TabDefinition[] = [
     icon: FileText,
     componentKey: "editor",
     visibleWhen: (ctx) =>
-      ctx.hasAnyDuty(["write", "edit", "review", "approve"]) ||
+      ctx.hasAnyDuty(["write", "writer", "edit", "lead", "review", "reviewer", "approve"]) ||
       ctx.hasAnyPermission([
         "chapter:write_any",
         "chapter:write_own",

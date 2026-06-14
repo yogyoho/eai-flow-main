@@ -101,7 +101,7 @@ async def apply_rejection_rollback(
     if not definition or not definition.graph_json:
         return None
 
-    edges = definition.graph_json.get("edges", [])
+    edges = definition.graph_json.get("mainGraph", definition.graph_json).get("edges", [])
     for edge in edges:
         if edge.get("source") == phase_node and edge.get("label") == "rejected":
             target = edge.get("target")
