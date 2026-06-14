@@ -336,15 +336,19 @@ async def submit_review_action(
     project_id: UUID,
     review_id: UUID,
     body: ReviewActionRequest,
-    user: ReviewActor,
+    user: CurrentUserWithAccess,
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit an approve/reject action for a review assignment."""
+    """Submit an approve/reject action for a review assignment.
+
+    The reviewer_id check below is the real guard — requiring system-level
+    ``approval:review`` via ``ReviewActor`` blocked project owners who were
+    legitimately assigned as reviewers (the workflow auto-assigns them)."""
     review = await db.get(PhaseReview, review_id)
     if not review or review.project_id != project_id:
         raise HTTPException(status_code=404, detail="Review assignment not found")
 
-    # Verify the current user is the assigned reviewer
+    # Verify the current user is the assigned reviewer (or admin override)
     if review.reviewer_id != user.id:
         raise HTTPException(status_code=403, detail="You are not the assigned reviewer for this review")
 

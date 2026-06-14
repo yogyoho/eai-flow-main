@@ -94,7 +94,9 @@ async def send_signal(project_id: str, signal_name: str, args: list) -> None:
         return
 
     handle = client.get_workflow_handle(workflow_id)
-    await handle.signal(signal_name, *args)
+    # temporalio 1.27: multi-arg signals must use args=[...] (positional splat
+    # raises "signal() takes 2 to 3 positional arguments").
+    await handle.signal(signal_name, args=args)
 
 
 async def get_workflow_status(project_id: str) -> dict | None:
