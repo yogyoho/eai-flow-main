@@ -804,6 +804,35 @@ async def complete_current_phase(
                     phase_label = node.get("data", {}).get("label", current_phase)
                     break
 
+    # Gate: verify all chapters are completed before allowing phase advance.
+    # Matches the _check_phase_completion guard in the Temporal workflow
+    # (_execute_phase / _execute_task) so the caller gets immediate feedback
+    # instead of sending a signal that the workflow will reject.
+    from app.extensions.models import ProjectChapter
+    from sqlalchemy import func as _sf
+    ch_stmt = (
+        select(
+            _sf.count(ProjectChapter.id).label("total"),
+            _sf.sum(_sf.cast(
+                ProjectChapter.status.in_(["completed", "approved"]), Integer
+            )).label("done"),
+        )
+        .where(ProjectChapter.project_id == project_id)
+        .where(ProjectChapter.level == 1)
+    )
+    ch_result = await db.execute(ch_stmt)
+    ch_row = ch_result.one()
+    chapter_total, chapter_done = (ch_row.total or 0), (ch_row.done or 0)
+    if chapter_total > 0 and chapter_done < chapter_total:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"章节尚未全部完成 ({chapter_done}/{chapter_total})，"
+                f"共{chapter_total}章，已完成{chapter_done}章，"
+                f"请先完成所有章节的修改确认后再提交"
+            ),
+        )
+
     try:
         await _send_signal(
             project_id=str(project_id),
@@ -1042,7 +1071,9 @@ async def get_project_stats(
     """
     from app.extensions.models import AIDocument, ProjectChapter
 
-    # Document stats from AIDocument table
+    # Document stats from AIDocument table — include draft, final, and active
+    # documents. Previously only counted status="final", which missed workflow-
+    # synced draft reports and made the overview show 0 files.
     doc_stmt = (
         select(
             func.count(AIDocument.id).label("count"),
@@ -1050,7 +1081,7 @@ async def get_project_stats(
         )
         .where(
             AIDocument.project_id == project_id,
-            AIDocument.status == "final",
+            AIDocument.status.in_(["draft", "active", "final"]),
         )
     )
     doc_result = await db.execute(doc_stmt)
@@ -1064,7 +1095,7 @@ async def get_project_stats(
             func.coalesce(
                 func.sum(
                     func.cast(
-                        ProjectChapter.status.in_(["writing", "review"]),
+                        ProjectChapter.status.in_(["draft", "writing", "review"]),
                         Integer,
                     )
                 ), 0

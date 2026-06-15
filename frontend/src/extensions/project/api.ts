@@ -88,6 +88,17 @@ export const projectApi = {
     }
   },
 
+  /** Signal the workflow to advance past the current phase.  Returns 409 if
+   *  chapters are not all completed (backend chapter-completion gate). */
+  completePhase: async (id: string, comment?: string): Promise<{ status: string; phase_node: string; phase_label: string }> => {
+    const resp = await authFetch<{ status: string; project_id: string; phase_node: string; phase_label: string }>(
+      `/api/extensions/project/projects/${id}/phase-complete`,
+      { method: "POST", body: JSON.stringify({ comment }) },
+      "Failed to advance phase",
+    );
+    return resp;
+  },
+
   /** Sync project output docs to document space. Non-critical, no-op if endpoint unavailable. */
   syncDocs: async (_id: string): Promise<{ synced: number }> => {
     // No backend endpoint yet — auto-sync happens via present_files callback

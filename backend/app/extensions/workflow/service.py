@@ -113,6 +113,10 @@ def topological_sort(graph: dict) -> list[str]:
         in_degree[nid] = 0
 
     for edge in edges:
+        # Skip rejected rollback edges — they form cycles (review → edit) and
+        # prevent the topological sort from reaching downstream nodes.
+        if edge.get("label") == "rejected":
+            continue
         adjacency[edge["source"]].append(edge["target"])
         in_degree[edge["target"]] += 1
 

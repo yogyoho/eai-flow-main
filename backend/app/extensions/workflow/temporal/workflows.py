@@ -405,6 +405,34 @@ class DynamicGraphWorkflow:
         task_completion = self._phase_results.get(node_id, {})
         results[node_id]["result"] = task_completion
 
+        # Gate: do not advance unless scoped chapters are all completed
+        # (matches _execute_phase behaviour).  Without this check the task
+        # node accepts any phase_complete signal and moves on even while
+        # chapters are still draft/unreviewed.
+        chapter_range = node_data.get("chapter_range")
+        try:
+            gate_result = await workflow.execute_activity(
+                _check_phase_completion,
+                args=[node_id, project_id, chapter_range],
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+            results[node_id]["completion_check"] = gate_result
+            if not gate_result.get("ready", False):
+                logger.warning(
+                    "Task %s not ready — %d/%d chapters complete, incomplete: %s",
+                    node_id,
+                    gate_result.get("completed", 0),
+                    gate_result.get("total", 0),
+                    gate_result.get("incomplete_chapters", []),
+                )
+                completed.add(node_id)
+                return
+        except Exception:
+            logger.exception(
+                "check_phase_completion failed for task %s — proceeding anyway",
+                node_id,
+            )
+
         # Advance to next node
         try:
             advance_result = await workflow.execute_activity(
