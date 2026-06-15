@@ -47,10 +47,17 @@ export function AppCenterPage() {
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       {/* 标题区 */}
-      <header className="mb-6 flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          应用中心
-        </h1>
+      <header className="mb-6 flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            应用中心
+          </h1>
+          {!isLoading && (
+            <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
+              {visibleApps.length} 个应用
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           发现并快速进入你需要的应用，收藏常用应用，让工作流更顺畅。
         </p>

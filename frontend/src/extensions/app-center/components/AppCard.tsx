@@ -40,7 +40,7 @@ function AppCardImpl({ app, isFavorite, onToggleFavorite }: AppCardProps) {
       aria-label={`${app.name} — ${app.description}`}
       className={cn(
         "group relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm transition-all",
-        "hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/40 hover:shadow-md",
+        "hover:-translate-y-1 hover:border-primary/30 hover:bg-accent/40 hover:shadow-lg hover:shadow-primary/5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isFavorite && "border-primary/40 ring-1 ring-primary/10",
       )}
@@ -95,9 +95,14 @@ function AppCardImpl({ app, isFavorite, onToggleFavorite }: AppCardProps) {
         </p>
       </div>
 
-      {/* 分类角标 */}
+      {/* 分类角标 —— 用分类强调色，呼应图标容器 */}
       <div className="mt-auto pt-1">
-        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+            accent.tag,
+          )}
+        >
           {category.label}
         </span>
       </div>
