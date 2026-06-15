@@ -1,0 +1,112 @@
+"use client";
+
+import { Star } from "lucide-react";
+import { useMemo } from "react";
+
+import { AppGrid } from "./components/AppGrid";
+import { AppCenterToolbar } from "./components/AppCenterToolbar";
+import { EmptyState } from "./components/EmptyState";
+import { useApps } from "./hooks/useApps";
+import { useFavorites } from "./hooks/useFavorites";
+
+/**
+ * 应用中心主页面。
+ *
+ * 布局：标题+搜索（顶）→ 工具栏（分类+排序）→ ⭐收藏区（有收藏才显示）
+ *      → 全部应用主网格。
+ */
+export function AppCenterPage() {
+  const { favorites, isFavorite, toggleFavorite, hydrated } = useFavorites();
+  const {
+    apps,
+    visibleApps,
+    searchQuery,
+    setSearchQuery,
+    sortMode,
+    setSortMode,
+    activeCategory,
+    setActiveCategory,
+    categoryOptions,
+    licenseLoading,
+  } = useApps(favorites, hydrated);
+
+  // 收藏区：仅在"默认/收藏优先"排序、无搜索、无分类筛选时展示，
+  // 且至少有一条收藏。避免与主网格重复展示造成视觉冗余。
+  const favoriteApps = useMemo(() => {
+    if (!hydrated) return [];
+    if (searchQuery.trim()) return [];
+    if (activeCategory !== "all") return [];
+    if (sortMode === "alphabetical") return [];
+    return visibleApps.filter((a) => favorites.has(a.id));
+  }, [hydrated, searchQuery, activeCategory, sortMode, visibleApps, favorites]);
+
+  const showFavorites = favoriteApps.length > 0;
+  const hasVisibleApps = visibleApps.length > 0;
+  const isLoading = licenseLoading;
+
+  return (
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      {/* 标题区 */}
+      <header className="mb-6 flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          应用中心
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          发现并快速进入你需要的应用，收藏常用应用，让工作流更顺畅。
+        </p>
+      </header>
+
+      {/* 工具栏 */}
+      <AppCenterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categoryOptions={categoryOptions}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+        sortMode={sortMode}
+        onSortChange={setSortMode}
+      />
+
+      {/* 收藏区 */}
+      {showFavorites && (
+        <section className="mt-8">
+          <div className="mb-3 flex items-center gap-2">
+            <Star className="size-4 text-amber-500" fill="currentColor" />
+            <h2 className="text-sm font-semibold text-foreground">我的收藏</h2>
+            <span className="text-xs text-muted-foreground">
+              {favoriteApps.length}
+            </span>
+          </div>
+          <AppGrid
+            apps={favoriteApps}
+            isLoading={false}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
+          />
+        </section>
+      )}
+
+      {/* 主网格 / 空状态 */}
+      <section className="mt-8">
+        {showFavorites && (
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-foreground">全部应用</h2>
+          </div>
+        )}
+
+        {!hasVisibleApps && !isLoading ? (
+          <EmptyState variant="no-apps" />
+        ) : apps.length === 0 && !isLoading ? (
+          <EmptyState variant="no-results" />
+        ) : (
+          <AppGrid
+            apps={apps}
+            isLoading={isLoading}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
+          />
+        )}
+      </section>
+    </div>
+  );
+}

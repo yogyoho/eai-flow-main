@@ -12,6 +12,7 @@ import {
   ClipboardList,
   FileOutput,
   LayoutDashboard,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -44,6 +45,7 @@ interface NavItem {
 }
 
 const allNavItems: NavItem[] = [
+  { href: "/app-center", label: "应用中心", icon: LayoutGrid },
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard },
   { href: "/writing", label: "智能写作", icon: Bot },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project" },
