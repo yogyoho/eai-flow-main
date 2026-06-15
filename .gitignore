@@ -70,3 +70,4 @@ _workspace_temp/
 # License keys (never commit)
 tools/license/private_key.pem
 *.lic
+.claude/skills/gstack/

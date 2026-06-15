@@ -462,6 +462,17 @@ class DynamicGraphWorkflow:
         """
         reviewers = node_data.get("reviewers", None)
 
+        # Initialise the review phase so the project's current_phase_node is
+        # updated — without this the UI always shows the previous node's label.
+        try:
+            await workflow.execute_activity(
+                _init_phase,
+                args=[node_id, project_id, node_data],
+                start_to_close_timeout=timedelta(seconds=60),
+            )
+        except Exception:
+            logger.exception("init_phase failed for review %s", node_id)
+
         try:
             await workflow.execute_activity(
                 _notify_review_pending,
@@ -478,29 +489,68 @@ class DynamicGraphWorkflow:
         )
         results[node_id] = assignment_result
 
-        # Wait until at least one review action has been received.
-        has_reviews = bool(self._pending_reviews.get(node_id))
-        if not has_reviews:
-            await workflow.wait_condition(
-                lambda nid=node_id: bool(self._pending_reviews.get(nid)),  # type: ignore[misc]
-                timeout=REVIEW_COMPLETION_TIMEOUT,
-            )
+        # Wait for all assigned reviewers to submit (or timeout).
+        # Periodically poll check_reviews_complete so the gate logic (all/any/
+        # majority/weighted) runs inside the activity rather than being
+        # duplicated here.
+        gate_done = False
+        gate_passed = False
+        poll_interval = timedelta(seconds=30)
+        deadline = workflow.now() + REVIEW_COMPLETION_TIMEOUT
 
-        approvals = self._pending_reviews.get(node_id, [])
-        all_approved = bool(approvals) and all(approvals)
-        results[node_id]["all_approved"] = all_approved
-        results[node_id]["approval_count"] = len(approvals)
+        while workflow.now() < deadline:
+            await workflow.sleep(poll_interval)
+            try:
+                gate_status = await workflow.execute_activity(
+                    _check_reviews_complete,
+                    args=[node_id, project_id],
+                    start_to_close_timeout=timedelta(seconds=30),
+                )
+                results[node_id]["gate_status"] = gate_status
+                if gate_status.get("all_done", False) or gate_status.get("gate_result") in ("pass", "reject"):
+                    gate_done = True
+                    gate_passed = gate_status.get("gate_result") == "pass"
+                    break
+            except Exception:
+                logger.exception("check_reviews_complete failed for %s", node_id)
+
+        if not gate_done:
+            logger.warning("Review %s timed out — treating as pending", node_id)
+            results[node_id]["all_approved"] = False
+            completed.add(node_id)
+            return None
+
+        results[node_id]["all_approved"] = gate_passed
         completed.add(node_id)
 
-        if not all_approved:
-            # Find rejection target from DAG edges with label "rejected"
-            for edge in edges:
-                if edge.get("source") == node_id and edge.get("label") == "rejected":
-                    target = edge["target"]
-                    logger.info("Review %s rejected — rolling back to %s", node_id, target)
-                    return target
-            logger.warning("Review %s rejected but no rollback edge found", node_id)
+        if gate_passed:
+            # Advance to next node
+            try:
+                await workflow.execute_activity(
+                    _advance_phase,
+                    args=[node_id, project_id],
+                    start_to_close_timeout=timedelta(seconds=60),
+                )
+            except Exception:
+                logger.exception("advance_phase failed for review %s", node_id)
+            return None
 
+        # Rejected — find rollback target from DAG edges with label "rejected"
+        for edge in edges:
+            if edge.get("source") == node_id and edge.get("label") == "rejected":
+                target = edge["target"]
+                logger.info("Review %s rejected — rolling back to %s", node_id, target)
+                try:
+                    await workflow.execute_activity(
+                        _handle_rejection,
+                        args=[node_id, project_id, target],
+                        start_to_close_timeout=timedelta(seconds=60),
+                    )
+                except Exception:
+                    logger.exception("handle_rejection failed for %s", node_id)
+                return target
+
+        logger.warning("Review %s rejected but no rollback edge found", node_id)
         return None
 
     async def _execute_condition(
