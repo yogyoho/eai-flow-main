@@ -18,6 +18,7 @@ description: |
 4. 自动聚类结果需用户在管理页面审核确认（`status=confirmed`）后统计才作为最终结论。
 5. 缓存与持久化使用 PostgreSQL `postgres-ext`，表前缀 `cpa_`；DB 不可达时流水线仍可解析/聚类/导出（跳过持久化）。
 6. 不直接生成 .docx；只产出 Excel。不使用 procurement-service 代码。
+7. 管理页面 API 已挂载到主后端 Gateway 扩展 `backend/app/extensions/contract_price/`（复用 cookie-JWT 认证 + 共享 DB 引擎），路由前缀 `/api/extensions/contract-price`。本技能 `scripts/` 仅保留流水线逻辑。
 
 ## 工作流
 

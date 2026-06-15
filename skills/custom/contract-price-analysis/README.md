@@ -49,4 +49,20 @@ PYTHONPATH=. python -m pytest tests/ -v
 
 见 `docs/superpowers/specs/2026-06-15-contract-price-analysis-design.md`。
 
-这是 Plan 1/3（数据流水线）。Plan 2 将增加管理页面 API 服务，Plan 3 增加前端管理页面。
+- **Plan 1/3（本技能 scripts/）**：数据流水线（RAGFlow → 解析 → 聚类 → 统计 → Excel），可独立运行。
+- **Plan 2/3（后端扩展）**：管理页面 API 挂载在 `backend/app/extensions/contract_price/`，路由前缀 `/api/extensions/contract-price`，复用主后端 cookie-JWT 认证与共享 `postgres-ext` 引擎。流水线触发端点（`POST /pipeline/run`）以子进程方式调用本技能 CLI。
+- **Plan 3/3（前端）**：主前端 `/contract-price` 路由的 6 个管理页面（待实现）。
+
+### 管理页面 API 端点（Plan 2）
+
+| 功能区 | 端点 |
+|--------|------|
+| 1 合同清单 | `GET/DELETE /api/extensions/contract-price/documents` |
+| 2 聚类审核 | `GET /clusters`、`GET /clusters/{id}`、`POST /clusters/{id}/confirm`、`POST /clusters/merge`、`POST /items/{id}/move` |
+| 3 分项明细 | `GET /items`、`PATCH /items/{id}` |
+| 4 任务历史 | `GET /runs`、`GET /runs/{id}/excel` |
+| 5 配置 | `GET/PUT /config` |
+| 6 看板 | `GET /dashboard` |
+| 流水线 | `POST /pipeline/run`、`GET /pipeline/runs/{id}/status` |
+
+部署：修改扩展后重启 gateway（`docker compose -p eai-docker restart gateway`），`cpa_` 表随共享 Base 在启动时自动创建。
