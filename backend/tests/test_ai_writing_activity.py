@@ -64,20 +64,24 @@ class TestStartAiWritingSuccess:
         mock_chapter.purpose = None
         mock_chapter.generation_hint = None
         mock_chapter.word_count_target = 3000
+        mock_chapter.project_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        mock_chapter.status = "pending"
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=mock_chapter)
         mock_db.commit = AsyncMock()
 
         with patch("app.extensions.database.get_db_context") as mock_ctx, patch(
-            "app.extensions.workflow.temporal.activities._generate_content",
+            "app.extensions.workflow.temporal.writing_activities._generate_content",
             new_callable=AsyncMock,
-            return_value=generated_content,
+            return_value=(generated_content, None),
         ):
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await start_ai_writing("node-1", "proj-1", str(chapter_id))
+            result = await start_ai_writing(
+                "node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id)
+            )
 
         assert result["status"] == "ok"
         assert result["chapter_id"] == str(chapter_id)
@@ -99,22 +103,26 @@ class TestStartAiWritingSuccess:
         mock_chapter.generation_hint = None
         mock_chapter.word_count_target = 0
         mock_chapter.content = original_content
+        mock_chapter.project_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        mock_chapter.status = "pending"
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=mock_chapter)
         mock_db.commit = AsyncMock()
 
         with patch("app.extensions.database.get_db_context") as mock_ctx, patch(
-            "app.extensions.workflow.temporal.activities._generate_content",
+            "app.extensions.workflow.temporal.writing_activities._generate_content",
             new_callable=AsyncMock,
-            return_value=None,
+            return_value=(None, "generation_error"),
         ):
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await start_ai_writing("node-1", "proj-1", str(chapter_id))
+            result = await start_ai_writing(
+                "node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id)
+            )
 
-        assert result["content"] == ""
+        assert result["status"] == "error"
         # Original content should remain unchanged
         assert mock_chapter.content == original_content
 
@@ -200,5 +208,36 @@ class TestGenerateContentFallback:
         from app.extensions.workflow.temporal.activities import _generate_content
 
         with patch("deerflow.models.create_chat_model", side_effect=Exception("Model unavailable")):
-            result = await _generate_content("test prompt")
-            assert result is None
+            content, error_code = await _generate_content("test prompt")
+            assert content is None
+            assert error_code == "generation_error"
+
+    @pytest.mark.asyncio
+    async def test_returns_error_on_empty_content(self):
+        """Empty LLM response should return empty_error, not be stored as content."""
+        from app.extensions.workflow.temporal.activities import _generate_content
+        from langchain_core.messages import AIMessage
+
+        mock_model = MagicMock()
+        mock_model.ainvoke = AsyncMock(return_value=AIMessage(content=""))
+
+        with patch("deerflow.models.create_chat_model", return_value=mock_model):
+            content, error_code = await _generate_content("test prompt")
+            assert content is None
+            assert error_code == "empty_error"
+
+    @pytest.mark.asyncio
+    async def test_returns_error_on_refusal(self):
+        """LLM refusal should return refusal_error, not be stored as chapter text."""
+        from app.extensions.workflow.temporal.activities import _generate_content
+        from langchain_core.messages import AIMessage
+
+        mock_model = MagicMock()
+        mock_model.ainvoke = AsyncMock(return_value=AIMessage(
+            content="I cannot generate this content because it requires specific data."
+        ))
+
+        with patch("deerflow.models.create_chat_model", return_value=mock_model):
+            content, error_code = await _generate_content("test prompt")
+            assert content is None
+            assert error_code == "refusal_error"
