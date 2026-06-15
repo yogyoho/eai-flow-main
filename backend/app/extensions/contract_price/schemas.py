@@ -1,8 +1,4 @@
-"""Pydantic request/response models for the management API.
-
-ORM models (``scripts.models``) use PostgreSQL-specific types (UUID/JSONB); these
-Pydantic schemas are the JSON boundary so the frontend never sees raw ORM rows.
-"""
+"""Pydantic request/response models for the contract-price-analysis API."""
 
 from datetime import date, datetime
 from typing import Generic, Optional, TypeVar
@@ -41,6 +37,7 @@ class ItemOut(ORMBase):
     cluster_id: Optional[UUID] = None
     source_contract_no: Optional[str] = None
     is_outlier: bool = False
+    edit_note: Optional[str] = None
     created_at: datetime
 
 
@@ -123,6 +120,12 @@ class ItemMove(BaseModel):
 class PipelineRunRequest(BaseModel):
     mode: str = "table"
     trigger: str = "manual"
+
+
+class PipelineRunResponse(BaseModel):
+    run_id: UUID
+    status: str
+    message: str
 
 
 class Page(BaseModel, Generic[T]):

@@ -40,6 +40,7 @@ from app.extensions.knowledge import kb_router as knowledge_router
 from app.extensions.web_scraper import web_scraper_router
 from app.extensions.law import router as law_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
+from app.extensions.contract_price import router as contract_price_router
 from app.extensions.settings.routers import router as settings_router
 from app.extensions.project import router as project_router
 from app.extensions.approval import router as approval_router
@@ -463,6 +464,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Knowledge Factory API is mounted at /api/kf (router has prefix="/kf")
     app.include_router(knowledge_factory_router)
+
+    # Contract price analysis management API (/api/extensions/contract-price/*)
+    app.include_router(contract_price_router)
 
     # Settings API is mounted at /api/extensions
     app.include_router(settings_router)
