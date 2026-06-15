@@ -21,7 +21,7 @@ from scripts.config import get_config
 from scripts.db import init_schema
 from scripts.excel_generator import generate_excel
 from scripts.parser import parse_chunks
-from scripts.ragflow_client import RagflowClient
+from scripts.ragflow_client import RagflowClient, doc_fingerprint
 from scripts.stats import compute_stats
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ async def _persist(documents: list[dict], groups: list[dict], run_record: dict) 
                 session.add(
                     CpaDocument(
                         ragflow_doc_id=doc["id"],
-                        doc_hash=doc.get("hash", ""),
+                        doc_hash=doc_fingerprint(doc),
                         contract_no=doc.get("name"),
                         parse_mode=run_record.get("scope", {}).get("mode", "table"),
                         parse_status="parsed",
