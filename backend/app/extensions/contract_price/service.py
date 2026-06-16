@@ -7,6 +7,7 @@ this extension reads back. The run is recorded in ``cpa_run_history``.
 """
 
 import asyncio
+import sys
 import logging
 import os
 import shlex
@@ -37,7 +38,7 @@ async def run_pipeline_subprocess(
     handler). Captures stdout/stderr to detect completion vs failure.
     """
     cmd = [
-        "python",
+        sys.executable,  # same interpreter (venv) as the gateway process
         "-m",
         "scripts.cli",
         "--mode",
