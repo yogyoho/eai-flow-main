@@ -21,6 +21,7 @@ class ParsedItem:
     quantity: Optional[float] = None
     unit: Optional[str] = None
     unit_price: Optional[float] = None
+    source_doc_id: Optional[str] = None  # RAGFlow doc id; set by the pipeline per-doc
 
 
 def parse_price(text: str) -> Optional[float]:

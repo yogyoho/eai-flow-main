@@ -43,26 +43,53 @@ async def _load_cached_hashes() -> dict[str, str]:
 
 
 async def _persist(documents: list[dict], groups: list[dict], run_record: dict) -> None:
-    """Persist documents, items, clusters + run history to cpa_ tables. Best-effort."""
+    """Persist documents, items, clusters + run history to cpa_ tables. Best-effort.
+
+    Items are linked to their source ``cpa_documents`` row via the RAGFlow doc id
+    (threaded through parsing+clustering as ``source_doc_id``), satisfying the
+    ``cpa_items.document_id`` FK. Documents are upserted by the unique
+    ``ragflow_doc_id``; on re-parse, the doc's stale items are deleted first so
+    runs are idempotent per-document.
+    """
     try:
-        import uuid
         from datetime import datetime, timezone
+
+        from sqlalchemy import delete, select
 
         from scripts.db import async_session
         from scripts.models import CpaCluster, CpaDocument, CpaItem, CpaRunHistory
 
         async with async_session() as session:
+            # 1. Upsert documents, build {ragflow_doc_id: cpa_document.id}; clear
+            #    stale items for any doc being re-parsed.
+            doc_id_map: dict[str, object] = {}
+            now = datetime.now(timezone.utc)
             for doc in documents:
-                session.add(
-                    CpaDocument(
+                existing = (
+                    await session.execute(
+                        select(CpaDocument).where(CpaDocument.ragflow_doc_id == doc["id"])
+                    )
+                ).scalar_one_or_none()
+                if existing is None:
+                    existing = CpaDocument(
                         ragflow_doc_id=doc["id"],
                         doc_hash=doc_fingerprint(doc),
                         contract_no=doc.get("name"),
                         parse_mode=run_record.get("scope", {}).get("mode", "table"),
                         parse_status="parsed",
-                        parsed_at=datetime.now(timezone.utc),
+                        parsed_at=now,
                     )
-                )
+                    session.add(existing)
+                    await session.flush()
+                else:
+                    existing.doc_hash = doc_fingerprint(doc)
+                    existing.contract_no = doc.get("name")
+                    existing.parse_status = "parsed"
+                    existing.parsed_at = now
+                    await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
+                doc_id_map[doc["id"]] = existing.id
+
+            # 2. Clusters + items, each item FK-linked to its real document.
             for group in groups:
                 cluster = CpaCluster(
                     category=group["category"],
@@ -74,9 +101,14 @@ async def _persist(documents: list[dict], groups: list[dict], run_record: dict) 
                 session.add(cluster)
                 await session.flush()
                 for it in group["items"]:
+                    doc_pk = doc_id_map.get(it.get("source_doc_id"))
+                    if doc_pk is None:
+                        # Item has no resolvable source doc; skip rather than
+                        # violate the NOT NULL / FK constraint.
+                        continue
                     session.add(
                         CpaItem(
-                            document_id=uuid.uuid4(),  # loose link; real doc mapping set by Plan 2 API
+                            document_id=doc_pk,
                             goods_name=it["goods_name"],
                             unit_price=it.get("unit_price"),
                             is_outlier=bool(it.get("is_outlier")),
@@ -125,7 +157,7 @@ async def run_pipeline(
         cached = await _load_cached_hashes()
         changed_docs = client.filter_changed(all_docs, cached)
 
-        all_items: list[tuple[str, dict, Optional[float], dict]] = []
+        all_items: list[tuple[str, dict, Optional[float], Optional[str], dict]] = []
         for doc in changed_docs:
             try:
                 chunks = await client.get_document_chunks(doc["id"])
@@ -133,14 +165,17 @@ async def run_pipeline(
                 parsed = parse_chunks(texts, mode=mode)
                 docs_processed += 1
                 for p in parsed:
+                    # Tag each item with its RAGFlow source doc id so _persist can
+                    # satisfy the cpa_items.document_id FK.
+                    p.source_doc_id = doc["id"]
                     all_items.append(
-                        (p.goods_name, p.tech_params, p.unit_price, {"spec_model": p.spec_model})
+                        (p.goods_name, p.tech_params, p.unit_price, p.source_doc_id, {"spec_model": p.spec_model})
                     )
                     items_extracted += 1
             except Exception as exc:
                 logger.warning("Failed to parse doc %s: %s", doc.get("id"), exc)
 
-        samples = [(name, params) for name, params, _, _ in all_items]
+        samples = [(name, params) for name, params, _, _, _ in all_items]
         result = cluster_items(samples)
 
         groups = _build_groups(result, all_items)
@@ -189,7 +224,7 @@ def _build_groups(result, all_items) -> list[dict[str, Any]]:
         threshold = stats.get("outlier_threshold")
         items = []
         for i in idxs:
-            name, params, price, extra = all_items[i]
+            name, params, price, source_doc_id, extra = all_items[i]
             is_outlier = threshold is not None and (price or 0) > threshold
             items.append({
                 "goods_name": name,
@@ -197,6 +232,7 @@ def _build_groups(result, all_items) -> list[dict[str, Any]]:
                 "tech_params": params,
                 "unit_price": price,
                 "is_outlier": is_outlier,
+                "source_doc_id": source_doc_id,
             })
         groups.append({
             "name": result.representatives[label],
