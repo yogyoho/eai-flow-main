@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertTriangle, Boxes, FileText, ListChecks, Play, RefreshCw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import { StatCard } from "@/extensions/contract-price/components/StatCard";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { StatCard } from "@/extensions/contract-price/components/StatCard";
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/extensions/contract-price/components/ui/table";
 import { useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
 
 function formatDate(s: string | null): string {
@@ -97,7 +98,7 @@ export function DashboardView() {
 
       {runPipeline.isError ? (
         <p className="text-sm text-destructive">
-          流水线启动失败：{(runPipeline.error as Error).message}
+          流水线启动失败：{(runPipeline.error).message}
         </p>
       ) : null}
       {runPipeline.isSuccess ? (
@@ -158,7 +159,7 @@ export function DashboardView() {
 function StatCardLazy(props: {
   label: string;
   value: number;
-  icon: import("lucide-react").LucideIcon;
+  icon: LucideIcon;
   hint?: string;
   tone?: "default" | "warning" | "success" | "destructive";
   isLoading: boolean;

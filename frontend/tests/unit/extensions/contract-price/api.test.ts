@@ -1,13 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+import { authFetch } from "@/extensions/api/client";
 import { contractPriceApi, qs } from "@/extensions/contract-price/api";
 
 // Mock authFetch so tests assert URL + method without hitting the network.
+// vi.mock is hoisted by vitest, so it applies before the import above runs.
 vi.mock("@/extensions/api/client", () => ({
   authFetch: vi.fn(),
 }));
 
-import { authFetch } from "@/extensions/api/client";
+function lastCall(): [string, RequestInit] {
+  const calls = vi.mocked(authFetch).mock.calls;
+  return calls[calls.length - 1] as unknown as [string, RequestInit];
+}
 
 describe("qs", () => {
   it("skips empty/null/undefined values", () => {
@@ -16,6 +21,7 @@ describe("qs", () => {
 
   it("returns empty string for all-empty input", () => {
     expect(qs({ a: undefined, b: "" })).toBe("");
+    expect(qs()).toBe("");
   });
 
   it("stringifies numbers and booleans", () => {
@@ -29,7 +35,7 @@ describe("contractPriceApi", () => {
   it("listDocuments builds the documents URL with params", async () => {
     vi.mocked(authFetch).mockResolvedValue({ items: [], total: 0, skip: 0, limit: 20 });
     await contractPriceApi.listDocuments({ keyword: "柜", skip: 0, limit: 20 });
-    const [url] = vi.mocked(authFetch).mock.calls[0];
+    const [url] = lastCall();
     expect(url).toContain("/contract-price/documents");
     expect(url).toContain("keyword=%E6%9F%9C");
     expect(url).toContain("limit=20");
@@ -38,7 +44,7 @@ describe("contractPriceApi", () => {
   it("confirmCluster POSTs with the cluster id", async () => {
     vi.mocked(authFetch).mockResolvedValue({ status: "confirmed", version: 2 });
     await contractPriceApi.confirmCluster("c1", { expected_version: 1 });
-    const [url, opts] = vi.mocked(authFetch).mock.calls[0] as [string, RequestInit];
+    const [url, opts] = lastCall();
     expect(url).toBe("/contract-price/clusters/c1/confirm");
     expect(opts.method).toBe("POST");
   });
@@ -46,7 +52,7 @@ describe("contractPriceApi", () => {
   it("runPipeline POSTs mode+trigger", async () => {
     vi.mocked(authFetch).mockResolvedValue({ run_id: "r1", status: "running", message: "ok" });
     await contractPriceApi.runPipeline("table", "manual");
-    const [url, opts] = vi.mocked(authFetch).mock.calls[0] as [string, RequestInit];
+    const [url, opts] = lastCall();
     expect(url).toBe("/contract-price/pipeline/run");
     expect(opts.method).toBe("POST");
     expect(opts.body).toEqual(JSON.stringify({ mode: "table", trigger: "manual" }));
@@ -55,7 +61,7 @@ describe("contractPriceApi", () => {
   it("deleteDocument uses DELETE method", async () => {
     vi.mocked(authFetch).mockResolvedValue(undefined);
     await contractPriceApi.deleteDocument("d1");
-    const [url, opts] = vi.mocked(authFetch).mock.calls[0] as [string, RequestInit];
+    const [url, opts] = lastCall();
     expect(url).toBe("/contract-price/documents/d1");
     expect(opts.method).toBe("DELETE");
   });

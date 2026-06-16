@@ -13,6 +13,7 @@ import {
   FileOutput,
   LayoutDashboard,
   LayoutGrid,
+  PackageSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -52,6 +53,7 @@ const allNavItems: NavItem[] = [
   { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "docmgr" },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "knowledge" },
   { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "knowledge" },
+  { href: "/contract-price", label: "合同价格", icon: PackageSearch },
   { href: "/output", label: "报告输出", icon: FileOutput, licenseModule: "report" },
   { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true },
 ];

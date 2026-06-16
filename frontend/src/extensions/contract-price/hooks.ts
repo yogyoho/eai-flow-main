@@ -39,7 +39,7 @@ export function useClusters(params: Record<string, unknown> = {}) {
 export function useCluster(id: string | null) {
   return useQuery({
     queryKey: KEYS.cluster(id ?? ""),
-    queryFn: () => contractPriceApi.getCluster(id as string),
+    queryFn: () => contractPriceApi.getCluster(id!),
     enabled: !!id,
   });
 }

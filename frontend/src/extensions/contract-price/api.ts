@@ -24,9 +24,11 @@ import type {
 const API_BASE = "/contract-price";
 
 /** Build a query string, skipping empty/null/undefined values. */
-export function qs(params: Record<string, string | number | boolean | undefined>): string {
+export function qs(
+  params?: Record<string, string | number | boolean | null | undefined>
+): string {
   const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
+  for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
   }
   const s = sp.toString();
