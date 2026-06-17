@@ -302,6 +302,23 @@ async def start_run(
                 detail=f"Model {model_name!r} is not in the configured model allowlist",
             )
 
+    # Stateless run endpoints (POST /api/runs/stream, /api/runs/wait) carry
+    # thread_id in the request *body*, so @require_permission(owner_check=True)
+    # -- which resolves ownership from the path param -- cannot protect them.
+    # Enforce thread ownership here before any run is created: one user cannot
+    # start runs on (or read /wait checkpoint state from) another user's thread.
+    # Missing rows (auto-created temp threads) and NULL-owner rows (shared /
+    # pre-auth data) stay accessible via check_access; only a thread already
+    # owned by another user is rejected with 404. Internal channel runs (IM
+    # bots) authenticate via the internal-auth token whose synthetic user
+    # carries system_role="internal" (see internal_auth.get_internal_user), so
+    # they are exempt -- they act on behalf of platform users they do not own.
+    # (Upstream ba9cc5e9 / #3473, adapted to dev's internal-auth model.)
+    user = getattr(request.state, "user", None)
+    if user is not None and getattr(user, "system_role", None) != "internal":
+        if not await run_ctx.thread_store.check_access(thread_id, str(user.id)):
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+
     try:
         record = await run_mgr.create_or_reject(
             thread_id,
