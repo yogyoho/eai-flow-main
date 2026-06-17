@@ -24,6 +24,7 @@ from app.channels.message_bus import (
     ResolvedAttachment,
 )
 from app.channels.store import ChannelStore
+from app.gateway.internal_auth import create_internal_auth_headers
 
 logger = logging.getLogger(__name__)
 
@@ -609,6 +610,8 @@ class ChannelManager:
         assistant_id: str = DEFAULT_ASSISTANT_ID,
         default_session: dict[str, Any] | None = None,
         channel_sessions: dict[str, Any] | None = None,
+        connection_repo: Any | None = None,
+        require_bound_identity: bool = False,
     ) -> None:
         self.bus = bus
         self.store = store
@@ -618,6 +621,12 @@ class ChannelManager:
         self._assistant_id = assistant_id
         self._default_session = _as_dict(default_session)
         self._channel_sessions = dict(channel_sessions or {})
+        # Persisted user-owned connection bindings. Stored here so inbound
+        # dispatch can resolve a binding to its owner; the dispatch-side wiring
+        # (attach_connection_identity + require_bound_identity enforcement) is
+        # added alongside the live-bot integration. Harmless when None.
+        self._connection_repo = connection_repo
+        self._require_bound_identity = require_bound_identity
         self._client = None  # lazy init — langgraph_sdk async client
         self._semaphore: asyncio.Semaphore | None = None
         self._running = False

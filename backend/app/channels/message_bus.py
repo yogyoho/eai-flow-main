@@ -47,6 +47,12 @@ class InboundMessage:
         files: Optional list of file attachments (platform-specific dicts).
         metadata: Arbitrary extra data from the channel.
         created_at: Unix timestamp when the message was created.
+        connection_id: Persisted channel-connection id when this inbound message
+            originated from a user-owned binding (attached by
+            ``connection_identity.attach_connection_identity``). ``None`` for
+            system-bot traffic or unbound users.
+        owner_user_id: The DeerFlow user that owns the binding, once resolved.
+        workspace_id: The external workspace/team the binding belongs to, if any.
     """
 
     channel_name: str
@@ -59,6 +65,9 @@ class InboundMessage:
     files: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
+    connection_id: str | None = None
+    owner_user_id: str | None = None
+    workspace_id: str | None = None
 
 
 @dataclass
