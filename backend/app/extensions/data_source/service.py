@@ -10,6 +10,15 @@ from __future__ import annotations
 import re
 
 
+# Write verbs blocked ANYWHERE in the query. Closes the PostgreSQL
+# data-modifying-CTE bypass (WITH d AS (DELETE ...) SELECT ...). Whole-word
+# matching (\b) avoids false positives on identifiers like update_time /
+# deleted_logs (underscore is a word char, so \bUPDATE\b won't match).
+_WRITE_VERBS = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|CALL)\b"
+)
+
+
 def assert_readonly_select(sql: str) -> str:
     """Validate that ``sql`` is a single read-only SELECT/WITH query.
 
@@ -27,6 +36,8 @@ def assert_readonly_select(sql: str) -> str:
     upper = s.upper()
     if not (upper.startswith("SELECT") or upper.startswith("WITH")):
         raise ValueError("仅允许 SELECT / WITH 查询")
+    if _WRITE_VERBS.search(upper):
+        raise ValueError("禁止写操作关键字")
     # SELECT ... INTO creates a table in Postgres — block it.
     if re.search(r"\bINTO\b", upper):
         raise ValueError("禁止 SELECT INTO 写操作")

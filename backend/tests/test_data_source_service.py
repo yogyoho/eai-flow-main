@@ -102,3 +102,26 @@ class TestAssertReadonlySelect:
         out = assert_readonly_select("SELECT 1;")
         assert ";" not in out
         assert "LIMIT 200" in out
+
+    def test_cte_with_delete_rejected(self):
+        # PostgreSQL data-modifying CTE — must be blocked (the bypass this guards against)
+        with pytest.raises(ValueError):
+            assert_readonly_select("WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d")
+
+    def test_cte_with_insert_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("WITH i AS (INSERT INTO t VALUES (1) RETURNING *) SELECT * FROM i")
+
+    def test_column_named_update_time_passes(self):
+        # underscore is a word char, so \bUPDATE\b must NOT match "update_time"
+        out = assert_readonly_select("SELECT update_time FROM events")
+        assert "LIMIT 200" in out
+
+    def test_table_named_deleted_logs_passes(self):
+        out = assert_readonly_select("SELECT * FROM deleted_logs")
+        assert "LIMIT 200" in out
+
+    def test_string_literal_with_delete_word_rejected(self):
+        # fail-closed: a write verb inside a string literal is rejected (safe over-blocking)
+        with pytest.raises(ValueError):
+            assert_readonly_select("SELECT * FROM t WHERE note = 'please delete this'")
