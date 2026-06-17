@@ -32,6 +32,7 @@ Date-update format:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
@@ -261,4 +262,12 @@ class DynamicContextMiddleware(AgentMiddleware):
     @override
     async def abefore_agent(self, state, runtime: Runtime) -> dict | None:
         thread_id = runtime.context.get("thread_id") if runtime.context else None
-        return self._inject(state, thread_id=thread_id)
+        # Offload injection (file I/O + tiktoken token counting) off the event
+        # loop so a cold tiktoken BPE download can't block all concurrent
+        # handlers. Bounded to 5s so a failed startup warm-up degrades
+        # gracefully (no memory/date context for this turn) instead of hanging.
+        # (Upstream #3411.)
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(self._inject, state, thread_id=thread_id), timeout=5)
+        except TimeoutError:
+            return None

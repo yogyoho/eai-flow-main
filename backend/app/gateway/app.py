@@ -6,6 +6,27 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.extensions.approval import router as approval_router
+from app.extensions.auth.routers import router as auth_router
+from app.extensions.contract_price import router as contract_price_router
+from app.extensions.dashboard.routers import router as dashboard_router
+from app.extensions.data_source.routers import router as data_source_router
+from app.extensions.dept.routers import router as dept_router
+from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
+from app.extensions.docmgr.collab_routers import router as collab_router
+from app.extensions.docmgr.routers import router as docmgr_router
+from app.extensions.knowledge import kb_router as knowledge_router
+from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
+from app.extensions.law import router as law_router
+from app.extensions.license.routers import router as license_router
+from app.extensions.output.routers import router as output_router
+from app.extensions.project import router as project_router
+from app.extensions.role.routers import router as role_router
+from app.extensions.settings.routers import router as settings_router
+from app.extensions.user.routers import router as user_router
+from app.extensions.web_scraper import web_scraper_router
+from app.extensions.workflow import router as workflow_router
+from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.gateway.auth_middleware import AuthMiddleware
 from app.gateway.config import get_gateway_config
 from app.gateway.csrf_middleware import CSRFMiddleware, get_configured_cors_origins
@@ -27,29 +48,6 @@ from app.gateway.routers import (
     threads,
     uploads,
 )
-from app.extensions.dept.routers import router as dept_router
-from app.extensions.docmgr.routers import router as docmgr_router
-from app.extensions.docmgr.collab_routers import router as collab_router
-from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
-from app.extensions.auth.routers import router as auth_router
-from app.extensions.database import init_db, migrate_db, seed_db
-from app.extensions.user.routers import router as user_router
-from app.extensions.role.routers import router as role_router
-from app.extensions.user_department.routers import router as user_department_router
-from app.extensions.knowledge import kb_router as knowledge_router
-from app.extensions.web_scraper import web_scraper_router
-from app.extensions.law import router as law_router
-from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
-from app.extensions.contract_price import router as contract_price_router
-from app.extensions.settings.routers import router as settings_router
-from app.extensions.project import router as project_router
-from app.extensions.approval import router as approval_router
-from app.extensions.data_source.routers import router as data_source_router
-from app.extensions.workflow import router as workflow_router
-from app.extensions.workflow.timeline.routers import router as timeline_router
-from app.extensions.dashboard.routers import router as dashboard_router
-from app.extensions.license.routers import router as license_router
-from app.extensions.output.routers import router as output_router
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
 
@@ -201,6 +199,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise RuntimeError(error_msg) from e
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
+
+    # Pre-warm tiktoken encoding cache so the first memory-injection request
+    # never blocks on the BPE data download (hits an OpenAI/Azure URL that may
+    # be unreachable in restricted networks — issue #3402). (Upstream #3411.)
+    try:
+        from deerflow.agents.memory.prompt import warm_tiktoken_cache
+
+        warmed = await asyncio.wait_for(asyncio.to_thread(warm_tiktoken_cache), timeout=5)
+        if warmed:
+            logger.info("tiktoken encoding cache warmed successfully")
+        else:
+            logger.warning("tiktoken encoding cache warm-up failed; token counting will use character-based fallback")
+    except TimeoutError:
+        logger.warning("tiktoken encoding cache warm-up timed out; token counting will use character-based fallback")
+    except Exception:
+        logger.warning("tiktoken warm-up skipped", exc_info=True)
 
     # Initialize extensions database eagerly when possible, but clear any failed
     # startup state so request-time lazy init starts from a clean engine/session.
