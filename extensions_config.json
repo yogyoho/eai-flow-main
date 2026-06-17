@@ -66,6 +66,21 @@
       "oauth": null,
       "description": "Project chapter read/write tools for report writing agent"
     },
+    "data_sources": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.data_source.mcp"
+      ],
+      "env": {},
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "External data source query tools (read-only) for report writing agent"
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "stdio",
