@@ -182,7 +182,7 @@ async def _test_api(cfg: dict) -> TestConnectionResult:
     headers = cfg.get("headers") or {}
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, headers=headers)
-    if 200 <= resp.status_code < 400:
+    if 200 <= resp.status_code < 300:
         return TestConnectionResult(
             success=True, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code}
         )

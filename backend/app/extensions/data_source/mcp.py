@@ -51,10 +51,6 @@ async def _run_in_db(func):
         await engine.dispose()
 
 
-# Alias kept for symmetry with query handler (separate engine for probes).
-_run_in_db_probe = _run_in_db
-
-
 TOOLS = [
     Tool(
         name="list_data_sources",
@@ -145,7 +141,7 @@ async def _handle_get_data_source_schema(arguments: dict) -> list[TextContent]:
             return [r[0] for r in res.fetchall()]
 
         try:
-            tables = await _run_in_db_probe(_probe)
+            tables = await _run_in_db(_probe)
             return _ok({"success": True, "name": name, "type": "database", "tables": tables})
         except Exception as e:  # probe failure is non-fatal
             return _ok({"success": True, "name": name, "type": "database", "tables": [], "probe_error": str(e)})
@@ -175,6 +171,12 @@ async def _handle_query_data_source(arguments: dict) -> list[TextContent]:
         async def _q(session):
             from sqlalchemy import text
 
+            # Defense-in-depth: force a read-only transaction. Best-effort —
+            # some drivers/configs reject SET; the keyword guard still applies.
+            try:
+                await session.execute(text("SET TRANSACTION READ ONLY"))
+            except Exception:
+                pass
             res = await session.execute(text(safe_sql))
             return [dict(row) for row in res.mappings().all()]
 
