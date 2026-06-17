@@ -59,6 +59,19 @@ models:
   #       thinking:
   #         type: disabled
 
+  # Example: StepFun (阶跃星辰) reasoning models
+  # OpenAI-compatible API with reasoning models. Use PatchedChatStepFun
+  # instead of plain ChatOpenAI so reasoning_content is preserved across
+  # streaming / tool-call turns (same pattern as patched_deepseek).
+  # Docs: https://platform.stepfun.com/docs/api-reference/chat-completions
+  # - name: step-1-8k
+  #   display_name: StepFun Step-1-8K
+  #   use: deerflow.models.patched_stepfun:PatchedChatStepFun
+  #   model: step-1-8k
+  #   api_key: $STEPFUN_API_KEY
+  #   api_base: https://api.stepfun.com/v1
+  #   supports_thinking: true
+
   # Example: OpenAI model
   # - name: gpt-4
   #   display_name: GPT-4
