@@ -36,6 +36,7 @@ from app.gateway.routers import (
     artifacts,
     assistants_compat,
     auth,
+    channel_connections,
     channels,
     feedback,
     mcp,
@@ -429,6 +430,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
+    app.include_router(channel_connections.router)
 
     # Assistants compatibility API (LangGraph Platform stub)
     app.include_router(assistants_compat.router)
