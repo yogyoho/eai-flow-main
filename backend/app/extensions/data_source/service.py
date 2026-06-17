@@ -12,11 +12,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.extensions.data_source.schemas import TestConnectionResult
+from app.extensions.data_source.schemas import (
+    DataSourceCreate,
+    DataSourceUpdate,
+    TestConnectionResult,
+)
+
+from app.extensions.models import DataSource
 
 
 # Write verbs blocked ANYWHERE in the query. Closes the PostgreSQL
@@ -84,6 +90,72 @@ class DataSourceService:
         if t == "gis":
             return _test_gis(cfg)
         return TestConnectionResult(success=False, message=f"不支持的数据源类型: {t}")
+
+    # ── sync (manual MVP) ──
+
+    @staticmethod
+    async def sync(source) -> dict:
+        """Manual sync: reuse test_connection to probe, update status + timestamp.
+
+        Caller persists last_sync_at/status on the row.
+        """
+        result = await DataSourceService.test_connection(source)
+        return {
+            "status": "connected" if result.success else "error",
+            "last_sync_at": datetime.now(timezone.utc),
+            "metadata": result.metadata or {},
+        }
+
+    # ── CRUD ──
+
+    @staticmethod
+    async def list(db):
+        result = await db.execute(select(DataSource).order_by(DataSource.created_at.desc()))
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_by_id(db, source_id):
+        return await db.get(DataSource, source_id)
+
+    @staticmethod
+    async def get_by_name(db, name: str):
+        result = await db.execute(select(DataSource).where(DataSource.name == name))
+        return result.scalars().first()
+
+    @staticmethod
+    async def create(db, req: DataSourceCreate, user_id=None) -> DataSource:
+        ds = DataSource(
+            name=req.name,
+            type=req.type,
+            connection_config=req.connection_config,
+            auth_type=req.auth_type,
+            sync_mode=req.sync_mode,
+            sync_config=req.sync_config,
+            created_by=user_id,
+        )
+        db.add(ds)
+        await db.flush()
+        return ds
+
+    @staticmethod
+    async def update(db, source_id, req: DataSourceUpdate) -> DataSource | None:
+        ds = await db.get(DataSource, source_id)
+        if ds is None:
+            return None
+        data = req.model_dump(exclude_unset=True)
+        for k, v in data.items():
+            setattr(ds, k, v)
+        await db.flush()
+        return ds
+
+    @staticmethod
+    async def delete(db, source_id) -> bool:
+        ds = await db.get(DataSource, source_id)
+        if ds is None:
+            return False
+        await db.delete(ds)
+        await db.flush()
+        return True
 
 
 async def _test_database(cfg: dict) -> TestConnectionResult:
