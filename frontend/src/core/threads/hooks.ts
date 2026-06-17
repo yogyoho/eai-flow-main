@@ -2,7 +2,9 @@ import type { AIMessage, Message, Run } from "@langchain/langgraph-sdk";
 import type { ThreadsClient } from "@langchain/langgraph-sdk/client";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
+  type InfiniteData,
   type QueryClient,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -405,6 +407,19 @@ export function useThreadStream({
         },
         interrupts: {},
       });
+      upsertThreadInInfiniteCache(queryClient, {
+        thread_id: meta.thread_id,
+        created_at: now,
+        updated_at: now,
+        metadata: context.agent_name ? { agent_name: context.agent_name } : {},
+        status: "busy",
+        values: {
+          title: t.pages.newChat,
+          messages: [],
+          artifacts: [],
+        },
+        interrupts: {},
+      });
       if (context.agent_name && !isMock) {
         void getAPIClient()
           .threads.update(meta.thread_id, {
@@ -529,7 +544,7 @@ export function useThreadStream({
           .map(messageIdentity)
           .filter((id): id is string => Boolean(id)),
       );
-      void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
+      void queryClient.invalidateQueries({ queryKey: ["threads"] });
       if (threadIdRef.current && !isMock) {
         void queryClient.invalidateQueries({
           queryKey: threadTokenUsageQueryKey(threadIdRef.current),
@@ -791,7 +806,7 @@ export function useThreadStream({
             },
           },
         );
-        void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
+        void queryClient.invalidateQueries({ queryKey: ["threads"] });
       } catch (error) {
         setOptimisticMessages([]);
         setIsUploading(false);
@@ -1134,7 +1149,7 @@ export function useDeleteThread() {
       );
     },
     onSettled() {
-      void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
+      void queryClient.invalidateQueries({ queryKey: ["threads"] });
     },
   });
 }
@@ -1176,5 +1191,98 @@ export function useRenameThread() {
         },
       );
     },
+    onSettled() {
+      void queryClient.invalidateQueries({ queryKey: ["threads"] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Infinite-scroll thread list (upstream port, additive).
+// Mirrors useThreads but lazily loads pages on scroll via useInfiniteQuery.
+// dev's existing useThreads (eager while-loop) and useThreadStream bodies are
+// untouched; the ["threads"] invalidations above keep both caches in sync.
+// ---------------------------------------------------------------------------
+
+export const INFINITE_THREADS_PAGE_SIZE = 50;
+
+export const INFINITE_THREADS_QUERY_KEY_PREFIX = [
+  "threads",
+  "searchInfinite",
+] as const;
+
+export function getInfiniteThreadsNextPageParam(
+  lastPage: AgentThread[],
+  allPages: AgentThread[][],
+  pageSize: number = INFINITE_THREADS_PAGE_SIZE,
+): number | undefined {
+  if (lastPage.length < pageSize) {
+    return undefined;
+  }
+  return allPages.reduce((sum, page) => sum + page.length, 0);
+}
+
+export function upsertThreadInInfiniteCache(
+  queryClient: QueryClient,
+  thread: AgentThread,
+) {
+  queryClient.setQueriesData(
+    { queryKey: INFINITE_THREADS_QUERY_KEY_PREFIX, exact: false },
+    (oldData: InfiniteData<AgentThread[]> | undefined) => {
+      if (!oldData) {
+        return oldData;
+      }
+      const merged = oldData.pages.map((page) =>
+        page.map((t) =>
+          t.thread_id === thread.thread_id
+            ? {
+                ...thread,
+                ...t,
+                metadata: { ...(thread.metadata ?? {}), ...(t.metadata ?? {}) },
+                values: { ...thread.values, ...t.values },
+              }
+            : t,
+        ),
+      );
+      const exists = merged.some((page) =>
+        page.some((t) => t.thread_id === thread.thread_id),
+      );
+      if (exists) {
+        return { ...oldData, pages: merged };
+      }
+      const firstPage = merged[0] ?? [];
+      const restPages = merged.slice(1);
+      return { ...oldData, pages: [[thread, ...firstPage], ...restPages] };
+    },
+  );
+}
+
+export function useInfiniteThreads(
+  params: Omit<Parameters<ThreadsClient["search"]>[0], "limit" | "offset"> = {
+    sortBy: "updated_at",
+    sortOrder: "desc",
+    select: ["thread_id", "updated_at", "values", "metadata"],
+  },
+) {
+  const apiClient = getAPIClient();
+  return useInfiniteQuery<
+    AgentThread[],
+    Error,
+    InfiniteData<AgentThread[]>,
+    readonly unknown[],
+    number
+  >({
+    queryKey: [...INFINITE_THREADS_QUERY_KEY_PREFIX, params],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      return (await apiClient.threads.search<AgentThreadState>({
+        ...params,
+        limit: INFINITE_THREADS_PAGE_SIZE,
+        offset: pageParam,
+      })) as AgentThread[];
+    },
+    getNextPageParam: (lastPage, allPages) =>
+      getInfiniteThreadsNextPageParam(lastPage, allPages),
+    refetchOnWindowFocus: false,
   });
 }

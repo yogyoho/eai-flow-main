@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -51,8 +51,8 @@ import {
 } from "@/core/threads/export";
 import {
   useDeleteThread,
+  useInfiniteThreads,
   useRenameThread,
-  useThreads,
 } from "@/core/threads/hooks";
 import type { AgentThread, AgentThreadState } from "@/core/threads/types";
 import { pathOfThread, titleOfThread } from "@/core/threads/utils";
@@ -82,7 +82,29 @@ export function RecentChatList() {
       thread_id: string;
       agent_name?: string;
     }>();
-  const { data: threads = [] } = useThreads();
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteThreads();
+  const threads = infiniteData?.pages.flat() ?? [];
+
+  // Lazy-load more threads when the sentinel scrolls into view.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        void fetchNextPage();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
   const { mutate: deleteThread } = useDeleteThread();
   const { mutate: renameThread } = useRenameThread();
 
@@ -281,6 +303,14 @@ export function RecentChatList() {
                   </SidebarMenuItem>
                 );
               })}
+              {hasNextPage && (
+                <div
+                  ref={sentinelRef}
+                  className="flex justify-center py-2 text-xs text-muted-foreground"
+                >
+                  {isFetchingNextPage ? t.common.loading : ""}
+                </div>
+              )}
             </div>
           </SidebarMenu>
         </SidebarGroupContent>

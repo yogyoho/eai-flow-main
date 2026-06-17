@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,14 +11,35 @@ import {
   WorkspaceHeader,
 } from "@/components/workspace/workspace-container";
 import { useI18n } from "@/core/i18n/hooks";
-import { useThreads } from "@/core/threads/hooks";
+import { useInfiniteThreads } from "@/core/threads/hooks";
 import { pathOfThread, titleOfThread } from "@/core/threads/utils";
 import { formatTimeAgo } from "@/core/utils/datetime";
 
 export default function ChatsPage() {
   const { t } = useI18n();
-  const { data: threads } = useThreads();
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteThreads();
+  const threads = infiniteData?.pages.flat() ?? [];
   const [search, setSearch] = useState("");
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        void fetchNextPage();
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEffect(() => {
     document.title = `${t.pages.chats} - ${t.pages.appName}`;
@@ -61,6 +82,14 @@ export default function ChatsPage() {
                     </div>
                   </Link>
                 ))}
+                {hasNextPage && (
+                  <div
+                    ref={sentinelRef}
+                    className="flex justify-center py-2 text-muted-foreground text-sm"
+                  >
+                    {isFetchingNextPage ? t.common.loading : ""}
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </main>
