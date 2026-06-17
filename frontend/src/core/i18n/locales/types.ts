@@ -190,6 +190,30 @@ export interface Translations {
     searchChats: string;
   };
 
+  // Channels (user-owned IM connections)
+  channels: {
+    title: string;
+    connect: string;
+    modify: string;
+    reconnect: string;
+    disconnect: string;
+    connected: string;
+    notConnected: string;
+    pending: string;
+    revoked: string;
+    disabled: string;
+    unconfigured: string;
+    unavailable: string;
+    unavailableShort: string;
+    setupTitle: (name: string) => string;
+    setupEditTitle: (name: string) => string;
+    setupDescription: string;
+    saveAndConnect: string;
+    saveChanges: string;
+    descriptions: Record<string, string>;
+    connectedAs: (name: string) => string;
+  };
+
   // Page titles (document title)
   pages: {
     appName: string;
@@ -290,8 +314,14 @@ export interface Translations {
       tools: string;
       skills: string;
       notification: string;
+      channels: string;
       about: string;
       basic: string;
+    };
+    channels: {
+      title: string;
+      description: string;
+      disabled: string;
     };
     memory: {
       title: string;

@@ -259,6 +259,39 @@ export const enUS: Translations = {
     searchChats: "Search chats",
   },
 
+  // Channels (user-owned IM connections)
+  channels: {
+    title: "Channels",
+    connect: "Connect",
+    modify: "Modify",
+    reconnect: "Reconnect",
+    disconnect: "Disconnect",
+    connected: "Connected",
+    notConnected: "Not connected",
+    pending: "Pending",
+    revoked: "Disconnected",
+    disabled: "Disabled",
+    unconfigured: "Not configured",
+    unavailable: "Channel connections are unavailable right now.",
+    unavailableShort: "Unavailable",
+    setupTitle: (name: string) => `Connect ${name}`,
+    setupEditTitle: (name: string) => `Modify ${name}`,
+    setupDescription:
+      "Enter the values needed by this server process. They are not written to config.yaml.",
+    saveAndConnect: "Save and connect",
+    saveChanges: "Save changes",
+    descriptions: {
+      telegram: "Telegram direct messages through your DeerFlow bot.",
+      slack: "Slack workspace messages and mentions.",
+      discord: "Discord server messages through your DeerFlow bot.",
+      feishu: "Feishu and Lark messages through your DeerFlow app.",
+      dingtalk: "DingTalk Stream Push messages through your DeerFlow bot.",
+      wechat: "WeChat iLink messages through your DeerFlow bot.",
+      wecom: "WeCom messages through your DeerFlow AI bot.",
+    },
+    connectedAs: (name: string) => `Connected as ${name}.`,
+  },
+
   // Page titles (document title)
   pages: {
     appName: "DeerFlow",
@@ -363,8 +396,16 @@ export const enUS: Translations = {
       tools: "Tools",
       skills: "Skills",
       notification: "Notification",
+      channels: "Channels",
       basic: "Basic",
       about: "About",
+    },
+    channels: {
+      title: "Channels",
+      description:
+        "Connect IM accounts that can send messages to DeerFlow from outside the browser.",
+      disabled:
+        "Channel connections are not enabled on this server. Ask an administrator to enable channel_connections.",
     },
     memory: {
       title: "Memory",
