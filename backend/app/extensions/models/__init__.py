@@ -803,3 +803,49 @@ User.notification_preferences: Mapped["NotificationPreference | None"] = relatio
     uselist=False,
     cascade="all, delete-orphan",
 )
+
+
+class DataSource(Base):
+    """External data source connection (database / api / file / gis).
+
+    connection_config is stored as plaintext JSONB (encryption is a P1 follow-up).
+    Fields align 1:1 with frontend src/extensions/data-source/types.ts.
+    """
+
+    __tablename__ = "data_sources"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # database|api|file|gis
+    connection_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    auth_type: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
+    sync_mode: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    sync_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), default="disconnected", nullable=False
+    )  # connected|error|disconnected|testing
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    def __init__(self, **kwargs):
+        # Apply Python-side defaults at construction so non-persisted instances
+        # expose the documented default values (column-level default= only fires
+        # at INSERT/flush time in this Base). Explicit kwargs always win.
+        kwargs.setdefault("auth_type", "none")
+        kwargs.setdefault("sync_mode", "manual")
+        kwargs.setdefault("status", "disconnected")
+        kwargs.setdefault("connection_config", {})
+        super().__init__(**kwargs)
+
+    def __repr__(self) -> str:
+        return f"<DataSource(id={self.id}, name={self.name}, type={self.type})>"
