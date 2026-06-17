@@ -258,3 +258,68 @@ class TestTestConnection:
     def test_unknown_type_fails_closed(self):
         result = DataSourceService.test_connection_sync(_src("weird", {}))
         assert result.success is False
+
+
+class TestSync:
+    @pytest.mark.asyncio
+    async def test_sync_connected_when_test_ok(self):
+        src = _src("api", {"url": "https://x"})
+        with patch.object(
+            DataSourceService, "test_connection",
+            AsyncMock(return_value=TestConnectionResult(success=True, message="ok", metadata={"k": 1})),
+        ):
+            out = await DataSourceService.sync(src)
+        assert out["status"] == "connected"
+        assert out["last_sync_at"] is not None
+        assert out["metadata"] == {"k": 1}
+
+    @pytest.mark.asyncio
+    async def test_sync_error_when_test_fails(self):
+        src = _src("api", {"url": "https://x"})
+        with patch.object(
+            DataSourceService, "test_connection",
+            AsyncMock(return_value=TestConnectionResult(success=False, message="boom")),
+        ):
+            out = await DataSourceService.sync(src)
+        assert out["status"] == "error"
+
+
+class TestCRUD:
+    @pytest.mark.asyncio
+    async def test_create_persists_and_returns(self):
+        db = AsyncMock()
+        added = []
+
+        def _add(obj):
+            added.append(obj)
+
+        async def _flush():
+            for o in added:
+                o.id = "new-id"
+
+        db.add = MagicMock(side_effect=_add)
+        db.flush = AsyncMock(side_effect=_flush)
+        db.commit = AsyncMock()
+
+        req = DataSourceCreate(name="n", type="api", connection_config={"url": "u"})
+        out = await DataSourceService.create(db, req, user_id=None)
+        assert added, "row should be added to session"
+        assert out.name == "n"
+
+    @pytest.mark.asyncio
+    async def test_list_returns_scalars(self):
+        db = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = ["a", "b"]
+        db.execute = AsyncMock(return_value=result_mock)
+        items = await DataSourceService.list(db)
+        assert items == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_get_by_name(self):
+        db = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.first.return_value = "FOUND"
+        db.execute = AsyncMock(return_value=result_mock)
+        out = await DataSourceService.get_by_name(db, "prod")
+        assert out == "FOUND"
