@@ -345,3 +345,213 @@ def generate_docx(
     # Save
     doc.save(str(output_path))
     return str(output_path)
+
+
+# ---------------------------------------------------------------------------
+# Simple DOCX generation (no template) — used by document export
+# ---------------------------------------------------------------------------
+
+DEFAULT_BODY_FONT = "SimSun"
+DEFAULT_BODY_SIZE = 12
+HEADING_SIZES = {1: 22, 2: 16, 3: 14, 4: 12}
+
+
+def _set_run_font(run, font_name: str) -> None:
+    """Set both ASCII and eastAsia font on a run.
+
+    python-docx's ``run.font.name`` only sets ``w:ascii`` / ``w:hAnsi``.
+    Chinese text in Word uses ``w:eastAsia`` instead, so we must set both
+    to guarantee correct font rendering on the user's machine.
+    """
+    from docx.oxml.ns import qn
+
+    run.font.name = font_name
+    rPr = run._element.find(qn("w:rPr"))
+    if rPr is not None:
+        rFonts = rPr.find(qn("w:rFonts"))
+        if rFonts is not None:
+            rFonts.set(qn("w:eastAsia"), font_name)
+
+
+def generate_docx_simple(
+    markdown_content: str,
+    buf,
+    template_data: dict | None = None,
+    watermark: str | None = None,
+) -> None:
+    """Generate a DOCX from markdown into a writable buffer.
+
+    Args:
+        markdown_content: Source markdown text.
+        buf: Writable buffer (BytesIO) for the output.
+        template_data: Optional layout template dict with keys like
+            page_settings, body_styles, heading_styles, table_styles,
+            header_footer. When None, sensible defaults are used.
+        watermark: Optional watermark type — "draft", "review", or "final".
+    """
+    td = template_data or {}
+    blocks = parse_markdown(markdown_content)
+    doc = Document()
+
+    # --- Page setup ---
+    ps = td.get("page_settings", {})
+    section = doc.sections[0]
+    section.page_width = Cm(21.0) if ps.get("paperSize", "A4") == "A4" else Cm(29.7)
+    section.page_height = Cm(29.7) if ps.get("paperSize", "A4") == "A4" else Cm(42.0)
+    if ps.get("orientation") == "landscape":
+        section.page_width, section.page_height = section.page_height, section.page_width
+    section.top_margin = Cm(ps.get("marginTop", 2.54))
+    section.bottom_margin = Cm(ps.get("marginBottom", 2.54))
+    section.left_margin = Cm(ps.get("marginLeft", 3.17))
+    section.right_margin = Cm(ps.get("marginRight", 3.17))
+
+    # --- Body style ---
+    bs = td.get("body_styles", {})
+    body_font = _resolve_font(bs.get("fontFamily", DEFAULT_BODY_FONT))
+    body_size = Pt(bs.get("fontSize", DEFAULT_BODY_SIZE))
+    body_line_spacing = bs.get("lineHeight", 1.5)
+    body_paragraph_spacing = bs.get("paragraphSpacing", 6)
+    body_first_indent = bs.get("firstLineIndent", 2)
+
+    # --- Heading styles ---
+    hs_map: dict[int, dict] = {}
+    for hs in td.get("heading_styles", []):
+        hs_map[hs.get("level", 0)] = hs
+
+    ol_counters: dict[int, int] = {}
+
+    for block in blocks:
+        if block.kind == "heading":
+            level = min(block.level, 4)
+            hs = hs_map.get(level, {})
+            heading = doc.add_heading(level=level)
+            _add_inline_text(heading, block.text)
+            for run in heading.runs:
+                _set_run_font(run, _resolve_font(hs.get("fontFamily", body_font)))
+                run.font.size = Pt(hs.get("fontSize", HEADING_SIZES.get(level, 12)))
+                if hs.get("fontWeight", 700) >= 700:
+                    run.bold = True
+                c = hs.get("color")
+                if c:
+                    run.font.color.rgb = RGBColor.from_string(str(c).replace("#", ""))
+
+        elif block.kind == "paragraph":
+            para = doc.add_paragraph()
+            pf = para.paragraph_format
+            pf.line_spacing = body_line_spacing
+            pf.space_after = Pt(body_paragraph_spacing)
+            if body_first_indent:
+                pf.first_line_indent = Cm(body_first_indent * body_size.pt / 28.35 * 0.5)
+            _add_inline_text(para, block.text)
+            for run in para.runs:
+                _set_run_font(run, body_font)
+                run.font.size = body_size
+
+        elif block.kind == "ul_item":
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Cm(block.level * 0.6)
+            para.paragraph_format.first_line_indent = Cm(-0.3)
+            _set_run_font(para.add_run("• "), body_font)
+            _add_inline_text(para, block.text)
+            for run in para.runs:
+                _set_run_font(run, body_font)
+                run.font.size = body_size
+
+        elif block.kind == "ol_item":
+            indent_level = block.level
+            ol_counters[indent_level] = ol_counters.get(indent_level, 0) + 1
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Cm(indent_level * 0.6)
+            _set_run_font(para.add_run(f"{ol_counters[indent_level]}. "), body_font)
+            _add_inline_text(para, block.text)
+            for run in para.runs:
+                _set_run_font(run, body_font)
+                run.font.size = body_size
+
+        elif block.kind == "hr":
+            # Skip horizontal rules — not needed in Word export
+            pass
+
+        elif block.kind == "code_block":
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Cm(1)
+            run = para.add_run(block.text)
+            run.font.name = "Consolas"
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+
+        elif block.kind == "table":
+            if block.rows:
+                tstyles = td.get("table_styles")
+                ncols = max(len(r) for r in block.rows)
+                table = doc.add_table(rows=len(block.rows), cols=ncols)
+                table.style = "Table Grid"
+                for ri, row in enumerate(block.rows):
+                    for ci, cell_text in enumerate(row):
+                        if ci < ncols:
+                            cell = table.rows[ri].cells[ci]
+                            cell.text = ""
+                            para = cell.paragraphs[0]
+                            _add_inline_text(para, cell_text.strip())
+                            for run in para.runs:
+                                _set_run_font(run, body_font)
+                                run.font.size = Pt(body_size.pt - 1)
+                                if ri == 0 and tstyles:
+                                    run.bold = True
+                                    c = tstyles.get("headerColor", "#FFFFFF")
+                                    run.font.color.rgb = RGBColor.from_string(str(c).replace("#", ""))
+
+                # Header row shading
+                if tstyles and block.rows:
+                    from docx.oxml.ns import qn
+
+                    bg = str(tstyles.get("headerBg", "#2B579A")).replace("#", "")
+                    for ci in range(ncols):
+                        cell = table.rows[0].cells[ci]
+                        shading = cell._element.get_or_add_tcPr()
+                        shading_elem = shading.makeelement(qn("w:shd"), {
+                            qn("w:fill"): bg,
+                            qn("w:val"): "clear",
+                        })
+                        shading.append(shading_elem)
+
+    # --- Header / Footer ---
+    hf = td.get("header_footer")
+    if hf:
+        if hf.get("headerText"):
+            section.header.paragraphs[0].text = hf["headerText"]
+            for run in section.header.paragraphs[0].runs:
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        if hf.get("footerText") or hf.get("showPageNumber"):
+            footer_para = section.footer.paragraphs[0]
+            if hf.get("footerText"):
+                footer_para.text = hf["footerText"]
+            if hf.get("showPageNumber"):
+                from docx.oxml.ns import qn
+
+                run = footer_para.add_run()
+                fld_char_begin = run._element.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "begin"})
+                run._element.append(fld_char_begin)
+                run2 = footer_para.add_run()
+                instr = run2._element.makeelement(qn("w:instrText"), {})
+                instr.text = " PAGE "
+                run2._element.append(instr)
+                run3 = footer_para.add_run()
+                fld_char_end = run3._element.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "end"})
+                run3._element.append(fld_char_end)
+            for run in footer_para.runs:
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    # --- Watermark ---
+    if watermark:
+        labels = {"draft": "初稿", "review": "送审稿", "final": "正式稿"}
+        label = labels.get(watermark, watermark)
+        existing = section.header.paragraphs[0].text if section.header.paragraphs else ""
+        section.header.paragraphs[0].text = f"【{label}】{chr(10)}{existing}".strip()
+        for run in section.header.paragraphs[0].runs:
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    doc.save(buf)

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 from uuid import UUID
 
@@ -217,6 +218,108 @@ async def preview_document(
         return {"content": doc.content, "doc_type": doc.doc_type}
     content = await AIDocumentService.read_file_content(doc)
     return {"content": content, "doc_type": doc.doc_type, "file_mime": doc.file_mime, "file_size": doc.file_size}
+
+
+@router.get("/documents/{doc_id}/export")
+async def export_document(
+    doc_id: UUID,
+    format: str = Query("md", description="Export format: md or docx"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Export a document as Markdown (.md) or Word (.docx) file."""
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Resolve content: for file_ref docs, read from disk
+    content = doc.content
+    if doc.doc_type == "file_ref":
+        content = await AIDocumentService.read_file_content(doc)
+    if not content:
+        content = ""
+
+    # Sanitize title for filename — use URL encoding for CJK characters in Content-Disposition
+    safe_title = re.sub(r'[\\/:*?"<>|]', "_", doc.title or "document")
+    ext = "docx" if format == "docx" else "md"
+    encoded_filename = quote(f"{safe_title}.{ext}")
+
+    if format == "docx":
+        from io import BytesIO
+
+        from app.extensions.output.generator import generate_docx_simple
+
+        buf = BytesIO()
+        generate_docx_simple(content, buf)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+        )
+
+    # Default: markdown
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )
+
+
+class ExportRequest(BaseModel):
+    format: str = "docx"
+    layout_template: dict | None = None
+    watermark: str | None = None
+
+
+@router.post("/documents/{doc_id}/export")
+async def export_document_with_layout(
+    doc_id: UUID,
+    request: ExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Export a document as Word (.docx) with layout template and watermark."""
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    content = doc.content
+    if doc.doc_type == "file_ref":
+        content = await AIDocumentService.read_file_content(doc)
+    if not content:
+        content = ""
+
+    safe_title = re.sub(r'[\\/:*?"<>|]', "_", doc.title or "document")
+    ext = "docx" if request.format == "docx" else "md"
+    encoded_filename = quote(f"{safe_title}.{ext}")
+
+    if request.format == "md":
+        return Response(
+            content=content.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+        )
+
+    # DOCX with optional layout template and watermark
+    from io import BytesIO
+
+    from app.extensions.output.generator import generate_docx_simple
+
+    buf = BytesIO()
+    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )
 
 
 @router.get("/folders", response_model=FolderListResponse)
