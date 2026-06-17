@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
+
 import { fetch as fetchWithAuth } from "@/core/api/fetcher";
 
 const API_BASE =

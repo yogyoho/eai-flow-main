@@ -5,8 +5,8 @@ vi.mock("@/extensions/api/client", () => ({
   authFetch: vi.fn(),
 }));
 
-import { projectApi } from "@/extensions/project/api";
 import { authFetch } from "@/extensions/api/client";
+import { projectApi } from "@/extensions/project/api";
 
 const mockFetch = vi.mocked(authFetch);
 
@@ -34,7 +34,7 @@ describe("projectApi.list", () => {
 
     await projectApi.list({ status: "active", reportType: "environmental_impact", search: "test", skip: 5, limit: 10 });
 
-    const url = mockFetch.mock.calls[0]![0] as string;
+    const url = mockFetch.mock.calls[0]![0];
     expect(url).toContain("status=active");
     expect(url).toContain("report_type=environmental_impact");
     expect(url).toContain("search=test");

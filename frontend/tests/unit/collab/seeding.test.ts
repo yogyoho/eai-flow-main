@@ -24,7 +24,7 @@ function hasRealContent(document: Array<Record<string, unknown>>): boolean {
     if (Array.isArray(content)) {
       return content.some(
         (c: Record<string, unknown>) =>
-          typeof c.text === "string" && (c.text as string).trim().length > 0,
+          typeof c.text === "string" && (c.text).trim().length > 0,
       );
     }
     return false;

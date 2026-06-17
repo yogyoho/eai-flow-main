@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import { KanbanCard } from "./KanbanCard";
 import type { KanbanCardData } from "./types";
 

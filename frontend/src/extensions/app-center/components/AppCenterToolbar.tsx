@@ -5,10 +5,11 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import { CategoryTabs } from "./CategoryTabs";
-import { SortControl } from "./SortControl";
 import type { CategoryFilterOption } from "../hooks/useApps";
 import type { CategoryFilter, SortMode } from "../types";
+
+import { CategoryTabs } from "./CategoryTabs";
+import { SortControl } from "./SortControl";
 
 interface AppCenterToolbarProps {
   searchQuery: string;

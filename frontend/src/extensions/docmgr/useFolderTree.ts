@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+
 import { folderApi, type FolderNode } from "@/extensions/api"
 
 export function useFolderTree(projectScope?: string) {

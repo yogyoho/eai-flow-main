@@ -1,7 +1,7 @@
 "use client";
 
-import { Archive, ChevronLeft, ChevronRight, FileText, Grid3X3, List, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Archive, ChevronLeft, ChevronRight, FileText, Grid3X3, List, Search } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";

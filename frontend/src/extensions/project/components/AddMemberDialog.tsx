@@ -2,6 +2,7 @@
 
 import { Loader2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-
 import { projectApi } from "@/extensions/project/api";
 import { MEMBER_ROLE_LABELS, type MemberRole } from "@/extensions/project/types";
 

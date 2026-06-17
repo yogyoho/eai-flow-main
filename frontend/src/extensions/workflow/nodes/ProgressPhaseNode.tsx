@@ -59,7 +59,7 @@ const STATUS_CONFIG: Record<
 };
 
 export function ProgressPhaseNode({ data }: NodeProps & { data: ProgressPhaseNodeData }) {
-  const status: NodeStatus = (data.status as NodeStatus) ?? "pending";
+  const status: NodeStatus = (data.status!) ?? "pending";
   const cfg = STATUS_CONFIG[status];
   const total = data.chapterTotal ?? 0;
   const completed = data.chapterCompleted ?? 0;

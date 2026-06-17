@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronDown, ChevronRight, FolderOpen } from "lucide-react";
+import { useState } from "react";
+
 import { useMyProjects } from "../hooks/useMyProjects";
+
 import { ProjectMiniCard } from "./ProjectMiniCard";
 
 const GROUP_LABELS: Record<string, string> = {

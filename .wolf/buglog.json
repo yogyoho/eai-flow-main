@@ -827,6 +827,802 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-06-13T11:58:12.944Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-06-14T08:18:12.416Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/routers.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T08:18:12.416Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-06-14T14:12:42.575Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 42→71 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T14:12:42.575Z"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-06-14T14:48:35.780Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/project/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T14:48:35.780Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-06-14T23:59:03.043Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-14T23:59:03.043Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-06-15T00:38:30.458Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/project/api.ts",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T00:38:30.458Z"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-06-15T00:39:01.500Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/components/WorkflowProgressCompact.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T00:39:01.500Z"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-06-15T00:54:03.665Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/project/components/WorkflowProgressCompact.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T00:54:03.665Z"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-06-15T00:58:15.236Z",
+      "error_message": "CSS fix: message",
+      "file": "frontend/src/extensions/project/components/WorkflowProgressCompact.tsx",
+      "root_cause": "message: String(err) → \"网络异常\"",
+      "fix": "Changed message: String(err) → \"网络异常\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T00:58:15.236Z"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-06-15T01:15:10.040Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 35→55 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:15:10.040Z"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-06-15T01:21:26.917Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:21:26.917Z"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-06-15T01:21:39.667Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "66 lines replaced/restructured",
+      "fix": "Rewrote 71→6 lines (66 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:21:39.667Z"
+    },
+    {
+      "id": "bug-063",
+      "timestamp": "2026-06-15T01:37:24.162Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: await _sync_chapters_to_doc_space(db, project_id, user_ids,",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-15T01:37:49.089Z"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-06-15T01:41:31.504Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/activities.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 35→91 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:41:31.505Z"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-06-15T01:42:43.270Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_ai_writing_activity.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→39 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:42:43.270Z"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-06-15T01:57:37.005Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/docmgr/finalize.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 35→112 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T01:57:37.005Z"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-06-15T02:00:43.649Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_ai_writing_activity.py",
+      "root_cause": "Had \"app.extensions.workflow.temporal.activities._gene",
+      "fix": "Changed to \"app.extensions.workflow.temporal.writing_activiti",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T02:00:43.649Z"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-06-15T02:02:39.274Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_workflow_integration.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 5→8 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T02:02:39.274Z"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-06-15T02:31:49.890Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/workflow/temporal/writing_activities.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T02:31:49.890Z"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-06-15T02:46:27.379Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/notification_activities.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 33→131 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T02:46:27.379Z"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-06-15T02:47:02.970Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_workflow_integration.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T02:47:02.970Z"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-06-15T06:52:30.360Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/workflow/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T06:52:30.360Z"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-06-15T07:21:39.056Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/workflow/temporal/workflows.py",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 24→63 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T07:21:39.056Z"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-06-15T08:50:05.626Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/.gstack/projects/eai-flow-main/admin-fix-four-module-p0-df2-df3-df5-df6-design-20260615-164414.md",
+      "root_cause": "14 lines replaced/restructured",
+      "fix": "Rewrote 20→41 lines (14 removed) | Also: 1. 应用中心是否替换 `/dashboard` 作为默认首页，还是作为侧边栏的新入口？; 2. 分类体系是否需要在后端建模（可扩展），还是前端硬编码（快速上线）？ | Also: - 现有 ShellLayout 和 Sidebar 组件（需在侧边栏添加\"应用中心\"入口）; - Shadcn UI 组件库（Card, Input, Badge, Tooltip, Butto",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-06-15T08:57:13.152Z"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-06-15T08:51:23.724Z",
+      "error_message": "Wrong reference: API should be v1",
+      "file": "C:/Users/admin/.gstack/projects/eai-flow-main/admin-fix-four-module-p0-df2-df3-df5-df6-design-20260615-164414.md",
+      "root_cause": "Used \"API\" instead of \"v1\"",
+      "fix": "Changed API → v1",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T08:51:23.724Z"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-06-15T13:32:51.936Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/custom/contract-price-analysis/tests/test_db_models.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 27→38 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T13:32:51.936Z"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-06-15T14:14:53.705Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/custom/contract-price-analysis/tests/test_vectorizer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T14:14:53.705Z"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-06-15T14:38:31.154Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/custom/contract-price-analysis/scripts/ragflow_client.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 17→20 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T14:38:31.154Z"
+    },
+    {
+      "id": "bug-cpa-001",
+      "timestamp": "2026-06-15",
+      "error_message": "RAGFlow incremental sync treated every document as new on every run",
+      "file": "skills/custom/contract-price-analysis/scripts/ragflow_client.py",
+      "root_cause": "filter_changed read doc[\"hash\"], but RAGFlow documents never expose a hash field (real keys: chunk_count/create_time/name/parser_config/...). doc.get(\"hash\") always None, so cached hash never matched, marking all docs changed each run.",
+      "fix": "Added doc_fingerprint(doc) that prefers a real hash when present, else synthesizes from name + update/create_time + chunk_count + progress. filter_changed and DB persistence use the fingerprint.",
+      "tags": [
+        "ragflow",
+        "incremental-sync",
+        "integration",
+        "contract-price-analysis"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15"
+    },
+    {
+      "id": "bug-080",
+      "timestamp": "2026-06-15T14:41:43.104Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/app-center/config/categories.ts",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 39→48 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T14:41:43.104Z"
+    },
+    {
+      "id": "bug-081",
+      "timestamp": "2026-06-15T14:42:04.764Z",
+      "error_message": "CSS fix: hover",
+      "file": "frontend/src/extensions/app-center/components/AppCard.tsx",
+      "root_cause": "hover: -translate-y-0.5 hover:border-primary/30 hover:bg-accent/40 hover:shadow-md\", → -translate-y-1 hover:border-primary/30 hover:bg-accent/40 hover:shadow-lg hover:shadow-primary/5\",",
+      "fix": "Changed hover: -translate-y-0.5 hover:border-primary/30 hover:bg-accent/40 hover:shadow-md\", → -translate-y-1 hover:border-primary/30 hover:bg-accent/40 hover:shadow-lg hover:shadow-primary/5\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-15T14:42:04.764Z"
+    },
+    {
+      "id": "bug-082",
+      "timestamp": "2026-06-16T11:45:46.853Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T11:45:46.853Z"
+    },
+    {
+      "id": "bug-083",
+      "timestamp": "2026-06-16T11:50:51.483Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/TasksView.tsx",
+      "root_cause": "Had \"@/extensions/contract-price/api\"",
+      "fix": "Changed to \"@/extensions/contract-price/components/PageHeader",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T11:50:51.483Z"
+    },
+    {
+      "id": "bug-084",
+      "timestamp": "2026-06-16T11:55:08.425Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "Had \"/output\"",
+      "fix": "Changed to \"/contract-price\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T11:55:08.425Z"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-06-16T13:02:19.567Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/api.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T13:02:19.567Z"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-06-16T13:17:45.691Z",
+      "error_message": "Wrong reference: import should be LucideIcon",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Used \"import\" instead of \"LucideIcon\"",
+      "fix": "Changed import → LucideIcon",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T13:17:45.691Z"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-06-16T14:45:37.000Z",
+      "error_message": "nginx 502 'upstream prematurely closed connection' on localhost:2026; frontend next dev --turbo hung at 'Compiling /workspace/chats/[thread_id]' forever (CPU ~4%, never reached 'Compiled'); all routes timed out",
+      "file": ".next/dev (Turbopack cache) -> frontend container",
+      "root_cause": "Docker Desktop Linux engine crashed/restarted (unclean shutdown), corrupting the 4.4GB .next/dev Turbopack cache. The cache lives in the container writable layer, so a plain `docker restart`/`docker compose restart` did NOT clear it -> every restart re-hung on the same corrupted compile.",
+      "fix": "Force-recreate the frontend container for a fresh writable layer (no stale .next): `cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.temporal.yaml -f docker-compose.ragflow.yaml up -d --force-recreate frontend`. Cold compiles then complete (CPU >200%) and routes return 200.",
+      "tags": [
+        "docker",
+        "nextjs",
+        "turbopack",
+        "corrupted-cache",
+        "502",
+        "nginx",
+        "ops"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T14:45:37.000Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-06-16T15:10:41.288Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/custom/contract-price-analysis/scripts/cli.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 48→80 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:10:41.288Z"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-06-16T15:40:19.823Z",
+      "error_message": "Wrong reference: 128 should be 256",
+      "file": "skills/custom/contract-price-analysis/scripts/models.py",
+      "root_cause": "Used \"128\" instead of \"256\"",
+      "fix": "Changed 128 → 256",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:40:19.823Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-06-16T15:40:31.086Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-06-15-contract-price-analysis-design.md",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 27→40 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:40:31.086Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-06-16T15:42:01.689Z",
+      "error_message": "Wrong reference: FastAPI should be Gateway",
+      "file": "docs/superpowers/specs/2026-06-15-contract-price-analysis-design.md",
+      "root_cause": "Used \"FastAPI\" instead of \"Gateway\"",
+      "fix": "Changed FastAPI → Gateway",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:42:01.689Z"
+    },
+    {
+      "id": "bug-092",
+      "timestamp": "2026-06-16T15:42:08.474Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-06-15-contract-price-analysis-design.md",
+      "root_cause": "Had `scripts/server/`",
+      "fix": "Changed to `backend/app/extensions/contract_price/`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-16T15:42:10.179Z"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-06-16T15:46:02.002Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/pyproject.toml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "toml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:46:02.002Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-06-16T15:49:26.000Z",
+      "error_message": "contract-price cpa_ ORM model drift: skill mirror models.py diverged from canonical extension models.py / physical tables",
+      "file": "skills/custom/contract-price-analysis/scripts/models.py vs backend/app/extensions/contract_price/models.py",
+      "root_cause": "Extension is the canonical writer (Gateway Base, creates physical tables) and evolved (doc_hash widened 128->256; added cpa_items.edit_note TEXT), but the skill's mirror models.py was not kept in sync. The two describe the same physical cpa_* tables, so drift silently risks corrupting reads/writes across the agent-CLI and extension paths.",
+      "fix": "Aligned skill mirror to physical ground truth (queried information_schema): doc_hash String(256), added edit_note TEXT to CpaItem. Added backend/tests/test_contract_price_model_parity.py that loads the skill model by path and asserts all 4 cpa_ tables match column-for-column (skips in CI where the gitignored skill is absent).",
+      "tags": [
+        "contract-price",
+        "orm",
+        "schema-drift",
+        "parity-test",
+        "skill"
+      ],
+      "related_bugs": [
+        "bug-087"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T15:49:26.000Z"
+    },
+    {
+      "id": "bug-cpa-002",
+      "timestamp": "2026-06-16",
+      "error_message": "Pipeline run never persisted data; management page always empty",
+      "file": "skills/custom/contract-price-analysis/scripts/cli.py",
+      "root_cause": "_persist wrote CpaItem(document_id=uuid.uuid4()) random uuid, violating the cpa_items.document_id FK -> IntegrityError rolled back the WHOLE commit (docs+clusters+run_history), masked by a broad except labeled \"DB unavailable\". Item->document link was also never threaded through parse/cluster.",
+      "fix": "Thread source_doc_id through ParsedItem->all_items->_build_groups; _persist upserts CpaDocument by ragflow_doc_id, deletes stale items on re-parse, and links each item to its real document row. Verified: run_history now persists (completed row).",
+      "tags": [
+        "cpa",
+        "persistence",
+        "fk",
+        "sqlalchemy"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-16",
+      "related_bugs": [
+        "bug-cpa-001"
+      ]
+    },
+    {
+      "id": "bug-cpa-003",
+      "timestamp": "2026-06-16",
+      "error_message": "Adding scikit-learn to gateway deps blocked gateway startup (502)",
+      "file": "backend/pyproject.toml",
+      "root_cause": "scikit-learn pulls scipy (~33MB wheel); uv sync default UV_HTTP_TIMEOUT=30s timed out downloading it on a flaky link, and the gateway entrypoint keeps uvicorn down when sync fails.",
+      "fix": "Dropped sklearn/scipy entirely; reimplemented char-wb TF-IDF + DBSCAN as numpy-only (numpy already a transitive dep). Pipeline now runs in the gateway container without heavy downloads.",
+      "tags": [
+        "cpa",
+        "docker",
+        "deps",
+        "network",
+        "scikit-learn"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-16",
+      "related_bugs": []
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-06-16T16:42:18.000Z",
+      "error_message": "contract-price pipeline never ran end-to-end in Docker: skill CLI subprocess died on import (ModuleNotFoundError) and UI 'Run pipeline' silently failed",
+      "file": "backend/app/extensions/contract_price/service.py (run_pipeline_subprocess)",
+      "root_cause": "service.run_pipeline_subprocess spawned the CLI with bare 'python'. The gateway PID-1 env PATH has NO .venv/bin (uv runs uvicorn via the venv binary's shebang, not via PATH), so bare 'python' resolved to the container SYSTEM python (/usr/local/bin/python) which has zero pipeline deps (no sqlalchemy/asyncpg/httpx/numpy/xlsxwriter). Initial misdiagnosis blamed a missing sklearn, but sklearn is deliberately excluded — clustering is numpy-only (engine.py/vectorizer.py reimplement DBSCAN+TF-IDF to avoid scipy) and the venv already has every dep the pipeline needs.",
+      "fix": "Changed subprocess cmd from \"python\" to sys.executable so the CLI runs under the same venv interpreter the gateway app runs under (the project venv, which has all deps). uvicorn --reload picked it up. Verified: `python -m scripts.cli --help` runs clean under /app/backend/.venv/bin/python. NO package install was needed.",
+      "tags": [
+        "contract-price",
+        "subprocess",
+        "python-resolution",
+        "venv",
+        "uv",
+        "docker",
+        "misdiagnosis"
+      ],
+      "related_bugs": [
+        "bug-087",
+        "bug-088"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T16:42:18.000Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-06-16T17:01:02.000Z",
+      "error_message": "contract-price pipeline failed: HTTPStatusError 404 from RAGFlow (http://eai-flow-ragflow:9380/datasets/.../documents) — every RAGFlow call 404'd, runs flaked (some completed-with-0-docs, some failed)",
+      "file": "skills/custom/contract-price-analysis/scripts/ragflow_client.py + .env.docker (RAGFLOW_BASE_URL)",
+      "root_cause": "RAGFLOW_BASE_URL was set to http://eai-flow-ragflow:9380 WITHOUT the /api/v1 version prefix (same omission in all 5 definitions: .env.docker, docker-compose-dev.yaml, .env, backend/.env, docker-compose-offline.yaml). ragflow_client used it as the httpx base_url, so calls hit /datasets/... instead of /api/v1/datasets/... → 404. The 404 body was non-JSON so error handling was inconsistent (sometimes caught → completed 0 docs, sometimes httpx HTTPStatusError escaped → failed).",
+      "fix": "Made ragflow_client.RagflowClient.__init__ normalize base_url: append /api/v1 when the URL lacks any /api/vN segment. Durable code fix, takes effect on next run with no gateway restart, and tolerates any misconfigured env. Also corrected .env.docker:18 to include /api/v1. Verified: list_documents returns doc_count=0 cleanly (no 404); UI run at 00:58 completed. KB a8e8f3dc... is empty (0 docs) — that's a data state, not a bug.",
+      "tags": [
+        "contract-price",
+        "ragflow",
+        "config",
+        "base-url",
+        "api-v1",
+        "404"
+      ],
+      "related_bugs": [
+        "bug-089"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-06-16T17:01:02.000Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-06-16T17:01:02.000Z",
+      "error_message": "contract-price '立即分析' button creates TWO pipeline runs per single click (e.g. two rows at identical 00:58:31, both completed)",
+      "file": "frontend (contract-price overview '立即分析' handler) — not yet located/fixed",
+      "root_cause": "Likely React StrictMode double-invoke of the click/effect handler in dev, or a missing in-flight guard / debounce on the trigger. Each click fires POST /pipeline/run twice.",
+      "fix": "NOT FIXED — flagged. Suggested: guard the button while a run is in-flight (disable + optimistic lock) or dedupe by a client request id. Low severity (both runs complete, no data corruption) but clutters task history and wastes a subprocess.",
+      "tags": [
+        "contract-price",
+        "frontend",
+        "double-submit",
+        "ui",
+        "unfixed"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-16T17:01:02.000Z"
     }
   ]
 }

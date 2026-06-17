@@ -1,0 +1,7 @@
+{
+  "parse_mode": "list",
+  "cluster_eps": 0.6,
+  "cluster_min_samples": 2,
+  "scheduled_enabled": false,
+  "schedule_cron": null
+}

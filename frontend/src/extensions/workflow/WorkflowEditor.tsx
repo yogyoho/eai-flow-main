@@ -1,28 +1,28 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, type NodeTypes, type EdgeTypes } from "@xyflow/react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import { ChevronRight, Layers, Trash2 } from "lucide-react";
 
+import { workflowApi } from "./api";
+import { AnimatedFlowEdge } from "./edges/AnimatedFlowEdge";
+import { ConditionEdge } from "./edges/ConditionEdge";
+import { useValidation } from "./hooks/useValidation";
+import { useWorkflowDAG } from "./hooks/useWorkflowDAG";
 import { AIGenerateNode } from "./nodes/AIGenerateNode";
 import { ConditionNode } from "./nodes/ConditionNode";
 import { MergeNode } from "./nodes/MergeNode";
 import { ReviewNode } from "./nodes/ReviewNode";
 import { SubflowNode } from "./nodes/SubflowNode";
 import { TaskNode } from "./nodes/TaskNode";
-import { AnimatedFlowEdge } from "./edges/AnimatedFlowEdge";
-import { ConditionEdge } from "./edges/ConditionEdge";
-import { NodePalette } from "./panels/NodePalette";
 import { AIGenerateConfigPanel } from "./panels/AIGenerateConfigPanel";
 import { ConditionConfigPanel } from "./panels/ConditionConfigPanel";
 import { MergeConfigPanel } from "./panels/MergeConfigPanel";
+import { NodePalette } from "./panels/NodePalette";
 import { ReviewConfigPanel } from "./panels/ReviewConfigPanel";
 import { SubflowConfigPanel } from "./panels/SubflowConfigPanel";
 import { TaskConfigPanel } from "./panels/TaskConfigPanel";
-import { useValidation } from "./hooks/useValidation";
-import { useWorkflowDAG } from "./hooks/useWorkflowDAG";
-import { workflowApi } from "./api";
 import type { DAGNode, DAGNodeData, WorkflowGraph } from "./types";
 
 const nodeTypes: NodeTypes = {
@@ -156,7 +156,7 @@ export const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorPro
 
   const getOrgDeptCode = useCallback(
     (nodeId: string): string | undefined => {
-      if (!orgBindings || !orgBindings[nodeId]) return undefined;
+      if (!orgBindings?.[nodeId]) return undefined;
       return orgBindings[nodeId].deptCode;
     },
     [orgBindings],

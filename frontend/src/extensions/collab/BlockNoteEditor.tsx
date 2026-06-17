@@ -1,42 +1,46 @@
 "use client";
 
 import "./patch-prosemirror";
+import { en as coreEn } from "@blocknote/core/locales";
 import { useCreateBlockNote, FormattingToolbar, FormattingToolbarController, getFormattingToolbarItems, useComponentsContext } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { AIExtension, AIMenu, AIMenuController, AIToolbarButton } from "@blocknote/xl-ai";
-import { en as coreEn } from "@blocknote/core/locales";
 import { en as aiEn } from "@blocknote/xl-ai/locales";
 import { DefaultChatTransport } from "ai";
 import "@blocknote/react/style.css";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/xl-ai/style.css";
 import { BookOpen, History, MessageSquare, Sparkles } from "lucide-react";
-import { OutlinePanel } from "./OutlinePanel";
 import { Component, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/extensions/hooks/useAuth";
+import { workflowApi } from "@/extensions/workflow/api";
+import { TraceabilityPanel } from "@/extensions/workflow/TraceabilityPanel";
 
 import type { CollabComment } from "../types";
+
 import { AIDocumentReview } from "./AIDocumentReview";
 import { getCollabAIMenuItems } from "./aiMenuItems";
-import { TraceabilityPanel } from "@/extensions/workflow/TraceabilityPanel";
+import { OutlinePanel } from "./OutlinePanel";
+
+
 import { BlockCommentAnchor } from "./BlockCommentAnchor";
 import { CommentSidebar } from "./CommentSidebar";
 import { InlineCommentThread } from "./InlineCommentThread";
 import { OnlineUsers } from "./OnlineUsers";
-import { useCollab } from "./useCollab";
-import { useComments } from "./useComments";
-import { useVersions } from "./useVersions";
-import { VersionPanel } from "./VersionPanel";
 import {
   type TraceabilitySource,
   registerTraceabilityPlugin,
   updateTraceabilitySources,
 } from "./traceability-extension";
+import { useCollab } from "./useCollab";
+import { useComments } from "./useComments";
+import { useVersions } from "./useVersions";
+import { VersionPanel } from "./VersionPanel";
 import { registerHumanWrittenPlugin, resetHumanWrittenTracking } from "./human-written-plugin";
-import { workflowApi } from "@/extensions/workflow/api";
 
 export interface BlockNoteEditorRef {
   getMarkdown: () => string;
@@ -117,7 +121,7 @@ function CommentToolbarButton({ editor, onOpen }: {
     onOpen(range);
     // Dismiss the formatting toolbar once React has flushed the popover
     setTimeout(() => {
-      const editable = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
+      const editable = document.querySelector('[contenteditable="true"]');
       editable?.blur();
     }, 80);
   };
@@ -228,7 +232,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const dismissToolbar = () => {
       window.getSelection()?.removeAllRanges();
       // Blur the editor's contenteditable element to dismiss the formatting toolbar
-      const editable = document.querySelector('[contenteditable="true"]') as HTMLElement | null;
+      const editable = document.querySelector('[contenteditable="true"]');
       editable?.blur();
     };
 
@@ -329,7 +333,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
         if (Array.isArray(content)) {
           return content.some(
             (c: Record<string, unknown>) =>
-              typeof c.text === "string" && (c.text as string).trim().length > 0,
+              typeof c.text === "string" && (c.text).trim().length > 0,
           );
         }
         return false;

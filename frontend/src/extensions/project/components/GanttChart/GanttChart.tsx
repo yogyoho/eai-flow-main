@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { TimelineEntry, ZoomLevel } from "./types";
+
 import { GanttBar } from "./GanttBar";
+import type { TimelineEntry, ZoomLevel } from "./types";
 
 interface GanttChartProps {
   entries: TimelineEntry[];

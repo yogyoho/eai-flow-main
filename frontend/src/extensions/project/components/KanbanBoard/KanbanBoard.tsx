@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { KanbanCardData } from "./types";
+
 import { KanbanColumn } from "./KanbanColumn";
+import type { KanbanCardData } from "./types";
 
 export interface KanbanBoardProps {
   cards: KanbanCardData[];

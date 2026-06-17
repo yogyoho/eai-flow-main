@@ -1,8 +1,8 @@
 "use client";
 
 import { workflowApi } from "./api";
-import { PhaseStatusCard } from "./PhaseStatusCard";
 import { useWorkflowStatus } from "./hooks/useWorkflowStatus";
+import { PhaseStatusCard } from "./PhaseStatusCard";
 
 interface WorkflowMonitorProps {
   projectId: string;

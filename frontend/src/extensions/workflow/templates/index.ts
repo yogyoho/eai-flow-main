@@ -1,6 +1,7 @@
 import type { WorkflowGraph } from "../types";
-import { SINGLE_REPORT_TEMPLATE } from "./single-report";
+
 import { FOUR_PHASE_TEMPLATE } from "./four-phase";
+import { SINGLE_REPORT_TEMPLATE } from "./single-report";
 
 export { SINGLE_REPORT_TEMPLATE, FOUR_PHASE_TEMPLATE };
 

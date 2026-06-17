@@ -820,6 +820,7 @@ dependencies = [
     { name = "temporalio", extra = ["pydantic"] },
     { name = "uvicorn", extra = ["standard"] },
     { name = "wecom-aibot-python-sdk" },
+    { name = "xlsxwriter" },
 ]
 
 [package.optional-dependencies]
@@ -867,6 +868,7 @@ requires-dist = [
     { name = "temporalio", extras = ["pydantic"], specifier = ">=1.27.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
     { name = "wecom-aibot-python-sdk", specifier = ">=0.1.6" },
+    { name = "xlsxwriter", specifier = ">=3.2.0" },
 ]
 provides-extras = ["postgres", "discord"]
 

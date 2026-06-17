@@ -39,7 +39,7 @@ class CpaDocument(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     ragflow_doc_id: Mapped[str] = mapped_column(String(128), unique=True)
-    doc_hash: Mapped[str] = mapped_column(String(128), index=True)
+    doc_hash: Mapped[str] = mapped_column(String(256), index=True)
     contract_no: Mapped[Optional[str]] = mapped_column(String(100))
     supplier: Mapped[Optional[str]] = mapped_column(String(200))
     sign_date: Mapped[Optional[date]] = mapped_column()
@@ -82,6 +82,7 @@ class CpaItem(Base):
     )
     source_contract_no: Mapped[Optional[str]] = mapped_column(String(100))
     is_outlier: Mapped[bool] = mapped_column(default=False)
+    edit_note: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Check, Loader2, Pencil, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,16 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-
 import { projectApi } from "@/extensions/project/api";
+import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
+import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
   PROJECT_STATUS_LABELS,
   type ProjectStatus,
   type ReportProject,
 } from "@/extensions/project/types";
-import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
-import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 
 interface SettingsDialogProps {
   project: ReportProject;

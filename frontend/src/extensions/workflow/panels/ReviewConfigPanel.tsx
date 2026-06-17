@@ -1,7 +1,9 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
+
 import type { DAGNodeData, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface ReviewConfigPanelProps {

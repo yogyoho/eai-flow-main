@@ -11,18 +11,17 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-
 import { projectApi } from "@/extensions/project/api";
 import { AddMemberDialog } from "@/extensions/project/components/AddMemberDialog";
-import { StatusDistribution } from "@/extensions/project/components/StatusDistribution";
-import { WorkflowProgressCompact } from "@/extensions/project/components/WorkflowProgressCompact";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard/KanbanBoard";
 import type { KanbanCardData } from "@/extensions/project/components/KanbanBoard/types";
+import { StatusDistribution } from "@/extensions/project/components/StatusDistribution";
+import { WorkflowProgressCompact } from "@/extensions/project/components/WorkflowProgressCompact";
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
   MEMBER_ROLE_LABELS,
@@ -470,7 +469,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                       </div>
                       <span className="flex-1 text-sm text-foreground truncate">{m.username}</span>
                       <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
-                        {MEMBER_ROLE_LABELS[m.role as keyof typeof MEMBER_ROLE_LABELS] ?? m.role}
+                        {MEMBER_ROLE_LABELS[m.role] ?? m.role}
                       </Badge>
                       {canManageMembers && m.role !== "owner" && (
                         <Button

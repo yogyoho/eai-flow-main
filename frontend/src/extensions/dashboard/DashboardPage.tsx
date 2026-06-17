@@ -1,19 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
 import { Plus, Pen, ListTodo, FolderKanban, Bell, BarChart3, CalendarDays, Compass } from "lucide-react";
 import Link from "next/link";
-import { TodayTasks } from "./components/TodayTasks";
+import { useState, useMemo, useEffect } from "react";
+
+import { useAuth } from "@/extensions/hooks/useAuth";
+
+import { DashboardCard } from "./components/DashboardCard";
+import { MiniCalendar } from "./components/MiniCalendar";
 import { MyProjects } from "./components/MyProjects";
-import { StatsPanel } from "./components/StatsPanel";
-import { QuickLinks } from "./components/QuickLinks";
 import { NotificationFeed } from "./components/NotificationFeed";
 import { NotificationPreferencePanel } from "./components/NotificationPreferencePanel";
-import { MiniCalendar } from "./components/MiniCalendar";
-import { DashboardCard } from "./components/DashboardCard";
-import { useMyTasks } from "./hooks/useMyTasks";
+import { QuickLinks } from "./components/QuickLinks";
+import { StatsPanel } from "./components/StatsPanel";
+import { TodayTasks } from "./components/TodayTasks";
 import { useMyProjects } from "./hooks/useMyProjects";
-import { useAuth } from "@/extensions/hooks/useAuth";
+import { useMyTasks } from "./hooks/useMyTasks";
 
 function getGreeting(): string {
   const hour = new Date().getHours();

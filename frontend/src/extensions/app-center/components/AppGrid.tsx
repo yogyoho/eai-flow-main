@@ -3,8 +3,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { AppCard } from "./AppCard";
 import type { AppDefinition } from "../types";
+
+import { AppCard } from "./AppCard";
 
 interface AppGridProps {
   apps: AppDefinition[];

@@ -5,7 +5,9 @@ import { useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { StyledCheckbox } from "@/components/ui/styled-checkbox";
+
 import type { WorkflowNodeData, ReviewerBinding, ReviewMode, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface TaskConfigPanelProps {

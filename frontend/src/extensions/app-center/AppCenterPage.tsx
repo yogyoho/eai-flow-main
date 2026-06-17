@@ -3,8 +3,8 @@
 import { Star } from "lucide-react";
 import { useMemo } from "react";
 
-import { AppGrid } from "./components/AppGrid";
 import { AppCenterToolbar } from "./components/AppCenterToolbar";
+import { AppGrid } from "./components/AppGrid";
 import { EmptyState } from "./components/EmptyState";
 import { useApps } from "./hooks/useApps";
 import { useFavorites } from "./hooks/useFavorites";

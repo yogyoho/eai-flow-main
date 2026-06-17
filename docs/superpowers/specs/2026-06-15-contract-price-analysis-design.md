@@ -46,7 +46,7 @@
                        │ 直接调用
 ┌──────────────────────▼──────────────────────────────────┐
 │  Scripts Layer (skills/custom/contract-price-analysis/  │
-│                 scripts/)                                │
+│                 scripts/)  ← 数据流水线「引擎」          │
 │  ├── ragflow_client.py     # RAGFlow API 客户端         │
 │  ├── parser/               # 文档解析(表格/清单/混合) │
 │  ├── clustering/           # 聚类引擎                   │
@@ -55,22 +55,35 @@
 │  ├── stats/                # 均值/最大/最小统计          │
 │  ├── excel_generator.py    # Excel + 图表生成           │
 │  ├── db.py                 # PostgreSQL 持久层(cpa_ 表)│
-│  └── cli.py                # 入口(手动/定时触发)      │
-└──────┬──────────────┬───────────────────────────────────┘
-       │              │
-       ▼              ▼
-┌──────────────┐ ┌──────────────────┐ ┌──────────────────┐
-│ RAGFlow API  │ │ PostgreSQL       │ │ Next.js 前端      │
-│ localhost:   │ │ postgres-ext     │ │ /contract-price  │
-│ 9380/api/v1  │ │ cpa_ 前缀表      │ │ 管理页面         │
-└──────────────┘ └──────────────────┘ └────────┬─────────┘
-                                                 │ REST API
-                                        ┌────────▼─────────┐
-                                        │ 轻量 API 服务     │
-                                        │ (FastAPI, skill  │
-                                        │  scripts/server/)│
-                                        └──────────────────┘
+│  ├── cli.py                # 入口(手动/定时触发)      │
+│  └── models.py             # cpa_ 表镜像(自有 Base)    │
+└──┬───────────────────────────────┬──────────────────────┘
+   │ ① agent 在对话中直接跑          │ ② Gateway 扩展以子进程拉起
+   │   python -m scripts.cli         │    service.run_pipeline_subprocess()
+   ▼                                 ▼
+┌──────────────────────────────────────────────────────────┐
+│  PostgreSQL postgres-ext (cpa_* 表)                       │
+│  两端共用同一物理表:skill 写入 + 扩展读写                 │
+└────────────────────────▲─────────────────────────────────┘
+                         │ 读写 cpa_ 表(权威定义)
+                ┌────────┴─────────────────────────────────┐
+                │  Gateway 扩展  backend/app/extensions/    │
+                │                contract_price/            │
+                │  routers.py  管理页面 REST API            │
+                │   (documents/clusters/items/runs/...)    │
+                │  models.py   cpa_ 表(权威 Base)          │
+                │  service.py  run_pipeline_subprocess()    │
+                └────────┬─────────────────────────────────┘
+                         │ /api/extensions/contract-price
+                         ▼
+                ┌──────────────────────────────────────────┐
+                │  Next.js 前端  /contract-price/*          │
+                │  独立管理页面(总览/合同/聚类审核/分项/任务/配置)│
+                └──────────────────────────────────────────┘
 ```
+
+> **注**:RAGFlow API(`localhost:9380/api/v1`)由 Scripts 层的 `ragflow_client.py`
+> 在流水线内调用,未在图中单独画出。
 
 ### 2.1 三层职责
 
@@ -78,12 +91,20 @@
 |----|------|--------|
 | Skill 层 | 用户对话、参数收集、进度汇报、触发分析 | SKILL.md + Agent |
 | Scripts 层 | RAGFlow 拉取、文档解析、聚类、统计、Excel 生成、持久化 | Python 3.12 |
-| 管理页面层 | 缓存数据管理、聚类审核、任务历史、配置、看板 | Next.js + FastAPI |
+| 管理页面层 | 缓存数据管理、聚类审核、任务历史、配置、看板 | Next.js + Gateway 扩展(FastAPI) |
 
 ### 2.2 关键决策
 
 - **持久化用 PostgreSQL**(非 SQLite):复用 `postgres-ext` 容器,表用 `cpa_` 前缀与采购模块物理隔离。理由:Docker 持久化安全(容器自带数据卷)、行级锁支持并发(定时任务+管理页并发读写)、SQL 聚合/JSONB 利于统计分析。放弃"零依赖自包含",但不碰 procurement-service 代码。
-- **管理页面在主前端新增路由**,复用现有 Shadcn/Tailwind 4/认证体系,数据由 skill 内的轻量 FastAPI 服务提供。
+- **管理页面在主前端新增路由**,复用现有 Shadcn/Tailwind 4/认证体系,数据由主 Gateway 扩展 `backend/app/extensions/contract_price/` 提供(复用 cookie-JWT 认证 + 共享 DB 引擎);Gateway 以子进程方式拉起 skill 的 `cli.py` 跑流水线(详见 §2.3)。
+
+### 2.3 实现阶段架构调整(相对本节原图)
+
+实现阶段对 §2 做了一处关键调整:**管理页面 API 不再是 skill 内 `scripts/server/` 的独立 FastAPI 服务,而是挂载到主 Gateway 扩展** `backend/app/extensions/contract_price/`,复用 Gateway 的 cookie-JWT 认证与共享 DB 引擎,路由前缀 `/api/extensions/contract-price`。Gateway 通过 `service.run_pipeline_subprocess()` 以子进程方式拉起 skill 的 `cli.py`;两端共用同一组物理 `cpa_*` 表(skill 用镜像 `scripts/models.py` + 自有 Base 持久化,扩展用权威 `models.py` 读写)。
+
+由此 skill 的角色收敛为:**对话触发入口 + 数据流水线引擎**;管理页面(独立路由 `/contract-price`)与流水线编排归属 Gateway 扩展。skill 需在 `extensions_config.json` 注册后,agent 才能在对话中直接触发分析——形成「对话 + 管理页面」双入口。
+
+> **边界约束**:skill 的 `scripts/` 不得 import `app.*`(harness/app 隔离),故镜像 `models.py` 与扩展 `models.py` 必须手动同步,由 `backend/tests/test_contract_price_model_parity.py` 守护。
 
 ---
 
@@ -259,7 +280,7 @@ cpa_run_history     -- 分析任务运行历史
 ### 6.4 数据获取
 
 - 前端:`@/extensions/api` 模式 + TanStack Query,新增 `contractPriceApi`
-- 后端:skill 内 `scripts/server/`(FastAPI)提供 REST API,读写 `cpa_` 表
+- 后端:主 Gateway 扩展 `backend/app/extensions/contract_price/` 提供 REST API(复用 cookie-JWT + 共享 DB),读写 `cpa_` 表
 
 ---
 
@@ -275,7 +296,7 @@ cpa_run_history     -- 分析任务运行历史
 | `excel_generator.py` | 生成 6-Sheet Excel + 图表 | stats 产出、xlsxwriter |
 | `db.py` | PostgreSQL 持久层(crud for cpa_ 表) | postgres-ext |
 | `cli.py` | 入口(手动/定时触发,跑完整流水线) | 上述全部 |
-| `scripts/server/`(FastAPI) | 管理页面 REST API | db.py |
+| Gateway 扩展 `contract_price/`(routers/service/models) | 管理页面 REST API + 子进程编排流水线 | db.py / skill cli.py |
 
 ---
 
@@ -335,7 +356,7 @@ RAGFLOW_KB_ID=a8e8f3dc660d11f1ad61e1631bd6f152
 - `sentence-transformers`(可选)— 语义向量化
 - `xlsxwriter` — Excel 生成
 - `sqlalchemy[asyncio]` + `asyncpg` — PostgreSQL 持久层
-- `fastapi` + `uvicorn` — 管理页面 API 服务
+- _(skill 不再独立运行 API 服务;管理页面 API 由主 Gateway 扩展承载,故 skill 不依赖 `fastapi`/`uvicorn`)_
 
 ### 管理页面(前端,复用现有)
 - Next.js 16 / React 19 / Tailwind 4 / Shadcn(均已存在)

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
-import { ShellLayout } from "@/extensions/shell/ShellLayout";
+
 import { ProjectCreateWizard } from "@/extensions/project/ProjectCreateWizard";
+import { ShellLayout } from "@/extensions/shell/ShellLayout";
 
 export default function NewProjectPage() {
   return (

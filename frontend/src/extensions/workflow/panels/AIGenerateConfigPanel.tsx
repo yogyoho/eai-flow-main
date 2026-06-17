@@ -1,7 +1,9 @@
 "use client";
 
 import { StyledCheckbox } from "@/components/ui/styled-checkbox";
+
 import type { DAGNodeData, TaskNodeData, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface AIGenerateConfigPanelProps {

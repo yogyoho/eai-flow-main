@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type { ProjectChapter } from "@/extensions/project/types";
-
 import {
   type ChapterStatus,
   activityLabel,

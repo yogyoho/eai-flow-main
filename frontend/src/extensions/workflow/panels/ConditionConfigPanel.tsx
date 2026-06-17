@@ -1,6 +1,7 @@
 "use client";
 
 import type { DAGNodeData, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface ConditionConfigPanelProps {

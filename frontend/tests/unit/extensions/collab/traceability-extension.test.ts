@@ -5,9 +5,9 @@
  * and the React-facing public API (registerTraceabilityPlugin,
  * updateTraceabilitySources).
  */
-import { describe, expect, it } from "vitest";
 import { Schema } from "prosemirror-model";
 import { EditorState, Plugin } from "prosemirror-state";
+import { describe, expect, it } from "vitest";
 
 import {
   registerTraceabilityPlugin,
@@ -278,7 +278,7 @@ describe("TraceabilityExtension — registerTraceabilityPlugin", () => {
     const view = {
       state: simpleState,
       updateState: (newState: EditorState) => {
-        (view.state as EditorState) = newState;
+        (view.state) = newState;
       },
     };
 
@@ -295,7 +295,7 @@ describe("TraceabilityExtension — registerTraceabilityPlugin", () => {
     const view = {
       state,
       updateState: (newState: EditorState) => {
-        (view.state as EditorState) = newState;
+        (view.state) = newState;
       },
     };
 
@@ -324,7 +324,7 @@ describe("TraceabilityExtension — updateTraceabilitySources", () => {
       dispatch: (tr: any) => {
         dispatchedTr = tr;
         // Apply the transaction so view.state stays consistent
-        (view.state as EditorState) = view.state.apply(tr);
+        (view.state) = view.state.apply(tr);
       },
     };
 
@@ -360,12 +360,12 @@ describe("TraceabilityExtension — updateTraceabilitySources", () => {
 
     // Pre-load a source
     const sources = createTestSources();
-    let s1 = state.apply(state.tr.setMeta(traceabilityPluginKey, { sources }));
+    const s1 = state.apply(state.tr.setMeta(traceabilityPluginKey, { sources }));
 
     const view = {
       state: s1,
       dispatch: (tr: any) => {
-        (view.state as EditorState) = view.state.apply(tr);
+        (view.state) = view.state.apply(tr);
       },
     };
 

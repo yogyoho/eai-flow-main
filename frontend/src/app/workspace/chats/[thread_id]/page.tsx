@@ -64,7 +64,7 @@ export default function ChatPage() {
         chapterName: searchParams.get("chapterName")
           ? decodeURIComponent(searchParams.get("chapterName")!)
           : null,
-        mode: (searchParams.get("mode") as string) ?? "writing",
+        mode: (searchParams.get("mode")!) ?? "writing",
       }
     : null;
 

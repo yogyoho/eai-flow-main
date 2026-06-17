@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { GripVertical } from "lucide-react";
+import { useCallback, useState } from "react";
+
 import type { KanbanCardData } from "./types";
 
 interface KanbanCardProps {

@@ -557,7 +557,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
             {/* Right form */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
               {/* Section: Template selection */}
-              <div data-section="template" ref={(el) => { sectionRefs.current["template"] = el; }}>
+              <div data-section="template" ref={(el) => { sectionRefs.current.template = el; }}>
                 <SectionTitle icon={<LayoutTemplate className="w-4 h-4" />}>排版模板</SectionTitle>
                 <div className="space-y-3 mt-3">
                   <div>
@@ -617,7 +617,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Page settings */}
-              <div data-section="page" ref={(el) => { sectionRefs.current["page"] = el; }}>
+              <div data-section="page" ref={(el) => { sectionRefs.current.page = el; }}>
                 <SectionTitle icon={<span className="text-xs">⬜</span>}>页面设置</SectionTitle>
                 <div className="space-y-3 mt-3">
                   <div className="grid grid-cols-2 gap-3">
@@ -672,7 +672,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Body styles */}
-              <div data-section="body" ref={(el) => { sectionRefs.current["body"] = el; }}>
+              <div data-section="body" ref={(el) => { sectionRefs.current.body = el; }}>
                 <SectionTitle icon={<span className="text-xs font-bold">T</span>}>正文样式</SectionTitle>
                 <div className="grid grid-cols-3 gap-3 mt-3">
                   <div>
@@ -701,7 +701,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Heading styles */}
-              <div data-section="headings" ref={(el) => { sectionRefs.current["headings"] = el; }}>
+              <div data-section="headings" ref={(el) => { sectionRefs.current.headings = el; }}>
                 <SectionTitle icon={<span className="text-xs font-bold">H</span>}>标题样式</SectionTitle>
                 <div className="space-y-2 mt-3">
                   {headingStyles.map((h, i) => (
@@ -737,7 +737,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Table styles */}
-              <div data-section="table" ref={(el) => { sectionRefs.current["table"] = el; }}>
+              <div data-section="table" ref={(el) => { sectionRefs.current.table = el; }}>
                 <SectionTitle icon={<span className="text-xs">▦</span>}>表格样式</SectionTitle>
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
@@ -764,7 +764,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Figure styles */}
-              <div data-section="figure" ref={(el) => { sectionRefs.current["figure"] = el; }}>
+              <div data-section="figure" ref={(el) => { sectionRefs.current.figure = el; }}>
                 <SectionTitle icon={<span className="text-xs">▣</span>}>图表样式</SectionTitle>
                 <div className="grid grid-cols-3 gap-3 mt-3">
                   <div>
@@ -799,7 +799,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Header & Footer */}
-              <div data-section="headerFooter" ref={(el) => { sectionRefs.current["headerFooter"] = el; }}>
+              <div data-section="headerFooter" ref={(el) => { sectionRefs.current.headerFooter = el; }}>
                 <SectionTitle icon={<span className="text-xs">☰</span>}>页眉页脚</SectionTitle>
                 <div className="space-y-3 mt-3">
                   <div>
@@ -826,7 +826,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
               <Divider />
 
               {/* Section: Watermark */}
-              <div data-section="watermark" ref={(el) => { sectionRefs.current["watermark"] = el; }}>
+              <div data-section="watermark" ref={(el) => { sectionRefs.current.watermark = el; }}>
                 <SectionTitle icon={<Sparkles className="w-4 h-4" />}>水印设置</SectionTitle>
                 <div className="mt-3">
                   <div className="grid grid-cols-2 gap-2">

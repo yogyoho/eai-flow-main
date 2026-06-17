@@ -110,6 +110,9 @@
     },
     "coal-eia-report": {
       "enabled": true
+    },
+    "contract-price-analysis": {
+      "enabled": true
     }
   }
 }

@@ -4,17 +4,17 @@ import {
   Search, Plus, FileText, Loader2, Globe, GlobeLock, Trash2, Pencil,
   Send, CheckCircle2, Clock, XCircle, Undo2,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
 
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
-import { workflowApi } from "@/extensions/workflow/api";
-import type { WorkflowDefinitionListItem } from "@/extensions/workflow/types";
+import { useAuth } from "@/extensions/hooks/useAuth";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
 import type { ReportType } from "@/extensions/project/types";
+import { workflowApi } from "@/extensions/workflow/api";
+import type { WorkflowDefinitionListItem } from "@/extensions/workflow/types";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/extensions/hooks/useAuth";
 
 const REPORT_TYPE_FILTERS: Array<{ value: string; label: string }> = [
   { value: "", label: "全部类型" },
@@ -165,7 +165,7 @@ export default function AdminTemplatesPage() {
                         <div className="min-w-0">
                           <h3 className="text-sm font-semibold text-foreground truncate">{t.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
-                            {t.reportType && <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{REPORT_TYPE_LABELS[t.reportType as ReportType] ?? t.reportType}</span>}
+                            {t.reportType && <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{REPORT_TYPE_LABELS[t.reportType] ?? t.reportType}</span>}
                           </div>
                         </div>
                       </div>

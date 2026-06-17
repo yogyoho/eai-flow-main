@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { LayoutGrid, FolderOpen, FileText, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 
 interface QuickLinkItem {
   label: string;

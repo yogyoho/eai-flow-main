@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
 import { FolderClosed, FolderOpen, Plus, MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState, useRef, useEffect } from "react"
+
 import type { FolderNode } from "@/extensions/api"
+import { cn } from "@/lib/utils"
+
 import { NewSubFolderDialog } from "./NewSubFolderDialog"
 
 interface ProjectFolderTreeProps {

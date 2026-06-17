@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { AdminSelect } from "@/components/ui/admin-select";
 import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 import { deptApi } from "@/extensions/api/index";
+
 import type { DAGNodeData, RoleSlot, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 const PRESET_ROLES: { roleKey: string; label: string }[] = [

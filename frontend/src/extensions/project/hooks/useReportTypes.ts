@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { kfApi } from "@/extensions/api";
 
 export interface ReportTypeOption {

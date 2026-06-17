@@ -5,8 +5,8 @@ import { Edit, MessageSquare, Trash2 } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
-import type { ProjectListItem } from "@/extensions/project/types";
 import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
+import type { ProjectListItem } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
 
 import { StatusBadge } from "./StatusBadge";

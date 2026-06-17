@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
+import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
+import type { ReportProject } from "@/extensions/project/types";
 import type { AIDocument } from "@/extensions/types";
 
 import ProjectDocListPanel from "../../docmgr/ProjectDocListPanel";
+
 import { DocCollabView } from "./DocCollabView";
 
-import type { ReportProject } from "@/extensions/project/types";
-import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 
 interface EditorTabProps {
 	project: ReportProject;

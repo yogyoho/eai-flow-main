@@ -15,16 +15,16 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { kfApi } from "@/extensions/api";
-import { FilterPills } from "@/extensions/project/components/FilterPills";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { projectApi } from "@/extensions/project/api";
+import { FilterPills } from "@/extensions/project/components/FilterPills";
 import type { ProjectListItem } from "@/extensions/project/types";
 import { PROJECT_STATUS_LABELS } from "@/extensions/project/types";
 import { cn } from "@/lib/utils";
@@ -399,7 +399,7 @@ export function ProjectList() {
             const typeIcon = getTypeIcon(project.reportType);
             const typeLabel = getTypeLabel(project.reportType);
             const statusColor = STATUS_COLORS[project.status] ?? "bg-muted text-muted-foreground";
-            const statusLabel = PROJECT_STATUS_LABELS[project.status as keyof typeof PROJECT_STATUS_LABELS] ?? project.status;
+            const statusLabel = PROJECT_STATUS_LABELS[project.status] ?? project.status;
 
             if (viewMode === "list") {
               return (

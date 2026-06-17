@@ -21,7 +21,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     "Content-Type": "application/json",
   };
   if (csrf) {
-    (headers as Record<string, string>)["X-CSRF-Token"] = csrf;
+    (headers)["X-CSRF-Token"] = csrf;
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "";

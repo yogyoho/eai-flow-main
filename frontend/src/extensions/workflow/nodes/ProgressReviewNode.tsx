@@ -59,7 +59,7 @@ const STATUS_CONFIG: Record<
 };
 
 export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewNodeData }) {
-  const status: NodeStatus = (data.status as NodeStatus) ?? "pending";
+  const status: NodeStatus = (data.status!) ?? "pending";
   const cfg = STATUS_CONFIG[status];
   const total = data.reviewTotal ?? 0;
   const approved = data.reviewApproved ?? 0;

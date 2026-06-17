@@ -21,8 +21,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { projectApi } from "@/extensions/project/api";
-import type { ApprovalStatusResponse } from "@/extensions/project/types";
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
+import type { ApprovalStatusResponse } from "@/extensions/project/types";
 import { workflowApi } from "@/extensions/workflow/api";
 import type { PhaseReview, ReviewStatus } from "@/extensions/workflow/types";
 

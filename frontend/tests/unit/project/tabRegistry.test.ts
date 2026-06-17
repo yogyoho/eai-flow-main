@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import type { ProjectPermissions } from "@/extensions/project/types";
 import { getVisibleTabs, createProjectIdentity, TAB_REGISTRY } from "@/extensions/project/tabRegistry";
+import type { ProjectPermissions } from "@/extensions/project/types";
 
 // Helper to create identity from partial permissions
 function makeIdentity(overrides: Partial<ProjectPermissions> = {}) {

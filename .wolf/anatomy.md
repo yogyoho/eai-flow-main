@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-13T12:05:18.724Z
-> Files: 1105 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-16T16:57:26.312Z
+> Files: 1211 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -50,7 +50,7 @@
 - `AGENTS.md` — MCP Tools: code-review-graph (~438 tok)
 - `body.txt` (~19 tok)
 - `check_fonts.py` (~81 tok)
-- `CLAUDE.md` — page login info (~2818 tok)
+- `CLAUDE.md` — page login info (~3210 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~12188 tok)
@@ -60,7 +60,7 @@
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~836 tok)
+- `extensions_config.json` (~853 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -198,6 +198,23 @@
 
 - `embedded-chat-design.html` (~2844 tok)
 
+## App Center 应用中心 (frontend/src/extensions/app-center/)
+
+- `AppCenterPage.tsx` — 主页面：标题+工具栏+收藏区+全部应用网格 (~820 tok)
+- `components/AppCard.tsx` — 应用卡片（Notion/Vercel 风格，Link 包裹，收藏按钮阻止冒泡） (~880 tok)
+- `components/AppCenterToolbar.tsx` — 搜索框(视觉焦点)+分类+排序工具栏 (~620 tok)
+- `components/AppGrid.tsx` — 响应式网格容器 + SkeletonCard 骨架 (~520 tok)
+- `components/CategoryTabs.tsx` — 分类筛选 pills（role=group，带数量） (~480 tok)
+- `components/EmptyState.tsx` — 空状态（no-results/no-apps 两态） (~430 tok)
+- `components/SortControl.tsx` — 排序切换 SegmentedControl（role=radiogroup） (~430 tok)
+- `config/apps.ts` — 【唯一数据源】8 个内置应用静态配置（图标/分类/路径/license/sortKey） (~890 tok)
+- `config/categories.ts` — 6 分类定义 + ACCENT_STYLES 强调色→图标容器样式映射 (~780 tok)
+- `frontend/src/app/app-center/page.tsx` — 路由页，ShellLayout 包裹（镜像 dashboard 模式） (~210 tok)
+- `hooks/useApps.ts` — 主 hook：搜索+排序+分类筛选+license/admin 过滤（镜像 Sidebar 逻辑） (~900 tok)
+- `hooks/useFavorites.ts` — 收藏状态，localStorage 持久化，'use client'+useEffect 水合守卫 (~580 tok)
+- `index.ts` — barrel export (~180 tok)
+- `types.ts` — AppDefinition/CategoryKey/SortMode/AccentColor 类型定义 (~620 tok)
+
 ## C:/Users/admin/.claude/plans/
 
 - `breezy-tinkering-mccarthy.md` — 工作流编辑器节点精简与增强 (~1140 tok)
@@ -228,6 +245,14 @@
 - `docker-dev-environment.md` — Docker Development Environment (~389 tok)
 - `docker-restart-vs-up.md` (~150 tok)
 - `MEMORY.md` (~102 tok)
+
+## C:/Users/admin/.gstack/projects/eai-flow-main/
+
+- `admin-fix-four-module-p0-df2-df3-df5-df6-design-20260615-164414.md` — Design: 应用中心（App Center） (~2389 tok)
+
+## C:/Users/admin/.gstack/projects/eai-flow-main/designs/design-audit-20260615/
+
+- `app-center-polish-summary.md` — Design Review: App Center (应用中心) (~832 tok)
 
 ## _workspace_temp/
 
@@ -374,7 +399,7 @@
 - `langgraph.json` (~112 tok)
 - `launch_gateway.py` — Simple gateway launcher. (~170 tok)
 - `Makefile` — Make build targets (~93 tok)
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~403 tok)
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~490 tok)
 - `README.md` — Project documentation (~3906 tok)
 - `reset_pwd.py` — Reset admin password in the gateway database. (~317 tok)
 - `ruff.toml` (~59 tok)
@@ -950,6 +975,15 @@
 - `middleware.py` — Authentication middleware for extensions module. (~2925 tok)
 - `unified_permissions.py` — Unified permission checking — single entry point for all project RBAC. (~1178 tok)
 
+## backend/app/extensions/contract_price/
+
+- `__init__.py` — Contract price analysis extension. (~225 tok)
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~2756 tok)
+- `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~1493 tok)
+- `routers.py` — Contract price analysis management API — all functional areas. (~2704 tok)
+- `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~847 tok)
+- `service.py` — Pipeline orchestration service for the management API. (~842 tok)
+
 ## backend/app/extensions/dashboard/
 
 - `__init__.py` (~0 tok)
@@ -971,7 +1005,7 @@
 - `collab_routers.py` — Routers for collaborative editing: comments and versions. (~2729 tok)
 - `collab_schemas.py` — Pydantic schemas for collaborative editing endpoints. (~745 tok)
 - `collab_service.py` — Services for collaborative editing: comments and versions. (~4941 tok)
-- `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~871 tok)
+- `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~1612 tok)
 - `folder_service.py` — Folder service for document space folder management. (~3929 tok)
 - `routers.py` — AI Document routers for extensions module. (~6881 tok)
 - `service.py` — AI Document service for extensions module. (~5871 tok)
@@ -1031,7 +1065,7 @@
 
 - `permissions.py` — Project RBAC permission matrix — owner/leader/writer/dept_reviewer/co_reviewer model. (~1352 tok)
 - `project_permissions.py` — Project-level permission system. (~1417 tok)
-- `routers.py` — FastAPI routers for report project management. (~12154 tok)
+- `routers.py` — FastAPI routers for report project management. (~12596 tok)
 - `schemas.py` — Pydantic schemas for report project management. (~2670 tok)
 - `service.py` — Database-backed service for report project management. (~12654 tok)
 - `slot_filling.py` — Runtime slot-filling service — checks if required roles for a phase are filled. (~1456 tok)
@@ -1056,24 +1090,28 @@
 
 - `__init__.py` — Workflow engine extension for EAI Flow. (~28 tok)
 - `local_executor.py` — LocalWorkflowRunner — in-process DAG executor (no Temporal required). (~5278 tok)
+- `metrics.py` — Workflow observability — structured logging, metrics counters, trace IDs. (~1444 tok)
 - `migration.py` — Migration: add template metadata fields and template_approvals table. (~510 tok)
 - `models.py` — SQLAlchemy models for the workflow engine. (~1795 tok)
 - `permissions.py` — Workflow permission constants. (~236 tok)
 - `registry.py` — Extensible workflow node registry. (~917 tok)
 - `review.py` — Service layer for phase review operations. (~1408 tok)
-- `routers.py` — FastAPI routers for workflow definitions. (~7648 tok)
+- `routers.py` — FastAPI routers for workflow definitions. (~7931 tok)
 - `schemas.py` — Pydantic: WorkflowDefinitionCreate (~1924 tok)
-- `service.py` — ── DAG Validation ── (~2935 tok)
+- `service.py` — ── DAG Validation ── (~3027 tok)
 - `system_nodes.py` — Built-in system node types: start, end. (~1520 tok)
 - `traceability.py` — ParsedSource: parse_source_markers, find_missing_sources (~700 tok)
 
 ## backend/app/extensions/workflow/temporal/
 
 - `__init__.py` (~0 tok)
-- `activities.py` — Real activity implementations for the workflow engine. (~10202 tok)
-- `client.py` — get_temporal_client, temporal_lifespan, send_signal, get_workflow_status (~1759 tok)
+- `activities.py` — Real activity implementations for the workflow engine. (~3269 tok)
+- `client.py` — get_temporal_client, temporal_lifespan, send_signal, get_workflow_status (~1800 tok)
+- `notification_activities.py` — Notification activities — phase start, review pending, workflow complete. (~3327 tok)
+- `review_activities.py` — Review Context activities — assignment, gate evaluation, rejection rollback. (~3671 tok)
 - `signals.py` — Signal name constants for the DynamicGraphWorkflow. (~90 tok)
-- `workflows.py` — DynamicGraphWorkflow — a Temporal workflow that walks a DAG of nodes. (~6656 tok)
+- `workflows.py` — DynamicGraphWorkflow — a Temporal workflow that walks a DAG of nodes. (~8022 tok)
+- `writing_activities.py` — Writing Context activities — AI chapter generation, source parsing. (~5195 tok)
 
 ## backend/app/extensions/workflow/timeline/
 
@@ -1092,7 +1130,7 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan, create_app (~5491 tok)
+- `app.py` — lifespan, create_app (~5548 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1541 tok)
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2384 tok)
 
@@ -1152,8 +1190,10 @@
 
 ## backend/tests/
 
-- `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2106 tok)
+- `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
 - `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8977 tok)
+- `test_contract_price_extension.py` — Tests for the contract_price extension (models, routes, schemas). (~731 tok)
+- `test_contract_price_model_parity.py` — Parity test: the agent skill's mirror ``cpa_`` models must stay in sync with (~943 tok)
 - `test_dashboard.py` — Tests for dashboard service and API endpoints. (~1396 tok)
 - `test_document_space.py` — test_ai_document_model_has_new_fields, test_ai_document_create_schema_accepts_file_ref_fields, test_ (~5554 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
@@ -1177,6 +1217,7 @@
 - `test_timeline.py` — Tests for ProjectTimeline CRUD operations. (~2297 tok)
 - `test_traceability.py` — Tests for AI content traceability parsing and missing source detection. (~1447 tok)
 - `test_update_chapter_auto_parse.py` — Tests for update_chapter auto-parse traceability sources. (~1622 tok)
+- `test_workflow_integration.py` — Integration tests for the full writing-project workflow chain. (~6395 tok)
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
 - `test_workflow_template.py` — Tests for workflow template management — approval workflow, visibility, state transitions. (~3015 tok)
 
@@ -1237,6 +1278,9 @@
 - `2026-06-04-project-overview-tab-merge.md` — 项目概览 Tab 合并实施计划 (~14745 tok)
 - `2026-06-12-coal-eia-report-skill.md` — 煤炭环评报告编写技能 实施计划 (~11280 tok)
 - `2026-06-13-four-module-redesign.md` — 四模块业务流程重构 — 实施计划 (~20439 tok)
+- `2026-06-15-contract-price-analysis-api.md` — 合同分项价格分析 — 管理页面 API 服务实现计划 (Plan 2/3) (~984 tok)
+- `2026-06-15-contract-price-analysis-frontend.md` — 合同分项价格分析 — 前端管理页面实现计划 (Plan 3/3) (~392 tok)
+- `2026-06-15-contract-price-analysis-pipeline.md` — 合同分项价格分析 — 数据流水线实现计划 (Plan 1/3) (~12566 tok)
 
 ## docs/superpowers/specs/
 
@@ -1263,6 +1307,7 @@
 - `2026-06-12-coal-eia-report-skill-design.md` — 煤炭环评报告编写技能设计方案 (~2739 tok)
 - `2026-06-12-knowledge-base-ragflow-params-design.md` — Knowledge Base Creation — RAGFlow Parameter Enhancement (~2013 tok)
 - `2026-06-13-four-module-business-redesign.md` — 四模块业务流程重构设计 (~3992 tok)
+- `2026-06-15-contract-price-analysis-design.md` — 合同分项价格分析技能 — 设计文档 (~3097 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1327,6 +1372,35 @@
 ## frontend/src/app/api/memory/[...path]/
 
 - `route.ts` — Next.js API route: GET, POST, DELETE, PATCH (~468 tok)
+
+## frontend/src/app/app-center/
+
+- `page.tsx` — AppCenterRoute (~140 tok)
+
+## frontend/src/app/contract-price/
+
+- `layout.tsx` — navItems (~651 tok)
+- `page.tsx` — ContractPriceDashboardPage (~54 tok)
+
+## frontend/src/app/contract-price/clusters/
+
+- `page.tsx` — ContractPriceClustersPage (~53 tok)
+
+## frontend/src/app/contract-price/contracts/
+
+- `page.tsx` — ContractPriceContractsPage (~54 tok)
+
+## frontend/src/app/contract-price/items/
+
+- `page.tsx` — ContractPriceItemsPage (~49 tok)
+
+## frontend/src/app/contract-price/settings/
+
+- `page.tsx` — ContractPriceSettingsPage (~53 tok)
+
+## frontend/src/app/contract-price/tasks/
+
+- `page.tsx` — ContractPriceTasksPage (~49 tok)
 
 ## frontend/src/app/dashboard/
 
@@ -1428,6 +1502,31 @@
 
 - `index.ts` — API routes: GET (2 endpoints) (~11216 tok)
 
+## frontend/src/extensions/app-center/
+
+- `AppCenterPage.tsx` — 应用中心主页面。 (~1028 tok)
+- `index.ts` (~109 tok)
+- `types.ts` — 业务分类标识 (~343 tok)
+
+## frontend/src/extensions/app-center/components/
+
+- `AppCard.tsx` — 单个应用卡片 —— Notion/Vercel 风格。 (~1033 tok)
+- `AppCenterToolbar.tsx` — 工具栏：搜索框（视觉焦点）+ 分类 pills + 排序切换。 (~684 tok)
+- `AppGrid.tsx` — 是否为收藏区（影响标题样式） (~457 tok)
+- `CategoryTabs.tsx` — 分类筛选 pills。 (~454 tok)
+- `EmptyState.tsx` — 空状态 —— 区分"搜索无结果"与"无可用应用（权限）"。 (~294 tok)
+- `SortControl.tsx` — 排序模式切换 —— SegmentedControl 风格，选中态品牌色高亮。 (~447 tok)
+
+## frontend/src/extensions/app-center/config/
+
+- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~705 tok)
+- `categories.ts` — 分类定义 —— 顺序即默认展示顺序。 (~650 tok)
+
+## frontend/src/extensions/app-center/hooks/
+
+- `useApps.ts` — 经过 license/搜索/分类/排序后的最终应用列表 (~1152 tok)
+- `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
+
 ## frontend/src/extensions/collab/
 
 - `AIDocumentReview.tsx` — REVIEW_TYPES (~1037 tok)
@@ -1450,6 +1549,27 @@
 ## frontend/src/extensions/collab/__tests__/
 
 - `seeding.test.ts` — Pure-function extraction of the seeding decision logic from BlockNoteEditor.tsx. (~1564 tok)
+
+## frontend/src/extensions/contract-price/
+
+- `api.ts` — API client for the contract-price-analysis management API. (~1101 tok)
+- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~870 tok)
+- `types.ts` — TypeScript types for the contract-price-analysis API. (~658 tok)
+
+## frontend/src/extensions/contract-price/components/
+
+- `ClustersView.tsx` — statusBadge — renders table (~2850 tok)
+- `ContractsView.tsx` — statusTone — renders form, table (~1306 tok)
+- `DashboardView.tsx` — formatDate — renders table (~1650 tok)
+- `ItemsView.tsx` — ItemsView — renders form, table (~1925 tok)
+- `PageHeader.tsx` — PageHeader — renders table (~269 tok)
+- `SettingsView.tsx` — SettingsView (~1409 tok)
+- `StatCard.tsx` — toneClasses (~360 tok)
+- `TasksView.tsx` — statusTone — renders table (~1286 tok)
+
+## frontend/src/extensions/contract-price/components/ui/
+
+- `table.tsx` — Lightweight table primitives (raw HTML) for the contract-price module. (~520 tok)
 
 ## frontend/src/extensions/dashboard/
 
@@ -1570,7 +1690,7 @@
 ## frontend/src/extensions/project/
 
 - `AiToolbox.tsx` — TOOLS (~4097 tok)
-- `api.ts` — Get project stats (file count, doc size). Falls back to getFiles count. (~2156 tok)
+- `api.ts` — Get project stats (file count, doc size). Falls back to getFiles count. (~2322 tok)
 - `OutlineEditor.tsx` — ExpandCtx (~3522 tok)
 - `OutlinePreview.tsx` — PreviewNode (~682 tok)
 - `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11055 tok)
@@ -1594,7 +1714,7 @@
 - `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1748 tok)
 - `SettingsDialog.tsx` — SettingsDialog — renders modal (~2399 tok)
 - `StatusDistribution.tsx` — STATUS_ITEMS (~464 tok)
-- `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~1522 tok)
+- `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~2401 tok)
 - `WorkspaceTabs.tsx` — ICON_MAP (~348 tok)
 
 ## frontend/src/extensions/project/components/GanttChart/
@@ -1626,7 +1746,7 @@
 
 ## frontend/src/extensions/shell/
 
-- `Sidebar.tsx` — allNavItems (~1654 tok)
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1892 tok)
 
 ## frontend/src/extensions/types/
 
@@ -1720,6 +1840,10 @@
 - `types.test.ts` — Declares has (~867 tok)
 - `VersionPanel.test.tsx` — Mock lucide-react icons (~2231 tok)
 
+## frontend/tests/unit/extensions/contract-price/
+
+- `api.test.ts` — Mock authFetch so tests assert URL + method without hitting the network. (~754 tok)
+
 ## frontend/tests/unit/extensions/project/
 
 - `api.test.ts` — Mock authFetch before importing api (~1332 tok)
@@ -1744,8 +1868,8 @@
 
 ## skills/custom/coal-eia-report/
 
-- `README.md` — Project documentation (~335 tok)
-- `SKILL.md` — 煤炭矿区总体规划环评报告编写技能 (~2782 tok)
+- `README.md` — Project documentation (~339 tok)
+- `SKILL.md` — 煤炭矿区总体规划环评报告编写技能 (~2896 tok)
 
 ## skills/custom/coal-eia-report/references/
 
@@ -1770,6 +1894,69 @@
 - `calc_noise.py` — calc_noise, max_compliant_distance, main (~1527 tok)
 - `calc_subsidence.py` — erf_approx, calc_subsidence, main (~1191 tok)
 - `calc_water_balance.py` — sum_items, calc_water_balance, main (~1383 tok)
+
+## skills/custom/contract-price-analysis/
+
+- `conftest.py` — Pytest config: ensure required env vars exist before module import. (~130 tok)
+- `README.md` — Project documentation (~569 tok)
+- `requirements.txt` — Python dependencies (~22 tok)
+- `SKILL.md` — 合同分项价格分析技能 (~511 tok)
+
+## skills/custom/contract-price-analysis/scripts/
+
+- `__init__.py` (~0 tok)
+- `cli.py` — End-to-end pipeline orchestration. (~2977 tok)
+- `config.py` — Configuration loaded from environment variables. (~251 tok)
+- `db.py` — Async DB engine + session factory for cpa_ tables. (~238 tok)
+- `excel_generator.py` — Generate a 6-sheet Excel report with charts via xlsxwriter. (~1998 tok)
+- `models.py` — SQLAlchemy ORM models for cpa_ tables (PostgreSQL postgres-ext). (~1492 tok)
+- `ragflow_client.py` — RAGFlow REST API client with incremental change detection. (~1548 tok)
+- `stats.py` — Aggregate statistics over a group of unit prices. (~528 tok)
+
+## skills/custom/contract-price-analysis/scripts/clustering/
+
+- `__init__.py` — Clustering subpackage: vectorization (text + tech params) and DBSCAN engine. (~24 tok)
+- `engine.py` — DBSCAN clustering over vectorized goods samples (numpy-only, no scikit-learn). (~924 tok)
+- `vectorizer.py` — Feature vectorizer: char-ngram TF-IDF over goods name/spec + standardized tech params. (~1005 tok)
+
+## skills/custom/contract-price-analysis/scripts/parser/
+
+- `__init__.py` — Document parsers for contract price line-items. (~524 tok)
+- `base.py` — Parser interface. (~80 tok)
+- `list_parser.py` — Numbered-list parser. (~486 tok)
+- `mixed_parser.py` — Mixed parser: tables first, fall back to list parsing per chunk. (~227 tok)
+- `table_parser.py` — Markdown-table parser. (~872 tok)
+
+## skills/custom/contract-price-analysis/scripts/server/
+
+- `__init__.py` — Contract price analysis — management API service (FastAPI). (~19 tok)
+- `app.py` — FastAPI application for the contract-price-analysis management API. (~441 tok)
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~2577 tok)
+- `deps.py` — Shared dependencies for the management API. (~127 tok)
+- `main.py` — uvicorn entrypoint for the management API. (~117 tok)
+- `schemas.py` — Pydantic request/response models for the management API. (~854 tok)
+
+## skills/custom/contract-price-analysis/scripts/server/routers/
+
+- `__init__.py` — API routers, one per management functional area. (~16 tok)
+
+## skills/custom/contract-price-analysis/tests/
+
+- `test_cli.py` — End-to-end CLI pipeline tests (RAGFlow + DB mocked). (~781 tok)
+- `test_clustering_engine.py` — Tests for the DBSCAN clustering engine. (~429 tok)
+- `test_config.py` — test_get_config_reads_env, test_get_config_defaults (~233 tok)
+- `test_db_models.py` — Tests for cpa_ ORM models. (~1010 tok)
+- `test_excel_generator.py` — Tests for the Excel generator (6 sheets + charts). (~688 tok)
+- `test_parser.py` — Tests for the three parser modes + dispatch. (~649 tok)
+- `test_ragflow_client.py` — Tests for the RAGFlow client (HTTP mocked — no live server needed). (~1127 tok)
+- `test_stats.py` — Tests for price statistics computation. (~307 tok)
+- `test_vectorizer.py` — Tests for the text+param vectorizer. (~385 tok)
+
+## skills/custom/contract-price-analysis/tests/server/
+
+- `__init__.py` (~0 tok)
+- `test_app.py` — Tests for the FastAPI app scaffold (health endpoint, CORS). (~280 tok)
+- `test_schemas_crud.py` — Tests for schemas + config CRUD (JSON-backed, no DB needed). (~616 tok)
 
 ## skills/custom/geological-report/
 

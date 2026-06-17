@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import type { MyProjectItem } from "../types";
 
 const ROLE_LABELS: Record<string, string> = {

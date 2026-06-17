@@ -1,6 +1,7 @@
 "use client";
 
 import type { DAGNodeData, TaskNodeData, NotificationConfig } from "../types";
+
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface MergeConfigPanelProps {

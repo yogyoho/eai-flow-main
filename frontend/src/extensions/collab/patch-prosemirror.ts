@@ -23,7 +23,7 @@ serializer.renderSpec = function (
   if (
     structure != null &&
     typeof structure === "object" &&
-    "nodeType" in (structure as object) &&
+    "nodeType" in (structure) &&
     (structure as { nodeType: number }).nodeType != null
   ) {
     return { dom: structure as Node };
@@ -32,7 +32,7 @@ serializer.renderSpec = function (
   if (
     structure != null &&
     typeof structure === "object" &&
-    "dom" in (structure as object) &&
+    "dom" in (structure) &&
     (structure as { dom: unknown }).dom != null &&
     typeof (structure as { dom: unknown }).dom === "object" &&
     "nodeType" in (structure as { dom: object }).dom

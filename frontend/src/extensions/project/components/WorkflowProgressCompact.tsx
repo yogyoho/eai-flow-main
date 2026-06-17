@@ -1,13 +1,12 @@
 "use client";
 
 import { ArrowRight, Ban, Check, CheckCircle, ChevronRight, GitBranch, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
-
 import { projectApi } from "@/extensions/project/api";
 import { workflowApi } from "@/extensions/workflow/api";
 import type { WorkflowGraph, WorkflowStatusResponse, WorkflowNodeStatus } from "@/extensions/workflow/types";
@@ -68,7 +67,7 @@ export function WorkflowProgressCompact({ projectId, workflowGraph, canAdvancePh
     setGateMessage(null);
     try {
       // Direct fetch avoids SSR/streaming issues with the authFetch wrapper.
-      const csrf = document.cookie.match(/csrf_token=([^;]+)/)?.[1] ?? "";
+      const csrf = (/csrf_token=([^;]+)/.exec(document.cookie))?.[1] ?? "";
       const resp = await fetch(`/api/extensions/project/projects/${projectId}/phase-complete`, {
         method: "POST",
         credentials: "include",

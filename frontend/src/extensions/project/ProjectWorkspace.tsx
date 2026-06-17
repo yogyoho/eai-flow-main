@@ -4,22 +4,21 @@ import { ArrowLeft, Loader2, MessageSquare, Settings } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/extensions/hooks/useAuth";
 import { projectApi } from "@/extensions/project/api";
 import { SettingsDialog } from "@/extensions/project/components/SettingsDialog";
-import { useAuth } from "@/extensions/hooks/useAuth";
+import { createProjectIdentity, getVisibleTabs, type ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
   MEMBER_ROLE_LABELS,
   type ProjectPermissions,
   type ReportProject,
 } from "@/extensions/project/types";
-import { createProjectIdentity, getVisibleTabs, type ProjectIdentity } from "@/extensions/project/tabRegistry";
 import { workflowApi } from "@/extensions/workflow/api";
-import type { WorkflowGraph } from "@/extensions/workflow/types";
 import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
+import type { WorkflowGraph } from "@/extensions/workflow/types";
 
 const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then((m) => ({ default: m.OverviewTab })), { ssr: false });
 const EditorTab = dynamic(() => import("./tabs/EditorTab").then((m) => ({ default: m.EditorTab })), { ssr: false });

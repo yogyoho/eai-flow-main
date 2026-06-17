@@ -7,6 +7,7 @@ import {
   RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -16,24 +17,23 @@ import { Input } from "@/components/ui/input";
 import { useModels } from "@/core/models/hooks";
 import { cn } from "@/lib/utils";
 
-import dynamic from "next/dynamic";
 
 const CollabEditor = dynamic(() => import("../collab/CollabEditor").then((m) => m.CollabEditor), {
   ssr: false,
   loading: () => <div className="flex-1 flex items-center justify-center text-muted-foreground">加载编辑器...</div>,
 });
-import type { CollabEditorRef } from "../collab/CollabEditor";
 import { docmgrApi } from "../api";
+import type { CollabEditorRef } from "../collab/CollabEditor";
 import type { AIDocument } from "../types";
 
 import BatchActionBar from "./BatchActionBar";
+import { ExportDocxDialog } from "./ExportDocxDialog";
 import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./FilePreviewModal";
 import FolderPickerDialog from "./FolderPickerDialog";
 import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
-import { ExportDocxDialog } from "./ExportDocxDialog";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";

@@ -1,7 +1,5 @@
 "use client";
 
-import { GitBranch, Loader2 } from "lucide-react";
-import { useMemo } from "react";
 import {
   Background,
   Controls,
@@ -12,12 +10,14 @@ import {
   type NodeTypes,
   type EdgeTypes,
 } from "@xyflow/react";
+import { GitBranch, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 import "@xyflow/react/dist/style.css";
 
 import { AnimatedFlowEdge } from "./edges/AnimatedFlowEdge";
+import { useWorkflowStatus } from "./hooks/useWorkflowStatus";
 import { ProgressPhaseNode } from "./nodes/ProgressPhaseNode";
 import { ProgressReviewNode } from "./nodes/ProgressReviewNode";
-import { useWorkflowStatus } from "./hooks/useWorkflowStatus";
 import type { WorkflowGraph, WorkflowNodeStatus } from "./types";
 
 // ── Node / Edge types (stable references, must be outside component) ──
@@ -48,7 +48,7 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
   // Prefer graph from API response (includes full DAG), fallback to parent-passed graph
   const effectiveGraph = useMemo<WorkflowGraph | null>(() => {
     if (status?.graphJson) {
-      return status.graphJson as WorkflowGraph;
+      return status.graphJson;
     }
     return workflowGraph ?? null;
   }, [status?.graphJson, workflowGraph]);

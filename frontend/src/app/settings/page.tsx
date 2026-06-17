@@ -4,11 +4,12 @@ import { Loader2 } from "lucide-react";
 import { Suspense, useState } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
-import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
-import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 import { useI18n } from "@/core/i18n/hooks";
-
+import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
 import LicensePage from "@/extensions/license/LicensePage";
+import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
+
+
 import { BasicSettings } from "./basic-settings";
 
 export default function SettingsPage() {

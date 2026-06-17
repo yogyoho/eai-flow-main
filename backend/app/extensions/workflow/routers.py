@@ -726,3 +726,20 @@ async def workflow_signal_endpoint(
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result.get("detail", "Unknown error"))
     return result
+
+
+# ── Observability ──
+
+
+@router.get("/metrics")
+async def workflow_metrics(
+    user: WorkflowAdmin,
+):
+    """Return in-process workflow metrics for debugging and monitoring.
+
+    Tracks AI generation success/failure rates, review actions, and phase
+    transitions since the last gateway restart.  Counters reset on restart.
+    """
+    from app.extensions.workflow.metrics import get_metrics_snapshot
+
+    return get_metrics_snapshot()

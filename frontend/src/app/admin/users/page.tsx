@@ -125,7 +125,7 @@ export default function AdminUsersPage() {
   }, []);
 
   // Reload users when page or filters change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => { void loadUsers(); }, [loadUsers]);
 
   // Reset page when filters change

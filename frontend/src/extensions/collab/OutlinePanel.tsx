@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +80,7 @@ function findBlockElement(blockId: string): HTMLElement | null {
 
   // Fallback: data-node-id attribute on the inner wrapper
   const inner = document.querySelector(`[data-node-id="${blockId}"]`);
-  if (inner) return inner.closest(".bn-block-outer") as HTMLElement ?? inner as HTMLElement;
+  if (inner) return inner.closest(".bn-block-outer")! ?? inner as HTMLElement;
 
   return null;
 }
@@ -247,10 +248,10 @@ export function OutlinePanel({ editor, onChapterSelect, visibleChapterIds }: Out
       const el = findBlockElement(heading.id);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
-        (el as HTMLElement).style.transition = "background-color 0.3s";
-        (el as HTMLElement).style.backgroundColor = "rgba(99,102,241,0.08)";
+        (el).style.transition = "background-color 0.3s";
+        (el).style.backgroundColor = "rgba(99,102,241,0.08)";
         setTimeout(() => {
-          (el as HTMLElement).style.backgroundColor = "";
+          (el).style.backgroundColor = "";
         }, 1800);
       }
     },

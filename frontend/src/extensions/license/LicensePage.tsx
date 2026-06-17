@@ -1,9 +1,10 @@
 // frontend/src/extensions/license/LicensePage.tsx
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileDown } from "lucide-react";
+import { useState } from "react";
+
 import {
   exportLicense,
   getLicenseHistory,

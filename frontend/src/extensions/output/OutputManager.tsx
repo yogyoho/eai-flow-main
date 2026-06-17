@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import { outputApi } from "./api";
-import { LayoutTemplateEditor } from "./components/LayoutTemplateEditor";
 import { LayoutTemplateCard } from "./components/LayoutTemplateCard";
+import { LayoutTemplateEditor } from "./components/LayoutTemplateEditor";
 import { OutputConfigPanel } from "./components/OutputConfigPanel";
 import { OutputProgress } from "./components/OutputProgress";
 import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";

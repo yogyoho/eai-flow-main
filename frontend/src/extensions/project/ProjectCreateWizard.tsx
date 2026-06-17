@@ -23,14 +23,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { authFetch } from "@/extensions/api/client";
 import { projectApi } from "@/extensions/project/api";
-import { workflowApi } from "@/extensions/workflow/api";
+import { useReportTypes, getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import {
   MEMBER_ROLE_LABELS,
   type MemberRole,
 } from "@/extensions/project/types";
-import { authFetch } from "@/extensions/api/client";
-import { useReportTypes, getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
+import { workflowApi } from "@/extensions/workflow/api";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -993,7 +993,7 @@ export function ProjectCreateWizard() {
       const workflowId = resolveWorkflowId();
       const project = await projectApi.create({
         name: name.trim(),
-        reportType: reportType as import("@/extensions/project/types").ReportType,
+        reportType: reportType,
         templateId: resolveTemplateId(),
         workflowId,
         autoStartWorkflow: autoStartWorkflow && !!workflowId,

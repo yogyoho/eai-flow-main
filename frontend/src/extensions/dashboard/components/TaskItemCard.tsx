@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { Eye, Pen, ArrowRight, AlertTriangle, ChevronRight } from "lucide-react";
+import Link from "next/link";
+
 import type { TaskItem } from "../types";
 
 const TYPE_ICONS = {

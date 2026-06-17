@@ -53,7 +53,14 @@ def doc_fingerprint(doc: dict[str, Any]) -> str:
 
 class RagflowClient:
     def __init__(self, base_url: str, api_key: str, kb_id: str, timeout: float = 30.0):
-        self.base_url = base_url.rstrip("/")
+        # RAGFlow's REST API lives under /api/v1. The Docker env ships
+        # RAGFLOW_BASE_URL without the version prefix (e.g. http://host:9380),
+        # which makes every call hit /datasets/... and 404. Tolerate it: append
+        # /api/v1 when the base_url lacks any /api/vN segment.
+        base = base_url.rstrip("/")
+        if "/api/v" not in base:
+            base = base + "/api/v1"
+        self.base_url = base
         self.api_key = api_key
         self.kb_id = kb_id
         self._http = httpx.AsyncClient(
