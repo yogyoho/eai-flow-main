@@ -6,7 +6,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Streamdown } from "streamdown";
+import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
 
 import {
   ChainOfThought,
@@ -129,12 +129,12 @@ export function SubtaskCard({
           {task.prompt && (
             <ChainOfThoughtStep
               label={
-                <Streamdown
+                <ClipboardSafeStreamdown
                   {...streamdownPluginsWithWordAnimation}
                   components={{ a: CitationLink }}
                 >
                   {task.prompt}
-                </Streamdown>
+                </ClipboardSafeStreamdown>
               }
             ></ChainOfThoughtStep>
           )}
