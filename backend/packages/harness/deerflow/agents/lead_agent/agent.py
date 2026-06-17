@@ -291,6 +291,13 @@ def _build_middlewares(
 
     middlewares.append(DynamicContextMiddleware(agent_name=agent_name, app_config=resolved_app_config))
 
+    # Slash-skill activation: deterministically load a full SKILL.md when the
+    # user starts a turn with /skill-name, giving explicit activation priority
+    # over model-side relevance guessing. (Upstream port, Tier 2 C.)
+    from deerflow.agents.middlewares.skill_activation_middleware import SkillActivationMiddleware
+
+    middlewares.append(SkillActivationMiddleware(app_config=resolved_app_config))
+
     # Add summarization middleware if enabled
     summarization_middleware = _create_summarization_middleware(app_config=resolved_app_config)
     if summarization_middleware is not None:
