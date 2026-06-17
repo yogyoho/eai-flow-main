@@ -1,14 +1,28 @@
 """Tests for data_source schemas + service logic."""
 
+import tempfile
+
 import pytest
 from pydantic import ValidationError
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.extensions.data_source.schemas import (
     DataSourceCreate,
     DataSourceResponse,
     TestConnectionResult,
 )
-from app.extensions.data_source.service import assert_readonly_select
+from app.extensions.data_source.service import (
+    DataSourceService,
+    assert_readonly_select,
+)
+
+
+def _src(type_, cfg):
+    """Build a fake DataSource ORM-like object for tests."""
+    m = MagicMock()
+    m.type = type_
+    m.connection_config = cfg
+    return m
 
 
 class TestSchemas:
@@ -125,3 +139,122 @@ class TestAssertReadonlySelect:
         # fail-closed: a write verb inside a string literal is rejected (safe over-blocking)
         with pytest.raises(ValueError):
             assert_readonly_select("SELECT * FROM t WHERE note = 'please delete this'")
+
+
+class TestTestConnection:
+    """Per-type connection testing for DataSourceService."""
+
+    @pytest.mark.asyncio
+    async def test_database_success(self):
+        # Build a fake async engine whose .connect() is an async context manager
+        # yielding a connection whose .execute is an AsyncMock.
+        fake_conn = MagicMock()
+        fake_conn.execute = AsyncMock(return_value=MagicMock())
+
+        fake_engine = MagicMock()
+        fake_engine.dispose = AsyncMock()
+
+        # engine.connect() must return an async context manager
+        class _ConnectCM:
+            async def __aenter__(self_inner):
+                return fake_conn
+
+            async def __aexit__(self_inner, exc_type, exc, tb):
+                return False
+
+        fake_engine.connect = MagicMock(return_value=_ConnectCM())
+
+        with patch(
+            "app.extensions.data_source.service.create_async_engine",
+            return_value=fake_engine,
+        ):
+            result = await DataSourceService.test_connection(
+                _src("database", {"host": "h", "port": 5432, "database": "d"})
+            )
+        assert result.success is True
+        fake_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_database_failure(self):
+        with patch(
+            "app.extensions.data_source.service.create_async_engine",
+            side_effect=RuntimeError("no host"),
+        ):
+            result = await DataSourceService.test_connection(
+                _src("database", {"host": "h"})
+            )
+        assert result.success is False
+        assert "no host" in result.message
+
+    @pytest.mark.asyncio
+    async def test_api_success(self):
+        fake_response = MagicMock()
+        fake_response.status_code = 200
+
+        fake_client = MagicMock()
+        fake_client.get = AsyncMock(return_value=fake_response)
+
+        # httpx.AsyncClient(...) returns an async context manager
+        class _ClientCM:
+            async def __aenter__(self_inner):
+                return fake_client
+
+            async def __aexit__(self_inner, exc_type, exc, tb):
+                return False
+
+        with patch(
+            "app.extensions.data_source.service.httpx.AsyncClient",
+            return_value=_ClientCM(),
+        ):
+            result = await DataSourceService.test_connection(
+                _src("api", {"url": "https://example.com"})
+            )
+        assert result.success is True
+        fake_client.get.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_api_http_error(self):
+        fake_response = MagicMock()
+        fake_response.status_code = 500
+
+        fake_client = MagicMock()
+        fake_client.get = AsyncMock(return_value=fake_response)
+
+        class _ClientCM:
+            async def __aenter__(self_inner):
+                return fake_client
+
+            async def __aexit__(self_inner, exc_type, exc, tb):
+                return False
+
+        with patch(
+            "app.extensions.data_source.service.httpx.AsyncClient",
+            return_value=_ClientCM(),
+        ):
+            result = await DataSourceService.test_connection(
+                _src("api", {"url": "https://example.com"})
+            )
+        assert result.success is False
+
+    def test_file_exists(self):
+        with tempfile.NamedTemporaryFile() as tmp:
+            result = DataSourceService.test_connection_sync(
+                _src("file", {"path": tmp.name})
+            )
+        assert result.success is True
+
+    def test_file_missing(self):
+        result = DataSourceService.test_connection_sync(
+            _src("file", {"path": "/no/such/xyz"})
+        )
+        assert result.success is False
+
+    def test_gis_configured(self):
+        result = DataSourceService.test_connection_sync(
+            _src("gis", {"file_name": "a.shp"})
+        )
+        assert result.success is True
+
+    def test_unknown_type_fails_closed(self):
+        result = DataSourceService.test_connection_sync(_src("weird", {}))
+        assert result.success is False

@@ -8,6 +8,15 @@ PROJECT_DB_URL here — that points at a different database (project-db)."""
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+import httpx
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
+
+from app.extensions.data_source.schemas import TestConnectionResult
 
 
 # Write verbs blocked ANYWHERE in the query. Closes the PostgreSQL
@@ -44,3 +53,83 @@ def assert_readonly_select(sql: str) -> str:
     if not re.search(r"\bLIMIT\b", upper):
         s = f"{s} LIMIT 200"
     return s
+
+
+class DataSourceService:
+    """Stateless service methods for DataSource CRUD + connection ops."""
+
+    # ── connection testing ──
+
+    @staticmethod
+    async def test_connection(source) -> TestConnectionResult:
+        """Dispatch by source.type. Never raises — returns a result object."""
+        t = source.type
+        cfg = source.connection_config or {}
+        try:
+            if t == "database":
+                return await _test_database(cfg)
+            if t == "api":
+                return await _test_api(cfg)
+            # file / gis / unknown are synchronous
+            return DataSourceService.test_connection_sync(source)
+        except Exception as e:  # defensive: never let test_connection crash caller
+            return TestConnectionResult(success=False, message=f"{type(e).__name__}: {e}")
+
+    @staticmethod
+    def test_connection_sync(source) -> TestConnectionResult:
+        t = source.type
+        cfg = source.connection_config or {}
+        if t == "file":
+            return _test_file(cfg)
+        if t == "gis":
+            return _test_gis(cfg)
+        return TestConnectionResult(success=False, message=f"不支持的数据源类型: {t}")
+
+
+async def _test_database(cfg: dict) -> TestConnectionResult:
+    driver = cfg.get("driver") or "postgresql+asyncpg"
+    host = cfg.get("host", "localhost")
+    port = cfg.get("port", 5432)
+    database = cfg.get("database", "")
+    username = cfg.get("username", "")
+    password = cfg.get("password", "")
+    url = f"{driver}://{username}:{password}@{host}:{port}/{database}"
+    engine = create_async_engine(url, poolclass=NullPool)
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    finally:
+        await engine.dispose()
+    return TestConnectionResult(success=True, message="连接成功", metadata={"engine": driver})
+
+
+async def _test_api(cfg: dict) -> TestConnectionResult:
+    url = cfg.get("url", "")
+    if not url:
+        return TestConnectionResult(success=False, message="缺少 url")
+    headers = cfg.get("headers") or {}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(url, headers=headers)
+    if 200 <= resp.status_code < 400:
+        return TestConnectionResult(
+            success=True, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code}
+        )
+    return TestConnectionResult(
+        success=False, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code}
+    )
+
+
+def _test_file(cfg: dict) -> TestConnectionResult:
+    path = cfg.get("path", "")
+    if path and Path(path).exists():
+        return TestConnectionResult(success=True, message="文件存在", metadata={"path": path})
+    return TestConnectionResult(success=False, message="文件不存在", metadata={"path": path})
+
+
+def _test_gis(cfg: dict) -> TestConnectionResult:
+    name = cfg.get("file_name", "")
+    if name:
+        return TestConnectionResult(
+            success=True, message="已配置 GIS 文件", metadata={"file_name": name, "file_size": cfg.get("file_size")}
+        )
+    return TestConnectionResult(success=False, message="未上传 GIS 文件")
