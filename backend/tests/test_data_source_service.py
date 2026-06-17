@@ -8,6 +8,7 @@ from app.extensions.data_source.schemas import (
     DataSourceResponse,
     TestConnectionResult,
 )
+from app.extensions.data_source.service import assert_readonly_select
 
 
 class TestSchemas:
@@ -48,3 +49,56 @@ class TestSchemas:
         resp = DataSourceResponse.model_validate(_Fake())
         assert resp.name == "n"
         assert resp.id == "abc"
+
+
+class TestAssertReadonlySelect:
+    def test_select_appends_limit(self):
+        out = assert_readonly_select("SELECT * FROM users")
+        assert out.endswith("LIMIT 200")
+
+    def test_with_cte_allowed(self):
+        out = assert_readonly_select("WITH x AS (SELECT 1) SELECT * FROM x")
+        assert out.startswith("WITH")
+
+    def test_existing_limit_kept(self):
+        out = assert_readonly_select("SELECT * FROM users LIMIT 5")
+        assert "LIMIT 5" in out
+        # must not double-append
+        assert out.count("LIMIT") == 1
+
+    def test_lowercase_select_allowed(self):
+        out = assert_readonly_select("select * from t")
+        assert "LIMIT 200" in out
+
+    def test_insert_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("INSERT INTO t VALUES (1)")
+
+    def test_update_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("UPDATE t SET a=1")
+
+    def test_delete_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("DELETE FROM t")
+
+    def test_drop_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("DROP TABLE t")
+
+    def test_multi_statement_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("SELECT 1; DROP TABLE t;")
+
+    def test_select_into_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("SELECT * INTO newt FROM t")
+
+    def test_empty_rejected(self):
+        with pytest.raises(ValueError):
+            assert_readonly_select("   ")
+
+    def test_trailing_semicolon_stripped(self):
+        out = assert_readonly_select("SELECT 1;")
+        assert ";" not in out
+        assert "LIMIT 200" in out
