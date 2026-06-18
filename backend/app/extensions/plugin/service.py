@@ -13,7 +13,7 @@ import jsonschema
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.models import ApiKey, Plugin, PluginInstance
+from app.extensions.models import ApiKey, DataSource, Plugin, PluginInstance
 from app.extensions.plugin.schemas import ApiKeyCreate, PluginInstanceCreate, PluginInstanceUpdate
 from deerflow.config.extensions_config import ExtensionsConfig, reload_extensions_config
 
@@ -66,6 +66,7 @@ class PluginService:
         db.add(inst)
         await db.flush()
         PluginService.sync_mcp_registration(inst, plugin)
+        await PluginService.sync_data_source_registration(db, inst, plugin)
         return inst
 
     @staticmethod
@@ -83,6 +84,7 @@ class PluginService:
         await db.flush()
         plugin = await PluginService.get_plugin(db, inst.plugin_id)
         PluginService.sync_mcp_registration(inst, plugin)
+        await PluginService.sync_data_source_registration(db, inst, plugin)
         return inst
 
     @staticmethod
@@ -94,6 +96,7 @@ class PluginService:
         await db.delete(inst)
         await db.flush()
         PluginService.sync_mcp_registration(inst, plugin, remove=True)
+        await PluginService.sync_data_source_registration(db, inst, plugin, remove=True)
         return True
 
     # ── plugin→MCP wiring ──
@@ -144,6 +147,49 @@ class PluginService:
             reload_extensions_config()
         except Exception as e:  # non-fatal: plugin data is already persisted
             logger.warning("sync_mcp_registration failed for plugin %s: %s", plugin.id, e)
+
+    # ── plugin→DataSource wiring (data_connector) ──
+
+    @staticmethod
+    async def sync_data_source_registration(
+        db: AsyncSession, instance, plugin, *, remove: bool = False
+    ) -> None:
+        """Provision/remove a DataSource for a type=data_connector plugin.
+
+        Install (active) → upsert a DataSource (name=plugin.name, type=plugin.entry_point,
+        connection_config=instance.config). Disable/uninstall → remove it. name-based linkage.
+        The DataSource reuses the generic data-source layer (datasets, query_dataset, UI).
+        """
+        should = (
+            not remove
+            and getattr(instance, "status", None) == "active"
+            and plugin.type == "data_connector"
+            and plugin.entry_point in ("database", "api", "file", "gis")
+        )
+        existing = (
+            await db.execute(select(DataSource).where(DataSource.name == plugin.name))
+        ).scalars().first()
+        if should:
+            if existing is None:
+                db.add(
+                    DataSource(
+                        name=plugin.name,
+                        type=plugin.entry_point,
+                        connection_config=instance.config or {},
+                        description=plugin.description,
+                        auth_type="none",
+                        sync_mode="manual",
+                    )
+                )
+            else:
+                existing.type = plugin.entry_point
+                existing.connection_config = instance.config or {}
+                if plugin.description:
+                    existing.description = plugin.description
+            await db.flush()
+        elif existing is not None:
+            await db.delete(existing)
+            await db.flush()
 
     # ── API keys ──
 

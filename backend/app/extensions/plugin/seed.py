@@ -15,6 +15,7 @@ BUILTIN_PLUGINS = [
     {
         "name": "地质数据连接器",
         "type": "data_connector",
+        "entry_point": "database",
         "description": "对接地质钻孔数据库,拉取地层信息。",
         "config_schema": {
             "type": "object",
@@ -29,6 +30,7 @@ BUILTIN_PLUGINS = [
     {
         "name": "环境监测连接器",
         "type": "data_connector",
+        "entry_point": "api",
         "description": "对接在线监测平台,获取实时监测数据。",
         "config_schema": {
             "type": "object",

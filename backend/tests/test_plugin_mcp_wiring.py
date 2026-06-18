@@ -103,7 +103,9 @@ class TestHooksCallSync:
         req.config = {}
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
             PluginService, "validate_config", MagicMock(return_value=None)
-        ), patch.object(PluginService, "sync_mcp_registration") as sync:
+        ), patch.object(PluginService, "sync_mcp_registration") as sync, patch.object(
+            PluginService, "sync_data_source_registration", AsyncMock()
+        ):
             await PluginService.create_instance(db, req, user_id=None)
         sync.assert_called_once()
 
@@ -117,10 +119,52 @@ class TestHooksCallSync:
         db.flush = AsyncMock()
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
             PluginService, "sync_mcp_registration"
-        ) as sync:
+        ) as sync, patch.object(PluginService, "sync_data_source_registration", AsyncMock()):
             await PluginService.delete_instance(db, "iid")
         sync.assert_called_once()
         assert sync.call_args.kwargs.get("remove") is True
+
+
+class TestSyncDataSourceRegistration:
+    @pytest.mark.asyncio
+    async def test_active_data_connector_creates_datasource(self):
+        db = AsyncMock()
+        rm = MagicMock()
+        rm.scalars.return_value.first.return_value = None  # no existing DataSource
+        db.execute = AsyncMock(return_value=rm)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        plugin = _plugin(type_="data_connector", entry="database")
+        plugin.name = "地质数据连接器"
+        plugin.description = "对接地质钻孔库"
+        inst = _instance(status="active")
+        inst.config = {"host": "h", "port": 5432}
+        await PluginService.sync_data_source_registration(db, inst, plugin)
+        assert db.add.called  # DataSource created
+
+    @pytest.mark.asyncio
+    async def test_inactive_removes_existing(self):
+        db = AsyncMock()
+        existing = MagicMock()
+        rm = MagicMock()
+        rm.scalars.return_value.first.return_value = existing
+        db.execute = AsyncMock(return_value=rm)
+        db.delete = AsyncMock()
+        db.flush = AsyncMock()
+        plugin = _plugin(type_="data_connector", entry="database")
+        await PluginService.sync_data_source_registration(db, _instance(status="disabled"), plugin)
+        db.delete.assert_called_once_with(existing)
+
+    @pytest.mark.asyncio
+    async def test_non_data_connector_no_op(self):
+        db = AsyncMock()
+        rm = MagicMock()
+        rm.scalars.return_value.first.return_value = None
+        db.execute = AsyncMock(return_value=rm)
+        db.add = MagicMock()
+        plugin = _plugin(type_="tool", entry="app.x.mcp")  # tool, not data_connector
+        await PluginService.sync_data_source_registration(db, _instance(), plugin)
+        assert not db.add.called
 
 
 class TestDemoModule:
