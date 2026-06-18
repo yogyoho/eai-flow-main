@@ -67,15 +67,21 @@ BUILTIN_PLUGINS = [
 
 
 async def seed_builtin_plugins(db: AsyncSession) -> None:
-    """Insert built-in plugins if not present. Idempotent by (name, version)."""
+    """Insert built-in plugins if not present; sync entry_point on existing. Idempotent."""
     added = 0
+    updated = False
     for p in BUILTIN_PLUGINS:
         name = p["name"]
         version = p.get("version", "1.0.0")
-        existing = await db.execute(
-            select(Plugin).where(Plugin.name == name, Plugin.version == version)
-        )
-        if existing.scalars().first():
+        existing = (
+            await db.execute(select(Plugin).where(Plugin.name == name, Plugin.version == version))
+        ).scalars().first()
+        if existing:
+            # sync entry_point (added after initial seed) so data_connector wiring works
+            ep = p.get("entry_point")
+            if ep != existing.entry_point:
+                existing.entry_point = ep
+                updated = True
             continue
         db.add(
             Plugin(
@@ -90,6 +96,7 @@ async def seed_builtin_plugins(db: AsyncSession) -> None:
             )
         )
         added += 1
-    if added:
+    if added or updated:
         await db.commit()
+    if added:
         logger.info("Seeded %d built-in plugins", added)
