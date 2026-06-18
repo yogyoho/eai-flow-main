@@ -104,6 +104,8 @@ class TestHooksCallSync:
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
             PluginService, "validate_config", MagicMock(return_value=None)
         ), patch.object(PluginService, "sync_mcp_registration") as sync, patch.object(
+            PluginService, "sync_skill_registration"
+        ), patch.object(
             PluginService, "sync_data_source_registration", AsyncMock()
         ):
             await PluginService.create_instance(db, req, user_id=None)
@@ -119,7 +121,9 @@ class TestHooksCallSync:
         db.flush = AsyncMock()
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
             PluginService, "sync_mcp_registration"
-        ) as sync, patch.object(PluginService, "sync_data_source_registration", AsyncMock()):
+        ) as sync, patch.object(PluginService, "sync_skill_registration"), patch.object(
+            PluginService, "sync_data_source_registration", AsyncMock()
+        ):
             await PluginService.delete_instance(db, "iid")
         sync.assert_called_once()
         assert sync.call_args.kwargs.get("remove") is True
@@ -165,6 +169,31 @@ class TestSyncDataSourceRegistration:
         plugin = _plugin(type_="tool", entry="app.x.mcp")  # tool, not data_connector
         await PluginService.sync_data_source_registration(db, _instance(), plugin)
         assert not db.add.called
+
+
+class TestSyncSkillRegistration:
+    def test_active_output_writes_skill_md(self, tmp_path):
+        fake_config = MagicMock()
+        fake_config.skills.path = str(tmp_path)
+        with patch("deerflow.config.get_app_config", return_value=fake_config), patch(
+            "app.extensions.plugin.service.ExtensionsConfig.resolve_config_path", return_value=None
+        ):
+            PluginService.sync_skill_registration(_instance(), _plugin(type_="output"))
+        skill_file = tmp_path / "custom" / "plugin-pid" / "SKILL.md"
+        assert skill_file.exists()
+        content = skill_file.read_text(encoding="utf-8")
+        assert "name: plugin-pid" in content
+        assert "示例工具" in content
+
+    def test_non_output_no_skill_written(self, tmp_path):
+        fake_config = MagicMock()
+        fake_config.skills.path = str(tmp_path)
+        with patch("deerflow.config.get_app_config", return_value=fake_config), patch(
+            "app.extensions.plugin.service.ExtensionsConfig.resolve_config_path", return_value=None
+        ):
+            PluginService.sync_skill_registration(_instance(), _plugin(type_="tool"))
+        skill_file = tmp_path / "custom" / "plugin-pid" / "SKILL.md"
+        assert not skill_file.exists()
 
 
 class TestDemoModule:

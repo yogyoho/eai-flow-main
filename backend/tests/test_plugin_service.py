@@ -139,6 +139,8 @@ class TestInstanceCrud:
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
             PluginService, "validate_config", MagicMock(return_value=None)
         ), patch.object(PluginService, "sync_mcp_registration"), patch.object(
+            PluginService, "sync_skill_registration"
+        ), patch.object(
             PluginService, "sync_data_source_registration", AsyncMock()
         ):
             inst = await PluginService.create_instance(db, req, user_id=None)

@@ -63,6 +63,18 @@ BUILTIN_PLUGINS = [
         "entry_point": "app.extensions.plugin.builtin.demo_mcp",
         "config_schema": {"type": "object"},
     },
+    {
+        "name": "报告图表生成器",
+        "type": "output",
+        "description": (
+            "当用户需要在报告中嵌入数据图表时:\n"
+            "1. 先从数据源获取数据(list_datasets / query_dataset / query_data_source)。\n"
+            "2. 用 Python(matplotlib 或 plotly)生成图表(柱状图/折线图/饼图/散点图)。\n"
+            "3. 保存为 PNG 或 HTML,嵌入报告对应章节。\n"
+            "注意:图表应标注数据来源、单位、时间范围。"
+        ),
+        "config_schema": {"type": "object"},
+    },
 ]
 
 
@@ -81,6 +93,10 @@ async def seed_builtin_plugins(db: AsyncSession) -> None:
             ep = p.get("entry_point")
             if ep != existing.entry_point:
                 existing.entry_point = ep
+                updated = True
+            desc = p.get("description")
+            if desc and desc != existing.description:
+                existing.description = desc
                 updated = True
             continue
         db.add(

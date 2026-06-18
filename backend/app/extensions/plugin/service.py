@@ -8,6 +8,8 @@ import hashlib
 import json
 import logging
 import secrets
+import shutil
+from pathlib import Path
 
 import jsonschema
 from sqlalchemy import select
@@ -66,6 +68,7 @@ class PluginService:
         db.add(inst)
         await db.flush()
         PluginService.sync_mcp_registration(inst, plugin)
+        PluginService.sync_skill_registration(inst, plugin)
         await PluginService.sync_data_source_registration(db, inst, plugin)
         return inst
 
@@ -84,6 +87,7 @@ class PluginService:
         await db.flush()
         plugin = await PluginService.get_plugin(db, inst.plugin_id)
         PluginService.sync_mcp_registration(inst, plugin)
+        PluginService.sync_skill_registration(inst, plugin)
         await PluginService.sync_data_source_registration(db, inst, plugin)
         return inst
 
@@ -96,6 +100,7 @@ class PluginService:
         await db.delete(inst)
         await db.flush()
         PluginService.sync_mcp_registration(inst, plugin, remove=True)
+        PluginService.sync_skill_registration(inst, plugin, remove=True)
         await PluginService.sync_data_source_registration(db, inst, plugin, remove=True)
         return True
 
@@ -190,6 +195,63 @@ class PluginService:
         elif existing is not None:
             await db.delete(existing)
             await db.flush()
+
+    # ── plugin→Skill wiring (output type) ──
+
+    @staticmethod
+    def sync_skill_registration(instance, plugin, *, remove: bool = False) -> None:
+        """Register/remove an output plugin as a skill (SKILL.md in skills/custom/).
+
+        Install → write SKILL.md + enable in extensions_config.skills → harness skills
+        loader (mtime hot-reload) injects it into the agent's system prompt.
+        Never raises — a failure only logs a warning.
+        """
+        logger = logging.getLogger(__name__)
+        skill_name = f"plugin-{plugin.id}"
+        should = (
+            not remove
+            and getattr(instance, "status", None) == "active"
+            and plugin.type == "output"
+        )
+        try:
+            from deerflow.config import get_app_config
+
+            cfg_path = get_app_config().skills.path
+            if cfg_path:
+                skills_custom = Path(cfg_path) / "custom"
+            else:
+                skills_custom = Path(__file__).resolve().parents[4] / "skills" / "custom"
+            skill_dir = skills_custom / skill_name
+
+            if should:
+                skill_dir.mkdir(parents=True, exist_ok=True)
+                body = (plugin.description or "").strip() or f"# {plugin.name}"
+                content = (
+                    f"---\n"
+                    f"name: {skill_name}\n"
+                    f"description: {plugin.name}: {plugin.description or ''}\n"
+                    f"license: MIT\n"
+                    f"---\n\n"
+                    f"{body}\n"
+                )
+                (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+            elif skill_dir.exists():
+                shutil.rmtree(skill_dir)
+
+            config_path = ExtensionsConfig.resolve_config_path()
+            if config_path and config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    data = json.load(f)
+                skills_cfg = data.setdefault("skills", {})
+                if should:
+                    skills_cfg[skill_name] = {"enabled": True}
+                else:
+                    skills_cfg.pop(skill_name, None)
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                reload_extensions_config()
+        except Exception as e:
+            logger.warning("sync_skill_registration failed for plugin %s: %s", plugin.id, e)
 
     # ── API keys ──
 
