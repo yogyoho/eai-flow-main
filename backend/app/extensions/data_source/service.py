@@ -22,7 +22,7 @@ from app.extensions.data_source.schemas import (
     TestConnectionResult,
 )
 
-from app.extensions.models import DataSource
+from app.extensions.models import DataSource, DataSourceDataset
 
 
 # Write verbs blocked ANYWHERE in the query. Closes the PostgreSQL
@@ -159,6 +159,68 @@ class DataSourceService:
         await db.delete(ds)
         await db.flush()
         return True
+
+    # ── datasets (curated business tables) ──
+
+    @staticmethod
+    async def list_datasets(db: AsyncSession, source_id) -> list[DataSourceDataset]:
+        result = await db.execute(
+            select(DataSourceDataset)
+            .where(DataSourceDataset.source_id == source_id)
+            .order_by(DataSourceDataset.label.asc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_dataset(db: AsyncSession, dataset_id) -> DataSourceDataset | None:
+        return await db.get(DataSourceDataset, dataset_id)
+
+    @staticmethod
+    async def create_dataset(db: AsyncSession, source_id, req) -> DataSourceDataset:
+        source = await DataSourceService.get_by_id(db, source_id)
+        if source is None:
+            raise ValueError(f"数据源不存在: {source_id}")
+        ds = DataSourceDataset(
+            source_id=source_id,
+            table_name=req.table_name,
+            label=req.label,
+            description=req.description,
+            key_columns=req.key_columns,
+            default_query=req.default_query,
+        )
+        db.add(ds)
+        await db.flush()
+        return ds
+
+    @staticmethod
+    async def update_dataset(db: AsyncSession, dataset_id, req) -> DataSourceDataset | None:
+        ds = await db.get(DataSourceDataset, dataset_id)
+        if ds is None:
+            return None
+        for k, v in req.model_dump(exclude_unset=True).items():
+            setattr(ds, k, v)
+        await db.flush()
+        return ds
+
+    @staticmethod
+    async def delete_dataset(db: AsyncSession, dataset_id) -> bool:
+        ds = await db.get(DataSourceDataset, dataset_id)
+        if ds is None:
+            return False
+        await db.delete(ds)
+        await db.flush()
+        return True
+
+    @staticmethod
+    async def resolve_dataset(db: AsyncSession, source_id, label: str) -> DataSourceDataset | None:
+        """Find a dataset by label within a source (first match; labels need not be unique)."""
+        result = await db.execute(
+            select(DataSourceDataset).where(
+                DataSourceDataset.source_id == source_id,
+                DataSourceDataset.label == label,
+            )
+        )
+        return result.scalars().first()
 
     # ── read-only query / schema against the SOURCE's own DB ──
 

@@ -4,8 +4,10 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.extensions.data_source.schemas import DatasetCreate, DatasetResponse
+from app.extensions.data_source.service import DataSourceService
 from app.extensions.models import DataSourceDataset
 
 
@@ -47,3 +49,61 @@ class TestDatasetSchemas:
 
         r = DatasetResponse.model_validate(_Fake())
         assert r.label == "L"
+
+
+def _src():
+    m = MagicMock()
+    m.id = "sid"
+    return m
+
+
+class TestDatasetService:
+    @pytest.mark.asyncio
+    async def test_create_checks_source_exists(self):
+        db = AsyncMock()
+        req = MagicMock()
+        req.table_name = "t"
+        req.label = "L"
+        req.description = None
+        req.key_columns = None
+        req.default_query = None
+        with patch.object(DataSourceService, "get_by_id", AsyncMock(return_value=None)):
+            with pytest.raises(ValueError):
+                await DataSourceService.create_dataset(db, "sid", req)
+
+    @pytest.mark.asyncio
+    async def test_create_persists(self):
+        db = AsyncMock()
+        added = []
+
+        def _add(o):
+            added.append(o)
+
+        db.add = MagicMock(side_effect=_add)
+        db.flush = AsyncMock()
+        req = MagicMock()
+        req.table_name = "noise"
+        req.label = "厂界噪声"
+        req.description = "d"
+        req.key_columns = ["a"]
+        req.default_query = None
+        with patch.object(DataSourceService, "get_by_id", AsyncMock(return_value=_src())):
+            ds = await DataSourceService.create_dataset(db, "sid", req)
+        assert added and ds.label == "厂界噪声"
+
+    @pytest.mark.asyncio
+    async def test_list_by_source(self):
+        db = AsyncMock()
+        rm = MagicMock()
+        rm.scalars.return_value.all.return_value = ["x", "y"]
+        db.execute = AsyncMock(return_value=rm)
+        out = await DataSourceService.list_datasets(db, "sid")
+        assert out == ["x", "y"]
+
+    @pytest.mark.asyncio
+    async def test_resolve_by_label(self):
+        db = AsyncMock()
+        rm = MagicMock()
+        rm.scalars.return_value.first.return_value = "FOUND"
+        db.execute = AsyncMock(return_value=rm)
+        assert await DataSourceService.resolve_dataset(db, "sid", "厂界噪声") == "FOUND"
