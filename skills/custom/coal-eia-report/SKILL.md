@@ -2,7 +2,7 @@
 name: coal-eia-report
 description: |
   当用户请求为煤炭矿区项目生成、创建或编写环境影响评价报告书（环评报告）时使用此技能。
-  此技能优先从知识工厂（Knowledge Factory）获取报告模板元数据——通过 MCP 工具 kf_resolve_template 
+  此技能优先从知识工厂（Knowledge Factory）获取报告模板元数据——通过 MCP 工具 knowledge-factory_kf_resolve_template 
   智能匹配已抽取和编辑优化的模板，使用模板中的 generation_hint、compliance_rules、content_contract 
   等元数据驱动高质量报告生成。模板不可用时自动回退到内置参考文档。
   触发场景：用户提及"环评报告""环境影响评价报告书""煤炭环评""矿区总体规划环评""环境影响报告书"
@@ -17,14 +17,14 @@ description: |
 
 ### 关于输出方式
 
-1. 本技能生成**结构化 Markdown 文本**，通过 project MCP 的 `write_chapter` 工具逐章写入项目文档空间，供用户在文档空间中编辑排版后导出 Word。
+1. 本技能生成**结构化 Markdown 文本**，通过 project MCP 的 `project_write_chapter` 工具逐章写入项目文档空间，供用户在文档空间中编辑排版后导出 Word。
 2. 不直接生成 .docx 文件——用户会在文档空间中自行编辑和排版，然后通过文档空间的 Word 导出功能获得最终文档。
 3. 不使用 `word-document-server` MCP 工具、`markdown-to-docx` skill 或自写 Python 脚本来生成 Word。
-4. 每章生成后通过 `write_chapter` 写入，不将全部章节攒到最后一次性写入。
+4. 每章生成后通过 `project_write_chapter` 写入，不将全部章节攒到最后一次性写入。
 
 ### 关于模板获取
 
-5. 优先调用 `kf_resolve_template` 获取知识工厂模板元数据。
+5. 优先调用 `knowledge-factory_kf_resolve_template` 获取知识工厂模板元数据。
 6. 仅当 MCP 工具返回 `found=false` 或调用失败时，才回退到读取 `references/` 下的 markdown 文件。
 
 ### 关于仿写约束
@@ -38,9 +38,13 @@ description: |
 
 ### 关于执行顺序
 
-13. 每轮只生成**一章**，生成后通过 `write_chapter` 写入，向用户报告该章摘要后进入下一章。
-14. 使用 `list_chapters` 工具查看已生成和待生成章节的进度。
+13. 每轮只生成**一章**，生成后通过 `project_write_chapter` 写入，向用户报告该章摘要后进入下一章。
+14. 使用 `project_list_chapters` 工具查看已生成和待生成章节的进度。
 15. 多章生成时按依赖顺序批量调度：先导性章节（第1-3章概述性内容）→ 分析性章节（第4-8章专题评价）→ 综合性章节（第9-13章总结与措施）。
+
+### 关于工具失败（防止死循环）
+
+16. **工具调用失败不得盲目重试。** 任何 MCP 工具（`knowledge-factory_kf_resolve_template` / `project_*`）返回错误时，**禁止用完全相同的参数重试**；最多修正一次参数（如 `chapter_id`、`project_id`）再试，**连续失败 2 次必须停止，把错误原因如实告诉用户**，不得继续循环。
 
 ---
 
@@ -50,7 +54,7 @@ description: |
 
 报告涵盖煤炭矿区总体规划环评的全部13章内容，包括概述、环境现状、环境影响预测与评价、环境保护措施、公众参与、环境管理与监测等完整章节。
 
-生成的内容为结构化 Markdown，逐章通过 `write_chapter` 写入文档空间供用户后续编辑排版和 Word 导出。
+生成的内容为结构化 Markdown，逐章通过 `project_write_chapter` 写入文档空间供用户后续编辑排版和 Word 导出。
 
 ---
 
@@ -147,7 +151,7 @@ description: |
 **首先尝试从知识工厂获取模板元数据。** 调用 MCP 工具：
 
 ```
-kf_resolve_template(
+knowledge-factory_kf_resolve_template(
     domain_keywords=["煤炭矿区环评报告", "矿区总体规划环境影响评价", "煤炭环评报告书"],
     industry="煤炭",
     min_completeness_score=60
@@ -185,8 +189,8 @@ kf_resolve_template(
 
 **每章生成的微观流程**：
 
-1. **`list_chapters`**：查看当前报告的章节进度（已生成/待生成），确认下一章。
-2. **`get_chapter_spec`**：获取目标章节的结构规格（来自模板元数据或内置定义），包括该章的 `generation_hint`、`content_contract`、`compliance_rules`。
+1. **`project_list_chapters`**：查看当前报告的章节进度（已生成/待生成），确认下一章。
+2. **`project_get_chapter_spec`**：获取目标章节的结构规格（来自模板元数据或内置定义），包括该章的 `generation_hint`、`content_contract`、`compliance_rules`。
 3. **加载实体卡片**：从步骤1建立的项目实体卡片中提取当前章节所需的实体信息。
 4. **RAG 搜索**：调用 knowledge REST API，以当前章节关键词为查询，从知识库中检索相关标准和规范条文。查询示例：
    - 第6章大气影响：`"煤炭开采 大气污染物排放标准 SO2 PM10 预测方法"`
@@ -194,7 +198,7 @@ kf_resolve_template(
 5. **计算（如需）**：对于需要定量分析的章节（第6章环境影响预测、第7章承载力分析、第9章风险评价），调用 `scripts/calc/` 下的计算脚本进行辅助计算。参见下方"计算工具"章节。
 6. **生成内容**：基于章节规格、实体信息、RAG 检索结果和计算结果，生成结构化 Markdown 文本。严格遵循仿写约束（不照搬、方法论参考、实体替换）。
 7. **实体泄漏检查**：扫描生成内容，确认不包含样本实体名（参见规则11）。如发现泄漏，替换为当前项目实体或 `[待补充]`。
-8. **`write_chapter`**：通过 project MCP 的 `write_chapter` 工具将生成的 Markdown 内容写入文档空间。写入参数：
+8. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将生成的 Markdown 内容写入文档空间。写入参数：
    - `project_id`：当前项目ID
    - `chapter_number`：章节编号（1-13）
    - `title`：章节标题
@@ -327,12 +331,12 @@ kf_resolve_template(
 此技能依赖以下 MCP 服务：
 
 1. **knowledge-factory**（优先使用）：
-   - `kf_resolve_template` — 智能模板匹配（核心工具）
-   - `kf_list_domains` — 列出可用领域（辅助发现）
+   - `knowledge-factory_kf_resolve_template` — 智能模板匹配（核心工具）
+   - `knowledge-factory_kf_list_domains` — 列出可用领域（辅助发现）
 
 2. **project**（文档空间写入）：
-   - `write_chapter` — 逐章写入报告内容到项目文档空间
-   - `list_chapters` — 查看报告章节进度
+   - `project_write_chapter` — 逐章写入报告内容到项目文档空间
+   - `project_list_chapters` — 查看报告章节进度
 
 3. **knowledge REST API**（标准与规范检索）：
    - 用于 RAG 搜索相关标准和规范条文
@@ -383,10 +387,10 @@ kf_resolve_template(
 
 - **优先级**：知识工厂模板 > markdown 参考文件。模板获取成功时以模板元数据为准，失败时回退到内置定义和参考文件。
 - **仿写不混用**：模板整体不可用时全部回退 markdown，不出现"第3章用模板、第6章用 markdown"的混合模式。
-- **模板版本感知**：`kf_resolve_template` 按 `status='published'` + `completeness_score DESC` 自动获取最新版本，无需手动指定版本号。
+- **模板版本感知**：`knowledge-factory_kf_resolve_template` 按 `status='published'` + `completeness_score DESC` 自动获取最新版本，无需手动指定版本号。
 - **标准版本**：始终使用最新有效版本的 HJ/GB 标准。引用前通过 knowledge REST API 确认标准是否现行有效。
 - **数据完整性**：不编造具体数值。缺少数据时用 `[XX]` 或 `[待补充]` 标注，并在质量报告中汇总所有占位符位置。
 - **实体隔离**：严格遵守仿写约束，确保生成内容仅使用当前项目的实体信息。每章写入前执行实体泄漏检测。
 - **计算透明**：调用计算脚本时在报告中注明计算方法、输入参数和假设条件。参数为推算值时需特别标注。
-- **逐章交付**：每章生成后立即通过 `write_chapter` 写入并向用户报告摘要，不积攒多章后一次性写入。
+- **逐章交付**：每章生成后立即通过 `project_write_chapter` 写入并向用户报告摘要，不积攒多章后一次性写入。
 - **专业术语一致性**：术语使用以 `references/terminology.md` 为准，同一概念在报告中使用统一表述。

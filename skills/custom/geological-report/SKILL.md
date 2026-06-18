@@ -5,7 +5,11 @@ description: >
   GB/T 33444-2016 标准，支持普查/详查/勘探三阶段，多矿种定制，
   双模式输入（数据文件解析 + 对话引导），生成符合国家标准的 Markdown 格式报告
 license: MIT
-allowed-tools: ["bash", "read_file", "write_file", "str_replace", "ls", "ask_clarification"]
+# NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill
+# makes skills/tool_policy.py treat it as a GLOBAL agent-wide whitelist (union across all
+# enabled skills), stripping every other tool incl. MCP tools (e.g. knowledge-factory_kf_*).
+# That starved the whole agent to 6 built-in tools and broke knowledge-factory-dependent
+# skills. Do NOT re-add allowed-tools here until that filter is scoped to the active skill.
 ---
 
 # 固体矿产地质勘查报告制作技能
