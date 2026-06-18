@@ -5,6 +5,8 @@ Metadata only — no plugin execution this round."""
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
 import secrets
 
 import jsonschema
@@ -13,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.models import ApiKey, Plugin, PluginInstance
 from app.extensions.plugin.schemas import ApiKeyCreate, PluginInstanceCreate, PluginInstanceUpdate
+from deerflow.config.extensions_config import ExtensionsConfig, reload_extensions_config
 
 
 class PluginService:
@@ -87,6 +90,55 @@ class PluginService:
         await db.delete(inst)
         await db.flush()
         return True
+
+    # ── plugin→MCP wiring ──
+
+    @staticmethod
+    def sync_mcp_registration(instance, plugin, *, remove: bool = False) -> None:
+        """Register/remove a type=tool plugin's MCP server in extensions_config.json.
+
+        Idempotent. Never raises — a config write failure only logs a warning so
+        plugin CRUD is not blocked by MCP-wiring trouble.
+        """
+        logger = logging.getLogger(__name__)
+        key = f"plugin_{plugin.id}"
+        should_register = (
+            not remove
+            and getattr(instance, "status", None) == "active"
+            and plugin.type == "tool"
+            and plugin.entry_point
+        )
+        try:
+            path = ExtensionsConfig.resolve_config_path()
+            if path is None or not path.exists():
+                return
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            servers = data.setdefault("mcpServers", {})
+            if should_register:
+                env = {
+                    k: (v if isinstance(v, str) else json.dumps(v))
+                    for k, v in (instance.config or {}).items()
+                }
+                servers[key] = {
+                    "enabled": True,
+                    "type": "stdio",
+                    "command": "/app/backend/.venv/bin/python",
+                    "args": ["-m", plugin.entry_point],
+                    "env": env,
+                    "cwd": "/app/backend",
+                    "url": None,
+                    "headers": {},
+                    "oauth": None,
+                    "description": f"{plugin.name}: {plugin.description or ''}",
+                }
+            else:
+                servers.pop(key, None)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            reload_extensions_config()
+        except Exception as e:  # non-fatal: plugin data is already persisted
+            logger.warning("sync_mcp_registration failed for plugin %s: %s", plugin.id, e)
 
     # ── API keys ──
 
