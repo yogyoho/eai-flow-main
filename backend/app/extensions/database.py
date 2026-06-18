@@ -1191,6 +1191,19 @@ async def migrate_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_role_permissions_role
             ON role_permissions(role)
         """))
+        # Bring existing (pre-current-schema) tables up to date: CREATE TABLE
+        # IF NOT EXISTS won't alter them. Set the id default and ensure the
+        # unique (role, permission) index _seed_role_permissions depends on.
+        await conn.execute(text(
+            "ALTER TABLE role_permissions ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE role_permissions ALTER COLUMN created_at SET DEFAULT now()"
+        ))
+        await conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_role_permissions_role_permission
+            ON role_permissions(role, permission)
+        """))
         await _seed_role_permissions(conn)
 
 
