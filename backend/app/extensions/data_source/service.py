@@ -128,6 +128,7 @@ class DataSourceService:
     async def create(db, req: DataSourceCreate, user_id=None) -> DataSource:
         ds = DataSource(
             name=req.name,
+            description=req.description,
             type=req.type,
             connection_config=req.connection_config,
             auth_type=req.auth_type,

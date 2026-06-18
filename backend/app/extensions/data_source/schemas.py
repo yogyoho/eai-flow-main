@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class DataSourceCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
     type: str = Field(..., description="database | api | file | gis")
     connection_config: dict = Field(default_factory=dict)
     auth_type: str = "none"
@@ -21,6 +22,7 @@ class DataSourceCreate(BaseModel):
 
 class DataSourceUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
     type: str | None = None
     connection_config: dict | None = None
     auth_type: str | None = None
@@ -34,6 +36,7 @@ class DataSourceResponse(BaseModel):
 
     id: UUID | str
     name: str
+    description: str | None = None
     type: str
     connection_config: dict
     auth_type: str

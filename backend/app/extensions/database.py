@@ -1206,6 +1206,12 @@ async def migrate_db() -> None:
         """))
         await _seed_role_permissions(conn)
 
+        # data_sources.description column (Tier 1 agent awareness); idempotent —
+        # create_all won't add columns to the pre-existing data_sources table.
+        await conn.execute(text(
+            "ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"
+        ))
+
 
 async def _seed_role_permissions(conn):
     """Insert default role-permission mappings if the table is empty."""

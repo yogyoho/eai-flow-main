@@ -17,6 +17,7 @@ class TestDataSourceModel:
         assert ds.status == "disconnected"
         assert ds.last_sync_at is None
         assert ds.sync_config is None
+        assert ds.description is None
 
     def test_connection_config_accepts_arbitrary_json(self):
         ds = DataSource(name="api1", type="api", connection_config={"url": "https://x"})

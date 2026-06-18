@@ -15,6 +15,7 @@ def _fake_ds(**overrides):
     base = {
         "id": str(uuid4()),
         "name": "prod",
+        "description": None,
         "type": "database",
         "connection_config": {"host": "h"},
         "auth_type": "none",
@@ -72,16 +73,17 @@ async def test_create_returns_201():
         AsyncMock(return_value=None),
     ), patch(
         "app.extensions.data_source.routers.DataSourceService.create",
-        AsyncMock(return_value=_fake_ds(name="n")),
+        AsyncMock(return_value=_fake_ds(name="n", description="测试描述")),
     ):
         app = _build_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post(
                 "/api/extensions/data-sources",
-                json={"name": "n", "type": "api", "connection_config": {}},
+                json={"name": "n", "type": "api", "connection_config": {}, "description": "测试描述"},
             )
     assert resp.status_code == 201
     assert resp.json()["name"] == "n"
+    assert resp.json()["description"] == "测试描述"
 
 
 @pytest.mark.asyncio

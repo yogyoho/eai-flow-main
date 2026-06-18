@@ -818,6 +818,7 @@ class DataSource(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # database|api|file|gis
     connection_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     auth_type: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
