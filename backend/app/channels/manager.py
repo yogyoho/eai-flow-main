@@ -756,6 +756,21 @@ class ChannelManager:
             logger.error("[Manager] unhandled error in message task: %s", exc, exc_info=exc)
 
     async def _handle_message(self, msg: InboundMessage) -> None:
+        # Attach any persisted user-owned connection binding to this inbound
+        # message before routing, so a bound user's messages resolve to their
+        # own connection. No-op when channel connections are disabled (repo is
+        # None) or no binding exists for this external user — system-bot
+        # traffic is unchanged.
+        if self._connection_repo is not None:
+            from app.channels.connection_identity import attach_connection_identity
+
+            msg = await attach_connection_identity(
+                msg,
+                repo=self._connection_repo,
+                provider=msg.channel_name,
+                workspace_id=msg.workspace_id,
+                fallback_without_workspace=True,
+            )
         async with self._semaphore:
             try:
                 if msg.msg_type == InboundMessageType.COMMAND:
@@ -780,10 +795,34 @@ class ChannelManager:
 
     # -- chat handling -----------------------------------------------------
 
-    async def _create_thread(self, client, msg: InboundMessage) -> str:
-        """Create a new thread on the LangGraph Server and store the mapping."""
-        thread = await client.threads.create()
-        thread_id = thread["thread_id"]
+    async def _lookup_thread_id(self, msg: InboundMessage) -> str | None:
+        """Resolve the DeerFlow thread for an inbound message.
+
+        When the message carries a persisted connection binding (a user-owned
+        IM account), look up the thread via the connection repository so each
+        binding gets its own conversation. Otherwise fall back to the shared
+        channel store — the existing system-bot behaviour, unchanged.
+        """
+        if msg.connection_id and self._connection_repo is not None:
+            return await self._connection_repo.get_thread_id(
+                msg.connection_id,
+                msg.chat_id,
+                msg.topic_id,
+            )
+        return self.store.get_thread_id(msg.channel_name, msg.chat_id, topic_id=msg.topic_id)
+
+    async def _store_thread_id(self, msg: InboundMessage, thread_id: str) -> None:
+        """Persist the thread mapping for an inbound message (connection-aware)."""
+        if msg.connection_id and msg.owner_user_id and self._connection_repo is not None:
+            await self._connection_repo.set_thread_id(
+                connection_id=msg.connection_id,
+                owner_user_id=msg.owner_user_id,
+                provider=msg.channel_name,
+                external_conversation_id=msg.chat_id,
+                external_topic_id=msg.topic_id,
+                thread_id=thread_id,
+            )
+            return
         self.store.set_thread_id(
             msg.channel_name,
             msg.chat_id,
@@ -791,6 +830,12 @@ class ChannelManager:
             topic_id=msg.topic_id,
             user_id=msg.user_id,
         )
+
+    async def _create_thread(self, client, msg: InboundMessage) -> str:
+        """Create a new thread on the LangGraph Server and store the mapping."""
+        thread = await client.threads.create()
+        thread_id = thread["thread_id"]
+        await self._store_thread_id(msg, thread_id)
         logger.info("[Manager] new thread created on LangGraph Server: thread_id=%s for chat_id=%s topic_id=%s", thread_id, msg.chat_id, msg.topic_id)
         return thread_id
 
@@ -800,7 +845,7 @@ class ChannelManager:
         # Look up existing DeerFlow thread.
         # topic_id may be None (e.g. Telegram private chats) — the store
         # handles this by using the "channel:chat_id" key without a topic suffix.
-        thread_id = self.store.get_thread_id(msg.channel_name, msg.chat_id, topic_id=msg.topic_id)
+        thread_id = await self._lookup_thread_id(msg)
         if thread_id:
             logger.info("[Manager] reusing thread: thread_id=%s for topic_id=%s", thread_id, msg.topic_id)
 
@@ -1016,16 +1061,10 @@ class ChannelManager:
             client = self._get_client()
             thread = await client.threads.create()
             new_thread_id = thread["thread_id"]
-            self.store.set_thread_id(
-                msg.channel_name,
-                msg.chat_id,
-                new_thread_id,
-                topic_id=msg.topic_id,
-                user_id=msg.user_id,
-            )
+            await self._store_thread_id(msg, new_thread_id)
             reply = "New conversation started."
         elif command == "status":
-            thread_id = self.store.get_thread_id(msg.channel_name, msg.chat_id, topic_id=msg.topic_id)
+            thread_id = await self._lookup_thread_id(msg)
             reply = f"Active thread: {thread_id}" if thread_id else "No active conversation."
         elif command == "models":
             reply = await self._fetch_gateway("/api/models", "models")
