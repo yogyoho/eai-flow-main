@@ -11,6 +11,7 @@ from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
+from app.extensions.plugin.routers import router as plugin_router
 from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.docmgr.collab_routers import router as collab_router
@@ -495,6 +496,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Data source management API (stub)
     app.include_router(data_source_router)
+    app.include_router(plugin_router)
 
     # Workflow definition API is mounted at /api/extensions/workflow
     app.include_router(workflow_router)
