@@ -89,3 +89,35 @@ class TestSyncMcpRegistration:
             "app.extensions.plugin.service.reload_extensions_config"
         ), patch("builtins.open", side_effect=OSError("disk full")):
             PluginService.sync_mcp_registration(_instance(), _plugin())  # no raise
+
+
+class TestHooksCallSync:
+    @pytest.mark.asyncio
+    async def test_create_instance_calls_sync(self):
+        db = AsyncMock()
+        db.add = MagicMock()  # AsyncSession.add is sync
+        db.flush = AsyncMock()
+        plugin = _plugin()
+        req = MagicMock()
+        req.plugin_id = "pid"
+        req.config = {}
+        with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
+            PluginService, "validate_config", MagicMock(return_value=None)
+        ), patch.object(PluginService, "sync_mcp_registration") as sync:
+            await PluginService.create_instance(db, req, user_id=None)
+        sync.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_instance_calls_sync_remove(self):
+        db = AsyncMock()
+        inst = _instance()
+        plugin = _plugin()
+        db.get = AsyncMock(return_value=inst)
+        db.delete = AsyncMock()
+        db.flush = AsyncMock()
+        with patch.object(PluginService, "get_plugin", AsyncMock(return_value=plugin)), patch.object(
+            PluginService, "sync_mcp_registration"
+        ) as sync:
+            await PluginService.delete_instance(db, "iid")
+        sync.assert_called_once()
+        assert sync.call_args.kwargs.get("remove") is True

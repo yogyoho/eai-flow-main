@@ -65,6 +65,7 @@ class PluginService:
         )
         db.add(inst)
         await db.flush()
+        PluginService.sync_mcp_registration(inst, plugin)
         return inst
 
     @staticmethod
@@ -80,6 +81,8 @@ class PluginService:
         if req.status is not None:
             inst.status = req.status
         await db.flush()
+        plugin = await PluginService.get_plugin(db, inst.plugin_id)
+        PluginService.sync_mcp_registration(inst, plugin)
         return inst
 
     @staticmethod
@@ -87,8 +90,10 @@ class PluginService:
         inst = await db.get(PluginInstance, instance_id)
         if inst is None:
             return False
+        plugin = await PluginService.get_plugin(db, inst.plugin_id)
         await db.delete(inst)
         await db.flush()
+        PluginService.sync_mcp_registration(inst, plugin, remove=True)
         return True
 
     # ── plugin→MCP wiring ──
