@@ -86,6 +86,9 @@ export function DataSourceCard({
             <h3 className="line-clamp-1 font-semibold text-foreground">
               {source.name}
             </h3>
+            {source.description && (
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{source.description}</p>
+            )}
             <div className="mt-1 flex items-center gap-2">
               <span
                 className={cn(

@@ -6,6 +6,7 @@ export type ConnectionStatus = "connected" | "error" | "disconnected" | "testing
 export interface DataSource {
   id: string;
   name: string;
+  description: string | null;
   type: DataSourceType;
   connectionConfig: Record<string, unknown>;
   authType: AuthType;
@@ -20,6 +21,7 @@ export interface DataSource {
 
 export interface CreateDataSourceRequest {
   name: string;
+  description?: string;
   type: DataSourceType;
   connectionConfig: Record<string, unknown>;
   authType: AuthType;

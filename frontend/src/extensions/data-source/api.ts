@@ -8,6 +8,7 @@ function transformDataSource(data: Record<string, unknown>): DataSource {
   return {
     id: data.id as string,
     name: data.name as string,
+    description: (data.description as string) ?? null,
     type: data.type as DataSource["type"],
     connectionConfig: (data.connection_config as Record<string, unknown>) ?? {},
     authType: data.auth_type as DataSource["authType"],
@@ -37,6 +38,7 @@ export const dataSourceApi = {
       method: "POST",
       body: JSON.stringify({
         name: req.name,
+        description: req.description || undefined,
         type: req.type,
         connection_config: req.connectionConfig,
         auth_type: req.authType,
@@ -52,6 +54,7 @@ export const dataSourceApi = {
       method: "PATCH",
       body: JSON.stringify({
         name: req.name,
+        description: req.description || undefined,
         type: req.type,
         connection_config: req.connectionConfig,
         auth_type: req.authType,

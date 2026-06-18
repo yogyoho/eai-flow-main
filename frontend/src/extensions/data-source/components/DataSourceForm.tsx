@@ -343,6 +343,7 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
   const [authType, setAuthType] = useState<AuthType>("none");
   const [connectionConfig, setConnectionConfig] = useState<Record<string, unknown>>({});
   const [syncMode, setSyncMode] = useState<SyncMode>("manual");
+  const [description, setDescription] = useState("");
 
   // Reset form when modal opens or initialData changes
   useEffect(() => {
@@ -353,12 +354,14 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
         setAuthType(initialData.authType);
         setConnectionConfig(initialData.connectionConfig ?? {});
         setSyncMode(initialData.syncMode);
+        setDescription(initialData.description ?? "");
       } else {
         setName("");
         setType("database");
         setAuthType("none");
         setConnectionConfig({});
         setSyncMode("manual");
+        setDescription("");
       }
     }
   }, [open, initialData]);
@@ -367,6 +370,7 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
     if (!name.trim()) return;
     onSubmit({
       name: name.trim(),
+      description,
       type,
       connectionConfig,
       authType,
@@ -436,6 +440,19 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
                   onChange={(e) => setName(e.target.value)}
                   placeholder="例如：生产数据库"
                   className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-foreground">
+                  描述 <span className="text-xs font-normal text-muted-foreground">(给 AI:这个数据源里是什么)</span>
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="例如:厂界噪声 2024 年监测值"
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
 
