@@ -26,6 +26,7 @@ from app.channels.message_bus import (
 from app.channels.store import ChannelStore
 from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, generate_csrf_token
 from app.gateway.internal_auth import create_internal_auth_headers
+from deerflow.config.paths import make_safe_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -628,7 +629,12 @@ class ChannelManager:
         # added alongside the live-bot integration. Harmless when None.
         self._connection_repo = connection_repo
         self._require_bound_identity = require_bound_identity
-        self._client = None  # lazy init — langgraph_sdk async client
+        # Per-owner SDK clients, cached by owner_user_id (None = default user).
+        self._clients: dict[str | None, Any] = {}
+        # Manual client override (used by tests to inject a mock client). When
+        # set, _get_client returns it directly; production leaves this None and
+        # uses the per-owner cache.
+        self._client: Any = None
         # CSRF double-submit token for internal SDK calls (header == cookie).
         self._csrf_token = generate_csrf_token()
         self._semaphore: asyncio.Semaphore | None = None
@@ -696,20 +702,45 @@ class ChannelManager:
 
     # -- LangGraph SDK client (lazy) ----------------------------------------
 
-    def _get_client(self):
-        """Return the ``langgraph_sdk`` async client, creating it on first use."""
-        if self._client is None:
+    def _resolve_owner_user_id(self, msg: InboundMessage) -> str | None:
+        """Resolve the per-message owner user_id for run scoping.
+
+        A channel_connections binding (``msg.owner_user_id``) wins; otherwise the
+        inbound platform user (``msg.user_id``) is normalized into a safe user id
+        so each platform user — e.g. each WeChat user messaging the bot — gets
+        isolated memory/sandbox. Returns None when there is no platform user.
+        """
+        if msg.owner_user_id:
+            return msg.owner_user_id
+        if msg.user_id:
+            return make_safe_user_id(msg.user_id)
+        return None
+
+    def _get_client(self, owner_user_id: str | None = None):
+        """Return the ``langgraph_sdk`` async client, creating it on first use.
+
+        Clients are cached per ``owner_user_id``: the owner flows via the
+        internal-auth owner header so the gateway attributes each call — and the
+        resulting agent run's memory/sandbox scope — to that owner instead of the
+        synthetic default user. ``owner_user_id=None`` keeps the legacy default.
+        A manually set ``self._client`` (e.g. a test-injected mock) wins outright.
+        """
+        if self._client is not None:
+            return self._client
+        client = self._clients.get(owner_user_id)
+        if client is None:
             from langgraph_sdk import get_client
 
-            self._client = get_client(
+            client = get_client(
                 url=self._langgraph_url,
                 headers={
-                    **create_internal_auth_headers(),
+                    **create_internal_auth_headers(owner_user_id=owner_user_id),
                     CSRF_HEADER_NAME: self._csrf_token,
                     "Cookie": f"{CSRF_COOKIE_NAME}={self._csrf_token}",
                 },
             )
-        return self._client
+            self._clients[owner_user_id] = client
+        return client
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -850,7 +881,7 @@ class ChannelManager:
         return thread_id
 
     async def _handle_chat(self, msg: InboundMessage, extra_context: dict[str, Any] | None = None) -> None:
-        client = self._get_client()
+        client = self._get_client(self._resolve_owner_user_id(msg))
 
         # Look up existing DeerFlow thread.
         # topic_id may be None (e.g. Telegram private chats) — the store
@@ -1068,7 +1099,7 @@ class ChannelManager:
 
         if command == "new":
             # Create a new thread on the LangGraph Server
-            client = self._get_client()
+            client = self._get_client(self._resolve_owner_user_id(msg))
             thread = await client.threads.create()
             new_thread_id = thread["thread_id"]
             await self._store_thread_id(msg, new_thread_id)

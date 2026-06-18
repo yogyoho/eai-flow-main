@@ -18,7 +18,8 @@ from starlette.types import ASGIApp
 
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
 from app.gateway.authz import _ALL_PERMISSIONS, AuthContext
-from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
+from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, INTERNAL_OWNER_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
+from deerflow.config.paths import make_safe_user_id
 from deerflow.runtime.user_context import reset_current_user, set_current_user
 
 # Paths that never require authentication.
@@ -86,7 +87,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         internal_user = None
         if is_valid_internal_auth_token(request.headers.get(INTERNAL_AUTH_HEADER_NAME)):
-            internal_user = get_internal_user()
+            # Trusted in-process channel callers may attribute the call to a
+            # per-message owner (e.g. the WeChat user a message came from) so
+            # the resulting agent run is scoped to that owner's memory/sandbox.
+            # Sanitize at the trust boundary (defense-in-depth): the owner
+            # header is only reachable with a valid internal token.
+            raw_owner = request.headers.get(INTERNAL_OWNER_HEADER_NAME) or None
+            owner = make_safe_user_id(raw_owner) if raw_owner else None
+            internal_user = get_internal_user(owner_user_id=owner)
 
         # Non-public path: require session cookie
         if internal_user is None and not request.cookies.get("access_token"):
