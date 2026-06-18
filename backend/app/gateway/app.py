@@ -238,18 +238,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             from app.extensions.database import init_db, migrate_db, seed_db
 
             await init_db()
-            try:
-                await migrate_db()
-            except Exception as e:
-                logger.warning("Extensions database migrate_db failed (non-fatal, seeding continues): %s", e)
-            try:
-                await seed_db()
-                logger.info("Extensions database initialized successfully")
-            except Exception as e:
-                logger.warning("Extensions database seed failed: %s", e)
-                from app.extensions.database import close_db
-
-                await close_db()
+            await migrate_db()
+            await seed_db()
+            logger.info("Extensions database initialized successfully")
         except Exception as e:
             logger.warning("Extensions database init failed (may already exist): %s", e)
             from app.extensions.database import close_db
