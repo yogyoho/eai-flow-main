@@ -17,9 +17,16 @@ def _db_src(type_="database", **kw):
 
 
 @pytest.mark.asyncio
-async def test_list_tools_returns_four():
+async def test_list_tools_returns_six():
     names = {t.name for t in ds_mcp.TOOLS}
-    assert names == {"list_data_sources", "get_data_source_schema", "query_data_source", "test_data_source"}
+    assert names == {
+        "list_data_sources",
+        "get_data_source_schema",
+        "query_data_source",
+        "test_data_source",
+        "list_datasets",
+        "query_dataset",
+    }
 
 
 @pytest.mark.asyncio

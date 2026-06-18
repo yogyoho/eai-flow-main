@@ -254,6 +254,36 @@ class DataSourceService:
         finally:
             await engine.dispose()
 
+    @staticmethod
+    async def profile_tables(source) -> list[dict]:
+        """Profile public tables in the source's OWN database: name + columns.
+
+        One information_schema.columns query (cheap). Up to 50 tables. Columns
+        are enough for the agent to map a business need to the right table.
+        """
+        engine = create_async_engine(_build_db_url(source.connection_config or {}), poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                res = await conn.execute(
+                    text(
+                        "SELECT table_name, column_name, data_type "
+                        "FROM information_schema.columns "
+                        "WHERE table_schema='public' "
+                        "ORDER BY table_name, ordinal_position"
+                    )
+                )
+                rows = res.fetchall()
+        finally:
+            await engine.dispose()
+        tables: dict[str, list[dict]] = {}
+        order: list[str] = []
+        for table_name, column_name, data_type in rows:
+            if table_name not in tables:
+                tables[table_name] = []
+                order.append(table_name)
+            tables[table_name].append({"name": column_name, "type": data_type})
+        return [{"name": t, "columns": tables[t]} for t in order[:50]]
+
 
 def _build_db_url(cfg: dict) -> str:
     """Build a SQLAlchemy URL from a database source's connection_config."""

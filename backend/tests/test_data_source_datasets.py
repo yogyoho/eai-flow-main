@@ -222,12 +222,47 @@ class TestDatasetMcp:
         ), patch(
             "app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[])
         ), patch(
-            "app.extensions.data_source.service.DataSourceService.list_tables", AsyncMock(return_value=["t1", "t2"])
+            "app.extensions.data_source.service.DataSourceService.profile_tables",
+            AsyncMock(return_value=[{"name": "t1", "columns": [{"name": "c", "type": "text"}]}, {"name": "t2", "columns": []}]),
         ):
             out = await ds_mcp._handle_list_datasets({"source_name": "prod"})
         payload = json.loads(out[0].text)
         assert payload["auto"] is True
         assert [d["table_name"] for d in payload["datasets"]] == ["t1", "t2"]
+        assert payload["datasets"][0]["columns"] == [{"name": "c", "type": "text"}]
+
+
+class TestProfileTables:
+    @pytest.mark.asyncio
+    async def test_groups_columns_by_table(self):
+        src = MagicMock()
+        src.connection_config = {"host": "h"}
+        fake_res = MagicMock()
+        fake_res.fetchall.return_value = [
+            ("noise", "id", "integer"),
+            ("noise", "lev", "double precision"),
+            ("water", "depth", "numeric"),
+        ]
+        fake_conn = MagicMock()
+        fake_conn.execute = AsyncMock(return_value=fake_res)
+
+        class _CM:
+            async def __aenter__(self):
+                return fake_conn
+
+            async def __aexit__(self, *a):
+                return False
+
+        fake_engine = MagicMock()
+        fake_engine.connect = MagicMock(return_value=_CM())
+        fake_engine.dispose = AsyncMock()
+        with patch("app.extensions.data_source.service.create_async_engine", return_value=fake_engine):
+            out = await DataSourceService.profile_tables(src)
+        assert [t["name"] for t in out] == ["noise", "water"]
+        assert out[0]["columns"] == [
+            {"name": "id", "type": "integer"},
+            {"name": "lev", "type": "double precision"},
+        ]
 
     @pytest.mark.asyncio
     async def test_query_dataset_runs_default_query(self):

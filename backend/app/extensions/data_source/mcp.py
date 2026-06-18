@@ -152,7 +152,7 @@ async def _handle_get_data_source_schema(arguments: dict) -> list[TextContent]:
         return _ok({"success": False, "message": f"数据源不存在: {name}"})
     if src.type == "database":
         try:
-            tables = await DataSourceService.list_tables(src)
+            tables = await DataSourceService.profile_tables(src)
             return _ok({"success": True, "name": name, "description": src.description, "type": "database", "tables": tables})
         except Exception as e:  # probe failure is non-fatal
             return _ok({"success": True, "name": name, "description": src.description, "type": "database", "tables": [], "probe_error": str(e)})
@@ -250,13 +250,13 @@ async def _handle_list_datasets(arguments: dict) -> list[TextContent]:
         })
     # D fallback: no curated datasets -> auto-list tables from the source's own DB
     try:
-        tables = await DataSourceService.list_tables(src)
+        tables = await DataSourceService.profile_tables(src)
         return _ok({
             "success": True,
             "source": source_name,
             "auto": True,
-            "note": "未标注数据集,自动列出源库的表名",
-            "datasets": [{"label": t, "table_name": t} for t in tables],
+            "note": "未标注数据集,自动列出源库的表与列",
+            "datasets": [{"label": t["name"], "table_name": t["name"], "columns": t["columns"]} for t in tables],
         })
     except Exception as e:
         return _ok({"success": True, "source": source_name, "auto": True, "datasets": [], "note": f"无标注数据集,且自动列出失败: {e}"})
