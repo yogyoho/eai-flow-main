@@ -930,3 +930,26 @@ class ApiKey(Base):
 
     def __repr__(self) -> str:
         return f"<ApiKey(name={self.name}, key_prefix={self.key_prefix})>"
+
+
+class DataSourceDataset(Base):
+    """A curated business dataset (table) within a DataSource — gives the agent a
+    human label + description + optional default read-only query per table."""
+
+    __tablename__ = "data_source_datasets"
+    __table_args__ = (UniqueConstraint("source_id", "table_name", name="uq_datasets_source_table"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("data_sources.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    table_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    key_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    default_query: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<DataSourceDataset(label={self.label}, table={self.table_name})>"
