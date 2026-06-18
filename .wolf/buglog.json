@@ -1623,6 +1623,866 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-06-16T17:01:02.000Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-06-17T11:34:04.795Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T11:34:04.795Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-06-17T11:34:08.438Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had `/qa`",
+      "fix": "Changed to `git clone https://github.com/garrytan/gstack.git ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T11:34:08.438Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-06-17T11:40:07.961Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_data_source_service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: class TestSync:; @pytest.mark.asyncio",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T11:42:56.360Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-06-17T11:40:45.150Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/data_source/service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: # ── sync (manual MVP) ──; async def sync(source) -> dict:",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T11:43:35.949Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-06-17T11:43:17.853Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/data_source/service.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→12 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T11:43:17.853Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-06-17T11:54:29.219Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/routers/mcp.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: await _require_admin_user(request) | Also: await _require_admin_user(request); _validate_mcp_update_request(body)",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-06-17T11:56:00.919Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-06-17T11:55:17.695Z",
+      "error_message": "Wrong reference: McpConfigResponse should be request",
+      "file": "backend/app/gateway/routers/mcp.py",
+      "root_cause": "Used \"McpConfigResponse\" instead of \"request\"",
+      "fix": "Changed McpConfigResponse → request",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T11:56:03.635Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-06-17T12:30:49.843Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had 's intentional customizations). Methodology = deli",
+      "fix": "Changed to 's intentional customizations). Methodology = deli",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T12:30:49.843Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-06-17T12:37:58.772Z",
+      "error_message": "Wrong reference: serialize_channel_values should be serialize_channel_values_for_api",
+      "file": "backend/app/gateway/routers/runs.py",
+      "root_cause": "Used \"serialize_channel_values\" instead of \"serialize_channel_values_for_api\"",
+      "fix": "Changed serialize_channel_values → serialize_channel_values_for_api",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T12:38:00.408Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-06-17T12:38:14.559Z",
+      "error_message": "Wrong reference: serialize_channel_values should be serialize_channel_values_for_api",
+      "file": "backend/app/gateway/routers/threads.py",
+      "root_cause": "Used \"serialize_channel_values\" instead of \"serialize_channel_values_for_api\"",
+      "fix": "Changed serialize_channel_values → serialize_channel_values_for_api",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T12:38:16.868Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-06-17T12:51:06.396Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had 's intentional customizations). Methodology = deli",
+      "fix": "Changed to 's intentional customizations). Methodology = deli",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T12:51:06.396Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-06-17T12:58:56.121Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T12:58:56.121Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-06-17T12:59:00.775Z",
+      "error_message": "Wrong return value",
+      "file": "backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py",
+      "root_cause": "Was returning: self._inject(state, thread_id=thread_id)",
+      "fix": "Now returns: await asyncio.wait_for(asyncio.to_thread(self._inj",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T12:59:00.775Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-06-17T13:16:41.838Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T13:16:41.838Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-06-17T13:58:02.146Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/.claude/plans/purrfect-stirring-tome.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→7 lines (2 removed) | Also: **E-3 跳过/延后(高风险低性价比):**; - Landing 模块化(路线分歧,dev 用 landing-new)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T13:58:06.656Z"
+    },
+    {
+      "id": "bug-115",
+      "timestamp": "2026-06-17T14:19:13.331Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/ai-elements/message.tsx",
+      "root_cause": "Had \"streamdown\"",
+      "fix": "Changed to \"@/components/ai-elements/streamdown\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T14:19:13.331Z"
+    },
+    {
+      "id": "bug-116",
+      "timestamp": "2026-06-17T14:24:30.809Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/ai-elements/reasoning.tsx",
+      "root_cause": "Had \"streamdown\"",
+      "fix": "Changed to \"@/components/ai-elements/streamdown\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T14:24:30.809Z"
+    },
+    {
+      "id": "bug-117",
+      "timestamp": "2026-06-17T14:24:34.672Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/workspace/messages/subtask-card.tsx",
+      "root_cause": "Had \"streamdown\"",
+      "fix": "Changed to \"@/components/ai-elements/streamdown\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T14:24:34.672Z"
+    },
+    {
+      "id": "bug-118",
+      "timestamp": "2026-06-17T14:24:36.527Z",
+      "error_message": "Wrong reference: Streamdown should be ClipboardSafeStreamdown",
+      "file": "frontend/src/components/workspace/messages/subtask-card.tsx",
+      "root_cause": "Used \"Streamdown\" instead of \"ClipboardSafeStreamdown\"",
+      "fix": "Changed Streamdown → ClipboardSafeStreamdown",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T14:24:38.119Z"
+    },
+    {
+      "id": "bug-119",
+      "timestamp": "2026-06-17T14:24:39.654Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/workspace/artifacts/artifact-file-detail.tsx",
+      "root_cause": "Had \"streamdown\"",
+      "fix": "Changed to \"@/components/ai-elements/streamdown\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T14:24:39.654Z"
+    },
+    {
+      "id": "bug-120",
+      "timestamp": "2026-06-17T14:24:41.961Z",
+      "error_message": "Wrong reference: Streamdown should be ClipboardSafeStreamdown",
+      "file": "frontend/src/components/workspace/artifacts/artifact-file-detail.tsx",
+      "root_cause": "Used \"Streamdown\" instead of \"ClipboardSafeStreamdown\"",
+      "fix": "Changed Streamdown → ClipboardSafeStreamdown",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T14:24:43.807Z"
+    },
+    {
+      "id": "bug-121",
+      "timestamp": "2026-06-17T14:26:37.409Z",
+      "error_message": "Wrong reference: Streamdown should be ClipboardSafeStreamdown",
+      "file": "frontend/src/components/ai-elements/message.tsx",
+      "root_cause": "Used \"Streamdown\" instead of \"ClipboardSafeStreamdown\"",
+      "fix": "Changed Streamdown → ClipboardSafeStreamdown",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T14:26:37.409Z"
+    },
+    {
+      "id": "bug-122",
+      "timestamp": "2026-06-17T15:32:01.786Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/core/threads/hooks.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:32:01.786Z"
+    },
+    {
+      "id": "bug-123",
+      "timestamp": "2026-06-17T15:33:01.121Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/components/workspace/recent-chat-list.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:33:01.121Z"
+    },
+    {
+      "id": "bug-124",
+      "timestamp": "2026-06-17T15:33:02.787Z",
+      "error_message": "Type error",
+      "file": "frontend/src/components/workspace/recent-chat-list.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:33:02.787Z"
+    },
+    {
+      "id": "bug-125",
+      "timestamp": "2026-06-17T15:33:51.907Z",
+      "error_message": "Wrong reference: useThreads should be useInfiniteThreads",
+      "file": "frontend/src/app/workspace/chats/page.tsx",
+      "root_cause": "Used \"useThreads\" instead of \"useInfiniteThreads\"",
+      "fix": "Changed useThreads → useInfiniteThreads",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:33:51.907Z"
+    },
+    {
+      "id": "bug-126",
+      "timestamp": "2026-06-17T15:33:55.406Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/workspace/chats/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:33:55.406Z"
+    },
+    {
+      "id": "bug-127",
+      "timestamp": "2026-06-17T15:33:57.272Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/workspace/chats/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T15:33:57.272Z"
+    },
+    {
+      "id": "bug-128",
+      "timestamp": "2026-06-17T16:05:29.497Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/packages/harness/deerflow/config/app_config.py",
+      "root_cause": "Had \"allow\"",
+      "fix": "Changed to \"User-owned IM channel connections configuration\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:05:29.497Z"
+    },
+    {
+      "id": "bug-129",
+      "timestamp": "2026-06-17T16:08:08.187Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had `C:\\Users\\admin\\.claude\\plans\\purrfect-stirring-to",
+      "fix": "Changed to `0d791c33`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:08:08.187Z"
+    },
+    {
+      "id": "bug-130",
+      "timestamp": "2026-06-17T16:26:03.544Z",
+      "error_message": "Wrong reference: _run_in_db_probe should be _run_in_db",
+      "file": "backend/app/extensions/data_source/mcp.py",
+      "root_cause": "Used \"_run_in_db_probe\" instead of \"_run_in_db\"",
+      "fix": "Changed _run_in_db_probe → _run_in_db",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:26:03.544Z"
+    },
+    {
+      "id": "bug-131",
+      "timestamp": "2026-06-17T16:26:08.031Z",
+      "error_message": "Wrong reference: 400 should be 300",
+      "file": "backend/app/extensions/data_source/service.py",
+      "root_cause": "Used \"400\" instead of \"300\"",
+      "fix": "Changed 400 → 300",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:26:08.031Z"
+    },
+    {
+      "id": "bug-132",
+      "timestamp": "2026-06-17T16:29:49.938Z",
+      "error_message": "Type error",
+      "file": "frontend/src/core/i18n/locales/en-US.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:29:49.938Z"
+    },
+    {
+      "id": "bug-133",
+      "timestamp": "2026-06-17T16:29:52.065Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/core/i18n/locales/en-US.ts",
+      "root_cause": "Had \"Basic\"",
+      "fix": "Changed to \"Channels\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:29:52.065Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-06-17T16:29:56.289Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/core/i18n/locales/zh-CN.ts",
+      "root_cause": "Had \"基础设置\"",
+      "fix": "Changed to \"渠道\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:29:56.289Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-06-17T16:30:21.236Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/workspace/settings/settings-dialog.tsx",
+      "root_cause": "Had \"@/components/workspace/settings/tool-settings-pag",
+      "fix": "Changed to \"@/components/workspace/settings/channels-settings",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:30:21.236Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-06-17T16:30:25.153Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/components/workspace/settings/settings-dialog.tsx",
+      "root_cause": "id: \"skills\", label: t.settings.sections.skills, icon: SparklesIcon → \"channels\",",
+      "fix": "Changed id: \"skills\", label: t.settings.sections.skills, icon: SparklesIcon → \"channels\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-17T16:30:25.154Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-06-17T16:48:50.778Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had 's Chinese bots (wechat/feishy/dingtalk) — router ",
+      "fix": "Changed to `baa63c08`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T16:48:53.163Z"
+    },
+    {
+      "id": "bug-138",
+      "timestamp": "2026-06-17T17:16:37.423Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_channel_service_runtime.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→12 lines (3 removed) | Also: # Missing one of the required keys.; assert _channel_has_credentials(\"feishu\", {\"app_id",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-17T17:16:51.214Z"
+    },
+    {
+      "id": "bug-139",
+      "timestamp": "2026-06-18",
+      "error_message": "ruff F821 Undefined name create_internal_auth_headers at backend/app/channels/manager.py (used in _fetch_gateway); tests test_channels.py::TestChannelManager::test_fetch_gateway_includes_internal_auth_headers + test_get_client_includes_csrf_header_and_cookie failed",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "Dev manager.py (heavily customized) references create_internal_auth_headers() in _fetch_gateway but never imports it. Upstream imports it at top: from app.gateway.internal_auth import create_internal_auth_headers. The helper IS defined in dev app/gateway/internal_auth.py — only the import line was dropped during customization. At runtime this raised NameError, caught by the bare except in _fetch_gateway, so /models /memory channel commands silently returned \"Failed to fetch ...\". Pre-existing on HEAD (not introduced by the channel-connections merge), surfaced when running the channel test suite.",
+      "fix": "Added the missing top-level import: from app.gateway.internal_auth import create_internal_auth_headers. This resolved the F821 lint error AND test_fetch_gateway_includes_internal_auth_headers. (test_get_client_includes_csrf_header_and_cookie remains a SEPARATE pre-existing failure: dev _get_client calls get_client(url=...) with no headers by design; out of scope, left as-is.)",
+      "tags": [
+        "channels",
+        "manager",
+        "import",
+        "ruff",
+        "F821",
+        "internal-auth",
+        "pre-existing"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18"
+    },
+    {
+      "id": "bug-140",
+      "timestamp": "2026-06-18T00:50:02.045Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_plugin_service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-18T00:52:02.351Z"
+    },
+    {
+      "id": "bug-141",
+      "timestamp": "2026-06-18T01:10:37.646Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 22→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T01:10:37.646Z"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-06-18T01:20:40.470Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had \"Upstream deer-flow sync to fix/four-module — Tier",
+      "fix": "Changed to \"Upstream deer-flow sync to fix/four-module — Tier",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T01:20:40.470Z"
+    },
+    {
+      "id": "bug-143",
+      "timestamp": "2026-06-18T02:03:18.017Z",
+      "error_message": "Missing await",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: thread_id = await self._lookup_thread_id(msg)",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-18T02:03:49.702Z"
+    },
+    {
+      "id": "bug-144",
+      "timestamp": "2026-06-18T02:03:53.578Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 13→7 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T02:03:53.578Z"
+    },
+    {
+      "id": "bug-145",
+      "timestamp": "2026-06-18T02:11:51.690Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-tier1-state.md",
+      "root_cause": "Had \"Upstream deer-flow sync to fix/four-module — Tier",
+      "fix": "Changed to \"Upstream deer-flow sync to fix/four-module — Tier",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T02:11:51.690Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-06-18T03:44:01.612Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/data_source/service.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T03:44:01.612Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-06-18T03:44:16.976Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/data_source/mcp.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 24→11 lines (10 removed) | Also: async def _probe(session):; from sqlalchemy import text",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-18T03:44:47.048Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-06-18T05:05:44.198Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/internal_auth.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 27→41 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T05:05:44.198Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-06-18T05:07:10.009Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 14→36 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T05:07:10.009Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-06-18T02:30:00+08:00",
+      "error_message": "POST /api/extensions/data-sources/{id}/sync -> 500; asyncpg DataError: can't subtract offset-naive and offset-aware datetimes (UPDATE data_sources SET last_sync_at=::TIMESTAMP WITHOUT TIME ZONE)",
+      "file": "backend/app/extensions/data_source/service.py",
+      "root_cause": "sync() returned datetime.now(timezone.utc) (tz-AWARE) but DataSource.last_sync_at is TIMESTAMP WITHOUT TIME ZONE (naive); asyncpg cannot bind a tz-aware datetime to a naive column. test_connection did not fail because it never writes last_sync_at.",
+      "fix": "Return tz-naive UTC: datetime.now(timezone.utc).replace(tzinfo=None). Commit 026e27b3. Added regression test asserting out[\"last_sync_at\"].tzinfo is None.",
+      "tags": [
+        "data-source",
+        "sync",
+        "asyncpg",
+        "timezone",
+        "datetime"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T02:30:00+08:00"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-06-18T02:30:00+08:00",
+      "error_message": "Agent query_data_source returned data from the EXTENSIONS DB instead of the data source configured DB. SELECT current_database() returned agentflow for a source pointing at verification_db. Silent wrong-data for any external database.",
+      "file": "backend/app/extensions/data_source/mcp.py",
+      "root_cause": "_handle_query_data_source ran the query via _run_in_db (connects to the extensions DB via get_extensions_config().database.url), IGNORING source.connection_config. Only test_connection used the config. Same defect in get_data_source_schema (listed extensions tables, not source tables). Coincidentally worked only when the source pointed at agentflow.",
+      "fix": "Added DataSourceService.run_readonly_query(source, sql) + list_tables(source) that build the engine URL from source.connection_config (shared _build_db_url); query/schema handlers now call them. Commit 8fded7b3. Found by /qa verification with a distinct verification_db; + regression test asserting the engine URL is built from the source config.",
+      "tags": [
+        "data-source",
+        "mcp",
+        "agent",
+        "query",
+        "correctness",
+        "silent-failure"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T02:30:00+08:00"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-06-18T02:30:00+08:00",
+      "error_message": "Startup migrate_db() threw InvalidColumnReferenceError then NotNullViolationError on role_permissions, aborting seed_db so NO startup seeding ran (plugins/templates/role_permissions) on already-initialized DBs.",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Existing role_permissions table was created from an older CREATE TABLE missing id DEFAULT gen_random_uuid(), created_at DEFAULT now(), and UNIQUE(role,permission). CREATE TABLE IF NOT EXISTS does not upgrade existing tables, so _seed_role_permissions ON CONFLICT (role,permission) + INSERTs without id/created_at failed.",
+      "fix": "Idempotent schema-drift repair in migrate_db: ALTER COLUMN id SET DEFAULT gen_random_uuid(), ALTER COLUMN created_at SET DEFAULT now(), CREATE UNIQUE INDEX IF NOT EXISTS on (role,permission). Commit f4d6516c. seed_db now runs at startup; verified role_permissions re-seeds 27 rows from empty.",
+      "tags": [
+        "database",
+        "migrate_db",
+        "startup",
+        "seed",
+        "schema-drift",
+        "role_permissions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-18T02:30:00+08:00"
     }
   ]
 }
