@@ -30,6 +30,7 @@ async def test_list_data_sources_handler():
     fake.type = "database"
     fake.status = "connected"
     fake.last_sync_at = None
+    fake.description = "厂界噪声2024"
 
     async def _run(func):
         return await func(MagicMock())
@@ -41,6 +42,7 @@ async def test_list_data_sources_handler():
     payload = json.loads(out[0].text)
     assert payload["success"] is True
     assert payload["data_sources"][0]["name"] == "prod"
+    assert payload["data_sources"][0]["description"] == "厂界噪声2024"
 
 
 @pytest.mark.asyncio

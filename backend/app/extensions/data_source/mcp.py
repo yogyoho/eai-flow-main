@@ -106,6 +106,7 @@ async def _handle_list_data_sources(arguments: dict) -> list[TextContent]:
             {
                 "id": str(r.id),
                 "name": r.name,
+                "description": r.description,
                 "type": r.type,
                 "status": r.status,
                 "last_sync_at": r.last_sync_at.isoformat() if r.last_sync_at else None,
@@ -131,10 +132,10 @@ async def _handle_get_data_source_schema(arguments: dict) -> list[TextContent]:
     if src.type == "database":
         try:
             tables = await DataSourceService.list_tables(src)
-            return _ok({"success": True, "name": name, "type": "database", "tables": tables})
+            return _ok({"success": True, "name": name, "description": src.description, "type": "database", "tables": tables})
         except Exception as e:  # probe failure is non-fatal
-            return _ok({"success": True, "name": name, "type": "database", "tables": [], "probe_error": str(e)})
-    return _ok({"success": True, "name": name, "type": src.type, "connection_config_keys": list((src.connection_config or {}).keys())})
+            return _ok({"success": True, "name": name, "description": src.description, "type": "database", "tables": [], "probe_error": str(e)})
+    return _ok({"success": True, "name": name, "description": src.description, "type": src.type, "connection_config_keys": list((src.connection_config or {}).keys())})
 
 
 async def _handle_query_data_source(arguments: dict) -> list[TextContent]:
