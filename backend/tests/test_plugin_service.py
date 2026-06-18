@@ -123,14 +123,14 @@ class TestInstanceCrud:
         db = AsyncMock()
         added = []
 
-        async def _add(obj):
+        def _add(obj):  # AsyncSession.add is SYNC — must be a sync mock
             added.append(obj)
 
         async def _flush():
             for o in added:
                 o.id = "iid"
 
-        db.add = AsyncMock(side_effect=_add)
+        db.add = MagicMock(side_effect=_add)
         db.flush = AsyncMock(side_effect=_flush)
         plugin = _plugin()
         req = MagicMock()
