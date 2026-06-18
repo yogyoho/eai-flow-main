@@ -45,6 +45,7 @@ docker compose -p eai-docker up -d            # Start all services
 
 ### Key Implications
 - **Code changes require container restart** — the backend/frontend run inside Docker, not locally. After modifying backend Python code, run `docker compose -p eai-docker restart gateway`.
+- **Dependency changes require an image rebuild, NOT a restart** — the frontend dev container's `node_modules` is baked into the image at build time and is NOT bind-mounted (host=Windows, container=Linux — bind-mounting `node_modules` would replace Linux-native binaries like sharp/swc with incompatible Windows ones). So changing `package.json`/`pnpm-lock.yaml` has no effect on the running container until the image is rebuilt. After any frontend dependency change, run `make rebuild-frontend`; a plain `restart` will silently keep stale/mixed deps. Run `make check-frontend-deps` to detect host↔container lockfile drift. (This is the root cause of the recurring BlockNote `Duplicate use of selection JSON ID` crash.)
 - **Database is PostgreSQL inside Docker** — cannot connect from host directly. Use `docker exec` to query: `docker exec <postgres-container> psql -U agentflow -d agentflow -c "SELECT ..."`
 - **Collab-server is a separate Node.js service** — at `backend/collab-server/`. After modifying its TypeScript source, rebuild and restart: `cd backend/collab-server && npx tsc && docker compose -p eai-docker restart collab`
 - **Frontend HMR may be unreliable in Docker** — if hot reload doesn't pick up changes, restart the frontend container.
@@ -121,6 +122,14 @@ The backend has two layers with a **strict dependency direction**:
 - **App** (`backend/app/`): Application layer. Import prefix: `app.*`. Contains FastAPI Gateway and IM channel integrations.
 
 **Dependency rule**: `app` imports `deerflow`, but `deerflow` **never** imports `app`. Enforced by `tests/test_harness_boundary.py` in CI.
+
+### Extension Capability: 3-Layer Model (North Star)
+
+Capability reaches the agent through exactly **3 primitives**: **MCP tools**, **Skills**, **custom sub-agents**. Everything else is a management/packaging layer that MUST wire into one of these primitives, or it is a silo.
+
+- **Data source** = a *managed MCP provider* (connection config + read-only query tools, built on MCP at `app/extensions/data_source/mcp.py`). Wired ✓.
+- **Plugin** = a *packaging/distribution layer*: a `type=tool` plugin's `entry_point` is an MCP server module; enabling an instance registers it in `extensions_config.json` → `mcpServers` so the agent gains its tools via function calling (see `app/extensions/plugin/service.py::sync_mcp_registration`). `data_connector`/`output`/`agent` plugin types map to data-source templates / skills / sub-agents (future).
+- **Rule**: before adding any new tab/module, ask which layer it lives in and which primitive it wires to. Don't build capability that doesn't reach the agent through MCP / Skills / sub-agents.
 
 ### Agent System
 
