@@ -59,17 +59,15 @@ async def test_query_rejects_write_sql():
 
 @pytest.mark.asyncio
 async def test_query_executes_readonly_sql():
-    fake_mapping = {"id": 1, "name": "x"}
-    result_mock = MagicMock()
-    result_mock.mappings.return_value.all.return_value = [fake_mapping]
-    session = MagicMock()
-    session.execute = AsyncMock(return_value=result_mock)
-
     async def _run(func):
-        return await func(session)
+        return await func(MagicMock())  # lookup session
 
     with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
         "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=_db_src())
+    ), patch(
+        # the handler now queries the SOURCE's own DB via this service method
+        "app.extensions.data_source.service.DataSourceService.run_readonly_query",
+        AsyncMock(return_value=[{"id": 1, "name": "x"}]),
     ):
         out = await ds_mcp._handle_query_data_source({"name": "prod", "params": {"sql": "SELECT id, name FROM users"}})
     payload = json.loads(out[0].text)

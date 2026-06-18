@@ -159,22 +159,60 @@ class DataSourceService:
         await db.flush()
         return True
 
+    # ── read-only query / schema against the SOURCE's own DB ──
 
-async def _test_database(cfg: dict) -> TestConnectionResult:
+    @staticmethod
+    async def run_readonly_query(source, sql: str) -> list[dict]:
+        """Execute an already-guarded read-only SQL against the source's OWN
+        database (built from source.connection_config) — NOT the extensions DB.
+        Caller must pass sql through assert_readonly_select first."""
+        engine = create_async_engine(_build_db_url(source.connection_config or {}), poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                try:
+                    await conn.execute(text("SET TRANSACTION READ ONLY"))
+                except Exception:
+                    pass
+                res = await conn.execute(text(sql))
+                return [dict(row) for row in res.mappings().all()]
+        finally:
+            await engine.dispose()
+
+    @staticmethod
+    async def list_tables(source) -> list[str]:
+        """List public tables in the source's OWN database."""
+        engine = create_async_engine(_build_db_url(source.connection_config or {}), poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                res = await conn.execute(
+                    text("SELECT table_name FROM information_schema.tables WHERE table_schema='public' LIMIT 50")
+                )
+                return [r[0] for r in res.fetchall()]
+        finally:
+            await engine.dispose()
+
+
+def _build_db_url(cfg: dict) -> str:
+    """Build a SQLAlchemy URL from a database source's connection_config."""
     driver = cfg.get("driver") or "postgresql+asyncpg"
     host = cfg.get("host", "localhost")
     port = cfg.get("port", 5432)
     database = cfg.get("database", "")
     username = cfg.get("username", "")
     password = cfg.get("password", "")
-    url = f"{driver}://{username}:{password}@{host}:{port}/{database}"
-    engine = create_async_engine(url, poolclass=NullPool)
+    return f"{driver}://{username}:{password}@{host}:{port}/{database}"
+
+
+async def _test_database(cfg: dict) -> TestConnectionResult:
+    engine = create_async_engine(_build_db_url(cfg), poolclass=NullPool)
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     finally:
         await engine.dispose()
-    return TestConnectionResult(success=True, message="连接成功", metadata={"engine": driver})
+    return TestConnectionResult(
+        success=True, message="连接成功", metadata={"engine": cfg.get("driver") or "postgresql+asyncpg"}
+    )
 
 
 async def _test_api(cfg: dict) -> TestConnectionResult:

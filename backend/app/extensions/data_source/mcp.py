@@ -129,19 +129,8 @@ async def _handle_get_data_source_schema(arguments: dict) -> list[TextContent]:
     if src is None:
         return _ok({"success": False, "message": f"数据源不存在: {name}"})
     if src.type == "database":
-        async def _probe(session):
-            from sqlalchemy import text
-
-            res = await session.execute(
-                text(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema='public' LIMIT 50"
-                )
-            )
-            return [r[0] for r in res.fetchall()]
-
         try:
-            tables = await _run_in_db(_probe)
+            tables = await DataSourceService.list_tables(src)
             return _ok({"success": True, "name": name, "type": "database", "tables": tables})
         except Exception as e:  # probe failure is non-fatal
             return _ok({"success": True, "name": name, "type": "database", "tables": [], "probe_error": str(e)})
@@ -167,21 +156,8 @@ async def _handle_query_data_source(arguments: dict) -> list[TextContent]:
             safe_sql = assert_readonly_select(sql)
         except ValueError as e:
             return _ok({"success": False, "message": str(e)})
-
-        async def _q(session):
-            from sqlalchemy import text
-
-            # Defense-in-depth: force a read-only transaction. Best-effort —
-            # some drivers/configs reject SET; the keyword guard still applies.
-            try:
-                await session.execute(text("SET TRANSACTION READ ONLY"))
-            except Exception:
-                pass
-            res = await session.execute(text(safe_sql))
-            return [dict(row) for row in res.mappings().all()]
-
         try:
-            rows = await _run_in_db(_q)
+            rows = await DataSourceService.run_readonly_query(src, safe_sql)
             return _ok({"success": True, "name": name, "sql": safe_sql, "row_count": len(rows), "rows": rows})
         except Exception as e:
             return _ok({"success": False, "message": f"{type(e).__name__}: {e}"})

@@ -326,3 +326,41 @@ class TestCRUD:
         db.execute = AsyncMock(return_value=result_mock)
         out = await DataSourceService.get_by_name(db, "prod")
         assert out == "FOUND"
+
+
+class TestRunReadonlyQuery:
+    @pytest.mark.asyncio
+    async def test_engine_url_built_from_source_config(self):
+        # Regression: query must connect to the SOURCE's configured DB, NOT the
+        # extensions DB. Found by /qa verification — query was hitting agentflow.
+        src = MagicMock()
+        src.connection_config = {
+            "host": "src-host", "port": 5432, "database": "THE_SOURCE_DB",
+            "username": "u", "password": "p",
+        }
+        captured = {}
+        fake_res = MagicMock()
+        fake_res.mappings.return_value.all.return_value = [{"db": "THE_SOURCE_DB"}]
+        fake_conn = MagicMock()
+        fake_conn.execute = AsyncMock(return_value=fake_res)
+
+        class _CM:
+            async def __aenter__(self):
+                return fake_conn
+
+            async def __aexit__(self, *a):
+                return False
+
+        fake_engine = MagicMock()
+        fake_engine.connect = MagicMock(return_value=_CM())
+        fake_engine.dispose = AsyncMock()
+
+        def _capture(url, **kw):
+            captured["url"] = str(url)
+            return fake_engine
+
+        with patch("app.extensions.data_source.service.create_async_engine", side_effect=_capture):
+            rows = await DataSourceService.run_readonly_query(src, "SELECT current_database() AS db LIMIT 200")
+        assert "THE_SOURCE_DB" in captured["url"], f"engine should target source DB, got {captured['url']}"
+        assert "src-host" in captured["url"]
+        assert rows == [{"db": "THE_SOURCE_DB"}]
