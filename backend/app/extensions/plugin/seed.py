@@ -54,6 +54,13 @@ BUILTIN_PLUGINS = [
             "properties": {"layer_url": {"type": "string", "title": "图层地址"}},
         },
     },
+    {
+        "name": "示例工具(演示接线)",
+        "type": "tool",
+        "description": "演示插件→MCP 接线:启用后 Agent 获得 demo_greet 工具。",
+        "entry_point": "app.extensions.plugin.builtin.demo_mcp",
+        "config_schema": {"type": "object"},
+    },
 ]
 
 
@@ -74,6 +81,7 @@ async def seed_builtin_plugins(db: AsyncSession) -> None:
                 type=p["type"],
                 version=version,
                 description=p.get("description"),
+                entry_point=p.get("entry_point"),
                 config_schema=p.get("config_schema"),
                 permissions=[],
                 status="registered",

@@ -121,3 +121,18 @@ class TestHooksCallSync:
             await PluginService.delete_instance(db, "iid")
         sync.assert_called_once()
         assert sync.call_args.kwargs.get("remove") is True
+
+
+class TestDemoModule:
+    def test_demo_module_exposes_greet(self):
+        from app.extensions.plugin.builtin import demo_mcp
+
+        names = {t.name for t in demo_mcp.TOOLS}
+        assert "demo_greet" in names
+
+    def test_seed_includes_demo_plugin(self):
+        from app.extensions.plugin import seed as seed_mod
+
+        demo = [p for p in seed_mod.BUILTIN_PLUGINS if p["name"].startswith("示例工具")]
+        assert demo and demo[0]["type"] == "tool"
+        assert demo[0]["entry_point"] == "app.extensions.plugin.builtin.demo_mcp"
