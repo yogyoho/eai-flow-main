@@ -154,3 +154,31 @@ class TestInstanceCrud:
         with patch.object(PluginService, "get_plugin", AsyncMock(return_value=None)):
             with pytest.raises(ValueError):
                 await PluginService.create_instance(db, req, user_id=None)
+
+
+class TestSeed:
+    @pytest.mark.asyncio
+    async def test_seed_inserts_builtins_when_empty(self):
+        from app.extensions.plugin import seed as seed_mod
+
+        db = AsyncMock()
+        existing = MagicMock()
+        existing.scalars.return_value.first.return_value = None  # none exist
+        db.execute = AsyncMock(return_value=existing)
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        await seed_mod.seed_builtin_plugins(db)
+        assert db.add.call_count == len(seed_mod.BUILTIN_PLUGINS)
+
+    @pytest.mark.asyncio
+    async def test_seed_idempotent_when_already_present(self):
+        from app.extensions.plugin import seed as seed_mod
+
+        db = AsyncMock()
+        existing = MagicMock()
+        existing.scalars.return_value.first.return_value = MagicMock()  # already exists
+        db.execute = AsyncMock(return_value=existing)
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        await seed_mod.seed_builtin_plugins(db)
+        assert db.add.call_count == 0  # nothing added
