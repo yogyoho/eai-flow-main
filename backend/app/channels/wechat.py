@@ -674,10 +674,23 @@ class WechatChannel(Channel):
 
         deadline = time.monotonic() + max(self._qrcode_poll_timeout, 1.0)
         while time.monotonic() < deadline:
-            status_data = await self._request_public_get_json(
-                "/ilink/bot/get_qrcode_status",
-                params={"qrcode": qrcode},
-            )
+            try:
+                # get_qrcode_status is a long-poll: the server holds the
+                # connection until the status changes (or its own hold expires).
+                # The default 10s config timeout cuts that short and aborts the
+                # whole QR flow on the first iteration. Give it room to respond
+                # (bounded by the client's own polling_timeout + 5s timeout).
+                status_data = await self._request_public_get_json(
+                    "/ilink/bot/get_qrcode_status",
+                    params={"qrcode": qrcode},
+                    timeout=max(self._polling_timeout, 30.0),
+                )
+            except httpx.HTTPError:
+                # Transient transport/timeout error mid-poll — retry until the
+                # deadline instead of aborting the QR bootstrap.
+                logger.warning("[WeChat] transient error polling QR status, retrying", exc_info=True)
+                await asyncio.sleep(max(self._qrcode_poll_interval, 0.1))
+                continue
             status = str(status_data.get("status") or "").strip().lower()
             if status == "confirmed":
                 token = str(status_data.get("bot_token") or "").strip()

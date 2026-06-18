@@ -24,6 +24,7 @@ from app.channels.message_bus import (
     ResolvedAttachment,
 )
 from app.channels.store import ChannelStore
+from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, generate_csrf_token
 from app.gateway.internal_auth import create_internal_auth_headers
 
 logger = logging.getLogger(__name__)
@@ -628,6 +629,8 @@ class ChannelManager:
         self._connection_repo = connection_repo
         self._require_bound_identity = require_bound_identity
         self._client = None  # lazy init — langgraph_sdk async client
+        # CSRF double-submit token for internal SDK calls (header == cookie).
+        self._csrf_token = generate_csrf_token()
         self._semaphore: asyncio.Semaphore | None = None
         self._running = False
         self._task: asyncio.Task | None = None
@@ -698,7 +701,14 @@ class ChannelManager:
         if self._client is None:
             from langgraph_sdk import get_client
 
-            self._client = get_client(url=self._langgraph_url)
+            self._client = get_client(
+                url=self._langgraph_url,
+                headers={
+                    **create_internal_auth_headers(),
+                    CSRF_HEADER_NAME: self._csrf_token,
+                    "Cookie": f"{CSRF_COOKIE_NAME}={self._csrf_token}",
+                },
+            )
         return self._client
 
     # -- lifecycle ---------------------------------------------------------
