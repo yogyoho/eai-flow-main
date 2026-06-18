@@ -64,3 +64,36 @@ class SyncResponse(BaseModel):
     status: str
     last_sync_at: datetime
     metadata: dict = Field(default_factory=dict)
+
+
+class DatasetCreate(BaseModel):
+    table_name: str = Field(..., min_length=1, max_length=200)
+    label: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+    key_columns: list | None = None
+    default_query: str | None = None
+
+
+class DatasetUpdate(BaseModel):
+    label: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
+    key_columns: list | None = None
+    default_query: str | None = None
+
+
+class DatasetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID | str
+    source_id: UUID | str
+    table_name: str
+    label: str
+    description: str | None = None
+    key_columns: list | None = None
+    default_query: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class DatasetListResponse(BaseModel):
+    items: list[DatasetResponse]
