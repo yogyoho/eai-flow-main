@@ -87,6 +87,27 @@ TOOLS = [
             "required": ["name"],
         },
     ),
+    Tool(
+        name="list_datasets",
+        description="列出某数据源下已标注的业务数据集(label/表/描述);无标注时自动列出源库的表名。",
+        inputSchema={
+            "type": "object",
+            "properties": {"source_name": {"type": "string"}},
+            "required": ["source_name"],
+        },
+    ),
+    Tool(
+        name="query_dataset",
+        description="按业务名(label)查询某数据源的数据集:执行该数据集的 default_query(只读)。",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "source_name": {"type": "string"},
+                "label": {"type": "string"},
+            },
+            "required": ["source_name", "label"],
+        },
+    ),
 ]
 
 
@@ -196,6 +217,82 @@ async def _handle_test_data_source(arguments: dict) -> list[TextContent]:
 
 # ── server ──
 
+async def _handle_list_datasets(arguments: dict) -> list[TextContent]:
+    from app.extensions.data_source.service import DataSourceService
+
+    source_name = arguments["source_name"]
+
+    async def _q(session):
+        src = await DataSourceService.get_by_name(session, source_name)
+        if src is None:
+            return None
+        datasets = await DataSourceService.list_datasets(session, src.id)
+        return (src, datasets)
+
+    result = await _run_in_db(_q)
+    if result is None:
+        return _ok({"success": False, "message": f"数据源不存在: {source_name}"})
+    src, datasets = result
+    if datasets:
+        return _ok({
+            "success": True,
+            "source": source_name,
+            "datasets": [
+                {
+                    "label": d.label,
+                    "table_name": d.table_name,
+                    "description": d.description,
+                    "key_columns": d.key_columns,
+                    "has_default_query": bool(d.default_query),
+                }
+                for d in datasets
+            ],
+        })
+    # D fallback: no curated datasets -> auto-list tables from the source's own DB
+    try:
+        tables = await DataSourceService.list_tables(src)
+        return _ok({
+            "success": True,
+            "source": source_name,
+            "auto": True,
+            "note": "未标注数据集,自动列出源库的表名",
+            "datasets": [{"label": t, "table_name": t} for t in tables],
+        })
+    except Exception as e:
+        return _ok({"success": True, "source": source_name, "auto": True, "datasets": [], "note": f"无标注数据集,且自动列出失败: {e}"})
+
+
+async def _handle_query_dataset(arguments: dict) -> list[TextContent]:
+    from app.extensions.data_source.service import DataSourceService, assert_readonly_select
+
+    source_name = arguments["source_name"]
+    label = arguments["label"]
+
+    async def _lookup(session):
+        src = await DataSourceService.get_by_name(session, source_name)
+        if src is None:
+            return (None, None)
+        ds = await DataSourceService.resolve_dataset(session, src.id, label)
+        return (src, ds)
+
+    src, ds = await _run_in_db(_lookup)
+    if src is None:
+        return _ok({"success": False, "message": f"数据源不存在: {source_name}"})
+    if ds is None:
+        return _ok({"success": False, "message": f"数据集不存在: {label};用 list_datasets 查看"})
+    if not ds.default_query:
+        return _ok({"success": False, "message": f"数据集'{label}'未配置 default_query;请用 query_data_source 编写 SQL"})
+    try:
+        safe_sql = assert_readonly_select(ds.default_query)
+    except ValueError as e:
+        return _ok({"success": False, "message": str(e)})
+    try:
+        rows = await DataSourceService.run_readonly_query(src, safe_sql)
+        return _ok({"success": True, "source": source_name, "dataset": label, "sql": safe_sql, "row_count": len(rows), "rows": rows})
+    except Exception as e:
+        return _ok({"success": False, "message": f"{type(e).__name__}: {e}"})
+
+
 server = Server("data_sources")
 
 
@@ -211,6 +308,8 @@ async def call_tool(name: str, arguments: dict):
         "get_data_source_schema": _handle_get_data_source_schema,
         "query_data_source": _handle_query_data_source,
         "test_data_source": _handle_test_data_source,
+        "list_datasets": _handle_list_datasets,
+        "query_dataset": _handle_query_dataset,
     }
     handler = handlers.get(name)
     if handler is None:

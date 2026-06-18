@@ -7,7 +7,9 @@ from pydantic import ValidationError
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
 from httpx import ASGITransport, AsyncClient
+import json
 
+from app.extensions.data_source import mcp as ds_mcp
 from app.extensions.data_source.routers import router
 from app.extensions.data_source.schemas import DatasetCreate, DatasetResponse
 from app.extensions.data_source.service import DataSourceService
@@ -177,3 +179,94 @@ class TestDatasetRouter:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
                 r = await c.delete("/api/extensions/data-sources/datasets/" + str(uuid4()))
         assert r.status_code == 204
+
+
+class TestDatasetMcp:
+    @pytest.mark.asyncio
+    async def test_list_datasets_returns_curated(self):
+        src = MagicMock()
+        src.id = "sid"
+        src.name = "prod"
+        ds = MagicMock()
+        ds.label = "厂界噪声"
+        ds.table_name = "noise"
+        ds.description = "d"
+        ds.key_columns = ["a"]
+        ds.default_query = None
+
+        async def _run(func):
+            return await func(MagicMock())
+
+        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
+            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[ds])
+        ):
+            out = await ds_mcp._handle_list_datasets({"source_name": "prod"})
+        payload = json.loads(out[0].text)
+        assert payload["success"] is True
+        assert payload["datasets"][0]["label"] == "厂界噪声"
+        assert payload.get("auto") is not True
+
+    @pytest.mark.asyncio
+    async def test_list_datasets_fallback_when_none(self):
+        src = MagicMock()
+        src.id = "sid"
+        src.name = "prod"
+
+        async def _run(func):
+            return await func(MagicMock())
+
+        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
+            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[])
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.list_tables", AsyncMock(return_value=["t1", "t2"])
+        ):
+            out = await ds_mcp._handle_list_datasets({"source_name": "prod"})
+        payload = json.loads(out[0].text)
+        assert payload["auto"] is True
+        assert [d["table_name"] for d in payload["datasets"]] == ["t1", "t2"]
+
+    @pytest.mark.asyncio
+    async def test_query_dataset_runs_default_query(self):
+        src = MagicMock()
+        src.id = "sid"
+        src.name = "prod"
+        ds = MagicMock()
+        ds.default_query = "SELECT 1"
+
+        async def _run(func):
+            return await func(MagicMock())
+
+        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
+            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=ds)
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.run_readonly_query", AsyncMock(return_value=[{"x": 1}])
+        ):
+            out = await ds_mcp._handle_query_dataset({"source_name": "prod", "label": "L"})
+        payload = json.loads(out[0].text)
+        assert payload["success"] is True
+        assert payload["rows"] == [{"x": 1}]
+
+    @pytest.mark.asyncio
+    async def test_query_dataset_missing_label(self):
+        src = MagicMock()
+        src.id = "sid"
+        src.name = "prod"
+
+        async def _run(func):
+            return await func(MagicMock())
+
+        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
+            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
+        ), patch(
+            "app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=None)
+        ):
+            out = await ds_mcp._handle_query_dataset({"source_name": "prod", "label": "nope"})
+        payload = json.loads(out[0].text)
+        assert payload["success"] is False
+        assert "数据集不存在" in payload["message"]
