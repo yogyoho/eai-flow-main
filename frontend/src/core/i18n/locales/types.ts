@@ -122,6 +122,7 @@ export interface Translations {
     knowledge: string;
     documentSpace: string;
     knowledgeFactory: string;
+    channels: string;
   };
 
   // Agents

@@ -172,6 +172,7 @@ export const zhCN: Translations = {
     documentSpace: "文档空间",
     knowledge: "知识库",
     knowledgeFactory: "知识工厂",
+    channels: "渠道",
   },
 
   // Agents

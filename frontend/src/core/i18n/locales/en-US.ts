@@ -178,6 +178,7 @@ export const enUS: Translations = {
     documentSpace: "Document Space",
     knowledge: "Knowledge Base",
     knowledgeFactory: "Knowledge Factory",
+    channels: "Channels",
   },
 
   // Agents
