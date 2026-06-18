@@ -83,7 +83,7 @@ class TestCheckpointerConfig:
 class TestHarnessPackaging:
     def test_pyproject_declares_postgres_extra(self):
         pyproject_path = Path(__file__).resolve().parents[1] / "packages" / "harness" / "pyproject.toml"
-        data = tomllib.loads(pyproject_path.read_text())
+        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 
         optional_dependencies = data["project"]["optional-dependencies"]
         assert "postgres" in optional_dependencies
@@ -96,7 +96,7 @@ class TestHarnessPackaging:
 
     def test_workspace_pyproject_forwards_postgres_extra_to_harness(self):
         pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
-        data = tomllib.loads(pyproject_path.read_text())
+        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
 
         optional_dependencies = data["project"]["optional-dependencies"]
         assert optional_dependencies["postgres"] == ["deerflow-harness[postgres]"]
