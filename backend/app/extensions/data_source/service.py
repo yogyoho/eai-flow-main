@@ -102,7 +102,9 @@ class DataSourceService:
         result = await DataSourceService.test_connection(source)
         return {
             "status": "connected" if result.success else "error",
-            "last_sync_at": datetime.now(timezone.utc),
+            # naive UTC — DataSource.last_sync_at is TIMESTAMP WITHOUT TIME ZONE;
+            # asyncpg rejects tz-aware datetimes against it (DataError → 500).
+            "last_sync_at": datetime.now(timezone.utc).replace(tzinfo=None),
             "metadata": result.metadata or {},
         }
 

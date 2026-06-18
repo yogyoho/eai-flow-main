@@ -271,6 +271,9 @@ class TestSync:
             out = await DataSourceService.sync(src)
         assert out["status"] == "connected"
         assert out["last_sync_at"] is not None
+        # Regression: last_sync_at must be tz-naive — DataSource.last_sync_at is
+        # TIMESTAMP WITHOUT TIME ZONE; asyncpg rejects tz-aware (DataError → 500).
+        assert out["last_sync_at"].tzinfo is None
         assert out["metadata"] == {"k": 1}
 
     @pytest.mark.asyncio
