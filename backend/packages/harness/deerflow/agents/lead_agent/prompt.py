@@ -360,6 +360,16 @@ task(description="Oracle Cloud analysis", prompt="...", subagent_type="general-p
 </subagent_system>"""
 
 
+DATA_SOURCES_PROMPT_SECTION = """<data_sources>
+## 外部数据源(可选)
+如果当前任务(尤其是写报告、回答涉及真实数据)需要真实数据,你可以查询用户已配置的外部数据源:
+- 先调 list_data_sources 查看有哪些数据源(注意每个源的 description,据此选择最相关的)。
+- 用 get_data_source_schema 了解其表/字段或接口结构。
+- 用 query_data_source 取数(database 为只读 SQL,强制 SELECT/WITH、自动 LIMIT 200;api 为 GET)。
+把取到的真实数据写进报告/回答,并标注来源(数据源名称 + 查询时间)。若这些工具未直接可见,用 tool_search 检索。没有相关数据源时忽略本段。
+</data_sources>"""
+
+
 SYSTEM_PROMPT_TEMPLATE = """
 <role>
 You are {agent_name}, an enterprise-grade super agent.
@@ -448,6 +458,8 @@ You: "Deploying to staging..." [proceed]
 {skills_section}
 
 {deferred_tools_section}
+
+{data_sources_section}
 
 {subagent_section}
 
@@ -804,4 +816,5 @@ def apply_prompt_template(
         subagent_reminder=subagent_reminder,
         subagent_thinking=subagent_thinking,
         acp_section=acp_and_mounts_section,
+        data_sources_section=DATA_SOURCES_PROMPT_SECTION,
     )
