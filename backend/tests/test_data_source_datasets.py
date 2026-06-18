@@ -5,7 +5,10 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from httpx import ASGITransport, AsyncClient
 
+from app.extensions.data_source.routers import router
 from app.extensions.data_source.schemas import DatasetCreate, DatasetResponse
 from app.extensions.data_source.service import DataSourceService
 from app.extensions.models import DataSourceDataset
@@ -107,3 +110,70 @@ class TestDatasetService:
         rm.scalars.return_value.first.return_value = "FOUND"
         db.execute = AsyncMock(return_value=rm)
         assert await DataSourceService.resolve_dataset(db, "sid", "厂界噪声") == "FOUND"
+
+
+def _fake_dataset(**ov):
+    base = {"id": str(uuid4()), "source_id": "sid", "table_name": "noise",
+            "label": "厂界噪声", "description": None, "key_columns": None,
+            "default_query": None, "created_at": datetime(2026, 1, 1), "updated_at": datetime(2026, 1, 1)}
+    base.update(ov)
+    m = MagicMock()
+    for k, v in base.items():
+        setattr(m, k, v)
+    return m
+
+
+def _build_app():
+    from fastapi import FastAPI
+    from app.extensions.auth.middleware import get_current_user
+    from app.extensions.database import get_db
+    app = FastAPI()
+    app.include_router(router)
+
+    async def _db():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_current_user] = lambda: MagicMock(id=uuid4())
+    app.dependency_overrides[get_db] = _db
+    return app
+
+
+class TestDatasetRouter:
+    @pytest.mark.asyncio
+    async def test_list_datasets(self):
+        with patch("app.extensions.data_source.routers.DataSourceService.list_datasets",
+                   AsyncMock(return_value=[_fake_dataset()])):
+            app = _build_app()
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+                r = await c.get("/api/extensions/data-sources/sid/datasets")
+        assert r.status_code == 200
+        assert r.json()["items"][0]["label"] == "厂界噪声"
+
+    @pytest.mark.asyncio
+    async def test_create_dataset_201(self):
+        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset",
+                   AsyncMock(return_value=_fake_dataset())):
+            app = _build_app()
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+                r = await c.post("/api/extensions/data-sources/sid/datasets",
+                                 json={"table_name": "noise", "label": "厂界噪声"})
+        assert r.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_create_404_when_source_missing(self):
+        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset",
+                   AsyncMock(side_effect=ValueError("no source"))):
+            app = _build_app()
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+                r = await c.post("/api/extensions/data-sources/sid/datasets",
+                                 json={"table_name": "noise", "label": "L"})
+        assert r.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_dataset_204(self):
+        with patch("app.extensions.data_source.routers.DataSourceService.delete_dataset",
+                   AsyncMock(return_value=True)):
+            app = _build_app()
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+                r = await c.delete("/api/extensions/data-sources/datasets/" + str(uuid4()))
+        assert r.status_code == 204

@@ -7,6 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.data_source.schemas import (
+    DatasetCreate,
+    DatasetListResponse,
+    DatasetResponse,
+    DatasetUpdate,
     DataSourceCreate,
     DataSourceListResponse,
     DataSourceResponse,
@@ -118,3 +122,59 @@ async def sync_data_source(
     return SyncResponse(
         id=ds.id, status=ds.status, last_sync_at=ds.last_sync_at, metadata=out["metadata"]
     )
+
+
+# ── datasets (curated business tables within a source) ──
+
+
+@router.get("/{source_id}/datasets", response_model=DatasetListResponse)
+async def list_datasets(
+    source_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    items = await DataSourceService.list_datasets(db, source_id)
+    return DatasetListResponse(items=[DatasetResponse.model_validate(i) for i in items])
+
+
+@router.post("/{source_id}/datasets", response_model=DatasetResponse, status_code=status.HTTP_201_CREATED)
+async def create_dataset(
+    source_id: UUID,
+    data: DatasetCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    try:
+        ds = await DataSourceService.create_dataset(db, source_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    await db.commit()
+    await db.refresh(ds)
+    return DatasetResponse.model_validate(ds)
+
+
+@router.patch("/datasets/{dataset_id}", response_model=DatasetResponse)
+async def update_dataset(
+    dataset_id: UUID,
+    data: DatasetUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    ds = await DataSourceService.update_dataset(db, dataset_id, data)
+    if ds is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据集不存在")
+    await db.commit()
+    await db.refresh(ds)
+    return DatasetResponse.model_validate(ds)
+
+
+@router.delete("/datasets/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_dataset(
+    dataset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    ok = await DataSourceService.delete_dataset(db, dataset_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据集不存在")
+    await db.commit()
