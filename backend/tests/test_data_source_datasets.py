@@ -145,7 +145,7 @@ class TestDatasetRouter:
                    AsyncMock(return_value=[_fake_dataset()])):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                r = await c.get("/api/extensions/data-sources/sid/datasets")
+                r = await c.get("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets")
         assert r.status_code == 200
         assert r.json()["items"][0]["label"] == "厂界噪声"
 
@@ -155,7 +155,7 @@ class TestDatasetRouter:
                    AsyncMock(return_value=_fake_dataset())):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                r = await c.post("/api/extensions/data-sources/sid/datasets",
+                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets",
                                  json={"table_name": "noise", "label": "厂界噪声"})
         assert r.status_code == 201
 
@@ -165,7 +165,7 @@ class TestDatasetRouter:
                    AsyncMock(side_effect=ValueError("no source"))):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                r = await c.post("/api/extensions/data-sources/sid/datasets",
+                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets",
                                  json={"table_name": "noise", "label": "L"})
         assert r.status_code == 404
 
