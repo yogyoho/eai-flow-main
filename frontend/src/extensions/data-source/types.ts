@@ -62,3 +62,23 @@ export const SYNC_MODE_LABELS: Record<SyncMode, string> = {
   scheduled: "定时",
   event: "事件驱动",
 };
+
+export interface DataSourceDataset {
+  id: string;
+  sourceId: string;
+  tableName: string;
+  label: string;
+  description: string | null;
+  keyColumns: string[] | null;
+  defaultQuery: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DatasetCreateRequest {
+  tableName: string;
+  label: string;
+  description?: string;
+  keyColumns?: string[];
+  defaultQuery?: string;
+}

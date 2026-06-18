@@ -1,6 +1,12 @@
 import { authFetch } from "@/extensions/api/client";
 
-import type { DataSource, CreateDataSourceRequest, TestConnectionResult } from "./types";
+import type {
+  CreateDataSourceRequest,
+  DataSource,
+  DataSourceDataset,
+  DatasetCreateRequest,
+  TestConnectionResult,
+} from "./types";
 
 const API_BASE = "/data-sources";
 
@@ -82,5 +88,58 @@ export const dataSourceApi = {
 
   sync: async (id: string): Promise<void> => {
     await authFetch(`${API_BASE}/${id}/sync`, { method: "POST" });
+  },
+};
+
+function transformDataset(data: Record<string, unknown>): DataSourceDataset {
+  return {
+    id: data.id as string,
+    sourceId: (data.source_id as string) ?? "",
+    tableName: (data.table_name as string) ?? "",
+    label: (data.label as string) ?? "",
+    description: (data.description as string) ?? null,
+    keyColumns: (data.key_columns as string[] | null) ?? null,
+    defaultQuery: (data.default_query as string) ?? null,
+    createdAt: (data.created_at as string) ?? "",
+    updatedAt: (data.updated_at as string) ?? "",
+  };
+}
+
+export const datasetApi = {
+  list: async (sourceId: string): Promise<DataSourceDataset[]> => {
+    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/${sourceId}/datasets`);
+    return data.items.map(transformDataset);
+  },
+
+  create: async (sourceId: string, req: DatasetCreateRequest): Promise<DataSourceDataset> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/${sourceId}/datasets`, {
+      method: "POST",
+      body: JSON.stringify({
+        table_name: req.tableName,
+        label: req.label,
+        description: req.description,
+        key_columns: req.keyColumns,
+        default_query: req.defaultQuery,
+      }),
+    });
+    return transformDataset(data);
+  },
+
+  update: async (datasetId: string, req: Partial<DatasetCreateRequest>): Promise<DataSourceDataset> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/datasets/${datasetId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        table_name: req.tableName,
+        label: req.label,
+        description: req.description,
+        key_columns: req.keyColumns,
+        default_query: req.defaultQuery,
+      }),
+    });
+    return transformDataset(data);
+  },
+
+  delete: async (datasetId: string): Promise<void> => {
+    await authFetch(`${API_BASE}/datasets/${datasetId}`, { method: "DELETE" });
   },
 };

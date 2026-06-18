@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Code, Database, Edit, Globe, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
-import React from "react";
+import { Code, Database, Edit, Globe, Loader2, RefreshCw, Table, Trash2, Upload } from "lucide-react";
+import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import type { DataSource, DataSourceType } from "../types";
 import { AUTH_TYPE_LABELS, DATA_SOURCE_TYPE_LABELS, SYNC_MODE_LABELS } from "../types";
 
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
+import { SourceDatasetsModal } from "./SourceDatasetsModal";
 
 const TYPE_ICON_MAP: Record<DataSourceType, React.ReactNode> = {
   database: <Database className="h-5 w-5" />,
@@ -61,6 +62,7 @@ export function DataSourceCard({
   const typeLabel = DATA_SOURCE_TYPE_LABELS[source.type];
   const authLabel = AUTH_TYPE_LABELS[source.authType] ?? source.authType;
   const syncLabel = SYNC_MODE_LABELS[source.syncMode] ?? source.syncMode;
+  const [showDatasets, setShowDatasets] = useState(false);
 
   return (
     <motion.div
@@ -155,6 +157,15 @@ export function DataSourceCard({
               className={cn("h-3.5 w-3.5", syncing && "animate-spin")}
             />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDatasets(true)}
+            className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            title="数据集"
+          >
+            <Table className="h-3.5 w-3.5" />
+          </Button>
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <Button
@@ -177,6 +188,7 @@ export function DataSourceCard({
           </Button>
         </div>
       </div>
+      <SourceDatasetsModal source={source} open={showDatasets} onClose={() => setShowDatasets(false)} />
     </motion.div>
   );
 }
