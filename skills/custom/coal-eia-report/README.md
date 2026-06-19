@@ -20,7 +20,7 @@
 ## MCP 工具依赖
 
 - `knowledge-factory`：knowledge-factory_kf_resolve_template, knowledge-factory_kf_list_domains
-- `project`：project_list_chapters, project_get_chapter_spec, project_write_chapter, project_get_project
+- `project`：project_list_chapters, project_get_chapter_spec, project_write_chapter
 - 知识库 REST API：/{kb_id}/chat, /search
 
 ## 计算脚本
