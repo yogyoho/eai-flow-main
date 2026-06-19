@@ -50,6 +50,7 @@ import {
   INDUSTRIES,
   REPORT_TYPES,
 } from "@/extensions/knowledge-factory/types";
+import { kfApi } from "@/extensions/api";
 import { cn } from "@/lib/utils";
 
 import { RuleCard } from "./RuleCard";
@@ -100,6 +101,19 @@ export function ComplianceRules({
 
   // 测试弹窗状态
   const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(null);
+
+  // 动态字典（从 /rule-dictionaries 加载，失败时 fallback 到 types.ts 硬编码常量）
+  const [dictIndustries, setDictIndustries] = useState<{ value: string; label: string }[]>(INDUSTRIES as readonly { value: string; label: string }[]);
+  const [dictReportTypes, setDictReportTypes] = useState<{ value: string; label: string }[]>(REPORT_TYPES as readonly { value: string; label: string }[]);
+
+  useEffect(() => {
+    kfApi.getRuleDictionaries()
+      .then((d) => {
+        if (d.industries?.length) setDictIndustries(d.industries);
+        if (d.report_types?.length) setDictReportTypes(d.report_types);
+      })
+      .catch(() => { /* fallback to hardcoded constants already in state */ });
+  }, []);
 
   // 统计数据
   const [statistics, setStatistics] = useState<ComplianceRuleStatistics | null>(null);
@@ -387,7 +401,7 @@ export function ComplianceRules({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部行业</SelectItem>
-              {INDUSTRIES.map((ind) => (
+              {dictIndustries.map((ind) => (
                 <SelectItem key={ind.value} value={ind.value}>
                   {ind.label}
                 </SelectItem>
@@ -444,7 +458,7 @@ export function ComplianceRules({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部报告类型</SelectItem>
-              {REPORT_TYPES.map((rt) => (
+              {dictReportTypes.map((rt) => (
                 <SelectItem key={rt.value} value={rt.value}>
                   {rt.label}
                 </SelectItem>

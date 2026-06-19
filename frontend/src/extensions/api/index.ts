@@ -584,10 +584,11 @@ export const docmgrApi = {
 // ===== Folder API =====
 
 export const folderApi = {
-  getTree: async (params?: { project_id?: string; project_scope?: string }): Promise<FolderTreeResponse> => {
+  getTree: async (params?: { project_id?: string; project_scope?: string; doc_type?: string }): Promise<FolderTreeResponse> => {
     const searchParams = new URLSearchParams()
     if (params?.project_id) searchParams.set("project_id", params.project_id)
     if (params?.project_scope) searchParams.set("project_scope", params.project_scope)
+    if (params?.doc_type) searchParams.set("doc_type", params.doc_type)
     const qs = searchParams.toString()
     return request(`/docmgr/folders/tree${qs ? `?${qs}` : ""}`)
   },
@@ -1070,6 +1071,16 @@ export const kfApi = {
 
   deleteDictItem: (itemId: string) =>
     kfRequest<{ message: string }>(`/dictionaries/${itemId}`, { method: "DELETE" }),
+
+  // Rule dictionaries (dynamic from business dictionary DB, fallback to seed)
+  getRuleDictionaries: () =>
+    kfRequest<{
+      industries: { value: string; label: string }[];
+      report_types: { value: string; label: string }[];
+      regions: { value: string; label: string }[];
+      rule_types: { value: string; label: string }[];
+      severity_levels: { value: string; label: string }[];
+    }>("/rule-dictionaries"),
 
   // Extraction tasks
   createTask: (data: ExtractionTaskCreate) =>
