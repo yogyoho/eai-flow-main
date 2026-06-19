@@ -109,6 +109,61 @@ export interface CrossSectionRule {
   fields: string[];
 }
 
+// ── Rich metadata interfaces ──
+
+export interface TableColumn {
+  header: string;
+  width: string;
+  type: string;
+  unit: string;
+}
+
+export interface TableSchema {
+  table_id: string;
+  caption: string;
+  columns: TableColumn[];
+  data_source: string;
+  required: boolean;
+}
+
+export interface FigureRequirement {
+  figure_id: string;
+  caption: string;
+  suggested_type: string;
+  placement_section: string;
+  required: boolean;
+  fallback: string;
+}
+
+export interface FormulaReference {
+  formula_id: string;
+  name: string;
+  applicable_section: string;
+  expression: string;
+  input_vars: string[];
+}
+
+export interface CalcScriptParam {
+  name: string;
+  unit: string;
+  source: string;
+}
+
+export interface CalcScriptBinding {
+  script: string;
+  section: string;
+  input_params: CalcScriptParam[];
+  output_table: string;
+  trigger: string;
+}
+
+export interface SubSectionProfile {
+  expected_h2_count: number;
+  expected_h3_count: number;
+  volume_estimate: string;
+  notes: string;
+}
+
 export interface TemplateSection {
   id: string;
   title: string;
@@ -122,6 +177,12 @@ export interface TemplateSection {
   generation_hint?: string;
   example_snippet?: string;
   completeness_score?: number;
+  // Rich metadata (all optional)
+  table_schemas?: TableSchema[];
+  figure_requirements?: FigureRequirement[];
+  formula_references?: FormulaReference[];
+  calc_script_bindings?: CalcScriptBinding[];
+  sub_section_profile?: SubSectionProfile;
 }
 
 export interface TemplateDocument {
@@ -215,6 +276,12 @@ export interface EditorSection {
   generationHint?: string;
   exampleSnippet?: string;
   completenessScore?: number;
+  // Rich metadata (all optional)
+  tableSchemas?: TableSchema[];
+  figureRequirements?: FigureRequirement[];
+  formulaReferences?: FormulaReference[];
+  calcScriptBindings?: CalcScriptBinding[];
+  subSectionProfile?: SubSectionProfile;
 }
 
 export interface EditorContentContract {

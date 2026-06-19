@@ -40,6 +40,7 @@ import { RETRIEVAL_STRATEGIES } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
 import { useTemplateList, useTemplateEditor } from "./hooks";
+import { RichMetadataEditor } from "./RichMetadataEditor";
 
 // ============== Template Selector ==============
 
@@ -1165,6 +1166,9 @@ function SectionEditor({
           />
         </div>
       </div>
+
+      {/* Rich Metadata: tables, figures, formulas, calc scripts, sub-section profile */}
+      <RichMetadataEditor section={section} onChange={onUpdate} />
     </div>
   );
 }

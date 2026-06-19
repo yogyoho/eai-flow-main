@@ -187,6 +187,69 @@ class RAGSourceSuggestionResponse(BaseModel):
     suggestions: list[RAGSourceConfig] = Field(default_factory=list)
 
 
+# ============== Rich Metadata (table/figure/formula/calc/sub-section) ==============
+
+
+class TableColumn(BaseModel):
+    """表格列定义"""
+    header: str = ""
+    width: str = ""
+    type: str = "string"
+    unit: str = ""
+
+
+class TableSchema(BaseModel):
+    """按章节的表结构定义"""
+    table_id: str = ""
+    caption: str = ""
+    columns: list[TableColumn] = Field(default_factory=list)
+    data_source: str = "template"
+    required: bool = True
+
+
+class FigureRequirement(BaseModel):
+    """按章节的图片/图表需求"""
+    figure_id: str = ""
+    caption: str = ""
+    suggested_type: str = "image"
+    placement_section: str = ""
+    required: bool = False
+    fallback: str = ""
+
+
+class FormulaReference(BaseModel):
+    """按章节的公式引用"""
+    formula_id: str = ""
+    name: str = ""
+    applicable_section: str = ""
+    expression: str = ""
+    input_vars: list[str] = Field(default_factory=list)
+
+
+class CalcScriptParam(BaseModel):
+    """计算脚本输入参数"""
+    name: str = ""
+    unit: str = ""
+    source: str = "user"
+
+
+class CalcScriptBinding(BaseModel):
+    """计算脚本与章节的绑定"""
+    script: str = ""
+    section: str = ""
+    input_params: list[CalcScriptParam] = Field(default_factory=list)
+    output_table: str = ""
+    trigger: str = "auto"
+
+
+class SubSectionProfile(BaseModel):
+    """子章节深度指导"""
+    expected_h2_count: int = 0
+    expected_h3_count: int = 0
+    volume_estimate: str = "medium"
+    notes: str = ""
+
+
 # ============== Template Section ==============
 
 
@@ -203,6 +266,12 @@ class TemplateSection(BaseModel):
     generation_hint: Optional[str] = None
     example_snippet: Optional[str] = None
     completeness_score: Optional[int] = None
+    # ── Rich metadata (all optional, transparently passed through JSONB) ──
+    table_schemas: Optional[list[TableSchema]] = None
+    figure_requirements: Optional[list[FigureRequirement]] = None
+    formula_references: Optional[list[FormulaReference]] = None
+    calc_script_bindings: Optional[list[CalcScriptBinding]] = None
+    sub_section_profile: Optional[SubSectionProfile] = None
 
     @field_validator("rag_sources", mode="before")
     @classmethod

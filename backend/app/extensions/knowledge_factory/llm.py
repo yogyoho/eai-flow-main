@@ -92,6 +92,13 @@ _METADATA_EXTRACTION_SYSTEM_PROMPT = """你是一个专业的文档抽取专家�
 - example_snippet: 该章节的典型文本片段（从原文提取）
 - completeness_score: 该章节的完整度评分（0-100）
 
+此外，尽可能从原文中提取以下结构化元数据（均为可选，原文中无对应内容则返回空数组或 null）：
+- table_schemas: 该章节包含的表格结构定义（识别表标题和列头）
+- figure_requirements: 该章节需要的图片/图表（识别图标题、类型）
+- formula_references: 该章节引用的计算公式（识别公式编号、名称）
+- calc_script_bindings: 该章节应调用的计算脚本（如有）
+- sub_section_profile: 子章节深度估计（H2/H3 预期数量、篇幅量级）
+
 如果章节内容不足以提取某个字段，用 null 表示。"""
 
 
@@ -122,9 +129,46 @@ _METADATA_EXTRACTION_USER_PROMPT_TEMPLATE = """## 章节信息
   "rag_sources": [{{"kb_name": "知识库名称", "relevance_note": "为什么该知识库与此章节相关"}}],
   "generation_hint": "生成提示",
   "example_snippet": "典型文本片段（100-200字）...",
-  "completeness_score": 85
+  "completeness_score": 85,
+  "table_schemas": [
+    {{
+      "table_id": "tbl_{{章节号}}_01",
+      "caption": "表 {{章节号}}-1  表标题（从原文识别）",
+      "columns": [{{"header": "列名1", "width": "20%", "type": "string", "unit": ""}}],
+      "data_source": "template",
+      "required": true
+    }}
+  ],
+  "figure_requirements": [
+    {{
+      "figure_id": "fig_{{章节号}}_01",
+      "caption": "图 {{章节号}}-1  图标题（从原文识别）",
+      "suggested_type": "image|mermaid|ascii|text_fallback",
+      "placement_section": "小节编号",
+      "required": false,
+      "fallback": "无图时的文字替代描述"
+    }}
+  ],
+  "formula_references": [
+    {{
+      "formula_id": "公式编号或标准条款号",
+      "name": "公式名称",
+      "applicable_section": "适用小节",
+      "expression": "公式表达式（如 C = Q/V）",
+      "input_vars": ["变量1", "变量2"]
+    }}
+  ],
+  "calc_script_bindings": [],
+  "sub_section_profile": {{
+    "expected_h2_count": 5,
+    "expected_h3_count": 10,
+    "volume_estimate": "short|medium|long",
+    "notes": "该章节的深度和篇幅备注"
+  }}
 }}
-```"""
+```
+
+注意：table_schemas / figure_requirements / formula_references / calc_script_bindings 如果原文中没有对应内容，返回空数组 []。sub_section_profile 根据原文的子标题数量估算。"""
 
 
 # Prompt for merging sections from multiple documents
