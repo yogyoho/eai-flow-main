@@ -50,11 +50,20 @@ async def handle_kf_check_compliance(
     """Run compliance check against chapter content.
 
     Expected arguments:
-        chapter_content (str) — full Markdown text of the chapter
-        chapter_number (int, optional) — chapter number 1..14 for rule matching
+        chapter_content (str) — full Markdown text of the chapter (required)
         rule_ids (list[str], optional) — specific rule IDs; empty/null = check all
-        report_type (str, optional) — e.g. "环评报告" for rule filtering
-        industry (str, optional) — e.g. "煤炭" for rule filtering
+        chapter_number (int, optional) — chapter number 1..14 (informational)
+        report_type (str, optional) — narrows rules; WARNING: must match the
+            rule's stored report_type exactly or it yields 0 rules. Default
+            (not passing it) checks ALL enabled rules — usually what you want.
+        industry (str, optional) — narrows rules; stored as English keys like
+            "environmental", NOT "煤炭". Default (not passing it) checks ALL.
+
+    Default behaviour (no rule_ids / no industry / no report_type): runs ALL
+    enabled rules against the chapter — this is the recommended call. Filters
+    are opt-in and exact-match; if a filter yields 0 rules the handler
+    automatically falls back to check-all so the chapter is never left
+    unchecked due to a filter typo.
     """
     chapter_content: str = arguments.get("chapter_content", "")
     chapter_number: int | None = arguments.get("chapter_number")
@@ -72,17 +81,30 @@ async def handle_kf_check_compliance(
         from app.extensions.knowledge_factory.engine.core import CheckContext
         from app.extensions.knowledge_factory.engine.service import get_engine
 
-        context = CheckContext(
-            report_data={},
-            raw_text=chapter_content,
-            report_type=report_type,
-            industry=industry,
-            check_all=(rule_ids is None or len(rule_ids) == 0),
-            user_id=_SYSTEM_USER_ID,
-        )
-
         engine = get_engine()
-        result = await engine.check(context, rule_ids=rule_ids, db=session)
+        used_fallback = False
+
+        async def _run(apply_filters: bool):
+            context = CheckContext(
+                report_data={},
+                raw_text=chapter_content,
+                report_type=report_type if apply_filters else None,
+                industry=industry if apply_filters else None,
+                check_all=(rule_ids is None or len(rule_ids) == 0),
+                user_id=_SYSTEM_USER_ID,
+            )
+            return await engine.check(context, rule_ids=rule_ids, db=session)
+
+        result = await _run(apply_filters=True)
+
+        # Footgun guard: a filter typo (e.g. industry="煤炭" vs stored
+        # "environmental") silently yields 0 rules. Fall back to check-all
+        # so the chapter is never left unchecked. rule_ids was explicit,
+        # so do NOT override an empty rule_ids result.
+        has_filters = bool(industry or report_type)
+        if result.total_rules == 0 and has_filters and not rule_ids:
+            result = await _run(apply_filters=False)
+            used_fallback = True
 
         # Build structured response
         response = {
@@ -97,6 +119,8 @@ async def handle_kf_check_compliance(
             "duration_ms": round(result.duration_ms, 1),
             "issues": _issues_to_dicts(result.issues),
         }
+        if used_fallback:
+            response["filter_fallback"] = "industry/report_type filter matched 0 rules; re-ran against ALL enabled rules so the chapter is not left unchecked."
 
         if result.failed > 0:
             response["summary"] = f"{result.failed} of {result.total_rules} rules FAILED (critical: {int(result.has_critical_issues)}). Review issues below and fix the chapter content."

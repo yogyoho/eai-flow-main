@@ -218,7 +218,10 @@ knowledge-factory_kf_resolve_template(
 5. **计算（如需）**：对于需要定量分析的章节（第6章环境影响预测、第7章承载力分析、第9章风险评价），调用 `scripts/calc/` 下的计算脚本进行辅助计算。参见下方"计算工具"章节。
 6. **生成内容**：基于章节规格、实体信息、RAG 检索结果和计算结果，生成结构化 Markdown 文本。严格遵循仿写约束（不照搬、方法论参考、实体替换）。
 7. **实体泄漏检查**：扫描生成内容，确认不包含样本实体名（参见规则11）。如发现泄漏，替换为当前项目实体或 `[待补充]`。
-8. **合规性校验（调用 `kf_check_compliance`）**：将本章生成的 Markdown 全文 + 模板 `compliance_rules`（或留空自动匹配）传入 `kf_check_compliance` 进行校验：
+8. **合规性校验（调用 `kf_check_compliance`）**：将本章生成的 Markdown 全文传入 `knowledge-factory_kf_check_compliance` 校验。**只传 `chapter_content`，不要传 `industry`/`report_type`**（规则库的行业字段是英文 `environmental`，传中文会匹配不到；默认即校验全部启用规则）：
+   ```
+   knowledge-factory_kf_check_compliance(chapter_content=<本章 Markdown 全文>)
+   ```
    - 全部 `passed` 或 `total_rules=0`（无匹配规则）→ 进入步骤 9 写入
    - 存在 `failed`：按 `suggestion` 修正内容，**最多重新校验 1 次**（避免死循环，参照规则 16）
    - 仍有 `failed` 但可接受：在章节末尾标注"⚠ 合规提示：{rule_name} 待人工复核"后写入
