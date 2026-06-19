@@ -129,9 +129,62 @@ class SubSectionProfile(BaseModel):
 3. **编辑器**：打开模板编辑 tab → 选章节 → 5 个新区域可编辑、可保存、刷新后持久化。
 4. **端到端**（依赖前置的 skill-layer 改动）：coal-eia-report skill 生成第 3 章 → agent 按 `table_schemas` 生成表格（表头一致）、按 `figure_requirements` 嵌入图片、按 `calc_script_bindings` 调用计算脚本。本期 spec 只验证数据流通（1-3 项）；第 4 项在 skill 消费侧改动完成后验证。
 
+## F0（前置基础设施）：合规规则 tab 下拉框动态化 + 字典对齐
+
+### 问题
+
+`ComplianceRules.tsx:390,447` 的行业/报告类型/地区下拉框直接 import `types.ts` 的硬编码常量（`INDUSTRIES` / `REPORT_TYPES` / `REGIONS`，`as const`，5+5+N 项英文 enum）。而：
+
+- **业务字典 tab**（`BusinessDictionary.tsx:91`）已通过 `kfApi.listDictItems("industry")` 动态加载同一批数据。
+- **后端** `GET /rule-dictionaries`（`routers.py:1295`）已从业务字典 DB 读取（`load_rule_dictionaries_from_db` → `DictionaryService.load_all_as_dict`），DB 空时回退内存种子。
+- **规则 DB** 的 `industry`/`report_types` 字段值必须与字典 value 对齐才能匹配。
+
+三套数据源（types.ts 常量 / 业务字典 DB / 规则 DB）各存各的，合规规则 tab 绕过了 DB 直读写死常量。这导致：`kf_check_compliance` 传中文 `industry="煤炭"` 时 0 匹配（规则 DB 存英文 `environmental`）；且字典维护者改了 DB，合规规则 tab 的下拉框不会更新。
+
+### 设计
+
+**单一数据源**：业务字典 DB 是唯一真相。合规规则 tab 通过 `GET /rule-dictionaries` 动态加载下拉选项（该 API 已从业务字典 DB 读取 + 内存回退）。`types.ts` 常量降级为 API 失败时的 fallback。
+
+```
+业务字典 DB (single source of truth)
+    │
+    ├── /dictionaries/{category}  ← 业务字典 tab 已用
+    ├── /rule-dictionaries        ← 合规规则 tab 改为使用（本 F0）
+    │     └── load_all_as_dict() 读同一张表
+    └── 规则 DB industry/report_types 字段值
+          └── 必须与字典 value 对齐（数据治理，非代码）
+```
+
+### 涉及文件
+
+| 文件 | 改动 |
+|------|------|
+| `frontend/.../knowledge-factory/hooks.ts`（或新建） | 新增 `useRuleDictionaries()` hook，调 `GET /rule-dictionaries`，TanStack Query 缓存 |
+| `frontend/.../knowledge-factory/ComplianceRules.tsx` | 行业/报告类型/地区下拉框改为从 `useRuleDictionaries()` 加载；API 失败时 fallback 到 `types.ts` 常量 |
+
+**不改**：后端（`/rule-dictionaries` API 已就绪）、`types.ts`（保留为 fallback）。
+
+### 边界
+
+- API 失败/超时 → fallback 到 `types.ts` 常量，下拉框仍可用（不白屏）。
+- DB 字典为空 → `/rule-dictionaries` 回退内存种子（`load_rule_dictionaries()`），返回与 `types.ts` 一致的英文 enum。
+- 字典 value 与规则 DB 不一致 → 这是**数据治理**问题，不在代码范围内。建议在业务字典 tab 维护时确保 `industry`/`report_type` 字典项的 value 字段使用与规则 DB 一致的英文 enum（如 `environmental`），label 用中文显示。
+
+### 对富元数据增强的影响
+
+本期 spec 的模板编辑器富元数据 UI（表格/图片/公式编辑器）如果也需要行业/报告类型下拉，应复用同一个 `useRuleDictionaries()` hook，不要重新硬编码。F0 是富元数据增强的前置依赖。
+
+### 验证
+
+1. 业务字典 tab 新增一个 industry 字典项 → 合规规则 tab 的行业下拉框自动出现该项。
+2. `/rule-dictionaries` 返回的 value 与规则 DB 的 `industry` 字段值一致（如都是 `environmental`）→ 按行业筛选规则能正确命中。
+3. 断网/API 500 → 合规规则 tab 下拉框 fallback 到 `types.ts` 常量，不报错。
+
+---
+
 ## 不在本次范围
 
 - 模板编辑器的拖拽排序、批量编辑等 UX 增强。
 - 跨章节依赖追踪（cross-section reference map）。
 - 图片自动识别（OCR/视觉模型从样例中提取图片内容）——本期仅抽标题和位置，不识别图片本身。
-- 合规校验 MCP 工具（`kf_check_compliance`）——独立 feature，另行实现。
+- 合规校验 MCP 工具（`kf_check_compliance`）——已实现（commits `438f0d9b` + `c26e3d33`）。
