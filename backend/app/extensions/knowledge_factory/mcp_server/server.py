@@ -107,6 +107,41 @@ TOOLS = [
             },
         },
     ),
+    Tool(
+        name="kf_check_compliance",
+        description=(
+            "对生成的章节内容执行合规性校验。传入章节全文 Markdown，"
+            "自动匹配适用的合规规则（或指定 rule_ids），返回逐条规则的"
+            "通过/不通过/警告结果，不通过项附带修改建议。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "chapter_content": {
+                    "type": "string",
+                    "description": "待校验的章节全文 Markdown 内容（必填）",
+                },
+                "rule_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "指定规则 ID 列表；为空或不填则自动匹配所有启用规则",
+                },
+                "chapter_number": {
+                    "type": "integer",
+                    "description": "章节编号（1-14），辅助规则匹配",
+                },
+                "report_type": {
+                    "type": "string",
+                    "description": "报告类型，如 '环评报告'",
+                },
+                "industry": {
+                    "type": "string",
+                    "description": "行业分类，如 '煤炭'",
+                },
+            },
+            "required": ["chapter_content"],
+        },
+    ),
 ]
 
 
@@ -135,6 +170,11 @@ async def _handle_list_domains(arguments: dict) -> list[TextContent]:
     return await handle_kf_list_domains(arguments, _run_in_db)
 
 
+async def _handle_check_compliance(arguments: dict) -> list[TextContent]:
+    from app.extensions.knowledge_factory.mcp_server.tools.compliance_tools import handle_kf_check_compliance
+    return await handle_kf_check_compliance(arguments, _run_in_db)
+
+
 # ── Server setup ──
 
 server = Server("knowledge-factory")
@@ -152,6 +192,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         "kf_get_template": _handle_get_template,
         "kf_query_templates": _handle_query_templates,
         "kf_list_domains": _handle_list_domains,
+        "kf_check_compliance": _handle_check_compliance,
     }
     handler = handlers.get(name)
     if not handler:

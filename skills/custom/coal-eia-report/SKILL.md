@@ -218,12 +218,17 @@ knowledge-factory_kf_resolve_template(
 5. **计算（如需）**：对于需要定量分析的章节（第6章环境影响预测、第7章承载力分析、第9章风险评价），调用 `scripts/calc/` 下的计算脚本进行辅助计算。参见下方"计算工具"章节。
 6. **生成内容**：基于章节规格、实体信息、RAG 检索结果和计算结果，生成结构化 Markdown 文本。严格遵循仿写约束（不照搬、方法论参考、实体替换）。
 7. **实体泄漏检查**：扫描生成内容，确认不包含样本实体名（参见规则11）。如发现泄漏，替换为当前项目实体或 `[待补充]`。
-8. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将生成的 Markdown 内容写入文档空间。写入参数：
+8. **合规性校验（调用 `kf_check_compliance`）**：将本章生成的 Markdown 全文 + 模板 `compliance_rules`（或留空自动匹配）传入 `kf_check_compliance` 进行校验：
+   - 全部 `passed` 或 `total_rules=0`（无匹配规则）→ 进入步骤 9 写入
+   - 存在 `failed`：按 `suggestion` 修正内容，**最多重新校验 1 次**（避免死循环，参照规则 16）
+   - 仍有 `failed` 但可接受：在章节末尾标注"⚠ 合规提示：{rule_name} 待人工复核"后写入
+   - 工具调用失败/超时：不阻塞，回退到 `references/compliance_checklist.md` 静态清单，在章节末尾注明"合规校验暂不可用"
+9. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将（校验通过或标注后的）Markdown 内容写入文档空间。写入参数：
    - `project_id`：当前项目ID
    - `chapter_number`：章节编号（1-13）
    - `title`：章节标题
    - `content`：生成的 Markdown 文本
-9. **输出摘要**：向用户报告该章生成完成，包括章节标题、主要内容要点、使用的标准依据、标注 `[待补充]` 的位置数量。
+10. **输出摘要**：向用户报告该章生成完成，包括章节标题、主要内容要点、使用的标准依据、合规校验结果（X条通过/Y条待复核）、标注 `[待补充]` 的位置数量。
 
 **章节生成顺序**（按依赖关系）：
 
@@ -353,6 +358,7 @@ knowledge-factory_kf_resolve_template(
 1. **knowledge-factory**（优先使用）：
    - `knowledge-factory_kf_resolve_template` — 智能模板匹配（核心工具）
    - `knowledge-factory_kf_list_domains` — 列出可用领域（辅助发现）
+   - `knowledge-factory_kf_check_compliance` — 章节合规性校验（每章写入前调用，返回 pass/fail/warn + 修改建议）
 
 2. **project**（文档空间写入）：
    - `project_write_chapter` — 逐章写入报告内容到项目文档空间
