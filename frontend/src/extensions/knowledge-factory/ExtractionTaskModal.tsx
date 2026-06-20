@@ -343,7 +343,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
                   { value: "__new__", label: "+ 创建新模板" },
                   ...templates.map((t) => ({
                     value: t.id,
-                    label: `${t.name} (${t.version})`,
+                    label: `${t.name} (${t.version}) ${t.status === "published" ? "✅已发布" : "📝草稿"}`,
                   })),
                 ]}
                 placeholder="选择目标模板"
@@ -354,6 +354,17 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
                   该领域下暂无已有模板，将自动创建新模板
                 </p>
               )}
+              {selectedTemplateId !== "__new__" && (() => {
+                const sel = templates.find((t) => t.id === selectedTemplateId);
+                if (sel?.status === "published") {
+                  return (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      ⚠️ 选择已发布模板：旧版本({sel.version})将自动保存到版本历史，新版本号递增并设为草稿状态，需审核后才能发布。
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* 合并模式（仅选择已有模板时显示） */}

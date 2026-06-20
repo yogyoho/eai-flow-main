@@ -450,13 +450,41 @@ async def run_pipeline_background(
                 select(ExtractionTemplate).where(
                     ExtractionTemplate.domain == data.domain,
                     ExtractionTemplate.name == data.target_template_name,
-                    ExtractionTemplate.version == "v1.0",
-                )
+                ).order_by(ExtractionTemplate.version.desc()).limit(1)
             )
             template = existing.scalar_one_or_none()
 
             if template:
-                logger.info(f"Updating existing template {template.id}")
+                logger.info(f"Updating existing template {template.id} (v{template.version}, status={template.status})")
+
+                # Version protection: if the template is published, snapshot the
+                # old version before overwriting, bump the version, and set to
+                # draft so the user can review the extraction result before
+                # publishing it.
+                if template.status == "published":
+                    import re
+
+                    old_snapshot = ExtractionTemplateVersion(
+                        template_id=template.id,
+                        version=template.version,
+                        changelog=f"自动快照（抽取任务「{task.name or task_id}」覆盖前保存）",
+                        snapshot_json={
+                            "sections": (template.root_sections_json or {}).get("sections", []),
+                            "cross_section_rules": template.cross_section_rules or {},
+                            "completeness_score": template.completeness_score,
+                        },
+                    )
+                    db.add(old_snapshot)
+
+                    # Bump version: v1.0 → v1.1, v2.3 → v2.4
+                    m = re.match(r"v?(\d+)\.(\d+)", template.version or "v1.0")
+                    if m:
+                        template.version = f"v{int(m.group(1))}.{int(m.group(2)) + 1}"
+                    else:
+                        template.version = "v1.1"
+                    template.status = "draft"
+                    logger.info(f"Published template snapshot saved as v{old_snapshot.version}, new version: {template.version} (draft)")
+
                 template.root_sections_json = {"sections": result.sections}
                 template.cross_section_rules = {"rules": result.cross_section_rules}
                 template.completeness_score = result.completeness_score
