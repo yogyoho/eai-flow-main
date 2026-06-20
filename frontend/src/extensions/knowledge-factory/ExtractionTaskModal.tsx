@@ -141,7 +141,15 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.detail || `上传失败 (${res.status})`);
+          const detail = err.detail || "";
+          if (res.status === 403 && detail.includes("Permission denied")) {
+            const perm = detail.split(": ")[1] || detail;
+            throw new Error(`权限不足：缺少 ${perm} 权限，请联系管理员`);
+          }
+          if (res.status === 403) {
+            throw new Error(`无权限上传文件（${detail || "请确认已登录并有知识库上传权限"}）`);
+          }
+          throw new Error(detail || `上传失败 (${res.status})`);
         }
         const doc = await res.json();
         ids.push(doc.id);
