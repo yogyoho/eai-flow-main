@@ -396,6 +396,7 @@ class ExtractionPipeline:
             "_doc_schemas": [],  # Per-doc inferred schemas
             "_task_id": task_id,  # For logging
             "_reference_chapters": reference_chapters,  # Domain's standard chapters
+            "_config": config,  # For _step_parse_direct file size check
         }
         
         logger.info(f"[Task {task_id}] Starting extraction pipeline for {len(report_documents)} documents")
@@ -662,17 +663,23 @@ class ExtractionPipeline:
             # Check if direct parsing is applicable
             parsed = None
             if file_path and file_type in ("docx", "pdf"):
-                # Skip files > 10MB — python-docx loads entire XML tree into memory
-                # and can take minutes or OOM on large reports. RAGFlow handles these
-                # efficiently since chunks are pre-parsed.
+                # Skip files > max_size for doc_parser — python-docx loads entire
+                # XML tree into memory and can take 10+ minutes on large reports.
+                # RAGFlow handles these efficiently with pre-parsed chunks.
+                # Default 10MB. Set higher via ExtractionConfig.doc_parser_max_mb
+                # if precision on large files is needed (expect minutes per file).
                 import os as _os
+                cfg = ctx.get("_config")
+                max_size_mb = getattr(cfg, "doc_parser_max_mb", 10) if cfg else 10
+                max_size_bytes = max_size_mb * 1024 * 1024
                 try:
                     fsize = _os.path.getsize(file_path) if _os.path.exists(file_path) else 0
                 except OSError:
                     fsize = 0
-                if fsize > 10 * 1024 * 1024:
+                if fsize > max_size_bytes:
                     logger.info(
-                        f"[Task {task_id}] 文件 '{doc_name}' 过大 ({fsize / 1024 / 1024:.1f}MB > 10MB)，"
+                        f"[Task {task_id}] 文件 '{doc_name}' 过大 "
+                        f"({fsize / 1024 / 1024:.1f}MB > {max_size_bytes / 1024 / 1024:.0f}MB)，"
                         "跳过 doc_parser，使用 RAGFlow 路径"
                     )
                 else:

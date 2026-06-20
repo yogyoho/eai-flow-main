@@ -134,6 +134,7 @@ class ExtractionConfig(BaseModel):
     merge_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
     min_section_length: int = Field(default=100, ge=10)
     max_depth: int = Field(default=4, ge=1, le=6, description="章节层级深度（1-6，默认4）")
+    doc_parser_max_mb: int = Field(default=10, ge=0, le=500, description="doc_parser 最大文件大小(MB)，超出回退 RAGFlow。0=不限。大文件(>50MB)python-docx 可能需10+分钟")
 
 
 # ============== Step Status ==============
