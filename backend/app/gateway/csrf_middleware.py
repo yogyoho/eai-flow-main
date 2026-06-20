@@ -62,6 +62,13 @@ _CSRF_EXEMPT_PATHS: frozenset[str] = frozenset(
     }
 )
 
+# Prefix-based CSRF exemption for dynamic paths where exact matching is
+# insufficient. Only exempt sub-trees that are session-authenticated and
+# where FormData uploads cause browser-specific CSRF header issues.
+_CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
+    "/api/extensions/knowledge-bases/",
+)
+
 
 def is_auth_endpoint(request: Request) -> bool:
     """Check if the request is to an auth endpoint.
@@ -195,7 +202,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Cross-site auth request denied."},
             )
 
-        if should_check_csrf(request) and not _is_auth and not _is_csrf_exempt:
+        _path = request.url.path.rstrip("/")
+        _is_prefix_exempt = _path.startswith(_CSRF_EXEMPT_PREFIXES)
+
+        if should_check_csrf(request) and not _is_auth and not _is_csrf_exempt and not _is_prefix_exempt:
             cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
             header_token = request.headers.get(CSRF_HEADER_NAME)
 
