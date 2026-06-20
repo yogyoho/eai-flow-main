@@ -246,7 +246,7 @@ class ExtractionPipeline:
     def __init__(
         self,
         llm_client: Optional[ExtractionLLMClient] = None,
-        max_content_chars: int = 5000,
+        max_content_chars: int = 30000,
         llm_model: Optional[str] = None,
     ):
         self._llm_client = llm_client
