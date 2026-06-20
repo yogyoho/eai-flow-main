@@ -660,14 +660,30 @@ class ExtractionPipeline:
             doc_name = doc.get("name", "未知文档")
 
             # Check if direct parsing is applicable
+            parsed = None
             if file_path and file_type in ("docx", "pdf"):
-                parsed = await asyncio.to_thread(parse_document, file_path)
+                # Skip files > 10MB — python-docx loads entire XML tree into memory
+                # and can take minutes or OOM on large reports. RAGFlow handles these
+                # efficiently since chunks are pre-parsed.
+                import os as _os
+                try:
+                    fsize = _os.path.getsize(file_path) if _os.path.exists(file_path) else 0
+                except OSError:
+                    fsize = 0
+                if fsize > 10 * 1024 * 1024:
+                    logger.info(
+                        f"[Task {task_id}] 文件 '{doc_name}' 过大 ({fsize / 1024 / 1024:.1f}MB > 10MB)，"
+                        "跳过 doc_parser，使用 RAGFlow 路径"
+                    )
+                else:
+                    parsed = await asyncio.to_thread(parse_document, file_path)
 
+            if parsed is not None:
                 if parsed.error:
                     logger.warning(
                         f"[Task {task_id}] doc_parser 解析 '{doc_name}' 失败: {parsed.error}，回退到 RAGFlow"
                     )
-                    # Fall through to RAGFlow path
+                    # Fall through to RAGFlow path below
                 else:
                     # Build synthetic chunks from full_text for downstream compatibility
                     chunks = self._split_text_to_chunks(parsed.full_text, max_chars=2000)
