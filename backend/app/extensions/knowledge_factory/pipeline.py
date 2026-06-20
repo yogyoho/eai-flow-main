@@ -769,6 +769,21 @@ class ExtractionPipeline:
             try:
                 logger.info(f"[Task {task_id}] Step 1: 调用 LLM infer_schema...")
                 ref_chapters = ctx.get("_reference_chapters")
+                # If no reference chapters from domain, build them from detected
+                # H1 headings so the LLM is forced to use the document's actual
+                # chapter structure instead of inventing its own.
+                if not ref_chapters:
+                    all_headings = _scan_chapter_headings(chunks)
+                    h1s = [h for h in all_headings if h["level_guess"] == 1]
+                    if h1s:
+                        ref_chapters = {
+                            "sections": [
+                                {"id": f"sec_{i + 1:02d}", "title": h["title"], "level": 1, "required": True}
+                                for i, h in enumerate(h1s)
+                            ]
+                        }
+                        logger.info(f"[Task {task_id}] Step 1: 构建了 reference_chapters，共有 {len(h1s)} 个 H1 章节")
+                        logger.debug(f"[Task {task_id}] Step 1: reference_chapters titles: {[h['title'] for h in h1s]}")
                 max_depth = config.max_depth if config.max_depth else 4
                 schema = await loop.run_in_executor(
                     None,
@@ -778,14 +793,37 @@ class ExtractionPipeline:
                 sections = schema.get("sections", [])
                 logger.info(f"[Task {task_id}] Step 1: 从 '{doc_name}' 推断出 {len(sections)} 个章节")
 
+                # Validate LLM output against detected headings: if the LLM merged or
+                # dropped chapters (returned fewer than detected), use the detected
+                # H1 structure as a skeleton and fill gaps with LLM metadata.
+                h1_headings = _scan_chapter_headings(chunks)
+                h1_titles = [h["title"] for h in h1_headings if h["level_guess"] == 1]
+                h1_count = len(h1_titles)
+
+                if h1_count > 0 and len(sections) < h1_count:
+                    logger.warning(
+                        f"[Task {task_id}] Step 1: LLM returned {len(sections)} sections but "
+                        f"{h1_count} H1 headings were detected — using detected structure as skeleton. "
+                        f"Detected: {h1_titles}"
+                    )
+                    # Build sections from detected H1 headings
+                    sections = []
+                    for i, title in enumerate(h1_titles):
+                        sections.append({
+                            "id": f"sec_{i + 1:02d}",
+                            "title": title,
+                            "level": 1,
+                            "required": True,
+                            "purpose": f"从'{doc_name}'自动识别（LLM 推断不足 {len(sections)}<{h1_count}）",
+                        })
+                    logger.info(f"[Task {task_id}] Step 1: 使用自动识别的 {len(sections)} 个章节替代 LLM 输出")
+
                 # Fallback: 若 LLM 未能推断出章节，尝试用自动识别的标题构建章节树
                 if not sections and content.strip():
                     logger.warning(f"[Task {task_id}] Step 1: LLM 返回空章节，尝试自动识别标题")
-                    auto_headings = _scan_chapter_headings(chunks)
-                    if auto_headings:
-                        # 用自动识别的标题构建章节
+                    if h1_headings:
                         sections = []
-                        for i, h in enumerate(auto_headings):
+                        for i, h in enumerate(h1_headings):
                             sections.append({
                                 "id": f"sec_{i + 1:02d}",
                                 "title": h["title"],
