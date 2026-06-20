@@ -38,6 +38,16 @@ class StructureType(str, Enum):
     FORMULA = "formula"
     DIAGRAM = "diagram"
     MIXED = "mixed"
+    # LLM may produce compound types — accept them with lenient validation
+    TABLE_AND_DIAGRAM = "table_and_diagram"
+    TABLE_AND_FORMULA = "table_and_formula"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "StructureType | None":
+        """Lenient fallback: unknown values → MIXED instead of ValueError."""
+        if isinstance(value, str) and value:
+            return cls.MIXED
+        return None
 
 
 class RetrievalStrategy(str, Enum):
