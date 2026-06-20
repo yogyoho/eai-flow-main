@@ -175,7 +175,18 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
                         "level_guess": level,
                     })
             line_no += 1
-    return headings
+    # Deduplicate: RAGFlow chunks include page headers which repeat chapter
+    # titles on every page. Keep only the first occurrence of each unique title;
+    # subsequent occurrences are likely page headers or TOC cross-references.
+    seen: set[str] = set()
+    deduped = []
+    for h in headings:
+        if h["title"] not in seen:
+            seen.add(h["title"])
+            deduped.append(h)
+        else:
+            logger.debug(f"Removed duplicate heading: {h['title']}")
+    return deduped
 
 
 def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
