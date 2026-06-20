@@ -116,16 +116,34 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Use first available KB (or "__all__" means pick first from kbList)
     const kb = kbList.find((k) => k.status === "active") || kbList[0];
     if (!kb) { toast.error("没有可用的知识库，请先在样例管理 tab 创建知识库"); return; }
 
     setUploadingFiles(true);
     try {
+      // Read CSRF token directly from cookie — FormData uploads need explicit
+      // X-CSRF-Token header. withCsrf() may return {} if cookie is inaccessible
+      // via document.cookie in certain browser contexts.
+      const csrfMatch = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
+      const csrfToken = csrfMatch?.[1] ?? "";
       const ids: string[] = [];
       const names: string[] = [];
       for (const file of Array.from(files)) {
-        const doc = await kbApi.uploadDoc(kb.id, file);
+        const formData = new FormData();
+        formData.append("file", file);
+        const headers: Record<string, string> = {};
+        if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+        const res = await fetch(`/api/extensions/knowledge-bases/${kb.id}/documents`, {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `上传失败 (${res.status})`);
+        }
+        const doc = await res.json();
         ids.push(doc.id);
         names.push(file.name);
       }
