@@ -105,7 +105,10 @@ def _is_noise(title: str) -> bool:
 
 # Numbered-heading pattern used ONLY inside _scan_chapter_headings.
 # Level is derived from dot count (1->1, 1.1->2, 1.1.1->3), not hard-coded.
-_NUMBERED_PATTERN = re.compile(r"^(\d+(?:[\.]\d+)*)[、\s]+(.+)$")
+# ponytail: dot included in separator so "1. 总则" matches.
+# Upgrade path: if false positives appear (e.g. "2021. 报告"
+# as year prefix), add a digit-count guard (2-digit max for headings).
+_NUMBERED_PATTERN = re.compile(r"^(\d+(?:[\.]\d+)*)[、.\s]+(.+)$")
 
 # Lines that look like TOC entries (page number preceded by tab or >=3 spaces).
 _TOC_ENTRY = re.compile(r".*\t\d+$|.* {3,}\d+$")
