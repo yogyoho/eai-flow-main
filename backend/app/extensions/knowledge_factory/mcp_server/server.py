@@ -108,6 +108,57 @@ TOOLS = [
         },
     ),
     Tool(
+        name="kf_extract_template",
+        description=(
+            "从 Word/PDF 报告文件中提取报告模板。传入文件路径列表，"
+            "运行 5 阶段抽取流水线（文档解析→章节推断→元数据抽取→模板融合→合规校验），"
+            "返回完整的章节结构、内容契约和富元数据（表格/公式/脚本/剖面）。"
+            "提取的模板可通过 kf_resolve_template 消费。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "source_report_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "知识库中已上传文档的 UUID 列表（主要输入方式）",
+                },
+                "file_paths": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "服务器上 Word/PDF 文件的绝对路径（未来直接解析路径，当前仅 .md/.txt 可用）",
+                },
+                "domain": {
+                    "type": "string",
+                    "description": "领域标识，如 'environmental_impact_assessment'，默认 'default'",
+                    "default": "default",
+                },
+                "industry": {
+                    "type": "string",
+                    "description": "行业分类，如 'coal'、'chemical'",
+                },
+                "report_type": {
+                    "type": "string",
+                    "description": "报告类型，如 '环评报告'、'水保方案'",
+                },
+                "template_name": {
+                    "type": "string",
+                    "description": "模板名称，默认自动生成",
+                },
+                "max_depth": {
+                    "type": "integer",
+                    "description": "最大章节嵌套深度（1-6），默认 4",
+                    "default": 4,
+                },
+                "llm_model": {
+                    "type": "string",
+                    "description": "指定 LLM 模型，默认使用系统基本设置中的模型",
+                },
+            },
+            "required": ["file_paths"],
+        },
+    ),
+    Tool(
         name="kf_check_compliance",
         description=(
             "对生成的章节内容执行合规性校验。传入章节全文 Markdown，"
@@ -170,6 +221,11 @@ async def _handle_list_domains(arguments: dict) -> list[TextContent]:
     return await handle_kf_list_domains(arguments, _run_in_db)
 
 
+async def _handle_extract_template(arguments: dict) -> list[TextContent]:
+    from app.extensions.knowledge_factory.mcp_server.tools.template_tools import handle_kf_extract_template
+    return await handle_kf_extract_template(arguments, _run_in_db)
+
+
 async def _handle_check_compliance(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.compliance_tools import handle_kf_check_compliance
     return await handle_kf_check_compliance(arguments, _run_in_db)
@@ -193,6 +249,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         "kf_query_templates": _handle_query_templates,
         "kf_list_domains": _handle_list_domains,
         "kf_check_compliance": _handle_check_compliance,
+        "kf_extract_template": _handle_extract_template,
     }
     handler = handlers.get(name)
     if not handler:

@@ -4,6 +4,7 @@ import {
   BellIcon,
   BrainIcon,
   MessageCircleIcon,
+  QrCodeIcon,
   SparklesIcon,
   UserIcon,
   WrenchIcon,
@@ -23,6 +24,7 @@ import { MemorySettingsPage } from "@/components/workspace/settings/memory-setti
 import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
 import { SkillSettingsPage } from "@/components/workspace/settings/skill-settings-page";
 import { ToolSettingsPage } from "@/components/workspace/settings/tool-settings-page";
+import { WechatSettingsPage } from "@/components/workspace/settings/wechat-settings-page";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +34,8 @@ type SettingsSection =
   | "tools"
   | "skills"
   | "notification"
-  | "channels";
+  | "channels"
+  | "wechat";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
   defaultSection?: SettingsSection;
@@ -76,6 +79,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
         label: t.settings.sections.channels,
         icon: MessageCircleIcon,
       },
+      {
+        id: "wechat",
+        label: t.settings.sections.wechat,
+        icon: QrCodeIcon,
+      },
     ],
     [
       t.settings.sections.account,
@@ -84,6 +92,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       t.settings.sections.skills,
       t.settings.sections.notification,
       t.settings.sections.channels,
+      t.settings.sections.wechat,
     ],
   );
   return (
@@ -138,6 +147,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               )}
               {activeSection === "notification" && <NotificationSettingsPage />}
               {activeSection === "channels" && <ChannelsSettingsPage />}
+              {activeSection === "wechat" && <WechatSettingsPage />}
             </div>
           </ScrollArea>
         </div>

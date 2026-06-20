@@ -160,6 +160,166 @@ async def handle_kf_get_template(arguments: dict, _run_in_db) -> list[TextConten
     return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2, default=str))]
 
 
+async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextContent]:
+    """Run the extraction pipeline on knowledge base documents and return a template.
+
+    Two input modes:
+      1. source_report_ids (works now) — UUIDs of documents already uploaded to
+         a knowledge base. Pipeline fetches chunks via RAGFlow API.
+      2. file_paths (future) — absolute paths to Word/PDF files on the server.
+         Requires doc_parser.py implementation. Falls back to plain-text reading
+         for .md/.txt files today.
+
+    Pipeline stages: 文档解析→章节推断→元数据抽取→模板融合→合规校验
+
+    Returns the template sections so downstream skills (e.g. coal-eia-report)
+    can call kf_resolve_template to consume it.
+    """
+    import uuid
+    from datetime import datetime
+
+    from sqlalchemy import select as sa_select
+
+    from app.extensions.database import get_db_context
+    from app.extensions.knowledge_factory.models import ExtractionTask
+    from app.extensions.knowledge_factory.pipeline import ExtractionPipeline
+    from app.extensions.knowledge_factory.schemas import ExtractionConfig
+    from app.extensions.models import Document, KnowledgeBase
+
+    source_report_ids = arguments.get("source_report_ids", [])
+    file_paths = arguments.get("file_paths", [])
+
+    if not source_report_ids and not file_paths:
+        return [TextContent(type="text", text=json.dumps(
+            {"success": False, "error": "请提供 source_report_ids（知识库文档 UUID）或 file_paths（文件路径）"},
+            ensure_ascii=False, indent=2
+        ))]
+
+    domain = arguments.get("domain", "default")
+    industry = arguments.get("industry") or None
+    report_type = arguments.get("report_type") or None
+    template_name = arguments.get("template_name", f"agent-extracted-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    max_depth = arguments.get("max_depth", 4)
+    llm_model = arguments.get("llm_model") or None
+
+    config = ExtractionConfig(
+        llm_model=llm_model or "",
+        max_depth=max(max_depth, 1),
+    )
+
+    report_docs = []
+
+    async with get_db_context() as db:
+        # Resolve effective model from system config if not provided
+        if not llm_model:
+            from app.extensions.models import SystemConfig as SC
+            result = await db.execute(sa_select(SC.value).where(SC.key == "default_model"))
+            row = result.scalar_one_or_none()
+            if row:
+                llm_model = row
+
+        # Mode 1: source_report_ids — query DB for RAGFlow IDs
+        if source_report_ids:
+            for rid in source_report_ids:
+                try:
+                    uid = uuid.UUID(rid) if isinstance(rid, str) else rid
+                except (ValueError, AttributeError):
+                    return [TextContent(type="text", text=json.dumps(
+                        {"success": False, "error": f"无效的 UUID: {rid}"},
+                        ensure_ascii=False, indent=2
+                    ))]
+                result = await db.execute(
+                    sa_select(Document, KnowledgeBase)
+                    .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
+                    .where(Document.id == uid)
+                )
+                row = result.first()
+                if not row:
+                    return [TextContent(type="text", text=json.dumps(
+                        {"success": False, "error": f"文档 {rid} 不存在——请先在样例管理 tab 上传到知识库"},
+                        ensure_ascii=False, indent=2
+                    ))]
+                doc, kb = row
+                report_docs.append({
+                    "id": str(doc.id),
+                    "name": doc.name,
+                    "kb_id": str(kb.id),
+                    "ragflow_document_id": doc.ragflow_document_id,
+                    "ragflow_dataset_id": kb.ragflow_dataset_id,
+                    "file_path": doc.file_path,
+                    "file_type": doc.file_type,
+                })
+
+        # Mode 2: file_paths — bare files (plain-text fallback today; doc_parser future)
+        if file_paths:
+            import os as _os
+            for fp in file_paths:
+                fname = _os.path.basename(fp)
+                ext = _os.path.splitext(fp)[1].lower().lstrip(".")
+                report_docs.append({
+                    "id": str(uuid.uuid4()),
+                    "name": fname,
+                    "kb_id": str(uuid.uuid4()),
+                    "ragflow_document_id": None,
+                    "ragflow_dataset_id": None,
+                    "file_path": fp,
+                    "file_type": ext,
+                })
+
+    pipeline = ExtractionPipeline(llm_model=llm_model)
+
+    task_id = str(uuid.uuid4())
+    logger.info(f"[kf_extract_template] Starting extraction for {len(report_docs)} documents: {[d['name'] for d in report_docs]}")
+
+    try:
+        result = await pipeline.run(
+            task_id=task_id,
+            report_documents=report_docs,
+            config=config,
+            domain=domain,
+            reference_chapters=None,
+        )
+
+        # Persist a minimal task record for audit trail
+        async with get_db_context() as db:
+            task = ExtractionTask(
+                id=uuid.UUID(task_id),
+                domain=domain,
+                industry=industry,
+                report_type=report_type,
+                name=template_name,
+                source_report_ids=[uuid.UUID(rid) if isinstance(rid, str) else rid for rid in source_report_ids],
+                config=config.model_dump(),
+                status="completed",
+                progress=100,
+                result_template_json={
+                    "sections": result.sections,
+                    "cross_section_rules": result.cross_section_rules,
+                },
+            )
+            db.add(task)
+            await db.commit()
+
+        output = {
+            "success": True,
+            "template_name": template_name,
+            "domain": domain,
+            "chapters": result.chapters,
+            "total_sections": result.total_sections,
+            "completeness_score": result.completeness_score,
+            "sections": result.sections,
+            "cross_section_rules": result.cross_section_rules,
+            "step_summaries": result.step_summaries,
+        }
+        return [TextContent(type="text", text=json.dumps(output, ensure_ascii=False, indent=2, default=str))]
+    except Exception as e:
+        logger.error(f"[kf_extract_template] Pipeline failed: {e}")
+        return [TextContent(type="text", text=json.dumps(
+            {"success": False, "error": f"模板提取失败: {str(e)}"},
+            ensure_ascii=False, indent=2
+        ))]
+
+
 async def handle_kf_query_templates(arguments: dict, _run_in_db) -> list[TextContent]:
     """Search templates by domain, name, status with pagination."""
     from app.extensions.knowledge_factory.service import TemplateService

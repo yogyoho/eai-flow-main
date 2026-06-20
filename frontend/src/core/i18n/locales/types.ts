@@ -316,6 +316,7 @@ export interface Translations {
       skills: string;
       notification: string;
       channels: string;
+      wechat: string;
       about: string;
       basic: string;
     };
@@ -323,6 +324,25 @@ export interface Translations {
       title: string;
       description: string;
       disabled: string;
+    };
+    wechat: {
+      title: string;
+      description: string;
+      linkTitle: string;
+      linkDescription: string;
+      getCode: string;
+      codeHint: string;
+      linkFailed: string;
+      botTitle: string;
+      botDescription: string;
+      bound: string;
+      pending: string;
+      unbound: string;
+      bind: string;
+      rebind: string;
+      bindStarted: string;
+      bindFailed: string;
+      openQr: string;
     };
     memory: {
       title: string;

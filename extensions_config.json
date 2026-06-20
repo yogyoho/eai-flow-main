@@ -99,7 +99,7 @@
       "description": "Knowledge factory template resolution and domain listing tools for report generation"
     },
     "word-document-server": {
-      "enabled": true,
+      "enabled": false,
       "type": "stdio",
       "command": "/app/backend/.venv/bin/python",
       "args": [
@@ -114,19 +114,55 @@
       "headers": {},
       "oauth": null,
       "description": "Word document creation (54 tools)"
+    },
+    "cad": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "cwd": null,
+      "url": "http://cad:8003/mcp",
+      "headers": {},
+      "oauth": null,
+      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
+    },
+    "plugin_fba4fa1d-92cc-45d3-850c-c5a595168705": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.plugin.builtin.demo_mcp"
+      ],
+      "env": {},
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "示例工具(演示接线): 演示插件→MCP 接线:启用后 Agent 获得 demo_greet 工具。"
     }
   },
   "skills": {
     "fire-protection-report": {
-      "enabled": true
+      "enabled": false
     },
     "fire-protection-report-v2": {
-      "enabled": false
+      "enabled": true
+    },
+    "kf-extract-template": {
+      "enabled": true
     },
     "coal-eia-report": {
       "enabled": true
     },
     "contract-price-analysis": {
+      "enabled": true
+    },
+    "geological-report": {
+      "enabled": false
+    },
+    "plugin-dbd709b2-f795-45a6-8ee5-d4360ca671b7": {
       "enabled": true
     }
   }

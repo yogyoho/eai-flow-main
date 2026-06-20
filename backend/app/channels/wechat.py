@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import mimetypes
+import os
 import secrets
 import time
 from collections.abc import Mapping
@@ -289,6 +290,42 @@ class WechatChannel(Channel):
             self._client = None
 
         logger.info("WeChat channel stopped")
+
+    # -- admin bind surface (for the browser UI) ----------------------------
+
+    async def start_bind(self) -> None:
+        """Admin-triggered (re)bind: clear any token and run the QR flow.
+
+        Non-blocking: kicks off ``_bind_via_qrcode`` as a background task on the
+        gateway loop (it polls up to ``qrcode_poll_timeout``). Poll
+        :meth:`get_bind_state` for the QR image + status. Idempotent under
+        ``_auth_lock`` so it won't race the lazy bind in ``_ensure_authenticated``.
+        """
+        if self._main_loop is None:
+            raise RuntimeError("WechatChannel is not running")
+
+        async with self._auth_lock:
+            self._bot_token = ""
+            self._ilink_bot_id = None
+            self._save_auth_state(status="pending", bot_token="", ilink_bot_id=None, qrcode=None, qrcode_img_content=None)
+        self._main_loop.create_task(self._admin_bind_task())
+        logger.info("[WeChat] admin-triggered QR bind started")
+
+    async def _admin_bind_task(self) -> None:
+        async with self._auth_lock:
+            try:
+                await self._bind_via_qrcode()
+            except Exception:
+                logger.exception("[WeChat] admin-triggered QR bind failed")
+
+    def get_bind_state(self) -> dict[str, Any]:
+        """Safe snapshot of the bind state for the admin UI (no secrets)."""
+        return {
+            "status": self._auth_state.get("status"),
+            "qrcode_url": self._auth_state.get("qrcode_img_content"),
+            "bound": bool(self._bot_token),
+            "ilink_bot_id": self._ilink_bot_id,
+        }
 
     async def send(self, msg: OutboundMessage, *, _max_retries: int = 3) -> None:
         text = msg.text.strip()
@@ -1336,7 +1373,14 @@ class WechatChannel(Channel):
         if self._auth_path:
             try:
                 self._auth_path.parent.mkdir(parents=True, exist_ok=True)
-                self._auth_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                payload = json.dumps(data, ensure_ascii=False, indent=2)
+                # Atomic write (temp + os.replace) so a process reload mid-write
+                # can't leave a half-written file. A corrupt read would make
+                # _load_auth_state drop the bot_token and trigger a QR re-bind
+                # loop that overwrites the saved token — losing it for good.
+                tmp_path = self._auth_path.with_suffix(self._auth_path.suffix + ".tmp")
+                tmp_path.write_text(payload, encoding="utf-8")
+                os.replace(tmp_path, self._auth_path)
             except OSError:
                 logger.warning("[WeChat] failed to persist auth state to %s", self._auth_path)
         return data

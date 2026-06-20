@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   configureChannelProvider,
   connectChannelProvider,
+  createWechatBindCode,
   disconnectChannelConnection,
   disconnectChannelProvider,
+  getWechatBotBindStatus,
   listChannelConnections,
   listChannelProviders,
+  startWechatBotBind,
 } from "./api";
 import type { ChannelProviderId, ChannelRuntimeConfigValues } from "./types";
 
@@ -93,4 +96,26 @@ export function useDisconnectChannelProvider() {
       });
     },
   });
+}
+
+// -- WeChat iLink system bot (admin bind + user binding-code) ---------------
+
+export const wechatBotBindStatusQueryKey = ["wechatBotBindStatus"] as const;
+
+export function useStartWechatBotBind() {
+  return useMutation({ mutationFn: () => startWechatBotBind() });
+}
+
+export function useWechatBotBindStatus(enabled: boolean) {
+  return useQuery({
+    queryKey: wechatBotBindStatusQueryKey,
+    queryFn: () => getWechatBotBindStatus(),
+    enabled,
+    // Poll every 2s while a bind is pending; stop once it resolves.
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 2000 : false),
+  });
+}
+
+export function useCreateWechatBindCode() {
+  return useMutation({ mutationFn: () => createWechatBindCode() });
 }

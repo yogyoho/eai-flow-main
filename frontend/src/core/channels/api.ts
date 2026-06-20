@@ -9,6 +9,8 @@ import type {
   ChannelProvider,
   ChannelProvidersResponse,
   ChannelRuntimeConfigValues,
+  WechatBindCodeResponse,
+  WechatBotBindStatus,
 } from "./types";
 
 function channelsUrl(path: string): string {
@@ -114,4 +116,43 @@ export async function disconnectChannelProvider(
     );
   }
   return response.json() as Promise<ChannelProvider>;
+}
+
+// -- WeChat iLink system bot (admin bind + user binding-code) ---------------
+
+function wechatBotUrl(path: string): string {
+  return `${getBackendBaseURL()}/api/channels/wechat-bot${path}`;
+}
+
+export async function startWechatBotBind(): Promise<{ status: string }> {
+  const response = await fetch(wechatBotUrl("/bind"), { method: "POST" });
+  if (!response.ok) {
+    await throwChannelApiError(
+      response,
+      `Failed to start WeChat bind: ${response.statusText}`,
+    );
+  }
+  return response.json() as Promise<{ status: string }>;
+}
+
+export async function getWechatBotBindStatus(): Promise<WechatBotBindStatus> {
+  const response = await fetch(wechatBotUrl("/bind/status"));
+  if (!response.ok) {
+    await throwChannelApiError(
+      response,
+      `Failed to read WeChat bind status: ${response.statusText}`,
+    );
+  }
+  return response.json() as Promise<WechatBotBindStatus>;
+}
+
+export async function createWechatBindCode(): Promise<WechatBindCodeResponse> {
+  const response = await fetch(wechatBotUrl("/bind-code"), { method: "POST" });
+  if (!response.ok) {
+    await throwChannelApiError(
+      response,
+      `Failed to create WeChat binding code: ${response.statusText}`,
+    );
+  }
+  return response.json() as Promise<WechatBindCodeResponse>;
 }

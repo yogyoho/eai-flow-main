@@ -65,8 +65,18 @@ def _merge_channel_connection_runtime_config(channels_config: dict[str, Any], ap
     merge_runtime_channel_configs(channels_config, connection_config)
 
 
-def _make_connection_repo(connection_config: ChannelConnectionsConfig | None):
-    if connection_config is None or not getattr(connection_config, "enabled", False):
+def _make_connection_repo(
+    connection_config: ChannelConnectionsConfig | None,
+    *,
+    force: bool = False,
+):
+    # The shared connection repository backs two independent features:
+    #   1. the channel_connections feature (user-owned bindings via the 渠道 UI),
+    #      gated on connection_config.enabled; and
+    #   2. the WeChat system bot's user-binding flow (/connect code + per-user
+    #      authorization), which needs the same persistence regardless of the
+    #      channel_connections feature flag. ``force`` opts the latter in.
+    if not force and (connection_config is None or not getattr(connection_config, "enabled", False)):
         return None
 
     try:
@@ -81,6 +91,12 @@ def _make_connection_repo(connection_config: ChannelConnectionsConfig | None):
         logger.warning("Channel connections are enabled but database persistence is not available")
         return None
     return ChannelConnectionRepository(session_factory)
+
+
+def _wechat_binding_enabled(channels_config: dict[str, Any]) -> bool:
+    """Whether the system WeChat bot's user-binding flow is on."""
+    wechat = channels_config.get("wechat") if isinstance(channels_config, dict) else None
+    return isinstance(wechat, dict) and bool(wechat.get("enabled", False))
 
 
 class ChannelService:
@@ -135,10 +151,15 @@ class ChannelService:
         _merge_channel_connection_runtime_config(channels_config, app_config)
         connection_config = getattr(app_config, "channel_connections", None)
         connections_enabled = connection_config is not None and getattr(connection_config, "enabled", False)
-        require_bound_identity = bool(connections_enabled and getattr(connection_config, "require_bound_identity", True))
+        wechat_binding = _wechat_binding_enabled(channels_config)
+        # require_bound_identity when either path wants per-user authorization.
+        wechat_require_bound = bool(
+            wechat_binding and isinstance(channels_config.get("wechat"), dict) and channels_config["wechat"].get("require_bound_identity", True)
+        )
+        require_bound_identity = bool((connections_enabled and getattr(connection_config, "require_bound_identity", True)) or wechat_require_bound)
         return cls(
             channels_config=channels_config,
-            connection_repo=_make_connection_repo(connection_config),
+            connection_repo=_make_connection_repo(connection_config, force=wechat_binding),
             require_bound_identity=require_bound_identity,
         )
 

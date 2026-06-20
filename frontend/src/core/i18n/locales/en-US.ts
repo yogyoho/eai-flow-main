@@ -398,6 +398,7 @@ export const enUS: Translations = {
       skills: "Skills",
       notification: "Notification",
       channels: "Channels",
+      wechat: "WeChat",
       basic: "Basic",
       about: "About",
     },
@@ -407,6 +408,29 @@ export const enUS: Translations = {
         "Connect IM accounts that can send messages to DeerFlow from outside the browser.",
       disabled:
         "Channel connections are not enabled on this server. Ask an administrator to enable channel_connections.",
+    },
+    wechat: {
+      title: "WeChat",
+      description:
+        "Link your WeChat to your DeerFlow account, or (admins) bind the WeChat iLink bot.",
+      linkTitle: "Link my WeChat",
+      linkDescription:
+        "Generate a one-time code, then send it to the WeChat bot to link this account.",
+      getCode: "Get binding code",
+      codeHint:
+        "Send this exact message to the WeChat bot from your WeChat to link it to this account.",
+      linkFailed: "Failed to generate a binding code.",
+      botTitle: "WeChat bot binding",
+      botDescription:
+        "Bind the system WeChat iLink bot by scanning a QR code (shown here, not in logs).",
+      bound: "Bound",
+      pending: "Awaiting scan",
+      unbound: "Not bound",
+      bind: "Bind WeChat bot",
+      rebind: "Re-bind",
+      bindStarted: "Binding started — scan the QR code.",
+      bindFailed: "Failed to start binding.",
+      openQr: "Open the binding QR code",
     },
     memory: {
       title: "Memory",

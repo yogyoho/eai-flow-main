@@ -812,6 +812,20 @@ class ChannelManager:
                 workspace_id=msg.workspace_id,
                 fallback_without_workspace=True,
             )
+        # Access control: when require_bound_identity is on, only users with a
+        # persisted binding (owner_user_id attached above) may use the bot.
+        # Unbound senders get a one-line "link first" prompt instead of an
+        # agent run — EXCEPT the /connect command itself, which is how they bind.
+        if (
+            self._require_bound_identity
+            and msg.owner_user_id is None
+            and not msg.text.lstrip().lower().startswith("/connect")
+        ):
+            await self._send_error(
+                msg,
+                "Link your account first: send /connect <code> (get a binding code in Settings → WeChat).",
+            )
+            return
         async with self._semaphore:
             try:
                 if msg.msg_type == InboundMessageType.COMMAND:
@@ -1097,7 +1111,30 @@ class ChannelManager:
             await self._handle_chat(chat_msg, extra_context={"is_bootstrap": True})
             return
 
-        if command == "new":
+        if command == "connect":
+            # User-binding flow: link this sender's platform identity to the
+            # DeerFlow account that issued the binding code. Reuses the
+            # channel_connections persistence (provider = channel name).
+            code = parts[1].strip() if len(parts) > 1 else ""
+            if self._connection_repo is None or not code:
+                reply = "Binding is not available. Get a binding code in Settings → WeChat and send: /connect <code>."
+            else:
+                try:
+                    owner = await self._connection_repo.consume_oauth_state(provider=msg.channel_name, state=code)
+                except Exception:
+                    logger.exception("Failed to consume channel binding code")
+                    owner = None
+                if owner is None:
+                    reply = "Invalid or expired binding code. Get a fresh one in Settings → WeChat."
+                else:
+                    await self._connection_repo.upsert_connection(
+                        provider=msg.channel_name,
+                        external_account_id=msg.user_id,
+                        owner_user_id=owner["owner_user_id"],
+                        status="connected",
+                    )
+                    reply = "Linked to your DeerFlow account. Send a message to start chatting."
+        elif command == "new":
             # Create a new thread on the LangGraph Server
             client = self._get_client(self._resolve_owner_user_id(msg))
             thread = await client.threads.create()

@@ -51,3 +51,17 @@ export interface ChannelConnectResponse {
   instruction: string;
   expires_in: number;
 }
+
+// WeChat iLink system bot (admin bind surface + user binding-code).
+export interface WechatBotBindStatus {
+  status: string | null;
+  qrcode_url: string | null;
+  bound: boolean;
+  ilink_bot_id: string | null;
+}
+
+export interface WechatBindCodeResponse {
+  code: string;
+  instruction: string;
+  expires_in: number;
+}

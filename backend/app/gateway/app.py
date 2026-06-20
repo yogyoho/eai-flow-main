@@ -11,7 +11,6 @@ from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
-from app.extensions.plugin.routers import router as plugin_router
 from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.docmgr.collab_routers import router as collab_router
@@ -21,6 +20,7 @@ from app.extensions.knowledge_factory.routers import router as knowledge_factory
 from app.extensions.law import router as law_router
 from app.extensions.license.routers import router as license_router
 from app.extensions.output.routers import router as output_router
+from app.extensions.plugin.routers import router as plugin_router
 from app.extensions.project import router as project_router
 from app.extensions.role.routers import router as role_router
 from app.extensions.settings.routers import router as settings_router
@@ -49,6 +49,7 @@ from app.gateway.routers import (
     thread_runs,
     threads,
     uploads,
+    wechat_bot,
 )
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
@@ -432,6 +433,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
     app.include_router(channel_connections.router)
+    app.include_router(wechat_bot.router)
 
     # Assistants compatibility API (LangGraph Platform stub)
     app.include_router(assistants_compat.router)
