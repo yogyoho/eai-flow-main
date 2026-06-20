@@ -30,7 +30,11 @@ function AdminSelect({
   className,
   disabled = false,
 }: AdminSelectProps) {
-    const rootValue = value === "" ? undefined : value;
+    // ponytail: keep "" as-is instead of converting to undefined.
+    // Converting ""→undefined makes React see uncontrolled→controlled transition
+    // when value changes from initial empty to a real option. Fixes:
+    // "Select is changing from uncontrolled to controlled."
+    const rootValue = value;
     return (
       <SelectPrimitive.Root value={rootValue} onValueChange={(v) => { onChange?.(v); onValueChange?.(v); }} disabled={disabled}>
       <SelectPrimitive.Trigger
