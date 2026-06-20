@@ -107,6 +107,39 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
   const [config, setConfig] = useState<ExtractionConfig>(DEFAULT_CONFIG);
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("__new__");
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
+  const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Use first available KB (or "__all__" means pick first from kbList)
+    const kb = kbList.find((k) => k.status === "active") || kbList[0];
+    if (!kb) { toast.error("没有可用的知识库，请先在样例管理 tab 创建知识库"); return; }
+
+    setUploadingFiles(true);
+    try {
+      const ids: string[] = [];
+      const names: string[] = [];
+      for (const file of Array.from(files)) {
+        const doc = await kbApi.uploadDoc(kb.id, file);
+        ids.push(doc.id);
+        names.push(file.name);
+      }
+      setUploadedDocIds((prev) => [...prev, ...ids]);
+      setUploadedFileNames((prev) => [...prev, ...names]);
+      toast.success(`已上传 ${files.length} 个文件`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "上传失败";
+      toast.error(msg);
+    } finally {
+      setUploadingFiles(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
   const [mergeMode, setMergeMode] = useState<MergeMode>("merge");
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -211,7 +244,10 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("请输入任务名称"); return; }
-    if (selectedReports.size === 0) { toast.error("请至少选择 1 份样例报告"); return; }
+    if (selectedReports.size === 0 && uploadedDocIds.length === 0) {
+      toast.error("请至少选择 1 份样例报告或上传 1 个 Word/PDF 文件");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -225,6 +261,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
         industry: selectedIndustry || undefined,
         report_type: selectedReportType || undefined,
         source_report_ids: Array.from(selectedReports),
+        uploaded_file_ids: uploadedDocIds.length > 0 ? uploadedDocIds : undefined,
         target_template_name: finalTemplateName,
         target_template_id: isExisting ? selectedTemplateId : undefined,
         merge_mode: isExisting ? mergeMode : undefined,
@@ -461,6 +498,37 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
                   ))
                 )}
               </div>
+            </div>
+
+            {/* 直接上传 Word/PDF */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                直接上传 Word/PDF
+                <span className="text-xs text-muted-foreground ml-2">优先用 doc_parser 解析，提取更精准</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".docx,.pdf"
+                  multiple
+                  onChange={handleFileUpload}
+                  disabled={uploadingFiles}
+                  className="text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-primary/10 file:text-primary hover:file:bg-primary/20 disabled:opacity-50"
+                />
+                {uploadingFiles && (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
+                )}
+              </div>
+              {uploadedFileNames.length > 0 && (
+                <div className="space-y-1">
+                  {uploadedFileNames.map((name, i) => (
+                    <p key={i} className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> {name}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 抽取配置 */}

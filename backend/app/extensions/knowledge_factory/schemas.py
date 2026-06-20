@@ -424,11 +424,21 @@ class ExtractionTaskCreate(BaseModel):
     domain: str = Field(default="default", max_length=100)
     industry: Optional[str] = Field(default=None, max_length=100)
     report_type: Optional[str] = Field(default=None, max_length=100)
-    source_report_ids: list[UUID]
+    source_report_ids: list[UUID] = Field(default_factory=list)
+    uploaded_file_ids: list[UUID] = Field(default_factory=list, description="直接上传的 Word/PDF 文件 ID（优先于 source_report_ids 使用 doc_parser 解析）")
     target_template_name: str = Field(..., min_length=1, max_length=200)
     target_template_id: Optional[UUID] = None
     merge_mode: Optional[str] = None
     config: Optional[ExtractionConfig] = None
+
+    @field_validator("source_report_ids")
+    @classmethod
+    def at_least_one_source(cls, v, info):
+        """At least one of source_report_ids or uploaded_file_ids must be provided."""
+        uploaded = info.data.get("uploaded_file_ids", [])
+        if not v and not uploaded:
+            raise ValueError("请提供 source_report_ids（知识库文档）或 uploaded_file_ids（直接上传文件）")
+        return v
 
 
 # ============== Extraction Task Response ==============

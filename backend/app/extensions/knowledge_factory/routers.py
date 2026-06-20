@@ -359,9 +359,10 @@ async def run_pipeline_background(
 
             config = data.config or ExtractionConfig()
 
-            # 收集文档信息
+            # 收集文档信息（合并 source_report_ids 和 uploaded_file_ids）
+            all_report_ids = list(data.source_report_ids) + list(data.uploaded_file_ids)
             report_docs = []
-            for report_id in data.source_report_ids:
+            for report_id in all_report_ids:
                 result = await db.execute(
                     select(Document, KnowledgeBase)
                     .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)

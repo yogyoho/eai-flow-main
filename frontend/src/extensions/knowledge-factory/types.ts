@@ -73,6 +73,8 @@ export interface ExtractionTaskCreate {
   industry?: string;
   report_type?: string;
   source_report_ids: string[];
+  /** 直接上传的 Word/PDF 文件 ID（优先用 doc_parser 解析） */
+  uploaded_file_ids?: string[];
   target_template_name: string;
   /** 已有模板 ID，填写则向已有模板合并，不填则创建新模板 */
   target_template_id?: string;
