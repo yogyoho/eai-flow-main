@@ -80,18 +80,29 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
 _CHAPTER_PATTERNS = [
     # 第一章 / 第二节 / 第三条
     (re.compile(r"^第[一二三四五六七八九十百千\d]+[章节条款段]\s*[\.、\s]?\s*(.+)"), 1),
-    # 1. / 1、 / 1.1 / 1.1.1
-    (re.compile(r"^(\d+(?:[\.]\d+)*)\s*[\.、\s]\s*(.+)"), 1),
     # 一、 / 二、 / 十二、
     (re.compile(r"^[一二三四五六七八九十]+[、\.\s]\s*(.+)"), 1),
     # (一) / (1)
     (re.compile(r"^[（(][一二三四五六七八九十\d]+[）)]\s*(.+)"), 2),
 ]
 
-def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
-    """扫描所有 chunks，提取章节标题行。
+# Numbered-heading pattern used ONLY inside _scan_chapter_headings.
+# Level is derived from dot count (1->1, 1.1->2, 1.1.1->3), not hard-coded.
+_NUMBERED_PATTERN = re.compile(r"^(\d+(?:[\.]\d+)*)[、\s]+(.+)$")
 
-    返回 [{title, line_number, chunk_index, level_guess}, ...]
+# Lines that look like TOC entries (page number preceded by tab or >=3 spaces).
+_TOC_ENTRY = re.compile(r".*\t\d+$|.* {3,}\d+$")
+
+def _heading_level(number_str: str) -> int:
+    """Return heading level from the numbered prefix: 1->1, 1.1->2, 1.1.1->3."""
+    dots = number_str.count(".")
+    return min(dots + 1, 3)
+
+
+def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
+    """Scan all chunks for heading lines. Skip TOC entries (lines ending with page numbers).
+
+    Returns [{title, line_number, chunk_index, level_guess}, ...]
     """
     headings = []
     line_no = 0
@@ -102,6 +113,13 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
             if not line or len(line) > 80:
                 line_no += 1
                 continue
+
+            # Skip TOC entries with page numbers (e.g. "1.1 任务由来\t3" or "  65")
+            if _TOC_ENTRY.match(line):
+                line_no += 1
+                continue
+
+            matched = False
             for pattern, default_level in _CHAPTER_PATTERNS:
                 m = pattern.match(line)
                 if m:
@@ -111,40 +129,55 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
                         "chunk_index": ci,
                         "level_guess": default_level,
                     })
+                    matched = True
                     break
+            if not matched:
+                m = _NUMBERED_PATTERN.match(line)
+                if m:
+                    level = _heading_level(m.group(1))
+                    headings.append({
+                        "title": line,
+                        "line_number": line_no,
+                        "chunk_index": ci,
+                        "level_guess": level,
+                    })
             line_no += 1
     return headings
 
-def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
-    """从文档 chunks 构建结构提示，发给 LLM 辅助章节推断。
 
-    策略：
-    1. 首先扫描所有 chunks，提取章节标题行
-    2. 如果有章节标题，构建"目录+摘要"式的内容
-    3. 如果没有，返回文档开头部分内容
+def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
+    """Build a compact structure hint from chunk headings for LLM chapter inference.
+
+    Only includes H1-level headings in the directory sent to the LLM.
+    Sub-sections are filtered out to avoid drowning the LLM in 500+ entries.
     """
     headings = _scan_chapter_headings(chunks)
 
     if not headings:
-        # 无章节标题：返回文档开头内容
         full = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
         return full[:max_chars]
 
-    # 收集所有 chunks 的完整内容
+    # Only include H1-level headings (pure chapter numbers, no dots) in the
+    # structure hint. Sub-sections (1.1, 1.1.1) make the directory too large
+    # for the LLM to identify the real chapter structure.
+    h1_headings = [h for h in headings if h["level_guess"] == 1]
+
+    # Fallback: if no H1 headings found, take top-level headings (level <= 2)
+    if not h1_headings:
+        h1_headings = [h for h in headings if h["level_guess"] <= 2]
+    if not h1_headings:
+        h1_headings = headings[:20]
+
     full_content = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
 
-    # 构建结构提示：目录 + 每个章节的摘要
-    parts = ["## 文档章节目录（自动识别）\n"]
-    for h in headings:
-        indent = "  " * (h["level_guess"] - 1)
-        parts.append(f"{indent}- {h['title']}")
+    parts = [f"## 文档章节目录（自动识别，共 {len(h1_headings)} 章）\n"]
+    for h in h1_headings:
+        parts.append(f"- {h['title']}")
 
-    parts.append("\n## 各章节内容摘要（每章节前200字）\n")
+    parts.append("\n## 各章节内容摘要（每章节前300字）\n")
 
-    # 为每个章节标题提取附近内容
-    for h in headings:
+    for h in h1_headings:
         title = h["title"]
-        # 在完整内容中查找该标题的位置
         idx = full_content.find(title)
         if idx >= 0:
             snippet = full_content[idx:idx + 300]
@@ -153,7 +186,6 @@ def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
             parts.append(f"### {title}\n（内容未找到）\n")
 
     result = "\n".join(parts)
-    # 限制总长度
     if len(result) > max_chars:
         result = result[:max_chars] + "\n...(内容已截断)"
 
