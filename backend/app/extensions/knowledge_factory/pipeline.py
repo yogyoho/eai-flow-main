@@ -80,11 +80,28 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
 _CHAPTER_PATTERNS = [
     # 第一章 / 第二节 / 第三条
     (re.compile(r"^第[一二三四五六七八九十百千\d]+[章节条款段]\s*[\.、\s]?\s*(.+)"), 1),
-    # 一、 / 二、 / 十二、
-    (re.compile(r"^[一二三四五六七八九十]+[、\.\s]\s*(.+)"), 1),
     # (一) / (1)
     (re.compile(r"^[（(][一二三四五六七八九十\d]+[）)]\s*(.+)"), 2),
 ]
+
+# Chinese-numbered items (一、/ 二、) are almost never chapter-level headings
+# in EIA reports — they are sub-sections or inline lists. Match as level 2.
+_CHINESE_NUMBERED = re.compile(r"^[一二三四五六七八九十]+[、\.\s]\s*(.+)")
+
+
+def _is_noise(title: str) -> bool:
+    """Return True if the line looks like a survey item or inline paragraph,
+    not a real chapter heading."""
+    # Survey/checkbox items: contain □ or ? or ？
+    if any(c in title for c in ("□", "?", "？")):
+        return True
+    # Inline numbered paragraphs with 、 separator are not chapter headings:
+    # "4、噪声：合理布局，噪声高的设备..." (too long, content-like)
+    # Real headings use space separator: "4 矿区开发环境影响回顾评价"
+    t = title.strip()
+    if re.match(r"^\d+[、，]", t) and len(t) > 15:
+        return True
+    return False
 
 # Numbered-heading pattern used ONLY inside _scan_chapter_headings.
 # Level is derived from dot count (1->1, 1.1->2, 1.1.1->3), not hard-coded.
@@ -119,6 +136,11 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
                 line_no += 1
                 continue
 
+            # Skip survey items and inline numbered paragraphs (e.g. "1、您了解...？")
+            if _is_noise(line):
+                line_no += 1
+                continue
+
             matched = False
             for pattern, default_level in _CHAPTER_PATTERNS:
                 m = pattern.match(line)
@@ -131,6 +153,17 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
                     })
                     matched = True
                     break
+            if not matched:
+                # Try Chinese-numbered items as level 2 (一、/ 二、)
+                m = _CHINESE_NUMBERED.match(line)
+                if m:
+                    headings.append({
+                        "title": line,
+                        "line_number": line_no,
+                        "chunk_index": ci,
+                        "level_guess": 2,
+                    })
+                    matched = True
             if not matched:
                 m = _NUMBERED_PATTERN.match(line)
                 if m:
@@ -156,6 +189,12 @@ def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
     if not headings:
         full = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
         return full[:max_chars]
+
+    # Deduplicate: titles appearing 3+ times are TOC entries or cross-references,
+    # not unique chapter headings.
+    from collections import Counter
+    title_counts = Counter(h["title"] for h in headings)
+    headings = [h for h in headings if title_counts[h["title"]] < 3]
 
     # Only include H1-level headings (pure chapter numbers, no dots) in the
     # structure hint. Sub-sections (1.1, 1.1.1) make the directory too large
