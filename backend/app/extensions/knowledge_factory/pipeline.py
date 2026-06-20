@@ -411,7 +411,7 @@ class ExtractionPipeline:
         t0 = time.time()
         await _emit("文档解析", StepStatus.RUNNING, "", "处理中...")
         try:
-            ctx["documents"] = await self._step_parse(ctx)
+            ctx["documents"] = await self._step_parse_direct(ctx)
         except Exception as e:
             await _emit("文档解析", StepStatus.FAILED, _fmt(time.time() - t0), f"错误: {e}")
             raise
@@ -631,6 +631,145 @@ class ExtractionPipeline:
         logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] Step 0 完成: 处理了 {len(enriched)} 份文档，共 {total_chunks} 个 chunks")
         return enriched
 
+    # ── Step 0-alt: 直接文档解析 ─────────────────────────────────
+
+    async def _step_parse_direct(self, ctx: dict[str, Any]) -> list[dict]:
+        """Step 0: 直接解析 Word/PDF 文件（优先于 RAGFlow）。
+
+        策略：
+        1. 对 .docx/.pdf 文件使用 doc_parser 直接解析
+        2. 解析成功 → 使用确定性 headings + tables + full_text
+        3. 解析失败（扫描 PDF、损坏文件）→ 回退到 RAGFlow 路径
+        4. 非 docx/pdf 文件 → 使用 RAGFlow 路径
+
+        将解析结果存入 doc["_parsed"]，后续步骤可直接使用。
+        """
+        from .doc_parser import parse_document, build_structure_hint, ParsedDocument
+
+        documents = ctx["documents"]
+        enriched = []
+        direct_count = 0
+        fallback_count = 0
+
+        task_id = ctx.get("_task_id", "unknown")
+        logger.info(f"[Task {task_id}] Step 0 (direct): 开始解析 {len(documents)} 份文档")
+
+        for doc in documents:
+            file_path = doc.get("file_path", "")
+            file_type = (doc.get("file_type") or "").lower().strip().lstrip(".")
+            doc_name = doc.get("name", "未知文档")
+
+            # Check if direct parsing is applicable
+            if file_path and file_type in ("docx", "pdf"):
+                parsed = await asyncio.to_thread(parse_document, file_path)
+
+                if parsed.error:
+                    logger.warning(
+                        f"[Task {task_id}] doc_parser 解析 '{doc_name}' 失败: {parsed.error}，回退到 RAGFlow"
+                    )
+                    # Fall through to RAGFlow path
+                else:
+                    # Build synthetic chunks from full_text for downstream compatibility
+                    chunks = self._split_text_to_chunks(parsed.full_text, max_chars=2000)
+                    structure_hint = build_structure_hint(parsed, self._max_content_chars)
+
+                    enriched.append({
+                        **doc,
+                        "chunks": chunks,
+                        "chunk_count": len(chunks),
+                        "_parsed": parsed,
+                        "_structure_hint": structure_hint,
+                        "_parse_method": "direct",
+                    })
+                    direct_count += 1
+                    logger.info(
+                        f"[Task {task_id}] doc_parser 成功解析 '{doc_name}': "
+                        f"{len(parsed.headings)} headings, {len(parsed.tables)} tables, "
+                        f"{len(parsed.full_text)} chars"
+                    )
+                    continue
+
+            # Not eligible for direct parsing or direct parsing failed — use RAGFlow
+            enriched_entry = await self._step_parse_single(doc, ctx)
+            if enriched_entry:
+                enriched_entry["_parse_method"] = "ragflow"
+                enriched.append(enriched_entry)
+                fallback_count += 1
+            else:
+                enriched.append({**doc, "chunks": [], "chunk_count": 0,
+                                 "_skip_reason": "RAGFlow 无 chunks 且无法直接解析"})
+
+        ctx["_documents"] = enriched
+        logger.info(
+            f"[Task {task_id}] Step 0 完成: {direct_count} 份直接解析, "
+            f"{fallback_count} 份 RAGFlow, 共 {len(enriched)} 份文档"
+        )
+        return enriched
+
+    async def _step_parse_single(self, doc: dict, ctx: dict[str, Any]) -> dict | None:
+        """Parse a single document via RAGFlow (used as fallback from direct parsing)."""
+        from app.extensions.knowledge.client import RAGFlowClient
+        from app.extensions.models import KnowledgeBase, Document
+        from sqlalchemy import select
+        from app.extensions.database import get_db_context
+
+        doc_id = doc.get("id")
+        kb_id = doc.get("kb_id")
+        doc_name = doc.get("name", "未知文档")
+        task_id = ctx.get("_task_id", "unknown")
+
+        if not doc_id or not kb_id:
+            logger.warning(f"文档 {doc_name} 缺少 id 或 kb_id")
+            return None
+
+        rf_doc_id = doc.get("ragflow_document_id")
+        rf_dataset_id = doc.get("ragflow_dataset_id")
+
+        if not rf_doc_id or not rf_dataset_id:
+            async with get_db_context() as db:
+                from app.extensions.models import KnowledgeBase as KB, Document as Doc
+                result = await db.execute(
+                    select(KB, Doc)
+                    .join(Doc, Doc.knowledge_base_id == KB.id)
+                    .where(Doc.id == doc_id)
+                )
+                row = result.first()
+                if row:
+                    kb, doc_obj = row
+                    rf_doc_id = rf_doc_id or doc_obj.ragflow_document_id
+                    rf_dataset_id = rf_dataset_id or kb.ragflow_dataset_id
+
+        if not rf_dataset_id or not rf_doc_id:
+            # Try plain-text fallback
+            fallback = await self._fallback_read_plain_text(doc, ctx)
+            if fallback:
+                return {**doc, "chunks": fallback, "chunk_count": len(fallback),
+                        "ragflow_document_id": rf_doc_id}
+            return None
+
+        try:
+            rf = RAGFlowClient()
+            chunks_resp = await rf.list_chunks(
+                dataset_id=rf_dataset_id,
+                document_id=rf_doc_id,
+                page=1,
+                size=1000,
+            )
+            chunks = chunks_resp.get("data", {}).get("chunks", [])
+            if not chunks:
+                fallback = await self._fallback_read_plain_text(doc, ctx)
+                if fallback:
+                    return {**doc, "chunks": fallback, "chunk_count": len(fallback),
+                            "ragflow_document_id": rf_doc_id}
+            return {**doc, "chunks": chunks, "chunk_count": len(chunks),
+                    "ragflow_document_id": rf_doc_id}
+        except Exception as e:
+            logger.error(f"RAGFlow 获取 chunks 失败 for {doc_name}: {e}")
+            fallback = await self._fallback_read_plain_text(doc, ctx)
+            if fallback:
+                return {**doc, "chunks": fallback, "chunk_count": len(fallback)}
+            return None
+
     # ── Plain-text fallback ──────────────────────────────────────
 
     # File types that are plain text and can be read directly
@@ -809,7 +948,14 @@ class ExtractionPipeline:
 
             if chunks:
                 # 构建结构提示，帮助 LLM 识别章节
-                content = _build_structure_hint(chunks, self._max_content_chars)
+                # 优先使用 doc_parser 产出的结构提示（确定性标题）
+                _parsed = doc.get("_parsed")
+                if _parsed:
+                    content = doc.get("_structure_hint", doc.get("content", ""))
+                    if not content.strip():
+                        content = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
+                else:
+                    content = _build_structure_hint(chunks, self._max_content_chars)
             else:
                 content = doc.get("content", "")
 
@@ -826,17 +972,30 @@ class ExtractionPipeline:
                 # H1 headings so the LLM is forced to use the document's actual
                 # chapter structure instead of inventing its own.
                 if not ref_chapters:
-                    all_headings = _scan_chapter_headings(chunks)
-                    h1s = [h for h in all_headings if h["level_guess"] == 1]
-                    if h1s:
-                        ref_chapters = {
-                            "sections": [
-                                {"id": f"sec_{i + 1:02d}", "title": h["title"], "level": 1, "required": True}
-                                for i, h in enumerate(h1s)
-                            ]
-                        }
-                        logger.info(f"[Task {task_id}] Step 1: 构建了 reference_chapters，共有 {len(h1s)} 个 H1 章节")
-                        logger.debug(f"[Task {task_id}] Step 1: reference_chapters titles: {[h['title'] for h in h1s]}")
+                    _parsed = doc.get("_parsed")
+                    if _parsed and _parsed.headings:
+                        # Use deterministic headings from doc_parser
+                        h1s = [h for h in _parsed.headings if h.level == 1]
+                        if h1s:
+                            ref_chapters = {
+                                "sections": [
+                                    {"id": f"sec_{i + 1:02d}", "title": h.title, "level": h.level, "required": True}
+                                    for i, h in enumerate(h1s)
+                                ]
+                            }
+                            logger.info(f"[Task {task_id}] Step 1: 使用 doc_parser 的 {len(h1s)} 个 H1 章节作为 reference_chapters")
+                    else:
+                        all_headings = _scan_chapter_headings(chunks)
+                        h1s = [h for h in all_headings if h["level_guess"] == 1]
+                        if h1s:
+                            ref_chapters = {
+                                "sections": [
+                                    {"id": f"sec_{i + 1:02d}", "title": h["title"], "level": 1, "required": True}
+                                    for i, h in enumerate(h1s)
+                                ]
+                            }
+                            logger.info(f"[Task {task_id}] Step 1: 构建了 reference_chapters，共有 {len(h1s)} 个 H1 章节")
+                            logger.debug(f"[Task {task_id}] Step 1: reference_chapters titles: {[h['title'] for h in h1s]}")
                 max_depth = config.max_depth if config.max_depth else 4
                 schema = await loop.run_in_executor(
                     None,
@@ -849,9 +1008,14 @@ class ExtractionPipeline:
                 # Validate LLM output against detected headings: if the LLM merged or
                 # dropped chapters (returned fewer than detected), use the detected
                 # H1 structure as a skeleton and fill gaps with LLM metadata.
-                h1_headings = _scan_chapter_headings(chunks)
-                h1_titles = [h["title"] for h in h1_headings if h["level_guess"] == 1]
-                h1_count = len(h1_titles)
+                _parsed = doc.get("_parsed")
+                if _parsed and _parsed.headings:
+                    h1_titles = [h.title for h in _parsed.headings if h.level == 1]
+                    h1_count = len(h1_titles)
+                else:
+                    h1_headings = _scan_chapter_headings(chunks)
+                    h1_titles = [h["title"] for h in h1_headings if h["level_guess"] == 1]
+                    h1_count = len(h1_titles)
 
                 if h1_count > 0 and len(sections) < h1_count:
                     logger.warning(
