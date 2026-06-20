@@ -1312,6 +1312,12 @@ class ExtractionPipeline:
                 "generation_hint": metadata.get("generation_hint"),
                 "example_snippet": metadata.get("example_snippet"),
                 "completeness_score": metadata.get("completeness_score"),
+                # Rich metadata — only present when LLM found content
+                "table_schemas": metadata.get("table_schemas"),
+                "figure_requirements": metadata.get("figure_requirements"),
+                "formula_references": metadata.get("formula_references"),
+                "calc_script_bindings": metadata.get("calc_script_bindings"),
+                "sub_section_profile": metadata.get("sub_section_profile"),
             }
 
             children = sec.get("children") or []

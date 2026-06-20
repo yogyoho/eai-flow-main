@@ -30,6 +30,16 @@ _SCHEMA_INFERENCE_SYSTEM_PROMPT = """你是一个专业的文档结构分析专�
 4. 输出一棵树形结构，代表该类文档的标准模板
 5. 章节层级不超过 {max_depth} 级（level 值不超过 {max_depth}）
 
+## 优先骨架规则
+
+当提供参考章节结构（reference_chapters）时：
+- 必须以 reference_chapters 中的章节为骨架，不可缺省任何 H1 章节
+- 章节顺序必须与 reference_chapters 对齐
+- 可以新增 reference_chapters 中不存在的子节（H2/H3）
+- 如果实际文档结构与 reference_chapters 明显不同（如报告类型不匹配），
+  保留 reference_chapters 的所有 H1 章节但可将不适用者标记为 required=false，
+  并在 purpose 中以 [偏差] 开头说明原因
+
 注意：
 - 不同类型的报告（环评、可研、水保、安全评价等）章节结构完全不同
 - 要基于实际文档内容推断，不要猜测
@@ -69,30 +79,49 @@ _SCHEMA_INFERENCE_USER_PROMPT_TEMPLATE = """## 文档信息
 
 
 # Prompt for extracting metadata from a section
+# Merges content_contract + rich metadata (tables/figures/formulas/scripts/profiles)
+# into ONE LLM call per section. The "important" note at the bottom is the key
+# token-budget guard — fields that don't apply are OMITTED, not emitted as
+# empty arrays. Without this, the prompt overload that caused b573e26b recurs.
 _METADATA_EXTRACTION_SYSTEM_PROMPT = """你是一个专业的文档抽取专家。
 
-任务：为一篇报告模板的某个章节，生成详细的内容契约（Content Contract）。
+任务：为一篇报告模板的章节生成内容契约和结构化元数据。
 
-内容契约定义：
+## 输出字段
+
+### content_contract（内容契约，必须输出）
 - key_elements: 章节必须包含的关键要素列表
-- structure_type: 内容结构类型
-  - narrative_text: 叙述性文本
-  - table: 表格形式
-  - formula: 公式/计算
-  - diagram: 图表
-  - mixed: 混合形式
-- style_rules: 写作风格规范（如：使用被动语态、引用法规等）
+- structure_type: 内容结构类型（narrative_text | table | formula | diagram | mixed）
+- style_rules: 写作风格规范
 - min_word_count: 最小字数要求
 - forbidden_phrases: 禁止出现的表述
 
-同时输出：
+### 基础元数据（必须输出）
 - compliance_rules: 涉及的法规/标准引用列表
 - rag_sources: 推荐的知识库检索来源（从可用知识库列表中选择）
 - generation_hint: 生成时的提示
-- example_snippet: 该章节的典型文本片段（从原文提取）
-- completeness_score: 该章节的完整度评分（0-100）
+- example_snippet: 该章节的典型文本片段（100-200字）
+- completeness_score: 完整度评分（0-100）
 
-如果章节内容不足以提取某个字段，用 null 表示。"""
+### 富元数据（仅当章节中存在对应内容时输出，无则完全省略该字段）
+
+- table_schemas: 表格定义列表
+  每项：table_id（如 tbl_03_01）, caption（表名）, columns[{header, width, type, unit}], data_source, required
+
+- figure_requirements: 图片需求列表
+  每项：figure_id, caption, suggested_type（image|mermaid|ascii）, placement_section, required, fallback
+
+- formula_references: 公式引用列表
+  每项：formula_id, name, applicable_section, expression, input_vars
+
+- calc_script_bindings: 计算脚本绑定列表
+  每项：script（脚本路径）, section, input_params[{name, unit, source}], output_table, trigger
+
+- sub_section_profile: 子章节深度指导
+  expected_h2_count, expected_h3_count, volume_estimate（short|medium|long）, notes
+
+重要：只输出章节中确实存在的内容。如果某类元数据不存在，直接省略该字段，
+不要输出空数组或 null。这可以避免输出膨胀和 token 超载。"""
 
 
 _METADATA_EXTRACTION_USER_PROMPT_TEMPLATE = """## 章节信息
@@ -108,23 +137,27 @@ _METADATA_EXTRACTION_USER_PROMPT_TEMPLATE = """## 章节信息
 {available_kbs_section}
 ---
 
-请为该章节生成完整的内容契约（JSON格式）：
+请为该章节生成完整的内容契约和结构化元数据（JSON格式）：
+
 ```json
 {{
   "content_contract": {{
     "key_elements": ["要素1", "要素2"],
-    "structure_type": "narrative_text|table|formula|diagram|mixed",
+    "structure_type": "narrative_text",
     "style_rules": "写作风格规范",
     "min_word_count": 200,
-    "forbidden_phrases": ["禁止表述1", "禁止表述2"]
+    "forbidden_phrases": ["禁止表述1"]
   }},
-  "compliance_rules": ["法规引用1", "法规引用2"],
-  "rag_sources": [{{"kb_name": "知识库名称", "relevance_note": "为什么该知识库与此章节相关"}}],
+  "compliance_rules": ["法规引用1"],
+  "rag_sources": [{{"kb_name": "知识库名称", "relevance_note": "为什么相关"}}],
   "generation_hint": "生成提示",
   "example_snippet": "典型文本片段（100-200字）...",
   "completeness_score": 85
 }}
-```"""
+```
+
+注意：table_schemas、figure_requirements、formula_references、calc_script_bindings、
+sub_section_profile 仅在章节中确实存在对应内容时才输出，无则完全省略这些字段。"""
 
 
 # Prompt for merging sections from multiple documents
@@ -366,6 +399,7 @@ class ExtractionLLMClient:
                 "generation_hint": None,
                 "example_snippet": content[:200] if content else None,
                 "completeness_score": 50,
+                # Rich metadata fields omitted on failure (LLM didn't produce them)
             }
 
     # ---- Compliance Rule Extraction ----
