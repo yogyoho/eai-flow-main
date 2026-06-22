@@ -68,6 +68,59 @@ export async function fetchApps(): Promise<AppResponse[]> {
   return data.items.map(mapApp);
 }
 
+// ── Admin: domains ──
+
+export interface DomainCreate {
+  key: string;
+  label: string;
+  accentColor?: string;
+  sortOrder?: number;
+  isUniversal?: boolean;
+}
+
+export interface DomainUpdate {
+  label?: string;
+  accentColor?: string;
+  sortOrder?: number;
+  isUniversal?: boolean;
+}
+
+export async function createDomain(req: DomainCreate): Promise<DomainResponse> {
+  return mapDomain(
+    await authFetch<Record<string, unknown>>(`${BASE}/domains`, {
+      method: "POST",
+      body: JSON.stringify({
+        key: req.key,
+        label: req.label,
+        accent_color: req.accentColor ?? "blue",
+        sort_order: req.sortOrder ?? 0,
+        is_universal: req.isUniversal ?? false,
+      }),
+    }),
+  );
+}
+
+export async function updateDomain(
+  key: string,
+  req: DomainUpdate,
+): Promise<DomainResponse> {
+  const snake: Record<string, unknown> = {};
+  if (req.label !== undefined) snake.label = req.label;
+  if (req.accentColor !== undefined) snake.accent_color = req.accentColor;
+  if (req.sortOrder !== undefined) snake.sort_order = req.sortOrder;
+  if (req.isUniversal !== undefined) snake.is_universal = req.isUniversal;
+  return mapDomain(
+    await authFetch<Record<string, unknown>>(`${BASE}/domains/${key}`, {
+      method: "PUT",
+      body: JSON.stringify(snake),
+    }),
+  );
+}
+
+export async function deleteDomain(key: string): Promise<void> {
+  await authFetch(`${BASE}/domains/${key}`, { method: "DELETE" });
+}
+
 // ── Admin endpoints ──
 
 export async function fetchAllApps(): Promise<AppResponse[]> {
