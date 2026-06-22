@@ -97,7 +97,7 @@ export function useApps(
   });
 
   const isLoading = appsLoading || domainsLoading;
-  const isError = appsError !== undefined || domainsError !== undefined;
+  const isError = appsError != null || domainsError != null;
   const error = (appsError ?? domainsError ?? null) as Error | null;
 
   // Convert API response to AppDefinition
