@@ -1,188 +1,81 @@
 "use client";
 
-import { Plus, Pen, ListTodo, FolderKanban, Bell, BarChart3, CalendarDays, Compass } from "lucide-react";
-import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
+import { Sliders } from "lucide-react";
+import { useState } from "react";
 
-import { useAuth } from "@/extensions/hooks/useAuth";
-
-import { DashboardCard } from "./components/DashboardCard";
+import Header from "./components/Header";
+import { MetricsRow } from "./components/MetricsRow";
+import { TaskPanel } from "./components/TaskPanel";
+import { ProjectPanel } from "./components/ProjectPanel";
+import { QuickPanel } from "./components/QuickPanel";
+import { LogPanel } from "./components/LogPanel";
 import { MiniCalendar } from "./components/MiniCalendar";
-import { MyProjects } from "./components/MyProjects";
-import { NotificationFeed } from "./components/NotificationFeed";
 import { NotificationPreferencePanel } from "./components/NotificationPreferencePanel";
-import { QuickLinks } from "./components/QuickLinks";
-import { StatsPanel } from "./components/StatsPanel";
-import { TodayTasks } from "./components/TodayTasks";
-import { useMyProjects } from "./hooks/useMyProjects";
-import { useMyTasks } from "./hooks/useMyTasks";
+import { useMyStats } from "./hooks/useMyStats";
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 11) return "早上好";
-  if (hour >= 11 && hour < 14) return "中午好";
-  if (hour >= 14 && hour < 18) return "下午好";
-  return "晚上好";
-}
-
-function formatDate(): string {
-  const now = new Date();
-  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
-}
-
-function DashboardHeader() {
-  const { data: tasksData } = useMyTasks();
-  const { data: projectsData } = useMyProjects();
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const displayName = user?.full_name || user?.username || "";
-
-  const taskSummary = useMemo(() => {
-    if (!tasksData || tasksData.total_count === 0) return "没有待办任务";
-    const parts: string[] = [];
-    parts.push(`${tasksData.total_count} 项待办`);
-    if (tasksData.urgent_count > 0) parts.push(`${tasksData.urgent_count} 项紧急`);
-    return parts.join("，");
-  }, [tasksData]);
-
-  const projectCount = projectsData?.total_count ?? 0;
-
-  return (
-    <div className="relative -mx-4 -mt-6 px-6 pt-6 pb-6">
-      <div className="flex items-start justify-between max-w-7xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {mounted ? getGreeting() : "你好"}{displayName ? `，${displayName}` : ""}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {taskSummary}
-            {projectCount > 0 && ` · ${projectCount} 个项目`}
-            <span className="ml-3 text-muted-foreground/60">{mounted ? formatDate() : ""}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/projects?action=create"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#4F6AF6] text-white text-sm font-medium hover:bg-[#4F6AF6]/90 shadow-sm shadow-[#4F6AF6]/20 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">新建项目</span>
-          </Link>
-          <Link
-            href="/knowledge-factory"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-[#4F6AF6] text-sm font-medium border border-indigo-200 hover:bg-indigo-50 transition-colors"
-          >
-            <Pen className="h-4 w-4" />
-            <span className="hidden sm:inline">知识加工</span>
-          </Link>
-        </div>
-      </div>
-      <div className="absolute bottom-0 left-6 right-6 max-w-7xl mx-auto h-[2px] bg-gradient-to-r from-indigo-400/70 via-indigo-300/50 to-transparent" />
-    </div>
-  );
-}
+import "./dashboard.css";
 
 export function DashboardPage() {
   const [prefsOpen, setPrefsOpen] = useState(false);
-  const { data: tasksData } = useMyTasks();
-  const { data: projectsData } = useMyProjects();
-
-  const urgentBadge = useMemo(() => {
-    if (!tasksData || tasksData.urgent_count === 0) return undefined;
-    return (
-      <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium">
-        紧急 {tasksData.urgent_count}
-      </span>
-    );
-  }, [tasksData]);
-
-  const projectCountBadge = useMemo(() => {
-    if (!projectsData || projectsData.total_count === 0) return undefined;
-    return (
-      <span className="bg-violet-100 text-violet-700 text-xs px-2 py-0.5 rounded-full font-medium">
-        {projectsData.total_count}
-      </span>
-    );
-  }, [projectsData]);
+  const { data: statsData, isLoading: statsLoading, refetch: refreshStats } = useMyStats();
 
   return (
-    <div className="min-h-full bg-[#F8F9FC]">
-      <div className="container mx-auto py-6 px-4 max-w-7xl">
-        <DashboardHeader />
+    <div className="dashboard-shell relative min-h-full flex flex-col cyber-grid selection:bg-blue-500/30 selection:text-white">
+      {/* Ambient glows */}
+      <div className="absolute top-1/4 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-10 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mt-5">
-          {/* Left column */}
-          <div className="space-y-5 min-w-0">
-            {/* 我的待办 */}
-            <DashboardCard
-              title="我的待办"
-              icon={ListTodo}
-              iconColor="text-blue-600"
-              badge={urgentBadge}
-            >
-              <TodayTasks />
-            </DashboardCard>
+      {/* Header */}
+      <Header />
 
-            {/* 我的项目 */}
-            <DashboardCard
-              title="我的项目"
-              icon={FolderKanban}
-              iconColor="text-violet-600"
-              badge={projectCountBadge}
-            >
-              <MyProjects />
-            </DashboardCard>
+      {/* Main Stage */}
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Full-width metrics row */}
+        <div className="lg:col-span-12">
+          <MetricsRow data={statsData} loading={statsLoading} onRefresh={() => refreshStats()} />
+        </div>
+
+        {/* LEFT 7 cols */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <TaskPanel />
+          <ProjectPanel />
+        </div>
+
+        {/* RIGHT 5 cols */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <QuickPanel />
+          <LogPanel />
+
+          <div className="db-card rounded-xl p-4 md:p-5 relative flex flex-col">
+            <div className="absolute top-0 right-0 w-3 h-3 bg-blue-500/10 border-r border-t border-blue-500/25" />
+            <MiniCalendar />
           </div>
 
-          {/* Right sidebar */}
-          <aside className="space-y-5">
-            {/* 快捷入口 */}
-            <DashboardCard title="快捷入口" icon={Compass} iconColor="text-emerald-600">
-              <QuickLinks />
-            </DashboardCard>
+          {/* Notification Preferences */}
+          <div className="db-card rounded-xl p-3.5 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-purple-500 animate-pulse" />
+              <span className="font-semibold db-text-primary">通知偏好设置 <span className="text-[10px] font-normal text-slate-500 font-cyber">ALERT CONFIGS</span></span>
+            </div>
+            <button onClick={() => setPrefsOpen(!prefsOpen)}
+              className="text-blue-600 hover:text-blue-500 font-bold transition-all cursor-pointer font-cyber text-xs">
+              {prefsOpen ? "折叠 CLOSE" : "展开 EXPAND"}
+            </button>
+          </div>
 
-            {/* 消息通知 */}
-            <DashboardCard
-              title="消息通知"
-              icon={Bell}
-              iconColor="text-amber-600"
-            >
-              <NotificationFeed />
-            </DashboardCard>
-
-            {/* 我的统计 */}
-            <DashboardCard title="我的统计" icon={BarChart3} iconColor="text-indigo-600">
-              <StatsPanel />
-            </DashboardCard>
-
-            {/* 日程 */}
-            <DashboardCard title="日程" icon={CalendarDays} iconColor="text-rose-600">
-              <MiniCalendar />
-            </DashboardCard>
-
-            {/* Notification preferences (collapsible) */}
-            <DashboardCard
-              title="通知偏好设置"
-              action={
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setPrefsOpen(!prefsOpen)}
-                >
-                  {prefsOpen ? "收起" : "展开"}
-                </button>
-              }
-            >
-              {prefsOpen && <NotificationPreferencePanel />}
-            </DashboardCard>
-          </aside>
+          {prefsOpen && (
+            <div className="p-4 db-card rounded-xl text-xs flex flex-col gap-3 overflow-hidden">
+              <NotificationPreferencePanel />
+            </div>
+          )}
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--db-border-color-muted)] bg-[var(--db-bg-tertiary)] py-4 px-6 mt-8 text-center text-[10px] db-text-subtle font-cyber select-none tracking-widest leading-relaxed">
+        北京华宇工程 · 企业智能体应用平台 v0.5.0
+        <div className="text-[9px] text-slate-400 mt-0.5">© 2026 北京华宇工程有限公司</div>
+      </footer>
     </div>
   );
 }

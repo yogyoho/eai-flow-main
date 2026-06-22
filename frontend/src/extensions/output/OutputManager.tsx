@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, History, LayoutGrid, Loader2, Plus } from "lucide-react";
+import { FileOutput, FileText, History, LayoutGrid, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -367,6 +367,9 @@ export function OutputManager() {
     <div className="flex flex-col h-full bg-muted">
       {/* Tab Header */}
       <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
+        <div className="p-1 border rounded-sm bg-emerald-50 border-emerald-200 text-emerald-600 shrink-0 mr-3">
+          <FileOutput className="w-4 h-4" />
+        </div>
         <span className="font-bold text-lg tracking-tight text-foreground mr-8">
           报告输出
         </span>

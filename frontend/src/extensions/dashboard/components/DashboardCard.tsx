@@ -11,8 +11,6 @@ interface DashboardCardProps {
   action?: ReactNode;
   children: ReactNode;
   className?: string;
-  collapsible?: boolean;
-  defaultCollapsed?: boolean;
 }
 
 export function DashboardCard({
@@ -26,15 +24,19 @@ export function DashboardCard({
 }: DashboardCardProps) {
   return (
     <div className={`rounded-xl border border-border bg-card shadow-sm ${className}`}>
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <div className="flex items-center gap-2">
-          {Icon && <Icon className={`h-4 w-4 ${iconColor || "text-muted-foreground"}`} />}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/60">
+        <div className="flex items-center gap-2.5">
+          {Icon && (
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${iconColor || "bg-muted text-muted-foreground border-border"}`}>
+              <Icon className="h-3.5 w-3.5" />
+            </div>
+          )}
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           {badge}
         </div>
         {action}
       </div>
-      <div className="px-5 pb-5">{children}</div>
+      <div className="px-5 py-4">{children}</div>
     </div>
   );
 }

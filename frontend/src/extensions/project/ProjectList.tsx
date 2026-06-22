@@ -3,6 +3,7 @@
 import {
   Calendar,
   ChevronRight,
+  ClipboardList,
   Edit,
   FileText,
   FolderKanban,
@@ -55,7 +56,7 @@ const STATUS_COLORS: Record<string, string> = {
   editing: "bg-amber-500/10 text-amber-600",
   approval: "bg-orange-500/10 text-orange-600",
   active: "bg-primary/10 text-primary",
-  completed: "bg-emerald-500/10 text-emerald-600",
+  completed: "bg-success/10 text-success",
   archived: "bg-gray-500/10 text-gray-500",
 };
 
@@ -97,8 +98,8 @@ function computeStats(projects: ProjectListItem[]): StatCard[] {
       icon: <FolderKanban className="h-5 w-5" />,
       label: "已完成",
       count: projects.filter((p) => p.status === "completed").length,
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-600",
+      iconBg: "bg-success/10",
+      iconColor: "text-success",
     },
   ];
 }
@@ -303,6 +304,9 @@ export function ProjectList() {
     <main className="flex-1 overflow-y-auto bg-background">
       {/* Header */}
       <div className="flex h-14 items-center gap-4 border-b border-border bg-card px-7">
+        <div className="p-1 border rounded-sm bg-violet-50 border-violet-200 text-violet-600 shrink-0">
+          <ClipboardList className="w-4 h-4" />
+        </div>
         <h1 className="text-lg font-bold text-foreground">项目管理</h1>
         <div className="flex-1" />
         <div className="relative">

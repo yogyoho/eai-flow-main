@@ -10,10 +10,8 @@ import {
   UserCircle,
   FolderCheck,
   ClipboardList,
-  FileOutput,
   LayoutDashboard,
-  LayoutGrid,
-  PackageSearch,
+  Blocks,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -43,18 +41,17 @@ interface NavItem {
   adminOnly?: boolean;
   /** If set, this nav item is hidden when the license module is not authorized */
   licenseModule?: string;
+  newTab?: boolean;
 }
 
 const allNavItems: NavItem[] = [
-  { href: "/app-center", label: "应用中心", icon: LayoutGrid },
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard },
-  { href: "/writing", label: "智能写作", icon: Bot },
+  { href: "/writing", label: "智能写作", icon: Bot, newTab: true },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project" },
   { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "docmgr" },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "knowledge" },
   { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "knowledge" },
-  { href: "/contract-price", label: "合同价格", icon: PackageSearch },
-  { href: "/output", label: "报告输出", icon: FileOutput, licenseModule: "report" },
+  { href: "/app-center", label: "应用中心", icon: Blocks },
   { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true },
 ];
 
@@ -67,17 +64,20 @@ function NavIcon({
   label,
   icon: Icon,
   isActive,
+  newTab,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   isActive: boolean;
+  newTab?: boolean;
 }) {
   return (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
         <Link
           href={href}
+          target={newTab ? "_blank" : undefined}
           className={cn(
             "flex items-center justify-center w-10 h-10 rounded-lg transition-colors",
             isActive
@@ -135,7 +135,7 @@ export function ExtensionsSidebar() {
 
         {/* Main navigation */}
         <nav className="flex flex-col items-center py-4 gap-2 flex-1">
-          {navItems.map(({ href, label, icon }) => {
+          {navItems.map(({ href, label, icon, newTab }) => {
             const isActive =
               pathname === href ||
               (href !== "/" && pathname.startsWith(href + "/"));
@@ -146,6 +146,7 @@ export function ExtensionsSidebar() {
                 label={label}
                 icon={icon}
                 isActive={isActive}
+                newTab={newTab}
               />
             );
           })}

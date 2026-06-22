@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Delete, RefreshCw, Search } from "lucide-react";
+import { Delete, PackageSearch, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ export function ContractsView() {
       <PageHeader
         title="合同缓存清单"
         description="从 RAGFlow 同步并解析的合同文档。删除将级联清除其分项明细。"
+        icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />

@@ -80,11 +80,6 @@ export function WorkspaceNavMenu() {
       label: t.sidebar.knowledgeFactory,
       icon: Factory,
     },
-    {
-      href: "/procurement",
-      label: "采购管理",
-      icon: ShoppingCart,
-    },
   ];
 
   return (

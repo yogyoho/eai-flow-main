@@ -42,7 +42,7 @@ const FILE_ICON_CONFIG: Record<string, FileIconConfig> = {
   shell:      { primary: "#22C55E", secondary: "#FFFFFF", label: "SH",   symbol: "terminal" },
 };
 
-function getFileType(mime: string | undefined | null, title: string | undefined | null): string {
+function getFileType(mime: string | undefined | null, title: string | undefined | null, docType?: string | null): string {
   if (!mime && title) {
     const ext = title.split(".").pop()?.toLowerCase() || "";
     const extMap: Record<string, string> = {
@@ -51,7 +51,7 @@ function getFileType(mime: string | undefined | null, title: string | undefined 
       doc: "word", docx: "word", xls: "excel", xlsx: "excel",
       csv: "csv", xml: "xml", yml: "yaml", yaml: "yaml", sh: "shell", txt: "text",
     };
-    return extMap[ext] || "text";
+    return extMap[ext] || (docType === "document" ? "markdown" : "text");
   }
   const m = (mime || "").toLowerCase();
   if (m.includes("markdown") || m.includes("x-markdown")) return "markdown";
@@ -70,7 +70,7 @@ function getFileType(mime: string | undefined | null, title: string | undefined 
   if (m.includes("yaml")) return "yaml";
   if (m.includes("shell") || m.includes("bash")) return "shell";
   if (m.includes("text/plain")) return "text";
-  return "text";
+  return docType === "document" ? "markdown" : "text";
 }
 
 function formatUpdatedAt(dateStr: string | undefined): string {
@@ -120,8 +120,8 @@ const SymbolPaths = {
   ),
 };
 
-function FileTypeIcon({ mime, title, size = "lg" }: { mime?: string | null; title?: string | null; size?: "sm" | "lg" }) {
-  const fileType = getFileType(mime, title);
+function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | null; title?: string | null; docType?: string | null; size?: "sm" | "lg" }) {
+  const fileType = getFileType(mime, title, docType);
   const config = FILE_ICON_CONFIG[fileType]!;
   const labelFill = config.dark ? config.secondary : "#fff";
   const symbolFill = config.dark ? config.secondary : "#fff";
@@ -277,7 +277,7 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
               </thead>
               <tbody className="divide-y divide-border">
                 {docs.map((doc) => {
-                  const ft = getFileType(doc.file_mime, doc.title);
+                  const ft = getFileType(doc.file_mime, doc.title, doc.doc_type);
                   const cfg = FILE_ICON_CONFIG[ft] ?? FILE_ICON_CONFIG.text!;
                   const fileSize = formatFileSize(doc.file_size);
                   return (
@@ -288,7 +288,7 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="sm" />
+                          <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="sm" />
                           <span className="font-medium text-foreground text-sm truncate group-hover:text-primary transition-colors">
                             {doc.title || "无标题"}
                           </span>
@@ -357,7 +357,7 @@ function ProjectDocCard({ doc, onClick }: { doc: AIDocument; onClick: () => void
       {/* Icon area */}
       <div className="flex-1 mb-4 flex items-center justify-center overflow-hidden">
         {isFileRef ? (
-          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
+          <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="lg" />
         ) : (
           <div className="w-12 h-14 rounded-lg bg-primary/10 flex items-center justify-center">
             <FileText className="w-6 h-6 text-primary" />

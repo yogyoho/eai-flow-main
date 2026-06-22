@@ -55,7 +55,7 @@ export function KanbanCard({ card, onDragStart, onDragEnd }: KanbanCardProps) {
             <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
-                  progress >= 100 ? "bg-green-500" : "bg-primary"
+                  progress >= 100 ? "bg-success" : "bg-primary"
                 }`}
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />

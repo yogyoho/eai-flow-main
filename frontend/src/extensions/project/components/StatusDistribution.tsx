@@ -13,7 +13,7 @@ const STATUS_ITEMS: { key: ChapterStatus; label: string; dotColor: string; activ
   { key: "draft", label: "待编写", dotColor: "bg-slate-300", activeColor: "text-slate-600" },
   { key: "writing", label: "编写中", dotColor: "bg-blue-400", activeColor: "text-blue-600" },
   { key: "review", label: "审核中", dotColor: "bg-amber-400", activeColor: "text-amber-600" },
-  { key: "completed", label: "已完成", dotColor: "bg-emerald-400", activeColor: "text-emerald-600" },
+  { key: "completed", label: "已完成", dotColor: "bg-success", activeColor: "text-success" },
 ];
 
 export function StatusDistribution({ chapters }: StatusDistributionProps) {

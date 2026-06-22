@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
 import { Suspense, useState } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: "basic", label: t.settings.sections.basic },
     { id: "data-sources", label: "数据源" },
-    { id: "plugins", label: "插件" },
+    // { id: "plugins", label: "插件" },   // 插件系统容器化改造中，暂时下线入口
     { id: "license", label: "许可证" },
   ];
 
@@ -27,6 +27,9 @@ export default function SettingsPage() {
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="bg-background border-b border-border h-16 flex items-center px-6 shrink-0">
+        <div className="p-1 border rounded-sm bg-slate-50 border-slate-200 text-slate-600 shrink-0 mr-3">
+          <Settings className="w-4 h-4" />
+        </div>
         <h1 className="font-bold text-lg tracking-tight text-foreground">{t.settings.basic.title}</h1>
       </header>
 
@@ -71,6 +74,7 @@ export default function SettingsPage() {
               <DataSourceManager />
             </Suspense>
           )}
+          {/* 插件系统容器化改造中，暂时下线入口
           {activeTab === "plugins" && (
             <Suspense
               fallback={
@@ -82,6 +86,7 @@ export default function SettingsPage() {
               <PluginMarketplace />
             </Suspense>
           )}
+          */}
           {activeTab === "license" && (
             <div className="p-6">
               <div className="max-w-4xl mx-auto">

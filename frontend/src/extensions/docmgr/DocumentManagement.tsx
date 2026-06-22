@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft,
-  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
+  CheckCircle2, Copy, Download, FileText, Grid3X3, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
   RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
@@ -34,6 +34,7 @@ import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
+import { useFolderTree } from "./useFolderTree";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
@@ -74,7 +75,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid-icon" | "grid-summary" | "list">("grid-icon");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const menuButtonRef = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -85,8 +86,11 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [shareDoc, setShareDoc] = useState<AIDocument | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [personalArchiveOpen, setPersonalArchiveOpen] = useState(false);
+  const [personalActiveFolderId, setPersonalActiveFolderId] = useState<string | null>(null);
   const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
+  const personalFolderTree = useFolderTree("personal", "file_ref");
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
@@ -108,7 +112,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleNavClick = (nav: typeof activeNav, folder?: string) => {
+  const handleNavClick = (nav: typeof activeNav, folder?: string, folderId?: string | null) => {
     onNavChange(nav);
     setSelectedIds(new Set());
     if (nav === "folder") {
@@ -120,10 +124,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     } else if (nav === "shared") {
       setFilter({ shared: true, q: search || undefined });
     } else if (nav === "file_ref") {
-      setFilter({ doc_type: "file_ref", project_scope: "personal", q: search || undefined });
+      setFilter({ doc_type: "file_ref", project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
     } else if (nav === "file_ref_folder") {
       if (folder) onFolderChange(folder);
-      setFilter({ project_scope: "project", folder, q: search || undefined });
+      setFilter({ project_scope: "project", folder, folder_id: folderId || undefined, q: search || undefined });
     }
   };
 
@@ -174,7 +178,9 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     const btn = menuButtonRef.current[id];
     if (btn) {
       const rect = btn.getBoundingClientRect();
-      setMenuAnchor({ x: rect.right, y: rect.top });
+      const menuW = 128; // w-32
+      const x = rect.right + menuW > window.innerWidth ? rect.left - menuW : rect.right;
+      setMenuAnchor({ x, y: rect.top });
     }
     setOpenMenuId(id);
   };
@@ -191,8 +197,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   return (
     <div className="flex h-full w-full bg-background">
       <div className="w-60 border-r border-border flex flex-col shrink-0 bg-muted/50">
-        <div className="p-4 flex items-center gap-2 border-b border-border">
-          <FolderCheck className="w-5 h-5 text-primary" />
+        <div className="p-3.5 flex items-center gap-2 border-b border-border">
+          <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+            <FolderCheck className="w-4 h-4" />
+          </div>
           <span className="font-semibold text-foreground text-l">文档空间</span>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
@@ -218,13 +226,36 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
           {/* AI任务存档 */}
           <div className="text-xs font-medium text-muted-foreground px-3 py-1">AI任务存档</div>
-          <button onClick={() => handleNavClick("file_ref")}
-            className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
-              activeNav === "file_ref" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-            <Archive className="w-4 h-4" />个人文件夹
-          </button>
+          {/* 个人文件夹 - 树形结构 */}
+          <div className="pt-2 mt-2">
+            <button
+              onClick={() => setPersonalArchiveOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Archive className="w-3.5 h-3.5" />
+                <span>个人文件夹</span>
+              </div>
+              {personalArchiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {personalArchiveOpen && (
+              <ProjectFolderTree
+                folders={personalFolderTree.folders}
+                expandedKeys={personalFolderTree.expandedKeys}
+                onToggleExpand={personalFolderTree.toggleExpand}
+                onSelectFolder={(folderId, folderName) => {
+                  setPersonalActiveFolderId(folderId);
+                  handleNavClick("file_ref", folderName, folderId);
+                }}
+                onCreateFolder={async (name, parentId) => { await personalFolderTree.createFolder(name, parentId); }}
+                onRenameFolder={personalFolderTree.renameFolder}
+                onDeleteFolder={personalFolderTree.deleteFolder}
+                activeFolderId={personalActiveFolderId}
+              />
+            )}
+          </div>
           {/* 项目文件夹 - 树形结构 */}
-          <div className="border-t border-border/50 pt-2 mt-2">
+          <div className="pt-2 mt-2">
             <button
               onClick={() => setArchiveOpen((v) => !v)}
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
@@ -241,10 +272,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 expandedKeys={folderTree.expandedKeys}
                 onToggleExpand={folderTree.toggleExpand}
                 onSelectFolder={(folderId, folderName) => {
-                  onNavChange("file_ref_folder");
-                  onFolderChange(folderName);
                   setActiveFolderId(folderId);
-                  setFilter({ project_scope: "project", folder_id: folderId });
+                  handleNavClick("file_ref_folder", folderName, folderId);
                 }}
                 onCreateFolder={async (name, parentId, projectId) => { await folderTree.createFolder(name, parentId, projectId) }}
                 onRenameFolder={folderTree.renameFolder}
@@ -272,22 +301,34 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           <div className="flex items-center gap-3">
             <div className="flex h-[30px] items-center overflow-hidden rounded-[6px] border border-border bg-card">
               <button
-                onClick={() => setViewMode("grid")}
+                onClick={() => setViewMode("grid-icon")}
                 className={cn(
                   "flex h-[30px] w-[30px] items-center justify-center transition-colors",
-                  viewMode === "grid" ? "text-foreground" : "text-muted-foreground",
+                  viewMode === "grid-icon" ? "text-foreground bg-muted" : "text-muted-foreground",
                 )}
+                title="图标网格"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <Grid3X3 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid-summary")}
+                className={cn(
+                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
+                  viewMode === "grid-summary" ? "text-foreground bg-muted" : "text-muted-foreground",
+                )}
+                title="摘要网格"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
                 className={cn(
                   "flex h-[30px] w-[30px] items-center justify-center transition-colors",
-                  viewMode === "list" ? "text-foreground" : "text-muted-foreground",
+                  viewMode === "list" ? "text-foreground bg-muted" : "text-muted-foreground",
                 )}
+                title="列表"
               >
-                <List className="h-4 w-4" />
+                <List className="h-3.5 w-3.5" />
               </button>
             </div>
             <span className="text-xs text-muted-foreground">共 {total} 篇文档</span>
@@ -302,11 +343,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               <p className="text-sm font-medium text-muted-foreground">{isFileRefView ? "暂无文件" : "暂无文档"}</p>
               <p className="text-xs text-muted-foreground/70 mt-1">{isFileRefView ? "AI任务产出的文件会出现在这里" : "点击「新建文档」开始创作"}</p>
             </div>
-          ) : viewMode === "grid" ? (
+          ) : viewMode === "grid-icon" || viewMode === "grid-summary" ? (
             <AnimatePresence>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {docs.map((doc) => (
                     <DocCard key={doc.id} doc={doc}
+                      variant={viewMode === "grid-icon" ? "icon" : "summary"}
                       isMenuOpen={openMenuId === doc.id}
                       onOpenMenu={handleOpenMenu}
                       menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
@@ -324,11 +366,11 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
-                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">名称</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">类型</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">大小</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">更新时间</th>
-                    <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
+                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">名称</th>
+                    <th className="py-3 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">类型</th>
+                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">大小</th>
+                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">更新时间</th>
+                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -344,12 +386,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                       <tr key={doc.id}
                         className={cn("hover:bg-muted/50 transition-colors group cursor-pointer", selectedIds.has(doc.id) && "bg-primary/5")}
                         onClick={handleClick}>
-                        <td className="py-4 px-6">
+                        <td className="py-4 px-4">
                           <div className="flex items-center gap-3 min-w-0">
                             {selectedIds.has(doc.id) ? (
                               <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                             ) : isFileRef ? (
-                              <FileTypeIcon mime={doc.file_mime} title={doc.title} size="sm" />
+                              <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="sm" />
                             ) : (
                               <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                             )}
@@ -358,26 +400,22 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-6">
-                          {isFileRef ? (() => {
-                            const fic = FILE_ICON_CONFIG[getFileType(doc.file_mime, doc.title)]!;
+                        <td className="py-4 px-3">
+                          {(() => {
+                            const fic = FILE_ICON_CONFIG[getFileType(doc.file_mime, doc.title, doc.doc_type)]!;
                             return (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                                 style={{ backgroundColor: fic.primary + "18", color: fic.primary }}>
                                 {fic.label}
                               </span>
                             );
-                          })() : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400 text-xs font-semibold">
-                              DOC
-                            </span>
-                          )}
+                          })()}
                         </td>
-                        <td className="py-4 px-6 text-sm text-muted-foreground">
+                        <td className="py-4 px-4 text-sm text-muted-foreground whitespace-nowrap">
                           {fileSize || "—"}
                         </td>
-                        <td className="py-4 px-6 text-sm text-muted-foreground">{updatedAt}</td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-4 text-sm text-muted-foreground whitespace-nowrap">{updatedAt}</td>
+                        <td className="py-4 px-4 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                               onClick={(e) => { e.stopPropagation(); toggleStar(doc.id, doc.is_starred ?? false); }}>
@@ -398,6 +436,36 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
             </div>
           )}
         </div>
+        {totalPages > 1 && (
+          <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Button
+                key={p}
+                variant={p === page ? "default" : "outline"}
+                size="icon"
+                onClick={() => setPage(p)}
+              >
+                {p}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
         {openMenuId && menuAnchor && (() => {
           const doc = docs.find((d) => d.id === openMenuId);
           if (!doc) return null;
@@ -425,36 +493,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           );
         })()}
       </div>
-      {totalPages > 1 && (
-        <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Button
-              key={p}
-              variant={p === page ? "default" : "outline"}
-              size="icon"
-              onClick={() => setPage(p)}
-            >
-              {p}
-            </Button>
-          ))}
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={page >= totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
       <AnimatePresence>
         {showNewModal && <NewDocModal isOpen={showNewModal} onClose={() => setShowNewModal(false)} onCreate={handleCreate} />}
       </AnimatePresence>
@@ -479,20 +517,22 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggleStar, onDelete, onShare, selected, onToggleSelect }: {
-  doc: AIDocument; isMenuOpen: boolean;
+function DocCard({ doc, variant = "auto", isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggleStar, onDelete, onShare, selected, onToggleSelect }: {
+  doc: AIDocument; variant?: "auto" | "icon" | "summary"; isMenuOpen: boolean;
   onOpenMenu: (id: string) => void; menuButtonRef: (el: HTMLButtonElement | null) => void;
   onSelect: () => void; onToggleStar: () => void; onDelete: () => void; onShare?: () => void;
   selected?: boolean; onToggleSelect?: () => void;
 }) {
   const isFileRef = doc.doc_type === "file_ref";
-  const preview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim().slice(0, 120);
+  const rawPreview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim();
+  const preview = rawPreview.slice(0, 120);
+  const showSummary = variant === "summary" ? !!preview : (variant === "auto" && !!preview);
   const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
   const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
 
   // For file_ref without content, build a file-info preview line
   const fileInfoLine = isFileRef
-    ? [getFileType(doc.file_mime, doc.title).toUpperCase(), fileSize].filter(Boolean).join(" · ")
+    ? [getFileType(doc.file_mime, doc.title, doc.doc_type).toUpperCase(), fileSize].filter(Boolean).join(" · ")
     : "";
 
   return (
@@ -501,14 +541,14 @@ function DocCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggl
       className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-primary/50 relative"
       onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
       <div className="flex-1 mb-4 relative overflow-hidden">
-        {preview ? (
+        {showSummary ? (
           <div className="bg-muted/50 rounded-lg p-4 h-full border border-border relative overflow-hidden">
             <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 dark:bg-purple-500/50 rounded-r-full" />
             <p className="text-sm text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview}</p>
           </div>
         ) : (
           <div className="bg-muted/50 rounded-lg h-full border border-border relative overflow-hidden flex flex-col items-center justify-center gap-2">
-            <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
+            <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="lg" />
             {fileInfoLine && <span className="text-xs text-muted-foreground">{fileInfoLine}</span>}
           </div>
         )}
@@ -565,7 +605,7 @@ const FILE_ICON_CONFIG: Record<string, FileIconConfig> = {
   shell:      { primary: "#22C55E", secondary: "#FFFFFF", label: "SH",   symbol: "terminal" },
 };
 
-function getFileType(mime: string | undefined | null, title: string | undefined | null): string {
+function getFileType(mime: string | undefined | null, title: string | undefined | null, docType?: string | null): string {
   if (!mime && title) {
     const ext = title.split(".").pop()?.toLowerCase() || "";
     const extMap: Record<string, string> = {
@@ -574,7 +614,7 @@ function getFileType(mime: string | undefined | null, title: string | undefined 
       doc: "word", docx: "word", xls: "excel", xlsx: "excel",
       csv: "csv", xml: "xml", yml: "yaml", yaml: "yaml", sh: "shell", txt: "text",
     };
-    return extMap[ext] || "text";
+    return extMap[ext] || (docType === "document" ? "markdown" : "text");
   }
   const m = (mime || "").toLowerCase();
   if (m.includes("markdown") || m.includes("x-markdown")) return "markdown";
@@ -593,7 +633,7 @@ function getFileType(mime: string | undefined | null, title: string | undefined 
   if (m.includes("yaml")) return "yaml";
   if (m.includes("shell") || m.includes("bash")) return "shell";
   if (m.includes("text/plain")) return "text";
-  return "text";
+  return docType === "document" ? "markdown" : "text";
 }
 
 const SymbolPaths = {
@@ -633,8 +673,8 @@ const SymbolPaths = {
   ),
 };
 
-function FileTypeIcon({ mime, title, size = "lg" }: { mime?: string | null; title?: string | null; size?: "sm" | "lg" }) {
-  const fileType = getFileType(mime, title);
+function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | null; title?: string | null; docType?: string | null; size?: "sm" | "lg" }) {
+  const fileType = getFileType(mime, title, docType);
   const config = FILE_ICON_CONFIG[fileType]!;
   const labelFill = config.dark ? config.secondary : "#fff";
   const symbolFill = config.dark ? config.secondary : "#fff";
@@ -718,7 +758,7 @@ function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onToggleStar,
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <FileTypeIcon mime={doc.file_mime} title={doc.title} size="lg" />
+          <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="lg" />
         )}
       </div>
       <h3 className="font-medium text-foreground text-sm line-clamp-1 mb-2 group-hover:text-primary transition-colors">

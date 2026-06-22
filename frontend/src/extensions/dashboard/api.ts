@@ -55,6 +55,11 @@ export const dashboardApi = {
     const qs = params.toString();
     return fetchApi<MyCalendarResponse>(`${BASE}/my-calendar${qs ? `?${qs}` : ""}`);
   },
+  createCalendarEvent: (data: { title: string; date: string; time?: string; type?: string }) =>
+    fetchApi<{ id: string; title: string; date: string; type: string }>(`${BASE}/my-calendar`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   getNotificationPreferences: () => fetchApi<NotificationPreference>(`${BASE}/notification-preferences`),
   updateNotificationPreferences: (data: NotificationPreferenceUpdate) =>
     putApi<NotificationPreference>(`${BASE}/notification-preferences`, data),

@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Shield, Network, FileText, Loader2 } from "lucide-react";
+import { Users, Shield, Network, FileText, Loader2, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
@@ -28,6 +28,9 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     <div className="flex flex-col h-full bg-background">
       {/* Top navigation bar */}
       <header className="bg-background border-b border-border h-16 flex items-center px-6 shrink-0">
+        <div className="p-1 border rounded-sm bg-slate-50 border-slate-200 text-slate-600 shrink-0 mr-3">
+          <Settings2 className="w-4 h-4" />
+        </div>
         <span className="font-bold text-lg tracking-tight text-foreground mr-8">系统管理</span>
         <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
           {navItems.map(({ href, label }) => {

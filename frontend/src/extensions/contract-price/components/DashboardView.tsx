@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Boxes, FileText, ListChecks, Play, RefreshCw } from "lucide-react";
+import { AlertTriangle, Boxes, FileText, ListChecks, PackageSearch, Play, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,13 +44,18 @@ export function DashboardView() {
     <div className="space-y-6 p-8">
       {/* Header + actions */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">合同价格分析总览</h1>
-          <p className="text-sm text-muted-foreground">
-            从 RAGFlow 合同知识库提取分项价格，按货物名称+技术参数聚类归并并统计单价。
+        <div className="flex items-center gap-3">
+          <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+            <PackageSearch className="w-4 h-4" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">合同价格分析总览</h1>
+            <p className="text-sm text-muted-foreground">
+              从 RAGFlow 合同知识库提取分项价格，按货物名称+技术参数聚类归并并统计单价。
           </p>
         </div>
-        <div className="flex items-center gap-2">
+      </div>
+      <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             刷新

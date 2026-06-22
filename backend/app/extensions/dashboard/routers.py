@@ -12,6 +12,8 @@ from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
 from .schemas import (
+    CalendarEvent,
+    CreateCalendarEvent,
     MyCalendarResponse,
     MyProjectsResponse,
     MyStatsResponse,
@@ -21,6 +23,7 @@ from .schemas import (
     NotificationPreferenceUpdate,
 )
 from .service import (
+    create_calendar_event,
     get_my_calendar,
     get_my_projects,
     get_my_stats,
@@ -78,6 +81,16 @@ async def my_calendar_endpoint(
     """Get calendar events for the current user."""
     events = await get_my_calendar(db, user.id, start, end)
     return MyCalendarResponse(events=events)
+
+
+@router.post("/my-calendar", response_model=CalendarEvent)
+async def create_calendar_event_endpoint(
+    body: CreateCalendarEvent,
+    user: DashboardUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a personal calendar event."""
+    return await create_calendar_event(db, user.id, body.title, body.date, body.time, body.type)
 
 
 # ── Notifications ──

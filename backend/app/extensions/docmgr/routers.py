@@ -337,12 +337,13 @@ async def list_folders(
 async def get_folder_tree(
     project_id: UUID | None = Query(None, description="Filter by project ID"),
     project_scope: str | None = Query(None, description="Filter: personal or project"),
+    doc_type: str | None = Query(None, description="Filter by doc_type, e.g. 'file_ref'"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Get folder tree for the current user."""
     folders = await FolderService.get_folder_tree(
-        db, current_user.id, project_id=project_id, project_scope=project_scope,
+        db, current_user.id, project_id=project_id, project_scope=project_scope, doc_type=doc_type,
     )
     return FolderTreeResponse(
         folders=[await FolderService.to_response(f) for f in folders]

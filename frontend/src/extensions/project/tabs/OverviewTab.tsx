@@ -51,7 +51,7 @@ const STATUS_BADGE_STYLES: Record<ChapterStatus, string> = {
   draft: "bg-slate-100 text-slate-600",
   writing: "bg-blue-100 text-blue-600",
   review: "bg-amber-100 text-amber-600",
-  completed: "bg-emerald-100 text-emerald-600",
+  completed: "bg-success/10 text-success",
 };
 
 const STATUS_LABELS: Record<ChapterStatus, string> = {

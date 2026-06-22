@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 
 import { folderApi, type FolderNode } from "@/extensions/api"
 
-export function useFolderTree(projectScope?: string) {
+export function useFolderTree(projectScope?: string, docType?: string) {
   const [folders, setFolders] = useState<FolderNode[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
@@ -12,7 +12,9 @@ export function useFolderTree(projectScope?: string) {
   const fetchTree = useCallback(async () => {
     setLoading(true)
     try {
-      const params = projectScope ? { project_scope: projectScope } : undefined
+      const params: { project_scope?: string; doc_type?: string } = {}
+      if (projectScope) params.project_scope = projectScope
+      if (docType) params.doc_type = docType
       const data = await folderApi.getTree(params)
       setFolders(data.folders)
     } catch (err) {
@@ -20,7 +22,7 @@ export function useFolderTree(projectScope?: string) {
     } finally {
       setLoading(false)
     }
-  }, [projectScope])
+  }, [projectScope, docType])
 
   useEffect(() => {
     fetchTree()

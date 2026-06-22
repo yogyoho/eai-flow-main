@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, RefreshCw } from "lucide-react";
+import { AlertTriangle, Check, PackageSearch, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export function ClustersView() {
       <PageHeader
         title="聚类审核"
         description="审核自动聚类分组：移动误归类的货物、合并同义组，确认后统计才生效。"
+        icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <>
             <div className="flex rounded-md border">

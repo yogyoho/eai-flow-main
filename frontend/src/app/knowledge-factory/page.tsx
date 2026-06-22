@@ -1,5 +1,6 @@
 "use client";
 
+import { Factory } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -53,6 +54,9 @@ function KnowledgeFactoryLayoutContent({ children }: { children: React.ReactNode
       <div className="flex flex-col h-full bg-muted">
         {/* 顶部导航栏 — 与 admin/layout.tsx 一致 */}
         <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
+          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0 mr-3">
+            <Factory className="w-4 h-4" />
+          </div>
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
           <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
             {NAV_ITEMS.map(({ id, label }) => {
@@ -88,6 +92,9 @@ function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNod
     <ShellLayout>
       <div className="flex flex-col h-full bg-muted">
         <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
+          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0 mr-3">
+            <Factory className="w-4 h-4" />
+          </div>
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
         </header>
         <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-background">{children}</div>

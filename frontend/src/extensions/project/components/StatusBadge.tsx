@@ -18,8 +18,8 @@ const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> =
     icon: <Loader2 className="h-3 w-3 animate-spin" />,
   },
   review: { color: "border-[#F59E0B]/20 bg-[#FFFBEB] text-[#F59E0B]", icon: <Clock className="h-3 w-3" /> },
-  finalizing: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
-  archived: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  finalizing: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+  archived: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Chapter statuses
   not_started: { color: "border-[#E2E8F0] bg-[#F9FAFB] text-[#94A3B8]", icon: <Clock className="h-3 w-3" /> },
@@ -27,8 +27,8 @@ const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> =
     color: "border-[#F59E0B]/20 bg-[#FFFBEB] text-[#F59E0B]",
     icon: <Clock className="h-3 w-3" />,
   },
-  approved: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
-  signed: { color: "border-[#10B981]/20 bg-[#ECFDF5] text-[#10B981]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+  signed: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Error states
   error: { color: "border-[#EF4444]/20 bg-[#FEF2F2] text-[#EF4444]", icon: <AlertCircle className="h-3 w-3" /> },

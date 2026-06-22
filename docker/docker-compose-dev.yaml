@@ -183,6 +183,36 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── CAD Comprehension MCP Server ───────────────────────────────────────
+  # Standalone container: ezdxf-based DXF parse + rasterize, exposed to the
+  # gateway as MCP server `cad` (streamable-http, port 8003). Keeps heavy CAD
+  # deps (matplotlib/ezdxf, and ODA later) out of the gateway image so gateway
+  # startup stays fast. Phase 1: DXF only.
+  #
+  # Comes up with `make docker-start` (this compose file). Then flip
+  # extensions_config.json mcpServers.cad.enabled=true and restart gateway.
+  cad:
+    build:
+      context: ../mcp-server/cad-mcp
+      dockerfile: Dockerfile
+      args:
+        # Reuse the backend's pip index mirror if set (restricted networks).
+        PIP_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-cad
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8003
+      - CAD_DATA_ROOT=/data
+    volumes:
+      # Same host data dir the gateway bind-mounts via ../backend/:/app/backend/.
+      # analyze_cad resolves agent virtual paths (/mnt/user-data/<rest>) by
+      # glob-searching /data/users/*/threads/*/user-data/<rest>. See mcp-server/cad-mcp/README.md.
+      - ../backend/.deer-flow:/data:rw
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.

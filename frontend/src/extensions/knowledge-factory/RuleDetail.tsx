@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { AlertTriangle, BookOpen, Globe, Info, MapPin, ShieldCheck, Target, Wrench, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -197,487 +198,353 @@ export function RuleDetail({
         className="w-full max-w-[1040px] max-h-[90vh] flex flex-col bg-background rounded-xl border shadow-xl overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex justify-between items-start gap-4 px-6 py-5 border-b">
-          <div>
-            <h2 className="text-xl font-bold text-foreground m-0">
+        {/* ── Header ── */}
+        <div className="flex justify-between items-start gap-4 px-6 py-4 border-b bg-card">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-foreground">
               {isEditing ? "编辑规则" : "规则详情"}
             </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+            <p className="mt-0.5 text-sm text-muted-foreground truncate">
               {rule.ruleId} · {rule.name}
             </p>
           </div>
           <button
-            className="w-8 h-8 flex items-center justify-center bg-transparent border-none rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors text-2xl leading-none cursor-pointer"
+            className="w-8 h-8 flex shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
             onClick={onClose}
+            aria-label="关闭"
           >
-            ×
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* ── Content ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
-            <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-destructive/10 text-destructive mb-4">
-              {error}
-              <button onClick={() => setError(null)}>×</button>
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              <span className="inline-flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {error}
+              </span>
+              <button onClick={() => setError(null)} className="shrink-0 hover:opacity-70">
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <section className="p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">基本信息</h3>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">规则 ID</label>
-                <span className="inline-flex items-center max-w-full px-3 py-1.5 rounded-md font-medium font-mono bg-muted text-foreground border border-border">
-                  {rule.ruleId}
-                </span>
+          {/* Identity strip: compact attribute badges */}
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-mono font-medium bg-muted text-foreground border border-border/60">
+              <Target className="h-3 w-3 text-muted-foreground" />
+              {rule.ruleId}
+            </span>
+            {isEditing ? (
+              <Select value={editedRule.type} onValueChange={(value) => handleChange("type", value)}>
+                <SelectTrigger className="h-auto py-1 px-2 text-sm gap-1 w-auto min-w-0 border-primary/20 bg-primary/5 text-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className={selectContentClassName}>
+                  {RULE_TYPES.map((item) => (<SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+                {typeLabel}
+              </span>
+            )}
+            {isEditing ? (
+              <Select value={editedRule.severity} onValueChange={(value) => handleChange("severity", value)}>
+                <SelectTrigger className="h-auto py-1 px-2 text-sm gap-1 w-auto min-w-0 border-transparent font-semibold" style={{color: severityColor, backgroundColor: `${severityColor}1a`}}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className={selectContentClassName}>
+                  {SEVERITY_LEVELS.map((item) => (<SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span
+                className="inline-flex items-center pl-2 pr-2.5 py-1 rounded-md text-sm font-semibold border"
+                style={{color: severityColor, borderColor: `${severityColor}40`, backgroundColor: `${severityColor}14`}}
+              >
+                {editedRule.severityName ?? severityInfo?.label}
+              </span>
+            )}
+            {isEditing ? (
+              <div className="flex items-center gap-1.5">
+                <Checkbox id="rule-detail-enabled-strip" checked={editedRule.enabled} onCheckedChange={(checked) => handleChange("enabled", checked === true)} />
+                <label htmlFor="rule-detail-enabled-strip" className="text-sm text-foreground cursor-pointer">启用</label>
               </div>
+            ) : (
+              <span className={cn(
+                "inline-flex items-center gap-1 px-2 py-1 rounded-md text-sm font-medium border",
+                editedRule.enabled ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-border"
+              )}>
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", editedRule.enabled ? "bg-success" : "bg-muted-foreground")} />
+                {editedRule.enabled ? "已启用" : "已禁用"}
+              </span>
+            )}
+          </div>
 
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">规则名称</label>
-                {isEditing ? (
-                  <Input
-                    type="text"
-                    value={editedRule.name}
-                    onChange={(event) => handleChange("name", event.target.value)}
-                  />
-                ) : (
-                  <span className="text-sm text-foreground font-semibold">{rule.name}</span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">规则类型</label>
-                {isEditing ? (
-                  <Select value={editedRule.type} onValueChange={(value) => handleChange("type", value)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="选择规则类型" />
-                    </SelectTrigger>
-                    <SelectContent className={selectContentClassName}>
-                      {RULE_TYPES.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="inline-flex items-center max-w-full px-3 py-1.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20">
-                    {typeLabel}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">严重级别</label>
-                {isEditing ? (
-                  <Select
-                    value={editedRule.severity}
-                    onValueChange={(value) => handleChange("severity", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="选择严重级别" />
-                    </SelectTrigger>
-                    <SelectContent className={selectContentClassName}>
-                      {SEVERITY_LEVELS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span
-                    className="inline-flex items-center max-w-full pl-3 rounded-md font-semibold border"
-                    style={{
-                      color: severityColor,
-                      borderColor: `${severityColor}47`,
-                      backgroundColor: `${severityColor}1a`,
-                      boxShadow: `inset 3px 0 0 0 ${severityColor}`,
-                    }}
-                  >
-                    {editedRule.severityName ?? severityInfo?.label}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground">启用状态</label>
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="rule-detail-enabled"
-                      checked={editedRule.enabled}
-                      onCheckedChange={(checked) => handleChange("enabled", checked === true)}
-                    />
-                    <label htmlFor="rule-detail-enabled" className="text-sm text-foreground cursor-pointer">
-                      启用
-                    </label>
-                  </div>
-                ) : (
-                  <span
-                    className={cn(
-                      "inline-flex items-center max-w-full px-3 py-1.5 rounded-full font-medium before:content-[''] before:w-2 before:h-2 before:rounded-full before:shrink-0",
-                      editedRule.enabled
-                        ? "bg-success/10 text-success border border-success/20 before:bg-success before:shadow-[0_0_0_2px_rgba(16,185,129,0.25)]"
-                        : "bg-muted text-muted-foreground border border-border before:bg-muted-foreground"
+          {/* 3-column main grid */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Col 1: 基本信息 + 适用范围 */}
+            <div className="space-y-4">
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  基本信息
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">规则名称</label>
+                    {isEditing ? (
+                      <Input type="text" value={editedRule.name} onChange={(event) => handleChange("name", event.target.value)} className="h-8 text-sm" />
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-muted text-foreground border border-border/60">{rule.name}</span>
                     )}
-                  >
-                    {editedRule.enabled ? "已启用" : "已禁用"}
-                  </span>
-                )}
-              </div>
-            </section>
-
-            <section className="p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">行业与适用范围</h3>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">行业</label>
-                {isEditing ? (
-                  <Select value={editedRule.industry} onValueChange={(value) => handleChange("industry", value)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="选择行业" />
-                    </SelectTrigger>
-                    <SelectContent className={selectContentClassName}>
-                      {dictionaries.industries.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="text-sm text-muted-foreground">{industryLabel}</span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">适用报告类型</label>
-                {isEditing ? (
-                  <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-muted">
-                    {dictionaries.reportTypes.map((item) => {
-                      const id = `rule-detail-report-${item.value}`;
-                      return (
-                        <div key={item.value} className="flex items-start gap-2 text-sm text-foreground">
-                          <Checkbox
-                            id={id}
-                            className="mt-0.5 shrink-0"
-                            checked={(editedRule.reportTypes ?? []).includes(item.value)}
-                            onCheckedChange={(checked) => handleReportTypeToggle(item.value, checked === true)}
-                          />
-                          <label htmlFor={id} className="cursor-pointer leading-tight">{item.label}</label>
-                        </div>
-                      );
-                    })}
                   </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {reportTypeLabels.map((label) => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center max-w-full px-3 py-1.5 rounded-md font-medium bg-background text-primary border border-primary/30"
-                      >
-                        {label}
-                      </span>
-                    ))}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">行业</label>
+                    {isEditing ? (
+                      <Select value={editedRule.industry} onValueChange={(value) => handleChange("industry", value)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="选择行业" /></SelectTrigger>
+                        <SelectContent className={selectContentClassName}>
+                          {dictionaries.industries.map((item) => (<SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-muted text-foreground border border-border/60">{industryLabel}</span>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              </section>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground">适用范围</label>
-                {isEditing ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <Checkbox
-                        id="rule-detail-national"
-                        checked={editedRule.nationalLevel}
-                        onCheckedChange={(checked) => handleNationalLevelChange(checked === true)}
-                      />
-                      <label htmlFor="rule-detail-national" className="text-sm text-foreground cursor-pointer">
-                        全国规则
-                      </label>
-                    </div>
-                    <div
-                      className={cn(
-                        "grid grid-cols-2 gap-3 p-3 border rounded-lg bg-muted",
-                        editedRule.nationalLevel && "opacity-55"
-                      )}
-                    >
-                      {dictionaries.regions
-                        .filter((item) => item.value !== "nationwide")
-                        .map((item) => {
-                          const id = `rule-detail-region-${item.value}`;
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                  适用范围
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">报告类型</label>
+                    {isEditing ? (
+                      <div className="grid grid-cols-2 gap-2 p-2.5 border rounded-lg bg-muted/50">
+                        {dictionaries.reportTypes.map((item) => {
+                          const id = `rule-detail-report-${item.value}`;
                           return (
-                            <div key={item.value} className="flex items-start gap-2 text-sm text-foreground">
-                              <Checkbox
-                                id={id}
-                                className="mt-0.5 shrink-0"
-                                checked={(editedRule.applicableRegions ?? []).includes(item.value)}
-                                disabled={editedRule.nationalLevel}
-                                onCheckedChange={(checked) => handleRegionToggle(item.value, checked === true)}
-                              />
-                              <label
-                                htmlFor={id}
-                                className={cn(
-                                  "leading-tight cursor-pointer",
-                                  editedRule.nationalLevel && "cursor-not-allowed opacity-60"
-                                )}
-                              >
-                                {item.label}
-                              </label>
+                            <div key={item.value} className="flex items-start gap-1.5">
+                              <Checkbox id={id} className="mt-0.5 shrink-0" checked={(editedRule.reportTypes ?? []).includes(item.value)} onCheckedChange={(checked) => handleReportTypeToggle(item.value, checked === true)} />
+                              <label htmlFor={id} className="text-sm cursor-pointer leading-tight">{item.label}</label>
                             </div>
                           );
                         })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {reportTypeLabels.map((label) => (
+                          <span key={label} className="inline-flex items-center px-2 py-0.5 rounded-md text-sm font-medium bg-primary/5 text-primary border border-primary/20">{label}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">地区</label>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox id="rule-detail-national" checked={editedRule.nationalLevel} onCheckedChange={(checked) => handleNationalLevelChange(checked === true)} />
+                          <label htmlFor="rule-detail-national" className="text-sm text-foreground cursor-pointer">全国规则</label>
+                        </div>
+                        <div className={cn("grid grid-cols-2 gap-2 p-2.5 border rounded-lg bg-muted/50", editedRule.nationalLevel && "opacity-50 pointer-events-none")}>
+                          {dictionaries.regions.filter((item) => item.value !== "nationwide").map((item) => {
+                            const id = `rule-detail-region-${item.value}`;
+                            return (
+                              <div key={item.value} className="flex items-start gap-1.5">
+                                <Checkbox id={id} className="mt-0.5 shrink-0" checked={(editedRule.applicableRegions ?? []).includes(item.value)} disabled={editedRule.nationalLevel} onCheckedChange={(checked) => handleRegionToggle(item.value, checked === true)} />
+                                <label htmlFor={id} className={cn("text-sm leading-tight cursor-pointer", editedRule.nationalLevel && "cursor-not-allowed opacity-60")}>{item.label}</label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {applicableRegionLabels.map((label) => (
+                          <span key={label} className="inline-flex items-center px-2 py-0.5 rounded-md text-sm font-medium bg-success/10 text-success border border-success/20">{label}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Col 2: 规则描述 + 章节映射 */}
+            <div className="space-y-4">
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                  规则描述
+                </h3>
+                {isEditing ? (
+                  <Textarea value={editedRule.description ?? ""} onChange={(event) => handleChange("description", event.target.value)} rows={3} className="text-sm" placeholder="规则说明（可选）" />
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-muted/50 border border-border/60">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">{editedRule.description || "无描述"}</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  章节映射
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">来源章节</label>
+                    {isEditing ? (
+                      <Textarea value={sourceSectionsInput} onChange={(event) => setSourceSectionsInput(event.target.value)} rows={2} className="text-sm" placeholder="多个章节用逗号或换行分隔" />
+                    ) : (
+                      <div className="p-2 rounded-lg bg-muted/50 border border-border/60">
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">{(rule.sourceSections?.length ?? 0) > 0 ? (rule.sourceSections ?? []).join("、") : "—"}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">目标章节</label>
+                    {isEditing ? (
+                      <Textarea value={targetSectionsInput} onChange={(event) => setTargetSectionsInput(event.target.value)} rows={2} className="text-sm" placeholder="多个章节用逗号或换行分隔" />
+                    ) : (
+                      <div className="p-2 rounded-lg bg-muted/50 border border-border/60">
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">{(rule.targetSections?.length ?? 0) > 0 ? (rule.targetSections ?? []).join("、") : "—"}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Col 3: 错误与修复 + 元信息 */}
+            <div className="space-y-4">
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                  错误与修复
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">错误提示</label>
+                    {isEditing ? (
+                      <Textarea value={editedRule.errorMessage ?? ""} onChange={(event) => handleChange("errorMessage", event.target.value)} rows={2} className="text-sm" />
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-destructive/8 border border-destructive/15 border-l-2 border-l-destructive/50">
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">{editedRule.errorMessage || "—"}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-muted-foreground">修复建议</label>
+                    {isEditing ? (
+                      <Textarea value={editedRule.autoFixSuggestion ?? ""} onChange={(event) => handleChange("autoFixSuggestion", event.target.value)} rows={2} className="text-sm" />
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-success/8 border border-success/15 border-l-2 border-l-success/50">
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">{editedRule.autoFixSuggestion || "—"}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="p-4 border rounded-xl bg-card">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  元信息
+                </h3>
+                <div className="space-y-2">
+                  {rule.seedVersion && (
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-sm text-muted-foreground">种子版本</span>
+                      <span className="text-sm text-foreground font-mono font-medium">{rule.seedVersion}</span>
                     </div>
-                  </>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {applicableRegionLabels.map((label) => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center max-w-full px-3 py-1.5 rounded-md font-medium bg-success/10 text-success border border-success/20"
-                      >
-                        {label}
-                      </span>
-                    ))}
+                  )}
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm text-muted-foreground">创建时间</span>
+                    <span className="text-sm text-foreground tabular-nums">{new Date(rule.createdAt ?? new Date()).toLocaleString()}</span>
                   </div>
-                )}
-              </div>
-            </section>
-
-            <section className="col-span-2 p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">规则描述</h3>
-              {isEditing ? (
-                <div className="flex flex-col gap-2">
-                  <Textarea
-                    value={editedRule.description ?? ""}
-                    onChange={(event) => handleChange("description", event.target.value)}
-                    rows={3}
-                    placeholder="规则说明（可选）"
-                  />
-                </div>
-              ) : (
-                <div className="p-3 rounded-lg bg-muted border">
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">
-                    {editedRule.description ?? "无描述"}
-                  </p>
-                </div>
-              )}
-            </section>
-
-            <section className="p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">章节映射</h3>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">来源章节</label>
-                {isEditing ? (
-                  <Textarea
-                    value={sourceSectionsInput}
-                    onChange={(event) => setSourceSectionsInput(event.target.value)}
-                    rows={3}
-                    placeholder="多个章节用逗号或换行分隔"
-                  />
-                ) : (
-                  <div className="p-2.5 rounded-lg bg-muted border">
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">
-                      {(rule.sourceSections?.length ?? 0) > 0 ? (rule.sourceSections ?? []).join("、") : "无"}
-                    </p>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm text-muted-foreground">更新时间</span>
+                    <span className="text-sm text-foreground tabular-nums">{new Date(rule.updatedAt ?? new Date()).toLocaleString()}</span>
                   </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground">目标章节</label>
-                {isEditing ? (
-                  <Textarea
-                    value={targetSectionsInput}
-                    onChange={(event) => setTargetSectionsInput(event.target.value)}
-                    rows={3}
-                    placeholder="多个章节用逗号或换行分隔"
-                  />
-                ) : (
-                  <div className="p-2.5 rounded-lg bg-muted border">
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words m-0">
-                      {(rule.targetSections?.length ?? 0) > 0 ? (rule.targetSections ?? []).join("、") : "无"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">错误与修复</h3>
-
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-sm font-medium text-muted-foreground">错误提示</label>
-                {isEditing ? (
-                  <Textarea
-                    value={editedRule.errorMessage ?? ""}
-                    onChange={(event) => handleChange("errorMessage", event.target.value)}
-                    rows={2}
-                  />
-                ) : (
-                  <div
-                    className="p-2.5 rounded-lg border"
-                    style={{
-                      backgroundColor: "var(--destructive)",
-                      borderColor: "color-mix(in srgb, var(--destructive) 30%, transparent)",
-                      boxShadow: "inset 3px 0 0 0 color-mix(in srgb, var(--destructive) 60%, transparent)",
-                    }}
-                  >
-                    <p className="text-sm text-destructive leading-relaxed whitespace-pre-wrap break-words m-0">
-                      {editedRule.errorMessage ?? "无"}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground">修复建议</label>
-                {isEditing ? (
-                  <Textarea
-                    value={editedRule.autoFixSuggestion ?? ""}
-                    onChange={(event) => handleChange("autoFixSuggestion", event.target.value)}
-                    rows={2}
-                  />
-                ) : (
-                  <div
-                    className="p-2.5 rounded-lg border"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--success) 8%, transparent)",
-                      borderColor: "color-mix(in srgb, var(--success) 30%, transparent)",
-                      boxShadow: "inset 3px 0 0 0 var(--success)",
-                    }}
-                  >
-                    <p className="text-sm text-success leading-relaxed whitespace-pre-wrap break-words m-0">
-                      {editedRule.autoFixSuggestion ?? "无"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="col-span-2 p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">验证配置</h3>
-
-              {isEditing ? (
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-muted-foreground">Validation Config JSON</label>
-                  <Textarea
-                    className="min-h-[320px] font-mono text-sm"
-                    value={validationConfigText}
-                    onChange={(event) => setValidationConfigText(event.target.value)}
-                    rows={16}
-                    spellCheck={false}
-                  />
                 </div>
-              ) : (rule.validationConfig?.fields?.length ?? 0) > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr>
-                        <th className="p-3 text-left border-b bg-muted text-foreground font-semibold">字段名称</th>
-                        <th className="p-3 text-left border-b bg-muted text-foreground font-semibold">阈值</th>
-                        <th className="p-3 text-left border-b bg-muted text-foreground font-semibold">单位</th>
-                        <th className="p-3 text-left border-b bg-muted text-foreground font-semibold">标准</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(rule.validationConfig?.fields as { fieldName: string; limit?: number; min?: number; max?: number; unit?: string; standard?: string }[] | undefined)?.map((field, index) => (
-                        <tr key={`${field.fieldName}-${index}`}>
-                          <td className="p-3 text-left border-b text-muted-foreground">{field.fieldName}</td>
-                          <td className="p-3 text-left border-b text-muted-foreground">
-                            {field.limit !== undefined
-                              ? `≤ ${field.limit}`
-                              : field.min !== undefined && field.max !== undefined
-                                ? `${field.min} - ${field.max}`
-                                : field.min !== undefined
-                                  ? `≥ ${field.min}`
-                                  : "-"}
-                          </td>
-                          <td className="p-3 text-left border-b text-muted-foreground">{field.unit ?? "-"}</td>
-                          <td className="p-3 text-left border-b text-muted-foreground">{field.standard ?? "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-lg bg-muted border">
-                  <p className="text-sm text-muted-foreground leading-relaxed m-0">无验证字段配置</p>
-                </div>
-              )}
-            </section>
-
-            <section className="p-4 border rounded-xl bg-background">
-              <h3 className="text-sm font-semibold text-foreground mb-3">元信息</h3>
-              <div className="grid gap-3">
-                {rule.seedVersion && (
-                  <div className="grid grid-cols-[100px_1fr] gap-3 items-start">
-                    <span className="text-sm font-medium text-muted-foreground">种子版本</span>
-                    <span className="text-sm text-foreground font-mono">{rule.seedVersion}</span>
-                  </div>
-                )}
-                <div className="grid grid-cols-[100px_1fr] gap-3 items-start">
-                  <span className="text-sm font-medium text-muted-foreground">创建时间</span>
-                  <span className="text-sm text-foreground leading-relaxed break-words">
-                    {new Date(rule.createdAt ?? new Date()).toLocaleString()}
-                  </span>
-                </div>
-                <div className="grid grid-cols-[100px_1fr] gap-3 items-start">
-                  <span className="text-sm font-medium text-muted-foreground">更新时间</span>
-                  <span className="text-sm text-foreground leading-relaxed break-words">
-                    {new Date(rule.updatedAt ?? new Date()).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </section>
+              </section>
+            </div>
           </div>
+
+          {/* Full-width: 验证配置 */}
+          <section className="p-4 border rounded-xl bg-card">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-3">
+              <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              验证配置
+            </h3>
+            {isEditing ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Validation Config JSON</label>
+                <Textarea className="min-h-[280px] font-mono text-sm" value={validationConfigText} onChange={(event) => setValidationConfigText(event.target.value)} rows={14} spellCheck={false} />
+              </div>
+            ) : (rule.validationConfig?.fields?.length ?? 0) > 0 ? (
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2.5 text-left text-foreground font-semibold">字段名称</th>
+                      <th className="px-3 py-2.5 text-left text-foreground font-semibold">阈值</th>
+                      <th className="px-3 py-2.5 text-left text-foreground font-semibold">单位</th>
+                      <th className="px-3 py-2.5 text-left text-foreground font-semibold">标准</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(rule.validationConfig?.fields as { fieldName: string; limit?: number; min?: number; max?: number; unit?: string; standard?: string }[] | undefined)?.map((field, index) => (
+                      <tr key={`${field.fieldName}-${index}`} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-foreground font-medium">{field.fieldName}</td>
+                        <td className="px-3 py-2 text-muted-foreground tabular-nums">
+                          {field.limit !== undefined ? `≤ ${field.limit}` : field.min !== undefined && field.max !== undefined ? `${field.min} – ${field.max}` : field.min !== undefined ? `≥ ${field.min}` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">{field.unit || "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{field.standard || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-muted/50 border border-border/60 text-center">
+                <p className="text-sm text-muted-foreground m-0">无验证字段配置</p>
+              </div>
+            )}
+          </section>
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-5 border-t bg-muted">
-          {isEditing ? (
-            <>
-              <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                取消
-              </Button>
-              <Button onClick={() => void handleSave()} disabled={saving}>
-                {saving ? "保存中..." : "保存"}
-              </Button>
-            </>
-          ) : (
-            <>
-              {onViewLogs && (
-                <Button variant="outline" onClick={onViewLogs}>
-                  查看日志
-                </Button>
-              )}
-              {onTestRule && (
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-white"
-                  onClick={onTestRule}
-                >
-                  测试规则
-                </Button>
-              )}
-              {!readOnly && onDelete && (
-                <Button
-                  variant="destructive"
-                  onClick={() => void handleDelete()}
-                  disabled={deleting}
-                >
-                  {deleting ? "删除中..." : "删除"}
-                </Button>
-              )}
-              {!readOnly && (
-                <Button onClick={() => setIsEditing(true)}>
-                  编辑
-                </Button>
-              )}
-            </>
-          )}
+        {/* ── Footer ── */}
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t bg-muted/50">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <ShieldCheck className="h-3 w-3" />
+            <span className="font-mono">{rule.ruleId}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>取消</Button>
+                <Button size="sm" onClick={() => void handleSave()} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              </>
+            ) : (
+              <>
+                {onViewLogs && <Button variant="outline" size="sm" onClick={onViewLogs}>查看日志</Button>}
+                {onTestRule && <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onTestRule}>测试规则</Button>}
+                {!readOnly && onDelete && <Button variant="destructive" size="sm" onClick={() => void handleDelete()} disabled={deleting}>{deleting ? "删除中..." : "删除"}</Button>}
+                {!readOnly && <Button size="sm" onClick={() => setIsEditing(true)}>编辑</Button>}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

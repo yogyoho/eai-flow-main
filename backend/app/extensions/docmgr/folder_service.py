@@ -73,8 +73,13 @@ class FolderService:
         user_id: UUID,
         project_id: UUID | None = None,
         project_scope: str | None = None,
+        doc_type: str | None = None,
     ) -> list[Folder]:
-        """Get folder tree for the user. Returns root-level folders with children loaded."""
+        """Get folder tree for the user. Returns root-level folders with children loaded.
+
+        When doc_type is specified (e.g. "file_ref"), only folders containing
+        documents of that type are included and doc_count reflects that type.
+        """
         # Base visibility: own folders OR folders from projects the user is a member of
         own_folders = Folder.owner_id == user_id
         my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
@@ -102,15 +107,25 @@ class FolderService:
 
         # Load children recursively and compute doc_counts
         for root in roots:
-            await FolderService._load_children_recursive(db, root)
+            await FolderService._load_children_recursive(db, root, doc_type)
+
+        # When filtering by doc_type, promote folders with docs to root level,
+        # skipping intermediate folders that have no matching docs themselves.
+        if doc_type:
+            roots = FolderService._flatten_roots(roots, doc_type)
 
         return roots
 
     @staticmethod
-    async def _load_children_recursive(db: AsyncSession, folder: Folder) -> Folder:
-        """Recursively load children and compute doc counts."""
+    async def _load_children_recursive(db: AsyncSession, folder: Folder, doc_type: str | None = None) -> Folder:
+        """Recursively load children and compute doc counts.
+
+        When doc_type is specified, only counts documents of that type.
+        """
         # Count docs directly in this folder
         count_stmt = select(func.count(AIDocument.id)).where(AIDocument.folder_id == folder.id)
+        if doc_type:
+            count_stmt = count_stmt.where(AIDocument.doc_type == doc_type)
         count_result = await db.execute(count_stmt)
         folder.doc_count = count_result.scalar() or 0
 
@@ -125,9 +140,35 @@ class FolderService:
         folder.children = list(child_result.scalars().all())
 
         for child in folder.children:
-            await FolderService._load_children_recursive(db, child)
+            await FolderService._load_children_recursive(db, child, doc_type)
 
         return folder
+
+    @staticmethod
+    def _flatten_roots(roots: list[Folder], doc_type: str) -> list[Folder]:
+        """Promote folders with matching docs to root level, skipping empty ancestors."""
+        result: list[Folder] = []
+        for root in roots:
+            promoted = FolderService._promote_docs_folders(root, doc_type)
+            result.extend(promoted)
+        return result
+
+    @staticmethod
+    def _promote_docs_folders(folder: Folder, doc_type: str) -> list[Folder]:
+        """If this folder has docs, keep it (with pruned children).
+        If not, promote its children that have docs to this level."""
+        # Prune children first
+        promoted_children: list[Folder] = []
+        for child in folder.children or []:
+            promoted_children.extend(FolderService._promote_docs_folders(child, doc_type))
+        folder.children = promoted_children
+
+        if folder.doc_count > 0:
+            # This folder itself has matching docs — keep it at its level
+            return [folder]
+        else:
+            # No docs of matching type — promote children to this level
+            return promoted_children
 
     @staticmethod
     async def create_folder(

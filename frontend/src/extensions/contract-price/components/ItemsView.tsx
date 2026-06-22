@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, PackageSearch, RefreshCw, Search } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function ItemsView() {
       <PageHeader
         title="分项明细"
         description="每条货物的单价与参数。可修正解析错误的单价，并记录修正原因。"
+        icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />

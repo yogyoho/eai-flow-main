@@ -6,6 +6,7 @@ import {
   FileOutput,
   FolderCheck,
   LayoutDashboard,
+  PackageSearch,
   Settings2,
 } from "lucide-react";
 
@@ -104,6 +105,18 @@ export const BUILTIN_APPS: AppDefinition[] = [
     isBuiltin: true,
   },
   {
+    id: "procurement",
+    name: "采购管理",
+    description: "合同价格分析与采购分项管理，聚类归并与统计",
+    icon: PackageSearch,
+    category: "project",
+    path: "/contract-price",
+    licenseModule: null,
+    sortOrder: 8,
+    sortKey: "caigouguanli",
+    isBuiltin: true,
+  },
+  {
     id: "admin",
     name: "系统管理",
     description: "用户、角色、部门与权限的统一管理后台",
@@ -112,7 +125,7 @@ export const BUILTIN_APPS: AppDefinition[] = [
     path: "/admin",
     licenseModule: null,
     adminOnly: true,
-    sortOrder: 8,
+    sortOrder: 9,
     sortKey: "xitongguanli",
     isBuiltin: true,
   },

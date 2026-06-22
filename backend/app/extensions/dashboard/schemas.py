@@ -89,6 +89,15 @@ class CalendarEvent(BaseModel):
     color: str = "blue"  # blue | yellow | green | red | purple
 
 
+class CreateCalendarEvent(BaseModel):
+    """Request to create a personal calendar event."""
+
+    title: str
+    date: str  # ISO 8601 date string
+    time: str | None = None
+    type: str = "personal"  # deadline | milestone | phase_start | personal
+
+
 class MyCalendarResponse(BaseModel):
     """Response for the my-calendar endpoint."""
 

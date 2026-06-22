@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check install setup doctor detect-thread-boundaries detect-blocking-io dev dev-daemon start start-daemon stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config config-upgrade check install setup doctor detect-thread-boundaries detect-blocking-io dev dev-daemon start start-daemon stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway rebuild-frontend check-frontend-deps
 
 BASH ?= bash
 # Detect uv path - prefer uv in PATH, fall back to Windows Python Scripts
@@ -49,6 +49,8 @@ help:
 	@echo "  make docker-logs     - View Docker development logs"
 	@echo "  make docker-logs-frontend - View Docker frontend logs"
 	@echo "  make docker-logs-gateway - View Docker gateway logs"
+	@echo "  make rebuild-frontend - Rebuild frontend image after dependency changes (NOT just restart)"
+	@echo "  make check-frontend-deps - Warn if host deps drifted from the frontend container"
 
 ## Setup & Diagnosis
 setup:
@@ -152,6 +154,17 @@ docker-logs-frontend:
 	@$(RUN_WITH_GIT_BASH) ./scripts/docker.sh logs --frontend
 docker-logs-gateway:
 	@$(RUN_WITH_GIT_BASH) ./scripts/docker.sh logs --gateway
+
+# Rebuild the frontend image after dependency changes (package.json / pnpm-lock.yaml).
+# The dev container's node_modules is image-baked (NOT bind-mounted, since host=Windows
+# and container=Linux), so a plain `restart`/`up` will NOT pick up dependency changes.
+rebuild-frontend:
+	@$(RUN_WITH_GIT_BASH) ./scripts/docker.sh rebuild-frontend
+
+# Warn if host frontend/pnpm-lock.yaml differs from the deps baked into the running
+# frontend container. Prevents silent regressions (e.g. BlockNote duplicate-selection crash).
+check-frontend-deps:
+	@$(RUN_WITH_GIT_BASH) ./scripts/docker.sh check-frontend-deps
 
 # ==========================================
 # Production Docker Commands

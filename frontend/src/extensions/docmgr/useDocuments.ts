@@ -19,7 +19,7 @@ export interface DocumentFilter {
   q?: string;
 }
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 
 export function useDocuments(initialFilter?: DocumentFilter) {
   const folderTree = useFolderTree("project");

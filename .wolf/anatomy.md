@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-16T16:57:26.312Z
-> Files: 1211 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-22T07:34:53.530Z
+> Files: 1343 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -50,21 +50,21 @@
 - `AGENTS.md` — MCP Tools: code-review-graph (~438 tok)
 - `body.txt` (~19 tok)
 - `check_fonts.py` (~81 tok)
-- `CLAUDE.md` — page login info (~3210 tok)
+- `CLAUDE.md` — page login info (~3649 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
-- `config.example.yaml` — Configuration for the DeerFlow application (~12188 tok)
-- `config.yaml` — Configuration for the DeerFlow application (~11279 tok)
+- `config.example.yaml` — Configuration for the DeerFlow application (~14284 tok)
+- `config.yaml` (~1943 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~853 tok)
+- `extensions_config.json` (~1272 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
-- `Makefile` — Make build targets (~1855 tok)
+- `Makefile` — DeerFlow - Unified Development Environment (~1868 tok)
 - `manage.sh` — EAI Flow Docker Management Script (~752 tok)
 - `pr_body.txt` — # Summary (~93 tok)
 - `README_zh.md` — 🦌 DeerFlow - 2.0 (~4785 tok)
@@ -75,6 +75,7 @@
 - `test-upload.md` — 测试报告 (~45 tok)
 - `tmp_analyze_pdf.py` (~357 tok)
 - `tmp_analyze2.py` (~504 tok)
+- `TODOS.md` — TODOS — 报告模板提取 (~500 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -144,6 +145,10 @@
 ## .gstack/qa-reports/
 
 - `qa-report-docmgr-collab-2026-05-28.md` — QA Report: Document Collaboration Editor (~956 tok)
+- `qa-report-fire-compliance-skill-2026-06-19.md` — QA Report: fire-regulatory-compliance-check integration (~548 tok)
+- `qa-report-localhost-2026-2026-06-18.md` — QA Report — 设置页 数据源 + 插件 tab 功能测试 (~653 tok)
+- `test-fire-report-minimal.md` — 消防设计专篇 (~18 tok)
+- `test-fire-report.md` — 封面信息 (~810 tok)
 
 ## .kiro/settings/
 
@@ -222,18 +227,22 @@
 - `crystalline-petting-elephant.md` — 分析：Docker 容器重建后对话历史为空 (~590 tok)
 - `declarative-mixing-lamport.md` — 报告大纲 AI 自动提取章节功能 (~987 tok)
 - `deep-wobbling-dragon.md` — AI 从文档自动提取合规规则 — 实施计划 (~965 tok)
+- `eager-whistling-minsky.md` — Plan: coal-eia-report — Complete Functional Upgrade Design (v2) (~1957 tok)
 - `federated-prancing-spindle.md` — 知识库三级数据隔离：私有可见 / 部门可见 / 公开可见 (~739 tok)
 - `giggly-mixing-toucan.md` — Plan: 沙箱输出文件自动同步到文档空间 (~1024 tok)
 - `goofy-foraging-puzzle.md` — Fix: Admin API Security + Role System Enhancement (~1487 tok)
 - `harmonic-twirling-crab.md` — Implementation Plan: Close Spec Gaps Across 4 Domains (~2160 tok)
+- `humble-sniffing-quail.md` — WeChat iLink: admin UI bind + per-user binding-code authorization (~2582 tok)
 - `lazy-exploring-liskov.md` — Knowledge Factory Card Beautification Plan (~1240 tok)
 - `lexical-puzzling-wreath.md` — Plan: Implement 6 Project Workspace Tabs with Polished UI (~2467 tok)
 - `magical-popping-sloth.md` — 流程看板 — 工作流执行进度可视化 (~1195 tok)
 - `piped-dazzling-raven.md` — Plan: Drag-and-Drop Block Reordering for Tiptap Editor (~1104 tok)
+- `purrfect-stirring-tome.md` — E 续:前端四大纠缠功能移植 — 详细执行计划 (~1893 tok)
 - `purring-scribbling-toast.md` — Plan: 许可证管理页面 + 申请文件下载 (~700 tok)
 - `sharded-drifting-wolf.md` — Fix Plan: 3 Workflow Bugs (~1676 tok)
 - `tab-ok-explore-review-version-fizzy-token.md` — Version History Panel Improvements (~1244 tok)
 - `ticklish-mixing-wirth.md` — Plan: 法规标准库注册到 KnowledgeBase 表 (~711 tok)
+- `tingly-pondering-pretzel.md` — 分页组件显示异常 — 根因分析 & 修复 (~423 tok)
 - `tranquil-doodling-spring.md` — Plan: Refactor Frontend Theme Based on Yuxi Color System (~1614 tok)
 - `typed-cooking-quilt.md` — Plan: EditorTab 改造 — 横向章节栏 → 左侧树形大纲 (~803 tok)
 - `velvety-waddling-hopcroft.md` — Plan: Add `cwd` support to MCP server config (方案3) (~916 tok)
@@ -244,7 +253,11 @@
 
 - `docker-dev-environment.md` — Docker Development Environment (~389 tok)
 - `docker-restart-vs-up.md` (~150 tok)
-- `MEMORY.md` (~102 tok)
+- `frontend-deps-need-image-rebuild.md` (~583 tok)
+- `mcp-agent-extension-bridge.md` (~349 tok)
+- `MEMORY.md` (~312 tok)
+- `no-core-code-changes.md` (~324 tok)
+- `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -253,6 +266,10 @@
 ## C:/Users/admin/.gstack/projects/eai-flow-main/designs/design-audit-20260615/
 
 - `app-center-polish-summary.md` — Design Review: App Center (应用中心) (~832 tok)
+
+## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
+
+- `admin-fix-four-module-p0-df2-df3-df5-df6-eng-review-test-plan-20260620-153158.md` — Test Plan (~299 tok)
 
 ## _workspace_temp/
 
@@ -399,7 +416,7 @@
 - `langgraph.json` (~112 tok)
 - `launch_gateway.py` — Simple gateway launcher. (~170 tok)
 - `Makefile` — Make build targets (~93 tok)
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~490 tok)
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~790 tok)
 - `README.md` — Project documentation (~3906 tok)
 - `reset_pwd.py` — Reset admin password in the gateway database. (~317 tok)
 - `ruff.toml` (~59 tok)
@@ -408,9 +425,12 @@
 - `start_gateway3.py` — Start gateway using backend venv uvicorn. (~230 tok)
 - `test_auth_debug.py` — Tests: auth (~608 tok)
 - `test_db_connect.py` — Test file (~502 tok)
+- `test_docx_perf.py` — Performance test: parse 50MB docx with python-docx. (~433 tok)
 - `test_env.py` — Test env loading (~91 tok)
+- `test_full_pipeline.py` — python-docx 50MB E2E: full pipeline, doc_parser_max_mb=100. (~467 tok)
 - `test_kb_register.py` — Direct test: register law KBs into knowledge_bases table. (~1212 tok)
 - `test_kb_verify.py` — Verify law KBs in database. (~328 tok)
+- `test_lxml_perf.py` — Test lxml-based docx parsing performance. (~360 tok)
 - `test_sync_e2e.py` — End-to-end test for the sync flow. (~1031 tok)
 - `verify_routes.py` — Debug route paths in project router. (~76 tok)
 
@@ -962,10 +982,18 @@
 
 - `greenlet.h` — ifndef Py_GREENLETOBJECT_H (~1406 tok)
 
+## backend/app/channels/
+
+- `connection_identity.py` — Helpers for attaching persisted channel connection ownership to inbound messages. (~373 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~13990 tok)
+- `message_bus.py` — MessageBus — async pub/sub hub that decouples channels from the agent dispatcher. (~1977 tok)
+- `service.py` — ChannelService — manages the lifecycle of all IM channels. (~5166 tok)
+- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~16113 tok)
+
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2047 tok)
-- `database.py` — Database connection and session management for extensions module. (~16152 tok)
+- `database.py` — Database connection and session management for extensions module. (~16518 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~4778 tok)
@@ -988,15 +1016,18 @@
 
 - `__init__.py` (~0 tok)
 - `reminder_service.py` — Deadline-based reminder trigger service. (~2556 tok)
-- `routers.py` — Dashboard API routers — task console, projects, stats, calendar, notifications. (~1299 tok)
-- `schemas.py` — Pydantic schemas for dashboard API. (~1118 tok)
-- `service.py` — Dashboard service — aggregates tasks, projects, stats, and calendar events for a user. (~5586 tok)
+- `routers.py` — Dashboard API routers — task console, projects, stats, calendar, notifications. (~1418 tok)
+- `schemas.py` — Pydantic schemas for dashboard API. (~1190 tok)
+- `service.py` — Dashboard service — aggregates tasks, projects, stats, and calendar events for a user. (~5874 tok)
 - `todo_aggregator.py` — Cross-context todo aggregation — no new table, pure query views. (~1486 tok)
 
 ## backend/app/extensions/data_source/
 
 - `__init__.py` (~0 tok)
-- `routers.py` — Data source API router — stub implementation. (~217 tok)
+- `mcp.py` — Data source MCP Server — exposes read-only data query tools to the agent. (~3287 tok)
+- `routers.py` — Data source API router — CRUD + connection test + manual sync. (~1778 tok)
+- `schemas.py` — Pydantic schemas for the data_source extension. Field names align with (~774 tok)
+- `service.py` — DataSource service: connection testing, sync, read-only query guard, CRUD. (~3642 tok)
 
 ## backend/app/extensions/docmgr/
 
@@ -1006,8 +1037,8 @@
 - `collab_schemas.py` — Pydantic schemas for collaborative editing endpoints. (~745 tok)
 - `collab_service.py` — Services for collaborative editing: comments and versions. (~4941 tok)
 - `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~1612 tok)
-- `folder_service.py` — Folder service for document space folder management. (~3929 tok)
-- `routers.py` — AI Document routers for extensions module. (~6881 tok)
+- `folder_service.py` — Folder service for document space folder management. (~4444 tok)
+- `routers.py` — AI Document routers for extensions module. (~6553 tok)
 - `service.py` — AI Document service for extensions module. (~5871 tok)
 - `share_models.py` — Document share model. (~351 tok)
 - `share_schemas.py` — Document share schemas. (~176 tok)
@@ -1022,17 +1053,27 @@
 ## backend/app/extensions/knowledge_factory/
 
 - `dictionary_loader.py` — Load rule dictionaries — prefers database, falls back to JSON file. (~511 tok)
-- `llm.py` — LLM client wrapper for knowledge factory extraction. (~5861 tok)
+- `doc_parser.py` — Document parser for Word (.docx) and PDF files. (~4304 tok)
+- `llm.py` — LLM client wrapper for knowledge factory extraction. (~6266 tok)
 - `models.py` — ORM models for knowledge factory module. (~3704 tok)
-- `pipeline.py` — Template extraction pipeline - 5-stage pipeline with callback-based progress. (~12281 tok)
+- `pipeline.py` — Template extraction pipeline - 5-stage pipeline with callback-based progress. (~18223 tok)
 - `quality.py` — AI-powered quality assessment for templates. (~2679 tok)
-- `routers.py` — FastAPI routers for knowledge factory extraction. (~18642 tok)
-- `schemas.py` — Pydantic schemas for knowledge factory API. (~4680 tok)
+- `routers.py` — FastAPI routers for knowledge factory extraction. (~19118 tok)
+- `schemas.py` — Pydantic schemas for knowledge factory API. (~5510 tok)
 - `service.py` — Business logic for knowledge factory extraction. (~8009 tok)
 
 ## backend/app/extensions/knowledge_factory/data/
 
 - `rule_dictionaries.json` (~334 tok)
+
+## backend/app/extensions/knowledge_factory/mcp_server/
+
+- `server.py` — Knowledge Factory MCP Server — exposes template, domain, and knowledge tools to DeerFlow lead_agent. (~2589 tok)
+
+## backend/app/extensions/knowledge_factory/mcp_server/tools/
+
+- `compliance_tools.py` — MCP tool handler for kf_check_compliance — bridges the compliance check engine. (~1900 tok)
+- `template_tools.py` — Template resolution tools for the Knowledge Factory MCP server. (~4140 tok)
 
 ## backend/app/extensions/law/
 
@@ -1048,7 +1089,7 @@
 
 ## backend/app/extensions/models/
 
-- `__init__.py` — SQLAlchemy data models for extensions module. (~10582 tok)
+- `__init__.py` — SQLAlchemy data models for extensions module. (~12851 tok)
 - `role_permission.py` — Unified role-permission model — single source of truth for all project RBAC. (~617 tok)
 
 ## backend/app/extensions/output/
@@ -1060,6 +1101,19 @@
 - `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
 - `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~2445 tok)
 - `service.py` — Business logic for layout template CRUD. (~1135 tok)
+
+## backend/app/extensions/plugin/
+
+- `__init__.py` (~0 tok)
+- `routers.py` — Plugin API router — registry + instances + API keys (metadata only). (~1428 tok)
+- `schemas.py` — Pydantic schemas for the plugin extension. Field names align with frontend (~711 tok)
+- `seed.py` — Seed built-in plugins into the registry. Idempotent. (~1062 tok)
+- `service.py` — Plugin service: config validation, instance CRUD, API key issuance. (~3209 tok)
+
+## backend/app/extensions/plugin/builtin/
+
+- `__init__.py` (~0 tok)
+- `demo_mcp.py` — Demo MCP server — proves plugin→MCP wiring end-to-end. (~428 tok)
 
 ## backend/app/extensions/project/
 
@@ -1130,14 +1184,21 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan, create_app (~5548 tok)
-- `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1541 tok)
-- `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2384 tok)
+- `app.py` — lifespan, create_app (~5819 tok)
+- `auth_disabled.py` — Auth-disabled (single-user local) mode flag. (~283 tok)
+- `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1728 tok)
+- `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2509 tok)
+- `internal_auth.py` — Authentication for trusted Gateway internal callers. (~534 tok)
+- `services.py` — Run lifecycle service layer. (~5430 tok)
 
 ## backend/app/gateway/routers/
 
 - `auth.py` — Authentication endpoints. (~5844 tok)
+- `mcp.py` — API: 2 endpoints (~4485 tok)
 - `memory.py` — Memory API router for retrieving and managing user memory data with per-user isolation. (~4026 tok)
+- `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1552 tok)
+- `threads.py` — Thread CRUD, state, and history endpoints. (~7982 tok)
+- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1270 tok)
 
 ## backend/collab-server/
 
@@ -1153,22 +1214,46 @@
 - `persistence.test.ts` — Mock pg — Pool must be a constructable function (~1488 tok)
 - `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 4 more (~1462 tok)
 
+## backend/packages/harness/deerflow/agents/lead_agent/
+
+- `agent.py` — Lead agent factory. (~7325 tok)
+- `prompt.py` — prime_enabled_skills_cache, warm_enabled_skills_cache, get_cached_enabled_skills, get_enabled_skills (~10589 tok)
+
+## backend/packages/harness/deerflow/agents/memory/
+
+- `prompt.py` — Prompt templates for memory update and injection. (~4874 tok)
+
 ## backend/packages/harness/deerflow/agents/middlewares/
 
-- `dynamic_context_middleware.py` — Middleware to inject dynamic context (memory, current date, project context) as a system-reminder. (~3221 tok)
+- `dynamic_context_middleware.py` — Middleware to inject dynamic context (memory, current date, project context) as a system-reminder. (~3356 tok)
 
 ## backend/packages/harness/deerflow/config/
 
+- `app_config.py` — Pydantic: CircuitBreakerConfig (~6207 tok)
 - `extensions_config.py` — Unified extensions configuration for MCP servers and skills. (~3251 tok)
-- `paths.py` — Virtual path prefix seen by agents inside the sandbox (~4160 tok)
+- `paths.py` — Virtual path prefix seen by agents inside the sandbox (~4389 tok)
 
 ## backend/packages/harness/deerflow/mcp/
 
 - `client.py` — MCP client using langchain-mcp-adapters. (~1047 tok)
+- `tools.py` — Load MCP tools using langchain-mcp-adapters with stdio session pooling. (~3467 tok)
 
 ## backend/packages/harness/deerflow/persistence/
 
 - `engine.py` — Async SQLAlchemy engine lifecycle management. (~2320 tok)
+
+## backend/packages/harness/deerflow/persistence/channel_connections/
+
+- `sql.py` — SQL repository for user-owned IM channel connections. (~4820 tok)
+
+## backend/packages/harness/deerflow/persistence/models/
+
+- `__init__.py` — ORM model registration entry point. (~357 tok)
+
+## backend/packages/harness/deerflow/runtime/
+
+- `__init__.py` — LangGraph-compatible runtime — runs, streaming, and lifecycle management. (~461 tok)
+- `serialization.py` — Canonical serialization for LangChain / LangGraph objects. (~1418 tok)
 
 ## backend/packages/harness/deerflow/sandbox/
 
@@ -1191,32 +1276,51 @@
 ## backend/tests/
 
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
+- `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
+- `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
+- `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
+- `test_checkpointer.py` — Unit tests for checkpointer config, packaging metadata, and factories. (~6660 tok)
 - `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8977 tok)
 - `test_contract_price_extension.py` — Tests for the contract_price extension (models, routes, schemas). (~731 tok)
 - `test_contract_price_model_parity.py` — Parity test: the agent skill's mirror ``cpa_`` models must stay in sync with (~943 tok)
 - `test_dashboard.py` — Tests for dashboard service and API endpoints. (~1396 tok)
+- `test_data_source_datasets.py` — Tests for DataSourceDataset model + service + router + mcp. (~3348 tok)
+- `test_data_source_mcp.py` — Tests for the data_source MCP server (tool wiring + read-only enforcement). (~977 tok)
+- `test_data_source_models.py` — Tests for the DataSource model. (~300 tok)
+- `test_data_source_routers.py` — Router-level tests for data_source endpoints. Service layer is mocked. (~1808 tok)
+- `test_data_source_service.py` — Tests for data_source schemas + service logic. (~3641 tok)
 - `test_document_space.py` — test_ai_document_model_has_new_fields, test_ai_document_create_schema_accepts_file_ref_fields, test_ (~5554 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
+- `test_kf_doc_parser.py` — Unit tests for doc_parser — heading detection, text normalization, regex fallback. (~1679 tok)
+- `test_mcp_config_hardening.py` — Tests for MCP config endpoint hardening (upstream #3425, dev-adapted). (~1138 tok)
 - `test_mcp_path_resolution.py` — Tests for MCP server path resolution (container paths -> local paths). (~3264 tok)
 - `test_missing_activities.py` — TDD tests for missing activities from spec §4.4. (~2122 tok)
 - `test_model_extensions.py` — Tests for extended Department and ProjectMember models. (~711 tok)
 - `test_notification_activities.py` — Tests for notification activities. (~1512 tok)
 - `test_p0_permission_gates.py` — Tests for P0 permission gates: (~1741 tok)
 - `test_phase_review.py` — Tests for PhaseReview model, schemas, and DAG validation. (~1148 tok)
+- `test_plugin_mcp_wiring.py` — Tests for plugin→MCP wiring (sync_mcp_registration) + demo module. (~2618 tok)
+- `test_plugin_models.py` — Tests for the plugin backend models. (~350 tok)
+- `test_plugin_routers.py` — Router-level tests for plugin endpoints. Service layer is mocked. (~1763 tok)
+- `test_plugin_service.py` — Tests for plugin schemas + service logic. (~1795 tok)
 - `test_project_permissions_new.py` — Tests for the new project-level permission system (project_permissions.py). (~1360 tok)
 - `test_project_permissions.py` — Tests for project RBAC permission matrix — owner/manager/editor/reviewer/approver/member model. (~4369 tok)
 - `test_project_routers.py` — Tests for project FastAPI routers: endpoint wiring and status codes. (~4638 tok)
 - `test_project_schemas.py` — Tests for project Pydantic schemas: validation, defaults, serialization. (~1846 tok)
 - `test_project_service.py` — Tests for enter_project and get_project_files service functions. (~4352 tok)
+- `test_prompt_template.py` — Verify the static data-source instruction is present in the rendered system prompt. (~150 tok)
 - `test_review_rollback.py` — Tests for review rejection rollback — apply_rejection_rollback. (~1667 tok)
 - `test_review_service.py` — Tests for the review service layer. (~2255 tok)
+- `test_serialization_strip_images.py` — Tests for the API serialization helpers ported from upstream (Tier 2 C). (~809 tok)
 - `test_sub_workflow.py` — TDD tests for sub_workflow node type and child workflow support. (~4381 tok)
 - `test_sync_outputs_to_docmgr.py` — Tests for sync_outputs_to_docmgr and present_files callback integration. (~1923 tok)
 - `test_template_management.py` — Tests for workflow template management. (~571 tok)
+- `test_tiktoken_cache_offload.py` — Tests for tiktoken encoding cache + memory-injection offload (upstream #3411). (~716 tok)
 - `test_timeline.py` — Tests for ProjectTimeline CRUD operations. (~2297 tok)
 - `test_traceability.py` — Tests for AI content traceability parsing and missing source detection. (~1447 tok)
 - `test_update_chapter_auto_parse.py` — Tests for update_chapter auto-parse traceability sources. (~1622 tok)
+- `test_wechat_binding.py` — Tests for the WeChat system-bot binding flow (E-续 ③): /connect code consumer (~1985 tok)
 - `test_workflow_integration.py` — Integration tests for the full writing-project workflow chain. (~6395 tok)
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
 - `test_workflow_template.py` — Tests for workflow template management — approval workflow, visibility, state transitions. (~3015 tok)
@@ -1239,10 +1343,11 @@
 ## docker/
 
 - `dev-entrypoint.sh` — DeerFlow gateway dev entrypoint — runs inside the docker-compose-dev gateway (~1045 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~2216 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~2590 tok)
 - `docker-compose-offline.yaml` — DeerFlow Offline Deployment (~978 tok)
 - `docker-compose.business.yaml` — Business Microservices (~1533 tok)
 - `docker-compose.extensions-offline.yaml` — DeerFlow Extensions Services — Offline Version (~538 tok)
+- `docker-compose.extensions.yaml` — DeerFlow Extensions Services (~512 tok)
 - `docker-compose.ragflow.yaml` — RAGFlow Service Stack (~1412 tok)
 - `docker-compose.temporal.yaml` — docker/docker-compose.temporal.yaml (~224 tok)
 
@@ -1256,6 +1361,7 @@
 
 ## docs/
 
+- `cad-comprehension.md` — CAD 解析内容理解 — 设计与操作手册 (~2417 tok)
 - `CODE_MERGE_GUIDE.md` — 代码更新差分实施方案 (~4405 tok)
 - `OFFLINE_DEPLOYMENT_GUIDE.md` — EAI-Flow 内网离线部署操作手册 (~3477 tok)
 - `ROADMAP.md` — EAI-Flow 产品路线图与待实现需求 (~774 tok)
@@ -1281,6 +1387,11 @@
 - `2026-06-15-contract-price-analysis-api.md` — 合同分项价格分析 — 管理页面 API 服务实现计划 (Plan 2/3) (~984 tok)
 - `2026-06-15-contract-price-analysis-frontend.md` — 合同分项价格分析 — 前端管理页面实现计划 (Plan 3/3) (~392 tok)
 - `2026-06-15-contract-price-analysis-pipeline.md` — 合同分项价格分析 — 数据流水线实现计划 (Plan 1/3) (~12566 tok)
+- `2026-06-17-data-source-backend-mcp-bridge.md` — 数据源后端 + MCP 桥 Implementation Plan (~13429 tok)
+- `2026-06-18-data-source-agent-awareness-tier1.md` — 数据源 Tier 1:Agent 感知 Implementation Plan (~2930 tok)
+- `2026-06-18-data-source-datasets.md` — 数据源数据集层(DataSourceDataset)Phase 1 Implementation Plan (~6664 tok)
+- `2026-06-18-plugin-backend-metadata-layer.md` — 插件 tab 后端(元数据层)Implementation Plan (~10750 tok)
+- `2026-06-18-plugin-mcp-wiring.md` — 插件→MCP 接线(type=tool)+ demo Implementation Plan (~4498 tok)
 
 ## docs/superpowers/specs/
 
@@ -1308,6 +1419,17 @@
 - `2026-06-12-knowledge-base-ragflow-params-design.md` — Knowledge Base Creation — RAGFlow Parameter Enhancement (~2013 tok)
 - `2026-06-13-four-module-business-redesign.md` — 四模块业务流程重构设计 (~3992 tok)
 - `2026-06-15-contract-price-analysis-design.md` — 合同分项价格分析技能 — 设计文档 (~3097 tok)
+- `2026-06-17-data-source-backend-mcp-bridge-design.md` — 数据源后端 + MCP 桥 设计文档 (~2168 tok)
+- `2026-06-18-data-source-agent-awareness-tier1-design.md` — 数据源 Tier 1:Agent 感知 实现规格 (~1088 tok)
+- `2026-06-18-data-source-agent-awareness-tier1-draft.md` — 数据源 → Agent 感知(Tier 1)产品 spec 草稿 (~644 tok)
+- `2026-06-18-data-source-dataset-ui-design.md` — 数据集标注 UI 设计规格 (~538 tok)
+- `2026-06-18-data-source-datasets-design.md` — 数据源数据集层(DataSourceDataset)Phase 1 实现规格 (~1053 tok)
+- `2026-06-18-data-source-rich-introspection-design.md` — 数据源富内省(列画像)设计规格 (~359 tok)
+- `2026-06-18-plugin-backend-metadata-layer-design.md` — 插件 tab 后端(元数据层)设计文档 (~1498 tok)
+- `2026-06-18-plugin-data-connector-to-datasource-design.md` — data_connector 插件 → 数据源模板 实现规格 (~854 tok)
+- `2026-06-18-plugin-mcp-wiring-design.md` — 插件 → MCP 接线(type=tool)实现规格 (~1068 tok)
+- `2026-06-19-kf-template-rich-metadata-design.md` — Design: 知识工厂报告模板 — 结构化富元数据增强 (~1896 tok)
+- `2026-06-19-plugin-containerized-mcp-design.md` — 插件市场容器化 MCP + Compose 编排 + 独立生命周期管理 — 技术方案 (~3010 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1328,7 +1450,7 @@
 
 ## frontend/src/app/admin/
 
-- `layout.tsx` — Check if the current user has admin privileges. (~814 tok)
+- `layout.tsx` — Check if the current user has admin privileges. (~844 tok)
 
 ## frontend/src/app/admin/departments/
 
@@ -1408,11 +1530,11 @@
 
 ## frontend/src/app/knowledge-factory/
 
-- `page.tsx` — NAV_ITEMS (~1155 tok)
+- `page.tsx` — NAV_ITEMS (~1263 tok)
 
 ## frontend/src/app/knowledge/
 
-- `page.tsx` — formatDate (~23144 tok)
+- `page.tsx` — formatDate (~23223 tok)
 
 ## frontend/src/app/login/
 
@@ -1424,7 +1546,7 @@
 
 ## frontend/src/app/settings/
 
-- `page.tsx` — SettingsPage (~904 tok)
+- `page.tsx` — SettingsPage (~974 tok)
 
 ## frontend/src/app/test-editor/
 
@@ -1434,6 +1556,10 @@
 
 - `workspace-content.tsx` — parseSidebarOpenCookie (~332 tok)
 
+## frontend/src/app/workspace/chats/
+
+- `page.tsx` — ChatsPage (~977 tok)
+
 ## frontend/src/app/workspace/chats/[thread_id]/
 
 - `page.tsx` — ChatPage (~3159 tok)
@@ -1441,7 +1567,10 @@
 ## frontend/src/components/ai-elements/
 
 - `artifact.tsx` — Artifact (~967 tok)
+- `message.tsx` — Message (~3112 tok)
 - `node.tsx` — Node (~573 tok)
+- `reasoning.tsx` — ReasoningContext (~1548 tok)
+- `streamdown.tsx` — ClipboardSafeStreamdown (~731 tok)
 - `web-preview.tsx` — WebPreviewContext (~1925 tok)
 
 ## frontend/src/components/landing-new/
@@ -1450,17 +1579,21 @@
 
 ## frontend/src/components/ui/
 
-- `admin-select.tsx` — AdminSelect (~1022 tok)
+- `admin-select.tsx` — AdminSelect (~1094 tok)
 - `calendar.tsx` — Calendar (~2226 tok)
 - `magic-bento.css` — Styles: 28 rules, 19 vars (~1250 tok)
 - `sonner.tsx` — Toaster (~317 tok)
 
 ## frontend/src/components/workspace/
 
+- `recent-chat-list.tsx` — threadHref — renders modal (~3613 tok)
 - `save-to-doc-button.tsx` — extractTitle (~591 tok)
+- `thread-channel-source.tsx` — ThreadChannelIcon (~379 tok)
 - `token-usage-indicator.tsx` — TokenUsageIndicator (~1471 tok)
 - `workspace-container.tsx` — WorkspaceContainer (~932 tok)
+- `workspace-header.tsx` — WorkspaceHeader (~776 tok)
 - `workspace-nav-menu.tsx` — NavMenuButtonContent (~1249 tok)
+- `workspace-sidebar.tsx` — WorkspaceSidebar (~309 tok)
 
 ## frontend/src/components/workspace/agents/
 
@@ -1468,8 +1601,12 @@
 
 ## frontend/src/components/workspace/artifacts/
 
-- `artifact-file-detail.tsx` — ArtifactFileDetail (~2962 tok)
+- `artifact-file-detail.tsx` — WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS (~4499 tok)
 - `save-artifact-to-doc-button.tsx` — checkDocExists (~1482 tok)
+
+## frontend/src/components/workspace/channels/
+
+- `workspace-channels-list.tsx` — getProviderUnavailableReason (~1996 tok)
 
 ## frontend/src/components/workspace/chats/
 
@@ -1479,6 +1616,18 @@
 
 - `message-list-item.tsx` — Custom image component that handles artifact URLs (~4009 tok)
 - `message-list.tsx` — MESSAGE_LIST_DEFAULT_PADDING_BOTTOM (~4375 tok)
+- `subtask-card.tsx` — SubtaskCard (~1760 tok)
+
+## frontend/src/components/workspace/settings/
+
+- `settings-dialog.tsx` — SettingsDialog — renders modal (~1533 tok)
+- `wechat-settings-page.tsx` — WechatSettingsPage (~1582 tok)
+
+## frontend/src/core/channels/
+
+- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1310 tok)
+- `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1034 tok)
+- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 6 m (~454 tok)
 
 ## frontend/src/core/config/
 
@@ -1486,13 +1635,22 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~6058 tok)
-- `types.ts` — Exports Translations (~3438 tok)
-- `zh-CN.ts` — Exports zhCN (~4297 tok)
+- `en-US.ts` — Exports enUS (~6842 tok)
+- `types.ts` — Exports Translations (~3798 tok)
+- `zh-CN.ts` — Exports zhCN (~4831 tok)
+
+## frontend/src/core/mcp/
+
+- `api.ts` — Exports MCPConfigRequestError, loadMCPConfig, updateMCPConfig (~422 tok)
+
+## frontend/src/core/streamdown/
+
+- `preprocess.ts` — Exports capBlockquoteNesting, capListNesting, capMarkdownNesting, preprocessStreamdownMarkdown (~1001 tok)
 
 ## frontend/src/core/threads/
 
-- `hooks.ts` — Exports ToolEndEvent, ThreadStreamOptions, findLatestUnloadedRunIndex, mergeMessages, useThreadStrea (~8606 tok)
+- `hooks.ts` — Exports ToolEndEvent, ThreadStreamOptions, findLatestUnloadedRunIndex, runMessagesPageHasMore + 8 mo (~11252 tok)
+- `utils.ts` — Exports ChannelThreadSource, pathOfThread, textOfMessage, titleOfThread, channelSourceOfThread (~706 tok)
 
 ## frontend/src/extensions/
 
@@ -1500,11 +1658,11 @@
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~11216 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~11365 tok)
 
 ## frontend/src/extensions/app-center/
 
-- `AppCenterPage.tsx` — 应用中心主页面。 (~1028 tok)
+- `AppCenterPage.tsx` — 应用中心主页面。 (~1100 tok)
 - `index.ts` (~109 tok)
 - `types.ts` — 业务分类标识 (~343 tok)
 
@@ -1519,7 +1677,7 @@
 
 ## frontend/src/extensions/app-center/config/
 
-- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~705 tok)
+- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~785 tok)
 - `categories.ts` — 分类定义 —— 顺序即默认展示顺序。 (~650 tok)
 
 ## frontend/src/extensions/app-center/hooks/
@@ -1558,14 +1716,14 @@
 
 ## frontend/src/extensions/contract-price/components/
 
-- `ClustersView.tsx` — statusBadge — renders table (~2850 tok)
-- `ContractsView.tsx` — statusTone — renders form, table (~1306 tok)
-- `DashboardView.tsx` — formatDate — renders table (~1650 tok)
-- `ItemsView.tsx` — ItemsView — renders form, table (~1925 tok)
-- `PageHeader.tsx` — PageHeader — renders table (~269 tok)
-- `SettingsView.tsx` — SettingsView (~1409 tok)
+- `ClustersView.tsx` — statusBadge — renders table (~2874 tok)
+- `ContractsView.tsx` — statusTone — renders form, table (~1332 tok)
+- `DashboardView.tsx` — formatDate — renders table (~1722 tok)
+- `ItemsView.tsx` — ItemsView — renders form, table (~1952 tok)
+- `PageHeader.tsx` — PageHeader — renders table (~356 tok)
+- `SettingsView.tsx` — SettingsView (~1424 tok)
 - `StatCard.tsx` — toneClasses (~360 tok)
-- `TasksView.tsx` — statusTone — renders table (~1286 tok)
+- `TasksView.tsx` — statusTone — renders table (~1313 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -1573,20 +1731,28 @@
 
 ## frontend/src/extensions/dashboard/
 
-- `api.ts` — Exports dashboardApi (~563 tok)
-- `DashboardPage.tsx` — DashboardPage (~805 tok)
+- `api.ts` — Exports dashboardApi (~629 tok)
+- `dashboard.css` — Styles: 30 rules, 24 vars (~1301 tok)
+- `DashboardPage.tsx` — DashboardPage (~994 tok)
 - `types.ts` — Exports TaskItem, MyTasksResponse, MyProjectItem, MyProjectsResponse + 5 more (~596 tok)
 
 ## frontend/src/extensions/dashboard/components/
 
-- `MiniCalendar.tsx` — COLOR_MAP (~1246 tok)
+- `DashboardCard.tsx` — DashboardCard (~328 tok)
+- `Header.tsx` — getGreeting (~1799 tok)
+- `LogPanel.tsx` — BASE (~2487 tok)
+- `MetricsRow.tsx` — MetricsRow (~936 tok)
+- `MiniCalendar.tsx` — WEEKDAYS — renders form (~3669 tok)
 - `MyProjects.tsx` — GROUP_LABELS (~666 tok)
 - `NotificationFeed.tsx` — BASE (~2217 tok)
 - `NotificationPreferencePanel.tsx` — NOTIFICATION_TYPES (~1597 tok)
 - `ProjectMiniCard.tsx` — ROLE_LABELS (~692 tok)
+- `ProjectPanel.tsx` — ProjectPanel (~1759 tok)
 - `QuickActions.tsx` — actions (~255 tok)
-- `StatsPanel.tsx` — StatsPanel (~631 tok)
+- `QuickPanel.tsx` — entries (~1292 tok)
+- `StatsPanel.tsx` — StatsPanel (~689 tok)
 - `TaskItemCard.tsx` — TYPE_ICONS (~480 tok)
+- `TaskPanel.tsx` — TaskPanel (~1464 tok)
 - `TodayTasks.tsx` — TodayTasks (~468 tok)
 
 ## frontend/src/extensions/dashboard/hooks/
@@ -1596,20 +1762,31 @@
 - `useMyStats.ts` — Exports useMyStats (~72 tok)
 - `useMyTasks.ts` — Exports useMyTasks (~72 tok)
 
+## frontend/src/extensions/data-source/
+
+- `api.ts` — Exports dataSourceApi, datasetApi (~1401 tok)
+- `types.ts` — Exports DataSourceType, AuthType, SyncMode, ConnectionStatus + 9 more (~568 tok)
+
+## frontend/src/extensions/data-source/components/
+
+- `DataSourceCard.tsx` — TYPE_ICON_MAP — renders table (~1870 tok)
+- `DataSourceForm.tsx` — CustomSelect (~4680 tok)
+- `SourceDatasetsModal.tsx` — SourceDatasetsModal — renders table (~2898 tok)
+
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocumentManagement.tsx` — CollabEditor (~18254 tok)
+- `DocumentManagement.tsx` — CollabEditor (~18963 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~11185 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
-- `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4856 tok)
+- `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4915 tok)
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
 - `TiptapEditor.tsx` — SCROLL_OFFSET_TOP — renders table (~5417 tok)
 - `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1426 tok)
-- `useFolderTree.ts` — Exports useFolderTree (~581 tok)
+- `useFolderTree.ts` — Exports useFolderTree (~617 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1625,24 +1802,25 @@
 - `AiRuleExtractModal.tsx` — AiRuleExtractModal (~5862 tok)
 - `BusinessDictionary.tsx` — CATEGORY_TABS (~9343 tok)
 - `CheckResultPanel.tsx` — 检查结果展示组件 (~2836 tok)
-- `ComplianceRules.tsx` — 合规规则管理组件 (~5740 tok)
+- `ComplianceRules.tsx` — 合规规则管理组件 (~5950 tok)
 - `complianceRulesApi.ts` — 获取规则列表 (~3902 tok)
 - `DraftBox.tsx` — DraftBox (~4591 tok)
-- `ExtractionTaskModal.tsx` — DEFAULT_CONFIG (~7622 tok)
+- `ExtractionTaskModal.tsx` — DEFAULT_CONFIG (~8932 tok)
 - `index.ts` (~348 tok)
-- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~552 tok)
+- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~649 tok)
 - `law-library-api.ts` — Exports buildLawLibraryUrl (~346 tok)
 - `LawLibrary.tsx` — LawLibrary — renders modal (~6585 tok)
 - `QualityAssessment.tsx` — useColorScheme (~6285 tok)
+- `RichMetadataEditor.tsx` — RichMetadataEditor (~2703 tok)
 - `rule-dictionary-utils.ts` — Exports mergeRuleDictionaries, getDictionaryLabel (~398 tok)
 - `RuleCard.tsx` — 规则卡片组件 (~2325 tok)
-- `RuleDetail.tsx` — RuleDetail (~8228 tok)
+- `RuleDetail.tsx` — RuleDetail (~7790 tok)
 - `RuleEngine.tsx` — RuleEngine (~9646 tok)
 - `SampleReports.tsx` — formatFileSize (~6672 tok)
 - `TabNavigation.tsx` — NAV_ITEMS (~987 tok)
-- `TemplateEditor.tsx` — TemplateSelector (~19512 tok)
+- `TemplateEditor.tsx` — TemplateSelector (~19574 tok)
 - `TemplateExtraction.tsx` — POLL_INTERVAL (~7968 tok)
-- `types.ts` — 已有模板 ID，填写则向已有模板合并，不填则创建新模板 (~5468 tok)
+- `types.ts` — 直接上传的 Word/PDF 文件 ID（优先用 doc_parser 解析） (~5912 tok)
 - `VersionControl.tsx` — VersionControl (~4530 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/
@@ -1673,7 +1851,7 @@
 ## frontend/src/extensions/output/
 
 - `api.ts` — Exports outputApi (~1661 tok)
-- `OutputManager.tsx` — NAV_ITEMS — renders table (~3592 tok)
+- `OutputManager.tsx` — NAV_ITEMS — renders table (~3644 tok)
 - `transforms.ts` — Exports transformTemplate (~334 tok)
 - `types.ts` — Exports OutputFormat, WatermarkType, GenerateSource, LayoutTemplate + 13 more (~770 tok)
 
@@ -1694,7 +1872,7 @@
 - `OutlineEditor.tsx` — ExpandCtx (~3522 tok)
 - `OutlinePreview.tsx` — PreviewNode (~682 tok)
 - `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11055 tok)
-- `ProjectList.tsx` — TYPE_PALETTE (~6357 tok)
+- `ProjectList.tsx` — TYPE_PALETTE (~6394 tok)
 - `ProjectWorkspace.tsx` — OverviewTab (~2728 tok)
 - `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~864 tok)
 - `types.ts` — ── Enums ── (~1466 tok)
@@ -1711,9 +1889,10 @@
 - `MembersTab.tsx` — MembersTab with canManage prop (~220 tok)
 - `MemberWorkspace.tsx` — Dual-mode: standalone dashboard or project-scoped chapter view with RBAC (~6320 tok)
 - `OutlineTab.tsx` — chaptersToTreeNodes (~931 tok)
-- `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1748 tok)
+- `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1745 tok)
 - `SettingsDialog.tsx` — SettingsDialog — renders modal (~2399 tok)
-- `StatusDistribution.tsx` — STATUS_ITEMS (~464 tok)
+- `StatusBadge.tsx` — STATUS_CONFIG (~724 tok)
+- `StatusDistribution.tsx` — STATUS_ITEMS (~462 tok)
 - `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~2401 tok)
 - `WorkspaceTabs.tsx` — ICON_MAP (~348 tok)
 
@@ -1726,7 +1905,7 @@
 ## frontend/src/extensions/project/components/KanbanBoard/
 
 - `KanbanBoard.tsx` — Called when user clicks edit on a card (~574 tok)
-- `KanbanCard.tsx` — KanbanCard (~680 tok)
+- `KanbanCard.tsx` — KanbanCard (~679 tok)
 - `KanbanColumn.tsx` — KanbanColumn (~579 tok)
 - `types.ts` — Exports KanbanCardData (~62 tok)
 
@@ -1739,14 +1918,14 @@
 - `DocCollabView.tsx` — CollabEditor (~1525 tok)
 - `EditorTab.tsx` — EditorTab (~264 tok)
 - `HistoryTab.tsx` — HistoryTab — renders modal (~3433 tok)
-- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~5381 tok)
+- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~5369 tok)
 - `ReviewTab.tsx` — STATUS_CONFIG (~3638 tok)
 - `SettingsTab.tsx` — SECTIONS (~5643 tok)
 - `TraceabilityTab.tsx` — SOURCE_TYPE_CONFIG (~3379 tok)
 
 ## frontend/src/extensions/shell/
 
-- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1892 tok)
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1883 tok)
 
 ## frontend/src/extensions/types/
 
@@ -1858,9 +2037,18 @@
 
 - `tabRegistry.test.ts` — Helper to create identity from partial permissions (~1510 tok)
 
+## mcp-server/cad-mcp/
+
+- `Dockerfile` — Docker container definition (~184 tok)
+- `README.md` — Project documentation (~1044 tok)
+- `requirements.txt` — Python dependencies (~41 tok)
+- `server.py` — analyze_cad, main (~3140 tok)
+- `test_analyze.py` — Self-check for analyze_cad (parse-only; rasterize is too slow for a unit test). (~702 tok)
+
 ## scripts/
 
 - `config-upgrade.sh` — config-upgrade.sh - Upgrade config.yaml to match config.example.yaml (~1225 tok)
+- `docker.sh` — Declares for (~4435 tok)
 - `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~5999 tok)
 - `serve.sh` — serve.sh — Unified DeerFlow service launcher (~2834 tok)
 - `test_kanban.py` — ", handle_api) (~2873 tok)
@@ -1868,8 +2056,8 @@
 
 ## skills/custom/coal-eia-report/
 
-- `README.md` — Project documentation (~339 tok)
-- `SKILL.md` — 煤炭矿区总体规划环评报告编写技能 (~2896 tok)
+- `README.md` — Project documentation (~363 tok)
+- `SKILL.md` — 煤炭矿区总体规划环评报告编写技能 (~3618 tok)
 
 ## skills/custom/coal-eia-report/references/
 
@@ -1958,9 +2146,22 @@
 - `test_app.py` — Tests for the FastAPI app scaffold (health endpoint, CORS). (~280 tok)
 - `test_schemas_crud.py` — Tests for schemas + config CRUD (JSON-backed, no DB needed). (~616 tok)
 
+## skills/custom/fire-protection-report-v2/
+
+- `README.md` — Project documentation (~259 tok)
+- `SKILL.md` — 消防设计报告技能 v2 (~2417 tok)
+
+## skills/custom/fire-regulatory-compliance-check/scripts/
+
+- `compliance_checker.py` — ComplianceChecker: load_report, check_fire_hazard_classification, check_fire_resistance_rating, chec (~3017 tok)
+
 ## skills/custom/geological-report/
 
-- `SKILL.md` — 固体矿产地质勘查报告制作技能 (~1566 tok)
+- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~1656 tok)
+
+## skills/custom/kf-extract-template/
+
+- `SKILL.md` — 知识工厂 — 模板提取技能 (~1520 tok)
 
 ## tools/license/
 

@@ -226,12 +226,40 @@ write_file(
 
 若同时需要进文档空间（docmgr）：写完 outputs 文件后，**可再调用一次 docmgr API** 创建 AIDocument；但文件落盘只允许上面这一次 `write_file`，不得在 docmgr 写入失败后反复重试（见第 13 条）。
 
-### 步骤6：合规检查
+### 步骤6：合规检查（调用 fire-regulatory-compliance-check）
 
-- **有模板时**：汇总所有章节的 `compliance_rules` 进行逐项检查
-- **无模板时**：使用全局 GB 标准列表（GB50160、GB50016、GB50058、GB50116、GB50140、GB50974）
+报告写入后，调用 `fire-regulatory-compliance-check` 技能的自动化检查脚本进行 10 项合规验证：
 
-验证报告内容符合相关标准的关键条款要求，将合规检查结果作为补充说明输出给用户。
+```bash
+python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py \
+  --report "/mnt/user-data/outputs/{项目名称}消防设计专篇.md" \
+  --output "/mnt/user-data/outputs/{项目名称}消防设计合规检查报告.md"
+```
+
+脚本检查 10 项内容（PASS / WARN / FAIL）：
+1. 火灾危险性分类（GB50016/GB50160）
+2. 建筑耐火等级（GB50016 §3.2.1/§5.2.1）
+3. 防火间距（GB50016 §5.2/GB50160）
+4. 消防给水系统（GB50974）
+5. 火灾自动报警系统（GB50116）
+6. 灭火器配置（GB50140）
+7. 爆炸危险环境电气（GB50058）
+8. 灭火救援设施（GB50016 §7.1）
+9. 标准引用完整性（6 项核心标准）
+10. 法律合规（消防法 2019）
+
+**检查结果处理**：
+- 全部 PASS → 合规检查通过，向用户展示合规报告摘要
+- 有 WARN/FAIL → 回到步骤 4，在内存中修正报告内容，整体重写 `/mnt/user-data/outputs/{项目名称}消防设计专篇.md`，然后重新运行检查。**最多修正 2 轮**，超过 2 轮仍有 FAIL 则如实报告用户，由用户决定是否继续修正。
+
+修正时参考 `fire-regulatory-compliance-check` 技能的 `references/` 目录下的 GB 标准摘要文件获取具体要求：
+- `references/gb50016_2014_2018.md` — 建筑设计防火规范
+- `references/gb50160_2008_2018.md` — 石化防火标准
+- `references/gb50058_2014.md` — 爆炸危险电气
+- `references/gb50116_2013.md` — 火灾报警系统
+- `references/gb50140_2005.md` — 灭火器配置
+- `references/gb50974_2014.md` — 消防给水
+- `references/fire_law_2019.md` — 消防法
 
 ---
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard } from "lucide-react";
+import { Factory, LayoutDashboard } from "lucide-react";
 import React, { useState } from "react";
 
 import {
@@ -57,6 +57,12 @@ export default function KnowledgeFactoryPage() {
           sidebarCollapsed ? "w-[72px]" : "w-[240px]"
         )}
       >
+        <div className="p-4 flex items-center gap-2 border-b border-border">
+          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0">
+            <Factory className="w-4 h-4" />
+          </div>
+          <span className="font-semibold text-foreground text-l">知识工厂</span>
+        </div>
         <TabNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}

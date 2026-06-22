@@ -291,6 +291,10 @@ restart() {
     echo "  Restarting DeerFlow Docker Services"
     echo "========================================"
     echo ""
+    echo -e "${YELLOW}Note: restart does NOT rebuild images. If you changed frontend${NC}"
+    echo -e "${YELLOW}dependencies, run 'make rebuild-frontend' instead.${NC}"
+    echo ""
+    check_frontend_deps || true
     echo -e "${BLUE}Restarting containers...${NC}"
     cd "$DOCKER_DIR" && $COMPOSE_CMD restart
     echo ""
@@ -298,6 +302,87 @@ restart() {
     echo ""
     echo "  🌐 Application: http://localhost:2026"
     echo "  📋 View logs: make docker-logs"
+    echo ""
+}
+
+# Check whether the host frontend/pnpm-lock.yaml matches the deps baked into
+# the running frontend container. Dependency changes (version bumps, lockfile
+# edits, package add/remove) only take effect after an IMAGE REBUILD — a plain
+# `restart`/`up` keeps the old image-baked node_modules. This guard prevents
+# silent regressions like the recurring BlockNote "Duplicate selection JSON ID"
+# crash (host lockfile fixed, container deps stayed stale/mixed).
+# Returns 0 when in sync (or container not running), 1 on drift.
+check_frontend_deps() {
+    local host_lock="$PROJECT_ROOT/frontend/pnpm-lock.yaml"
+    local container_name="deer-flow-frontend"
+
+    if [ ! -f "$host_lock" ]; then
+        echo -e "${YELLOW}⚠ frontend/pnpm-lock.yaml not found on host; skipping dep-drift check.${NC}"
+        return 0
+    fi
+    # node_modules/package.json/pnpm-lock.yaml are NOT bind-mounted into the
+    # dev container (host=Windows, container=Linux — bind-mounting node_modules
+    # would break native binaries). So the container's baked lockfile is the
+    # ground truth for what is actually installed.
+    if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
+        # Container not running — nothing to compare; a fresh build on start will sync it.
+        return 0
+    fi
+
+    local host_hash container_hash
+    host_hash="$(sha256sum "$host_lock" | awk '{print $1}')"
+    # NOTE: wrap in `sh -c '...'`. On a Windows host the script runs under Git
+    # Bash (MSYS2), which rewrites a bare `/app/...` argument into a Windows path
+    # (e.g. `C:/Program Files/Git/app/...`) before handing it to docker.exe, so
+    # `docker exec <c> sha256sum /app/...` would fail to open the file. The
+    # single-quoted sh -c form keeps the path literal.
+    container_hash="$(docker exec "$container_name" sh -c 'sha256sum /app/frontend/pnpm-lock.yaml' 2>/dev/null | awk '{print $1}')"
+
+    if [ -z "$container_hash" ]; then
+        echo -e "${YELLOW}⚠ Could not read pnpm-lock.yaml inside ${container_name}; skipping dep-drift check.${NC}"
+        return 0
+    fi
+
+    if [ "$host_hash" != "$container_hash" ]; then
+        echo ""
+        echo -e "${YELLOW}============================================================${NC}"
+        echo -e "${YELLOW}  ⚠ FRONTEND DEPENDENCY DRIFT DETECTED${NC}"
+        echo -e "${YELLOW}============================================================${NC}"
+        echo "  Host frontend/pnpm-lock.yaml differs from the deps baked into"
+        echo "  the running frontend container. Dependency changes (version"
+        echo "  bumps, lockfile edits, package add/remove) will NOT take effect"
+        echo "  until the image is rebuilt — 'restart'/'up' only reload src."
+        echo ""
+        echo -e "  Fix:  ${GREEN}make rebuild-frontend${NC}"
+        echo ""
+        echo "  (Prevents silent regressions like the recurring BlockNote"
+        echo "   'Duplicate selection JSON ID' crash.)"
+        echo -e "${YELLOW}============================================================${NC}"
+        echo ""
+        return 1
+    fi
+
+    echo -e "${GREEN}✓ frontend deps in sync (host lockfile == container).${NC}"
+    return 0
+}
+
+# Rebuild the frontend dev image from current host source (pins + lockfile)
+# and force-recreate the container. Use this whenever frontend dependencies
+# change — it is the correct alternative to `restart` (which does NOT rebuild
+# and would silently keep stale/mixed node_modules in the container).
+rebuild_frontend() {
+    echo "========================================"
+    echo "  Rebuilding frontend image (deps sync)"
+    echo "========================================"
+    echo ""
+    echo -e "${BLUE}Building from current host source (package.json + pnpm-lock.yaml)...${NC}"
+    cd "$DOCKER_DIR" && $COMPOSE_CMD build frontend
+    echo ""
+    echo -e "${BLUE}Force-recreating frontend container...${NC}"
+    cd "$DOCKER_DIR" && $COMPOSE_CMD up -d --force-recreate frontend
+    echo ""
+    echo -e "${GREEN}✓ Frontend image rebuilt and container recreated.${NC}"
+    echo -e "${BLUE}Verify: make check-frontend-deps${NC}"
     echo ""
 }
 
@@ -317,6 +402,10 @@ help() {
     echo "                  --nginx      View nginx logs only"
     echo "                  --provisioner View provisioner logs only"
     echo "  stop          - Stop Docker development services"
+    echo "  rebuild-frontend - Rebuild the frontend image from current host deps"
+    echo "                    (use after changing frontend dependencies; 'restart' won't)"
+    echo "  check-frontend-deps - Warn if host pnpm-lock.yaml differs from the"
+    echo "                    frontend container's baked deps"
     echo "  help          - Show this help message"
     echo ""
 }
@@ -333,6 +422,12 @@ main() {
             ;;
         restart)
             restart
+            ;;
+        rebuild-frontend)
+            rebuild_frontend
+            ;;
+        check-frontend-deps)
+            check_frontend_deps
             ;;
         logs)
             logs "$2"

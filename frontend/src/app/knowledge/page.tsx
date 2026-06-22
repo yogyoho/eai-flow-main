@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import DOMPurify from "isomorphic-dompurify";
 import {
+  BookOpen,
   Search,
   Plus,
   Database,
@@ -1547,16 +1548,19 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
     <main className="flex-1 overflow-y-auto bg-muted/50 p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              知识库管理
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              管理 RAGFlow 知识库，上传文档并监控同步状态。
-            </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">知识库管理</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                管理 RAGFlow 知识库，上传文档并监控同步状态。
+              </p>
+            </div>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} className="shrink-0">
             <Plus className="h-4 w-4" />
             新建知识库
           </Button>

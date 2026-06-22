@@ -90,7 +90,7 @@ export function ProjectCard({ project, onClick, onEdit, onDelete, onEnterChat }:
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
                     (project.progressPercentage ?? 0) >= 100
-                      ? "bg-green-500"
+                      ? "bg-success"
                       : (project.progressPercentage ?? 0) >= 50
                         ? "bg-blue-500"
                         : "bg-amber-500",

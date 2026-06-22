@@ -21,6 +21,7 @@ from app.extensions.workflow.models import PhaseReview
 
 from .schemas import (
     CalendarEvent,
+    CreateCalendarEvent,
     MyProjectItem,
     MyProjectsResponse,
     MyStatsResponse,
@@ -577,3 +578,26 @@ async def update_notification_preferences(
     await db.commit()
     await db.refresh(pref)
     return pref
+
+
+async def create_calendar_event(
+    db: AsyncSession,
+    user_id: UUID,
+    title: str,
+    date: str,
+    time: str | None = None,
+    event_type: str = "personal",
+) -> CalendarEvent:
+    """Create a personal calendar event."""
+    from uuid import uuid4
+
+    event_id = str(uuid4())
+    return CalendarEvent(
+        id=event_id,
+        title=title,
+        date=datetime.fromisoformat(date),
+        type=event_type if event_type in ("deadline", "milestone", "phase_start", "personal") else "personal",
+        project_id=None,
+        project_name=None,
+        color="blue",
+    )
