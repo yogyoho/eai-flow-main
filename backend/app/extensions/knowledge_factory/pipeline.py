@@ -1331,6 +1331,13 @@ class ExtractionPipeline:
         # 全文锚定源（所有文档拼接），供 _ground_metadata 校验 LLM 输出
         all_source_text = "\n\n".join(d["content"] for d in doc_contents.values() if d.get("content"))
 
+        # 并发抽取：同 semaphore 限制 LLM 并发数（防 DeepSeek 限流），顶层 + 子节 gather
+        sem = asyncio.Semaphore(5)
+        # 进度计数：total 含嵌套子节，enrich 每完成一节递增并日志
+        _, total_sections = _count_sections(sections)
+        done = {"n": 0}
+        task_id_meta = ctx.get("_task_id", "unknown")
+
         async def enrich(sec: dict) -> dict:
             sec_id = sec.get("id", "")
             title = sec.get("title", "")
@@ -1352,11 +1359,12 @@ class ExtractionPipeline:
                 section_content = _find_section_content(title, level, doc_contents)
 
             try:
-                metadata = await loop.run_in_executor(
-                    None,
-                    lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content, kbs=available_kbs:
-                        self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs)
-                )
+                async with sem:  # 限并发，防 DeepSeek 限流
+                    metadata = await loop.run_in_executor(
+                        None,
+                        lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content, kbs=available_kbs:
+                            self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs)
+                    )
             except Exception as e:
                 logger.warning(f"Metadata extraction failed for {sec_id}: {e}")
                 metadata = {
@@ -1401,13 +1409,17 @@ class ExtractionPipeline:
 
             children = sec.get("children") or []
             if children:
-                result["children"] = [await enrich(c) for c in children]
+                # 子节并发抽取（受同一 semaphore 限流）
+                result["children"] = await asyncio.gather(*[enrich(c) for c in children])
 
+            # 进度反馈：每完成一节日志（total 含嵌套子节）
+            done["n"] += 1
+            if done["n"] % 5 == 0 or done["n"] == total_sections:
+                logger.info(f"[Task {task_id_meta}] 元数据抽取进度 {done['n']}/{total_sections}")
             return result
 
-        enriched = []
-        for sec in sections:
-            enriched.append(await enrich(sec))
+        # 顶层章节并发抽取（semaphore 全局限流），耗时从 N×5s 降到 N/5×5s
+        enriched = await asyncio.gather(*[enrich(s) for s in sections])
 
         return enriched
 
