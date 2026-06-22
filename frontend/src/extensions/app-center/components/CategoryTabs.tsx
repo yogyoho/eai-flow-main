@@ -2,12 +2,12 @@
 
 import { cn } from "@/lib/utils";
 
-import type { CategoryFilterOption } from "../hooks/useApps";
+import type { DomainFilterOption } from "../hooks/useApps";
 
 interface CategoryTabsProps {
-  options: CategoryFilterOption[];
+  options: DomainFilterOption[];
   active: string;
-  onChange: (key: CategoryFilterOption["key"]) => void;
+  onChange: (key: DomainFilterOption["key"]) => void;
 }
 
 /**
