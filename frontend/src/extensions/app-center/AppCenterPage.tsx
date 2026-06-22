@@ -24,21 +24,30 @@ export function AppCenterPage() {
     setSearchQuery,
     sortMode,
     setSortMode,
-    activeCategory,
-    setActiveCategory,
-    categoryOptions,
+    activeDomain,
+    setActiveDomain,
+    domainOptions,
     licenseLoading,
   } = useApps(favorites, hydrated);
+
+  // 业务域首次出现顺序（与 useApps 中 domainOptions 的派生逻辑一致，用于 AppCard accent 分配）
+  const domainOrder = useMemo(() => {
+    const seen: string[] = [];
+    for (const app of visibleApps) {
+      if (!seen.includes(app.businessDomain)) seen.push(app.businessDomain);
+    }
+    return seen;
+  }, [visibleApps]);
 
   // 收藏区：仅在"默认/收藏优先"排序、无搜索、无分类筛选时展示，
   // 且至少有一条收藏。避免与主网格重复展示造成视觉冗余。
   const favoriteApps = useMemo(() => {
     if (!hydrated) return [];
     if (searchQuery.trim()) return [];
-    if (activeCategory !== "all") return [];
+    if (activeDomain !== "all") return [];
     if (sortMode === "alphabetical") return [];
     return visibleApps.filter((a) => favorites.has(a.id));
-  }, [hydrated, searchQuery, activeCategory, sortMode, visibleApps, favorites]);
+  }, [hydrated, searchQuery, activeDomain, sortMode, visibleApps, favorites]);
 
   const showFavorites = favoriteApps.length > 0;
   const hasVisibleApps = visibleApps.length > 0;
@@ -70,9 +79,9 @@ export function AppCenterPage() {
       <AppCenterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        categoryOptions={categoryOptions}
-        activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
+        domainOptions={domainOptions}
+        activeDomain={activeDomain}
+        onDomainChange={setActiveDomain}
         sortMode={sortMode}
         onSortChange={setSortMode}
       />
@@ -92,6 +101,7 @@ export function AppCenterPage() {
             isLoading={false}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
+            domainOrder={domainOrder}
           />
         </section>
       )}
@@ -114,6 +124,7 @@ export function AppCenterPage() {
             isLoading={isLoading}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
+            domainOrder={domainOrder}
           />
         )}
       </section>

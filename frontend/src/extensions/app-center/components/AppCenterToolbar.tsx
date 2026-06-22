@@ -5,8 +5,8 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import type { CategoryFilterOption } from "../hooks/useApps";
-import type { CategoryFilter, SortMode } from "../types";
+import type { DomainFilterOption } from "../hooks/useApps";
+import type { DomainFilter, SortMode } from "../types";
 
 import { CategoryTabs } from "./CategoryTabs";
 import { SortControl } from "./SortControl";
@@ -14,22 +14,19 @@ import { SortControl } from "./SortControl";
 interface AppCenterToolbarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  categoryOptions: CategoryFilterOption[];
-  activeCategory: CategoryFilter;
-  onCategoryChange: (key: CategoryFilter) => void;
+  domainOptions: DomainFilterOption[];
+  activeDomain: DomainFilter;
+  onDomainChange: (key: DomainFilter) => void;
   sortMode: SortMode;
   onSortChange: (mode: SortMode) => void;
 }
 
-/**
- * 工具栏：搜索框（视觉焦点）+ 分类 pills + 排序切换。
- */
 export function AppCenterToolbar({
   searchQuery,
   onSearchChange,
-  categoryOptions,
-  activeCategory,
-  onCategoryChange,
+  domainOptions,
+  activeDomain,
+  onDomainChange,
   sortMode,
   onSortChange,
 }: AppCenterToolbarProps) {
@@ -37,7 +34,6 @@ export function AppCenterToolbar({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 搜索框 */}
       <div className="relative">
         <Search
           className={cn(
@@ -67,12 +63,11 @@ export function AppCenterToolbar({
         )}
       </div>
 
-      {/* 分类 + 排序行 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CategoryTabs
-          options={categoryOptions}
-          active={activeCategory}
-          onChange={onCategoryChange}
+          options={domainOptions}
+          active={activeDomain}
+          onChange={onDomainChange}
         />
         <SortControl value={sortMode} onChange={onSortChange} />
       </div>

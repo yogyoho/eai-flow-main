@@ -12,8 +12,8 @@ interface AppGridProps {
   isLoading: boolean;
   isFavorite: (appId: string) => boolean;
   onToggleFavorite: (appId: string) => void;
-  /** 是否为收藏区（影响标题样式） */
-  variant?: "default" | "compact";
+  /** 业务域首次出现顺序（用于 accent 确定性分配） */
+  domainOrder: string[];
 }
 
 /**
@@ -25,6 +25,7 @@ export function AppGrid({
   isLoading,
   isFavorite,
   onToggleFavorite,
+  domainOrder,
 }: AppGridProps) {
   if (isLoading) {
     return (
@@ -44,6 +45,7 @@ export function AppGrid({
           app={app}
           isFavorite={isFavorite(app.id)}
           onToggleFavorite={onToggleFavorite}
+          domainOrder={domainOrder}
         />
       ))}
     </div>
