@@ -2,30 +2,41 @@
 
 import { Star } from "lucide-react";
 import Link from "next/link";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { ACCENT_STYLES, CATEGORY_MAP } from "../config/categories";
+import {
+  ACCENT_STYLES,
+  getDomainAccent,
+  getDomainLabel,
+  STAGE_LABELS,
+} from "../config/categories";
 import type { AppDefinition } from "../types";
 
 interface AppCardProps {
   app: AppDefinition;
   isFavorite: boolean;
   onToggleFavorite: (appId: string) => void;
+  /** 业务域首次出现顺序（用于 accent 确定性分配） */
+  domainOrder: string[];
 }
 
-/**
- * 单个应用卡片 —— Notion/Vercel 风格。
- *
- * 外层为 Next.js <Link>，确保中键/Cmd+Click 新标签打开、右键菜单、预加载生效。
- * 收藏按钮阻止冒泡，避免触发卡片跳转。
- */
-function AppCardImpl({ app, isFavorite, onToggleFavorite }: AppCardProps) {
+function AppCardImpl({
+  app,
+  isFavorite,
+  onToggleFavorite,
+  domainOrder,
+}: AppCardProps) {
   const Icon = app.icon;
-  const category = CATEGORY_MAP[app.category];
-  const accent = ACCENT_STYLES[category.accent];
+  const accentColor = useMemo(
+    () => getDomainAccent(app.businessDomain, domainOrder),
+    [app.businessDomain, domainOrder],
+  );
+  const accent = ACCENT_STYLES[accentColor];
+  const domainLabel = getDomainLabel(app.businessDomain);
+  const stageLabel = app.stageTag ? STAGE_LABELS[app.stageTag] : null;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -95,16 +106,21 @@ function AppCardImpl({ app, isFavorite, onToggleFavorite }: AppCardProps) {
         </p>
       </div>
 
-      {/* 分类角标 —— 用分类强调色，呼应图标容器 */}
-      <div className="mt-auto pt-1">
+      {/* 标签行：业务域角标 + 功能阶段徽章 */}
+      <div className="mt-auto flex items-center gap-1.5 pt-1">
         <span
           className={cn(
             "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
             accent.tag,
           )}
         >
-          {category.label}
+          {domainLabel}
         </span>
+        {stageLabel && (
+          <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {stageLabel}
+          </span>
+        )}
       </div>
     </Link>
   );
