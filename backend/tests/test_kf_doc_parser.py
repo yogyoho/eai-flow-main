@@ -158,3 +158,43 @@ def test_parsed_document_error():
     doc = ParsedDocument(file_path="/tmp/bad.pdf", file_type="pdf", error="PDF 无可提取文字")
     assert doc.error != ""
     assert doc.error == "PDF 无可提取文字"
+
+
+# ── Grounding: 精确章节切片 ──
+
+def test_finalize_sections_exact_slice():
+    """finalize_sections 按 heading.para_idx 精确切分段落，subtree 含子节。"""
+    paragraphs = ["1 总则", "本章节介绍项目背景。", "1.1 任务由来", "任务由来说明。", "2 工程分析", "工艺流程内容。"]
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [
+        Heading(title="1 总则", level=1, para_idx=0),
+        Heading(title="1.1 任务由来", level=2, para_idx=2),
+        Heading(title="2 工程分析", level=1, para_idx=4),
+    ]
+    doc.full_text = "\n\n".join(paragraphs)
+    doc.finalize_sections(paragraphs)
+    # H1 "1 总则" subtree 到下一个 H1 "2 工程分析"，含子节 1.1
+    assert "任务由来说明" in doc.section_texts[0]
+    assert "工艺流程" not in doc.section_texts[0]
+    # H2 "1.1" 叶子切片，只到下一个 heading
+    assert "任务由来说明" in doc.section_texts[1]
+    assert "1 总则" not in doc.section_texts[1]
+
+
+def test_section_text_by_title_normalizes_spaces():
+    """标题带多余空格时，normalize 后仍能匹配到精确切片。"""
+    paragraphs = ["1 总  则", "总则正文内容。", "2 概述", "概述内容。"]
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [Heading(title="1 总  则", level=1, para_idx=0), Heading(title="2 概述", level=1, para_idx=2)]
+    doc.finalize_sections(paragraphs)
+    # 查询用单空格标题，原文是双空格，normalize 后应匹配
+    text = doc.section_text_by_title("1 总则", level=1)
+    assert "总则正文内容" in text
+
+
+def test_section_text_by_title_empty_when_regex_fallback():
+    """regex 兜底的 heading 无 para_idx，返回空串让调用方回退。"""
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [Heading(title="第一章 总则", level=1, para_idx=-1)]  # regex 兜底无锚点
+    doc.section_texts = [""]
+    assert doc.section_text_by_title("第一章 总则") == ""

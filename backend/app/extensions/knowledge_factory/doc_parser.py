@@ -31,6 +31,10 @@ class Heading:
     level: int
     line_number: int = 0
     style_name: str = ""
+    # ponytail: index into the paragraph list used to build full_text.
+    # -1 = unknown (regex-fallback headings have no paragraph anchor).
+    # Enables exact section slicing instead of fuzzy keyword matching.
+    para_idx: int = -1
 
 
 @dataclass
@@ -49,6 +53,54 @@ class ParsedDocument:
     tables: list[DocTable] = field(default_factory=list)
     full_text: str = ""
     error: str = ""
+    # Per-heading exact source slice (aligned with headings[]). Built by
+    # finalize_sections() from paragraph list + heading.para_idx. Empty
+    # string when no anchor (regex fallback) — caller falls back to fuzzy.
+    section_texts: list[str] = field(default_factory=list)
+
+    def finalize_sections(self, paragraphs: list[str], max_chars: int = 6000) -> None:
+        """Slice paragraphs by heading anchors into per-section source text.
+
+        For each heading, subtree_text = paragraphs[para_idx : next_same_or_higher_level].
+        This is the exact original text for that section — no fuzzy matching.
+        """
+        n = len(paragraphs)
+        self.section_texts = []
+        for hi, h in enumerate(self.headings):
+            if h.para_idx < 0 or h.para_idx >= n:
+                self.section_texts.append("")
+                continue
+            end_pidx = n
+            for j in range(hi + 1, len(self.headings)):
+                nj = self.headings[j]
+                if nj.para_idx >= 0 and nj.level <= h.level:
+                    end_pidx = nj.para_idx
+                    break
+            text = "\n\n".join(paragraphs[h.para_idx:end_pidx])
+            self.section_texts.append(text[:max_chars] if len(text) > max_chars else text)
+
+    def section_text_by_title(self, title: str, level: int = 0) -> str:
+        """Return pre-computed source text for a heading by normalized title match.
+
+        Used by pipeline to ground LLM extraction in exact source text.
+        Returns "" if no anchored match (regex-fallback or mismatch) —
+        caller then falls back to fuzzy matching.
+        """
+        if not self.section_texts:
+            return ""
+        norm = normalize_text(title)
+        fallback = ""
+        for hi, h in enumerate(self.headings):
+            if hi >= len(self.section_texts):
+                break
+            if level and h.level != level:
+                continue
+            if normalize_text(h.title) == norm:
+                return self.section_texts[hi]
+            # loose substring fallback (title may carry extra spaces/punctuation)
+            if not fallback and (h.title in title or title in h.title):
+                fallback = self.section_texts[hi]
+        return fallback
 
 
 # ── Text normalization ──
@@ -220,7 +272,8 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
                 lv = _HEADING_STYLES.get(cur_style)
                 if lv is not None:
                     headings.append(Heading(title=text, level=lv,
-                                           line_number=line_no, style_name=f"Heading {lv}"))
+                                           line_number=line_no, style_name=f"Heading {lv}",
+                                           para_idx=len(paragraphs) - 1))
             line_no += 1
         elif name == "tc":
             in_tc = False
@@ -263,8 +316,10 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     if not headings and full_text:
         headings = _scan_headings_regex(full_text)
 
-    return ParsedDocument(file_path=str(path), file_type="docx",
+    result = ParsedDocument(file_path=str(path), file_type="docx",
                         headings=headings, tables=tables, full_text=full_text)
+    result.finalize_sections(paragraphs)
+    return result
 
 
 def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
@@ -294,11 +349,11 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
         paragraphs.append(text)
         s = (para.style.name if para.style else "").lower()
         if "heading 1" in s or s == "heading1":
-            headings.append(Heading(title=text, level=1, line_number=line_no, style_name=para.style.name))
+            headings.append(Heading(title=text, level=1, line_number=line_no, style_name=para.style.name, para_idx=len(paragraphs) - 1))
         elif "heading 2" in s or s == "heading2":
-            headings.append(Heading(title=text, level=2, line_number=line_no, style_name=para.style.name))
+            headings.append(Heading(title=text, level=2, line_number=line_no, style_name=para.style.name, para_idx=len(paragraphs) - 1))
         elif "heading 3" in s or s == "heading3":
-            headings.append(Heading(title=text, level=3, line_number=line_no, style_name=para.style.name))
+            headings.append(Heading(title=text, level=3, line_number=line_no, style_name=para.style.name, para_idx=len(paragraphs) - 1))
         line_no += 1
 
     for table in doc.tables:
@@ -311,8 +366,10 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
     if not headings and full_text:
         headings = _scan_headings_regex(full_text)
 
-    return ParsedDocument(file_path=file_path, file_type="docx",
+    result = ParsedDocument(file_path=file_path, file_type="docx",
                         headings=headings, tables=tables, full_text=full_text)
+    result.finalize_sections(paragraphs)
+    return result
 
 
 # ── PDF parser ──

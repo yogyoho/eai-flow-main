@@ -1122,6 +1122,42 @@ class ExtractionPipeline:
         logger.info(f"[Task {task_id}] Step 1: 完成，共处理 {len(all_doc_schemas)} 份文档")
         ctx["_doc_schemas"] = all_doc_schemas
 
+    # ── Grounding: 锚定校验 LLM 输出到原文 ──
+
+    def _ground_metadata(metadata: dict, source_text: str) -> tuple[dict, int]:
+        """丢弃 LLM 输出中明显不在原文的字段（减幻觉）。
+
+        - example_snippet: normalize 后必须是 source_text 子串，否则置 None
+          (prompt 已要求"从原文提取"，改写/编造的视为幻觉丢弃)
+        - table_schemas[].caption / formula_references[].formula_id:
+          不在原文出现则标记 _unverified=True（保留供人工编辑，但提示存疑）
+        返回 (清理后 metadata, 丢弃/标记计数)。
+        """
+        if not source_text or not metadata:
+            return metadata, 0
+        from .doc_parser import normalize_text
+        norm = normalize_text(source_text)
+        dropped = 0
+
+        snippet = metadata.get("example_snippet")
+        if snippet and normalize_text(snippet) not in norm:
+            metadata["example_snippet"] = None
+            dropped += 1
+
+        for t in metadata.get("table_schemas") or []:
+            cap = (t.get("caption") or "").strip()
+            if cap and normalize_text(cap) not in norm:
+                t["_unverified"] = True
+                dropped += 1
+
+        for f in metadata.get("formula_references") or []:
+            fid = (f.get("formula_id") or "").strip()
+            if fid and normalize_text(fid) not in norm:
+                f["_unverified"] = True
+                dropped += 1
+
+        return metadata, dropped
+
     # ── Step 2: 元数据抽取 ──────────────────────────────────────
 
     async def _step_extract_metadata(
@@ -1146,7 +1182,7 @@ class ExtractionPipeline:
             return []
 
         documents = ctx.get("_documents", [])
-        # 构建文档内容映射: {doc_id: {"name": doc_name, "content": full_content, "chunks": [...]}}
+        # 构建文档内容映射: {doc_id: {"name": doc_name, "content": full_content, "chunks": [...], "parsed": ParsedDocument}}
         doc_contents: dict[str, dict] = {}
         for doc in documents:
             doc_id = doc.get("id", "")
@@ -1159,6 +1195,7 @@ class ExtractionPipeline:
                     "name": doc.get("name", ""),
                     "content": full_content,
                     "chunks": chunks,
+                    "parsed": doc.get("_parsed"),  # doc_parser result for exact section slicing
                 }
 
         # Fetch available knowledge bases for RAG source matching
@@ -1291,14 +1328,28 @@ class ExtractionPipeline:
 
             return ""
 
+        # 全文锚定源（所有文档拼接），供 _ground_metadata 校验 LLM 输出
+        all_source_text = "\n\n".join(d["content"] for d in doc_contents.values() if d.get("content"))
+
         async def enrich(sec: dict) -> dict:
             sec_id = sec.get("id", "")
             title = sec.get("title", "")
             level = sec.get("level", 1)
             purpose = sec.get("purpose")
 
-            # 查找与该章节匹配的内容
-            section_content = _find_section_content(title, level, doc_contents)
+            # 查找与该章节匹配的内容 — 优先用 doc_parser 精确切片（grounding），
+            # 回退到 _find_section_content 模糊匹配。精确切片消除"章节内容定位"
+            # 幻觉：LLM 拿到的是该标题下真实原文，而非"第一份文档开头"。
+            section_content = ""
+            for doc_data in doc_contents.values():
+                parsed = doc_data.get("parsed")
+                if parsed is not None:
+                    exact = parsed.section_text_by_title(title, level)
+                    if exact:
+                        section_content = exact
+                        break
+            if not section_content:
+                section_content = _find_section_content(title, level, doc_contents)
 
             try:
                 metadata = await loop.run_in_executor(
@@ -1322,6 +1373,11 @@ class ExtractionPipeline:
                     "example_snippet": section_content[:200] if section_content else None,
                     "completeness_score": 50,
                 }
+
+            # 锚定校验：丢弃/标记 LLM 输出中不在原文的字段（减幻觉）
+            metadata, dropped = self._ground_metadata(metadata, all_source_text)
+            if dropped:
+                logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] {sec_id} 锚定校验丢弃/标记 {dropped} 个幻觉字段")
 
             # Match LLM-suggested rag_sources against real KB records
             raw_rag_sources = metadata.get("rag_sources", [])
