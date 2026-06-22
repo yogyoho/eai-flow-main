@@ -22,10 +22,18 @@ description: |
 3. 不使用 `word-document-server` MCP 工具、`markdown-to-docx` skill 或自写 Python 脚本来生成 Word。
 4. 每章生成后通过 `project_write_chapter` 写入，不将全部章节攒到最后一次性写入。
 
-### 关于模板获取
+### 关于模板获取（⛔ 强制规则 — 违反则报告失败）
 
-5. 优先调用 `knowledge-factory_kf_resolve_template` 获取知识工厂模板元数据。
-6. 仅当 MCP 工具返回 `found=false` 或调用失败时，才回退到读取 `references/` 下的 markdown 文件。
+5. **⛔ 必须第一步调用 `knowledge-factory_kf_resolve_template` 获取知识工厂模板元数据。** 这不是可选步骤——在生成任何章节内容之前，你必须先调用此 MCP 工具。调用参数：
+   ```
+   knowledge-factory_kf_resolve_template(
+     domain_keywords=["环评报告", "环境影响评价"],
+     industry="煤炭"
+   )
+   ```
+   如果返回 `found=true`，后续每章的生成**必须基于返回的模板元数据**（generation_hint、content_contract.key_elements、compliance_rules、table_schemas 等），而不是 `references/` 下的静态文档。
+6. **仅当** MCP 工具返回 `found=false` **或调用超时/报错**时，才回退到读取 `references/` 下的 markdown 文件。回退时必须向用户说明："知识工厂模板不可用，使用内置参考文档生成"。
+7. **⛔ 禁止跳过步骤 5 直接用内置参考文档生成。** 如果你发现自己没有调用 `knowledge-factory_kf_resolve_template` 就开始写内容，**立即停止**，返回步骤 5。
 
 ### 关于仿写约束
 
@@ -191,6 +199,8 @@ knowledge-factory_kf_resolve_template(
 
 ### 步骤3：加载补充知识
 
+**⛔ 前置检查**：确认步骤2已调用 `knowledge-factory_kf_resolve_template` 并获得模板。如果跳过了步骤2，**返回步骤2执行**，不得直接进入步骤3。
+
 无论模板是否获取成功，始终读取以下文件：
 - `references/terminology.md` — 煤炭环评专业术语（含煤地层、采煤方法、环境影响类型、生态评价术语等）
 - `references/sample_entities.md` — 样本实体卡片（用于实体泄漏检测的已知实体名列表）
@@ -210,7 +220,9 @@ knowledge-factory_kf_resolve_template(
 **每章生成的微观流程**：
 
 1. **`project_list_chapters`**：查看当前报告的章节进度（已生成/待生成），确认下一章。
-2. **`project_get_chapter_spec`**：获取目标章节的结构规格（来自模板元数据或内置定义），包括该章的 `generation_hint`、`content_contract`、`compliance_rules`。
+2. **获取章节规格**：
+   - **如果有知识工厂模板**（步骤2返回 `found=true`）：从模板的 `root_sections` 中提取当前章节的 `generation_hint`、`content_contract.key_elements`、`compliance_rules`、`table_schemas`、`figure_requirements`、`sub_section_profile`。**⛔ 必须使用模板元数据，不要回退到 `project_get_chapter_spec` 或内置定义。**
+   - **如果模板不可用**：调用 `project_get_chapter_spec` 获取结构规格。
 3. **加载实体卡片**：从步骤1建立的项目实体卡片中提取当前章节所需的实体信息。
 4. **RAG 搜索**：调用 knowledge REST API，以当前章节关键词为查询，从知识库中检索相关标准和规范条文。查询示例：
    - 第6章大气影响：`"煤炭开采 大气污染物排放标准 SO2 PM10 预测方法"`
@@ -218,7 +230,7 @@ knowledge-factory_kf_resolve_template(
 5. **计算（如需）**：对于需要定量分析的章节（第6章环境影响预测、第7章承载力分析、第9章风险评价），调用 `scripts/calc/` 下的计算脚本进行辅助计算。参见下方"计算工具"章节。
 6. **生成内容**：基于章节规格、实体信息、RAG 检索结果和计算结果，生成结构化 Markdown 文本。严格遵循仿写约束（不照搬、方法论参考、实体替换）。
 7. **实体泄漏检查**：扫描生成内容，确认不包含样本实体名（参见规则11）。如发现泄漏，替换为当前项目实体或 `[待补充]`。
-8. **合规性校验（调用 `kf_check_compliance`）**：将本章生成的 Markdown 全文传入 `knowledge-factory_kf_check_compliance` 校验。**只传 `chapter_content`，不要传 `industry`/`report_type`**（规则库的行业字段是英文 `environmental`，传中文会匹配不到；默认即校验全部启用规则）：
+8. **⛔ 合规性校验（必须调用 `knowledge-factory_kf_check_compliance`）**：将本章生成的 Markdown 全文传入 MCP 工具校验。这不是可选步骤——每章写入前必须调用。**只传 `chapter_content`，不要传 `industry`/`report_type`**：
    ```
    knowledge-factory_kf_check_compliance(chapter_content=<本章 Markdown 全文>)
    ```
