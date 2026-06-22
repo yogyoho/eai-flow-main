@@ -106,7 +106,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         self._agent_name = agent_name
         self._app_config = app_config
 
-    def _build_full_reminder(self, *, thread_id: str | None = None) -> str:
+    def _build_full_reminder(self, *, thread_id: str | None = None, runtime: object | None = None) -> str:
         from deerflow.agents.lead_agent.prompt import _get_memory_context
 
         # Memory injection is gated by injection_enabled; date is always included.
@@ -118,7 +118,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         if memory_context:
             lines.append(memory_context.strip())
             lines.append("")  # blank line separating memory from date
-        project_context = self._get_project_context(thread_id) if thread_id else ""
+        project_context = self._get_project_context(thread_id, runtime) if thread_id else ""
         if project_context:
             lines.append(project_context.strip())
             lines.append("")
@@ -137,14 +137,22 @@ class DynamicContextMiddleware(AgentMiddleware):
             ]
         )
 
-    def _get_project_context(self, thread_id: str) -> str:
-        """Read project context from thread directory if it exists."""
+    def _get_project_context(self, thread_id: str, runtime: object | None = None) -> str:
+        """Read project context from thread directory if it exists.
+
+        ``runtime`` carries the authenticated ``user_id`` (set by the gateway's
+        ``inject_authenticated_user_context``) via ``runtime.context``. The user_id
+        is resolved from there — NOT from the ``get_effective_user_id()`` contextvar,
+        which is unset in the gateway run path and would fall back to ``"default"``,
+        causing the file (written by the app layer under the extensions user_id) to
+        be missed. See cerebrum Do-Not-Repeat [2026-06-09].
+        """
         import json
 
         from deerflow.config.paths import get_paths
-        from deerflow.runtime.user_context import get_effective_user_id
+        from deerflow.runtime.user_context import resolve_runtime_user_id
 
-        user_id = get_effective_user_id()
+        user_id = resolve_runtime_user_id(runtime)
         paths = get_paths()
         context_file = paths.thread_dir(thread_id, user_id=user_id) / "project-context.json"
         if not context_file.exists():
@@ -212,7 +220,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         )
         return reminder_msg, user_msg
 
-    def _inject(self, state, *, thread_id: str | None = None) -> dict | None:
+    def _inject(self, state, *, thread_id: str | None = None, runtime: object | None = None) -> dict | None:
         messages = list(state.get("messages", []))
         if not messages:
             return None
@@ -231,7 +239,7 @@ class DynamicContextMiddleware(AgentMiddleware):
             first_idx = next((i for i, m in enumerate(messages) if _is_user_injection_target(m)), None)
             if first_idx is None:
                 return None
-            full_reminder = self._build_full_reminder(thread_id=thread_id)
+            full_reminder = self._build_full_reminder(thread_id=thread_id, runtime=runtime)
             logger.info(
                 "DynamicContextMiddleware: injecting full reminder (len=%d, has_memory=%s) into first HumanMessage id=%r",
                 len(full_reminder),
@@ -254,20 +262,43 @@ class DynamicContextMiddleware(AgentMiddleware):
         logger.info("DynamicContextMiddleware: midnight crossing detected — injected date update before current turn")
         return {"messages": [reminder_msg, user_msg]}
 
+    @staticmethod
+    def _resolve_thread_id(runtime: object | None) -> str | None:
+        """Resolve thread_id from runtime.context, falling back to config.configurable.
+
+        The gateway sets thread_id in ``config["configurable"]["thread_id"]`` (the
+        LangGraph standard); ``runtime.context["thread_id"]`` is only populated when a
+        caller forwards it explicitly. Without the fallback, thread_id is None and
+        ``_get_project_context`` is silently skipped (its ``if thread_id`` guard),
+        so project context never reaches the agent. Mirrors
+        ``ThreadDataMiddleware.before_agent``.
+        """
+        context = getattr(runtime, "context", None)
+        tid = context.get("thread_id") if isinstance(context, dict) else None
+        if tid is None:
+            try:
+                from langgraph.config import get_config
+
+                tid = get_config().get("configurable", {}).get("thread_id")
+            except Exception:
+                tid = None
+        return tid
+
     @override
     def before_agent(self, state, runtime: Runtime) -> dict | None:
-        thread_id = runtime.context.get("thread_id") if runtime.context else None
-        return self._inject(state, thread_id=thread_id)
+        return self._inject(state, thread_id=self._resolve_thread_id(runtime), runtime=runtime)
 
     @override
     async def abefore_agent(self, state, runtime: Runtime) -> dict | None:
-        thread_id = runtime.context.get("thread_id") if runtime.context else None
+        # Resolve thread_id on the event loop (get_config reads a contextvar that
+        # may not survive the to_thread boundary) before offloading file I/O.
+        thread_id = self._resolve_thread_id(runtime)
         # Offload injection (file I/O + tiktoken token counting) off the event
         # loop so a cold tiktoken BPE download can't block all concurrent
         # handlers. Bounded to 5s so a failed startup warm-up degrades
         # gracefully (no memory/date context for this turn) instead of hanging.
         # (Upstream #3411.)
         try:
-            return await asyncio.wait_for(asyncio.to_thread(self._inject, state, thread_id=thread_id), timeout=5)
+            return await asyncio.wait_for(asyncio.to_thread(self._inject, state, thread_id=thread_id, runtime=runtime), timeout=5)
         except TimeoutError:
             return None

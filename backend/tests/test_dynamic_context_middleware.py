@@ -4,6 +4,9 @@ Verifies that memory and current date are injected as a <system-reminder> into
 the first HumanMessage exactly once per session (frozen-snapshot pattern).
 """
 
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import mock
 
@@ -84,6 +87,109 @@ def test_memory_included_when_present():
     assert "User prefers Python." in reminder_content
     assert "<current_date>2026-05-08, Friday</current_date>" in reminder_content
     assert result["messages"][1].content == "Hi"
+
+
+# ---------------------------------------------------------------------------
+# Project context injection (runtime user_id resolution)
+# ---------------------------------------------------------------------------
+
+
+def test_project_context_injected_via_runtime_user_id():
+    """Regression: project_context must be read using runtime.context['user_id']
+    (resolve_runtime_user_id), NOT the contextvar (get_effective_user_id, which
+    falls back to 'default' in the gateway run path where the contextvar is unset).
+
+    The app layer (enter_project) writes project-context.json under the extensions
+    user_id, which equals runtime.context['user_id'] (set by
+    inject_authenticated_user_context). If the middleware reads via the contextvar
+    instead, it looks under 'default/' and never finds the file.
+    """
+    mw = _make_middleware()
+    runtime_uid = "f8766d55-2b1b-422e-a945-5fcf268a8a39"
+    tid = "d6c47689-f85e-4ac2-a825-33b1a57068e9"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+
+    with TemporaryDirectory() as tmp:
+        # File written by the app layer under the RUNTIME user_id (extensions UUID).
+        write_dir = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        write_dir.mkdir(parents=True)
+        (write_dir / "project-context.json").write_text(
+            json.dumps(
+                {
+                    "project_id": "p1",
+                    "project_name": "测试项目-RT",
+                    "report_type": "fire_protection_design",
+                    "template": {"template_name": "消防模板"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        # 'default' bucket exists but has NO file for this thread (the bug condition).
+        (Path(tmp) / "users" / "default").mkdir(parents=True)
+
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+
+    assert result is not None
+    reminder = result["messages"][0].content
+    assert "<project_context>" in reminder
+    assert "测试项目-RT" in reminder
+    assert "fire_protection_design" in reminder
+
+
+def test_project_context_thread_id_falls_back_to_configurable():
+    """Regression (primary bug): the gateway sets thread_id in
+    config['configurable']['thread_id'], NOT in runtime.context. before_agent must
+    fall back to get_config().configurable.thread_id (mirroring ThreadDataMiddleware);
+    otherwise thread_id is None, ``_get_project_context`` is skipped via its
+    ``if thread_id`` guard, and project context NEVER reaches the agent.
+    """
+    mw = _make_middleware()
+    runtime_uid = "f8766d55-2b1b-422e-a945-5fcf268a8a39"
+    tid = "eaee753f-904b-4fcb-9811-9087716714b2"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    # runtime.context has user_id but NO thread_id (production gateway behavior)
+    runtime = SimpleNamespace(context={"user_id": runtime_uid})
+
+    with TemporaryDirectory() as tmp:
+        write_dir = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        write_dir.mkdir(parents=True)
+        (write_dir / "project-context.json").write_text(
+            json.dumps(
+                {
+                    "project_id": "p1",
+                    "project_name": "可回退测试",
+                    "report_type": "fire_protection_design",
+                    "template": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+            mock.patch("langgraph.config.get_config", return_value={"configurable": {"thread_id": tid}}),
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+
+    assert result is not None
+    reminder = result["messages"][0].content
+    assert "<project_context>" in reminder
+    assert "可回退测试" in reminder
 
 
 # ---------------------------------------------------------------------------

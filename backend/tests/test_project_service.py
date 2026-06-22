@@ -41,7 +41,8 @@ class TestEnterProject:
         mock_member.user_id = user_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, mock_member]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
@@ -77,10 +78,12 @@ class TestEnterProject:
         mock_member.user_id = user_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, mock_member]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create:
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, \
+             patch("app.extensions.project.service._write_project_context"):
             from app.extensions.project.service import enter_project
 
             result = await enter_project(mock_db, project_id, user_id)
@@ -90,13 +93,62 @@ class TestEnterProject:
         assert result["project_id"] == str(project_id)
 
     @pytest.mark.asyncio
+    async def test_refreshes_context_on_reentry(self, mock_db, project_id, user_id):
+        """Re-entering an existing project thread must refresh project-context.json
+        with the current project/template data, so edits made after the first
+        conversation creation still reach the agent on the next new conversation
+        (the middleware freezes the snapshot into the first HumanMessage, so the
+        file must be up-to-date before that first turn runs)."""
+        existing_tid = str(uuid4())
+        template_id = uuid4()
+
+        mock_project = MagicMock()
+        mock_project.id = project_id
+        mock_project.template_id = template_id
+        mock_project.report_type = "fire_protection_design"
+        mock_project.name = "抚顺消防专篇（已改名）"
+
+        mock_member = MagicMock()
+        mock_member.thread_id = existing_tid
+        mock_member.user_id = user_id
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        mock_template = MagicMock()
+        mock_template.name = "消防模板v2"
+        mock_template.domain = "fire_protection"
+        mock_template.root_sections_json = {"sections": [{"title": "设计依据"}]}
+        mock_db.get = AsyncMock(return_value=mock_template)
+
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, \
+             patch("app.extensions.project.service._write_project_context") as mock_write:
+            from app.extensions.project.service import enter_project
+
+            result = await enter_project(mock_db, project_id, user_id)
+
+        # Reuse the existing thread — do not create a new one.
+        mock_create.assert_not_called()
+        assert result["thread_id"] == existing_tid
+        # Context file must be refreshed with current project/template data.
+        mock_write.assert_called_once()
+        written_tid, written_uid, metadata = mock_write.call_args[0]
+        assert written_tid == existing_tid
+        assert written_uid == str(user_id)
+        assert metadata["project_name"] == "抚顺消防专篇（已改名）"
+        assert metadata["template"]["template_name"] == "消防模板v2"
+
+    @pytest.mark.asyncio
     async def test_raises_for_non_member(self, mock_db, project_id, user_id):
         """When user is not a project member, raise ValueError."""
         mock_project = MagicMock()
         mock_project.id = project_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, None]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = None
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         from app.extensions.project.service import enter_project
@@ -133,7 +185,8 @@ class TestEnterProject:
         mock_member.user_id = user_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, mock_member]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         mock_template = MagicMock()
@@ -171,7 +224,8 @@ class TestEnterProject:
         mock_member.user_id = user_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, mock_member]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
@@ -200,7 +254,8 @@ class TestEnterProject:
         mock_member.user_id = user_id
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.side_effect = [mock_project, mock_member]
+        mock_result.scalar_one_or_none.return_value = mock_project
+        mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
         mock_db.get = AsyncMock(return_value=None)
 
@@ -223,7 +278,7 @@ class TestGetProjectFiles:
         member.user_id = uuid4()
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [member]
+        mock_result.scalars.return_value.all.side_effect = [[member], []]
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("httpx.AsyncClient") as mock_client_cls:
@@ -248,7 +303,7 @@ class TestGetProjectFiles:
         member.user_id = uuid4()
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [member]
+        mock_result.scalars.return_value.all.side_effect = [[member], []]
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.extensions.project.service._resolve_username", return_value="alice"), \
@@ -289,7 +344,7 @@ class TestGetProjectFiles:
         member2.user_id = uuid4()
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [member1, member2]
+        mock_result.scalars.return_value.all.side_effect = [[member1, member2], []]
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.extensions.project.service._resolve_username", side_effect=lambda db, uid: "alice" if uid == member1.user_id else "bob"), \
@@ -328,7 +383,7 @@ class TestGetProjectFiles:
         member.user_id = uuid4()
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [member]
+        mock_result.scalars.return_value.all.side_effect = [[member], []]
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with patch("app.extensions.project.service._resolve_username", return_value="alice"), \

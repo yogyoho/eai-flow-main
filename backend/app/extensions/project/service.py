@@ -322,15 +322,11 @@ async def enter_project(
     if not member:
         raise ValueError("Not a project member")
 
-    if member.thread_id:
-        template_name = ""
-        if project.template_id:
-            from app.extensions.knowledge_factory.models import ExtractionTemplate
-            tmpl = await db.get(ExtractionTemplate, project.template_id)
-            if tmpl:
-                template_name = tmpl.name
-        return {"thread_id": member.thread_id, "project_id": str(project_id), "template_name": template_name}
-
+    # Build context metadata once. It seeds a brand-new thread AND refreshes the
+    # agent's project-context snapshot on re-entry, so edits made to the project
+    # name / report_type / template after the first conversation still reach the
+    # agent (the middleware freezes the snapshot into the first HumanMessage of
+    # each thread, so the file must be current before that first turn runs).
     template_context = {}
     if project.template_id:
         from app.extensions.knowledge_factory.models import ExtractionTemplate
@@ -349,6 +345,16 @@ async def enter_project(
         "project_name": project.name,
         "template": template_context,
     }
+
+    if member.thread_id:
+        # Reuse the existing conversation thread but refresh the context file
+        # with the latest project/template data for the next new conversation.
+        _write_project_context(member.thread_id, str(user_id), metadata)
+        return {
+            "thread_id": member.thread_id,
+            "project_id": str(project_id),
+            "template_name": template_context.get("template_name", ""),
+        }
 
     thread_id = await _create_deerflow_thread(metadata, cookies=cookies, csrf_token=csrf_token)
     member.thread_id = thread_id

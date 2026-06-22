@@ -299,6 +299,27 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
         raise HTTPException(status_code=500, detail="Failed to create thread")
 
     logger.info("Thread created: %s", sanitize_log_param(thread_id))
+
+    # Report-project threads: persist the project context snapshot so
+    # DynamicContextMiddleware can inject it into the agent's first turn.
+    # Written HERE (gateway side) because the agent's filesystem is keyed by
+    # the gateway user_id (request.state.user via get_effective_user_id),
+    # NOT the extensions user_id that the project service sees — the two are
+    # different IDs for the same person (gateway/extensions auth split).
+    if body.metadata.get("type") == "report_project":
+        try:
+            import json as _json
+
+            from deerflow.config.paths import get_paths
+
+            thread_dir = get_paths().thread_dir(thread_id, user_id=get_effective_user_id())
+            thread_dir.mkdir(parents=True, exist_ok=True)
+            (thread_dir / "project-context.json").write_text(
+                _json.dumps(body.metadata, ensure_ascii=False, indent=2)
+            )
+        except Exception:
+            logger.exception("Failed to write project-context.json for thread %s", sanitize_log_param(thread_id))
+
     return ThreadResponse(
         thread_id=thread_id,
         status="idle",
