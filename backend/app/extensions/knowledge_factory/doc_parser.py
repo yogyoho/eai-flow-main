@@ -31,10 +31,13 @@ class Heading:
     level: int
     line_number: int = 0
     style_name: str = ""
-    # ponytail: index into the paragraph list used to build full_text.
-    # -1 = unknown (regex-fallback headings have no paragraph anchor).
-    # Enables exact section slicing instead of fuzzy keyword matching.
+    # ponytail: paragraph index + char offset into full_text.
+    # -1 = unknown (regex-fallback headings have no anchor).
+    # Stored as offsets (not pre-sliced text) to avoid duplicating subtree
+    # text across every heading — a tree of N nodes would otherwise hold
+    # O(N²) text. Section text is sliced from full_text on demand.
     para_idx: int = -1
+    text_offset: int = -1
 
 
 @dataclass
@@ -53,53 +56,53 @@ class ParsedDocument:
     tables: list[DocTable] = field(default_factory=list)
     full_text: str = ""
     error: str = ""
-    # Per-heading exact source slice (aligned with headings[]). Built by
-    # finalize_sections() from paragraph list + heading.para_idx. Empty
-    # string when no anchor (regex fallback) — caller falls back to fuzzy.
-    section_texts: list[str] = field(default_factory=list)
 
-    def finalize_sections(self, paragraphs: list[str], max_chars: int = 6000) -> None:
-        """Slice paragraphs by heading anchors into per-section source text.
+    def finalize_sections(self, paragraphs: list[str]) -> None:
+        """Compute each heading's char offset in full_text.
 
-        For each heading, subtree_text = paragraphs[para_idx : next_same_or_higher_level].
-        This is the exact original text for that section — no fuzzy matching.
+        Stores only offsets (O(N) memory), not pre-sliced subtree text.
+        section_text_by_title slices full_text on demand — correct and
+        memory-bounded regardless of heading tree depth.
         """
-        n = len(paragraphs)
-        self.section_texts = []
-        for hi, h in enumerate(self.headings):
-            if h.para_idx < 0 or h.para_idx >= n:
-                self.section_texts.append("")
-                continue
-            end_pidx = n
-            for j in range(hi + 1, len(self.headings)):
-                nj = self.headings[j]
-                if nj.para_idx >= 0 and nj.level <= h.level:
-                    end_pidx = nj.para_idx
-                    break
-            text = "\n\n".join(paragraphs[h.para_idx:end_pidx])
-            self.section_texts.append(text[:max_chars] if len(text) > max_chars else text)
+        offsets: list[int] = []
+        pos = 0
+        for p in paragraphs:
+            offsets.append(pos)
+            pos += len(p) + 2  # +2 for "\n\n" separator
+        for h in self.headings:
+            if 0 <= h.para_idx < len(offsets):
+                h.text_offset = offsets[h.para_idx]
 
-    def section_text_by_title(self, title: str, level: int = 0) -> str:
-        """Return pre-computed source text for a heading by normalized title match.
+    def section_text_by_title(self, title: str, level: int = 0, max_chars: int = 6000) -> str:
+        """Slice exact source text for a heading (offset-based, on demand).
 
-        Used by pipeline to ground LLM extraction in exact source text.
-        Returns "" if no anchored match (regex-fallback or mismatch) —
+        subtree = full_text[heading.offset : next_same_or_higher_level.offset].
+        Returns "" if no anchored match (regex-fallback or offset unknown) —
         caller then falls back to fuzzy matching.
         """
-        if not self.section_texts:
+        if not self.full_text:
             return ""
         norm = normalize_text(title)
         fallback = ""
         for hi, h in enumerate(self.headings):
-            if hi >= len(self.section_texts):
-                break
             if level and h.level != level:
                 continue
-            if normalize_text(h.title) == norm:
-                return self.section_texts[hi]
-            # loose substring fallback (title may carry extra spaces/punctuation)
-            if not fallback and (h.title in title or title in h.title):
-                fallback = self.section_texts[hi]
+            matched = normalize_text(h.title) == norm
+            if not matched and not (h.title in title or title in h.title):
+                continue
+            if h.text_offset < 0:
+                continue
+            end = len(self.full_text)
+            for j in range(hi + 1, len(self.headings)):
+                nj = self.headings[j]
+                if nj.level <= h.level and nj.text_offset >= 0:
+                    end = nj.text_offset
+                    break
+            text = self.full_text[h.text_offset:end][:max_chars]
+            if matched:
+                return text
+            if not fallback:
+                fallback = text
         return fallback
 
 
