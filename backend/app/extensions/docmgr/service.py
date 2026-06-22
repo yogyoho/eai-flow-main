@@ -117,11 +117,22 @@ class AIDocumentService:
         if not project_id and data.source_thread_id:
             project_id = await AIDocumentService._detect_project_from_thread(db, data.source_thread_id)
 
+        # File the doc into the per-thread subfolder when it originates from a
+        # chat thread, so it appears in 文档空间 instead of being homeless.
+        folder_id = None
+        folder_str = data.folder
+        if data.source_thread_id:
+            folder_name = await AIDocumentService._get_thread_title(db, data.source_thread_id)
+            folder_id, folder_str = await AIDocumentService._ensure_subfolder(
+                db, user_id, folder_name, project_id,
+            )
+
         document = AIDocument(
             user_id=user_id,
             title=data.title,
             content=data.content,
-            folder=data.folder,
+            folder=folder_str,
+            folder_id=folder_id,
             source_thread_id=data.source_thread_id,
             project_id=project_id,
             doc_type=data.doc_type,
@@ -332,6 +343,13 @@ class AIDocumentService:
         if not sandbox_path.exists():
             return {"synced": 0, "skipped": 0}
 
+        # Resolve (or create) the per-thread subfolder under the personal/project
+        # root so docs are filed into the folder tree — not left homeless. Without
+        # this, docs get folder_id=NULL and never appear in 文档空间.
+        folder_id, folder_name = await AIDocumentService._ensure_subfolder(
+            db, user_id, folder_name, project_id,
+        )
+
         for filepath in sandbox_path.rglob("*"):
             if not filepath.is_file():
                 continue
@@ -360,6 +378,7 @@ class AIDocumentService:
                 user_id=user_id,
                 title=filepath.name,
                 folder=folder_name,
+                folder_id=folder_id,
                 source_thread_id=thread_id,
                 project_id=project_id,
                 doc_type="file_ref",
@@ -414,7 +433,21 @@ class AIDocumentService:
         root_result = await db.execute(root_stmt)
         root_folder = root_result.scalar_one_or_none()
         if root_folder is None:
-            return None, folder_name
+            if project_id:
+                # Project root folders are owned by the project/finalize flow;
+                # we lack the project display name here, so don't auto-create.
+                return None, folder_name
+            # ponytail: auto-create a personal "我的文档" root on first sync so
+            # chat-generated docs are filed (not homeless). Idempotent find-or-create.
+            root_folder = Folder(
+                name="我的文档",
+                owner_id=user_id,
+                project_id=None,
+                parent_id=None,
+                is_system=False,
+            )
+            db.add(root_folder)
+            await db.flush()
 
         # Find or create subfolder under root
         sub_stmt = select(Folder).where(
@@ -462,7 +495,7 @@ class AIDocumentService:
         skipped = 0
 
         try:
-            async for db in get_db_context():
+            async with get_db_context() as db:
                 try:
                     folder_name = await AIDocumentService._get_thread_title(db, thread_id)
                     project_id = await AIDocumentService._detect_project_from_thread(db, thread_id)
