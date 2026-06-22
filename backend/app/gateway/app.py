@@ -253,6 +253,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with langgraph_runtime(app, startup_config):
         logger.info("LangGraph runtime initialised")
 
+        # Register present_files → docmgr sync callback.
+        # When agent calls present_files to show outputs, auto-create
+        # AIDocument records so files appear in 文档空间.
+        try:
+            from deerflow.tools.callbacks import register_present_files_callback
+            from app.extensions.docmgr.service import AIDocumentService
+
+            async def _sync_to_docmgr(user_id, thread_id, virtual_paths):
+                await AIDocumentService.sync_outputs_to_docmgr(
+                    user_id, thread_id, virtual_paths,
+                )
+
+            register_present_files_callback(_sync_to_docmgr)
+            logger.info("Registered present_files → docmgr sync callback")
+        except Exception as e:
+            logger.warning("Failed to register present_files callback: %s", e)
+
         # Check admin bootstrap state and migrate orphan threads after admin exists.
         # Must run AFTER langgraph_runtime so app.state.store is available for thread migration
         await _ensure_admin_user(app)
