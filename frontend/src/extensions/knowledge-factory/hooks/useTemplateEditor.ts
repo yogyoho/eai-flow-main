@@ -40,6 +40,12 @@ function apiSectionToEditor(sec: TemplateSection): EditorSection {
     generationHint: sec.generation_hint,
     exampleSnippet: sec.example_snippet,
     completenessScore: sec.completeness_score,
+    // 富元数据：snake_case → camelCase（之前漏转，导致 RichMetadataEditor 读不到）
+    tableSchemas: sec.table_schemas,
+    figureRequirements: sec.figure_requirements,
+    formulaReferences: sec.formula_references,
+    calcScriptBindings: sec.calc_script_bindings,
+    subSectionProfile: sec.sub_section_profile,
   };
 }
 
@@ -80,6 +86,12 @@ function sectionToBackend(section: EditorSection): Record<string, unknown> {
     generation_hint: section.generationHint ?? null,
     example_snippet: section.exampleSnippet ?? null,
     completeness_score: section.completenessScore ?? null,
+    // 富元数据：camelCase → snake_case（之前漏转，保存时丢失）
+    table_schemas: section.tableSchemas ?? null,
+    figure_requirements: section.figureRequirements ?? null,
+    formula_references: section.formulaReferences ?? null,
+    calc_script_bindings: section.calcScriptBindings ?? null,
+    sub_section_profile: section.subSectionProfile ?? null,
   };
 }
 
