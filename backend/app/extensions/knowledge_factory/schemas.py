@@ -204,10 +204,17 @@ class RAGSourceSuggestionResponse(BaseModel):
 
 class TableColumn(BaseModel):
     """表格列定义"""
+    # ponytail: LLM 输出的 width 可能是 int（如 25），unit 可能是 None。
+    # 用 before validator 宽松转 str，避免 Pydantic 严格验证 500。
     header: str = ""
     width: str = ""
     type: str = "string"
     unit: str = ""
+
+    @field_validator("width", "unit", mode="before")
+    @classmethod
+    def _coerce_to_str(cls, v):
+        return str(v) if v is not None else ""
 
 
 class TableSchema(BaseModel):
