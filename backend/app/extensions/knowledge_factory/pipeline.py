@@ -1132,7 +1132,7 @@ class ExtractionPipeline:
 
     # ── Grounding: 锚定校验 LLM 输出到原文 ──
 
-    def _ground_metadata(metadata: dict, source_text: str) -> tuple[dict, int]:
+    def _ground_metadata(self, metadata: dict, source_text: str) -> tuple[dict, int]:
         """丢弃 LLM 输出中明显不在原文的字段（减幻觉）。
 
         - example_snippet: normalize 后必须是 source_text 子串，否则置 None
