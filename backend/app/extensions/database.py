@@ -1245,6 +1245,28 @@ async def migrate_db() -> None:
             )
         """))
 
+        # App-center: 把历史中文 domain key 统一为英文 key。
+        # 先改引用方 app_definitions，再改被引用方 app_domains，遵守外键约束。
+        # 幂等：仅当存在中文 key 时生效。
+        await conn.execute(text(
+            "UPDATE app_definitions SET business_domain = 'report' WHERE business_domain = '报告编撰'"
+        ))
+        await conn.execute(text(
+            "UPDATE app_definitions SET business_domain = 'knowledge' WHERE business_domain = '知识管理'"
+        ))
+        await conn.execute(text(
+            "UPDATE app_definitions SET business_domain = 'procurement' WHERE business_domain = '采购管理'"
+        ))
+        await conn.execute(text(
+            "UPDATE app_domains SET key = 'report' WHERE key = '报告编撰'"
+        ))
+        await conn.execute(text(
+            "UPDATE app_domains SET key = 'knowledge' WHERE key = '知识管理'"
+        ))
+        await conn.execute(text(
+            "UPDATE app_domains SET key = 'procurement' WHERE key = '采购管理'"
+        ))
+
 
 async def _seed_role_permissions(conn):
     """Insert default role-permission mappings if the table is empty."""
@@ -1396,9 +1418,9 @@ async def seed_db() -> None:
                 for domain in [
                     {"key": "universal", "label": "通用工具", "accent": "blue", "sort": 0, "universal": True},
                     {"key": "admin", "label": "系统管理", "accent": "slate", "sort": 1, "universal": True},
-                    {"key": "报告编撰", "label": "报告编撰", "accent": "violet", "sort": 2, "universal": False},
-                    {"key": "知识管理", "label": "知识管理", "accent": "cyan", "sort": 3, "universal": False},
-                    {"key": "采购管理", "label": "采购管理", "accent": "amber", "sort": 4, "universal": False},
+                    {"key": "report", "label": "报告编撰", "accent": "violet", "sort": 2, "universal": False},
+                    {"key": "knowledge", "label": "知识管理", "accent": "cyan", "sort": 3, "universal": False},
+                    {"key": "procurement", "label": "采购管理", "accent": "amber", "sort": 4, "universal": False},
                 ]:
                     await session.execute(
                         text(
@@ -1417,22 +1439,22 @@ async def seed_db() -> None:
                      "icon": "bot", "domain": "universal", "stage": "process",
                      "path": "/writing", "license": None, "admin": False, "sort": 2, "sort_key": "zhinengxiezuo"},
                     {"app_id": "projects", "name": "报告项目", "desc": "管理报告项目全生命周期，章节分配与审批跟踪",
-                     "icon": "clipboard-list", "domain": "报告编撰", "stage": "collaborate",
+                     "icon": "clipboard-list", "domain": "report", "stage": "collaborate",
                      "path": "/projects", "license": "project", "admin": False, "sort": 3, "sort_key": "baogaoxiangmu"},
                     {"app_id": "docmgr", "name": "文档空间", "desc": "团队文档协作中心，多人实时编辑与版本管理",
                      "icon": "folder-check", "domain": "universal", "stage": "collaborate",
                      "path": "/docmgr", "license": "docmgr", "admin": False, "sort": 4, "sort_key": "wendangkongjian"},
                     {"app_id": "knowledge-factory", "name": "知识工厂", "desc": "结构化知识生产流水线，从原始资料到可用知识库",
-                     "icon": "factory", "domain": "知识管理", "stage": "process",
+                     "icon": "factory", "domain": "knowledge", "stage": "process",
                      "path": "/knowledge-factory", "license": "knowledge", "admin": False, "sort": 5, "sort_key": "zhishigongchang"},
                     {"app_id": "knowledge", "name": "知识库", "desc": "检索企业知识资产，RAG 增强问答与智能引用",
-                     "icon": "book-open", "domain": "知识管理", "stage": "retrieve",
+                     "icon": "book-open", "domain": "knowledge", "stage": "retrieve",
                      "path": "/knowledge", "license": "knowledge", "admin": False, "sort": 6, "sort_key": "zhishiku"},
                     {"app_id": "output", "name": "报告输出", "desc": "一键生成多格式报告成果，模板化排版与导出",
-                     "icon": "file-output", "domain": "报告编撰", "stage": "output",
+                     "icon": "file-output", "domain": "report", "stage": "output",
                      "path": "/output", "license": "report", "admin": False, "sort": 7, "sort_key": "baogaochushu"},
                     {"app_id": "procurement", "name": "采购管理", "desc": "合同价格分析与采购分项管理，聚类归并与统计",
-                     "icon": "package-search", "domain": "采购管理", "stage": "process",
+                     "icon": "package-search", "domain": "procurement", "stage": "process",
                      "path": "/contract-price", "license": None, "admin": False, "sort": 8, "sort_key": "caigouguanli"},
                     {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
                      "icon": "settings-2", "domain": "admin", "stage": "manage",
