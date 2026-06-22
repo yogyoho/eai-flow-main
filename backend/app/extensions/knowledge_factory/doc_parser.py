@@ -266,26 +266,29 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
         nonlocal cur_text, cur_style, in_p, in_t
         nonlocal tbl_rows, row_cells, in_tbl, in_tr, in_tc
 
-        if name == "p":
+        # Word XML 元素带 w: 命名空间前缀（w:p, w:pStyle, w:t 等）。
+        # 不设 namespace_separator → expat 保留原始 QName，name=="w:p" 匹配。
+        # （之前误设 namespace_separator=":" 导致 name 变 URI 形式，比较全部失效）
+        if name == "w:p":
             in_p = True; cur_text = []; cur_style = ""
-        elif name == "pStyle" and in_p:
+        elif name == "w:pStyle" and in_p:
             cur_style = attrs.get("w:val", "").lower()
-        elif name == "t":
+        elif name == "w:t":
             in_t = True
-        elif name == "tbl":
+        elif name == "w:tbl":
             in_tbl = True; tbl_rows = []
-        elif name == "tr" and in_tbl:
+        elif name == "w:tr" and in_tbl:
             in_tr = True; row_cells = []
-        elif name == "tc" and in_tr:
+        elif name == "w:tc" and in_tr:
             in_tc = True
 
     def end(name: str):
         nonlocal in_p, in_t, in_tbl, in_tr, in_tc
         nonlocal tbl_rows, row_cells, line_no
 
-        if name == "t":
+        if name == "w:t":
             in_t = False
-        elif name == "p" and in_p:
+        elif name == "w:p" and in_p:
             in_p = False
             text = "".join(cur_text).strip()
             if text:
@@ -296,11 +299,11 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
                                            line_number=line_no, style_name=f"Heading {lv}",
                                            para_idx=len(paragraphs) - 1))
             line_no += 1
-        elif name == "tc":
+        elif name == "w:tc":
             in_tc = False
-        elif name == "tr" and in_tr:
+        elif name == "w:tr" and in_tr:
             in_tr = False; tbl_rows.append(list(row_cells))
-        elif name == "tbl":
+        elif name == "w:tbl":
             in_tbl = False
             if tbl_rows:
                 tables.append(DocTable(
@@ -314,7 +317,7 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
         elif in_t and in_tc:
             row_cells.append(text)
 
-    p = ParserCreate(namespace_separator=":")
+    p = ParserCreate()  # 不设 namespace_separator: 保留 w: QName 前缀
     p.StartElementHandler = start
     p.EndElementHandler = end
     p.CharacterDataHandler = data

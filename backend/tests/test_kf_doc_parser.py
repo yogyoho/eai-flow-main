@@ -223,3 +223,32 @@ def test_section_length_no_anchor_returns_zero():
     doc.headings = [Heading(title="第一章", level=1, para_idx=-1, text_offset=-1)]
     doc.full_text = "正文"
     assert doc.section_length(0) == 0
+
+
+# ── expat handler: 真实命名空间 docx ──
+
+def test_expat_extracts_namespaced_docx(tmp_path):
+    """expat 必须从带 xmlns:w 命名空间的真实 Word XML 提取标题/表格。
+
+    回归: namespace_separator=':' 曾导致 name 变 URI 形式，name=='p' 失效，
+    expat 返回空，静默回退 python-docx。此测试用真实命名空间 docx 覆盖。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第一章</w:t></w:r></w:p>'
+        '<w:p><w:r><w:t>正文</w:t></w:r></w:p>'
+        '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>c1</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>c2</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "t.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None
+    assert len(r.headings) == 1, f"expat 应提取 H1，得 {len(r.headings)}（namespace 比较可能失效）"
+    assert r.headings[0].level == 1
+    assert len(r.tables) == 1
+    assert r.tables[0].columns == ["c1", "c2"]
