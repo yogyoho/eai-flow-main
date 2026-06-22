@@ -45,13 +45,22 @@ export interface UseAppsReturn {
   error: Error | null;
 }
 
-function toAppDefinition(a: AppResponse): AppDefinition {
+// ponytail: cache domain labels per-domain so AppCard doesn't need to thread domains prop
+let _domainLabelCache: Map<string, string> | null = null;
+
+function toAppDefinition(a: AppResponse, domains?: DomainResponse[]): AppDefinition {
+  // Build domain label cache on first call
+  if (!_domainLabelCache && domains) {
+    _domainLabelCache = new Map(domains.map((d) => [d.key, d.label]));
+  }
   return {
     id: a.appId,
     name: a.name,
     description: a.description ?? "",
     iconName: a.iconName,
     businessDomain: a.businessDomain,
+    // Pre-resolve domain label from cache
+    domainLabel: _domainLabelCache?.get(a.businessDomain),
     stageTag: a.stageTag as AppDefinition["stageTag"] | undefined,
     path: a.path,
     licenseModule: a.licenseModule,
@@ -104,8 +113,8 @@ export function useApps(
 
   // Convert API response to AppDefinition
   const rawDefinitions = useMemo<AppDefinition[]>(
-    () => (rawApps ? rawApps.map(toAppDefinition) : []),
-    [rawApps],
+    () => (rawApps ? rawApps.map((a) => toAppDefinition(a, domains)) : []),
+    [rawApps, domains],
   );
 
   // 1. 权限过滤

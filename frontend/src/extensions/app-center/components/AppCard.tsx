@@ -39,7 +39,7 @@ function AppCardImpl({
     [app.businessDomain, domainOrder, domains],
   );
   const accent = ACCENT_STYLES[accentColor];
-  const domainLabel = getDomainLabel(app.businessDomain, domains);
+  const domainLabel = app.domainLabel ?? getDomainLabel(app.businessDomain, domains);
   const stageLabel = app.stageTag ? STAGE_LABELS[app.stageTag] : null;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {

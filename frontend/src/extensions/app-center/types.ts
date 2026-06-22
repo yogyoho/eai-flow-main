@@ -37,6 +37,8 @@ export interface AppDefinition {
   iconName: string;
   /** 所属业务域 */
   businessDomain: BusinessDomainKey;
+  /** 业务域中文标签（预解析，避免组件层查询） */
+  domainLabel?: string;
   /** 功能阶段标签（可选） */
   stageTag?: StageTag;
   path: string;
