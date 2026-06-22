@@ -228,7 +228,7 @@ class _LenientMeta(BaseModel):
                 if fi.annotation is int and isinstance(v, str) and v.isdigit():
                     data[k] = int(v)
                 # str 字段但 LLM 输出 int → 转换
-                elif fi.annotation is str and isinstance(v, int):
+                elif fi.annotation is str and isinstance(v, (int, float)):
                     data[k] = str(v)
         return data
 
