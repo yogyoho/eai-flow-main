@@ -3,6 +3,8 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 | 13:30 | Phase 5+6: added AIDocument.chapter_id FK, migration SQL, finalize.py, todo_aggregator.py | models/__init__.py, database.py, docmgr/finalize.py, dashboard/todo_aggregator.py | committed as 1b37ff91 | ~8000 |
+| 16:00 | 流程管理tab从系统管理移走，作为独立app加到应用中心 | admin/layout.tsx, app-center/config/apps.ts | done, frontend restarted | ~600 |
+| 16:15 | 流程管理脱离/admin layout，独立为/workflow-admin路由 | workflow-admin/layout.tsx, 迁移7个文件, 删除admin/templates/ | done, typecheck clean | ~1200 |
 
 | 14:30 | Task 3.5: Integrate Writing Context into Temporal activities | activities.py | committed befe4d8a | ~800 |
 
@@ -6934,3 +6936,84 @@
 | 15:34 | Edited frontend/src/extensions/dashboard/components/Header.tsx | CSS: dark, dark, dark | ~103 |
 | 15:34 | Edited frontend/src/extensions/dashboard/components/Header.tsx | 10→10 lines | ~289 |
 | 15:37 | Session end: 76 writes across 22 files (doc_parser.py, pipeline.py, DocumentManagement.tsx, test_kf_doc_parser.py, TODOS.md) | 41 reads | ~96379 tok |
+| 15:39 | Session end: 76 writes across 22 files (doc_parser.py, pipeline.py, DocumentManagement.tsx, test_kf_doc_parser.py, TODOS.md) | 41 reads | ~96379 tok |
+
+## Session: 2026-06-22 15:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-22 15:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:56 | Edited frontend/src/app/admin/layout.tsx | 6→5 lines | ~57 |
+| 15:56 | Edited frontend/src/app/admin/layout.tsx | inline fix | ~22 |
+| 15:56 | Edited frontend/src/extensions/app-center/config/apps.ts | 11→12 lines | ~48 |
+| 15:57 | Edited frontend/src/extensions/app-center/config/apps.ts | expanded (+13 lines) | ~156 |
+| 15:58 | Session end: 4 writes across 2 files (layout.tsx, apps.ts) | 8 reads | ~7019 tok |
+| 16:16 | Created frontend/src/app/workflow-admin/layout.tsx | — | ~302 |
+| 16:18 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~5 |
+| 16:18 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | inline fix | ~5 |
+| 16:18 | Edited frontend/src/extensions/app-center/config/apps.ts | "/admin/templates" → "/workflow-admin" | ~8 |
+| 16:19 | Session end: 8 writes across 4 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx) | 14 reads | ~14933 tok |
+| 16:23 | Session end: 8 writes across 4 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx) | 14 reads | ~14933 tok |
+| 16:28 | Session end: 8 writes across 4 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx) | 14 reads | ~14933 tok |
+| 16:33 | Session end: 8 writes across 4 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx) | 14 reads | ~14933 tok |
+| 16:35 | Created docs/superpowers/specs/2026-06-22-app-center-categorization-design.md | — | ~769 |
+| 16:36 | Edited docs/superpowers/specs/2026-06-22-app-center-categorization-design.md | 5→5 lines | ~50 |
+| 16:36 | Edited docs/superpowers/specs/2026-06-22-app-center-categorization-design.md | inline fix | ~13 |
+| 16:36 | Edited docs/superpowers/specs/2026-06-22-app-center-categorization-design.md | inline fix | ~12 |
+| 16:36 | Session end: 12 writes across 5 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx, 2026-06-22-app-center-categorization-design.md) | 15 reads | ~16562 tok |
+| 16:41 | Created docs/superpowers/plans/2026-06-22-app-center-categorization.md | — | ~6998 |
+| 16:41 | Session end: 13 writes across 6 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx, 2026-06-22-app-center-categorization-design.md) | 19 reads | ~26688 tok |
+| 16:47 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/types.ts | — | ~288 |
+| 16:53 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/config/categories.ts | — | ~1164 |
+| 16:54 | Edited .worktrees/app-center-categorization/frontend/src/extensions/app-center/config/apps.ts | expanded (+9 lines) | ~759 |
+| 16:56 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/hooks/useApps.ts | — | ~1102 |
+| 16:57 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/components/AppCard.tsx | — | ~1169 |
+| 16:58 | Edited .worktrees/app-center-categorization/frontend/src/extensions/app-center/components/CategoryTabs.tsx | inline fix | ~6 |
+| 16:59 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/components/AppCenterToolbar.tsx | — | ~652 |
+| 16:59 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/components/AppGrid.tsx | — | ~472 |
+| 16:59 | Created .worktrees/app-center-categorization/frontend/src/extensions/app-center/AppCenterPage.tsx | — | ~1200 |
+| 17:01 | Edited frontend/src/extensions/app-center/config/apps.ts | 6→7 lines | ~53 |
+| 17:01 | Created frontend/src/extensions/app-center/index.ts | — | ~124 |
+| 17:05 | Session end: 24 writes across 15 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx, 2026-06-22-app-center-categorization-design.md) | 32 reads | ~40980 tok |
+| 17:07 | Session end: 24 writes across 15 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx, 2026-06-22-app-center-categorization-design.md) | 32 reads | ~40980 tok |
+| 17:08 | Edited frontend/src/extensions/app-center/config/apps.ts | 3→3 lines | ~25 |
+| 17:10 | Session end: 25 writes across 15 files (layout.tsx, apps.ts, page.tsx, TemplateEditorPage.tsx, 2026-06-22-app-center-categorization-design.md) | 32 reads | ~41005 tok |
+
+## Session: 2026-06-22 17:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:24 | Edited frontend/src/styles/globals.css | expanded (+65 lines) | ~726 |
+| 17:25 | Created C:/Users/admin/.claude/plans/snappy-scribbling-piglet-agent-aac5246b64c3241fb.md | — | ~8521 |
+| 17:26 | Created frontend/src/extensions/project/SciFiProjectDetail.tsx | — | ~13917 |
+| 17:26 | Created frontend/src/app/projects/[id]/scifi/page.tsx | — | ~219 |
+| 17:27 | Session end: 4 writes across 4 files (globals.css, snappy-scribbling-piglet-agent-aac5246b64c3241fb.md, SciFiProjectDetail.tsx, page.tsx) | 36 reads | ~113888 tok |
+| 17:27 | Transplant sci-fi ProjectDetailPage from 科技控制中心仪表盘-2 into Next.js system as SciFiProjectDetail component, wired to real projectApi | frontend/src/extensions/project/SciFiProjectDetail.tsx, frontend/src/app/projects/[id]/scifi/page.tsx, frontend/src/styles/globals.css | Created sci-fi themed project detail with real API integration | ~1300 lines |
+| 17:27 | Session end: 4 writes across 4 files (globals.css, snappy-scribbling-piglet-agent-aac5246b64c3241fb.md, SciFiProjectDetail.tsx, page.tsx) | 36 reads | ~113888 tok |
+| 17:28 | Created backend/app/extensions/app_center/models.py | — | ~824 |
+| 17:28 | Created backend/app/extensions/app_center/__init__.py | — | ~74 |
+| 17:29 | Edited backend/app/extensions/database.py | modified _seed_role_permissions() | ~538 |
+| 17:29 | Edited backend/app/extensions/database.py | expanded (+68 lines) | ~1507 |
+| 17:29 | Created backend/app/extensions/app_center/schemas.py | — | ~735 |
+| 17:29 | Created backend/app/extensions/app_center/service.py | — | ~950 |
+| 17:30 | Created backend/app/extensions/app_center/routers.py | — | ~1399 |
+| 17:30 | Edited backend/app/gateway/app.py | added 1 import(s) | ~37 |
+| 17:31 | Edited backend/app/gateway/app.py | 3→6 lines | ~61 |
+| 17:32 | Created frontend/src/extensions/app-center/config/icons.ts | — | ~254 |
+| 17:33 | Created frontend/src/extensions/app-center/api.ts | — | ~1339 |
+| 17:33 | Edited frontend/src/extensions/app-center/types.ts | 52→51 lines | ~289 |
+| 17:33 | Created frontend/src/extensions/app-center/hooks/useApps.ts | — | ~1586 |
+| 17:34 | Edited frontend/src/extensions/app-center/components/AppCard.tsx | inline fix | ~12 |
+| 17:34 | Session end: 18 writes across 16 files (globals.css, snappy-scribbling-piglet-agent-aac5246b64c3241fb.md, SciFiProjectDetail.tsx, page.tsx, models.py) | 43 reads | ~129331 tok |
+| 17:34 | Edited frontend/src/extensions/app-center/components/AppCard.tsx | added 1 import(s) | ~58 |
+| 17:34 | Edited frontend/src/extensions/app-center/config/categories.ts | removed 18 lines | ~21 |
+| 17:34 | Edited frontend/src/extensions/app-center/config/categories.ts | added 3 condition(s) | ~242 |
+| 17:34 | Edited frontend/src/extensions/app-center/AppCenterPage.tsx | CSS: isLoading | ~74 |
+| 17:34 | Edited frontend/src/extensions/app-center/AppCenterPage.tsx | added 1 condition(s) | ~104 |
+| 17:35 | Created frontend/src/extensions/app-center/index.ts | — | ~159 |
+| 17:40 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | 2→2 lines | ~27 |
+| 17:40 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | useSWR() → useQuery() | ~108 |

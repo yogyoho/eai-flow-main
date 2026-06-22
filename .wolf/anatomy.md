@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-22T07:34:53.530Z
-> Files: 1343 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-22T09:40:19.925Z
+> Files: 1369 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -203,6 +203,27 @@
 
 - `embedded-chat-design.html` (~2844 tok)
 
+## .worktrees/app-center-categorization/frontend/src/extensions/app-center/
+
+- `AppCenterPage.tsx` — 应用中心主页面。 (~1200 tok)
+- `types.ts` — 业务域标识（动态扩展） (~288 tok)
+
+## .worktrees/app-center-categorization/frontend/src/extensions/app-center/components/
+
+- `AppCard.tsx` — 业务域首次出现顺序（用于 accent 确定性分配） (~1169 tok)
+- `AppCenterToolbar.tsx` — AppCenterToolbar (~652 tok)
+- `AppGrid.tsx` — 业务域首次出现顺序（用于 accent 确定性分配） (~472 tok)
+- `CategoryTabs.tsx` — 分类筛选 pills。 (~453 tok)
+
+## .worktrees/app-center-categorization/frontend/src/extensions/app-center/config/
+
+- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~863 tok)
+- `categories.ts` — 通用分类 —— 固定白名单，不属于任何业务域。 (~1164 tok)
+
+## .worktrees/app-center-categorization/frontend/src/extensions/app-center/hooks/
+
+- `useApps.ts` — 应用中心主 hook：聚合搜索、排序、业务域筛选与权限过滤。 (~1102 tok)
+
 ## App Center 应用中心 (frontend/src/extensions/app-center/)
 
 - `AppCenterPage.tsx` — 主页面：标题+工具栏+收藏区+全部应用网格 (~820 tok)
@@ -240,6 +261,7 @@
 - `purrfect-stirring-tome.md` — E 续:前端四大纠缠功能移植 — 详细执行计划 (~1893 tok)
 - `purring-scribbling-toast.md` — Plan: 许可证管理页面 + 申请文件下载 (~700 tok)
 - `sharded-drifting-wolf.md` — Fix Plan: 3 Workflow Bugs (~1676 tok)
+- `snappy-scribbling-piglet-agent-aac5246b64c3241fb.md` — App-Center DB Persistence Migration Plan (~7989 tok)
 - `tab-ok-explore-review-version-fizzy-token.md` — Version History Panel Improvements (~1244 tok)
 - `ticklish-mixing-wirth.md` — Plan: 法规标准库注册到 KnowledgeBase 表 (~711 tok)
 - `tingly-pondering-pretzel.md` — 分页组件显示异常 — 根因分析 & 修复 (~423 tok)
@@ -993,10 +1015,18 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2047 tok)
-- `database.py` — Database connection and session management for extensions module. (~16518 tok)
+- `database.py` — Database connection and session management for extensions module. (~18378 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~4778 tok)
+
+## backend/app/extensions/app_center/
+
+- `__init__.py` — App-center extension — DB-persisted app & domain definitions. (~74 tok)
+- `models.py` — App-center SQLAlchemy models — domain labels & app definitions. (~824 tok)
+- `routers.py` — App-center API router — DB-persisted app catalog. (~1399 tok)
+- `schemas.py` — App-center Pydantic request/response schemas. (~735 tok)
+- `service.py` — App-center service — static CRUD for domains & apps. (~950 tok)
 
 ## backend/app/extensions/auth/
 
@@ -1184,7 +1214,7 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan, create_app (~5819 tok)
+- `app.py` — lifespan, create_app (~5868 tok)
 - `auth_disabled.py` — Auth-disabled (single-user local) mode flag. (~283 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1728 tok)
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2509 tok)
@@ -1392,6 +1422,7 @@
 - `2026-06-18-data-source-datasets.md` — 数据源数据集层(DataSourceDataset)Phase 1 Implementation Plan (~6664 tok)
 - `2026-06-18-plugin-backend-metadata-layer.md` — 插件 tab 后端(元数据层)Implementation Plan (~10750 tok)
 - `2026-06-18-plugin-mcp-wiring.md` — 插件→MCP 接线(type=tool)+ demo Implementation Plan (~4498 tok)
+- `2026-06-22-app-center-categorization.md` — App Center 分类体系重构 实现计划 (~6561 tok)
 
 ## docs/superpowers/specs/
 
@@ -1430,6 +1461,7 @@
 - `2026-06-18-plugin-mcp-wiring-design.md` — 插件 → MCP 接线(type=tool)实现规格 (~1068 tok)
 - `2026-06-19-kf-template-rich-metadata-design.md` — Design: 知识工厂报告模板 — 结构化富元数据增强 (~1896 tok)
 - `2026-06-19-plugin-containerized-mcp-design.md` — 插件市场容器化 MCP + Compose 编排 + 独立生命周期管理 — 技术方案 (~3010 tok)
+- `2026-06-22-app-center-categorization-design.md` — 应用中心分类体系设计 (~725 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1450,7 +1482,7 @@
 
 ## frontend/src/app/admin/
 
-- `layout.tsx` — Check if the current user has admin privileges. (~844 tok)
+- `layout.tsx` — Check if the current user has admin privileges. (~823 tok)
 
 ## frontend/src/app/admin/departments/
 
@@ -1540,6 +1572,11 @@
 
 - `page.tsx` — LoginPage — renders form (~1684 tok)
 
+## frontend/src/app/projects/[id]/scifi/
+
+- `page.tsx` — SciFiProjectDetailPage (~219 tok)
+- `page.tsx` — Next.js route for sci-fi project detail view, ShellLayout + Suspense (~30 tok)
+
 ## frontend/src/app/projects/approval-settings/
 
 - `page.tsx` — ApprovalSettingsPage (~263 tok)
@@ -1551,6 +1588,15 @@
 ## frontend/src/app/test-editor/
 
 - `page.tsx` — TestEditorPage (~103 tok)
+
+## frontend/src/app/workflow-admin/
+
+- `layout.tsx` — isAdmin (~302 tok)
+- `page.tsx` — REPORT_TYPE_FILTERS (~3838 tok)
+
+## frontend/src/app/workflow-admin/components/
+
+- `TemplateEditorPage.tsx` — TemplateEditorPage (~3534 tok)
 
 ## frontend/src/app/workspace/
 
@@ -1662,13 +1708,14 @@
 
 ## frontend/src/extensions/app-center/
 
-- `AppCenterPage.tsx` — 应用中心主页面。 (~1100 tok)
-- `index.ts` (~109 tok)
-- `types.ts` — 业务分类标识 (~343 tok)
+- `api.ts` — Exports DomainResponse, AppResponse, AppCreate, AppUpdate + 6 more (~1339 tok)
+- `AppCenterPage.tsx` — 应用中心主页面。 (~1278 tok)
+- `index.ts` (~159 tok)
+- `types.ts` — 业务域标识（动态扩展） (~289 tok)
 
 ## frontend/src/extensions/app-center/components/
 
-- `AppCard.tsx` — 单个应用卡片 —— Notion/Vercel 风格。 (~1033 tok)
+- `AppCard.tsx` — 业务域首次出现顺序（用于 accent 确定性分配） (~1187 tok)
 - `AppCenterToolbar.tsx` — 工具栏：搜索框（视觉焦点）+ 分类 pills + 排序切换。 (~684 tok)
 - `AppGrid.tsx` — 是否为收藏区（影响标题样式） (~457 tok)
 - `CategoryTabs.tsx` — 分类筛选 pills。 (~454 tok)
@@ -1677,12 +1724,13 @@
 
 ## frontend/src/extensions/app-center/config/
 
-- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~785 tok)
-- `categories.ts` — 分类定义 —— 顺序即默认展示顺序。 (~650 tok)
+- `apps.ts` — 内置应用配置 —— 应用中心的唯一数据源。 (~956 tok)
+- `categories.ts` — accent 调色板（通用分类占用后，业务域按首次出现顺序轮转） (~1103 tok)
+- `icons.ts` — Maps DB-stored icon_name strings to Lucide React components. (~254 tok)
 
 ## frontend/src/extensions/app-center/hooks/
 
-- `useApps.ts` — 经过 license/搜索/分类/排序后的最终应用列表 (~1152 tok)
+- `useApps.ts` — 应用中心主 hook：从 API 获取数据，聚合搜索、排序、业务域筛选与权限过滤。 (~1590 tok)
 - `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
 
 ## frontend/src/extensions/collab/
@@ -1874,6 +1922,8 @@
 - `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11055 tok)
 - `ProjectList.tsx` — TYPE_PALETTE (~6394 tok)
 - `ProjectWorkspace.tsx` — OverviewTab (~2728 tok)
+- `SciFiProjectDetail.tsx` — STATUS_LABELS (~13917 tok)
+- `SciFiProjectDetail.tsx` — Sci-fi themed project detail page, 3 tabs (overview/editor/review), wired to projectApi (~850 tok)
 - `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~864 tok)
 - `types.ts` — ── Enums ── (~1466 tok)
 - `utils.ts` — Flatten nested chapters into a flat array (depth-first). (~457 tok)
@@ -2000,7 +2050,7 @@
 
 ## frontend/src/styles/
 
-- `globals.css` — Styles: 64 rules, 171 vars (~8220 tok)
+- `globals.css` — Styles: 64 rules, 171 vars (~8926 tok)
 
 ## frontend/tests/e2e/
 

@@ -4771,6 +4771,118 @@
       "related_bugs": [],
       "occurrences": 3,
       "last_seen": "2026-06-22T07:34:53.563Z"
+    },
+    {
+      "id": "bug-294",
+      "timestamp": "2026-06-22T07:56:20.538Z",
+      "error_message": "CSS fix: href",
+      "file": "frontend/src/app/admin/layout.tsx",
+      "root_cause": "href: \"/admin/templates\", label: \"流程管理\", icon: FileText → \"/admin/departments\", label: \"部门管理\", icon: Network",
+      "fix": "Changed href: \"/admin/templates\", label: \"流程管理\", icon: FileText → \"/admin/departments\", label: \"部门管理\", icon: Network",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T07:56:20.538Z"
+    },
+    {
+      "id": "bug-295",
+      "timestamp": "2026-06-22T08:18:20.462Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/config/apps.ts",
+      "root_cause": "Had \"/admin/templates\"",
+      "fix": "Changed to \"/workflow-admin\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T08:18:20.462Z"
+    },
+    {
+      "id": "bug-296",
+      "timestamp": "2026-06-22T08:58:17.261Z",
+      "error_message": "Wrong reference: CategoryFilterOption should be DomainFilterOption",
+      "file": ".worktrees/app-center-categorization/frontend/src/extensions/app-center/components/CategoryTabs.tsx",
+      "root_cause": "Used \"CategoryFilterOption\" instead of \"DomainFilterOption\"",
+      "fix": "Changed CategoryFilterOption → DomainFilterOption",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T08:58:17.261Z"
+    },
+    {
+      "id": "bug-297",
+      "timestamp": "2026-06-22T09:08:21.667Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/config/apps.ts",
+      "root_cause": "Had \"admin\"",
+      "fix": "Changed to \"universal\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T09:08:21.667Z"
+    },
+    {
+      "id": "bug-298",
+      "timestamp": "2026-06-22T09:24:10.589Z",
+      "error_message": "CSS fix: transition",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "transition: opacity 0.15s → all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      "fix": "Changed transition: opacity 0.15s → all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T09:24:10.589Z"
+    },
+    {
+      "id": "bug-299",
+      "timestamp": "2026-06-22T09:34:37.813Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/app-center/config/categories.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T09:34:37.813Z"
+    },
+    {
+      "id": "bug-300",
+      "timestamp": "2026-06-22T09:40:12.571Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/hooks/useApps.ts",
+      "root_cause": "Had \"swr\"",
+      "fix": "Changed to \"@tanstack/react-query\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-22T09:40:12.571Z"
     }
   ]
 }

@@ -1243,3 +1243,68 @@
   transition: opacity 0.15s;
 }
 
+/* ── Sci-Fi Cyber Dashboard Theme ── */
+/* CSS variables for sci-fi project detail page (light/dark) */
+:root {
+  --cyber-bg-primary: #020617;
+  --cyber-bg-secondary: rgba(15, 23, 42, 0.45);
+  --cyber-bg-tertiary: rgba(2, 6, 23, 0.7);
+  --cyber-border-color: rgba(30, 41, 59, 1);
+  --cyber-border-muted: rgba(30, 41, 59, 0.4);
+  --cyber-text-main: #f1f5f9;
+  --cyber-text-muted: #94a3b8;
+  --cyber-card-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.15);
+  --cyber-grid-color: rgba(6, 182, 212, 0.03);
+}
+
+/* Light theme overrides — only when parent has .light or :root without .dark */
+.light {
+  --cyber-bg-primary: #f8fafc;
+  --cyber-bg-secondary: rgba(255, 255, 255, 0.9);
+  --cyber-bg-tertiary: rgba(241, 245, 249, 0.95);
+  --cyber-border-color: rgba(203, 213, 225, 0.85);
+  --cyber-border-muted: rgba(226, 232, 240, 0.6);
+  --cyber-text-main: #0f172a;
+  --cyber-text-muted: #334155;
+  --cyber-card-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --cyber-grid-color: rgba(6, 182, 212, 0.06);
+}
+
+/* Cyber grid background */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, var(--cyber-grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--cyber-grid-color) 1px, transparent 1px);
+}
+
+/* Glow effects */
+.glow-cyan { box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.25); }
+.glow-purple { box-shadow: 0 0 15px -3px rgba(139, 92, 246, 0.25); }
+.glow-green { box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.25); }
+
+.text-shadow-glow { text-shadow: 0 0 8px rgba(6, 182, 212, 0.5); }
+
+/* Themed card — sci-fi variant */
+.themed-card-sci {
+  background-color: var(--cyber-bg-secondary);
+  border: 1px solid var(--cyber-border-color);
+  box-shadow: var(--cyber-card-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.themed-card-sci:hover { border-color: rgba(6, 182, 212, 0.35); }
+
+.themed-terminal-sci {
+  background-color: var(--cyber-bg-tertiary);
+  border: 1px solid var(--cyber-border-muted);
+}
+
+/* Custom scrollbar for sci-fi panels */
+.cyber-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.cyber-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.1); }
+.cyber-scroll::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.3); border-radius: 2px; }
+.cyber-scroll::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.6); }
+
+/* Font for cyber labels */
+.font-cyber { font-family: "Share Tech Mono", "JetBrains Mono", monospace; }
+

@@ -1,0 +1,246 @@
+=== 1. Login ===
+[OK] Login successful
+
+=== 2. Admin Templates List ===
+Headings: ['工作流编排', '消防设计专篇']
+Buttons: ['', '全部类型', '环境影响评价', '地质勘查', '可行性研究', '安全评价', '节能评价', '其他', '', '', '-10 Issue', '']
+
+=== 3. Template Detail Page ===
+Page text:
+系统管理
+用户管理
+角色管理
+部门管理
+流程管理
+选择报告类型
+已发布
+校验
+保存
+已发布
+节点面板
+▤
+子流程
+✎
+任务
+✓
+审核
+✦
+AI生成
+◇
+条件
+⊕
+汇聚
+rejected
+AI编写初稿
+AI 辅助
+人工修改确认
+AI 辅助
+组长×1
+组员×2
+报告提交
+组长×1
+报告审核
+模式: 章节
+点击画布中的节点
+查看和编辑属性
+按 Delete 键可删除选中节点
+模板设置
+模板描述
+可见部门（留空 = 全部可见）
+公司
+　共用工程室
+　技术分析部
+　消防工程部
+　采矿工艺室
+　采购管理部
+  Input: name=None, value=消防设计专篇, placeholder=模板名称
+  Input: name=None, value=on, placeholder=None
+  Input: name=None, value=on, placeholder=None
+  Input: name=None, value=on, placeholder=None
+  Input: name=None, value=on, placeholder=None
+  Input: name=None, value=on, placeholder=None
+  Input: name=None, value=on, placeholder=None
+  Button: 
+  Button: 选择报告类型
+  Button: 校验
+  Button: 保存
+  Button: 已发布
+  Button: ▤
+子流程
+  Button: ✎
+任务
+  Button: ✓
+审核
+  Button: ✦
+AI生成
+  Button: ◇
+条件
+  Button: ⊕
+汇聚
+  Button: 
+  Button: 
+  Button: 
+  Button: 模板设置
+  Button: -10 Issue
+  Button: 
+
+=== 4. Project Creation Flow ===
+Body text after create click:
+晚上好，Administrator
+
+没有待办任务2026年6月13日
+
+新建项目
+知识加工
+我的待办
+
+所有任务已完成
+
+我的项目
+
+暂无项目
+
+快捷入口
+项目看板
+我的文档
+模板中心
+系统设置
+消息通知
+6 条未读
+全部已读
+
+Phase task-1780751082467 started
+
+Workflow phase task-1780751082467 has started for this project.
+
+6天前
+
+Phase task-1780751082467 started
+
+Workflow phase task-1780751082467 has started for this project.
+
+6天前
+
+Phase task-1780751082467 started
+
+Workflow phase task-1780751082467 has started for this project.
+
+6天前
+
+Phase task-1780751082467 started
+
+Workflow phase task-1780751082467 has started for this project.
+
+6天前
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+6天前
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+6天前
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+2026/6/3
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+2026/6/3
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+2026/6/3
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+2026/6/3
+
+Workflow completed
+
+The workflow for this project has been completed successfully.
+
+2026/6/3
+
+我的统计
+
+0
+
+进行中项目
+
+0
+
+待审核
+
+0
+
+待编写
+
+0
+
+逾期
+
+日程
+2026年6月
+一
+二
+三
+四
+五
+六
+日
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+1
+2
+3
+4
+5
+6月13日
+暂无事项
+通知偏好设置
+展开
+
+=== 5. API Check ===
+Cookies count: 2

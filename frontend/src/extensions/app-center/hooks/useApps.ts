@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
@@ -81,17 +81,19 @@ export function useApps(
     data: rawApps,
     isLoading: appsLoading,
     error: appsError,
-  } = useSWR("app-center-apps", fetchApps, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
+  } = useQuery({
+    queryKey: ["app-center-apps"],
+    queryFn: fetchApps,
+    staleTime: 60000,
   });
   const {
     data: domains,
     isLoading: domainsLoading,
     error: domainsError,
-  } = useSWR("app-center-domains", fetchDomains, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
+  } = useQuery({
+    queryKey: ["app-center-domains"],
+    queryFn: fetchDomains,
+    staleTime: 60000,
   });
 
   const isLoading = appsLoading || domainsLoading;

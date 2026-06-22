@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+
+/* ─── Reference Dashboard Design Tokens ─── */
+:root {
+  --db-bg-primary: #f8fafc;
+  --db-bg-secondary: rgba(255, 255, 255, 0.9);
+  --db-bg-tertiary: rgba(241, 245, 249, 0.95);
+  --db-border-color: rgba(203, 213, 225, 0.85);
+  --db-border-color-muted: rgba(226, 232, 240, 0.6);
+  --db-text-main: #0f172a;
+  --db-text-muted: #334155;
+  --db-text-subtle: #64748b;
+  --db-card-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --db-header-bg: rgba(255, 255, 255, 0.9);
+  --db-grid-line-color: rgba(59, 130, 246, 0.06);
+  --db-panel-bg-glow: rgba(139, 92, 246, 0.02);
+}
+
+.dark {
+  --db-bg-primary: #020617;
+  --db-bg-secondary: rgba(15, 23, 42, 0.45);
+  --db-bg-tertiary: rgba(2, 6, 23, 0.7);
+  --db-border-color: rgba(30, 41, 59, 1);
+  --db-border-color-muted: rgba(30, 41, 59, 0.4);
+  --db-text-main: #f1f5f9;
+  --db-text-muted: #94a3b8;
+  --db-text-subtle: #475569;
+  --db-card-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.15);
+  --db-header-bg: rgba(2, 6, 23, 0.8);
+  --db-grid-line-color: rgba(59, 130, 246, 0.03);
+  --db-panel-bg-glow: rgba(139, 92, 246, 0.05);
+}
+
+/* ─── Dashboard scope container ─── */
+.dashboard-shell {
+  font-family: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--db-bg-primary);
+  color: var(--db-text-main);
+  transition: background-color 0.3s, color 0.3s;
+  min-height: 100%;
+}
+
+.dashboard-shell .font-cyber {
+  font-family: 'Share Tech Mono', monospace;
+}
+.dashboard-shell .font-mono-db {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ─── Themed card — exact reference pattern ─── */
+.dashboard-shell .db-card {
+  background-color: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  box-shadow: var(--db-card-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dashboard-shell .db-card:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* ─── Terminal panel ─── */
+.dashboard-shell .db-terminal {
+  background-color: var(--db-bg-tertiary);
+  border: 1px solid var(--db-border-color-muted);
+}
+
+/* ─── Cyber grid background ─── */
+.dashboard-shell.cyber-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, var(--db-grid-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--db-grid-line-color) 1px, transparent 1px);
+}
+
+/* ─── Glow effects ─── */
+.dashboard-shell .glow-cyan {
+  box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.25);
+}
+.dashboard-shell .glow-purple {
+  box-shadow: 0 0 15px -3px rgba(139, 92, 246, 0.25);
+}
+.dashboard-shell .glow-green {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.25);
+}
+.dashboard-shell .glow-red {
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.25);
+}
+
+.dashboard-shell .text-shadow-glow {
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+}
+
+.dashboard-shell .clip-corners {
+  clip-path: polygon(0px 0px, calc(100% - 10px) 0px, 100% 10px, 100% 100%, 10px 100%, 0px calc(100% - 10px));
+}
+
+/* ─── Scrollbar ─── */
+.dashboard-shell ::-webkit-scrollbar { width: 4px; height: 4px; }
+.dashboard-shell ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.1); }
+.dashboard-shell ::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.3); border-radius: 2px; }
+.dashboard-shell ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.6); }
+
+/* ─── Scanlines overlay ─── */
+.dashboard-shell .scanlines {
+  position: relative; overflow: hidden;
+}
+.dashboard-shell .scanlines::before {
+  content: ""; display: block;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.08) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.005), rgba(0, 0, 255, 0.01));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 99; pointer-events: none; opacity: 0.08;
+}
+
+/* ─── Text helpers ─── */
+.dashboard-shell .db-text-primary { color: var(--db-text-main); }
+.dashboard-shell .db-text-muted { color: var(--db-text-muted); }
+.dashboard-shell .db-text-subtle { color: var(--db-text-subtle); }
+
+/* ─── Color accents from reference ─── */
+.dashboard-shell .accent-cyan { color: #06b6d4; }
+.dashboard-shell .accent-purple { color: #8b5cf6; }
+.dashboard-shell .accent-green { color: #10b981; }
+.dashboard-shell .accent-red { color: #ef4444; }
+.dashboard-shell .accent-amber { color: #f59e0b; }
+.dashboard-shell .accent-blue { color: #3b82f6; }

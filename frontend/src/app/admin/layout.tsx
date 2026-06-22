@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Shield, Network, FileText, Loader2, Settings2 } from "lucide-react";
+import { Users, Shield, Network, Loader2, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
@@ -13,7 +13,6 @@ const navItems = [
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/roles", label: "角色管理", icon: Shield },
   { href: "/admin/departments", label: "部门管理", icon: Network },
-  { href: "/admin/templates", label: "流程管理", icon: FileText },
 ];
 
 /** Check if the current user has admin privileges. */
