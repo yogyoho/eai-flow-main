@@ -144,7 +144,7 @@ export const BUILTIN_APPS: AppDefinition[] = [
     name: "流程管理",
     description: "审批流程模板的设计、编辑与版本管理",
     icon: FileText,
-    businessDomain: "admin",
+    businessDomain: "universal",
     stageTag: "manage",
     path: "/workflow-admin",
     licenseModule: null,
