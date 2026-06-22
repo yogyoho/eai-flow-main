@@ -1,12 +1,18 @@
 export { AppCenterPage } from "./AppCenterPage";
 export { BUILTIN_APPS } from "./config/apps";
-export { CATEGORIES, CATEGORY_MAP, ACCENT_STYLES } from "./config/categories";
+export {
+  ACCENT_STYLES,
+  getDomainLabel,
+  getDomainAccent,
+  STAGE_LABELS,
+  UNIVERSAL_DOMAINS,
+} from "./config/categories";
 export { useApps } from "./hooks/useApps";
 export { useFavorites } from "./hooks/useFavorites";
 export type {
   AppDefinition,
-  CategoryDef,
-  CategoryFilter,
-  CategoryKey,
+  BusinessDomainKey,
+  DomainFilter,
   SortMode,
+  StageTag,
 } from "./types";
