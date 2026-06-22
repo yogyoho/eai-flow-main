@@ -88,8 +88,11 @@ class ParsedDocument:
             if level and h.level != level:
                 continue
             matched = normalize_text(h.title) == norm
-            if not matched and not (h.title in title or title in h.title):
-                continue
+            # 子串 fallback 加最小长度（防单字符/过短标题如"1"误匹配"1.1 总则"）
+            if not matched:
+                shorter = min(len(h.title), len(title))
+                if shorter < 2 or not (h.title in title or title in h.title):
+                    continue
             if h.text_offset < 0:
                 continue
             end = len(self.full_text)
@@ -151,7 +154,10 @@ def _is_noise_line(line: str) -> bool:
     if any(c in line for c in ("□", "?", "？")):
         return True
     t = line.strip()
-    if re.match(r"^\d+[、，]", t) and len(t) > 15:
+    # 编号+顿号的长行：只在含句末标点（句号/分号/冒号后续内容）时才当噪音段落，
+    # 避免误杀长中文标题（如"12、环境保护措施及其技术经济论证"无标点是合法标题）。
+    # 原阈值 len>15 过于激进，中文标题普遍>15字。
+    if re.match(r"^\d+[、，]", t) and len(t) > 15 and any(p in t for p in ("。", "；", "，")):
         return True
     return False
 
@@ -407,8 +413,10 @@ def parse_pdf(file_path: str) -> ParsedDocument:
     try:
         import fitz
         doc = fitz.open(str(path))
-        parts = [page.get_text() for page in doc if page.get_text().strip()]
-        doc.close()
+        try:
+            parts = [page.get_text() for page in doc if page.get_text().strip()]
+        finally:
+            doc.close()  # 异常路径也关闭，防文件描述符泄漏
         full_text = "\n\n".join(parts)
         if not full_text.strip():
             return ParsedDocument(file_path=file_path, file_type="pdf",

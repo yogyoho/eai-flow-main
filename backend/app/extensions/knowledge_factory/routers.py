@@ -360,7 +360,13 @@ async def run_pipeline_background(
             config = data.config or ExtractionConfig()
 
             # 收集文档信息（合并 source_report_ids 和 uploaded_file_ids）
-            all_report_ids = list(data.source_report_ids) + list(data.uploaded_file_ids)
+            # 合并 source_report_ids + uploaded_file_ids，去重（同 id 两列表都传则处理两次）
+            _seen: set = set()
+            all_report_ids = []
+            for rid in list(data.source_report_ids) + list(data.uploaded_file_ids):
+                if rid not in _seen:
+                    _seen.add(rid)
+                    all_report_ids.append(rid)
             report_docs = []
             for report_id in all_report_ids:
                 result = await db.execute(
@@ -451,9 +457,15 @@ async def run_pipeline_background(
                 select(ExtractionTemplate).where(
                     ExtractionTemplate.domain == data.domain,
                     ExtractionTemplate.name == data.target_template_name,
-                ).order_by(ExtractionTemplate.version.desc()).limit(1)
+                )
             )
-            template = existing.scalar_one_or_none()
+            _templates = existing.scalars().all()
+            # 按 numeric version 取最新（字符串排序对 v1.10 错误：'v1.9' > 'v1.10'）
+            import re as _re
+            def _vkey(t):
+                m = _re.match(r"v?(\d+)\.(\d+)", t.version or "0.0")
+                return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+            template = max(_templates, key=_vkey) if _templates else None
 
             if template:
                 logger.info(f"Updating existing template {template.id} (v{template.version}, status={template.status})")
