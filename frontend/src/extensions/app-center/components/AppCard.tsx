@@ -22,6 +22,8 @@ interface AppCardProps {
   onToggleFavorite: (appId: string) => void;
   /** 业务域首次出现顺序（用于 accent 确定性分配） */
   domainOrder: string[];
+  /** 领域列表（来自 API，用于标签查找） */
+  domains?: Array<{ key: string; label: string; accentColor: string }>;
 }
 
 function AppCardImpl({
@@ -29,14 +31,15 @@ function AppCardImpl({
   isFavorite,
   onToggleFavorite,
   domainOrder,
+  domains,
 }: AppCardProps) {
   const Icon = resolveIcon(app.iconName);
   const accentColor = useMemo(
-    () => getDomainAccent(app.businessDomain, domainOrder),
-    [app.businessDomain, domainOrder],
+    () => getDomainAccent(app.businessDomain, domainOrder, domains),
+    [app.businessDomain, domainOrder, domains],
   );
   const accent = ACCENT_STYLES[accentColor];
-  const domainLabel = getDomainLabel(app.businessDomain);
+  const domainLabel = getDomainLabel(app.businessDomain, domains);
   const stageLabel = app.stageTag ? STAGE_LABELS[app.stageTag] : null;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {

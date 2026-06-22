@@ -27,6 +27,7 @@ export function AppCenterPage() {
     activeDomain,
     setActiveDomain,
     domainOptions,
+    domains,
     licenseLoading,
     isLoading: dataLoading,
     isError,
@@ -113,6 +114,7 @@ export function AppCenterPage() {
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
             domainOrder={domainOrder}
+            domains={domains}
           />
         </section>
       )}

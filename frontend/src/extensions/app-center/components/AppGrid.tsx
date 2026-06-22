@@ -14,6 +14,8 @@ interface AppGridProps {
   onToggleFavorite: (appId: string) => void;
   /** 业务域首次出现顺序（用于 accent 确定性分配） */
   domainOrder: string[];
+  /** 领域列表（来自 API，用于标签查找） */
+  domains?: Array<{ key: string; label: string; accentColor: string }>;
 }
 
 /**
@@ -26,6 +28,7 @@ export function AppGrid({
   isFavorite,
   onToggleFavorite,
   domainOrder,
+  domains,
 }: AppGridProps) {
   if (isLoading) {
     return (
@@ -46,6 +49,7 @@ export function AppGrid({
           isFavorite={isFavorite(app.id)}
           onToggleFavorite={onToggleFavorite}
           domainOrder={domainOrder}
+          domains={domains}
         />
       ))}
     </div>

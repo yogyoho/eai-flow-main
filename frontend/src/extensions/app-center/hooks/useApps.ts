@@ -37,6 +37,8 @@ export interface UseAppsReturn {
   activeDomain: DomainFilter;
   setActiveDomain: (d: DomainFilter) => void;
   domainOptions: DomainFilterOption[];
+  /** 原始领域列表（来自 API，用于标签/accent 查找） */
+  domains: DomainResponse[];
   licenseLoading: boolean;
   isLoading: boolean;
   isError: boolean;
@@ -200,6 +202,7 @@ export function useApps(
     activeDomain,
     setActiveDomain,
     domainOptions,
+    domains: domains ?? [],
     licenseLoading,
     isLoading,
     isError,
