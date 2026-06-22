@@ -236,6 +236,51 @@ def parse_docx(file_path: str) -> ParsedDocument:
     return _parse_docx_python_docx(file_path)
 
 
+def _parse_style_levels(zf) -> dict[str, int]:
+    """解析 word/styles.xml，建 {styleId.lower(): heading_level} 映射。
+
+    基于 outlineLvl（大纲级别，0=H1, 1=H2...），与样式名语言无关。
+    不同 Word 模板的 styleId 是数字/变体名（如灵台用 4/33/139），
+    硬编码 _HEADING_STYLES 无法覆盖；outlineLvl 是 Word 标准属性，
+    heading 样式必带，提供通用准确识别。
+    """
+    if "word/styles.xml" not in zf.namelist():
+        return {}
+    try:
+        xml = zf.open("word/styles.xml")
+    except KeyError:
+        return {}
+    levels: dict[str, int] = {}
+    state = {"id": "", "in_style": False}
+    def start(name, attrs):
+        if name == "w:style":
+            state["in_style"] = True
+            state["id"] = (attrs.get("w:styleId") or "").lower()
+        elif name == "w:outlineLvl" and state["in_style"] and state["id"]:
+            v = attrs.get("w:val", "")
+            if v.isdigit():
+                levels[state["id"]] = int(v) + 1  # outlineLvl 0 → H1
+    def end(name):
+        if name == "w:style":
+            state["in_style"] = False
+            state["id"] = ""
+    p = ParserCreate()
+    p.StartElementHandler = start
+    p.EndElementHandler = end
+    try:
+        while True:
+            c = xml.read(65536)
+            if not c:
+                break
+            p.Parse(c, False)
+        p.Parse(b"", True)
+    except ExpatError as e:
+        logger.warning(f"styles.xml parse error: {e}")
+    finally:
+        xml.close()
+    return levels
+
+
 def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     """Parse docx using expat SAX — 64KB chunk streaming, zero DOM.
 
@@ -251,6 +296,11 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     except (_zipfile.BadZipFile, KeyError) as e:
         logger.warning(f"Failed to open docx ZIP: {e}")
         return None
+
+    # 解析 styles.xml 的 outlineLvl 建 {styleId: heading_level} 通用映射。
+    # 比 _HEADING_STYLES 硬编码更准：不同模板 styleId 是数字/变体名，
+    # 但 outlineLvl（大纲级别 0=H1）是 Word 标准，与样式名语言无关。
+    style_levels = _parse_style_levels(zf)
 
     headings: list[Heading] = []
     tables: list[DocTable] = []
@@ -299,7 +349,7 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
             text = "".join(cur_text).strip()
             if text:
                 paragraphs.append(text)
-                lv = _HEADING_STYLES.get(cur_style)
+                lv = style_levels.get(cur_style) or _HEADING_STYLES.get(cur_style)
                 if lv is not None:
                     headings.append(Heading(title=text, level=lv,
                                            line_number=line_no, style_name=f"Heading {lv}",
