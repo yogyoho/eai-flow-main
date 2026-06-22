@@ -243,6 +243,9 @@ def _parse_style_levels(zf) -> dict[str, int]:
     不同 Word 模板的 styleId 是数字/变体名（如灵台用 4/33/139），
     硬编码 _HEADING_STYLES 无法覆盖；outlineLvl 是 Word 标准属性，
     heading 样式必带，提供通用准确识别。
+
+    支持 basedOn 继承：自定义样式 <w:basedOn w:val="父"/> 继承父的
+    outlineLvl（Word 标准样式继承语义）。
     """
     if "word/styles.xml" not in zf.namelist():
         return {}
@@ -250,16 +253,21 @@ def _parse_style_levels(zf) -> dict[str, int]:
         xml = zf.open("word/styles.xml")
     except KeyError:
         return {}
-    levels: dict[str, int] = {}
+    # raw: {id: [outlineLvl(0=未设), basedOn_id]}
+    raw: dict[str, list] = {}
     state = {"id": "", "in_style": False}
     def start(name, attrs):
         if name == "w:style":
             state["in_style"] = True
             state["id"] = (attrs.get("w:styleId") or "").lower()
+            if state["id"]:
+                raw.setdefault(state["id"], [0, ""])
         elif name == "w:outlineLvl" and state["in_style"] and state["id"]:
             v = attrs.get("w:val", "")
             if v.isdigit():
-                levels[state["id"]] = int(v) + 1  # outlineLvl 0 → H1
+                raw.setdefault(state["id"], [0, ""])[0] = int(v) + 1
+        elif name == "w:basedOn" and state["in_style"] and state["id"]:
+            raw.setdefault(state["id"], [0, ""])[1] = (attrs.get("w:val") or "").lower()
     def end(name):
         if name == "w:style":
             state["in_style"] = False
@@ -278,7 +286,19 @@ def _parse_style_levels(zf) -> dict[str, int]:
         logger.warning(f"styles.xml parse error: {e}")
     finally:
         xml.close()
-    return levels
+
+    # 解析 basedOn 继承：自身无 outlineLvl 时递归查父（防环用 seen）
+    def _resolve(sid: str, seen: set[str]) -> int:
+        if sid in seen or sid not in raw:
+            return 0
+        lvl, based = raw[sid]
+        if lvl:
+            return lvl
+        if based:
+            return _resolve(based, seen | {sid})
+        return 0
+
+    return {sid: lvl for sid in raw if (lvl := _resolve(sid, set())) > 0}
 
 
 def _parse_docx_expat(path: Path) -> ParsedDocument | None:

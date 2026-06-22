@@ -296,3 +296,31 @@ def test_expat_vmerge_vertical(tmp_path):
     # row2 的 vMerge continue cell 应继承 row1 的 "top"，忽略自身 "ignored"
     assert r.tables[0].rows[0][0] == "top", f"vMerge continue 应继承上一行，得 {r.tables[0].rows[0][0]}"
     assert r.tables[0].rows[0][1] == "r2c2"
+
+
+# ── _parse_style_levels: basedOn 继承（TDD RED→GREEN）──
+
+def test_style_levels_resolves_basedon_inheritance(tmp_path):
+    """自定义样式 basedOn 内置 heading 时，应继承父的 outlineLvl。
+
+    Word 允许 <w:style styleId="MySection"><w:basedOn w:val="2"/>...</w:style>
+    继承 styleId="2"（heading 2, outlineLvl=1）。MySection 自身无 outlineLvl，
+    但语义上是 H2，应被识别。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_style_levels
+    styles_xml = (
+        '<?xml version="1.0"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:style w:styleId="2" w:type="paragraph"><w:name w:val="heading 2"/>'
+        '<w:pPr><w:outlineLvl w:val="1"/></w:pPr></w:style>'
+        '<w:style w:styleId="MySection" w:type="paragraph"><w:basedOn w:val="2"/>'
+        '<w:name w:val="My Section"/></w:style>'
+        '</w:styles>'
+    ).encode("utf-8")
+    fp = tmp_path / "s.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/styles.xml", styles_xml)
+    with zipfile.ZipFile(fp, "r") as zf:
+        levels = _parse_style_levels(zf)
+    # MySection 通过 basedOn 继承 "2" 的 outlineLvl=1 → level 2
+    assert levels.get("mysection") == 2, f"MySection 应继承 level 2，得 {levels.get('mysection')}"
