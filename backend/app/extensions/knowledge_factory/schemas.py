@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ============== Enums ==============
@@ -202,22 +202,46 @@ class RAGSourceSuggestionResponse(BaseModel):
 # ============== Rich Metadata (table/figure/formula/calc/sub-section) ==============
 
 
-class TableColumn(BaseModel):
+class _LenientMeta(BaseModel):
+    """富元数据模型基类：LLM 输出的 None/类型不匹配统一转默认值。
+
+    LLM 输出的 JSON 字段类型不可控（str 字段可能输出 None/int），
+    Pydantic 严格验证会导致 500。before validator 根据字段类型
+    把 None→默认值（int→0, str→""），把 int→str（width 字段）。
+    """
+    model_config = {"extra": "ignore"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _scrub_llm_output(cls, data):
+        if not isinstance(data, dict):
+            return data
+        for k, v in list(data.items()):
+            if v is None:
+                fi = cls.model_fields.get(k)
+                if fi is not None:
+                    data[k] = 0 if fi.annotation is int else ""
+                else:
+                    data[k] = ""
+            elif fi := cls.model_fields.get(k):
+                # int 字段但 LLM 输出 str → 转换
+                if fi.annotation is int and isinstance(v, str) and v.isdigit():
+                    data[k] = int(v)
+                # str 字段但 LLM 输出 int → 转换
+                elif fi.annotation is str and isinstance(v, int):
+                    data[k] = str(v)
+        return data
+
+
+class TableColumn(_LenientMeta):
     """表格列定义"""
-    # ponytail: LLM 输出的 width 可能是 int（如 25），unit 可能是 None。
-    # 用 before validator 宽松转 str，避免 Pydantic 严格验证 500。
     header: str = ""
     width: str = ""
     type: str = "string"
     unit: str = ""
 
-    @field_validator("width", "unit", mode="before")
-    @classmethod
-    def _coerce_to_str(cls, v):
-        return str(v) if v is not None else ""
 
-
-class TableSchema(BaseModel):
+class TableSchema(_LenientMeta):
     """按章节的表结构定义"""
     table_id: str = ""
     caption: str = ""
@@ -226,7 +250,7 @@ class TableSchema(BaseModel):
     required: bool = True
 
 
-class FigureRequirement(BaseModel):
+class FigureRequirement(_LenientMeta):
     """按章节的图片/图表需求"""
     figure_id: str = ""
     caption: str = ""
@@ -236,7 +260,7 @@ class FigureRequirement(BaseModel):
     fallback: str = ""
 
 
-class FormulaReference(BaseModel):
+class FormulaReference(_LenientMeta):
     """按章节的公式引用"""
     formula_id: str = ""
     name: str = ""
@@ -245,14 +269,14 @@ class FormulaReference(BaseModel):
     input_vars: list[str] = Field(default_factory=list)
 
 
-class CalcScriptParam(BaseModel):
+class CalcScriptParam(_LenientMeta):
     """计算脚本输入参数"""
     name: str = ""
     unit: str = ""
     source: str = "user"
 
 
-class CalcScriptBinding(BaseModel):
+class CalcScriptBinding(_LenientMeta):
     """计算脚本与章节的绑定"""
     script: str = ""
     section: str = ""
@@ -261,7 +285,7 @@ class CalcScriptBinding(BaseModel):
     trigger: str = "auto"
 
 
-class SubSectionProfile(BaseModel):
+class SubSectionProfile(_LenientMeta):
     """子章节深度指导"""
     expected_h2_count: int = 0
     expected_h3_count: int = 0
