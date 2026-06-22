@@ -448,9 +448,17 @@ class ExtractionPipeline:
             await _emit("元数据抽取", StepStatus.FAILED, _fmt(time.time() - t2), f"错误: {e}")
             raise
         flat = _flatten_sections(enriched)
+        # 步骤 detail 透传可观测性统计：失败节数 + grounding 丢弃字段数
+        stats = ctx.get("_meta_stats") or {}
+        failed_n = stats.get("failed", 0)
+        dropped_n = stats.get("grounded_dropped", 0)
+        detail = f"已抽取 {len(flat)} 节模板元数据"
+        if failed_n:
+            detail += f"，LLM 失败降级 {failed_n} 节"
+        if dropped_n:
+            detail += f"，grounding 校验丢弃/标记 {dropped_n} 个幻觉字段"
         await _emit(
-            "元数据抽取", StepStatus.COMPLETED, _fmt(time.time() - t2),
-            f"已抽取 {len(flat)} 节模板元数据"
+            "元数据抽取", StepStatus.COMPLETED, _fmt(time.time() - t2), detail
         )
 
         # ── Step 3: 模板融合（LLM） ──────────────────────────────
@@ -1336,6 +1344,8 @@ class ExtractionPipeline:
         # 进度计数：total 含嵌套子节，enrich 每完成一节递增并日志
         _, total_sections = _count_sections(sections)
         done = {"n": 0}
+        failed = {"n": 0}      # LLM 异常降级节数（可观测性：不再静默）
+        grounded_dropped = {"n": 0}  # grounding 丢弃/标记的幻觉字段总数
         task_id_meta = ctx.get("_task_id", "unknown")
 
         async def enrich(sec: dict) -> dict:
@@ -1366,6 +1376,7 @@ class ExtractionPipeline:
                             self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs)
                     )
             except Exception as e:
+                failed["n"] += 1
                 logger.warning(f"Metadata extraction failed for {sec_id}: {e}")
                 metadata = {
                     "content_contract": {
@@ -1385,7 +1396,8 @@ class ExtractionPipeline:
             # 锚定校验：丢弃/标记 LLM 输出中不在原文的字段（减幻觉）
             metadata, dropped = self._ground_metadata(metadata, all_source_text)
             if dropped:
-                logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] {sec_id} 锚定校验丢弃/标记 {dropped} 个幻觉字段")
+                grounded_dropped["n"] += dropped
+                logger.info(f"[Task {task_id_meta}] {sec_id} 锚定校验丢弃/标记 {dropped} 个幻觉字段")
 
             # Match LLM-suggested rag_sources against real KB records
             raw_rag_sources = metadata.get("rag_sources", [])
@@ -1420,6 +1432,19 @@ class ExtractionPipeline:
 
         # 顶层章节并发抽取（semaphore 全局限流），耗时从 N×5s 降到 N/5×5s
         enriched = await asyncio.gather(*[enrich(s) for s in sections])
+
+        # 可观测性汇总：失败节数 + grounding 丢弃字段数（不再静默降级）
+        flat = _flatten_sections(enriched)
+        ctx["_meta_stats"] = {
+            "total": len(flat),
+            "failed": failed["n"],
+            "grounded_dropped": grounded_dropped["n"],
+        }
+        if failed["n"] or grounded_dropped["n"]:
+            logger.warning(
+                f"[Task {task_id_meta}] 元数据抽取汇总: {len(flat)}节, "
+                f"LLM失败降级 {failed['n']}节, grounding丢弃/标记 {grounded_dropped['n']}字段"
+            )
 
         return enriched
 
