@@ -14,9 +14,15 @@ import {
 } from "@/extensions/app-center/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
-const STAGE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "", label: "—" },
+import { TableSelect, type TableSelectOption } from "./controls";
+
+/** Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 */
+const NONE_STAGE = "none";
+
+const STAGE_OPTIONS: TableSelectOption[] = [
+  { value: NONE_STAGE, label: "无" },
   { value: "overview", label: "概览" },
   { value: "collect", label: "采集" },
   { value: "process", label: "加工" },
@@ -157,26 +163,18 @@ export function AppManagement() {
               <Input value={draft.iconName} onChange={(e) => setDraft({ ...draft, iconName: e.target.value })} className="h-9" placeholder="layout-dashboard" />
             </FormField>
             <FormField label="业务域">
-              <select
+              <TableSelect
                 value={draft.businessDomain}
-                onChange={(e) => setDraft({ ...draft, businessDomain: e.target.value })}
-                className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-              >
-                {domains.map((d) => (
-                  <option key={d.key} value={d.key}>{d.label}</option>
-                ))}
-              </select>
+                options={domains.map((d) => ({ value: d.key, label: d.label }))}
+                onChange={(v) => setDraft({ ...draft, businessDomain: v })}
+              />
             </FormField>
             <FormField label="阶段标签">
-              <select
-                value={draft.stageTag}
-                onChange={(e) => setDraft({ ...draft, stageTag: e.target.value })}
-                className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-              >
-                {STAGE_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
+              <TableSelect
+                value={draft.stageTag || NONE_STAGE}
+                options={STAGE_OPTIONS}
+                onChange={(v) => setDraft({ ...draft, stageTag: v === NONE_STAGE ? "" : v })}
+              />
             </FormField>
             <FormField label="License 模块">
               <Input value={draft.licenseModule} onChange={(e) => setDraft({ ...draft, licenseModule: e.target.value })} className="h-9" placeholder="留空=无需授权" />
@@ -228,28 +226,22 @@ export function AppManagement() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <select
+                    <TableSelect
                       value={a.businessDomain}
-                      onChange={(e) => handleUpdate(a.appId, { businessDomain: e.target.value })}
+                      options={domains.map((d) => ({ value: d.key, label: d.label }))}
+                      onChange={(v) => handleUpdate(a.appId, { businessDomain: v })}
                       disabled={saving === a.appId}
-                      className="h-8 rounded-md border border-border bg-background px-1.5 text-xs min-w-[90px]"
-                    >
-                      {domains.map((d) => (
-                        <option key={d.key} value={d.key}>{d.label}</option>
-                      ))}
-                    </select>
+                    />
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      value={a.stageTag ?? ""}
-                      onChange={(e) => handleUpdate(a.appId, { stageTag: e.target.value || undefined })}
+                    <TableSelect
+                      value={a.stageTag ?? NONE_STAGE}
+                      options={STAGE_OPTIONS}
+                      onChange={(v) =>
+                        handleUpdate(a.appId, { stageTag: v === NONE_STAGE ? undefined : v })
+                      }
                       disabled={saving === a.appId}
-                      className="h-8 rounded-md border border-border bg-background px-1.5 text-xs"
-                    >
-                      {STAGE_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <InlineInput
@@ -268,21 +260,17 @@ export function AppManagement() {
                     />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={a.adminOnly}
-                      onChange={(e) => handleUpdate(a.appId, { adminOnly: e.target.checked })}
+                      onCheckedChange={(v) => handleUpdate(a.appId, { adminOnly: v })}
                       disabled={saving === a.appId}
-                      className="size-4"
                     />
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={a.isEnabled}
-                      onChange={(e) => handleUpdate(a.appId, { isEnabled: e.target.checked })}
+                      onCheckedChange={(v) => handleUpdate(a.appId, { isEnabled: v })}
                       disabled={saving === a.appId}
-                      className="size-4"
                     />
                   </td>
                   <td className="px-3 py-2 text-right">

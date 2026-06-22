@@ -12,12 +12,36 @@ import {
 } from "@/extensions/app-center/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+
+import { TableSelect, type TableSelectOption } from "./controls";
+
+/** accent → 实心色块背景类（用于下拉项的色点） */
+const ACCENT_SWATCH: Record<string, string> = {
+  blue: "bg-blue-500",
+  violet: "bg-violet-500",
+  cyan: "bg-cyan-500",
+  amber: "bg-amber-500",
+  emerald: "bg-emerald-500",
+  rose: "bg-rose-500",
+  indigo: "bg-indigo-500",
+  teal: "bg-teal-500",
+  orange: "bg-orange-500",
+  sky: "bg-sky-500",
+  slate: "bg-slate-500",
+};
 
 const ACCENT_OPTIONS = [
   "blue", "violet", "cyan", "amber", "emerald",
   "rose", "indigo", "teal", "orange", "sky", "slate",
 ];
+
+const ACCENT_SELECT_OPTIONS: TableSelectOption[] = ACCENT_OPTIONS.map((c) => ({
+  value: c,
+  label: c,
+  swatch: ACCENT_SWATCH[c],
+}));
 
 export function DomainManagement() {
   const [domains, setDomains] = useState<DomainResponse[]>([]);
@@ -133,23 +157,19 @@ export function DomainManagement() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">强调色</label>
-              <select
-                value={newAccent}
-                onChange={(e) => setNewAccent(e.target.value)}
-                className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-              >
-                {ACCENT_OPTIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <TableSelect
+                  value={newAccent}
+                  options={ACCENT_SELECT_OPTIONS}
+                  onChange={setNewAccent}
+                />
+              </div>
             </div>
             <div className="flex items-end gap-3">
               <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
+                <Switch
                   checked={newUniversal}
-                  onChange={(e) => setNewUniversal(e.target.checked)}
-                  className="size-4"
+                  onCheckedChange={setNewUniversal}
                 />
                 通用域
               </label>
@@ -190,16 +210,12 @@ export function DomainManagement() {
                     />
                   </td>
                   <td className="px-4 py-2">
-                    <select
+                    <TableSelect
                       value={d.accentColor}
-                      onChange={(e) => handleUpdate(d.key, { accentColor: e.target.value })}
+                      options={ACCENT_SELECT_OPTIONS}
+                      onChange={(v) => handleUpdate(d.key, { accentColor: v })}
                       disabled={saving === d.key}
-                      className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-                    >
-                      {ACCENT_OPTIONS.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                    />
                   </td>
                   <td className="px-4 py-2">
                     <Input
@@ -211,16 +227,14 @@ export function DomainManagement() {
                           handleUpdate(d.key, { sortOrder: v });
                         }
                       }}
-                      className="h-8 w-16"
+                      className="h-8 w-16 shadow-none bg-muted/40 border-transparent text-center"
                     />
                   </td>
                   <td className="px-4 py-2">
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={d.isUniversal}
-                      onChange={(e) => handleUpdate(d.key, { isUniversal: e.target.checked })}
+                      onCheckedChange={(v) => handleUpdate(d.key, { isUniversal: v })}
                       disabled={saving === d.key}
-                      className="size-4"
                     />
                   </td>
                   <td className="px-4 py-2 text-right">
