@@ -6,44 +6,40 @@ import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
 
 import { BUILTIN_APPS } from "../config/apps";
-import { CATEGORIES } from "../config/categories";
+import {
+  getDomainLabel,
+  UNIVERSAL_DOMAINS,
+  UNIVERSAL_DOMAIN_SET,
+} from "../config/categories";
 import type {
   AppDefinition,
-  CategoryFilter,
+  BusinessDomainKey,
+  DomainFilter,
   SortMode,
 } from "../types";
 
-export interface CategoryFilterOption {
-  key: CategoryFilter;
+export interface DomainFilterOption {
+  key: DomainFilter;
   label: string;
   count: number;
 }
 
 export interface UseAppsReturn {
-  /** 经过 license/搜索/分类/排序后的最终应用列表 */
   apps: AppDefinition[];
-  /** license + admin 过滤后、未应用搜索/分类/排序的应用列表（用于计数） */
   visibleApps: AppDefinition[];
-  /** 原始应用列表（未过滤） */
   allApps: AppDefinition[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   sortMode: SortMode;
   setSortMode: (mode: SortMode) => void;
-  activeCategory: CategoryFilter;
-  setActiveCategory: (cat: CategoryFilter) => void;
-  /** 分类筛选项（含"全部"），count 为该分类下可见应用数 */
-  categoryOptions: CategoryFilterOption[];
-  /** license 是否仍在加载（加载中显示所有应用，与 Sidebar 行为一致） */
+  activeDomain: DomainFilter;
+  setActiveDomain: (d: DomainFilter) => void;
+  domainOptions: DomainFilterOption[];
   licenseLoading: boolean;
 }
 
 /**
- * 应用中心主 hook：聚合搜索、排序、分类筛选与权限过滤。
- *
- * 权限过滤逻辑镜像 Sidebar.tsx：
- *  - adminOnly 应用：仅 role_name === "Super Admin" 可见
- *  - licenseModule 应用：licenseLoading 时显示，加载完成后按 hasModule 过滤
+ * 应用中心主 hook：聚合搜索、排序、业务域筛选与权限过滤。
  */
 export function useApps(
   favorites: Set<string>,
@@ -54,11 +50,11 @@ export function useApps(
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("default");
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
+  const [activeDomain, setActiveDomain] = useState<DomainFilter>("all");
 
   const isAdmin = user?.role_name === "Super Admin";
 
-  // 1. 权限过滤（license + admin）
+  // 1. 权限过滤
   const visibleApps = useMemo(() => {
     return BUILTIN_APPS.filter((app) => {
       if (app.adminOnly && !isAdmin) return false;
@@ -68,33 +64,40 @@ export function useApps(
     });
   }, [hasModule, isAdmin, licenseLoading]);
 
-  // 2. 分类筛选项（含数量）
-  const categoryOptions = useMemo<CategoryFilterOption[]>(() => {
-    const counts = new Map<CategoryFilter, number>();
-    counts.set("all", visibleApps.length);
-    for (const c of CATEGORIES) {
-      counts.set(c.key, 0);
-    }
+  // 2. 业务域筛选项（通用域在前，业务域按首次出现顺序，含数量）
+  const domainOptions = useMemo<DomainFilterOption[]>(() => {
+    const counts = new Map<BusinessDomainKey, number>();
+    const seenOrder: BusinessDomainKey[] = [];
+
     for (const app of visibleApps) {
-      counts.set(app.category, (counts.get(app.category) ?? 0) + 1);
+      const d = app.businessDomain;
+      if (!counts.has(d)) seenOrder.push(d);
+      counts.set(d, (counts.get(d) ?? 0) + 1);
     }
+
+    // 通用域在前（按 UNIVERSAL_DOMAINS 声明顺序），业务域按首次出现顺序
+    const ordered = [
+      ...UNIVERSAL_DOMAINS.filter((d) => counts.has(d)),
+      ...seenOrder.filter((d) => !UNIVERSAL_DOMAIN_SET.has(d)),
+    ];
+
     return [
-      { key: "all", label: "全部", count: counts.get("all") ?? 0 },
-      ...CATEGORIES.filter((c) => (counts.get(c.key) ?? 0) > 0).map((c) => ({
-        key: c.key,
-        label: c.label,
-        count: counts.get(c.key) ?? 0,
+      { key: "all", label: "全部", count: visibleApps.length },
+      ...ordered.map((key) => ({
+        key,
+        label: getDomainLabel(key),
+        count: counts.get(key) ?? 0,
       })),
     ];
   }, [visibleApps]);
 
-  // 3. 搜索 + 分类 + 排序
+  // 3. 搜索 + 域筛选 + 排序
   const apps = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = visibleApps;
 
-    if (activeCategory !== "all") {
-      list = list.filter((a) => a.category === activeCategory);
+    if (activeDomain !== "all") {
+      list = list.filter((a) => a.businessDomain === activeDomain);
     }
 
     if (q) {
@@ -111,7 +114,6 @@ export function useApps(
         sorted.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
         break;
       case "favorites-first":
-        // 水合前不重排，避免收藏态闪烁导致跳动
         sorted.sort((a, b) => {
           const af = isFavoriteHydrated && favorites.has(a.id) ? 0 : 1;
           const bf = isFavoriteHydrated && favorites.has(b.id) ? 0 : 1;
@@ -125,7 +127,7 @@ export function useApps(
         break;
     }
     return sorted;
-  }, [visibleApps, activeCategory, searchQuery, sortMode, favorites, isFavoriteHydrated]);
+  }, [visibleApps, activeDomain, searchQuery, sortMode, favorites, isFavoriteHydrated]);
 
   return {
     apps,
@@ -135,9 +137,9 @@ export function useApps(
     setSearchQuery,
     sortMode,
     setSortMode,
-    activeCategory,
-    setActiveCategory,
-    categoryOptions,
+    activeDomain,
+    setActiveDomain,
+    domainOptions,
     licenseLoading,
   };
 }
