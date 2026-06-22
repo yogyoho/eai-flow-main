@@ -674,11 +674,11 @@ class ExtractionPipeline:
                 # Skip files > max_size for doc_parser — python-docx loads entire
                 # XML tree into memory and can take 10+ minutes on large reports.
                 # RAGFlow handles these efficiently with pre-parsed chunks.
-                # Default 10MB. Set higher via ExtractionConfig.doc_parser_max_mb
-                # if precision on large files is needed (expect minutes per file).
+                # 默认 50MB（与 ExtractionConfig.doc_parser_max_mb 默认一致），
+                # 覆盖典型环评报告；超出走 RAGFlow 预解析分片。
                 import os as _os
                 cfg = ctx.get("_config")
-                max_size_mb = getattr(cfg, "doc_parser_max_mb", 10) if cfg else 10
+                max_size_mb = getattr(cfg, "doc_parser_max_mb", 50) if cfg else 50
                 max_size_bytes = max_size_mb * 1024 * 1024
                 try:
                     fsize = _os.path.getsize(file_path) if _os.path.exists(file_path) else 0
@@ -1055,7 +1055,10 @@ class ExtractionPipeline:
                 # H1 structure as a skeleton and fill gaps with LLM metadata.
                 _parsed = doc.get("_parsed")
                 if _parsed and _parsed.headings:
-                    h1_titles = [h.title for h in _parsed.headings if h.level == 1]
+                    # 构造 h1_headings (dict 形式) 保持与下方 fallback 路径兼容，
+                    # 避免 1086 `if h1_headings:` 引用未定义变量 (NameError)。
+                    h1_headings = [{"title": h.title, "level_guess": h.level} for h in _parsed.headings if h.level == 1]
+                    h1_titles = [h["title"] for h in h1_headings]
                     h1_count = len(h1_titles)
                 else:
                     h1_headings = _scan_chapter_headings(chunks)
@@ -1063,8 +1066,9 @@ class ExtractionPipeline:
                     h1_count = len(h1_titles)
 
                 if h1_count > 0 and len(sections) < h1_count:
+                    llm_section_count = len(sections)  # 循环内 sections 被覆盖，先存原始值
                     logger.warning(
-                        f"[Task {task_id}] Step 1: LLM returned {len(sections)} sections but "
+                        f"[Task {task_id}] Step 1: LLM returned {llm_section_count} sections but "
                         f"{h1_count} H1 headings were detected — using detected structure as skeleton. "
                         f"Detected: {h1_titles}"
                     )
@@ -1076,7 +1080,7 @@ class ExtractionPipeline:
                             "title": title,
                             "level": 1,
                             "required": True,
-                            "purpose": f"从'{doc_name}'自动识别（LLM 推断不足 {len(sections)}<{h1_count}）",
+                            "purpose": f"从'{doc_name}'自动识别（LLM 推断不足 {llm_section_count}<{h1_count}）",
                         })
                     logger.info(f"[Task {task_id}] Step 1: 使用自动识别的 {len(sections)} 个章节替代 LLM 输出")
 
@@ -1146,19 +1150,19 @@ class ExtractionPipeline:
 
     # ── Grounding: 锚定校验 LLM 输出到原文 ──
 
-    def _ground_metadata(self, metadata: dict, source_text: str) -> tuple[dict, int]:
+    def _ground_metadata(self, metadata: dict, norm_source: str) -> tuple[dict, int]:
         """丢弃 LLM 输出中明显不在原文的字段（减幻觉）。
 
-        - example_snippet: normalize 后必须是 source_text 子串，否则置 None
-          (prompt 已要求"从原文提取"，改写/编造的视为幻觉丢弃)
+        接收【已 normalize 的】全文 (norm_source)，避免每节重复对大文本做
+        normalize（50MB×93 节 = 4.6GB 临时串）。调用方预算一次传入。
+        - example_snippet: normalize 后必须是原文子串，否则置 None
         - table_schemas[].caption / formula_references[].formula_id:
-          不在原文出现则标记 _unverified=True（保留供人工编辑，但提示存疑）
-        返回 (清理后 metadata, 丢弃/标记计数)。
+          不在原文出现则标记 _unverified=True
         """
-        if not source_text or not metadata:
+        if not norm_source or not metadata:
             return metadata, 0
         from .doc_parser import normalize_text
-        norm = normalize_text(source_text)
+        norm = norm_source  # 调用方已预算，不重复 normalize
         dropped = 0
 
         snippet = metadata.get("example_snippet")
@@ -1352,6 +1356,9 @@ class ExtractionPipeline:
 
         # 全文锚定源（所有文档拼接），供 _ground_metadata 校验 LLM 输出
         all_source_text = "\n\n".join(d["content"] for d in doc_contents.values() if d.get("content"))
+        # 预算一次 normalize（避免每节对大文本重复 normalize：50MB×93 节 = 4.6GB 临时串）
+        from .doc_parser import normalize_text as _norm
+        norm_all = _norm(all_source_text) if all_source_text else ""
 
         # 并发抽取：同 semaphore 限制 LLM 并发数（防 DeepSeek 限流），顶层 + 子节 gather
         sem = asyncio.Semaphore(5)
@@ -1362,7 +1369,20 @@ class ExtractionPipeline:
         grounded_dropped = {"n": 0}  # grounding 丢弃/标记的幻觉字段总数
         task_id_meta = ctx.get("_task_id", "unknown")
 
-        async def enrich(sec: dict) -> dict:
+        async def _safe_enrich(sec: dict) -> dict:
+            """enrich 包装器：单节任何异常（grounding/rag/result 构造）返回降级 section，
+            不让 asyncio.gather first-exception 中断、丢弃其他节已完成的结果。"""
+            try:
+                return await _enrich(sec)
+            except Exception as e:
+                failed["n"] += 1
+                logger.warning(f"[Task {task_id_meta}] enrich 失败 {sec.get('id', '?')}: {e}，降级")
+                done["n"] += 1
+                return {**sec, "content_contract": {"key_elements": [], "structure_type": "narrative_text",
+                        "style_rules": None, "min_word_count": None, "forbidden_phrases": []},
+                        "completeness_score": 50}
+
+        async def _enrich(sec: dict) -> dict:
             sec_id = sec.get("id", "")
             title = sec.get("title", "")
             level = sec.get("level", 1)
@@ -1408,7 +1428,7 @@ class ExtractionPipeline:
                 }
 
             # 锚定校验：丢弃/标记 LLM 输出中不在原文的字段（减幻觉）
-            metadata, dropped = self._ground_metadata(metadata, all_source_text)
+            metadata, dropped = self._ground_metadata(metadata, norm_all)
             if dropped:
                 grounded_dropped["n"] += dropped
                 logger.info(f"[Task {task_id_meta}] {sec_id} 锚定校验丢弃/标记 {dropped} 个幻觉字段")
@@ -1436,7 +1456,7 @@ class ExtractionPipeline:
             children = sec.get("children") or []
             if children:
                 # 子节并发抽取（受同一 semaphore 限流）
-                result["children"] = await asyncio.gather(*[enrich(c) for c in children])
+                result["children"] = await asyncio.gather(*[_safe_enrich(c) for c in children])
 
             # 进度反馈：每完成一节日志（total 含嵌套子节）
             done["n"] += 1
@@ -1445,7 +1465,7 @@ class ExtractionPipeline:
             return result
 
         # 顶层章节并发抽取（semaphore 全局限流），耗时从 N×5s 降到 N/5×5s
-        enriched = await asyncio.gather(*[enrich(s) for s in sections])
+        enriched = await asyncio.gather(*[_safe_enrich(s) for s in sections])
 
         # 可观测性汇总：失败节数 + grounding 丢弃字段数（不再静默降级）
         flat = _flatten_sections(enriched)
