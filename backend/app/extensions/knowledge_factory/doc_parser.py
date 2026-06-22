@@ -316,6 +316,8 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     row_cells: list[str] = []
     cell_buf: list[str] = []   # 当前 tc 内的文本片段（cell 边界）
     cur_gridspan: int = 1      # 当前 tc 的 gridSpan（水平合并列数）
+    cur_vmerge: str = ""       # 当前 tc 的 vMerge: ""/"restart"/"continue"
+    last_row_cells: list[str] = []  # 上一行展开后 cells（vMerge continue 取值）
     in_tbl = False
     in_tr = False
     in_tc = False
@@ -323,7 +325,7 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     def start(name: str, attrs: dict):
         nonlocal cur_text, cur_style, in_p, in_t
         nonlocal tbl_rows, row_cells, in_tbl, in_tr, in_tc
-        nonlocal cell_buf, cur_gridspan
+        nonlocal cell_buf, cur_gridspan, cur_vmerge
 
         if name == "w:p":
             in_p = True; cur_text = []; cur_style = ""
@@ -332,21 +334,24 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
         elif name == "w:t":
             in_t = True
         elif name == "w:tbl":
-            in_tbl = True; tbl_rows = []
+            in_tbl = True; tbl_rows = []; last_row_cells.clear()
         elif name == "w:tr" and in_tbl:
             in_tr = True; row_cells = []
         elif name == "w:tc" and in_tr:
-            in_tc = True; cell_buf = []; cur_gridspan = 1
+            in_tc = True; cell_buf = []; cur_gridspan = 1; cur_vmerge = ""
         elif name == "w:gridSpan" and in_tc:
-            # 水平合并：该 cell 跨 N 列，tc end 时内容复制 N 份对齐列
             try:
                 cur_gridspan = max(1, int(attrs.get("w:val", "1")))
             except (TypeError, ValueError):
                 cur_gridspan = 1
+        elif name == "w:vMerge" and in_tc:
+            # 垂直合并：restart=合并起点(有内容)，无 val=continue(继承上一行同列)
+            cur_vmerge = "restart" if attrs.get("w:val") == "restart" else "continue"
 
     def end(name: str):
         nonlocal in_p, in_t, in_tbl, in_tr, in_tc
         nonlocal tbl_rows, row_cells, line_no, cell_buf, cur_gridspan
+        nonlocal cur_vmerge, last_row_cells
 
         if name == "w:t":
             in_t = False
@@ -362,13 +367,19 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
                                            para_idx=len(paragraphs) - 1))
             line_no += 1
         elif name == "w:tc":
-            # cell 文本按 gridSpan 复制（水平合并对齐列）。
-            # TODO: vMerge（垂直合并）需跨行状态，暂未处理——续行 cell 文本为空。
-            cell_text = "".join(cell_buf).strip()
+            # vMerge continue: 继承上一行同列文本（垂直合并）；restart/无合并用 cell_buf
+            if cur_vmerge == "continue":
+                col = len(row_cells)
+                cell_text = last_row_cells[col] if col < len(last_row_cells) else ""
+            else:
+                cell_text = "".join(cell_buf).strip()
+            # gridSpan 水平合并：内容复制 N 份对齐列数
             row_cells.extend([cell_text] * cur_gridspan)
             in_tc = False
         elif name == "w:tr" and in_tr:
-            in_tr = False; tbl_rows.append(list(row_cells))
+            in_tr = False
+            tbl_rows.append(list(row_cells))
+            last_row_cells = list(row_cells)  # 供下一行 vMerge continue 取值
         elif name == "w:tbl":
             in_tbl = False
             if tbl_rows:

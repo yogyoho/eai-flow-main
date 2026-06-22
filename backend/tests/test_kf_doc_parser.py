@@ -273,3 +273,26 @@ def test_expat_gridspan_horizontal_merge(tmp_path):
     cols = r.tables[0].columns
     assert len(cols) == 3, f"gridSpan=2 应展开成3列，得 {len(cols)}: {cols}"
     assert cols[0] == "merged" and cols[1] == "merged"
+
+
+def test_expat_vmerge_vertical(tmp_path):
+    """vMerge 垂直合并：continue 行继承上一行同列文本。"""
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:tbl>'
+        '<w:tr><w:tc><w:tcPr><w:vMerge w:val="restart"/></w:tcPr><w:p><w:r><w:t>top</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>r1c2</w:t></w:r></w:p></w:tc></w:tr>'
+        '<w:tr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p><w:r><w:t>ignored</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>r2c2</w:t></w:r></w:p></w:tc></w:tr>'
+        '</w:tbl></w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "v.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None and len(r.tables) == 1
+    # row2 的 vMerge continue cell 应继承 row1 的 "top"，忽略自身 "ignored"
+    assert r.tables[0].rows[0][0] == "top", f"vMerge continue 应继承上一行，得 {r.tables[0].rows[0][0]}"
+    assert r.tables[0].rows[0][1] == "r2c2"
