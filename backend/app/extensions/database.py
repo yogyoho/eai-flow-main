@@ -1267,6 +1267,13 @@ async def migrate_db() -> None:
                 "DELETE FROM app_domains WHERE key = :old"
             ), {"old": old_key})
 
+        # 修正内置管理类应用的 admin_only 标记（历史 seed 绑定问题导致全为 false，
+        # 且 ON CONFLICT DO NOTHING 不会修正已存在行）。幂等。
+        await conn.execute(text(
+            "UPDATE app_definitions SET admin_only = TRUE "
+            "WHERE app_id IN ('admin', 'workflow-admin')"
+        ))
+
 
 async def _seed_role_permissions(conn):
     """Insert default role-permission mappings if the table is empty."""
