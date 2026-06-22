@@ -105,6 +105,24 @@ class ParsedDocument:
                 fallback = text
         return fallback
 
+    def section_length(self, idx: int) -> int:
+        """Char length of heading[idx]'s subtree source (for min_section_length filter).
+
+        0 if heading has no anchor (regex fallback) — caller keeps such headings.
+        """
+        if idx < 0 or idx >= len(self.headings):
+            return 0
+        h = self.headings[idx]
+        if h.text_offset < 0:
+            return 0
+        end = len(self.full_text)
+        for j in range(idx + 1, len(self.headings)):
+            nj = self.headings[j]
+            if nj.level <= h.level and nj.text_offset >= 0:
+                end = nj.text_offset
+                break
+        return max(0, end - h.text_offset)
+
 
 # ── Text normalization ──
 

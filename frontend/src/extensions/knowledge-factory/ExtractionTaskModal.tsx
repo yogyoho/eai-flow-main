@@ -43,12 +43,6 @@ const MAX_DEPTH_OPTIONS = [
   { value: 6, label: "H6（6级）", description: "最深层级" },
 ];
 
-const CHUNK_STRATEGY_OPTIONS = [
-  { value: "semantic", label: "语义切分" },
-  { value: "section", label: "按章节" },
-  { value: "fixed", label: "固定长度" },
-];
-
 interface ReportItem {
   id: string;
   name: string;
@@ -591,85 +585,6 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
                     placeholder="选择深度"
                     className="w-full"
                   />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">分段策略</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-3 h-3 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="font-medium mb-1">分段策略</p>
-                        <p className="text-muted-foreground mb-2">决定如何将文档切分成小块供 LLM 分析处理</p>
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-left">
-                              <th className="pr-2">策略</th>
-                              <th>说明</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr><td className="pr-2 font-medium">语义切分</td><td>LLM 理解语义，在逻辑边界自动切分（推荐）</td></tr>
-                            <tr><td className="pr-2 font-medium">按章节</td><td>依据文档自带的一级/二级标题切分</td></tr>
-                            <tr><td className="pr-2 font-medium">固定长度</td><td>按固定字符数硬切分（可能截断语句）</td></tr>
-                          </tbody>
-                        </table>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <AdminSelect
-                    value={config.chunk_strategy}
-                    onChange={(value) => setConfig((c) => ({ ...c, chunk_strategy: value as "semantic" | "fixed" | "section" }))}
-                    options={CHUNK_STRATEGY_OPTIONS}
-                    placeholder="选择策略"
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">融合阈值</span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="w-3 h-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="font-medium mb-1">融合阈值</p>
-                          <p className="text-muted-foreground text-xs">配合语义切分使用。当切分后的段落语义相似度高于此阈值时，会自动合并成一个 chunk。</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <span className="text-xs font-semibold tabular-nums text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                      {config.merge_threshold.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="relative pt-1 pb-2">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 mb-1 px-0.5">
-                      <span>0.50</span>
-                      <span>0.75</span>
-                      <span>1.00</span>
-                    </div>
-                    <div className="relative h-2 rounded-full bg-muted">
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-150"
-                        style={{ width: `${((config.merge_threshold - 0.5) / 0.5) * 100}%` }}
-                      />
-                      <input
-                        type="range"
-                        min={0.5}
-                        max={1}
-                        step={0.05}
-                        value={config.merge_threshold}
-                        onChange={(e) => setConfig((c) => ({ ...c, merge_threshold: parseFloat(e.target.value) }))}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-primary shadow-md transition-all duration-150 pointer-events-none"
-                        style={{ left: `calc(${((config.merge_threshold - 0.5) / 0.5) * 100}% - 8px)` }}
-                      />
-                    </div>
-                  </div>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">

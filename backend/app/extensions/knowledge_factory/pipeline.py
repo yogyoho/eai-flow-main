@@ -1005,8 +1005,22 @@ class ExtractionPipeline:
                 if not ref_chapters:
                     _parsed = doc.get("_parsed")
                     if _parsed and _parsed.headings:
-                        # Use deterministic headings from doc_parser
-                        h1s = [h for h in _parsed.headings if h.level == 1]
+                        # Use deterministic headings from doc_parser.
+                        # min_section_length: 过滤正文过短的空壳 H1（页眉/附录/噪音），
+                        # 只对有 doc_parser 锚点的 heading 生效，无锚点的保留。
+                        min_len = getattr(config, "min_section_length", 0) or 0
+                        all_h1 = [(i, h) for i, h in enumerate(_parsed.headings) if h.level == 1]
+                        if min_len > 0:
+                            kept = []
+                            for i, h in all_h1:
+                                slen = _parsed.section_length(i)
+                                if slen == 0 or slen >= min_len:
+                                    kept.append(h)
+                                else:
+                                    logger.info(f"[Task {task_id}] Step 1: 过滤空壳章节 '{h.title}' (正文 {slen} 字 < {min_len})")
+                            h1s = kept
+                        else:
+                            h1s = [h for _, h in all_h1]
                         if h1s:
                             ref_chapters = {
                                 "sections": [

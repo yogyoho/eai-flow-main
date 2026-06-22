@@ -199,3 +199,27 @@ def test_section_text_by_title_empty_when_regex_fallback():
     doc.headings = [Heading(title="第一章 总则", level=1, para_idx=-1)]
     doc.full_text = "第一章 总则 正文"
     assert doc.section_text_by_title("第一章 总则") == ""
+
+
+# ── section_length (min_section_length 过滤支撑) ──
+
+def test_section_length_subtree():
+    """section_length 返回 heading 子树字符长度（含子节）。"""
+    paragraphs = ["1 总则", "正文A较长内容。" * 10, "2 概述", "短"]
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [Heading(title="1 总则", level=1, para_idx=0),
+                    Heading(title="2 概述", level=1, para_idx=2)]
+    doc.full_text = "\n\n".join(paragraphs)
+    doc.finalize_sections(paragraphs)
+    # H1 "1 总则" 子树到 H1 "2 概述"，应较长
+    assert doc.section_length(0) > 50
+    # H1 "2 概述" 到文末，较短
+    assert doc.section_length(1) < 10
+
+
+def test_section_length_no_anchor_returns_zero():
+    """无锚点的 heading（regex 兜底）返回 0，调用方保留不过滤。"""
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [Heading(title="第一章", level=1, para_idx=-1, text_offset=-1)]
+    doc.full_text = "正文"
+    assert doc.section_length(0) == 0
