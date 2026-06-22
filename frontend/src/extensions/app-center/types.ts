@@ -1,5 +1,3 @@
-import type { LucideIcon } from "lucide-react";
-
 /** 业务域标识（动态扩展） */
 export type BusinessDomainKey = string;
 
@@ -35,7 +33,8 @@ export interface AppDefinition {
   id: string;
   name: string;
   description: string;
-  icon: LucideIcon;
+  /** 图标名称（对应 DB 中的 icon_name，客户端通过 ICON_MAP 解析） */
+  iconName: string;
   /** 所属业务域 */
   businessDomain: BusinessDomainKey;
   /** 功能阶段标签（可选） */

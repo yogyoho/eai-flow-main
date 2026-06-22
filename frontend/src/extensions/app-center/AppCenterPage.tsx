@@ -28,6 +28,8 @@ export function AppCenterPage() {
     setActiveDomain,
     domainOptions,
     licenseLoading,
+    isLoading: dataLoading,
+    isError,
   } = useApps(favorites, hydrated);
 
   // 业务域首次出现顺序（与 useApps 中 domainOptions 的派生逻辑一致，用于 AppCard accent 分配）
@@ -51,7 +53,16 @@ export function AppCenterPage() {
 
   const showFavorites = favoriteApps.length > 0;
   const hasVisibleApps = visibleApps.length > 0;
-  const isLoading = licenseLoading;
+  const isLoading = licenseLoading || dataLoading;
+
+  // Error state
+  if (isError && !isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-16 text-center">
+        <p className="text-muted-foreground">加载失败，请刷新页面重试。</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">

@@ -1,16 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import useSWR from "swr";
 
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
 
-import { BUILTIN_APPS } from "../config/apps";
 import {
-  getDomainLabel,
-  UNIVERSAL_DOMAINS,
-  UNIVERSAL_DOMAIN_SET,
-} from "../config/categories";
+  fetchApps,
+  fetchDomains,
+  type AppResponse,
+  type DomainResponse,
+} from "../api";
+import { getDomainLabel } from "../config/categories";
 import type {
   AppDefinition,
   BusinessDomainKey,
@@ -36,10 +38,30 @@ export interface UseAppsReturn {
   setActiveDomain: (d: DomainFilter) => void;
   domainOptions: DomainFilterOption[];
   licenseLoading: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+}
+
+function toAppDefinition(a: AppResponse): AppDefinition {
+  return {
+    id: a.appId,
+    name: a.name,
+    description: a.description ?? "",
+    iconName: a.iconName,
+    businessDomain: a.businessDomain,
+    stageTag: a.stageTag as AppDefinition["stageTag"] | undefined,
+    path: a.path,
+    licenseModule: a.licenseModule,
+    adminOnly: a.adminOnly,
+    sortOrder: a.sortOrder,
+    sortKey: a.sortKey,
+    isBuiltin: a.isBuiltin,
+  };
 }
 
 /**
- * 应用中心主 hook：聚合搜索、排序、业务域筛选与权限过滤。
+ * 应用中心主 hook：从 API 获取数据，聚合搜索、排序、业务域筛选与权限过滤。
  */
 export function useApps(
   favorites: Set<string>,
@@ -54,18 +76,51 @@ export function useApps(
 
   const isAdmin = user?.role_name === "Super Admin";
 
+  // Fetch apps & domains from API
+  const {
+    data: rawApps,
+    isLoading: appsLoading,
+    error: appsError,
+  } = useSWR("app-center-apps", fetchApps, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+  const {
+    data: domains,
+    isLoading: domainsLoading,
+    error: domainsError,
+  } = useSWR("app-center-domains", fetchDomains, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+
+  const isLoading = appsLoading || domainsLoading;
+  const isError = appsError !== undefined || domainsError !== undefined;
+  const error = (appsError ?? domainsError ?? null) as Error | null;
+
+  // Convert API response to AppDefinition
+  const rawDefinitions = useMemo<AppDefinition[]>(
+    () => (rawApps ? rawApps.map(toAppDefinition) : []),
+    [rawApps],
+  );
+
   // 1. 权限过滤
   const visibleApps = useMemo(() => {
-    return BUILTIN_APPS.filter((app) => {
+    return rawDefinitions.filter((app) => {
       if (app.adminOnly && !isAdmin) return false;
       if (app.licenseModule && !licenseLoading && !hasModule(app.licenseModule))
         return false;
       return true;
     });
-  }, [hasModule, isAdmin, licenseLoading]);
+  }, [rawDefinitions, hasModule, isAdmin, licenseLoading]);
 
-  // 2. 业务域筛选项（通用域在前，业务域按首次出现顺序，含数量）
+  // 2. 业务域筛选项（通用域在前，含数量）
   const domainOptions = useMemo<DomainFilterOption[]>(() => {
+    const universalKeys = (domains ?? [])
+      .filter((d: DomainResponse) => d.isUniversal)
+      .sort((a: DomainResponse, b: DomainResponse) => a.sortOrder - b.sortOrder)
+      .map((d: DomainResponse) => d.key);
+
     const counts = new Map<BusinessDomainKey, number>();
     const seenOrder: BusinessDomainKey[] = [];
 
@@ -75,21 +130,24 @@ export function useApps(
       counts.set(d, (counts.get(d) ?? 0) + 1);
     }
 
-    // 通用域在前（按 UNIVERSAL_DOMAINS 声明顺序），业务域按首次出现顺序
+    const universalSet = new Set(universalKeys);
     const ordered = [
-      ...UNIVERSAL_DOMAINS.filter((d) => counts.has(d)),
-      ...seenOrder.filter((d) => !UNIVERSAL_DOMAIN_SET.has(d)),
+      ...universalKeys.filter((d) => counts.has(d)),
+      ...seenOrder.filter((d) => !universalSet.has(d)),
     ];
 
     return [
       { key: "all", label: "全部", count: visibleApps.length },
       ...ordered.map((key) => ({
         key,
-        label: getDomainLabel(key),
+        label: getDomainLabel(
+          key,
+          domains as Array<{ key: string; label: string }> | undefined,
+        ),
         count: counts.get(key) ?? 0,
       })),
     ];
-  }, [visibleApps]);
+  }, [visibleApps, domains]);
 
   // 3. 搜索 + 域筛选 + 排序
   const apps = useMemo(() => {
@@ -132,7 +190,7 @@ export function useApps(
   return {
     apps,
     visibleApps,
-    allApps: BUILTIN_APPS,
+    allApps: rawDefinitions,
     searchQuery,
     setSearchQuery,
     sortMode,
@@ -141,5 +199,8 @@ export function useApps(
     setActiveDomain,
     domainOptions,
     licenseLoading,
+    isLoading,
+    isError,
+    error,
   };
 }

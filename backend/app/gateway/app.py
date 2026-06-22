@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.extensions.app_center import router as app_center_router
 from app.extensions.approval import router as approval_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
@@ -499,6 +500,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Data source management API (stub)
     app.include_router(data_source_router)
     app.include_router(plugin_router)
+
+    # App-center API is mounted at /api/extensions/app-center
+    app.include_router(app_center_router)
 
     # Workflow definition API is mounted at /api/extensions/workflow
     app.include_router(workflow_router)

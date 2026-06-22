@@ -1,14 +1,18 @@
 export { AppCenterPage } from "./AppCenterPage";
-export { BUILTIN_APPS } from "./config/apps";
+export {
+  fetchApps,
+  fetchDomains,
+} from "./api";
 export {
   ACCENT_STYLES,
   getDomainLabel,
   getDomainAccent,
   STAGE_LABELS,
-  UNIVERSAL_DOMAINS,
 } from "./config/categories";
+export { resolveIcon, ICON_MAP } from "./config/icons";
 export { useApps } from "./hooks/useApps";
 export { useFavorites } from "./hooks/useFavorites";
+export type { AppResponse, DomainResponse, AppCreate, AppUpdate } from "./api";
 export type {
   AppDefinition,
   BusinessDomainKey,

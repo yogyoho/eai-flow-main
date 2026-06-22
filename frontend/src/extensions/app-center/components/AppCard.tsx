@@ -13,6 +13,7 @@ import {
   getDomainLabel,
   STAGE_LABELS,
 } from "../config/categories";
+import { resolveIcon } from "../config/icons";
 import type { AppDefinition } from "../types";
 
 interface AppCardProps {
@@ -29,7 +30,7 @@ function AppCardImpl({
   onToggleFavorite,
   domainOrder,
 }: AppCardProps) {
-  const Icon = app.icon;
+  const Icon = resolveIcon(app.iconName);
   const accentColor = useMemo(
     () => getDomainAccent(app.businessDomain, domainOrder),
     [app.businessDomain, domainOrder],

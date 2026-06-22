@@ -1,22 +1,5 @@
 import type { AccentColor, BusinessDomainKey, StageTag } from "../types";
 
-/**
- * 通用分类 —— 固定白名单，不属于任何业务域。
- * 数组顺序即 toolbar pill 中通用分类的展示顺序。
- */
-export const UNIVERSAL_DOMAINS: BusinessDomainKey[] = [
-  "universal",
-  "admin",
-];
-
-export const UNIVERSAL_DOMAIN_SET: Set<BusinessDomainKey> = new Set(UNIVERSAL_DOMAINS);
-
-/** 通用分类 label + accent（硬编码）。业务域按需自动分配。 */
-export const DOMAIN_CONFIG: Record<string, { label: string; accent: AccentColor }> = {
-  universal: { label: "通用工具", accent: "blue" },
-  admin:     { label: "系统管理", accent: "slate" },
-};
-
 /** accent 调色板（通用分类占用后，业务域按首次出现顺序轮转） */
 export const ACCENT_PALETTE: AccentColor[] = [
   "violet", "cyan", "amber", "emerald",
@@ -101,22 +84,33 @@ export const ACCENT_STYLES: Record<
 
 /**
  * 获取业务域的中文标签。
- * 优先查 DOMAIN_CONFIG（通用分类），否则将 key 本身作为 label（业务域的 key 即中文名）。
+ * 若提供 domains 列表（来自 API），优先从中查找；否则将 key 本身作为 label。
  */
-export function getDomainLabel(key: BusinessDomainKey): string {
-  return DOMAIN_CONFIG[key]?.label ?? key;
+export function getDomainLabel(
+  key: BusinessDomainKey,
+  domains?: Array<{ key: string; label: string }>,
+): string {
+  if (domains) {
+    const d = domains.find((d) => d.key === key);
+    if (d) return d.label;
+  }
+  return key;
 }
 
 /**
  * 获取业务域的 accent 颜色。
- * 通用分类使用预定义 accent；业务域从调色板轮转分配（按首次出现顺序确定性映射）。
+ * 若提供 domains 列表，优先使用其中配置的 accent；
+ * 否则从调色板轮转分配（按首次出现顺序确定性映射）。
  */
 export function getDomainAccent(
   key: BusinessDomainKey,
   domainOrder: BusinessDomainKey[],
+  domains?: Array<{ key: string; accentColor: string }>,
 ): AccentColor {
-  if (DOMAIN_CONFIG[key]) return DOMAIN_CONFIG[key].accent;
-
+  if (domains) {
+    const d = domains.find((d) => d.key === key);
+    if (d?.accentColor) return d.accentColor as AccentColor;
+  }
   const idx = domainOrder.indexOf(key);
   if (idx === -1) return "blue"; // fallback
   return ACCENT_PALETTE[idx % ACCENT_PALETTE.length];

@@ -1212,6 +1212,39 @@ async def migrate_db() -> None:
             "ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"
         ))
 
+        # === App-Center: domain labels & app definitions ===
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS app_domains (
+                key VARCHAR(50) PRIMARY KEY,
+                label VARCHAR(100) NOT NULL,
+                accent_color VARCHAR(20) NOT NULL DEFAULT 'blue',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                is_universal BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS app_definitions (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                app_id VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                description TEXT,
+                icon_name VARCHAR(100) NOT NULL,
+                business_domain VARCHAR(100) NOT NULL REFERENCES app_domains(key),
+                stage_tag VARCHAR(50),
+                path VARCHAR(500) NOT NULL,
+                license_module VARCHAR(100),
+                admin_only BOOLEAN NOT NULL DEFAULT FALSE,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                sort_key VARCHAR(200) NOT NULL,
+                is_builtin BOOLEAN NOT NULL DEFAULT TRUE,
+                is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+
 
 async def _seed_role_permissions(conn):
     """Insert default role-permission mappings if the table is empty."""
@@ -1356,5 +1389,73 @@ async def seed_db() -> None:
                 await seed_builtin_plugins(session)
             except Exception as e:
                 logger.warning(f"Failed to seed built-in plugins: {e}")
+
+            # Seed app-center domains + apps
+            try:
+                # Domains
+                for domain in [
+                    {"key": "universal", "label": "通用工具", "accent": "blue", "sort": 0, "universal": True},
+                    {"key": "admin", "label": "系统管理", "accent": "slate", "sort": 1, "universal": True},
+                    {"key": "报告编撰", "label": "报告编撰", "accent": "violet", "sort": 2, "universal": False},
+                    {"key": "知识管理", "label": "知识管理", "accent": "cyan", "sort": 3, "universal": False},
+                    {"key": "采购管理", "label": "采购管理", "accent": "amber", "sort": 4, "universal": False},
+                ]:
+                    await session.execute(
+                        text(
+                            "INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) "
+                            "VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"
+                        ),
+                        domain,
+                    )
+
+                # Apps (10 built-in)
+                apps = [
+                    {"app_id": "dashboard", "name": "工作台", "desc": "待办聚合与项目进度概览，开启高效的一天",
+                     "icon": "layout-dashboard", "domain": "universal", "stage": "overview",
+                     "path": "/dashboard", "license": None, "admin": False, "sort": 1, "sort_key": "gongzuotai"},
+                    {"app_id": "smart-writing", "name": "智能写作", "desc": "AI 辅助写作，从提纲到终稿全流程智能生成",
+                     "icon": "bot", "domain": "universal", "stage": "process",
+                     "path": "/writing", "license": None, "admin": False, "sort": 2, "sort_key": "zhinengxiezuo"},
+                    {"app_id": "projects", "name": "报告项目", "desc": "管理报告项目全生命周期，章节分配与审批跟踪",
+                     "icon": "clipboard-list", "domain": "报告编撰", "stage": "collaborate",
+                     "path": "/projects", "license": "project", "admin": False, "sort": 3, "sort_key": "baogaoxiangmu"},
+                    {"app_id": "docmgr", "name": "文档空间", "desc": "团队文档协作中心，多人实时编辑与版本管理",
+                     "icon": "folder-check", "domain": "universal", "stage": "collaborate",
+                     "path": "/docmgr", "license": "docmgr", "admin": False, "sort": 4, "sort_key": "wendangkongjian"},
+                    {"app_id": "knowledge-factory", "name": "知识工厂", "desc": "结构化知识生产流水线，从原始资料到可用知识库",
+                     "icon": "factory", "domain": "知识管理", "stage": "process",
+                     "path": "/knowledge-factory", "license": "knowledge", "admin": False, "sort": 5, "sort_key": "zhishigongchang"},
+                    {"app_id": "knowledge", "name": "知识库", "desc": "检索企业知识资产，RAG 增强问答与智能引用",
+                     "icon": "book-open", "domain": "知识管理", "stage": "retrieve",
+                     "path": "/knowledge", "license": "knowledge", "admin": False, "sort": 6, "sort_key": "zhishiku"},
+                    {"app_id": "output", "name": "报告输出", "desc": "一键生成多格式报告成果，模板化排版与导出",
+                     "icon": "file-output", "domain": "报告编撰", "stage": "output",
+                     "path": "/output", "license": "report", "admin": False, "sort": 7, "sort_key": "baogaochushu"},
+                    {"app_id": "procurement", "name": "采购管理", "desc": "合同价格分析与采购分项管理，聚类归并与统计",
+                     "icon": "package-search", "domain": "采购管理", "stage": "process",
+                     "path": "/contract-price", "license": None, "admin": False, "sort": 8, "sort_key": "caigouguanli"},
+                    {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
+                     "icon": "settings-2", "domain": "admin", "stage": "manage",
+                     "path": "/admin", "license": None, "admin": True, "sort": 9, "sort_key": "xitongguanli"},
+                    {"app_id": "workflow-admin", "name": "流程管理", "desc": "审批流程模板的设计、编辑与版本管理",
+                     "icon": "file-text", "domain": "universal", "stage": "manage",
+                     "path": "/workflow-admin", "license": None, "admin": True, "sort": 10, "sort_key": "liuchengguanli"},
+                ]
+                for app in apps:
+                    await session.execute(
+                        text(
+                            "INSERT INTO app_definitions "
+                            "(app_id, name, description, icon_name, business_domain, stage_tag, "
+                            "path, license_module, admin_only, sort_order, sort_key, is_builtin) "
+                            "VALUES (:app_id, :name, :desc, :icon, :domain, :stage, "
+                            ":path, :license, :admin, :sort, :sort_key, TRUE) "
+                            "ON CONFLICT (app_id) DO NOTHING"
+                        ),
+                        app,
+                    )
+                await session.commit()
+                logger.info("Seeded app-center: 5 domains + 10 apps")
+            except Exception as e:
+                logger.warning(f"Failed to seed app-center data: {e}")
     finally:
         await engine.dispose()
