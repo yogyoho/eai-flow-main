@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 
 import { TableSelect, type TableSelectOption } from "./controls";
 
@@ -290,7 +289,7 @@ function InlineText({
             setEditing(false);
           }
         }}
-        className={cn("h-8 min-w-[120px]")}
+        className="h-8 w-40"
       />
     );
   }
@@ -299,7 +298,8 @@ function InlineText({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="rounded px-1.5 py-0.5 text-left hover:bg-accent transition-colors"
+      title={value}
+      className="block w-40 truncate rounded px-1.5 py-0.5 text-left hover:bg-accent transition-colors"
     >
       {value}
     </button>
