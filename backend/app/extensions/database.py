@@ -1246,26 +1246,26 @@ async def migrate_db() -> None:
         """))
 
         # App-center: 把历史中文 domain key 统一为英文 key。
-        # 先改引用方 app_definitions，再改被引用方 app_domains，遵守外键约束。
-        # 幂等：仅当存在中文 key 时生效。
-        await conn.execute(text(
-            "UPDATE app_definitions SET business_domain = 'report' WHERE business_domain = '报告编撰'"
-        ))
-        await conn.execute(text(
-            "UPDATE app_definitions SET business_domain = 'knowledge' WHERE business_domain = '知识管理'"
-        ))
-        await conn.execute(text(
-            "UPDATE app_definitions SET business_domain = 'procurement' WHERE business_domain = '采购管理'"
-        ))
-        await conn.execute(text(
-            "UPDATE app_domains SET key = 'report' WHERE key = '报告编撰'"
-        ))
-        await conn.execute(text(
-            "UPDATE app_domains SET key = 'knowledge' WHERE key = '知识管理'"
-        ))
-        await conn.execute(text(
-            "UPDATE app_domains SET key = 'procurement' WHERE key = '采购管理'"
-        ))
+        # 外键约束（app_definitions.business_domain → app_domains.key）在 Postgres 默认
+        # immediate check，故必须三步走：①插入英文 key 新行 ②迁移 apps 引用 ③删除旧中文行。
+        # 幂等：每步都用 WHERE/ON CONFLICT 守卫，跑多次无副作用。
+        for old_key, new_key in [
+            ("报告编撰", "report"),
+            ("知识管理", "knowledge"),
+            ("采购管理", "procurement"),
+        ]:
+            await conn.execute(text(
+                "INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal, created_at, updated_at) "
+                "SELECT :new, label, accent_color, sort_order, is_universal, created_at, updated_at "
+                "FROM app_domains WHERE key = :old "
+                "ON CONFLICT (key) DO NOTHING"
+            ), {"new": new_key, "old": old_key})
+            await conn.execute(text(
+                "UPDATE app_definitions SET business_domain = :new WHERE business_domain = :old"
+            ), {"new": new_key, "old": old_key})
+            await conn.execute(text(
+                "DELETE FROM app_domains WHERE key = :old"
+            ), {"old": old_key})
 
 
 async def _seed_role_permissions(conn):
