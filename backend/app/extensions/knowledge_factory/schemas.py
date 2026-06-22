@@ -266,7 +266,7 @@ class FormulaReference(_LenientMeta):
     name: str = ""
     applicable_section: str = ""
     expression: str = ""
-    input_vars: list[str] = Field(default_factory=list)
+    input_vars: list = Field(default_factory=list)  # LLM 可能输出 list[str] 或 list[dict]
 
 
 class CalcScriptParam(_LenientMeta):
