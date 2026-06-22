@@ -145,6 +145,7 @@ class ExtractionConfig(BaseModel):
     min_section_length: int = Field(default=100, ge=10)
     max_depth: int = Field(default=4, ge=1, le=6, description="章节层级深度（1-6，默认4）")
     doc_parser_max_mb: int = Field(default=50, ge=0, le=500, description="doc_parser 最大文件大小(MB)，超出回退 RAGFlow。默认50覆盖典型环评报告(20-50MB)，expat约5min。0=不限")
+    max_concurrent_llm: int = Field(default=5, ge=1, le=20, description="元数据抽取 LLM 并发数，防 DeepSeek 限流")
 
 
 # ============== Step Status ==============

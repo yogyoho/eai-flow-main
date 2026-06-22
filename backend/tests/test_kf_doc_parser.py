@@ -252,3 +252,24 @@ def test_expat_extracts_namespaced_docx(tmp_path):
     assert r.headings[0].level == 1
     assert len(r.tables) == 1
     assert r.tables[0].columns == ["c1", "c2"]
+
+
+def test_expat_gridspan_horizontal_merge(tmp_path):
+    """gridSpan 水平合并：跨列 cell 内容复制对齐列数。"""
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:tbl><w:tr>'
+        '<w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr><w:p><w:r><w:t>merged</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>c3</w:t></w:r></w:p></w:tc>'
+        '</w:tr></w:tbl></w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "g.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None and len(r.tables) == 1
+    cols = r.tables[0].columns
+    assert len(cols) == 3, f"gridSpan=2 应展开成3列，得 {len(cols)}: {cols}"
+    assert cols[0] == "merged" and cols[1] == "merged"

@@ -1361,7 +1361,7 @@ class ExtractionPipeline:
         norm_all = _norm(all_source_text) if all_source_text else ""
 
         # 并发抽取：同 semaphore 限制 LLM 并发数（防 DeepSeek 限流），顶层 + 子节 gather
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(getattr(config, "max_concurrent_llm", 5) or 5)
         # 进度计数：total 含嵌套子节，enrich 每完成一节递增并日志
         _, total_sections = _count_sections(sections)
         done = {"n": 0}
@@ -1401,6 +1401,17 @@ class ExtractionPipeline:
                         break
             if not section_content:
                 section_content = _find_section_content(title, level, doc_contents)
+
+            # min_section_length: 叶子节（无 children）内容过短则跳过 LLM 元数据抽取，
+            # 省一次 LLM 调用并标记。补齐该参数的语义（之前只过滤 reference 骨架，不过滤输出）。
+            _has_children = bool(sec.get("children"))
+            _min_len = getattr(config, "min_section_length", 0) or 0
+            if _min_len > 0 and not _has_children and len(section_content) < _min_len:
+                done["n"] += 1
+                logger.info(f"[Task {task_id_meta}] {sec_id} 内容过短({len(section_content)}<{_min_len})，跳过元数据抽取")
+                return {**sec, "_short_content": True, "completeness_score": 0,
+                        "content_contract": {"key_elements": [], "structure_type": "narrative_text",
+                        "style_rules": None, "min_word_count": None, "forbidden_phrases": []}}
 
             try:
                 async with sem:  # 限并发，防 DeepSeek 限流
