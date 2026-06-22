@@ -815,4 +815,10 @@ def _parse_section(data: dict) -> TemplateSection:
         generation_hint=_get(data, "generation_hint", "generationHint"),
         example_snippet=_get(data, "example_snippet", "exampleSnippet"),
         completeness_score=_get(data, "completeness_score", "completenessScore"),
+        # 富元数据：之前 _parse_section 漏映射，导致 API 返回丢 table_schemas 等
+        table_schemas=_get(data, "table_schemas", "tableSchemas"),
+        figure_requirements=_get(data, "figure_requirements", "figureRequirements"),
+        formula_references=_get(data, "formula_references", "formulaReferences"),
+        calc_script_bindings=_get(data, "calc_script_bindings", "calcScriptBindings"),
+        sub_section_profile=_get(data, "sub_section_profile", "subSectionProfile"),
     )
