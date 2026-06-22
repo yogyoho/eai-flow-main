@@ -413,9 +413,10 @@ class AIDocumentService:
         """Find or create a subfolder named *folder_name* under the appropriate root.
 
         Returns (folder_id, folder_string) — folder_id may be None if no root
-        folder exists (falls back to folder_string only).
+        folder exists or user not in extensions DB (falls back to folder_string only).
         """
         from app.extensions.models import Folder
+        from sqlalchemy.exc import IntegrityError as SAIntegrityError
 
         # Find root folder (project or personal)
         if project_id:
@@ -434,20 +435,24 @@ class AIDocumentService:
         root_folder = root_result.scalar_one_or_none()
         if root_folder is None:
             if project_id:
-                # Project root folders are owned by the project/finalize flow;
-                # we lack the project display name here, so don't auto-create.
                 return None, folder_name
-            # ponytail: auto-create a personal "我的文档" root on first sync so
-            # chat-generated docs are filed (not homeless). Idempotent find-or-create.
-            root_folder = Folder(
-                name="我的文档",
-                owner_id=user_id,
-                project_id=None,
-                parent_id=None,
-                is_system=False,
-            )
-            db.add(root_folder)
-            await db.flush()
+            try:
+                root_folder = Folder(
+                    name="我的文档",
+                    owner_id=user_id,
+                    project_id=None,
+                    parent_id=None,
+                    is_system=False,
+                )
+                db.add(root_folder)
+                await db.flush()
+            except SAIntegrityError:
+                # user_id not in extensions users table (dual-auth: core user_id ≠
+                # extensions user_id). Roll back folder creation, fall back to
+                # folder_id=None — document still visible in 文档空间, just unfiled.
+                await db.rollback()
+                logger.info("_ensure_subfolder: user %s not in extensions DB, skipping folder", user_id)
+                return None, folder_name
 
         # Find or create subfolder under root
         sub_stmt = select(Folder).where(
@@ -458,15 +463,19 @@ class AIDocumentService:
         sub_folder = sub_result.scalar_one_or_none()
 
         if sub_folder is None:
-            sub_folder = Folder(
-                name=folder_name,
-                parent_id=root_folder.id,
-                project_id=project_id,
-                owner_id=user_id,
-                is_system=False,
-            )
-            db.add(sub_folder)
-            await db.flush()
+            try:
+                sub_folder = Folder(
+                    name=folder_name,
+                    parent_id=root_folder.id,
+                    project_id=project_id,
+                    owner_id=user_id,
+                    is_system=False,
+                )
+                db.add(sub_folder)
+                await db.flush()
+            except SAIntegrityError:
+                await db.rollback()
+                return None, folder_name
 
         return sub_folder.id, folder_name
 
@@ -490,6 +499,10 @@ class AIDocumentService:
             logger.warning("sync_outputs_to_docmgr: invalid user_id=%s", user_id)
             return None
 
+        # 双 auth 系统: 核心 auth user_id 可能不在 extensions users 表。
+        # 如果不在，回退到 admin 用户（保证文件能在文档空间显示）。
+        from app.extensions.models import User
+
         paths = get_paths()
         synced = 0
         skipped = 0
@@ -497,6 +510,26 @@ class AIDocumentService:
         try:
             async with get_db_context() as db:
                 try:
+                    # 检查 user_id 是否在 extensions users 表
+                    user_check = await db.execute(
+                        select(User).where(User.id == user_uuid)
+                    )
+                    if user_check.scalar_one_or_none() is None:
+                        # 回退到 admin 用户
+                        admin_result = await db.execute(
+                            select(User).where(User.email == "admin@eai-flow.com")
+                        )
+                        admin_user = admin_result.scalar_one_or_none()
+                        if admin_user:
+                            logger.info(
+                                "sync_outputs_to_docmgr: user %s not in extensions DB, "
+                                "falling back to admin %s", user_id, admin_user.id,
+                            )
+                            user_uuid = admin_user.id
+                        else:
+                            logger.warning("sync_outputs_to_docmgr: no admin user found, cannot sync")
+                            return None
+
                     folder_name = await AIDocumentService._get_thread_title(db, thread_id)
                     project_id = await AIDocumentService._detect_project_from_thread(db, thread_id)
                     folder_id, folder_str = await AIDocumentService._ensure_subfolder(
