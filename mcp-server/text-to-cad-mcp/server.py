@@ -1,34 +1,36 @@
 #!/usr/bin/env python3
 """text-to-cad MCP Server — standalone container.
 
-One tool: create_step(source, output_path, also_stl=False).
-Executes agent-supplied build123d Python source and exports a STEP (primary
-interchange format) plus an optional STL. Keeps the heavy CAD kernel
-(build123d + OCP/OpenCascade native libs) out of the gateway image.
+Phase 1: backed by the vendored text-to-cad engine (cadpy + step/inspect CLIs,
+MIT). Two tools:
 
-Mirrors mcp-server/cad-mcp: HTTP MCP over streamable-http, shares the
-deer-flow data volume (mounted at /data), resolves agent virtual paths
-(/mnt/user-data/<rest>) by glob-searching the data root.
+- create_step(source, output_path, also_glb): write a build123d generator
+  (def gen_step()) and run the vendored `step` CLI → STEP (+ topology-rich GLB
+  when also_glb). The GLB carries the occurrence/face/edge topology that
+  inspect_step's selector refs (#o1.2.f1) resolve against.
+- inspect_step(step_path, subcommand, selectors, facts, detail): run the
+  vendored `inspect` CLI (refs/measure/align/frame) on a STEP produced by
+  create_step.
 
-Phase 1: STEP/STL generation only. Inspection/snapshot/assembly/DXF/URDF/
-G-code come later — clone more @mcp.tool() functions here. See README.
+Engine contract: cadpy requires RELATIVE output paths and a workspace CWD, so
+both tools resolve the agent's /mnt/user-data virtual path to a physical
+thread dir, use it as the workdir, and pass relative names to the CLIs.
 
-Why STEP-first: STEP (ISO 10303) is the lossless interchange format every
-mechanical CAD tool reads; STL/3MF are downstream mesh exports. The agent
-authors build123d source (it has the LLM context); this container only
-executes it — clean separation of reasoning vs. heavy execution.
+Heavy CAD deps (build123d + cadquery-ocp-novtk + cadpy) stay isolated here;
+the gateway image is untouched. snapshot (Playwright+Chromium), step-parts,
+and assemble are later phases.
 """
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
-# mcp 1.28: host/port/path are FastMCP() constructor kwargs (run() only takes
-# transport), and the default host is 127.0.0.1 — must override to 0.0.0.0 or
-# the server is unreachable from the gateway over the docker network.
+# mcp 1.28: host/port/path are FastMCP() constructor kwargs; default host
+# 127.0.0.1 must be overridden to 0.0.0.0 or the gateway can't reach us.
 mcp = FastMCP(
     "text-to-cad",
     host=os.getenv("MCP_HOST", "0.0.0.0"),
@@ -36,25 +38,23 @@ mcp = FastMCP(
     streamable_http_path=os.getenv("MCP_PATH", "/mcp"),
 )
 
-# Data root mounted into this container (see docker-compose `text-to-cad`
-# service). The agent writes outputs at /mnt/user-data/outputs/<name> — a
-# sandbox virtual path this MCP tool receives as a literal string. Read at
-# call time so tests/env changes apply.
+# Vendored text-to-cad engine (MIT), installed under /app/cad-skill.
+_STEP_CLI = "/app/cad-skill/step"
+_INSPECT_CLI = "/app/cad-skill/inspect"
+_STEP_TIMEOUT = 300  # complex parts / assemblies can take a while
+_INSPECT_TIMEOUT = 120
+
 _DEFAULT_DATA_ROOT = "/data"
 
 
 def _resolve_output_path(file_path: str) -> Path | None:
-    """Resolve an agent-supplied OUTPUT path to a real path in this container.
+    """Resolve an agent OUTPUT path to a real path in this container.
 
-    Unlike cad-mcp's read-oriented resolver, the target file need not exist
-    yet (we create it). Accepts:
-      - a literal absolute path (parent is mkdir'd by the caller), or
-      - a /mnt/user-data/<rest> virtual path — the leaf is the new file, the
-        parent is glob-searched under the data root.
+    Literal absolute path wins; otherwise a /mnt/user-data/<rest> virtual path
+    is glob-searched under the data root (leaf = file, parent = searched).
 
-    ponytail: glob assumes the thread dir for a given <rest> is unique; if two
-    threads share the same outputs path, this picks the first. Upgrade path:
-    carry thread_id via MCP context and resolve directly.
+    ponytail: glob assumes the thread dir for a given <rest> is unique. Upgrade
+    path: carry thread_id via MCP context and resolve directly.
     """
     p = Path(file_path)
     if p.is_absolute():
@@ -71,110 +71,135 @@ def _resolve_output_path(file_path: str) -> Path | None:
     return None
 
 
+def _err(error: str, **extra) -> str:
+    payload = {"status": "error", "error": error}
+    payload.update(extra)
+    return json.dumps(payload, ensure_ascii=False)
+
+
 @mcp.tool()
-def create_step(source: str, output_path: str, also_stl: bool = False) -> str:
-    """Generate a STEP (ISO 10303) file from build123d Python source.
+def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
+    """Generate a STEP (ISO 10303) from a build123d generator, via the text-to-cad engine.
 
-    Execute build123d code and export the resulting solid to STEP — the
-    primary lossless interchange format for mechanical CAD. Optionally also
-    export an STL mesh.
+    Writes your build123d source (which MUST define ``def gen_step():`` returning
+    the final geometry) and runs the vendored ``step`` CLI. STEP is the primary
+    artifact; the GLB (when ``also_glb``) is a topology-rich mesh whose
+    occurrence/face/edge structure ``inspect_step``'s selector refs resolve
+    against — and which the browser viewer renders.
 
-    The `source` MUST assign the final geometry to a variable named ``result``.
-    Units are millimeters. Examples::
+    Units: millimeters. build123d is pre-imported in your source. Example::
 
-        result = Box(100, 60, 20)
+        def gen_step():
+            with BuildPart() as p:
+                Box(100, 60, 20)
+                with Locations(*[(42, 26, 0), (-42, 26, 0), (42, -26, 0), (-42, -26, 0)]):
+                    Hole(4)
+            return p.part
 
-        with BuildPart() as p:
-            Box(100, 60, 20)
-            # ...holes, fillets, etc.
-        result = p.part
-
-    Use this for: natural-language CAD specs ("a 100x60x20 block with four
-    8mm through-holes"), brackets, enclosures, shafts, flanges — anything that
-    becomes a parametric solid.
+    Use for: natural-language CAD specs, brackets, enclosures, shafts, flanges.
+    For inspecting an existing STEP (measure/refs), call ``inspect_step`` after.
 
     Args:
-        source: build123d Python source. Must end with the final geometry
-            bound to a variable named ``result`` (a Part/Shape/Compound).
-            build123d's full API is pre-imported (``from build123d import *``).
-        output_path: Where to write the .step. An absolute path, or a
-            /mnt/user-data/outputs/<name>.step virtual path (the sandbox path
-            the agent uses; this container shares the data volume so the file
-            lands in the right thread directory).
-        also_stl: If True, also write an STL (same basename) next to the STEP.
+        source: build123d Python defining ``gen_step()`` returning a Part/Shape
+            /Compound. For an assembly, return a Compound of labeled parts.
+        output_path: .step destination — absolute path or
+            /mnt/user-data/outputs/<name>.step virtual path. The generator is
+            written next to it as <name>.py (same basename, upstream convention).
+        also_glb: If True, also emit <name>.glb (topology-rich; needed before
+            inspect_step refs, and for the browser viewer).
 
     Returns:
-        JSON: ``{status:"ok", step, stl?, volume_mm3?, bbox_mm?}`` on success,
-        or ``{status:"error", error, detail?}`` on failure (``resolve_failed``
-        / ``bad_suffix`` / ``no_result`` / ``exec_failed`` / ``export_failed``).
-        Geometry summary (volume, bounding box) is best-effort and may be
-        absent if the shape does not expose it.
+        JSON ``{status:"ok", step, glb?}`` on success, or
+        ``{status:"error", error, detail?}`` (resolve_failed / bad_suffix /
+        run_failed with the engine's stderr tail).
     """
     out = _resolve_output_path(output_path)
     if out is None:
-        return json.dumps({"status": "error", "error": "resolve_failed", "output_path": output_path}, ensure_ascii=False)
+        return _err("resolve_failed", output_path=output_path)
     if out.suffix.lower() not in (".step", ".stp"):
-        return json.dumps(
-            {"status": "error", "error": "bad_suffix", "output_path": output_path,
-             "hint": "output_path must end in .step or .stp"},
-            ensure_ascii=False,
-        )
-    out.parent.mkdir(parents=True, exist_ok=True)
+        return _err("bad_suffix", output_path=output_path, hint="output_path must end in .step or .stp")
+    workdir = out.parent
+    workdir.mkdir(parents=True, exist_ok=True)
+    base = out.stem
+    gen_py = workdir / f"{base}.py"
+    gen_py.write_text(source, encoding="utf-8")
 
-    # Exec the agent's source in an isolated namespace; build123d is pre-imported.
-    # Security: this runs untrusted-by-construction agent code, but the container
-    # IS the isolation boundary (same posture as the sandbox bash tool).
-    preamble = "from build123d import *\n"
-    ns: dict = {}
+    # cadpy requires RELATIVE output paths + workspace CWD.
+    cmd = ["python", _STEP_CLI, gen_py.name, "-o", out.name]
+    if also_glb:
+        cmd += ["--glb", f"{base}.glb"]
     try:
-        exec(compile(preamble + source + "\n", "<agent_source>", "exec"), ns)
-    except Exception as exc:
-        return json.dumps({"status": "error", "error": "exec_failed", "detail": repr(exc)}, ensure_ascii=False)
-
-    result = ns.get("result")
-    if result is None:
-        return json.dumps(
-            {"status": "error", "error": "no_result",
-             "hint": "source must assign the final geometry to a variable named `result`"},
-            ensure_ascii=False,
-        )
-
-    # Export STEP (build123d top-level export_step).
-    try:
-        from build123d import export_step
-
-        export_step(result, str(out))
-    except Exception as exc:
-        return json.dumps({"status": "error", "error": "export_failed", "detail": repr(exc)}, ensure_ascii=False)
+        proc = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=_STEP_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("run_failed", detail=f"step CLI timed out after {_STEP_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
 
     info: dict = {"status": "ok", "step": output_path}
-
-    # Best-effort geometry summary — never fail the export over this.
-    try:
-        bb = result.bounding_box
-        info["bbox_mm"] = {
-            "size": [round(bb.size.X, 3), round(bb.size.Y, 3), round(bb.size.Z, 3)],
-        }
-    except Exception:
-        pass
-    try:
-        info["volume_mm3"] = round(float(result.volume), 3)
-    except Exception:
-        pass
-
-    if also_stl:
-        try:
-            from build123d import export_stl
-
-            stl_virtual = str(out.with_suffix(".stl"))
-            # Re-express the STL path in the same virtual form the caller used.
-            stl_virtual = output_path[: -len(out.suffix)] + ".stl"
-            export_stl(result, str(out.with_suffix(".stl")))
-            info["stl"] = stl_virtual
-        except Exception as exc:
-            info["stl_error"] = repr(exc)
-
+    glb_phys = workdir / f"{base}.glb"
+    if also_glb:
+        if glb_phys.exists():
+            info["glb"] = output_path[: -len(out.suffix)] + ".glb"
+        else:
+            info["glb_error"] = "engine did not produce the GLB"
     return json.dumps(info, ensure_ascii=False, default=str)
+
+
+@mcp.tool()
+def inspect_step(step_path: str, subcommand: str, selectors: list[str] | None = None, facts: bool = False, detail: bool = False) -> str:
+    """Inspect a STEP via the text-to-cad engine — refs / measure / align / frame.
+
+    Runs the vendored ``inspect`` CLI on a STEP produced by ``create_step``.
+    Selector refs (``#o1.2``, ``#o1.2.f1``) resolve against the topology-rich GLB
+    that ``create_step(..., also_glb=True)`` emits — so generate with
+    ``also_glb=True`` first when you need refs.
+
+    Args:
+        step_path: .step to inspect — absolute or /mnt/user-data/outputs/<name>.step.
+        subcommand: one of ``refs`` (resolve refs + facts), ``measure`` (signed
+            distance between two selectors), ``align`` (translation delta for
+            alignment), ``frame`` (world frame of an occurrence). ``diff`` is
+            two-file and not exposed here.
+        selectors: selector tokens for the subcommand, e.g. ["#o1.2.f1"] for
+            refs, ["#o1.2", "#o2.1"] for measure/align. Omit for a whole-entry
+            refs dump.
+        facts: refs only — include compact geometry facts (volume, bbox, ...).
+        detail: refs only — include detailed face/edge facts for selected refs.
+
+    Returns:
+        The inspect CLI's JSON output (``--format json``), or
+        ``{status:"error", error, detail?}`` (resolve_failed / not_found /
+        run_failed).
+    """
+    valid = {"refs", "measure", "align", "frame"}
+    if subcommand not in valid:
+        return _err("bad_subcommand", subcommand=subcommand, valid=sorted(valid))
+    out = _resolve_output_path(step_path)
+    if out is None:
+        return _err("resolve_failed", step_path=step_path)
+    if not out.exists():
+        return _err("not_found", step_path=step_path)
+    workdir = out.parent
+    cmd = ["python", _INSPECT_CLI, subcommand, out.name]
+    if selectors:
+        cmd += list(selectors)
+    if subcommand == "refs":
+        if facts:
+            cmd.append("--facts")
+        if detail:
+            cmd.append("--detail")
+    cmd += ["--format", "json"]
+    try:
+        proc = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=_INSPECT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("run_failed", detail=f"inspect CLI timed out after {_INSPECT_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+    # inspect --format json prints JSON to stdout; pass through. Empty stdout = nothing matched.
+    body = proc.stdout.strip()
+    if not body:
+        return _err("empty", detail="inspect produced no output (no matching refs?)")
+    return body
 
 
 def main() -> None:

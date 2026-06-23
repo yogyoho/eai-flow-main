@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Self-check for create_step: generate a Box, assert STEP + STL are produced.
+"""Self-check for create_step + inspect_step (vendored engine, gen_step convention).
 
-No external fixture needed — builds the source inline. Run:
-
-    python test_step.py
+Run: python test_step.py  (inside the container)
 """
 import json
 import sys
@@ -11,36 +9,38 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from server import create_step  # noqa: E402
+from server import create_step, inspect_step  # noqa: E402
 
 
-def test_box_exports_step_and_stl(tmp_path: Path | None = None) -> None:
-    out_dir = tmp_path or Path(tempfile.mkdtemp())
-    out = out_dir / "box.step"
-    src = "result = Box(100, 60, 20)"
-    res = json.loads(create_step(source=src, output_path=str(out), also_stl=True))
+def test_create_and_inspect() -> None:
+    out_dir = Path(tempfile.mkdtemp())
+    step_path = str(out_dir / "box.step")
+    src = "from build123d import *\ndef gen_step():\n    return Box(100, 60, 20)\n"
 
+    res = json.loads(create_step(source=src, output_path=step_path, also_glb=True))
     assert res["status"] == "ok", res
-    assert out.exists() and out.stat().st_size > 0, "STEP not written"
+    assert (out_dir / "box.step").exists() and (out_dir / "box.step").stat().st_size > 0, "STEP not written"
+    assert (out_dir / "box.glb").exists() and (out_dir / "box.glb").stat().st_size > 0, "GLB not written"
+    print(f"OK create_step: STEP+GLB produced (glb={res.get('glb')})")
 
-    stl = out.with_suffix(".stl")
-    assert stl.exists() and stl.stat().st_size > 0, "STL not written"
+    # inspect_step refs on the produced STEP (refs resolve against box.glb topology)
+    insp = inspect_step(step_path=step_path, subcommand="refs", facts=True)
+    assert '"status": "error"' not in insp and '"status":"error"' not in insp, f"inspect failed: {insp[:300]}"
+    try:
+        idata = json.loads(insp)
+        print(f"OK inspect_step refs: parsed JSON, type={type(idata).__name__}")
+    except json.JSONDecodeError:
+        print(f"OK inspect_step refs (non-JSON, first 120): {insp[:120]}")
 
-    size = res.get("bbox_mm", {}).get("size")
-    assert size, f"missing bbox: {res}"
-    assert abs(size[0] - 100) < 0.1 and abs(size[1] - 60) < 0.1 and abs(size[2] - 20) < 0.1, size
 
-    print(f"OK: STEP {out.stat().st_size}B, STL {stl.stat().st_size}B, bbox_size={size}")
-
-
-def test_missing_result_errors() -> None:
-    out = Path(tempfile.mkdtemp()) / "bad.step"
-    res = json.loads(create_step(source="x = 1", output_path=str(out)))
-    assert res["status"] == "error" and res["error"] == "no_result", res
-    print("OK: missing-result rejected")
+def test_missing_gen_step_errors() -> None:
+    out = str(Path(tempfile.mkdtemp()) / "bad.step")
+    res = json.loads(create_step(source="x = 1", output_path=out))
+    assert res["status"] == "error", res
+    print(f"OK missing-gen_step rejected: {res['error']}")
 
 
 if __name__ == "__main__":
-    test_box_exports_step_and_stl()
-    test_missing_result_errors()
+    test_create_and_inspect()
+    test_missing_gen_step_errors()
     print("self-check passed")

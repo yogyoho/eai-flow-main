@@ -1,4 +1,7 @@
 build123d>=0.10
 mcp>=1.2
-# ponytail: phase-2 additions, not needed yet
-# ezdxf>=1.4   # DXF 2D drawing (clone cad-mcp's analyze_cad here when needed)
+trimesh>=4.0
+# Vendored text-to-cad engine (MIT) — editable install of cadpy (assembly/ref/analysis)
+--editable ./cad-skill/packages/cadpy
+# ponytail: deferred to snapshot phase — snapshot renders via Playwright+Chromium
+# playwright>=1.40

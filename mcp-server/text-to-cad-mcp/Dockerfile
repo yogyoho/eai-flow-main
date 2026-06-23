@@ -18,6 +18,9 @@ WORKDIR /app
 # ever changes — otherwise a reorder would force a full OCP re-download.
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
+# Vendored text-to-cad engine (cadpy + CLIs, MIT). Must precede pip install —
+# requirements.txt editable-installs cadpy from ./cad-skill/packages/cadpy.
+COPY cad-skill ./cad-skill
 RUN pip install --no-cache-dir -i ${PIP_INDEX_URL} -r requirements.txt
 COPY server.py .
 
