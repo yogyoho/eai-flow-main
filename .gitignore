@@ -38,6 +38,8 @@ coverage/
 .deer-flow/
 .claude/
 skills/custom/*
+# text-to-cad integration skill is committed (not local-only like other custom skills)
+!skills/custom/cad-modeling/
 logs/
 log/
 debug.log

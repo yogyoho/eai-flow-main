@@ -127,6 +127,18 @@
       "oauth": null,
       "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
     },
+    "text-to-cad": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "cwd": null,
+      "url": "http://text-to-cad:8004/mcp",
+      "headers": {},
+      "oauth": null,
+      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
+    },
     "plugin_fba4fa1d-92cc-45d3-850c-c5a595168705": {
       "enabled": true,
       "type": "stdio",
@@ -154,6 +166,9 @@
       "enabled": true
     },
     "coal-eia-report": {
+      "enabled": true
+    },
+    "cad-modeling": {
       "enabled": true
     },
     "contract-price-analysis": {

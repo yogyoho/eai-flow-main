@@ -213,6 +213,39 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── text-to-cad MCP Server ─────────────────────────────────────────────
+  # Standalone container: build123d STEP/STL generation from agent-supplied
+  # source, exposed to the gateway as MCP server `text-to-cad`
+  # (streamable-http, port 8004). Keeps heavy CAD deps (build123d + OCP
+  # native libs, ~400MB+) out of the gateway image so gateway startup stays
+  # fast. Phase 1: STEP/STL only. See mcp-server/text-to-cad-mcp/README.md.
+  #
+  # Comes up with `make docker-start` (this compose file). Then
+  # extensions_config.json mcpServers.text-to-cad.enabled is already true;
+  # just restart gateway to pick up the tool.
+  text-to-cad:
+    build:
+      context: ../mcp-server/text-to-cad-mcp
+      dockerfile: Dockerfile
+      args:
+        # Reuse the backend's pip index mirror if set (restricted networks).
+        # OCP wheels are large — a mirror matters more here than for cad-mcp.
+        PIP_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-text-to-cad
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8004
+      - CAD_DATA_ROOT=/data
+    volumes:
+      # Same host data dir as cad-mcp: shares the gateway's user-data so
+      # virtual paths /mnt/user-data/outputs/<name>.step resolve to the right
+      # thread dir. See mcp-server/text-to-cad-mcp/README.md (Path contract).
+      - ../backend/.deer-flow:/data:rw
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.
