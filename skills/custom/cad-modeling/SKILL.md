@@ -41,14 +41,19 @@ license: MIT
    - 优先 builder API(`with BuildPart() as p: ... ; return p.part`)。
    - 源码顶部 `from build123d import *`,直接用 `Box`/`Cylinder`/`Hole`/`Locations` 等。
 
-3. **导出 STEP + GLB**。调用(**默认 `also_glb=True`** —— GLB 是 inspect refs 与浏览器预览的基础):
+3. **导出 STEP + GLB**。**先钉定当前线程**(text-to-cad 容器跨线程共享、看不见 thread_id;不钉定会把文件写到错误的线程目录 → 下载 404):
+   ```
+   write_file("/mnt/user-data/.cad_thread_pin", "cad")   # sandbox 解析到当前线程的 user-data/
+   ```
+   然后调用(**默认 `also_glb=True`** —— GLB 是 inspect refs 与浏览器预览的基础):
    ```
    text-to-cad_create_step(
      source=<你的 build123d 源码,含 def gen_step()>,
-     output_path="/mnt/user-data/outputs/<name>.step",
+     output_path="/mnt/user-data/outputs/<name>.step",  ⚠️ 必须是 .step 或 .stp 结尾!
      also_glb=True
    )
    ```
+   **🔥 output_path 必须以 `.step` 或 `.stp` 结尾,绝不传 `.dxf`!** `.dxf` 会被拒绝(`bad_suffix` 错误)。
    STEP 是首要验证产物;GLB 是拓扑网格(携带 occurrence/face/edge 结构,供 inspect_step 的
    选择器 refs `#o1.2.f1` 解析,以及浏览器 viewer 渲染)。
 
@@ -65,8 +70,10 @@ license: MIT
    - 偏离预期 → 修正源码最小改动段 → 重跑 create_step + inspect。
    - 这一步不可省略,是确定性验证手段。
 
-5. **交付**。用 `present_files` 展示 STEP(+GLB)给用户下载。最终回复包含:
-   文件路径、inspect 事实(体积/包围盒)、跑过的检查、关键假设、未执行的验证(见限制)。
+5. **交付**。用 `present_files` 展示 STEP(+GLB)给用户下载。**并在回复里给出 3D 查看链接**:
+   `create_step(also_glb=True)` 返回的 `viewer_url`(形如 `http://127.0.0.1:4178/?dir=/data&file=public/<名>.glb`)——
+   用户点击即在 cad-viewer 里旋转查看 3D(无需下载,打开新标签页)。最终回复包含:
+   文件路径、**`viewer_url` 查看链接**(加粗,让用户易点)、inspect 事实(体积/包围盒)、跑过的检查、关键假设、未执行的验证(见限制)。
 
 ## 默认假设(用户未指定时)
 
@@ -78,6 +85,62 @@ license: MIT
 - 小塑料外壳壁厚:2.0–3.0 mm
 - 装饰圆角:1.0–3.0 mm(局部几何安全时)
 - M3 / M4 / M5 普通间隙孔径:3.4 / 4.5 / 5.5 mm
+
+## 常见陷阱与 API 速查(必读——防止 build123d 代码错误)
+
+build123d 0.10+ 的 API 与常见 Python CAD 库不同。以下是被证实会出错的模式,**绝对不要用**,每次建模前检查:
+
+### ❌ 禁止使用(这些名字不存在,会导致 NameError / bad_suffix)
+
+| 错误 ❌ | 正确 ✅ | 说明 |
+|---------|--------|------|
+| `ThreadedHole(...)` | `Hole(radius)` | build123d 没有 ThreadedHole。螺纹孔用 `Hole(半径)` 建模通孔,螺纹在工程图中标注(M5 = Φ4.5 间隙孔,螺距 0.8 不建模) |
+| `Counterbore(...)` | `CounterBoreHole(radius, counter_bore_radius, counter_bore_depth, depth?)` | 沉头孔用 `CounterBoreHole` 不是 `Counterbore` |
+| `Countersink(...)` | `CounterSinkHole(radius, counter_sink_radius, depth?)` | 锥孔用 `CounterSinkHole` |
+| `diameter=...` | `Hole(radius)` | **Hole 用半径不是直径**。Φ8 通孔 = `Hole(4)`,不是 `Hole(diameter=4)` |
+| `output_path` 以 `.dxf` 结尾 | 必须以 `.step` 或 `.stp` 结尾 | `create_step` 拒绝 `.dxf` 后缀,返回 `bad_suffix` 错误 |
+| 忘记 `from build123d import *` | **源码第一行必须是** `from build123d import *` | 否则 `BuildPart`/`Box`/`Hole` 全部 NameError |
+
+### ✅ 常用 API 速查(build123d 0.10+)
+
+```python
+from build123d import *
+
+# 基础实体
+Box(length, width, height)          # 矩形块
+Cylinder(radius, height)            # 圆柱(半径)
+Sphere(radius)                       # 球
+
+# 孔(全用半径,不是直径)
+Hole(radius)                         # 通孔,贯穿整个当前厚度
+Hole(radius, depth)                  # 盲孔
+CounterBoreHole(radius, cb_radius, cb_depth, depth?)  # 沉头孔
+CounterSinkHole(radius, cs_radius, depth?)             # 锥孔
+
+# 定位与布尔
+Locations((x,y,z), ...)             # 定位点列表
+Positions.X(0.5)                    # 相对位置
+with Locations(...): Hole(4)        # 在每个定位点打孔
+
+# 修饰
+Fillet(edges, radius)               # 圆角
+Chamfer(edges, length)              # 倒角
+
+# Builder 模式(推荐)
+with BuildPart() as p:
+    Box(50, 50, 10)
+    with Locations((17.5, 17.5)):
+        Hole(2.25)   # M5 间隙孔(Φ4.5mm = 半径 2.25mm)
+    with Locations((0, 0)):
+        Hole(5)      # Φ10 通孔(半径 5mm)
+return p.part
+```
+
+### 输出路径纪律
+
+- **STEP**: `/mnt/user-data/outputs/<name>.step` 或 `.stp`(必须)
+- **GLB**: `also_glb=True` 时自动生成同名 `.glb`,用于 inspect 和浏览器预览
+- **不要**把 DXF 路径传给 `create_step`——2D 图纸走 `cad_compose_drawing` 工具
 
 ## STEP-first 纪律(不可妥协)
 
@@ -91,7 +154,7 @@ license: MIT
 - `text-to-cad_create_step`(MCP,独立容器 `text-to-cad:8004`):写 `def gen_step()` 源码 →
   vendored `step` CLI → STEP(+ `also_glb` 拓扑 GLB)。**单零件与装配通用**:gen_step 返回带标签的
   `Compound`(多个零件)或用 `cadpy.assembly.AssemblyHelper` 做语义 mate(face_to_face/coaxial/
-  revolute/linear)时,`step` 自动按 `--kind assembly` 输出装配 STEP。返回 `{status, step, glb?}`。
+  revolute/linear)时,`step` 自动按 `--kind assembly` 输出装配 STEP。返回 `{status, step, glb?, public_glb?, viewer_url?}`。**`also_glb=True` 时含 `viewer_url`(cad-viewer 3D 查看链接,形如 `http://127.0.0.1:4178/?dir=/data&file=public/<名>.glb`)—— 你必须在最终回复里把 `viewer_url` 原样给用户(加粗、可点)。这是交付的强制部分,不可省略。**
   失败返回 `{status:"error",...}`(`resolve_failed`/`bad_suffix`/`run_failed`)。
 - `text-to-cad_inspect_step`(MCP,同容器):对 STEP 跑 vendored `inspect` CLI。
   `subcommand` ∈ `refs`/`measure`/`align`/`frame`;`selectors` 为 `#o1.2.f1` 类选择器;

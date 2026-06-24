@@ -246,6 +246,22 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── CAD Viewer (text-to-cad's own 3D viewer) ───────────────────────────
+  # Node-only bundled server (no npm install) serving pre-built dist UI.
+  # Views STEP/GLB/STL from /data (shared user-data). Port 4178 → host 4178.
+  cad-viewer:
+    build:
+      context: ../mcp-server/cad-viewer
+      dockerfile: Dockerfile
+    container_name: eai-flow-cad-viewer
+    volumes:
+      - ../backend/.deer-flow:/data:rw
+    ports:
+      - "4178:4178"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.

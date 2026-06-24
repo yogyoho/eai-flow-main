@@ -22,8 +22,11 @@ and assemble are later phases.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -45,6 +48,9 @@ _STEPPARTS_CLI = "/app/step-parts/download_step_part.py"
 _STEP_TIMEOUT = 300  # complex parts / assemblies can take a while
 _INSPECT_TIMEOUT = 120
 _STEPPARTS_TIMEOUT = 120
+# cad-viewer base URL (the agent hands this to the user's browser). Override via
+# CAD_VIEWER_URL if served behind a different host/nginx path.
+_VIEWER_BASE = os.getenv("CAD_VIEWER_URL", "http://127.0.0.1:4178")
 
 _DEFAULT_DATA_ROOT = "/data"
 
@@ -52,25 +58,42 @@ _DEFAULT_DATA_ROOT = "/data"
 def _resolve_output_path(file_path: str) -> Path | None:
     """Resolve an agent OUTPUT path to a real path in this container.
 
-    Literal absolute path wins; otherwise a /mnt/user-data/<rest> virtual path
-    is glob-searched under the data root (leaf = file, parent = searched).
+    Virtual /mnt/user-data/<rest> paths resolve to the CURRENT thread's dir,
+    identified by the newest ``.cad_thread_pin`` (the skill's sandbox writes it
+    just before calling this tool). The MCP container is shared across threads
+    and can't see thread_id, so the pin (newest mtime) is the bridge (bug-324);
+    a bare glob would land on the alphabetically-first thread, not the current
+    one, orphaning the file. Virtual check BEFORE is_absolute
+    (/mnt/user-data/... is absolute on Linux).
 
-    ponytail: glob assumes the thread dir for a given <rest> is unique. Upgrade
-    path: carry thread_id via MCP context and resolve directly.
+    Upgrade path: per-call thread_id via MCP context (needs harness support).
     """
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
     if "/mnt/user-data/" in file_path:
         rest = file_path.split("/mnt/user-data/", 1)[1].lstrip("/")
+        root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
+        # Current thread = newest .cad_thread_pin under any user-data/ dir.
+        pins = sorted(
+            root.glob("users/*/threads/*/user-data/**/.cad_thread_pin"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if pins:
+            # The pin may sit under user-data/ directly or in a subdir (the
+            # sandbox puts /mnt/user-data/<file> into user-data/workspace/).
+            # Walk up to the user-data/ root, then resolve <rest> under it.
+            ud = pins[0]
+            while ud.name != "user-data":
+                ud = ud.parent
+            return ud / rest
+        # Fallback (no pin yet): glob parent — may pick the wrong thread.
         parts = rest.split("/")
         leaf = parts[-1]
         parent_rest = "/".join(parts[:-1])
-        root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
         glob_pat = f"users/*/threads/*/user-data/{parent_rest}" if parent_rest else "users/*/threads/*/user-data"
         matches = sorted(root.glob(glob_pat))
         return (matches[0] / leaf) if matches else None
-    return None
+    p = Path(file_path)
+    return p if p.is_absolute() else None
 
 
 def _err(error: str, **extra) -> str:
@@ -81,7 +104,12 @@ def _err(error: str, **extra) -> str:
 
 @mcp.tool()
 def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
-    """Generate a STEP (ISO 10303) from a build123d generator, via the text-to-cad engine.
+    """**PREREQUISITE — do this FIRST, every call:** ``write_file('/mnt/user-data/.cad_thread_pin', '1')``.
+    This tool runs in a container shared across threads and CANNOT see your
+    ``thread_id``; without the pin, your STEP/GLB land in the wrong thread and the
+    user's download 404s. If you get ``no_thread_pin``, write the pin then retry.
+
+    Generate a STEP (ISO 10303) from a build123d generator, via the text-to-cad engine.
 
     Writes your build123d source (which MUST define ``def gen_step():`` returning
     the final geometry) and runs the vendored ``step`` CLI. STEP is the primary
@@ -111,10 +139,19 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
             inspect_step refs, and for the browser viewer).
 
     Returns:
-        JSON ``{status:"ok", step, glb?}`` on success, or
-        ``{status:"error", error, detail?}`` (resolve_failed / bad_suffix /
-        run_failed with the engine's stderr tail).
+        JSON ``{status:"ok", step, glb?, public_glb?, viewer_url?}`` on success.
+        When ``also_glb=True``, includes ``viewer_url`` — a clickable CAD Viewer
+        3D preview link (e.g. ``http://127.0.0.1:4178/?dir=/data&file=public/<name>.glb``).
+        **You MUST surface this ``viewer_url`` to the user in your final reply** (as a
+        clickable/bold link) — it is the deliverable's live 3D preview; do not omit it.
+        On failure: ``{status:"error", error, detail?}`` (no_thread_pin / resolve_failed /
+        bad_suffix / run_failed with the engine's stderr tail).
     """
+    # Force thread pin (bug-324): this container can't see thread_id; without a
+    # pin the fallback glob writes to the wrong thread → download 404.
+    root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
+    if not any(root.glob("users/*/threads/*/user-data/**/.cad_thread_pin")):
+        return _err("no_thread_pin", hint="先 write_file('/mnt/user-data/.cad_thread_pin','1') 钉定当前线程,再重试 create_step。原因:此工具跨线程共享、看不见 thread_id,不钉定→文件落错线程→下载404。")
     out = _resolve_output_path(output_path)
     if out is None:
         return _err("resolve_failed", output_path=output_path)
@@ -142,6 +179,22 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
     if also_glb:
         if glb_phys.exists():
             info["glb"] = output_path[: -len(out.suffix)] + ".glb"
+            # Bridge to cad-viewer (4178): also drop a copy in the flat /data/public/
+            # dir so the agent can hand the user a simple viewer URL (avoids the deep
+            # users/<uid>/threads/<tid>/... path that the agent can't see).
+            try:
+                public_dir = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT)) / "public"
+                public_dir.mkdir(parents=True, exist_ok=True)
+                # ASCII-safe public name (Chinese/special chars break the viewer URL)
+                safe = re.sub(r"[^A-Za-z0-9._-]", "", base)
+                if len(safe) < 3:
+                    safe = hashlib.sha1(base.encode("utf-8")).hexdigest()[:10]
+                public_name = f"{safe}.glb"
+                shutil.copy(str(glb_phys), str(public_dir / public_name))
+                info["public_glb"] = f"public/{public_name}"
+                info["viewer_url"] = f"{_VIEWER_BASE}/?dir=/data&file=public/{public_name}"
+            except Exception as exc:
+                info["public_glb_error"] = repr(exc)
         else:
             info["glb_error"] = "engine did not produce the GLB"
     return json.dumps(info, ensure_ascii=False, default=str)
