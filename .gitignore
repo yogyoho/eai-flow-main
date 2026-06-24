@@ -40,6 +40,9 @@ coverage/
 skills/custom/*
 # text-to-cad integration skill is committed (not local-only like other custom skills)
 !skills/custom/cad-modeling/
+# engineering-drawing-platform skills (2D 煤矿设计 + 化工 P&ID) — committed, not local-only
+!skills/custom/mine-design/
+!skills/custom/chemplant-design/
 logs/
 log/
 debug.log

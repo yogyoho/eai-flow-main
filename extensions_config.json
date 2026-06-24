@@ -171,6 +171,12 @@
     "cad-modeling": {
       "enabled": true
     },
+    "mine-design": {
+      "enabled": true
+    },
+    "chemplant-design": {
+      "enabled": true
+    },
     "contract-price-analysis": {
       "enabled": true
     },
