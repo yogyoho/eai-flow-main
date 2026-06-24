@@ -1,0 +1,17 @@
+{
+  "type": "instrument",
+  "domain": "chem",
+  "insertion_base": [0, 0],
+  "default_size_mm": 180,
+  "default_layer": "仪表",
+  "primitives": [
+    { "op": "circle", "cx": 0, "cy": 0, "r": 180 },
+    { "op": "line", "x1": -180, "y1": 0, "x2": -260, "y2": 0 },
+    { "op": "line", "x1": 180, "y1": 0, "x2": 260, "y2": 0 }
+  ],
+  "ports": [
+    { "id": "in", "at": [-260, 0] },
+    { "id": "out", "at": [260, 0] }
+  ],
+  "label_anchor": [0, -250]
+}

@@ -1,0 +1,16 @@
+{
+  "type": "pump",
+  "domain": "chem",
+  "insertion_base": [0, 0],
+  "default_size_mm": 250,
+  "default_layer": "设备",
+  "primitives": [
+    { "op": "circle", "cx": 0, "cy": 0, "r": 250 },
+    { "op": "polyline", "points": [[-250, -250], [0, 0], [-250, 250]], "closed": false }
+  ],
+  "ports": [
+    { "id": "in", "at": [-250, 0] },
+    { "id": "out", "at": [250, 0] }
+  ],
+  "label_anchor": [0, -340]
+}

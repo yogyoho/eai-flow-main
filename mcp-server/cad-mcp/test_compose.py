@@ -85,9 +85,66 @@ def test_unknown_placement_kind_skipped_not_crash():
     print("OK: unknown placement.kind (node) skipped, not crashed")
 
 
+def _pid_intent():
+    return {
+        "domain": "chem",
+        "drawing_type": "pid",
+        "frame": {"standard": "GB14689", "size": "A2", "scale": "1:50"},
+        "layers": [{"name": "管道", "color": 4}],
+        "entities": [
+            {"id": "V-1", "type": "vessel", "layer": "设备",
+             "placement": {"kind": "node", "at": [1500, 2500]}, "attrs": {"label": "V-101"}},
+            {"id": "P-1", "type": "pump", "layer": "设备",
+             "placement": {"kind": "node", "at": [3500, 1500]}, "attrs": {"label": "P-101"}},
+            {"id": "pipe-1", "type": "pipe", "layer": "管道",
+             "placement": {"kind": "edge", "from": {"node": "V-1", "port": "bottom"},
+                           "to": {"node": "P-1", "port": "in"}, "route": "ortho"}},
+        ],
+        "annotations": [{"kind": "text", "at": [4200, 3900], "string": "工艺管道仪表流程图(P&ID)", "height": 120}],
+        "title_block": {"plant": "甲醇装置", "pid_no": "PID-001", "drawing_name": "进料系统 P&ID", "date": "2026-06"},
+    }
+
+
+def test_strategies_registered():
+    from edp.strategies import STRATEGIES
+
+    assert set(STRATEGIES) == {"layout", "schematic"}, list(STRATEGIES)
+    print("OK: strategies registered:", sorted(STRATEGIES))
+
+
+def test_compose_pid():
+    """M2 platform-proof: schematic strategy renders nodes (with ports) + routes
+    an edge between node ports — a different rendering paradigm coexisting with
+    layout in the same core. Passing = the platform abstraction holds."""
+    from collections import Counter
+
+    with tempfile.TemporaryDirectory() as tmp:
+        doc, report, validations = compose(_pid_intent(), DOMAINS_ROOT)
+        assert report.skipped == [], report.skipped
+        assert report.placed == 3, f"expected 3 placed (2 nodes + 1 edge), got {report.placed}"
+        out = Path(tmp) / "pid.dxf"
+        doc.saveas(str(out))
+        import ezdxf
+
+        msp = ezdxf.readfile(str(out)).modelspace()
+        counts = Counter(e.dxftype() for e in msp)
+        assert counts.get("LWPOLYLINE", 0) >= 1, counts  # the routed edge
+        assert counts.get("TEXT", 0) >= 2, counts  # V-101 + P-101 equipment tags
+        from edp.render import rasterize
+
+        png = Path(tmp) / "pid.png"
+        rasterize(doc, png)
+        assert png.exists() and png.stat().st_size > 0
+        failed = [c for c in validations if not c["passed"]]
+        assert not failed, f"validation failures: {failed}"
+        print(f"OK: schematic pid placed={report.placed} (2 nodes + 1 routed edge); inventory={dict(counts)}; validations all-pass")
+
+
 if __name__ == "__main__":
     test_unknown_domain()
     test_unknown_drawing_type()
+    test_strategies_registered()
     test_compose_roadway_section()
     test_unknown_placement_kind_skipped_not_crash()
-    print("\nALL M1 SELF-CHECKS PASSED")
+    test_compose_pid()
+    print("\nALL SELF-CHECKS PASSED (M1 layout + M2 schematic)")

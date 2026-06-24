@@ -1,0 +1,18 @@
+{
+  "domain": "chem",
+  "drawing_types": {
+    "pid": {
+      "strategy": "schematic",
+      "frame": "gb14689_a2",
+      "scale_default": "1:50"
+    }
+  },
+  "symbols_glob": "symbols/*.json",
+  "layers": {
+    "设备": { "color": 3 },
+    "管道": { "color": 4 },
+    "仪表": { "color": 5 },
+    "标注": { "color": 2 },
+    "图框": { "color": 7 }
+  }
+}

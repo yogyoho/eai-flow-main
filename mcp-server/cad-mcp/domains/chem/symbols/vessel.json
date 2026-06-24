@@ -1,0 +1,16 @@
+{
+  "type": "vessel",
+  "domain": "chem",
+  "insertion_base": [0, 0],
+  "default_size_mm": 300,
+  "default_layer": "设备",
+  "primitives": [
+    { "op": "circle", "cx": 0, "cy": 0, "r": 300 },
+    { "op": "line", "x1": 0, "y1": -360, "x2": 0, "y2": 360 }
+  ],
+  "ports": [
+    { "id": "top", "at": [0, 300] },
+    { "id": "bottom", "at": [0, -300] }
+  ],
+  "label_anchor": [340, 0]
+}

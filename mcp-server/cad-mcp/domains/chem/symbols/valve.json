@@ -1,0 +1,17 @@
+{
+  "type": "valve",
+  "domain": "chem",
+  "insertion_base": [0, 0],
+  "default_size_mm": 200,
+  "default_layer": "设备",
+  "primitives": [
+    { "op": "polyline", "points": [[-200, -150], [0, 0], [-200, 150]], "closed": false },
+    { "op": "polyline", "points": [[200, -150], [0, 0], [200, 150]], "closed": false },
+    { "op": "line", "x1": 0, "y1": 0, "x2": 0, "y2": 200 }
+  ],
+  "ports": [
+    { "id": "in", "at": [-200, 0] },
+    { "id": "out", "at": [200, 0] }
+  ],
+  "label_anchor": [0, 280]
+}

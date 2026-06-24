@@ -1,0 +1,18 @@
+{
+  "name": "gb14689_a2",
+  "standard": "GB/T 14689",
+  "orientation": "landscape",
+  "size": [594, 420],
+  "margin": 10,
+  "inner_margin": 25,
+  "title_block": {
+    "width": 180,
+    "height": 56,
+    "cells": [
+      { "key": "drawing_name", "label": "图名", "x": 0, "y": 28, "w": 180, "h": 28 },
+      { "key": "plant", "label": "装置", "x": 0, "y": 0, "w": 60, "h": 28 },
+      { "key": "pid_no", "label": "图号", "x": 60, "y": 0, "w": 60, "h": 28 },
+      { "key": "date", "label": "日期", "x": 120, "y": 0, "w": 60, "h": 28 }
+    ]
+  }
+}
