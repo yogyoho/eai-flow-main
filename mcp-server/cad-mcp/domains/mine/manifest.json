@@ -1,0 +1,20 @@
+{
+  "domain": "mine",
+  "drawing_types": {
+    "roadway_section": {
+      "strategy": "layout",
+      "frame": "gb14689_a3",
+      "scale_default": "1:50"
+    }
+  },
+  "symbols_glob": "symbols/*.json",
+  "layers": {
+    "巷道": { "color": 3 },
+    "支护": { "color": 5 },
+    "地质": { "color": 6 },
+    "通风": { "color": 1 },
+    "标注": { "color": 2 },
+    "图框": { "color": 7 },
+    "测点": { "color": 4 }
+  }
+}

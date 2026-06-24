@@ -80,6 +80,30 @@ def _resolve_path(file_path: str) -> Path | None:
     return None
 
 
+def _resolve_out(file_path: str) -> Path | None:
+    """Resolve an agent OUTPUT path to a real write path in this container.
+
+    Unlike _resolve_path (read), the file need not exist yet. Literal absolute
+    path wins; otherwise a /mnt/user-data/<rest> virtual path is glob-searched
+    under the data root (mirrors mcp-server/text-to-cad-mcp). ponytail: glob
+    assumes the thread dir for <rest> is unique; pass an absolute path to
+    disambiguate. Upgrade path: carry thread_id via MCP context.
+    """
+    p = Path(file_path)
+    if p.is_absolute():
+        return p
+    if "/mnt/user-data/" in file_path:
+        rest = file_path.split("/mnt/user-data/", 1)[1].lstrip("/")
+        parts = rest.split("/")
+        leaf = parts[-1]
+        parent_rest = "/".join(parts[:-1])
+        root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
+        glob_pat = f"users/*/threads/*/user-data/{parent_rest}" if parent_rest else "users/*/threads/*/user-data"
+        matches = sorted(root.glob(glob_pat))
+        return (matches[0] / leaf) if matches else None
+    return None
+
+
 def _entity_text(e) -> str:
     """Best-effort text from a TEXT/MTEXT entity (MTEXT strips formatting)."""
     try:
@@ -275,6 +299,77 @@ def analyze_cad(file_path: str, rasterize: bool = False) -> str:
             result["raster_error"] = str(exc)
 
     return json.dumps(result, ensure_ascii=False, default=str)
+
+
+# Engineering Drawing Platform: compose_drawing renders an intent JSON into a
+# DXF (+ optional PNG) via the domain-agnostic core in edp/. Domain packs live
+# under domains/<domain>/ (baked into the image). See PLATFORM_SPEC.md.
+_DOMAINS_ROOT = os.getenv("EDP_DOMAINS_ROOT", str(Path(__file__).resolve().parent / "domains"))
+
+
+@mcp.tool()
+def compose_drawing(domain: str, drawing_type: str, intent_json: str, output_path: str, also_png: bool = True) -> str:
+    """Generate a 2D engineering drawing (DXF) from a structured intent JSON.
+
+    Domain-agnostic composer: the domain pack (domains/<domain>/) supplies the
+    symbol library + entity schema + frame template + the strategy for the
+    drawing type. The intent describes entities + annotations + title block; the
+    composer places them deterministically and validates the result. Output is a
+    DXF; PNG is a matplotlib preview.
+
+    Use for: 煤矿设计图纸 (roadway_section), future 化工 P&ID, etc. For 3D solids
+    use the separate text-to-cad MCP; this tool is 2D drafting only.
+
+    Args:
+        domain: pack name, e.g. "mine".
+        drawing_type: a type declared in the pack manifest, e.g. "roadway_section".
+        intent_json: intent object (see PLATFORM_SPEC.md §3) as a JSON string or
+            already-parsed object — entities[], annotations[], title_block.
+        output_path: .dxf destination — absolute, or /mnt/user-data/outputs/<name>.dxf.
+        also_png: also write <name>.png preview next to the DXF.
+
+    Returns:
+        JSON {status:"ok", dxf, png?, report:{placed, skipped[]}, validations[]}
+        on success, or {status:"error", error, detail?} (unknown_domain /
+        unknown_drawing_type / unknown_strategy / schema_invalid / bad_suffix /
+        resolve_failed / run_failed).
+    """
+    from edp import ComposeError, compose_from_json
+
+    out = _resolve_out(output_path)
+    if out is None:
+        return json.dumps({"status": "error", "error": "resolve_failed", "output_path": output_path}, ensure_ascii=False)
+    if out.suffix.lower() != ".dxf":
+        return json.dumps({"status": "error", "error": "bad_suffix", "output_path": output_path, "hint": "output_path must end in .dxf"}, ensure_ascii=False)
+    try:
+        doc, report, validations = compose_from_json(intent_json, Path(_DOMAINS_ROOT))
+    except ComposeError as exc:
+        return json.dumps({"status": "error", "error": exc.code, "detail": exc.detail}, ensure_ascii=False)
+    except Exception as exc:  # ezdxf/render errors — surface, don't crash the MCP server
+        return json.dumps({"status": "error", "error": "run_failed", "detail": str(exc)}, ensure_ascii=False)
+
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        doc.saveas(str(out))
+    except Exception as exc:
+        return json.dumps({"status": "error", "error": "run_failed", "detail": f"DXF write failed: {exc}"}, ensure_ascii=False)
+
+    info: dict = {
+        "status": "ok",
+        "dxf": output_path,
+        "report": {"placed": report.placed, "skipped": report.skipped},
+        "validations": validations,
+    }
+    if also_png:
+        png = out.with_suffix(".png")
+        try:
+            from edp.render import rasterize
+
+            rasterize(doc, png)
+            info["png"] = output_path[: -len(out.suffix)] + ".png"
+        except Exception as exc:  # preview is best-effort; DXF still returned
+            info["png_error"] = str(exc)
+    return json.dumps(info, ensure_ascii=False, default=str)
 
 
 def main() -> None:

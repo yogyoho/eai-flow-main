@@ -1,0 +1,14 @@
+{
+  "type": "survey_point",
+  "domain": "mine",
+  "insertion_base": [0, 0],
+  "default_size_mm": 200,
+  "default_layer": "测点",
+  "primitives": [
+    { "op": "circle", "cx": 0, "cy": 0, "r": 100 },
+    { "op": "line", "x1": -180, "y1": 0, "x2": 180, "y2": 0 },
+    { "op": "line", "x1": 0, "y1": -180, "x2": 0, "y2": 180 }
+  ],
+  "ports": [],
+  "label_anchor": [220, 220]
+}
