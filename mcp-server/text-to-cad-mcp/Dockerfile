@@ -23,6 +23,9 @@ COPY requirements.txt .
 COPY cad-skill ./cad-skill
 RUN pip install --no-cache-dir -i ${PIP_INDEX_URL} -r requirements.txt
 COPY server.py .
+# step-parts catalog CLI (stdlib-only, separate vendored skill). After pip so
+# cad-skill/requirements changes don't force re-COPY here.
+COPY step-parts ./step-parts
 
 EXPOSE 8004
 CMD ["python", "server.py"]

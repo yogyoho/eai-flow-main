@@ -41,8 +41,10 @@ mcp = FastMCP(
 # Vendored text-to-cad engine (MIT), installed under /app/cad-skill.
 _STEP_CLI = "/app/cad-skill/step"
 _INSPECT_CLI = "/app/cad-skill/inspect"
+_STEPPARTS_CLI = "/app/step-parts/download_step_part.py"
 _STEP_TIMEOUT = 300  # complex parts / assemblies can take a while
 _INSPECT_TIMEOUT = 120
+_STEPPARTS_TIMEOUT = 120
 
 _DEFAULT_DATA_ROOT = "/data"
 
@@ -199,6 +201,71 @@ def inspect_step(step_path: str, subcommand: str, selectors: list[str] | None = 
     body = proc.stdout.strip()
     if not body:
         return _err("empty", detail="inspect produced no output (no matching refs?)")
+    return body
+
+
+@mcp.tool()
+def search_step_parts(query: str = "", limit: int = 8, download_id: str | None = None, output_path: str | None = None, standard: str | None = None) -> str:
+    """Search the step.parts hosted catalog for standard parts (screws/bolts/bearings/motors/connectors), or download one part's STEP.
+
+    Two modes:
+    - **Search** (no ``download_id``): fuzzy ``query`` (e.g. "M3 socket head 12") → returns the
+      catalog JSON ``{catalog, items:[{id, name, standard, attributes, stepUrl, pageUrl}, ...]}``.
+      Use a returned ``id`` to download. ``standard`` filters e.g. "ISO 4762".
+    - **Download** (``download_id`` set): fetches that part's canonical STEP to ``output_path``.
+      Returns ``{status, step, id}``.
+
+    Network: reaches api.step.parts (catalog) + media.githubusercontent.com (STEP files). If
+    unreachable, returns run_failed. Use for assemblies referencing real off-the-shelf parts; the
+    downloaded STEP can be imported into an assembly source.
+
+    Args:
+        query: fuzzy search across id/name/category/standard/attributes. Required for search.
+        limit: search page size (1-500, default 8).
+        download_id: part id from a search result → download mode.
+        output_path: download destination (.step) — required with download_id. Absolute or
+            /mnt/user-data/outputs/<name>.step virtual path.
+        standard: optional filter, e.g. "ISO 4762".
+
+    Returns:
+        Search: the catalog JSON. Download: ``{status:"ok", step, id}`` or
+        ``{status:"error", error, detail?}`` (bad_args/resolve_failed/bad_suffix/run_failed/empty).
+    """
+    if download_id:
+        if not output_path:
+            return _err("bad_args", hint="download_id requires output_path")
+        out = _resolve_output_path(output_path)
+        if out is None:
+            return _err("resolve_failed", output_path=output_path)
+        if out.suffix.lower() not in (".step", ".stp"):
+            return _err("bad_suffix", output_path=output_path, hint="output_path must end in .step or .stp")
+        workdir = out.parent
+        workdir.mkdir(parents=True, exist_ok=True)
+        cmd = ["python", _STEPPARTS_CLI, "--id", download_id, "--download",
+               "--out-dir", str(workdir), "--filename", out.name, "--overwrite"]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_STEPPARTS_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            return _err("run_failed", detail=f"download timed out after {_STEPPARTS_TIMEOUT}s")
+        if proc.returncode != 0:
+            return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+        return json.dumps({"status": "ok", "step": output_path, "id": download_id}, ensure_ascii=False)
+
+    # search mode
+    if not query:
+        return _err("bad_args", hint="provide a query (search) or download_id (download)")
+    cmd = ["python", _STEPPARTS_CLI, query, "--limit", str(max(1, min(limit, 500)))]
+    if standard:
+        cmd += ["--standard", standard]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_STEPPARTS_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("run_failed", detail=f"search timed out after {_STEPPARTS_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+    body = proc.stdout.strip()
+    if not body:
+        return _err("empty", detail="no results (API unreachable or no matches)")
     return body
 
 

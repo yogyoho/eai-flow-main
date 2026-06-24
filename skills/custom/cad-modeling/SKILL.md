@@ -89,12 +89,18 @@ license: MIT
 ## 工具
 
 - `text-to-cad_create_step`(MCP,独立容器 `text-to-cad:8004`):写 `def gen_step()` 源码 →
-  vendored `step` CLI → STEP(+ `also_glb` 拓扑 GLB)。返回 `{status, step, glb?}`。失败返回
-  `{status:"error", error, detail?}`(`resolve_failed`/`bad_suffix`/`run_failed`)。
+  vendored `step` CLI → STEP(+ `also_glb` 拓扑 GLB)。**单零件与装配通用**:gen_step 返回带标签的
+  `Compound`(多个零件)或用 `cadpy.assembly.AssemblyHelper` 做语义 mate(face_to_face/coaxial/
+  revolute/linear)时,`step` 自动按 `--kind assembly` 输出装配 STEP。返回 `{status, step, glb?}`。
+  失败返回 `{status:"error",...}`(`resolve_failed`/`bad_suffix`/`run_failed`)。
 - `text-to-cad_inspect_step`(MCP,同容器):对 STEP 跑 vendored `inspect` CLI。
   `subcommand` ∈ `refs`/`measure`/`align`/`frame`;`selectors` 为 `#o1.2.f1` 类选择器;
   `facts`/`detail` 仅 refs。refs 需 STEP 有同基名 `.glb`(即 create_step `also_glb=True`)。
   返回 inspect 的 JSON,或 `{status:"error",...}`(`bad_subcommand`/`resolve_failed`/`not_found`/`run_failed`/`empty`)。
+- `text-to-cad_search_step_parts`(MCP,同容器):查 step.parts 托管标准件库(16847+ 螺钉/轴承/
+  电机/连接器)。① 搜索 `query`(如 "M3 socket head 12")→ 返回 `{catalog, items:[{id,name,standard,
+  attributes,stepUrl}]}`;② `download_id`(取自搜索结果)+ `output_path` → 下载该件 STEP,可 import 进
+  装配源。`standard` 可过滤(如 "ISO 4762")。需网络(api.step.parts + GitHub media)。
 - `bash` / `read_file`:读用户参考图 / 数据;`write_file`/`str_replace`:留档生成器源码。
 - `present_files`:展示 `/mnt/user-data/outputs/` 下的成品。
 - `ask_clarification`:缺关键信息时问。
@@ -120,12 +126,13 @@ inspect_step(step_path="/mnt/user-data/outputs/block.step", subcommand="refs", f
 ```
 预期自检:inspect facts 的 volume ≈ 120000 − 4×π×4²×20 ≈ 115979 mm³;bbox size ≈ [100, 60, 20]。
 
-## 当前限制(诚实标注)
+## 当前状态(诚实标注)
 
-本 skill 由 text-to-cad 适配,**STEP 生成 + inspect(refs/measure/align/frame)已集成**。下列
-能力暂未集成,交付时须说明哪些验证未执行:
-- `snapshot`(PNG/GIF 渲染审查):未集成(需 Playwright+Chromium,Phase 后续)→ 依赖 inspect 几何事实自检。
+本 skill 由 text-to-cad 适配,**已集成**:STEP/STL/GLB 生成(`create_step`,单零件 + 装配)、
+inspect(`inspect_step`:refs/measure/align/frame)、标准件查询(`search_step_parts`:step.parts 库)。
+
+- `snapshot`(PNG/GIF 渲染审查):**CUT** —— 活页预览(`/cad-design` 的 model-viewer)覆盖人的视觉校验,inspect 覆盖 agent 确定性自检;snapshot 仅对自主无人生成有价值,当前人在回路冗余。
 - `diff`(两 STEP 对比):inspect 暂未暴露 diff 子命令 → 用 inspect refs 事实分别比对。
-- `cad-viewer`(浏览器 3D 预览):前端无 STEP/GLB viewer(Phase 2)→ 走 `present_files` 下载;GLB 已随 STEP 产出,待 viewer 接入即可用。
-- `step-parts`(标准件 STEP 查询):未集成 → 装配中的标准件用文档化包络几何代替。
-- 装配(source-level joints / AssemblyHelper 定位):vendored 引擎已支持,但 MCP 工具尚未暴露 → 当前以单零件为主。
+- `cad-viewer`(浏览器 3D 预览):Phase 2 已上线 —— `/cad-design` 页用 model-viewer 显示 GLB(create_step `also_glb=True` 产出)。
+- 装配:**已集成** —— create_step 支持;gen_step 返回带标签 `Compound` 或 `cadpy.assembly.AssemblyHelper` 语义 mate,`step` 自动按装配输出(R5 PASS,实测出 33KB 装配 STEP + GLB)。
+- step-parts:**已集成** —— `search_step_parts` 查 step.parts 库(16847+ 件)+ 下载 STEP,可 import 进装配源。需网络。
