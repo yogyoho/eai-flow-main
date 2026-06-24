@@ -80,28 +80,54 @@ def _resolve_path(file_path: str) -> Path | None:
     return None
 
 
-def _resolve_out(file_path: str) -> Path | None:
+# Thread discrimination pin: the skill writes this from the sandbox (which
+# resolves /mnt/user-data to the current thread) before calling compose_drawing;
+# this shared MCP container globs for it to locate the right thread dir. See
+# _resolve_out for why this is needed (the container can't see thread_id).
+_THREAD_PIN = ".edp_thread_pin"
+
+
+def _resolve_out(file_path: str) -> tuple[Path, str] | None:
     """Resolve an agent OUTPUT path to a real write path in this container.
 
-    Unlike _resolve_path (read), the file need not exist yet. Literal absolute
-    path wins; otherwise a /mnt/user-data/<rest> virtual path is glob-searched
-    under the data root (mirrors mcp-server/text-to-cad-mcp). ponytail: glob
-    assumes the thread dir for <rest> is unique; pass an absolute path to
-    disambiguate. Upgrade path: carry thread_id via MCP context.
+    Returns (path, method) or None (unresolved). method is "pin" or "absolute".
+
+    Two traps this exists to avoid:
+    1. /mnt/user-data/<rest> is the agent's VIRTUAL path. On Linux it is
+       syntactically absolute, so checking is_absolute() FIRST would short-circuit
+       and write an orphan file into this container's unmounted /mnt/user-data
+       (never reaching the shared /data volume the gateway serves artifacts from).
+       The virtual-prefix check MUST come before the absolute check.
+    2. This MCP container is shared across threads and does not know the agent's
+       current thread_id. Globbing users/*/threads/* and taking matches[0] lands
+       the file in an arbitrary (wrong) thread -> the artifact endpoint (which
+       resolves by exact thread_id) 404s. The skill bridges the two worlds by
+       writing a thread pin (/mnt/user-data/outputs/.edp_thread_pin) from the
+       sandbox -- which DOES resolve to the current thread -- before calling; we
+       glob for that pin to locate the right thread dir (newest pin wins, so stale
+       pins left in other threads are tolerated).
+
+    Upgrade path (cleaner, needs harness support): gateway injects X-Thread-Id /
+    X-User-Id per MCP call and this tool resolves directly. The mcpInterceptors
+    extension point's per-call header override does NOT reach streamable-http today
+    (base_handler calls session.call_tool(name, args) and ignores request.headers),
+    and per-thread session-init headers need harness changes -- so the pin is the
+    in-scope bridge.
     """
-    p = Path(file_path)
-    if p.is_absolute():
-        return p
-    if "/mnt/user-data/" in file_path:
-        rest = file_path.split("/mnt/user-data/", 1)[1].lstrip("/")
-        parts = rest.split("/")
-        leaf = parts[-1]
-        parent_rest = "/".join(parts[:-1])
-        root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
-        glob_pat = f"users/*/threads/*/user-data/{parent_rest}" if parent_rest else "users/*/threads/*/user-data"
-        matches = sorted(root.glob(glob_pat))
-        return (matches[0] / leaf) if matches else None
-    return None
+    if "/mnt/user-data/" not in file_path:
+        p = Path(file_path)
+        return (p, "absolute") if p.is_absolute() else None
+    rest = file_path.split("/mnt/user-data/", 1)[1].lstrip("/")
+    parts = rest.split("/")
+    leaf = parts[-1]
+    sub = "/".join(parts[:-1])  # e.g. "outputs" (empty for /mnt/user-data/<file>)
+    root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
+    pins = list(root.glob(f"users/*/threads/*/user-data/outputs/{_THREAD_PIN}"))
+    if not pins:
+        return None
+    pins.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    user_data_dir = pins[0].parent.parent  # outputs/.pin -> outputs -> user-data
+    return (user_data_dir / sub / leaf, "pin")
 
 
 def _entity_text(e) -> str:
@@ -336,9 +362,10 @@ def compose_drawing(domain: str, drawing_type: str, intent_json: str, output_pat
     """
     from edp import ComposeError, compose_from_json
 
-    out = _resolve_out(output_path)
-    if out is None:
-        return json.dumps({"status": "error", "error": "resolve_failed", "output_path": output_path}, ensure_ascii=False)
+    resolved = _resolve_out(output_path)
+    if resolved is None:
+        return json.dumps({"status": "error", "error": "resolve_failed", "output_path": output_path, "hint": "thread pin missing: this shared MCP container cannot tell which thread to write to. First write a pin from the sandbox — write_file('/mnt/user-data/outputs/.edp_thread_pin', '1') — then retry."}, ensure_ascii=False)
+    out, thread_resolution = resolved
     if out.suffix.lower() != ".dxf":
         return json.dumps({"status": "error", "error": "bad_suffix", "output_path": output_path, "hint": "output_path must end in .dxf"}, ensure_ascii=False)
     try:
@@ -359,6 +386,7 @@ def compose_drawing(domain: str, drawing_type: str, intent_json: str, output_pat
         "dxf": output_path,
         "report": {"placed": report.placed, "skipped": report.skipped},
         "validations": validations,
+        "thread_resolution": thread_resolution,
     }
     if also_png:
         png = out.with_suffix(".png")

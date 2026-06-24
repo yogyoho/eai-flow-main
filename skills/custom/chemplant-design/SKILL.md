@@ -39,7 +39,10 @@ schematic 范式)渲染成 DXF + PNG。
    管道属性(DN/介质)、仪表、图框/标题栏。缺关键拓扑时只问一个。
 2. **抽 intent JSON**。domain="chem"、drawing_type="pid"。entities 里先列 node(设备),再列
    edge(管道);edge 的 from/to 用 `{node,port}` 引用已声明的 node。
-3. **调 cad_compose_drawing**:
+3. **定位当前 thread(写 pin)+ 调 cad_compose_drawing**。cad_compose_drawing 在共享 MCP
+   容器里跑,看不见当前 thread,必须先从 sandbox 写一个 pin 把当前 thread 标出来:
+   `write_file('/mnt/user-data/outputs/.edp_thread_pin', '1')`(sandbox 把 /mnt/user-data 解析到
+   当前 thread)。然后再调:
    ```
    cad_compose_drawing(
      domain="chem",
@@ -49,6 +52,7 @@ schematic 范式)渲染成 DXF + PNG。
      also_png=True
    )
    ```
+   返回里 `thread_resolution` 应为 `"pin"`;若 `resolve_failed`,说明 pin 没写或太旧 —— 重写 pin 重试。
 4. **自检(强制)**。report.placed = 节点数 + 边数;skipped 必须为空;validations 全过。
    端口引用的 node/port 拼错 → 该 edge 被 skip(报 `endpoint unresolved`)→ 修重跑。不可省略。
 5. **交付**。present_files 展示 DXF + PNG。回复含文件路径、placed/skipped、验证、关键假设。

@@ -43,7 +43,10 @@ license: MIT
    推进并明示。
 2. **抽 intent JSON**。按下方 schema 构造:domain="mine"、drawing_type、frame、layers、
    entities[](每个 {id,type,layer,placement{kind,...},attrs})、annotations[]、title_block。
-3. **调 cad_compose_drawing**:
+3. **定位当前 thread(写 pin)+ 调 cad_compose_drawing**。cad_compose_drawing 在共享 MCP
+   容器里跑,看不见当前 thread,必须先从 sandbox 写一个 pin 把当前 thread 标出来:
+   `write_file('/mnt/user-data/outputs/.edp_thread_pin', '1')`(sandbox 把 /mnt/user-data 解析到
+   当前 thread)。然后再调:
    ```
    cad_compose_drawing(
      domain="mine",
@@ -53,6 +56,7 @@ license: MIT
      also_png=True
    )
    ```
+   返回里 `thread_resolution` 应为 `"pin"`;若 `resolve_failed`,说明 pin 没写或太旧 —— 重写 pin 重试。
    注意:工具名带前缀 `cad_`(MCP server 名 `cad` + tool `compose_drawing`)。
 4. **自检(强制)**。看返回的 report + validations:
    - report.skipped 必须为空;report.placed 应与你的实体数一致。
