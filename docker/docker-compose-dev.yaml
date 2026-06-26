@@ -246,6 +246,29 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── eai-flow-ocr (contract price OCR service) ──────────────────────────
+  # Standalone container: scanned-contract table extraction (pdf2image +
+  # OpenCV line detection + RapidOCR). Called by the contract_price gateway
+  # extension and the contract-price-analysis skill over HTTP POST /ocr.
+  # Keeps heavy OCR/onnxruntime + poppler out of the gateway image so gateway
+  # startup stays fast. Mirrors text-to-cad / cad-mcp conventions.
+  # Phase 0: hit-rate validation. See mcp-server/ocr-service/README.md.
+  ocr:
+    build:
+      context: ../mcp-server/ocr-service
+      dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-ocr
+    environment:
+      - OCR_HOST=0.0.0.0
+      - OCR_PORT=8010
+    ports:
+      - "8010:8010"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
   # ── CAD Viewer (text-to-cad's own 3D viewer) ───────────────────────────
   # Node-only bundled server (no npm install) serving pre-built dist UI.
   # Views STEP/GLB/STL from /data (shared user-data). Port 4178 → host 4178.
