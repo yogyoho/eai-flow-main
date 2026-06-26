@@ -69,7 +69,12 @@ def _write_items(workbook, groups, header_fmt, money_fmt, text_fmt, outlier_fmt)
             ws.write(row, 0, it.get("goods_name", ""), text_fmt)
             ws.write(row, 1, it.get("spec_model", ""), text_fmt)
             ws.write(row, 2, _stringify_params(it.get("tech_params")), text_fmt)
-            ws.write_number(row, 3, it.get("unit_price", 0), money_fmt)
+            _price = it.get("unit_price")
+            if _price is None:
+                # needs_review item (glued/implausible) — no number until a human confirms
+                ws.write(row, 3, "待核验", text_fmt)
+            else:
+                ws.write_number(row, 3, _price, money_fmt)
             ws.write(row, 4, it.get("source_contract_no", ""), text_fmt)
             ws.write(row, 5, it.get("sign_date", ""), text_fmt)
             ws.write(row, 6, it.get("supplier", ""), text_fmt)
@@ -114,12 +119,16 @@ def _write_price_trend(workbook, groups, header_fmt):
 
 def _write_supplier_comparison(workbook, groups, header_fmt):
     ws = workbook.add_worksheet("图表-供应商对比")
-    # Aggregate mean price per supplier across all items.
+    # Aggregate mean price per supplier (needs_review items have
+    # unit_price=None and are excluded from the mean).
     supplier_totals: dict[str, list[float]] = {}
     for g in groups:
         for it in g["items"]:
+            price = it.get("unit_price")
+            if price is None:
+                continue
             sup = it.get("supplier") or "未知"
-            supplier_totals.setdefault(sup, []).append(it.get("unit_price", 0))
+            supplier_totals.setdefault(sup, []).append(price)
     ws.write(0, 0, "供应商", header_fmt)
     ws.write(0, 1, "均价", header_fmt)
     row = 1
@@ -141,7 +150,9 @@ def _write_supplier_comparison(workbook, groups, header_fmt):
 def _write_range_distribution(workbook, groups, header_fmt):
     ws = workbook.add_worksheet("图表-区间分布")
     # Bucket all item prices into 6 equal-width buckets between min and max.
-    all_prices = [it.get("unit_price", 0) for g in groups for it in g["items"]]
+    all_prices = [
+        it.get("unit_price") for g in groups for it in g["items"] if it.get("unit_price") is not None
+    ]
     if not all_prices:
         ws.write(0, 0, "区间", header_fmt)
         ws.write(0, 1, "数量", header_fmt)

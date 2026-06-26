@@ -1,16 +1,17 @@
-"""End-to-end pipeline orchestration.
+"""End-to-end pipeline (v2: MinIO + eai-flow-ocr).
 
-Flow: pull changed docs from RAGFlow → parse chunks → vectorize → DBSCAN cluster
-→ compute per-cluster stats (flag outliers) → persist to cpa_ tables → emit Excel.
+Flow: scan MinIO for changed contracts → OCR each via eai-flow-ocr → classify
+tables (keep only goods/price) → validate prices (flag glued/implausible) →
+DBSCAN cluster → per-cluster stats + outliers → persist cpa_ tables → Excel.
 
-DB operations are best-effort: if ``postgres-ext`` is unreachable the pipeline
-still parses/clusters/exports, skipping persistence. This keeps the CLI usable
-from the host during development (the DB lives in Docker) and makes it testable
-without a live database.
+DB ops are best-effort: if postgres-ext is unreachable the pipeline still
+parses/clusters/exports, skipping persistence (keeps it usable from host
+during dev and testable without a live DB).
 """
 
 import argparse
 import asyncio
+import base64
 import logging
 import os
 import time
@@ -18,39 +19,106 @@ from typing import Any, Optional
 
 from scripts.clustering.engine import cluster_items
 from scripts.config import get_config
-from scripts.db import init_schema
+from scripts.document_parser import parse_document
+from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
-from scripts.parser import parse_chunks
-from scripts.ragflow_client import RagflowClient, doc_fingerprint
+from scripts.price_validator import parse_qty, split_glued, validate_price
 from scripts.stats import compute_stats
+from scripts.storage import ContractStore
+from scripts.table_classifier import classify, extract_items
 
 logger = logging.getLogger(__name__)
 
 
-async def _load_cached_hashes() -> dict[str, str]:
-    """Load {ragflow_doc_id: doc_hash} for incremental filtering. Best-effort."""
+async def _load_cached_hashes() -> dict:
+    """Load {file_name(minio key): file_hash} for incremental filtering."""
     try:
-        from scripts.db import async_session
-        from scripts.models import CpaDocument
         from sqlalchemy import select
 
+        from scripts.db import async_session
+        from scripts.models import CpaDocument
+
         async with async_session() as session:
-            rows = await session.execute(select(CpaDocument.ragflow_doc_id, CpaDocument.doc_hash))
-            return {doc_id: h for doc_id, h in rows.all()}
+            rows = await session.execute(select(CpaDocument.file_name, CpaDocument.file_hash))
+            return {name: h for name, h in rows.all()}
     except Exception as exc:
         logger.warning("Could not load cached hashes (DB unavailable): %s", exc)
         return {}
 
 
-async def _persist(documents: list[dict], groups: list[dict], run_record: dict) -> None:
-    """Persist documents, items, clusters + run history to cpa_ tables. Best-effort.
+def _cell_bbox(table, row_idx: int, col_idx: int) -> list:
+    """Read a cell's page-relative bbox from the table's cell_bboxes grid."""
+    try:
+        row = table.cell_bboxes[row_idx]
+        if col_idx < len(row):
+            return row[col_idx]
+    except (IndexError, TypeError):
+        pass
+    return [0, 0, 0, 0]
 
-    Items are linked to their source ``cpa_documents`` row via the RAGFlow doc id
-    (threaded through parsing+clustering as ``source_doc_id``), satisfying the
-    ``cpa_items.document_id`` FK. Documents are upserted by the unique
-    ``ragflow_doc_id``; on re-parse, the doc's stale items are deleted first so
-    runs are idempotent per-document.
+
+def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
+    """Classify each table; from goods/price tables build item dicts.
+
+    Returns (items, parse_meta). Items carry traceability (page/bbox/row) +
+    validation_status. Non-goods tables are counted in parse_meta, never
+    silently dropped.
     """
+    items: list[dict] = []
+    meta: dict = {"tables_found": len(tables), "goods_tables": 0, "rows_extracted": 0, "skipped": {}}
+    for table in tables:
+        ttype, roles, header_rows = classify(table.rows)
+        if ttype != "goods_price":
+            meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
+            continue
+        meta["goods_tables"] += 1
+        raw = extract_items(table.rows, roles, header_rows)
+        # peers = single-number price cells (for cross-row outlier check)
+        peers = [split_glued(r["price_raw"])[0] for r in raw if len(split_glued(r["price_raw"])) == 1]
+        for r in raw:
+            price, vstatus, reason = validate_price(r["price_raw"], peers)
+            items.append(
+                {
+                    "goods_name": r["name"],
+                    "spec_model": r["spec"],
+                    "tech_params": {},
+                    "quantity": parse_qty(r["qty_raw"]),
+                    "unit": r["unit"],
+                    "unit_price": price,
+                    "source_doc_uri": doc_uri,
+                    "source_page": table.page_no,
+                    "source_bbox": _cell_bbox(table, r["row_idx"], roles.get("name", 0)),
+                    "source_table_idx": table.table_idx,
+                    "source_row_idx": r["row_idx"],
+                    "confidence": table.mean_confidence,
+                    "validation_status": vstatus,
+                    "price_reason": reason,
+                }
+            )
+        meta["rows_extracted"] += len(raw)
+    return items, meta
+
+
+def _build_groups(result, all_items: list) -> list:
+    """Turn clustering output + items into Excel-ready group dicts."""
+    groups: list[dict] = []
+    for label in sorted(l for l in set(result.labels) if l != -1):
+        idxs = [i for i, l in enumerate(result.labels) if l == label]
+        prices = [all_items[i].get("unit_price") or 0.0 for i in idxs]
+        stats = compute_stats(prices)
+        threshold = stats.get("outlier_threshold")
+        items = []
+        for i in idxs:
+            it = all_items[i]
+            price = it.get("unit_price") or 0
+            it["is_outlier"] = threshold is not None and price > threshold
+            items.append(it)
+        groups.append({"name": result.representatives[label], "category": "未分类", "stats": stats, "items": items})
+    return groups
+
+
+async def _persist(documents: list, groups: list, run_record: dict) -> None:
+    """Upsert documents (by storage_uri), write clusters + items, record run."""
     try:
         from datetime import datetime, timezone
 
@@ -60,36 +128,37 @@ async def _persist(documents: list[dict], groups: list[dict], run_record: dict) 
         from scripts.models import CpaCluster, CpaDocument, CpaItem, CpaRunHistory
 
         async with async_session() as session:
-            # 1. Upsert documents, build {ragflow_doc_id: cpa_document.id}; clear
-            #    stale items for any doc being re-parsed.
-            doc_id_map: dict[str, object] = {}
+            doc_id_map: dict = {}
             now = datetime.now(timezone.utc)
             for doc in documents:
                 existing = (
-                    await session.execute(
-                        select(CpaDocument).where(CpaDocument.ragflow_doc_id == doc["id"])
-                    )
+                    await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == doc["storage_uri"]))
                 ).scalar_one_or_none()
                 if existing is None:
                     existing = CpaDocument(
-                        ragflow_doc_id=doc["id"],
-                        doc_hash=doc_fingerprint(doc),
-                        contract_no=doc.get("name"),
-                        parse_mode=run_record.get("scope", {}).get("mode", "table"),
-                        parse_status="parsed",
+                        storage_uri=doc["storage_uri"],
+                        file_name=doc["file_name"],
+                        file_hash=doc["hash"],
+                        file_type=doc["type"],
+                        quick_fp=doc.get("quick_fp"),
+                        parse_mode=doc.get("parse_mode", "ocr"),
+                        parse_status=doc.get("parse_status", "parsed"),
+                        parse_meta=doc.get("parse_meta"),
+                        page_count=doc.get("page_count"),
+                        preview_prefix=doc.get("preview_prefix"),
                         parsed_at=now,
                     )
                     session.add(existing)
                     await session.flush()
                 else:
-                    existing.doc_hash = doc_fingerprint(doc)
-                    existing.contract_no = doc.get("name")
-                    existing.parse_status = "parsed"
+                    existing.file_hash = doc["hash"]
+                    existing.parse_status = doc.get("parse_status", "parsed")
+                    existing.parse_meta = doc.get("parse_meta")
+                    existing.preview_prefix = doc.get("preview_prefix")
                     existing.parsed_at = now
                     await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
-                doc_id_map[doc["id"]] = existing.id
+                doc_id_map[doc["storage_uri"]] = existing.id
 
-            # 2. Clusters + items, each item FK-linked to its real document.
             for group in groups:
                 cluster = CpaCluster(
                     category=group["category"],
@@ -101,90 +170,116 @@ async def _persist(documents: list[dict], groups: list[dict], run_record: dict) 
                 session.add(cluster)
                 await session.flush()
                 for it in group["items"]:
-                    doc_pk = doc_id_map.get(it.get("source_doc_id"))
-                    if doc_pk is None:
-                        # Item has no resolvable source doc; skip rather than
-                        # violate the NOT NULL / FK constraint.
-                        continue
+                    dpk = doc_id_map.get(it.get("source_doc_uri"))
+                    if dpk is None:
+                        continue  # no resolvable doc → skip rather than violate FK
                     session.add(
                         CpaItem(
-                            document_id=doc_pk,
+                            document_id=dpk,
                             goods_name=it["goods_name"],
-                            unit_price=it.get("unit_price"),
-                            is_outlier=bool(it.get("is_outlier")),
-                            cluster_id=cluster.id,
-                            source_contract_no=it.get("source_contract_no"),
-                            tech_params=it.get("tech_params"),
                             spec_model=it.get("spec_model"),
+                            tech_params=it.get("tech_params"),
+                            quantity=it.get("quantity"),
+                            unit=it.get("unit"),
+                            unit_price=it.get("unit_price"),
+                            cluster_id=cluster.id,
+                            is_outlier=bool(it.get("is_outlier")),
+                            source_page=it.get("source_page"),
+                            source_bbox=it.get("source_bbox"),
+                            source_table_idx=it.get("source_table_idx"),
+                            source_row_idx=it.get("source_row_idx"),
+                            confidence=it.get("confidence"),
+                            validation_status=it.get("validation_status", "ok"),
                         )
                     )
-            session.add(CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns}))
+            session.add(
+                CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
+            )
             await session.commit()
     except Exception as exc:
         logger.warning("Persistence skipped (DB unavailable): %s", exc)
 
 
-async def run_pipeline(
-    mode: str = "table",
-    trigger: str = "manual",
-    client: Optional[RagflowClient] = None,
-) -> list[dict[str, Any]]:
-    """Run the full pipeline. Returns the list of cluster groups (for Excel/reporting).
-
-    ``client`` is injectable for testing; if None a real RagflowClient is built
-    from config.
-    """
+async def run_pipeline(trigger: str = "manual") -> list:
+    """Run the full pipeline. Returns cluster groups (for Excel/reporting)."""
     started = time.monotonic()
     cfg = get_config()
 
-    # DB schema init is best-effort.
     try:
+        from scripts.db import init_schema
         await init_schema()
     except Exception as exc:
         logger.warning("Schema init skipped (DB unavailable): %s", exc)
 
-    own_client = client is None
-    if own_client:
-        client = RagflowClient(cfg.ragflow_base_url, cfg.ragflow_api_key, cfg.ragflow_kb_id)
+    store = ContractStore(cfg)
+    cached = await _load_cached_hashes()
+    changed = scan_changed(store, cached)
+    logger.info("Scan: %d changed / %d cached contracts", len(changed), len(cached))
 
     docs_processed = 0
     items_extracted = 0
     error: Optional[str] = None
-    groups: list[dict[str, Any]] = []
-    changed_docs: list[dict] = []
+    documents: list[dict] = []
+    all_items: list[dict] = []
+
     try:
-        all_docs = await client.list_documents()
-        cached = await _load_cached_hashes()
-        changed_docs = client.filter_changed(all_docs, cached)
-
-        all_items: list[tuple[str, dict, Optional[float], Optional[str], dict]] = []
-        for doc in changed_docs:
+        for ch in changed:
+            key = ch["key"]
             try:
-                chunks = await client.get_document_chunks(doc["id"])
-                texts = [c.get("content_with_weight") or c.get("content") or "" for c in chunks]
-                parsed = parse_chunks(texts, mode=mode)
+                file_bytes = store.get(key)
+                tables = await parse_document(file_bytes, key, cfg.ocr_service_url)
+                items, meta = _extract_from_tables(tables, f"s3://{cfg.minio_bucket}/{key}")
+                # Persist preview PNGs for pages that contain a goods table, so
+                # the traceback UI can overlay bboxes later.
+                preview_prefix = None
+                goods_pages = {
+                    t.page_no for t in tables if classify(t.rows)[0] == "goods_price"
+                }
+                for t in tables:
+                    if t.page_no in goods_pages and t.page_preview_b64 and not preview_prefix:
+                        doc_id = ch["hash"][:8]
+                        preview_prefix = store.put_preview(doc_id, t.page_no, base64.b64decode(t.page_preview_b64))
+                    elif t.page_no in goods_pages and preview_prefix and t.page_preview_b64:
+                        store.put_preview(ch["hash"][:8], t.page_no, base64.b64decode(t.page_preview_b64))
+                documents.append(
+                    {
+                        "storage_uri": f"s3://{cfg.minio_bucket}/{key}",
+                        "file_name": key,
+                        "hash": ch["hash"],
+                        "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
+                        "quick_fp": f"{key}|{ch['size']}",
+                        "parse_mode": "ocr",
+                        "parse_status": "parsed" if items or meta["tables_found"] else "needs_review",
+                        "parse_meta": meta,
+                        "page_count": max((t.page_no for t in tables), default=None),
+                        "preview_prefix": preview_prefix,
+                    }
+                )
+                all_items.extend(items)
                 docs_processed += 1
-                for p in parsed:
-                    # Tag each item with its RAGFlow source doc id so _persist can
-                    # satisfy the cpa_items.document_id FK.
-                    p.source_doc_id = doc["id"]
-                    all_items.append(
-                        (p.goods_name, p.tech_params, p.unit_price, p.source_doc_id, {"spec_model": p.spec_model})
-                    )
-                    items_extracted += 1
+                items_extracted += len(items)
+                logger.info("Parsed %s: %d tables, %d items", key, meta["tables_found"], len(items))
             except Exception as exc:
-                logger.warning("Failed to parse doc %s: %s", doc.get("id"), exc)
+                logger.warning("Failed to parse %s: %s", key, exc)
+                documents.append(
+                    {
+                        "storage_uri": f"s3://{cfg.minio_bucket}/{key}",
+                        "file_name": key,
+                        "hash": ch["hash"],
+                        "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
+                        "parse_mode": "ocr",
+                        "parse_status": "failed",
+                        "parse_meta": {"error": repr(exc)},
+                    }
+                )
 
-        samples = [(name, params) for name, params, _, _, _ in all_items]
+        samples = [(it["goods_name"], it.get("tech_params") or {}) for it in all_items]
         result = cluster_items(samples)
-
         groups = _build_groups(result, all_items)
     except Exception as exc:
         error = repr(exc)
         logger.exception("Pipeline failed")
-    finally:
-        if own_client:
-            await client.close()
+        groups = []
 
     duration_ms = int((time.monotonic() - started) * 1000)
     run_record = {
@@ -195,61 +290,31 @@ async def run_pipeline(
         "clusters_formed": len(groups),
         "duration_ms": duration_ms,
         "error": error,
-        "scope": {"mode": mode},
+        "scope": {"engine": "ocr-v2"},
     }
 
     excel_path: Optional[str] = None
     if groups and not error:
         try:
-            out_path = os.path.join(cfg.output_dir, f"contract-price-{trigger}.xlsx")
             os.makedirs(cfg.output_dir, exist_ok=True)
+            out_path = os.path.join(cfg.output_dir, f"contract-price-{trigger}.xlsx")
             generate_excel(groups, out_path)
             excel_path = out_path
             run_record["excel_path"] = excel_path
             logger.info("Excel written to %s", out_path)
-        except Exception as exc:
+        except Exception:
             logger.exception("Excel generation failed")
 
-    await _persist(changed_docs, groups, run_record)
-    return groups
-
-
-def _build_groups(result, all_items) -> list[dict[str, Any]]:
-    """Turn clustering output + items into Excel-ready group dicts with outliers."""
-    groups: list[dict[str, Any]] = []
-    for label in sorted(l for l in set(result.labels) if l != -1):
-        idxs = [i for i, l in enumerate(result.labels) if l == label]
-        prices = [all_items[i][2] or 0.0 for i in idxs]
-        stats = compute_stats(prices)
-        threshold = stats.get("outlier_threshold")
-        items = []
-        for i in idxs:
-            name, params, price, source_doc_id, extra = all_items[i]
-            is_outlier = threshold is not None and (price or 0) > threshold
-            items.append({
-                "goods_name": name,
-                "spec_model": extra.get("spec_model"),
-                "tech_params": params,
-                "unit_price": price,
-                "is_outlier": is_outlier,
-                "source_doc_id": source_doc_id,
-            })
-        groups.append({
-            "name": result.representatives[label],
-            "category": "未分类",
-            "stats": stats,
-            "items": items,
-        })
+    await _persist(documents, groups, run_record)
     return groups
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(description="Contract price analysis pipeline")
-    parser.add_argument("--mode", choices=["table", "list", "mixed"], default="table")
+    parser = argparse.ArgumentParser(description="Contract price analysis pipeline (v2: OCR)")
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
     args = parser.parse_args()
-    groups = asyncio.run(run_pipeline(mode=args.mode, trigger=args.trigger))
+    groups = asyncio.run(run_pipeline(trigger=args.trigger))
     print(f"Done. {len(groups)} cluster groups.")
 
 
