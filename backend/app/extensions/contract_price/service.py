@@ -40,9 +40,7 @@ async def run_pipeline_subprocess(
     cmd = [
         sys.executable,  # same interpreter (venv) as the gateway process
         "-m",
-        "scripts.cli",
-        "--mode",
-        mode,
+        "scripts.cli",  # v2: OCR-only pipeline, no --mode
         "--trigger",
         trigger,
     ]

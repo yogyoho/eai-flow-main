@@ -15,12 +15,18 @@ class ORMBase(BaseModel):
 
 class DocumentOut(ORMBase):
     id: UUID
-    ragflow_doc_id: str
+    file_name: str
+    storage_uri: str
+    file_hash: str
+    file_type: str
     contract_no: Optional[str] = None
     supplier: Optional[str] = None
     sign_date: Optional[date] = None
     parse_mode: str
     parse_status: str
+    parse_meta: Optional[dict] = None
+    page_count: Optional[int] = None
+    preview_prefix: Optional[str] = None
     parsed_at: Optional[datetime] = None
     created_at: datetime
 
@@ -37,6 +43,13 @@ class ItemOut(ORMBase):
     cluster_id: Optional[UUID] = None
     source_contract_no: Optional[str] = None
     is_outlier: bool = False
+    # v2 traceability + validation
+    source_page: Optional[int] = None
+    source_bbox: Optional[list] = None
+    source_table_idx: Optional[int] = None
+    source_row_idx: Optional[int] = None
+    confidence: Optional[float] = None
+    validation_status: str = "ok"
     edit_note: Optional[str] = None
     created_at: datetime
 

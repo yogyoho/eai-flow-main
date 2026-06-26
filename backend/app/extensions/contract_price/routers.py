@@ -17,12 +17,13 @@ import logging
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user
-from app.extensions.contract_price import crud, service
+from app.extensions.contract_price import crud, service, storage
+from app.extensions.contract_price.models import CpaDocument
 from app.extensions.contract_price.schemas import (
     ClusterConfirm,
     ClusterMerge,
@@ -71,6 +72,44 @@ async def delete_document(
     deleted = await crud.delete_document(db, doc_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="document not found")
+
+
+@router.post("/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Upload a contract to the independent cpa-contracts MinIO bucket.
+
+    The pipeline picks it up on the next run (scan detects new files by SHA-256).
+    """
+    name = (file.filename or "").lower()
+    if not name.endswith((".pdf", ".docx")):
+        raise HTTPException(status_code=400, detail="only .pdf / .docx accepted")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty file")
+    key = file.filename or "contract.pdf"
+    uri = storage.upload_bytes(key, data)
+    return {"storage_uri": uri, "file_name": key, "size": len(data)}
+
+
+@router.get("/documents/{doc_id}/preview/{page}")
+async def get_preview(
+    doc_id: UUID,
+    page: int,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Stream a page's OCR preview PNG from MinIO (for the traceback overlay)."""
+    doc = await db.get(CpaDocument, doc_id)
+    if doc is None or not doc.preview_prefix:
+        raise HTTPException(status_code=404, detail="preview not available")
+    try:
+        png = storage.get_preview(doc.preview_prefix, page)
+    except Exception:
+        raise HTTPException(status_code=404, detail="preview page not found")
+    return Response(content=png, media_type="image/png")
 
 
 # --- Functional area 2: clusters -------------------------------------------

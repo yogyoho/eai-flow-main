@@ -1,14 +1,16 @@
 """SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables.
 
-These share the Gateway's ``Base`` (``app.extensions.database``) so they are
-created at startup alongside the other extension tables, and they reuse the
-shared engine pool. The ``cpa_`` prefix keeps them physically isolated from
-procurement-service tables in the same ``postgres-ext`` database.
+Mirrors skills/custom/contract-price-analysis/scripts/models.py — same physical
+tables, but this one uses the shared ``app.extensions.database`` Base so the
+tables auto-create at gateway startup alongside other extension tables. Keep
+the two in sync when changing columns.
 
-NOTE: the agent skill ``skills/custom/contract-price-analysis/scripts/models.py``
-mirrors these definitions (separate Base, same physical tables) so the standalone
-pipeline CLI can persist without importing ``app.*``. Keep the two in sync when
-changing columns.
+v2 (MinIO-backed documents):
+  CpaDocument: drop ragflow_doc_id; add file_name / storage_uri (unique) /
+    file_hash (SHA-256 exact increment) / file_type / quick_fp / parse_meta /
+    error / page_count / page_sizes / preview_prefix.
+  CpaItem: add source_page / source_bbox / source_table_idx / source_row_idx
+    (traceability) + confidence / validation_status.
 """
 
 import uuid
@@ -42,13 +44,21 @@ class CpaDocument(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    ragflow_doc_id: Mapped[str] = mapped_column(String(128), unique=True)
-    doc_hash: Mapped[str] = mapped_column(String(256), index=True)
+    storage_uri: Mapped[str] = mapped_column(String(512), unique=True)  # s3://bucket/key
+    file_name: Mapped[str] = mapped_column(String(300))
+    file_hash: Mapped[str] = mapped_column(String(128), index=True)     # SHA-256
+    file_type: Mapped[str] = mapped_column(String(20))                  # pdf / docx
+    quick_fp: Mapped[Optional[str]] = mapped_column(String(256))        # name|size fast prefilter
     contract_no: Mapped[Optional[str]] = mapped_column(String(100))
     supplier: Mapped[Optional[str]] = mapped_column(String(200))
     sign_date: Mapped[Optional[date]] = mapped_column()
-    parse_mode: Mapped[str] = mapped_column(String(20))
-    parse_status: Mapped[str] = mapped_column(String(20))
+    parse_mode: Mapped[str] = mapped_column(String(20))                 # ocr / docx / failed
+    parse_status: Mapped[str] = mapped_column(String(20))               # pending/parsed/failed/needs_review
+    parse_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+    page_count: Mapped[Optional[int]] = mapped_column(Integer)
+    page_sizes: Mapped[Optional[list]] = mapped_column(JSONB)
+    preview_prefix: Mapped[Optional[str]] = mapped_column(String(512))
     raw_text: Mapped[Optional[str]] = mapped_column(Text)
     parsed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
@@ -65,6 +75,7 @@ class CpaItem(Base):
         Index("ix_cpa_items_cluster", "cluster_id"),
         Index("ix_cpa_items_contract", "source_contract_no"),
         Index("ix_cpa_items_goods", "goods_name"),
+        Index("ix_cpa_items_validation", "validation_status"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -84,6 +95,12 @@ class CpaItem(Base):
     )
     source_contract_no: Mapped[Optional[str]] = mapped_column(String(100))
     is_outlier: Mapped[bool] = mapped_column(Boolean, default=False)
+    source_page: Mapped[Optional[int]] = mapped_column(Integer)
+    source_bbox: Mapped[Optional[list]] = mapped_column(JSONB)
+    source_table_idx: Mapped[Optional[int]] = mapped_column(Integer)
+    source_row_idx: Mapped[Optional[int]] = mapped_column(Integer)
+    confidence: Mapped[Optional[float]] = mapped_column(Numeric(5, 4))
+    validation_status: Mapped[str] = mapped_column(String(20), default="ok")
     edit_note: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
