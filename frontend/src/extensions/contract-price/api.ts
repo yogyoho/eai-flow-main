@@ -6,7 +6,7 @@
  * `/contract-price/...` suffix.
  */
 
-import { authFetch } from "@/extensions/api/client";
+import { authFetch, authFormFetch } from "@/extensions/api/client";
 
 import type {
   CpaCluster,
@@ -19,9 +19,12 @@ import type {
   Page,
   PipelineRunResponse,
   PipelineStatus,
+  UploadResponse,
 } from "./types";
 
 const API_BASE = "/contract-price";
+/** Full path for non-JSON GETs the browser issues directly (e.g. <img src>). */
+const FULL_BASE = "/api/extensions/contract-price";
 
 /** Build a query string, skipping empty/null/undefined values. */
 export function qs(
@@ -49,6 +52,16 @@ export const contractPriceApi = {
 
   deleteDocument: (id: string) =>
     authFetch<void>(`${API_BASE}/documents/${id}`, { method: "DELETE" }),
+
+  uploadDocument: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return authFormFetch<UploadResponse>(`${API_BASE}/documents/upload`, fd);
+  },
+
+  /** URL for an <img> overlaying a bbox on the page preview PNG. */
+  previewUrl: (docId: string, page: number) =>
+    `${FULL_BASE}/documents/${docId}/preview/${page}`,
 
   // Functional area 2: clusters
   listClusters: (params?: {

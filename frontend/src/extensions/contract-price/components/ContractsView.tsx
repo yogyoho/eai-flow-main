@@ -1,8 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Delete, PackageSearch, RefreshCw, Search } from "lucide-react";
-import { useState } from "react";
+import { Delete, FileUp, PackageSearch, RefreshCw, Search } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,12 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/contract-price/components/ui/table";
-import { useDocuments } from "@/extensions/contract-price/hooks";
+import { useDocuments, useUploadDocument } from "@/extensions/contract-price/hooks";
 
 const statusTone: Record<string, string> = {
-  parsed: "text-success",
+  parsed: "text-emerald-600",
   pending: "text-muted-foreground",
   failed: "text-destructive",
+  needs_review: "text-amber-600",
 };
 
 function formatDate(s: string | null): string {
@@ -34,6 +35,9 @@ export function ContractsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
   const qc = useQueryClient();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const upload = useUploadDocument();
+
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
     limit: 50,
@@ -44,14 +48,31 @@ export function ContractsView() {
   return (
     <div className="space-y-6 p-8">
       <PageHeader
-        title="合同缓存清单"
-        description="从 RAGFlow 同步并解析的合同文档。删除将级联清除其分项明细。"
+        title="合同文档"
+        description="上传合同扫描件(PDF/DOCX),存入独立 MinIO bucket。点总览「立即分析」触发 OCR 提取。"
         icon={<PackageSearch className="w-4 h-4" />}
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            刷新
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".pdf,.docx"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) upload.mutate(f);
+                e.target.value = "";
+              }}
+            />
+            <Button size="sm" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
+              <FileUp className="h-4 w-4" />
+              {upload.isPending ? "上传中…" : "上传合同"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              刷新
+            </Button>
+          </div>
         }
       />
 
@@ -81,9 +102,10 @@ export function ContractsView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>合同号</TableHead>
+                <TableHead>文件名</TableHead>
                 <TableHead>供应商</TableHead>
-                <TableHead>解析模式</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>提取健康度</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>解析时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -91,36 +113,54 @@ export function ContractsView() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <EmptyRow colSpan={6}>加载中…</EmptyRow>
+                <EmptyRow colSpan={7}>加载中…</EmptyRow>
               ) : docs.length === 0 ? (
-                <EmptyRow colSpan={6}>暂无合同缓存。点击总览页「立即分析」开始同步。</EmptyRow>
+                <EmptyRow colSpan={7}>暂无合同。点右上「上传合同」或总览页「立即分析」。</EmptyRow>
               ) : (
-                docs.map((doc) => (
-                  <TableRow key={doc.id} className="group">
-                    <TableCell className="font-medium">{doc.contract_no ?? doc.ragflow_doc_id}</TableCell>
-                    <TableCell>{doc.supplier ?? "—"}</TableCell>
-                    <TableCell>{doc.parse_mode}</TableCell>
-                    <TableCell className={statusTone[doc.parse_status] ?? ""}>
-                      {doc.parse_status}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(doc.parsed_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="opacity-0 transition-opacity group-hover:opacity-100 text-destructive hover:text-destructive"
-                        title="删除缓存"
-                        onClick={async () => {
-                          if (!confirm(`删除合同 ${doc.contract_no ?? doc.id} 及其分项？`)) return;
-                          await contractPriceApi.deleteDocument(doc.id);
-                          void qc.invalidateQueries({ queryKey: ["cpa"] });
-                        }}
-                      >
-                        <Delete className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                docs.map((doc) => {
+                  const meta = doc.parse_meta as
+                    | { tables_found?: number; goods_tables?: number; rows_extracted?: number }
+                    | null;
+                  return (
+                    <TableRow key={doc.id} className="group">
+                      <TableCell className="font-medium max-w-[220px] truncate" title={doc.file_name}>
+                        {doc.file_name}
+                      </TableCell>
+                      <TableCell>{doc.supplier ?? "—"}</TableCell>
+                      <TableCell className="uppercase text-muted-foreground">{doc.file_type}</TableCell>
+                      <TableCell className="text-muted-foreground tabular-nums">
+                        {meta ? (
+                          <span className="text-xs">
+                            <span className="text-foreground font-medium">{meta.goods_tables ?? 0}</span> 货物表
+                            <span className="mx-1 opacity-40">/</span>
+                            {meta.tables_found ?? 0} 表
+                            <span className="mx-1 opacity-40">/</span>
+                            {meta.rows_extracted ?? 0} 行
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className={statusTone[doc.parse_status] ?? ""}>{doc.parse_status}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(doc.parsed_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="opacity-0 transition-opacity group-hover:opacity-100 text-destructive hover:text-destructive"
+                          title="删除合同及其分项"
+                          onClick={async () => {
+                            if (!confirm(`删除合同 ${doc.file_name} 及其分项？`)) return;
+                            await contractPriceApi.deleteDocument(doc.id);
+                            void qc.invalidateQueries({ queryKey: ["cpa"] });
+                          }}
+                        >
+                          <Delete className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

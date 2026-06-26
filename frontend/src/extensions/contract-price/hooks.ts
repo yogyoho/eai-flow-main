@@ -104,3 +104,13 @@ export function useUpdateConfig() {
     },
   });
 }
+
+export function useUploadDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => contractPriceApi.uploadDocument(file),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}

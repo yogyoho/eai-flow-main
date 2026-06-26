@@ -1,16 +1,24 @@
 /**
- * TypeScript types for the contract-price-analysis API.
- * Field names mirror the backend Pydantic schemas (snake_case) exactly.
+ * TypeScript types for the contract-price-analysis API (v2).
+ * Field names mirror the backend Pydantic/ORM models (snake_case) exactly.
+ * v2: MinIO-backed documents (drop ragflow_doc_id) + item traceability/validation.
  */
 
 export interface CpaDocument {
   id: string;
-  ragflow_doc_id: string;
+  file_name: string;
+  storage_uri: string;
+  file_hash: string;
+  file_type: string;
   contract_no: string | null;
   supplier: string | null;
   sign_date: string | null;
   parse_mode: string;
-  parse_status: string;
+  parse_status: string; // pending / parsed / failed / needs_review
+  parse_meta: Record<string, unknown> | null;
+  error: string | null;
+  page_count: number | null;
+  preview_prefix: string | null;
   parsed_at: string | null;
   created_at: string;
 }
@@ -27,6 +35,14 @@ export interface CpaItem {
   cluster_id: string | null;
   source_contract_no: string | null;
   is_outlier: boolean;
+  // traceability (page-relative bbox 0~1)
+  source_page: number | null;
+  source_bbox: number[] | null;
+  source_table_idx: number | null;
+  source_row_idx: number | null;
+  // validation (scanned-contract OCR)
+  confidence: number | null;
+  validation_status: string; // ok / needs_review / corrected
   edit_note: string | null;
   created_at: string;
 }
@@ -100,4 +116,10 @@ export interface PipelineStatus {
   items_extracted: number;
   clusters_formed: number;
   error: string | null;
+}
+
+export interface UploadResponse {
+  storage_uri: string;
+  file_name: string;
+  size: number;
 }
