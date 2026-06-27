@@ -43,33 +43,40 @@ _ACCEPTANCE_HINT = ("验收", "质量标准")
 def _collapse_header(rows: list, peek: int = 3) -> tuple:
     """Collapse a multi-row merged header into one row.
 
-    A header row contains at least one role token (序号/项目名称/单价/...).
-    Scan up to ``peek`` rows; STOP at the first row with no role token
-    (= pure data row). A row with a role token but only ONE non-empty cell is
-    a caption/title (e.g. <td colspan="11">工程量清单</td>) — its text would
-    pollute the merged header (漏 "工程量" into the 序号 column → false qty
-    role), so it is SKIPPED (not merged, not breaking the scan) but still
-    consumed (counted in header_rows so extract_items skips past it).
+    Row kinds, scanned top-down:
+      - leading TITLE/caption rows (no role token, e.g. '设备清单'; OR a single
+        non-empty cell with a token, e.g. <td colspan="11">工程量清单</td>):
+        SKIPPED from the merge (their text would pollute column roles) but
+        CONSUMED (counted in header_rows so extract_items skips past them).
+      - HEADER rows (≥2 non-empty cells with a role token): merged.
+      - first DATA row after a header (no token): stops the scan.
 
+    A no-token row BEFORE any header is treated as a title (skipped), not data
+    — so a '设备清单' title above the real header doesn't abort the scan.
     Returns (merged_header, header_rows) where header_rows is the number of
-    leading rows to skip (captions + headers) before data begins.
+    leading rows to skip (titles + headers) before data begins.
     """
     if not rows:
         return [], 0
     all_tokens = [t for tokens in ROLE_TOKENS.values() for t in tokens]
     header_idxs: list[int] = []
     last_consumed = 0
+    seen_header = False
     for ri, row in enumerate(rows[:peek]):
         cells = [(c or "").strip() for c in row]
         nonempty = sum(1 for c in cells if c)
         row_text = " ".join(cells)
-        if any(t in row_text for t in all_tokens):
+        has_token = any(t in row_text for t in all_tokens)
+        if has_token:
             last_consumed = ri + 1
             if nonempty >= 2:
                 header_idxs.append(ri)
-            # else: caption (single cell) — skip from merge, keep consuming
+                seen_header = True
+            # else: single-cell caption with a token — skip from merge, consume
+        elif seen_header:
+            break  # data row after the header — stop
         else:
-            break  # pure data row — header ended
+            last_consumed = ri + 1  # leading title row (no token) — skip, consume
     if not header_idxs:
         return [], last_consumed
     maxcols = max(len(rows[i]) for i in header_idxs)
@@ -109,7 +116,7 @@ def _map_roles(header: list) -> dict:
     return roles
 
 
-def classify(rows: list) -> tuple:
+def classify(rows: list, keywords: list[str] | None = None) -> tuple:
     """Classify one table.
 
     Returns (table_type, roles, header_rows):
@@ -117,17 +124,29 @@ def classify(rows: list) -> tuple:
       roles: column indices for name / price_taxed / price_untaxed / price / spec / qty / unit
              (only present roles)
       header_rows: leading header rows to skip when extracting items
+
+    ``keywords``: project-configured table-name keywords (e.g. 工程量清单/设备清单/
+    报价). If any keyword appears in the table's first few rows (the title/
+    caption lives there) AND a name column is detected, the table is strongly
+    judged goods_price even without a recognised price header — different
+    contracts name their price tables differently, so the keyword lowers the
+    bar from (name + price) to (name + keyword). payment/acceptance hints
+    still win first.
     """
     header, header_rows = _collapse_header(rows)
     roles = _map_roles(header)
     hdr_text = " ".join(header)
+    # title/caption + first rows carry the table-name keyword (the caption row
+    # is excluded from the merged header, so scan the raw first rows too).
+    head_text = " ".join((c or "") for r in rows[:4] for c in r) if rows else ""
+    has_kw = bool(keywords) and any(kw and kw in head_text for kw in keywords)
 
     if any(h in hdr_text for h in _PAYMENT_HINT):
         return "payment_schedule", roles, header_rows
     if any(h in hdr_text for h in _ACCEPTANCE_HINT) and not _has_price(roles):
         return "acceptance", roles, header_rows
 
-    if "name" in roles and _has_price(roles):
+    if "name" in roles and (_has_price(roles) or has_kw):
         return "goods_price", roles, header_rows
     return "unclassified", roles, header_rows
 

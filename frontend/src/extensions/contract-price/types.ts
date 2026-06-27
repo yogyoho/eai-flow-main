@@ -97,6 +97,7 @@ export interface CpaConfig {
   cluster_min_samples: number;
   scheduled_enabled: boolean;
   schedule_cron: string | null;
+  price_table_keywords: string[];
 }
 
 export interface Page<T> {

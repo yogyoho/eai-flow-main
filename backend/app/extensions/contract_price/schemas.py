@@ -104,6 +104,16 @@ class ConfigOut(BaseModel):
     cluster_min_samples: int = 2
     scheduled_enabled: bool = False
     schedule_cron: Optional[str] = None
+    # Table-name keywords that mark a goods/price table even without a clear
+    # price header (different contracts name price tables differently).
+    price_table_keywords: list[str] = [
+        "工程量清单",
+        "分部分项",
+        "单价措施",
+        "设备清单",
+        "报价",
+        "暂列",
+    ]
 
 
 class ConfigUpdate(ConfigOut):

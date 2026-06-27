@@ -30,6 +30,7 @@ export function SettingsView() {
         cluster_min_samples: data.cluster_min_samples,
         scheduled_enabled: data.scheduled_enabled,
         schedule_cron: data.schedule_cron,
+        price_table_keywords: data.price_table_keywords ?? [],
       });
     }
   }, [data]);
@@ -97,6 +98,27 @@ export function SettingsView() {
               value={form.cluster_min_samples}
               onChange={(e) => set("cluster_min_samples", Number(e.target.value))}
             />
+          </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-sm font-medium text-foreground">货物表名关键字</label>
+            <textarea
+              className="flex min-h-[88px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={form.price_table_keywords.join("\n")}
+              placeholder={"每行一个，如：\n工程量清单\n设备清单\n报价单"}
+              onChange={(e) =>
+                set(
+                  "price_table_keywords",
+                  e.target.value
+                    .split(/[\n,，]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                )
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              表首含任一关键字的表强判定为货物表（即使列头无明确单价）。不同合同表名不同，按项目定制。下次分析生效。
+            </p>
           </div>
         </CardContent>
       </Card>

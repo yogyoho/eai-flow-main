@@ -12,6 +12,7 @@ during dev and testable without a live DB).
 import argparse
 import asyncio
 import base64
+import json
 import logging
 import os
 import time
@@ -29,6 +30,31 @@ from scripts.storage import ContractStore
 from scripts.table_classifier import classify, extract_items, looks_like_continuation
 
 logger = logging.getLogger(__name__)
+
+
+_DEFAULT_PRICE_KEYWORDS = ["工程量清单", "分部分项", "单价措施", "设备清单", "报价", "暂列"]
+
+
+def _load_price_keywords() -> list[str]:
+    """Load project-configured price-table keywords.
+
+    Reads the management API's config.json (written by SettingsView →
+    ConfigOut) so the UI-edited keyword list actually reaches classification.
+    Falls back to defaults if the file is missing/unreadable (e.g. running the
+    skill standalone outside the gateway container).
+    """
+    path = os.environ.get(
+        "CPA_CONFIG_JSON",
+        "/app/backend/app/extensions/contract_price/config.json",
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            kw = json.load(f).get("price_table_keywords")
+        if isinstance(kw, list) and kw:
+            return [str(k) for k in kw if k]
+    except Exception:
+        pass
+    return list(_DEFAULT_PRICE_KEYWORDS)
 
 
 async def _load_cached_hashes() -> dict:
@@ -58,7 +84,7 @@ def _cell_bbox(table, row_idx: int, col_idx: int) -> list:
     return [0, 0, 0, 0]
 
 
-def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
+def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
     Returns (items, parse_meta). Items carry traceability (page/bbox/row) +
@@ -83,7 +109,7 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
     active_roles: dict | None = None  # roles propagated to continuation pages
     active_col_count = 0
     for table in tables:
-        ttype, roles, header_rows = classify(table.rows)
+        ttype, roles, header_rows = classify(table.rows, keywords)
         col_count = max((len(r) for r in table.rows), default=0)
         is_continuation = (
             ttype == "unclassified"
@@ -252,6 +278,7 @@ async def run_pipeline(trigger: str = "manual") -> list:
     """Run the full pipeline. Returns cluster groups (for Excel/reporting)."""
     started = time.monotonic()
     cfg = get_config()
+    keywords = _load_price_keywords()
 
     try:
         from scripts.db import init_schema
@@ -276,7 +303,9 @@ async def run_pipeline(trigger: str = "manual") -> list:
             try:
                 file_bytes = store.get(key)
                 tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
-                items, meta = _extract_from_tables(tables, f"s3://{cfg.minio_bucket}/{key}")
+                items, meta = _extract_from_tables(
+                    tables, f"s3://{cfg.minio_bucket}/{key}", keywords
+                )
                 project_name, project_location = extract_project_fields(page_texts)
                 # Persist preview PNGs for pages that contain a goods table, so
                 # the traceback UI can overlay bboxes later.

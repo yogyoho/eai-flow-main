@@ -75,10 +75,10 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
                 <div
                   className="absolute border-2 border-rose-500 bg-rose-500/10 pointer-events-none rounded-[2px] shadow-[0_0_0_2px_rgba(244,63,94,0.3)]"
                   style={{
-                    left: `${bbox![0] * 100}%`,
-                    top: `${bbox![1] * 100}%`,
-                    width: `${(bbox![2] - bbox![0]) * 100}%`,
-                    height: `${(bbox![3] - bbox![1]) * 100}%`,
+                    left: `${(bbox?.[0] ?? 0) * 100}%`,
+                    top: `${(bbox?.[1] ?? 0) * 100}%`,
+                    width: `${((bbox?.[2] ?? 0) - (bbox?.[0] ?? 0)) * 100}%`,
+                    height: `${((bbox?.[3] ?? 0) - (bbox?.[1] ?? 0)) * 100}%`,
                   }}
                 />
               )}
