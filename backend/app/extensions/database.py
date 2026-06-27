@@ -1225,6 +1225,10 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS confirm_status VARCHAR(20) DEFAULT 'pending'"
         ))
+        # T8 observable progress: {total,done,failed,phase} updated per-doc by the cli.
+        await conn.execute(text(
+            "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS progress JSONB"
+        ))
         # backfill: docs already through the legacy single-phase pipeline
         # (have clustered items) are 'clustered'; others stay 'pending'.
         await conn.execute(text(

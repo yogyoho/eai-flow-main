@@ -147,6 +147,7 @@ class CpaRunHistory(Base):
     )
     trigger_type: Mapped[str] = mapped_column(String(20))
     scope: Mapped[Optional[dict]] = mapped_column(JSONB)
+    progress: Mapped[Optional[dict]] = mapped_column(JSONB)  # {total,done,failed,phase}
     status: Mapped[str] = mapped_column(String(20))
     docs_processed: Mapped[int] = mapped_column(Integer, default=0)
     items_extracted: Mapped[int] = mapped_column(Integer, default=0)

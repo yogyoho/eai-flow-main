@@ -392,5 +392,6 @@ async def pipeline_status(
         "docs_processed": run.docs_processed,
         "items_extracted": run.items_extracted,
         "clusters_formed": run.clusters_formed,
+        "progress": run.progress,
         "error": run.error,
     }

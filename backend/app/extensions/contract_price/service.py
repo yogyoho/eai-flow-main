@@ -47,6 +47,8 @@ async def run_pipeline_subprocess(
         phase,
         "--trigger",
         trigger,
+        "--run-id",
+        str(run_id),
     ]
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")

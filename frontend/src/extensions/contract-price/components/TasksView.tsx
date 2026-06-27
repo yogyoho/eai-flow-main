@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, PackageSearch, RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,13 @@ export function TasksView() {
   const { data, isLoading, isFetching, refetch } = useRuns({ limit: 50 });
   const runs = data?.items ?? [];
 
+  // Poll while any run is in progress so the progress bar advances live.
+  useEffect(() => {
+    if (!runs.some((r) => r.status === "running")) return;
+    const t = setInterval(() => void refetch(), 4000);
+    return () => clearInterval(t);
+  }, [runs, refetch]);
+
   return (
     <div className="space-y-6 p-8">
       <PageHeader
@@ -53,6 +61,7 @@ export function TasksView() {
                 <TableHead>开始时间</TableHead>
                 <TableHead>触发</TableHead>
                 <TableHead>状态</TableHead>
+                <TableHead className="text-right">进度</TableHead>
                 <TableHead className="text-right">合同</TableHead>
                 <TableHead className="text-right">条目</TableHead>
                 <TableHead className="text-right">聚类</TableHead>
@@ -62,15 +71,35 @@ export function TasksView() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <EmptyRow colSpan={8}>加载中…</EmptyRow>
+                <EmptyRow colSpan={9}>加载中…</EmptyRow>
               ) : runs.length === 0 ? (
-                <EmptyRow colSpan={8}>暂无运行记录。</EmptyRow>
+                <EmptyRow colSpan={9}>暂无运行记录。</EmptyRow>
               ) : (
                 runs.map((run) => (
                   <TableRow key={run.id}>
                     <TableCell className="whitespace-nowrap">{formatDate(run.started_at)}</TableCell>
                     <TableCell>{run.trigger_type === "scheduled" ? "定时" : "手动"}</TableCell>
                     <TableCell className={cn(statusTone[run.status] ?? "")}>{run.status}</TableCell>
+                    <TableCell className="text-right">
+                      {run.status === "running" && run.progress ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-xs tabular-nums">
+                            {run.progress.done}/{run.progress.total}
+                            {run.progress.failed ? `（失败 ${run.progress.failed}）` : ""}
+                          </span>
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-primary transition-all"
+                              style={{
+                                width: `${run.progress.total ? (run.progress.done / run.progress.total) * 100 : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{run.docs_processed}</TableCell>
                     <TableCell className="text-right tabular-nums">{run.items_extracted}</TableCell>
                     <TableCell className="text-right tabular-nums">{run.clusters_formed}</TableCell>

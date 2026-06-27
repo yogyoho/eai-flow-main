@@ -35,6 +35,31 @@ logger = logging.getLogger(__name__)
 _DEFAULT_PRICE_KEYWORDS = ["工程量清单", "分部分项", "单价措施", "设备清单", "报价", "暂列"]
 
 
+async def _update_run_progress(run_id: str | None, progress: dict) -> None:
+    """Write a live progress blob to cpa_run_history so the UI can poll it.
+
+    No-op if run_id is unset (e.g. cli run standalone). Failures are swallowed
+    (progress is best-effort; it must never abort the pipeline).
+    """
+    if not run_id:
+        return
+    try:
+        from uuid import UUID
+
+        from sqlalchemy import update
+
+        from scripts.db import async_session
+        from scripts.models import CpaRunHistory
+
+        async with async_session() as session:
+            await session.execute(
+                update(CpaRunHistory).where(CpaRunHistory.id == UUID(run_id)).values(progress=progress)
+            )
+            await session.commit()
+    except Exception as exc:
+        logger.debug("progress update skipped: %s", exc)
+
+
 def _load_price_keywords() -> list[str]:
     """Load project-configured price-table keywords.
 
@@ -325,11 +350,11 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
         logger.warning("Cluster persistence skipped (DB unavailable): %s", exc)
 
 
-async def run_parse(trigger: str = "manual") -> int:
+async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
     No clustering (that is run_cluster, after the user confirms/skips). Returns
-    the number of documents processed.
+    the number of documents processed. ``run_id`` enables live progress polling.
     """
     started = time.monotonic()
     cfg = get_config()
@@ -348,12 +373,16 @@ async def run_parse(trigger: str = "manual") -> int:
 
     docs_processed = 0
     items_extracted = 0
+    failed_docs = 0
     error: Optional[str] = None
     documents: list[dict] = []
     all_items: list[dict] = []
+    total_docs = len(changed)
+    if run_id:
+        await _update_run_progress(run_id, {"total": total_docs, "done": 0, "failed": 0, "phase": "parse"})
 
     try:
-        for ch in changed:
+        for i, ch in enumerate(changed):
             key = ch["key"]
             try:
                 file_bytes = store.get(key)
@@ -401,6 +430,7 @@ async def run_parse(trigger: str = "manual") -> int:
                 items_extracted += len(items)
                 logger.info("Parsed %s: %d tables, %d items", key, meta["tables_found"], len(items))
             except Exception as exc:
+                failed_docs += 1
                 logger.warning("Failed to parse %s: %s", key, exc)
                 documents.append(
                     {
@@ -412,6 +442,10 @@ async def run_parse(trigger: str = "manual") -> int:
                         "parse_status": "failed",
                         "parse_meta": {"error": repr(exc)},
                     }
+                )
+            if run_id:
+                await _update_run_progress(
+                    run_id, {"total": total_docs, "done": i + 1, "failed": failed_docs, "phase": "parse"}
                 )
     except Exception as exc:
         error = repr(exc)
@@ -514,9 +548,10 @@ def main():
     parser = argparse.ArgumentParser(description="Contract price analysis pipeline (v2: OCR, two-phase)")
     parser.add_argument("--phase", choices=["parse", "cluster"], default="parse")
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
+    parser.add_argument("--run-id", default=None, help="cpa_run_history id for live progress polling")
     args = parser.parse_args()
     if args.phase == "parse":
-        n = asyncio.run(run_parse(trigger=args.trigger))
+        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id))
         print(f"Done. Parsed {n} document(s).")
     else:
         n = asyncio.run(run_cluster(trigger=args.trigger))
