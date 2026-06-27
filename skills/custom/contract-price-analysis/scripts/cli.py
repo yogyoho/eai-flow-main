@@ -73,10 +73,16 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
             continue
         meta["goods_tables"] += 1
         raw = extract_items(table.rows, roles, header_rows)
-        # peers = single-number price cells (for cross-row outlier check)
-        peers = [split_glued(r["price_raw"])[0] for r in raw if len(split_glued(r["price_raw"])) == 1]
+        # peers = single-number 含税 cells (cross-row outlier check on 含税价)
+        peers = [
+            split_glued(r["price_taxed_raw"])[0]
+            for r in raw
+            if len(split_glued(r["price_taxed_raw"])) == 1
+        ]
         for r in raw:
-            price, vstatus, reason = validate_price(r["price_raw"], peers)
+            taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"], peers)
+            untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"], peers)
+            vstatus = "needs_review" if "needs_review" in (vstatus_t, vstatus_u) else "ok"
             items.append(
                 {
                     "goods_name": r["name"],
@@ -84,7 +90,8 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
                     "tech_params": {},
                     "quantity": parse_qty(r["qty_raw"]),
                     "unit": r["unit"],
-                    "unit_price": price,
+                    "unit_price": taxed,  # 含税单价(统计)
+                    "price_untaxed": untaxed,  # 不含税单价(审计)
                     "source_doc_uri": doc_uri,
                     "source_page": table.page_no,
                     "source_bbox": _cell_bbox(table, r["row_idx"], roles.get("name", 0)),
@@ -92,7 +99,7 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
                     "source_row_idx": r["row_idx"],
                     "confidence": table.mean_confidence,
                     "validation_status": vstatus,
-                    "price_reason": reason,
+                    "price_reason": reason_t or reason_u,
                 }
             )
         meta["rows_extracted"] += len(raw)
@@ -182,6 +189,7 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                             quantity=it.get("quantity"),
                             unit=it.get("unit"),
                             unit_price=it.get("unit_price"),
+                            price_untaxed=it.get("price_untaxed"),
                             cluster_id=cluster.id,
                             is_outlier=bool(it.get("is_outlier")),
                             source_page=it.get("source_page"),

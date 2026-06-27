@@ -40,6 +40,7 @@ class ItemOut(ORMBase):
     quantity: Optional[float] = None
     unit: Optional[str] = None
     unit_price: Optional[float] = None
+    price_untaxed: Optional[float] = None
     cluster_id: Optional[UUID] = None
     source_contract_no: Optional[str] = None
     is_outlier: bool = False

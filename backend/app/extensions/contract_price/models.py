@@ -89,7 +89,8 @@ class CpaItem(Base):
     tech_params: Mapped[Optional[dict]] = mapped_column(JSONB)
     quantity: Mapped[Optional[float]] = mapped_column(Numeric(18, 3))
     unit: Mapped[Optional[str]] = mapped_column(String(50))
-    unit_price: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))
+    unit_price: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))  # 含税单价(统计用)
+    price_untaxed: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))  # 不含税单价(审计)
     cluster_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cpa_clusters.id")
     )

@@ -32,6 +32,7 @@ export interface CpaItem {
   quantity: number | null;
   unit: string | null;
   unit_price: number | null;
+  price_untaxed: number | null;
   cluster_id: string | null;
   source_contract_no: string | null;
   is_outlier: boolean;
