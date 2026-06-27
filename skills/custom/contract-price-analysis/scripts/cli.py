@@ -26,7 +26,7 @@ from scripts.price_validator import parse_qty, split_glued, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
-from scripts.table_classifier import classify, extract_items
+from scripts.table_classifier import classify, extract_items, looks_like_continuation
 
 logger = logging.getLogger(__name__)
 
@@ -64,16 +64,47 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
     Returns (items, parse_meta). Items carry traceability (page/bbox/row) +
     validation_status. Non-goods tables are counted in parse_meta, never
     silently dropped.
+
+    Cross-page continuation: the layout detector splits one logical table
+    across PDF pages; only the first page repeats the header, so continuation
+    pages classify as 'unclassified'. We propagate the last goods table's
+    column roles to a headerless unclassified table that looks like its
+    continuation (same column count, data-like first row) and extract it with
+    header_rows=0.
     """
     items: list[dict] = []
-    meta: dict = {"tables_found": len(tables), "goods_tables": 0, "rows_extracted": 0, "skipped": {}}
+    meta: dict = {
+        "tables_found": len(tables),
+        "goods_tables": 0,
+        "continuation_tables": 0,
+        "rows_extracted": 0,
+        "skipped": {},
+    }
+    active_roles: dict | None = None  # roles propagated to continuation pages
+    active_col_count = 0
     for table in tables:
         ttype, roles, header_rows = classify(table.rows)
-        if ttype != "goods_price":
+        col_count = max((len(r) for r in table.rows), default=0)
+        is_continuation = (
+            ttype == "unclassified"
+            and active_roles is not None
+            and looks_like_continuation(table.rows, active_roles, active_col_count)
+        )
+
+        if ttype == "goods_price":
+            active_roles = roles
+            active_col_count = col_count
+            meta["goods_tables"] += 1
+            raw = extract_items(table.rows, roles, header_rows)
+        elif is_continuation:
+            meta["continuation_tables"] += 1
+            raw = extract_items(table.rows, active_roles, 0)
+        else:
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
+            if ttype == "unclassified":
+                active_roles = None  # break the propagation chain
             continue
-        meta["goods_tables"] += 1
-        raw = extract_items(table.rows, roles, header_rows)
+
         # peers = single-number 含税 cells (cross-row outlier check on 含税价)
         peers = [
             split_glued(r["price_taxed_raw"])[0]
@@ -95,7 +126,7 @@ def _extract_from_tables(tables: list, doc_uri: str) -> tuple:
                     "price_untaxed": untaxed,  # 不含税单价(审计)
                     "source_doc_uri": doc_uri,
                     "source_page": table.page_no,
-                    "source_bbox": _cell_bbox(table, r["row_idx"], roles.get("name", 0)),
+                    "source_bbox": _cell_bbox(table, r["row_idx"], roles.get("name", 0) if ttype == "goods_price" else active_roles.get("name", 0)),
                     "source_table_idx": table.table_idx,
                     "source_row_idx": r["row_idx"],
                     "confidence": table.mean_confidence,

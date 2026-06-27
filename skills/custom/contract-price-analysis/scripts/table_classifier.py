@@ -43,34 +43,46 @@ _ACCEPTANCE_HINT = ("验收", "质量标准")
 def _collapse_header(rows: list, peek: int = 3) -> tuple:
     """Collapse a multi-row merged header into one row.
 
-    A header row is one containing at least one role token (序号/项目名称/单价/
-    ...). Scan up to ``peek`` rows; STOP at the first row with no role token
-    (= pure data row). This avoids swallowing data when a table has a single-
-    row header (the old fixed peek=3 ate 2 data rows of a 1-header table).
-    Returns (merged_header, header_rows).
+    A header row contains at least one role token (序号/项目名称/单价/...).
+    Scan up to ``peek`` rows; STOP at the first row with no role token
+    (= pure data row). A row with a role token but only ONE non-empty cell is
+    a caption/title (e.g. <td colspan="11">工程量清单</td>) — its text would
+    pollute the merged header (漏 "工程量" into the 序号 column → false qty
+    role), so it is SKIPPED (not merged, not breaking the scan) but still
+    consumed (counted in header_rows so extract_items skips past it).
+
+    Returns (merged_header, header_rows) where header_rows is the number of
+    leading rows to skip (captions + headers) before data begins.
     """
     if not rows:
         return [], 0
     all_tokens = [t for tokens in ROLE_TOKENS.values() for t in tokens]
-    header_rows = 0
+    header_idxs: list[int] = []
+    last_consumed = 0
     for ri, row in enumerate(rows[:peek]):
-        row_text = " ".join((c or "") for c in row)
+        cells = [(c or "").strip() for c in row]
+        nonempty = sum(1 for c in cells if c)
+        row_text = " ".join(cells)
         if any(t in row_text for t in all_tokens):
-            header_rows = ri + 1
+            last_consumed = ri + 1
+            if nonempty >= 2:
+                header_idxs.append(ri)
+            # else: caption (single cell) — skip from merge, keep consuming
         else:
             break  # pure data row — header ended
-    n = max(1, header_rows)
-    maxcols = max((len(r) for r in rows[:n]), default=0)
+    if not header_idxs:
+        return [], last_consumed
+    maxcols = max(len(rows[i]) for i in header_idxs)
     merged = []
     for ci in range(maxcols):
         parts = []
-        for ri in range(n):
+        for ri in header_idxs:
             if ci < len(rows[ri]):
                 v = (rows[ri][ci] or "").strip()
                 if v and v not in parts:
                     parts.append(v)
         merged.append(" ".join(parts))
-    return merged, n
+    return merged, last_consumed
 
 
 def _map_roles(header: list) -> dict:
@@ -164,3 +176,36 @@ def extract_items(rows: list, roles: dict, header_rows: int) -> list:
             }
         )
     return items
+
+
+def looks_like_continuation(rows: list, roles: dict, goods_col_count: int) -> bool:
+    """Detect a headerless continuation page of a preceding goods/price table.
+
+    The layout detector splits one logical table across PDF pages; only the
+    first page repeats the header, so continuation pages have no role tokens
+    and classify as 'unclassified'. We recover them by inheriting the preceding
+    table's column roles (header_rows=0 — every row is data).
+
+    Heuristics: column count within ±2 of the goods table, ≥4 cols, and the
+    first row has a non-empty name cell that is NOT itself a header token
+    (data, not a fresh table header). CAVEAT: the goods table's roles come from
+    a merged multi-row header whose column indices may not perfectly align with
+    the data columns — so inherited prices can be off; price_validator flags
+    those as needs_review. Recovering the item (name/qty) is still a net win
+    over losing the whole continuation page.
+    """
+    if not rows or "name" not in roles:
+        return False
+    name_col = roles["name"]
+    col_count = max((len(r) for r in rows), default=0)
+    if col_count < 4 or abs(col_count - goods_col_count) > 2:
+        return False
+    first = rows[0]
+    if name_col >= len(first):
+        return False
+    name_val = (first[name_col] or "").strip()
+    if not name_val:
+        return False
+    if any(t in name_val for t in ROLE_TOKENS["name"]):
+        return False  # header repeat, not continuation data
+    return True

@@ -38,33 +38,78 @@ from schemas import Cell, OcrResponse, PageResult, Table
 
 
 class _HtmlTableParser(HTMLParser):
-    """Minimal <tr>/<td> extractor (ignores colspan/rowspan — Phase 0 wants
-    readable rows, not a perfect grid; regular清单 tables are plain grids)."""
+    """<tr>/<td> extractor that EXPANDS colspan/rowspan into a 2D grid.
+
+    rapid-table emits merged headers as <td colspan="N">/<td rowspan="N">
+    (e.g. '工程量清单' title spans all 11 cols; '不含增值税' groups 3 cols;
+    '含税' groups 2). The old parser ignored span attrs, collapsing a 3-col
+    group into one cell → the header had fewer columns than the data and every
+    role index was off (含税单价 landed on the 税率 column). Expanding spans
+    aligns header and data to the same column count so the downstream role
+    mapper puts 含税单价 on the right column. Merged-cell text lands in the
+    top-left cell; spanned-over positions are left empty.
+    """
 
     def __init__(self) -> None:
         super().__init__()
-        self.rows: list[list[str]] = []
-        self._row: list[str] | None = None
-        self._cell: str | None = None
+        self._cells: dict[tuple[int, int], str] = {}
+        self._occupied: set[tuple[int, int]] = set()
+        self._maxrow = -1
+        self._maxcol = -1
+        self._r = -1
+        self._c = 0
+        self._span = (1, 1)
+        self._buf: str | None = None
+
+    def _next_free_col(self, r: int) -> int:
+        c = 0
+        while (r, c) in self._occupied:
+            c += 1
+        return c
 
     def handle_starttag(self, tag, attrs):
         if tag == "tr":
-            self._row = []
+            self._r += 1
+            self._maxrow = max(self._maxrow, self._r)
         elif tag in ("td", "th"):
-            self._cell = ""
+            r = self._r
+            if r < 0:  # cell before any <tr> — tolerate by starting row 0
+                self._r = 0
+                r = 0
+                self._maxrow = max(self._maxrow, 0)
+            d = dict(attrs)
+            try:
+                cs = max(1, int(d.get("colspan", "1") or "1"))
+                rs = max(1, int(d.get("rowspan", "1") or "1"))
+            except (TypeError, ValueError):
+                cs, rs = 1, 1
+            c = self._next_free_col(r)
+            self._c = c
+            self._span = (cs, rs)
+            self._buf = ""
+            for dr in range(rs):
+                for dc in range(cs):
+                    self._occupied.add((r + dr, c + dc))
+                    self._maxrow = max(self._maxrow, r + dr)
+                    self._maxcol = max(self._maxcol, c + dc)
 
     def handle_data(self, data):
-        if self._cell is not None:
-            self._cell += data
+        if self._buf is not None:
+            self._buf += data
 
     def handle_endtag(self, tag):
-        if tag in ("td", "th") and self._row is not None:
-            self._row.append((self._cell or "").strip())
-            self._cell = None
-        elif tag == "tr" and self._row is not None:
-            if any(c for c in self._row):
-                self.rows.append(self._row)
-            self._row = None
+        if tag in ("td", "th") and self._buf is not None:
+            self._cells[(self._r, self._c)] = (self._buf or "").strip()
+            self._buf = None
+
+    @property
+    def rows(self) -> list[list[str]]:
+        if self._maxrow < 0:
+            return []
+        return [
+            [self._cells.get((r, c), "") for c in range(self._maxcol + 1)]
+            for r in range(self._maxrow + 1)
+        ]
 
 
 def _parse_html_rows(html: str) -> list[list[str]]:

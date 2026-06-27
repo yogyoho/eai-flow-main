@@ -37,7 +37,10 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
     Large PDFs take minutes (per-page layout+table+ocr), so the timeout is long.
     """
     url = ocr_service_url.rstrip("/") + "/ocr"
-    async with httpx.AsyncClient(timeout=900.0) as client:
+    # 137-page scanned contracts take ~14-16 min of OCR; 900s was too tight
+    # (cold-start after a rebuild pushed one run to 15.6min → ReadTimeout with
+    # an empty message that looked like a silent failure). 1800s gives margin.
+    async with httpx.AsyncClient(timeout=1800.0) as client:
         resp = await client.post(
             url,
             files={"file": (filename, file_bytes, "application/octet-stream")},
