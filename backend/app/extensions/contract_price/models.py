@@ -51,6 +51,8 @@ class CpaDocument(Base):
     quick_fp: Mapped[Optional[str]] = mapped_column(String(256))        # name|size fast prefilter
     contract_no: Mapped[Optional[str]] = mapped_column(String(100))
     supplier: Mapped[Optional[str]] = mapped_column(String(200))
+    project_name: Mapped[Optional[str]] = mapped_column(String(300))      # 项目/工程名称(首页OCR正则)
+    project_location: Mapped[Optional[str]] = mapped_column(String(300))  # 项目所在地/工程地点
     sign_date: Mapped[Optional[date]] = mapped_column()
     parse_mode: Mapped[str] = mapped_column(String(20))                 # ocr / docx / failed
     parse_status: Mapped[str] = mapped_column(String(20))               # pending/parsed/failed/needs_review

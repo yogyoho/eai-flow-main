@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Delete, FileUp, PackageSearch, RefreshCw, Search } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/contract-price/components/ui/table";
-import { useDocuments, useUploadDocument } from "@/extensions/contract-price/hooks";
+import { useDocuments, useUpdateDocument, useUploadDocument } from "@/extensions/contract-price/hooks";
 
 const statusTone: Record<string, string> = {
   parsed: "text-emerald-600",
@@ -31,12 +31,46 @@ function formatDate(s: string | null): string {
   return new Date(s).toLocaleString("zh-CN", { hour12: false });
 }
 
+/** Inline borderless input that looks like text until focused; commits on blur.
+ * Manual补 fallback for project fields the front-page OCR regex missed. */
+function ProjectFieldInput({
+  value,
+  placeholder,
+  onCommit,
+}: {
+  value: string | null;
+  placeholder: string;
+  onCommit: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => {
+    setDraft(value ?? "");
+  }, [value]);
+  const commit = () => {
+    const next = draft.trim();
+    if (next !== (value ?? "")) onCommit(next);
+  };
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      placeholder={placeholder}
+      className="h-8 w-[170px] border-transparent bg-transparent px-1 hover:border-border focus-visible:border-border"
+    />
+  );
+}
+
 export function ContractsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const upload = useUploadDocument();
+  const update = useUpdateDocument();
 
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
@@ -103,6 +137,8 @@ export function ContractsView() {
             <TableHeader>
               <TableRow>
                 <TableHead>文件名</TableHead>
+                <TableHead>项目名称</TableHead>
+                <TableHead>项目所在地</TableHead>
                 <TableHead>供应商</TableHead>
                 <TableHead>类型</TableHead>
                 <TableHead>提取健康度</TableHead>
@@ -113,9 +149,9 @@ export function ContractsView() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <EmptyRow colSpan={7}>加载中…</EmptyRow>
+                <EmptyRow colSpan={9}>加载中…</EmptyRow>
               ) : docs.length === 0 ? (
-                <EmptyRow colSpan={7}>暂无合同。点右上「上传合同」或总览页「立即分析」。</EmptyRow>
+                <EmptyRow colSpan={9}>暂无合同。点右上「上传合同」或总览页「立即分析」。</EmptyRow>
               ) : (
                 docs.map((doc) => {
                   const meta = doc.parse_meta as
@@ -125,6 +161,20 @@ export function ContractsView() {
                     <TableRow key={doc.id} className="group">
                       <TableCell className="font-medium max-w-[220px] truncate" title={doc.file_name}>
                         {doc.file_name}
+                      </TableCell>
+                      <TableCell>
+                        <ProjectFieldInput
+                          value={doc.project_name}
+                          placeholder="项目名称"
+                          onCommit={(v) => update.mutate({ id: doc.id, body: { project_name: v } })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <ProjectFieldInput
+                          value={doc.project_location}
+                          placeholder="项目所在地"
+                          onCommit={(v) => update.mutate({ id: doc.id, body: { project_location: v } })}
+                        />
                       </TableCell>
                       <TableCell>{doc.supplier ?? "—"}</TableCell>
                       <TableCell className="uppercase text-muted-foreground">{doc.file_type}</TableCell>

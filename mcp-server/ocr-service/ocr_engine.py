@@ -82,11 +82,11 @@ class OcrEngine:
         self._table: RapidTable | None = None
 
     # --- public ---------------------------------------------------------
-    def ocr_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 200) -> OcrResponse:
-        return self._run(convert_from_bytes(pdf_bytes, dpi=dpi))
+    def ocr_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 200, text_pages: int = 3) -> OcrResponse:
+        return self._run(convert_from_bytes(pdf_bytes, dpi=dpi), text_pages=text_pages)
 
-    def ocr_pdf_path(self, path: str, dpi: int = 200) -> OcrResponse:
-        return self._run(convert_from_path(path, dpi=dpi))
+    def ocr_pdf_path(self, path: str, dpi: int = 200, text_pages: int = 3) -> OcrResponse:
+        return self._run(convert_from_path(path, dpi=dpi), text_pages=text_pages)
 
     # --- internals ------------------------------------------------------
     def _ensure(self) -> None:
@@ -95,10 +95,13 @@ class OcrEngine:
             self._table = RapidTable()
             self._ocr = RapidOCR()
 
-    def _run(self, pages: list[Image.Image]) -> OcrResponse:
+    def _run(self, pages: list[Image.Image], text_pages: int = 3) -> OcrResponse:
         self._ensure()
         started = time.monotonic()
-        out = [self._page(idx, img) for idx, img in enumerate(pages, start=1)]
+        out = [
+            self._page(idx, img, with_text=idx <= text_pages)
+            for idx, img in enumerate(pages, start=1)
+        ]
         return OcrResponse(
             pages=out,
             elapsed_ms=int((time.monotonic() - started) * 1000),
@@ -106,7 +109,7 @@ class OcrEngine:
             table_count=sum(len(p.tables) for p in out),
         )
 
-    def _page(self, page_no: int, pil_img: Image.Image) -> PageResult:
+    def _page(self, page_no: int, pil_img: Image.Image, with_text: bool = False) -> PageResult:
         self._ensure()
         arr = np.array(pil_img.convert("RGB"))
         h, w = arr.shape[:2]
@@ -123,12 +126,26 @@ class OcrEngine:
                 t = self._table_region(arr, box, w, h)
                 if t is not None:
                     tables.append(t)
+        # ponytail: full-page text OCR only for the first few pages — the
+        # cover/first pages carry project name/location labels that table
+        # crops never see. Gated (idx<=text_pages) because full-page OCR on
+        # all 137 pages would roughly double runtime; project info is always
+        # near the front.
+        text = ""
+        if with_text:
+            try:
+                res, _ = self._ocr(arr)
+                if res:
+                    text = "\n".join(str(r[1]) for r in res)
+            except Exception:
+                text = ""
         return PageResult(
             page_no=page_no,
             page_width=w,
             page_height=h,
             tables=tables,
             preview_png_b64=_png_b64(pil_img),
+            text=text,
         )
 
     def _table_region(self, arr: np.ndarray, box, w: int, h: int) -> Table | None:

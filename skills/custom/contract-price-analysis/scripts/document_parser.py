@@ -27,8 +27,12 @@ class TableExtract:
     extra: dict = field(default_factory=dict)
 
 
-async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str) -> list:
-    """Call eai-flow-ocr POST /ocr, return list[TableExtract].
+async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str) -> tuple:
+    """Call eai-flow-ocr POST /ocr, return (list[TableExtract], page_texts).
+
+    page_texts is {page_no: full_page_text} for the first few pages only (the OCR
+    service gates full-page text to the cover/front pages). Used downstream to
+    regex-extract project-level fields (name/location) that never appear in tables.
 
     Large PDFs take minutes (per-page layout+table+ocr), so the timeout is long.
     """
@@ -42,9 +46,13 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
         data = resp.json()
 
     tables: list[TableExtract] = []
+    page_texts: dict[int, str] = {}
     for page in data.get("pages", []):
         preview = page.get("preview_png_b64", "")
         page_no = page.get("page_no", 0)
+        ptext = page.get("text", "") or ""
+        if ptext:
+            page_texts[page_no] = ptext
         for ti, t in enumerate(page.get("tables", [])):
             raw_rows = t.get("rows", []) or []
             rows_text = [
@@ -69,4 +77,4 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
                     mean_confidence=float(t.get("mean_confidence", 0.0)),
                 )
             )
-    return tables
+    return tables, page_texts

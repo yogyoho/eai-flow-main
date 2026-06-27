@@ -1212,6 +1212,16 @@ async def migrate_db() -> None:
             "ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"
         ))
 
+        # contract-price (cpa): project-level fields extracted from front-page
+        # OCR text. Idempotent — create_all won't add columns to the pre-existing
+        # cpa_documents table (populated by earlier pipeline runs).
+        await conn.execute(text(
+            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_name VARCHAR(300)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_location VARCHAR(300)"
+        ))
+
         # === App-Center: domain labels & app definitions ===
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS app_domains (

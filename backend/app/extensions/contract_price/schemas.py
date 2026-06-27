@@ -21,6 +21,8 @@ class DocumentOut(ORMBase):
     file_type: str
     contract_no: Optional[str] = None
     supplier: Optional[str] = None
+    project_name: Optional[str] = None
+    project_location: Optional[str] = None
     sign_date: Optional[date] = None
     parse_mode: str
     parse_status: str
@@ -114,6 +116,17 @@ class ItemUpdate(BaseModel):
     goods_name: Optional[str] = None
     spec_model: Optional[str] = None
     note: Optional[str] = None
+
+
+class DocumentUpdate(BaseModel):
+    """Manual补 fallback for project-level fields the front-page OCR regex missed,
+    plus the doc-level metadata a user may correct by hand."""
+
+    project_name: Optional[str] = None
+    project_location: Optional[str] = None
+    contract_no: Optional[str] = None
+    supplier: Optional[str] = None
+    sign_date: Optional[date] = None
 
 
 class ClusterConfirm(BaseModel):

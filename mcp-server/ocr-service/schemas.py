@@ -28,6 +28,7 @@ class PageResult(BaseModel):
     page_height: int
     tables: list[Table]
     preview_png_b64: str = ""  # page render; == traceback preview asset
+    text: str = ""  # full-page OCR text (first N pages only); project fields source
 
 
 class OcrResponse(BaseModel):

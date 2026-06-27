@@ -23,6 +23,7 @@ from scripts.document_parser import parse_document
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
 from scripts.price_validator import parse_qty, split_glued, validate_price
+from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
 from scripts.table_classifier import classify, extract_items
@@ -153,6 +154,8 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                         parse_meta=doc.get("parse_meta"),
                         page_count=doc.get("page_count"),
                         preview_prefix=doc.get("preview_prefix"),
+                        project_name=doc.get("project_name"),
+                        project_location=doc.get("project_location"),
                         parsed_at=now,
                     )
                     session.add(existing)
@@ -163,6 +166,12 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                     existing.parse_meta = doc.get("parse_meta")
                     existing.preview_prefix = doc.get("preview_prefix")
                     existing.parsed_at = now
+                    # only overwrite project fields when re-OCR found them, so a
+                    # manual UI edit (stored earlier) is not wiped by a null hit.
+                    if doc.get("project_name"):
+                        existing.project_name = doc["project_name"]
+                    if doc.get("project_location"):
+                        existing.project_location = doc["project_location"]
                     await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
                 doc_id_map[doc["storage_uri"]] = existing.id
 
@@ -235,8 +244,9 @@ async def run_pipeline(trigger: str = "manual") -> list:
             key = ch["key"]
             try:
                 file_bytes = store.get(key)
-                tables = await parse_document(file_bytes, key, cfg.ocr_service_url)
+                tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
                 items, meta = _extract_from_tables(tables, f"s3://{cfg.minio_bucket}/{key}")
+                project_name, project_location = extract_project_fields(page_texts)
                 # Persist preview PNGs for pages that contain a goods table, so
                 # the traceback UI can overlay bboxes later.
                 preview_prefix = None
@@ -257,10 +267,18 @@ async def run_pipeline(trigger: str = "manual") -> list:
                         "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
                         "quick_fp": f"{key}|{ch['size']}",
                         "parse_mode": "ocr",
-                        "parse_status": "parsed" if items or meta["tables_found"] else "needs_review",
+                        # needs_review when nothing was extracted OR both project
+                        # fields are missing (regex couldn't anchor front-page labels
+                        # → human fills them via the management UI).
+                        "parse_status": "needs_review"
+                        if (not (items or meta["tables_found"]))
+                        or (not project_name and not project_location)
+                        else "parsed",
                         "parse_meta": meta,
                         "page_count": max((t.page_no for t in tables), default=None),
                         "preview_prefix": preview_prefix,
+                        "project_name": project_name,
+                        "project_location": project_location,
                     }
                 )
                 all_items.extend(items)

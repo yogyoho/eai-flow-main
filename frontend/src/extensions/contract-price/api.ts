@@ -53,6 +53,17 @@ export const contractPriceApi = {
   deleteDocument: (id: string) =>
     authFetch<void>(`${API_BASE}/documents/${id}`, { method: "DELETE" }),
 
+  updateDocument: (
+    id: string,
+    body: Partial<
+      Pick<CpaDocument, "project_name" | "project_location" | "contract_no" | "supplier" | "sign_date">
+    >
+  ) =>
+    authFetch<CpaDocument>(`${API_BASE}/documents/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
   uploadDocument: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

@@ -31,6 +31,7 @@ from app.extensions.contract_price.schemas import (
     ConfigUpdate,
     DashboardOut,
     DocumentOut,
+    DocumentUpdate,
     ItemMove,
     ItemOut,
     ItemUpdate,
@@ -72,6 +73,21 @@ async def delete_document(
     deleted = await crud.delete_document(db, doc_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="document not found")
+
+
+@router.patch("/documents/{doc_id}", response_model=DocumentOut)
+async def update_document(
+    doc_id: UUID,
+    body: DocumentUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Manual补 fallback: fill project name/location (and doc metadata) the
+    front-page OCR regex couldn't anchor. Used by the ContractsView editor."""
+    doc = await crud.update_document(db, doc_id, body.model_dump(exclude_unset=True))
+    if doc is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return doc
 
 
 @router.post("/documents/upload")

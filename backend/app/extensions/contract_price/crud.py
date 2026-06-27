@@ -57,6 +57,20 @@ async def delete_document(session: AsyncSession, doc_id: UUID) -> bool:
     return (result.rowcount or 0) > 0
 
 
+async def update_document(
+    session: AsyncSession, doc_id: UUID, fields: dict[str, Any]
+) -> Optional[CpaDocument]:
+    """Patch editable document fields (manual补 for project name/location + metadata)."""
+    doc = await session.get(CpaDocument, doc_id)
+    if doc is None:
+        return None
+    for key in ("project_name", "project_location", "contract_no", "supplier", "sign_date"):
+        if fields.get(key) is not None:
+            setattr(doc, key, fields[key])
+    await session.commit()
+    return doc
+
+
 # --- Clusters (functional area 2) ------------------------------------------
 
 
