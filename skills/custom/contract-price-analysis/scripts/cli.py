@@ -164,33 +164,49 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
     return items, meta
 
 
-def _build_groups(result, all_items: list) -> list:
-    """Turn clustering output + items into Excel-ready group dicts."""
+def _build_groups_db(result, db_items: list) -> list:
+    """Turn clustering output + DB items into cluster group dicts.
+
+    Price stats use ONLY ok/corrected items' unit_price; needs_review items
+    still cluster by name (grouped with their goods) but their price is
+    excluded from min/max/avg. is_outlier is derived from the ok/corrected
+    price distribution.
+    """
     groups: list[dict] = []
     for label in sorted(l for l in set(result.labels) if l != -1):
         idxs = [i for i, l in enumerate(result.labels) if l == label]
-        prices = [all_items[i].get("unit_price") or 0.0 for i in idxs]
+        members = [db_items[i] for i in idxs]
+        prices = [
+            m["unit_price"]
+            for m in members
+            if m.get("validation_status") in ("ok", "corrected")
+            and m.get("unit_price") is not None
+        ]
         stats = compute_stats(prices)
         threshold = stats.get("outlier_threshold")
-        items = []
-        for i in idxs:
-            it = all_items[i]
-            price = it.get("unit_price") or 0
-            it["is_outlier"] = threshold is not None and price > threshold
-            items.append(it)
-        groups.append({"name": result.representatives[label], "category": "未分类", "stats": stats, "items": items})
+        for m in members:
+            p = m.get("unit_price")
+            m["is_outlier"] = bool(threshold is not None and p is not None and p > threshold)
+        groups.append(
+            {"name": result.representatives[label], "category": "未分类", "stats": stats, "items": members}
+        )
     return groups
 
 
-async def _persist(documents: list, groups: list, run_record: dict) -> None:
-    """Upsert documents (by storage_uri), write clusters + items, record run."""
+async def _persist_parse(documents: list, all_items: list, run_record: dict) -> None:
+    """Phase-1 persist: upsert documents (by storage_uri) + write their items.
+
+    No clustering (that's _persist_clusters after the confirm gate). Re-parsing
+    a changed contract resets confirm_status to 'pending' (content changed →
+    needs re-confirmation before clustering).
+    """
     try:
         from datetime import datetime, timezone
 
         from sqlalchemy import delete, select
 
         from scripts.db import async_session
-        from scripts.models import CpaCluster, CpaDocument, CpaItem, CpaRunHistory
+        from scripts.models import CpaDocument, CpaItem, CpaRunHistory
 
         async with async_session() as session:
             doc_id_map: dict = {}
@@ -208,6 +224,7 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                         quick_fp=doc.get("quick_fp"),
                         parse_mode=doc.get("parse_mode", "ocr"),
                         parse_status=doc.get("parse_status", "parsed"),
+                        confirm_status="pending",
                         parse_meta=doc.get("parse_meta"),
                         page_count=doc.get("page_count"),
                         preview_prefix=doc.get("preview_prefix"),
@@ -220,6 +237,7 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                 else:
                     existing.file_hash = doc["hash"]
                     existing.parse_status = doc.get("parse_status", "parsed")
+                    existing.confirm_status = "pending"  # content changed → re-confirm
                     existing.parse_meta = doc.get("parse_meta")
                     existing.preview_prefix = doc.get("preview_prefix")
                     existing.parsed_at = now
@@ -232,50 +250,87 @@ async def _persist(documents: list, groups: list, run_record: dict) -> None:
                     await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
                 doc_id_map[doc["storage_uri"]] = existing.id
 
-            for group in groups:
-                cluster = CpaCluster(
-                    category=group["category"],
-                    representative_name=group["name"],
-                    status="pending",
-                    stats=group["stats"],
-                    item_count=len(group["items"]),
-                )
-                session.add(cluster)
-                await session.flush()
-                for it in group["items"]:
-                    dpk = doc_id_map.get(it.get("source_doc_uri"))
-                    if dpk is None:
-                        continue  # no resolvable doc → skip rather than violate FK
-                    session.add(
-                        CpaItem(
-                            document_id=dpk,
-                            goods_name=it["goods_name"],
-                            spec_model=it.get("spec_model"),
-                            tech_params=it.get("tech_params"),
-                            quantity=it.get("quantity"),
-                            unit=it.get("unit"),
-                            unit_price=it.get("unit_price"),
-                            price_untaxed=it.get("price_untaxed"),
-                            cluster_id=cluster.id,
-                            is_outlier=bool(it.get("is_outlier")),
-                            source_page=it.get("source_page"),
-                            source_bbox=it.get("source_bbox"),
-                            source_table_idx=it.get("source_table_idx"),
-                            source_row_idx=it.get("source_row_idx"),
-                            confidence=it.get("confidence"),
-                            validation_status=it.get("validation_status", "ok"),
-                        )
+            for it in all_items:
+                dpk = doc_id_map.get(it.get("source_doc_uri"))
+                if dpk is None:
+                    continue  # no resolvable doc → skip rather than violate FK
+                session.add(
+                    CpaItem(
+                        document_id=dpk,
+                        goods_name=it["goods_name"],
+                        spec_model=it.get("spec_model"),
+                        tech_params=it.get("tech_params"),
+                        quantity=it.get("quantity"),
+                        unit=it.get("unit"),
+                        unit_price=it.get("unit_price"),
+                        price_untaxed=it.get("price_untaxed"),
+                        is_outlier=bool(it.get("is_outlier")),
+                        source_page=it.get("source_page"),
+                        source_bbox=it.get("source_bbox"),
+                        source_table_idx=it.get("source_table_idx"),
+                        source_row_idx=it.get("source_row_idx"),
+                        confidence=it.get("confidence"),
+                        validation_status=it.get("validation_status", "ok"),
                     )
+                )
             session.add(
                 CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
             )
             await session.commit()
     except Exception as exc:
-        logger.warning("Persistence skipped (DB unavailable): %s", exc)
+        logger.warning("Parse persistence skipped (DB unavailable): %s", exc)
 
 
-async def run_pipeline(trigger: str = "manual") -> list:
-    """Run the full pipeline. Returns cluster groups (for Excel/reporting)."""
+async def _persist_clusters(groups: list, run_record: dict) -> None:
+    """Phase-2 persist: replace all clusters, reassign item.cluster_id/is_outlier,
+    and mark confirmed/skipped docs as 'clustered'."""
+    try:
+        from sqlalchemy import delete, update
+
+        from scripts.db import async_session
+        from scripts.models import CpaCluster, CpaDocument, CpaItem, CpaRunHistory
+
+        async with async_session() as session:
+            await session.execute(update(CpaItem).values(cluster_id=None, is_outlier=False))
+            await session.execute(delete(CpaCluster))
+            # only build clusters + advance docs to 'clustered' on a successful
+            # run — a failed run must leave them confirmed/skipped for retry.
+            if run_record.get("status") != "failed":
+                for group in groups:
+                    cluster = CpaCluster(
+                        category=group["category"],
+                        representative_name=group["name"],
+                        status="pending",
+                        stats=group["stats"],
+                        item_count=len(group["items"]),
+                    )
+                    session.add(cluster)
+                    await session.flush()
+                    for m in group["items"]:
+                        await session.execute(
+                            update(CpaItem)
+                            .where(CpaItem.id == m["id"])
+                            .values(cluster_id=cluster.id, is_outlier=bool(m.get("is_outlier")))
+                        )
+                await session.execute(
+                    update(CpaDocument)
+                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped"]))
+                    .values(confirm_status="clustered")
+                )
+            session.add(
+                CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
+            )
+            await session.commit()
+    except Exception as exc:
+        logger.warning("Cluster persistence skipped (DB unavailable): %s", exc)
+
+
+async def run_parse(trigger: str = "manual") -> int:
+    """Phase 1: scan → OCR → classify → validate → persist docs + items.
+
+    No clustering (that is run_cluster, after the user confirms/skips). Returns
+    the number of documents processed.
+    """
     started = time.monotonic()
     cfg = get_config()
     keywords = _load_price_keywords()
@@ -311,7 +366,7 @@ async def run_pipeline(trigger: str = "manual") -> list:
                 # the traceback UI can overlay bboxes later.
                 preview_prefix = None
                 goods_pages = {
-                    t.page_no for t in tables if classify(t.rows)[0] == "goods_price"
+                    t.page_no for t in tables if classify(t.rows, keywords)[0] == "goods_price"
                 }
                 for t in tables:
                     if t.page_no in goods_pages and t.page_preview_b64 and not preview_prefix:
@@ -358,14 +413,9 @@ async def run_pipeline(trigger: str = "manual") -> list:
                         "parse_meta": {"error": repr(exc)},
                     }
                 )
-
-        samples = [(it["goods_name"], it.get("tech_params") or {}) for it in all_items]
-        result = cluster_items(samples)
-        groups = _build_groups(result, all_items)
     except Exception as exc:
         error = repr(exc)
-        logger.exception("Pipeline failed")
-        groups = []
+        logger.exception("Parse phase failed")
 
     duration_ms = int((time.monotonic() - started) * 1000)
     run_record = {
@@ -373,12 +423,65 @@ async def run_pipeline(trigger: str = "manual") -> list:
         "status": "failed" if error else "completed",
         "docs_processed": docs_processed,
         "items_extracted": items_extracted,
-        "clusters_formed": len(groups),
+        "clusters_formed": 0,
         "duration_ms": duration_ms,
         "error": error,
-        "scope": {"engine": "ocr-v2"},
+        "scope": {"engine": "ocr-v2", "phase": "parse"},
     }
+    await _persist_parse(documents, all_items, run_record)
+    return docs_processed
 
+
+async def run_cluster(trigger: str = "manual") -> int:
+    """Phase 2: cluster items of confirmed/skipped docs (the confirm gate).
+
+    All items cluster by name; price stats use only ok/corrected items
+    (needs_review items cluster but their price is excluded). Marks those docs
+    'clustered'. Returns the number of clusters formed.
+    """
+    started = time.monotonic()
+    cfg = get_config()
+    error: Optional[str] = None
+    groups: list = []
+
+    try:
+        from sqlalchemy import select
+
+        from scripts.db import async_session
+        from scripts.models import CpaDocument, CpaItem
+
+        async with async_session() as session:
+            rows = (
+                await session.execute(
+                    select(CpaItem)
+                    .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
+                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped"]))
+                )
+            ).scalars().all()
+            db_items = [
+                {
+                    "id": r.id,
+                    "goods_name": r.goods_name,
+                    "tech_params": r.tech_params or {},
+                    # Numeric(18,2) loads as decimal.Decimal; cast to float so
+                    # compute_stats / outlier math (float-based) don't hit
+                    # "float * Decimal" TypeErrors.
+                    "unit_price": float(r.unit_price) if r.unit_price is not None else None,
+                    "validation_status": r.validation_status,
+                }
+                for r in rows
+            ]
+        logger.info("Cluster phase: %d items from confirmed/skipped docs", len(db_items))
+        if db_items:
+            samples = [(it["goods_name"], it["tech_params"]) for it in db_items]
+            result = cluster_items(samples)
+            groups = _build_groups_db(result, db_items)
+    except Exception as exc:
+        error = repr(exc)
+        logger.exception("Cluster phase failed")
+        groups = []
+
+    duration_ms = int((time.monotonic() - started) * 1000)
     excel_path: Optional[str] = None
     if groups and not error:
         try:
@@ -386,22 +489,38 @@ async def run_pipeline(trigger: str = "manual") -> list:
             out_path = os.path.join(cfg.output_dir, f"contract-price-{trigger}.xlsx")
             generate_excel(groups, out_path)
             excel_path = out_path
-            run_record["excel_path"] = excel_path
             logger.info("Excel written to %s", out_path)
         except Exception:
             logger.exception("Excel generation failed")
 
-    await _persist(documents, groups, run_record)
-    return groups
+    run_record = {
+        "trigger_type": trigger,
+        "status": "failed" if error else "completed",
+        "docs_processed": 0,
+        "items_extracted": 0,
+        "clusters_formed": len(groups),
+        "duration_ms": duration_ms,
+        "error": error,
+        "scope": {"engine": "ocr-v2", "phase": "cluster"},
+    }
+    if excel_path:
+        run_record["excel_path"] = excel_path
+    await _persist_clusters(groups, run_record)
+    return len(groups)
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    parser = argparse.ArgumentParser(description="Contract price analysis pipeline (v2: OCR)")
+    parser = argparse.ArgumentParser(description="Contract price analysis pipeline (v2: OCR, two-phase)")
+    parser.add_argument("--phase", choices=["parse", "cluster"], default="parse")
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
     args = parser.parse_args()
-    groups = asyncio.run(run_pipeline(trigger=args.trigger))
-    print(f"Done. {len(groups)} cluster groups.")
+    if args.phase == "parse":
+        n = asyncio.run(run_parse(trigger=args.trigger))
+        print(f"Done. Parsed {n} document(s).")
+    else:
+        n = asyncio.run(run_cluster(trigger=args.trigger))
+        print(f"Done. {n} cluster groups.")
 
 
 if __name__ == "__main__":

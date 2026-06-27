@@ -1221,6 +1221,17 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_location VARCHAR(300)"
         ))
+        # T5 two-phase confirm gate: pending→confirmed|skipped→clustered.
+        await conn.execute(text(
+            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS confirm_status VARCHAR(20) DEFAULT 'pending'"
+        ))
+        # backfill: docs already through the legacy single-phase pipeline
+        # (have clustered items) are 'clustered'; others stay 'pending'.
+        await conn.execute(text(
+            "UPDATE cpa_documents SET confirm_status='clustered' "
+            "WHERE confirm_status='pending' AND id IN ("
+            "SELECT DISTINCT document_id FROM cpa_items WHERE cluster_id IS NOT NULL)"
+        ))
 
         # === App-Center: domain labels & app definitions ===
         await conn.execute(text("""

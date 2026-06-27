@@ -56,6 +56,7 @@ class CpaDocument(Base):
     sign_date: Mapped[Optional[date]] = mapped_column()
     parse_mode: Mapped[str] = mapped_column(String(20))                 # ocr / docx / failed
     parse_status: Mapped[str] = mapped_column(String(20))               # pending/parsed/failed/needs_review
+    confirm_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/confirmed/skipped/clustered
     parse_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
     error: Mapped[Optional[str]] = mapped_column(Text)
     page_count: Mapped[Optional[int]] = mapped_column(Integer)

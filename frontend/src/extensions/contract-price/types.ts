@@ -17,6 +17,7 @@ export interface CpaDocument {
   sign_date: string | null;
   parse_mode: string;
   parse_status: string; // pending / parsed / failed / needs_review
+  confirm_status: string; // pending / confirmed / skipped / clustered
   parse_meta: Record<string, unknown> | null;
   error: string | null;
   page_count: number | null;

@@ -31,16 +31,20 @@ async def run_pipeline_subprocess(
     run_id: UUID,
     mode: str = "table",
     trigger: str = "manual",
+    phase: str = "parse",
 ) -> None:
     """Run the skill CLI as a subprocess and record the outcome.
 
-    Designed to run in a background task (fire-and-forget from the request
-    handler). Captures stdout/stderr to detect completion vs failure.
+    ``phase``: "parse" (scan→OCR→extract→persist items) or "cluster" (cluster
+    confirmed/skipped docs' items). Designed to run in a background task
+    (fire-and-forget from the request handler).
     """
     cmd = [
         sys.executable,  # same interpreter (venv) as the gateway process
         "-m",
-        "scripts.cli",  # v2: OCR-only pipeline, no --mode
+        "scripts.cli",
+        "--phase",
+        phase,
         "--trigger",
         trigger,
     ]

@@ -64,6 +64,24 @@ export const contractPriceApi = {
       body: JSON.stringify(body),
     }),
 
+  confirmDocument: (id: string, confirm_status: "confirmed" | "skipped") =>
+    authFetch<CpaDocument>(`${API_BASE}/documents/${id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ confirm_status }),
+    }),
+
+  confirmAllDocuments: (confirm_status: "confirmed" | "skipped") =>
+    authFetch<{ updated: number; confirm_status: string }>(`${API_BASE}/documents/confirm-all`, {
+      method: "POST",
+      body: JSON.stringify({ confirm_status }),
+    }),
+
+  runCluster: (mode = "table", trigger = "manual") =>
+    authFetch<PipelineRunResponse>(`${API_BASE}/cluster/run`, {
+      method: "POST",
+      body: JSON.stringify({ mode, trigger }),
+    }),
+
   uploadDocument: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

@@ -26,6 +26,7 @@ class DocumentOut(ORMBase):
     sign_date: Optional[date] = None
     parse_mode: str
     parse_status: str
+    confirm_status: str = "pending"
     parse_meta: Optional[dict] = None
     page_count: Optional[int] = None
     preview_prefix: Optional[str] = None
@@ -137,6 +138,12 @@ class DocumentUpdate(BaseModel):
     contract_no: Optional[str] = None
     supplier: Optional[str] = None
     sign_date: Optional[date] = None
+
+
+class DocumentConfirm(BaseModel):
+    """Confirm-gate action: mark a parsed document ready for clustering."""
+
+    confirm_status: str  # confirmed | skipped
 
 
 class ClusterConfirm(BaseModel):

@@ -71,6 +71,34 @@ async def update_document(
     return doc
 
 
+async def confirm_document(
+    session: AsyncSession, doc_id: UUID, confirm_status: str
+) -> Optional[CpaDocument]:
+    """Set a document's confirm_status (confirmed/skipped) — the cluster gate."""
+    if confirm_status not in ("confirmed", "skipped"):
+        return None
+    doc = await session.get(CpaDocument, doc_id)
+    if doc is None:
+        return None
+    doc.confirm_status = confirm_status
+    await session.commit()
+    return doc
+
+
+async def confirm_all_documents(session: AsyncSession, confirm_status: str) -> int:
+    """Batch confirm-gate: set every parsed (non-clustered) document to the given
+    confirm_status. Returns the number of documents updated."""
+    if confirm_status not in ("confirmed", "skipped"):
+        return 0
+    result = await session.execute(
+        update(CpaDocument)
+        .where(CpaDocument.confirm_status == "pending")
+        .values(confirm_status=confirm_status)
+    )
+    await session.commit()
+    return result.rowcount or 0
+
+
 # --- Clusters (functional area 2) ------------------------------------------
 
 

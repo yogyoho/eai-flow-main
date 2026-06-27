@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Delete, FileUp, PackageSearch, RefreshCw, Search } from "lucide-react";
+import { Check, Delete, FileUp, Layers, PackageSearch, RefreshCw, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/contract-price/components/ui/table";
-import { useDocuments, useUpdateDocument, useUploadDocument } from "@/extensions/contract-price/hooks";
+import {
+  useConfirmAllDocuments,
+  useConfirmDocument,
+  useDocuments,
+  useRunCluster,
+  useUpdateDocument,
+  useUploadDocument,
+} from "@/extensions/contract-price/hooks";
 
 const statusTone: Record<string, string> = {
   parsed: "text-emerald-600",
   pending: "text-muted-foreground",
   failed: "text-destructive",
   needs_review: "text-amber-600",
+};
+
+const confirmMeta: Record<string, { label: string; tone: string }> = {
+  pending: { label: "待确认", tone: "text-amber-600" },
+  confirmed: { label: "已确认", tone: "text-emerald-600" },
+  skipped: { label: "已跳过", tone: "text-muted-foreground" },
+  clustered: { label: "已聚类", tone: "text-blue-600" },
 };
 
 function formatDate(s: string | null): string {
@@ -71,6 +85,9 @@ export function ContractsView() {
   const fileInput = useRef<HTMLInputElement>(null);
   const upload = useUploadDocument();
   const update = useUpdateDocument();
+  const confirmMut = useConfirmDocument();
+  const confirmAll = useConfirmAllDocuments();
+  const runCluster = useRunCluster();
 
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
@@ -101,6 +118,20 @@ export function ContractsView() {
             <Button size="sm" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
               <FileUp className="h-4 w-4" />
               {upload.isPending ? "上传中…" : "上传合同"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => confirmAll.mutate("confirmed")}
+              disabled={confirmAll.isPending}
+              title="把所有待确认合同标记为已确认"
+            >
+              <Check className="h-4 w-4" />
+              全部确认
+            </Button>
+            <Button size="sm" onClick={() => runCluster.mutate({})} disabled={runCluster.isPending}>
+              <Layers className="h-4 w-4" />
+              {runCluster.isPending ? "聚类中…" : "聚类分析"}
             </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
@@ -143,15 +174,16 @@ export function ContractsView() {
                 <TableHead>类型</TableHead>
                 <TableHead>提取健康度</TableHead>
                 <TableHead>状态</TableHead>
+                <TableHead>确认状态</TableHead>
                 <TableHead>解析时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <EmptyRow colSpan={9}>加载中…</EmptyRow>
+                <EmptyRow colSpan={10}>加载中…</EmptyRow>
               ) : docs.length === 0 ? (
-                <EmptyRow colSpan={9}>暂无合同。点右上「上传合同」或总览页「立即分析」。</EmptyRow>
+                <EmptyRow colSpan={10}>暂无合同。点右上「上传合同」或总览页「立即分析」。</EmptyRow>
               ) : (
                 docs.map((doc) => {
                   const meta = doc.parse_meta as
@@ -192,6 +224,38 @@ export function ContractsView() {
                         )}
                       </TableCell>
                       <TableCell className={statusTone[doc.parse_status] ?? ""}>{doc.parse_status}</TableCell>
+                      <TableCell>
+                        {doc.confirm_status === "pending" ? (
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-emerald-600 hover:text-emerald-600"
+                              title="确认（进入聚类）"
+                              onClick={() =>
+                                confirmMut.mutate({ id: doc.id, confirm_status: "confirmed" })
+                              }
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground"
+                              title="跳过核验直接聚类"
+                              onClick={() =>
+                                confirmMut.mutate({ id: doc.id, confirm_status: "skipped" })
+                              }
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className={confirmMeta[doc.confirm_status]?.tone ?? ""}>
+                            {confirmMeta[doc.confirm_status]?.label ?? doc.confirm_status}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">{formatDate(doc.parsed_at)}</TableCell>
                       <TableCell className="text-right">
                         <Button

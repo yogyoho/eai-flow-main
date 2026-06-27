@@ -125,3 +125,36 @@ export function useUpdateDocument() {
     },
   });
 }
+
+export function useConfirmDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, confirm_status }: { id: string; confirm_status: "confirmed" | "skipped" }) =>
+      contractPriceApi.confirmDocument(id, confirm_status),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useConfirmAllDocuments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (confirm_status: "confirmed" | "skipped") =>
+      contractPriceApi.confirmAllDocuments(confirm_status),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useRunCluster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ mode, trigger }: { mode?: string; trigger?: string }) =>
+      contractPriceApi.runCluster(mode, trigger),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}

@@ -30,6 +30,7 @@ from app.extensions.contract_price.schemas import (
     ConfigOut,
     ConfigUpdate,
     DashboardOut,
+    DocumentConfirm,
     DocumentOut,
     DocumentUpdate,
     ItemMove,
@@ -88,6 +89,32 @@ async def update_document(
     if doc is None:
         raise HTTPException(status_code=404, detail="document not found")
     return doc
+
+
+@router.post("/documents/{doc_id}/confirm", response_model=DocumentOut)
+async def confirm_document(
+    doc_id: UUID,
+    body: DocumentConfirm,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Confirm-gate: mark a parsed document confirmed/skipped so the cluster
+    phase will include it."""
+    doc = await crud.confirm_document(db, doc_id, body.confirm_status)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return doc
+
+
+@router.post("/documents/confirm-all")
+async def confirm_all_documents(
+    body: DocumentConfirm,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Batch confirm-gate: set every pending parsed document to the given status."""
+    count = await crud.confirm_all_documents(db, body.confirm_status)
+    return {"updated": count, "confirm_status": body.confirm_status}
 
 
 @router.post("/documents/upload")
@@ -309,16 +336,40 @@ async def trigger_pipeline(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """Kick off a pipeline run in the background; returns the run id immediately."""
+    """Kick off a parse-phase run in the background; returns the run id immediately."""
     run = await crud.create_run(
         db,
         trigger_type=body.trigger,
         status="running",
-        scope={"mode": body.mode, "started_by": current_user.username},
+        scope={"mode": body.mode, "phase": "parse", "started_by": current_user.username},
     )
-    background.add_task(service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger)
+    background.add_task(
+        service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "parse"
+    )
     return PipelineRunResponse(
-        run_id=run.id, status="running", message="pipeline started"
+        run_id=run.id, status="running", message="parse started"
+    )
+
+
+@router.post("/cluster/run", response_model=PipelineRunResponse)
+async def trigger_cluster(
+    body: PipelineRunRequest,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Phase 2: cluster confirmed/skipped documents' items in the background."""
+    run = await crud.create_run(
+        db,
+        trigger_type=body.trigger,
+        status="running",
+        scope={"phase": "cluster", "started_by": current_user.username},
+    )
+    background.add_task(
+        service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "cluster"
+    )
+    return PipelineRunResponse(
+        run_id=run.id, status="running", message="cluster started"
     )
 
 
