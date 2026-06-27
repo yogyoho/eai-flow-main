@@ -250,6 +250,25 @@ async def get_run(session: AsyncSession, run_id: UUID) -> Optional[CpaRunHistory
     return await session.get(CpaRunHistory, run_id)
 
 
+async def has_running_run(session: AsyncSession, phase: str) -> bool:
+    """True if a run for the given phase (parse/cluster) is already in progress.
+
+    Guards against concurrent OCR runs colliding on the same MinIO objects.
+    NOTE: a gateway restart mid-run orphans the row at status='running' and
+    would block re-trigger; clear manually (`UPDATE cpa_run_history SET
+    status='failed' WHERE status='running'`) if that happens.
+    """
+    row = await session.scalar(
+        select(func.count()).select_from(
+            select(CpaRunHistory)
+            .where(CpaRunHistory.status == "running")
+            .where(CpaRunHistory.scope["phase"].astext == phase)
+            .subquery()
+        )
+    )
+    return bool(row)
+
+
 async def create_run(session: AsyncSession, **fields) -> CpaRunHistory:
     run = CpaRunHistory(**fields)
     session.add(run)

@@ -337,6 +337,8 @@ async def trigger_pipeline(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Kick off a parse-phase run in the background; returns the run id immediately."""
+    if await crud.has_running_run(db, "parse"):
+        raise HTTPException(status_code=409, detail="a parse run is already in progress")
     run = await crud.create_run(
         db,
         trigger_type=body.trigger,
@@ -359,6 +361,8 @@ async def trigger_cluster(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Phase 2: cluster confirmed/skipped documents' items in the background."""
+    if await crud.has_running_run(db, "cluster"):
+        raise HTTPException(status_code=409, detail="a cluster run is already in progress")
     run = await crud.create_run(
         db,
         trigger_type=body.trigger,

@@ -22,8 +22,8 @@ import {
   useConfirmDocument,
   useDocuments,
   useRunCluster,
+  useRunPipeline,
   useUpdateDocument,
-  useUploadDocument,
 } from "@/extensions/contract-price/hooks";
 
 const statusTone: Record<string, string> = {
@@ -83,11 +83,36 @@ export function ContractsView() {
   const [applied, setApplied] = useState("");
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
-  const upload = useUploadDocument();
   const update = useUpdateDocument();
   const confirmMut = useConfirmDocument();
   const confirmAll = useConfirmAllDocuments();
   const runCluster = useRunCluster();
+  const runPipeline = useRunPipeline();
+  const [batch, setBatch] = useState<{ total: number; done: number; failed: number } | null>(null);
+  const [autoAnalyze, setAutoAnalyze] = useState(true);
+
+  /** Batch upload: push each file to the cpa-contracts bucket sequentially,
+   * track per-file progress, then auto-trigger a parse run if enabled. */
+  const handleFiles = async (files: FileList) => {
+    const list = Array.from(files);
+    if (!list.length) return;
+    setBatch({ total: list.length, done: 0, failed: 0 });
+    let failed = 0;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (!f) continue;
+      try {
+        await contractPriceApi.uploadDocument(f);
+      } catch {
+        failed += 1;
+      }
+      setBatch({ total: list.length, done: i + 1, failed });
+    }
+    void qc.invalidateQueries({ queryKey: ["cpa"] });
+    if (autoAnalyze && failed < list.length) {
+      runPipeline.mutate({ trigger: "manual" });
+    }
+  };
 
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
@@ -108,17 +133,36 @@ export function ContractsView() {
               ref={fileInput}
               type="file"
               accept=".pdf,.docx"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) upload.mutate(f);
+                if (e.target.files && e.target.files.length) {
+                  void handleFiles(e.target.files);
+                }
                 e.target.value = "";
               }}
             />
-            <Button size="sm" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
+            <Button
+              size="sm"
+              onClick={() => fileInput.current?.click()}
+              disabled={!!batch && batch.done < batch.total}
+            >
               <FileUp className="h-4 w-4" />
-              {upload.isPending ? "上传中…" : "上传合同"}
+              {batch
+                ? batch.done === batch.total
+                  ? `完成 ${batch.total - batch.failed}/${batch.total}`
+                  : `上传中 ${batch.done}/${batch.total}`
+                : "上传合同"}
             </Button>
+            <label className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
+              <input
+                type="checkbox"
+                checked={autoAnalyze}
+                onChange={(e) => setAutoAnalyze(e.target.checked)}
+                className="accent-primary"
+              />
+              上传后自动分析
+            </label>
             <Button
               variant="outline"
               size="sm"
