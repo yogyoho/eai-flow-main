@@ -15,6 +15,7 @@ import base64
 import json
 import logging
 import os
+import re
 import time
 from typing import Any, Optional
 
@@ -216,6 +217,41 @@ def _row_single_num(rows: list, row_idx: int, col: int) -> float | None:
         return None
 
 
+_PURE_NUM = re.compile(r"^\d+(?:\.\d+)?$")
+_PURE_NUM_BRACKET = re.compile(r"^[【(]?\d+(?:\.\d+)?[】)]?$")  # tolerate 【20】/（19)
+
+
+def _rediscover_name_col(rows: list, inherited: int | None) -> int | None:
+    """Continuation pages can shift the name column: the inherited name index
+    may land on 序号 (pure-numeric, e.g. col1='3') instead of 项目名称 (text,
+    e.g. col2). If the inherited column is mostly pure-numeric (序号), shift
+    right to the first mostly-text column (the real name). Returns the name
+    column index.
+    """
+    if inherited is None:
+        return None
+    n = len(rows)
+    if n < 2:
+        return inherited
+
+    def pure_num_frac(c: int) -> float:
+        cnt = sum(
+            1
+            for r in rows
+            if c < len(r) and (_PURE_NUM.match((r[c] or "").strip()) or _PURE_NUM_BRACKET.match((r[c] or "").strip()))
+        )
+        return cnt / n
+
+    if pure_num_frac(inherited) < 0.4:
+        return inherited  # inherited is text (项目名称) → correct
+    # inherited is 序号 (numeric) → first mostly-text col to its right
+    maxcol = max((len(r) for r in rows), default=0)
+    for c in range(inherited + 1, maxcol):
+        if pure_num_frac(c) < 0.4:
+            return c
+    return inherited
+
+
 def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
@@ -261,6 +297,10 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         elif is_continuation:
             meta["continuation_tables"] += 1
             cont_roles = dict(active_roles)
+            # The name column can also shift on continuation pages: the inherited
+            # name index lands on 序号 (pure-numeric) instead of 项目名称 (text).
+            # Re-derive if the inherited name col is mostly numeric.
+            cont_roles["name"] = _rediscover_name_col(table.rows, active_roles.get("name"))
             # The inherited 含税单价 column index can be wrong on continuation
             # pages: off-by-one shift (→ empty col) OR pointing at 含税合价
             # (→ large 合价 values misread as 单价). ALWAYS re-derive via the
