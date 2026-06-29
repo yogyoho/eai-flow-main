@@ -111,6 +111,22 @@ class _HtmlTableParser(HTMLParser):
             for r in range(self._maxrow + 1)
         ]
 
+    @property
+    def real_mask(self) -> list[list[bool]]:
+        """Parallel to ``rows``: True where the cell is a REAL cell (has its own
+        <td>), False where it's a colspan/rowspan span-over placeholder. Atomic
+        cell bboxes pair 1:1 with REAL cells in row-major order — placeholders
+        have no bbox, so consuming one per expanded cell (the old flat walk)
+        misaligned bboxes on colspan tables. Use this mask to consume a bbox
+        only for real cells.
+        """
+        if self._maxrow < 0:
+            return []
+        return [
+            [(r, c) in self._cells for c in range(self._maxcol + 1)]
+            for r in range(self._maxrow + 1)
+        ]
+
 
 def _parse_html_rows(html: str) -> list[list[str]]:
     p = _HtmlTableParser()
@@ -213,34 +229,46 @@ class OcrEngine:
             return None
         html = (tout.pred_htmls or [""])[0]
         cbbs = (tout.cell_bboxes or [[]])[0]
-        rows_text = _parse_html_rows(html)
+        # Parse HTML into an EXPANDED text grid + a real-cell mask (True where
+        # the cell has its own <td>, False for colspan/rowspan placeholders).
+        parser = _HtmlTableParser()
+        parser.feed(html or "")
+        rows_text = parser.rows
+        mask = parser.real_mask
         if not rows_text:
             return None
 
         region_conf = float(np.mean(scores)) if scores else 0.0
-        # Build cells. bbox: pair HTML cells (row-major) with cell_bboxes in
-        # order — rapid-table emits both row-major, so the flat walk aligns.
+        # Build cells. Pair atomic cell_bboxes with REAL cells only (row-major).
+        # The old flat walk consumed a bbox per EXPANDED cell incl. placeholders
+        # → on colspan tables the placeholders ate real bboxes and every later
+        # cell's bbox shifted (the traceback red-box landed on the wrong row/col
+        # — e.g. 平整场地's name box showed on the next row's 合价). atomic bboxes
+        # and real cells are both in HTML row-major order, so the 1:1 walk over
+        # real cells aligns; placeholders get [0,0,0,0].
         flat_cbbs = list(cbbs) if cbbs is not None else []
         fi = 0
         rows: list[list[Cell]] = []
-        for r in rows_text:
+        for ri, r in enumerate(rows_text):
             cells: list[Cell] = []
-            for txt in r:
+            for ci, txt in enumerate(r):
                 bbox = [0.0, 0.0, 0.0, 0.0]
-                if fi < len(flat_cbbs):
-                    try:
-                        pts = np.array(flat_cbbs[fi], dtype=float).reshape(-1, 2)
-                        if pts.shape[0] >= 2:
-                            xs, ys = pts[:, 0], pts[:, 1]
-                            bbox = [
-                                (x1 + xs.min()) / w,
-                                (y1 + ys.min()) / h,
-                                (x1 + xs.max()) / w,
-                                (y1 + ys.max()) / h,
-                            ]
-                    except Exception:
-                        pass
-                fi += 1
+                is_real = mask[ri][ci] if ri < len(mask) and ci < len(mask[ri]) else True
+                if is_real:
+                    if fi < len(flat_cbbs):
+                        try:
+                            pts = np.array(flat_cbbs[fi], dtype=float).reshape(-1, 2)
+                            if pts.shape[0] >= 2:
+                                xs, ys = pts[:, 0], pts[:, 1]
+                                bbox = [
+                                    (x1 + xs.min()) / w,
+                                    (y1 + ys.min()) / h,
+                                    (x1 + xs.max()) / w,
+                                    (y1 + ys.max()) / h,
+                                ]
+                        except Exception:
+                            pass
+                    fi += 1
                 cells.append(Cell(text=txt, bbox=bbox, confidence=region_conf))
             rows.append(cells)
         allc = [c for r in rows for c in r]
