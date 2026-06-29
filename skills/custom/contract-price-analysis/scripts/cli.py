@@ -23,7 +23,7 @@ from scripts.config import get_config
 from scripts.document_parser import parse_document
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
-from scripts.price_validator import parse_qty, validate_price
+from scripts.price_validator import parse_qty, split_glued, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
@@ -109,6 +109,57 @@ def _cell_bbox(table, row_idx: int, col_idx: int) -> list:
     return [0, 0, 0, 0]
 
 
+def _rediscover_taxed_price_col(rows: list, qty_col: int | None) -> int | None:
+    """For a continuation page whose inherited 含税单价 column shifted to empty,
+    rediscover it by arithmetic: 含税单价 × 工程量 ≈ 含税合价.
+
+    The page-level column index inherited from the header page can be off by one
+    on continuation pages (colspan-expansion count differs). 合价 = rightmost
+    mostly-numeric column (standard 工程量清单 layout); 含税单价 = the numeric
+    column where 单价 × qty ≈ 合价 for most data rows. Returns the 单价 column
+    index, or None if no confident match (caller leaves it needs_review).
+
+    SAFE: a wrong column won't satisfy the per-row 单价×qty≈合价 cross-check, so
+    this can't silently inject bad prices — a miss just stays needs_review.
+    """
+    n = len(rows)
+    if n < 2 or qty_col is None:
+        return None
+    maxcol = max((len(r) for r in rows), default=0)
+
+    def num(cell) -> float | None:
+        v = split_glued(cell or "")
+        return v[0] if len(v) == 1 else None  # only clean single numbers
+
+    def mostly_numeric(c: int) -> bool:
+        if c >= maxcol:
+            return False
+        cnt = sum(1 for r in rows if c < len(r) and num(r[c]) is not None)
+        return cnt >= max(2, n * 0.4)
+
+    numeric_cols = [c for c in range(maxcol) if mostly_numeric(c) and c != qty_col]
+    if len(numeric_cols) < 2:
+        return None
+    hejia_col = numeric_cols[-1]  # rightmost numeric = 含税合价
+    best, best_frac = None, 0.0
+    for c in numeric_cols:
+        if c == hejia_col:
+            continue
+        match = tot = 0
+        for r in rows:
+            d = num(r[c]) if c < len(r) else None
+            q = num(r[qty_col]) if qty_col < len(r) else None
+            h = num(r[hejia_col]) if hejia_col < len(r) else None
+            if d and q and h and q > 0:
+                tot += 1
+                if abs(d * q - h) <= max(h * 0.05, 0.5):
+                    match += 1
+        frac = match / tot if tot else 0
+        if frac > best_frac:
+            best, best_frac = c, frac
+    return best if best_frac >= 0.5 else None
+
+
 def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
@@ -149,7 +200,21 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
             raw = extract_items(table.rows, roles, header_rows)
         elif is_continuation:
             meta["continuation_tables"] += 1
-            raw = extract_items(table.rows, active_roles, 0)
+            cont_roles = dict(active_roles)
+            # Page-level column shift: the inherited 含税单价 index can be off by
+            # one on continuation pages (colspan-expansion count differs). If the
+            # inherited column is mostly-empty, rediscover it by 单价×qty≈合价.
+            pt_col = active_roles.get("price_taxed")
+            if pt_col is not None and table.rows:
+                pt_fill = sum(
+                    1 for r in table.rows
+                    if pt_col < len(r) and split_glued((r[pt_col] or ""))
+                )
+                if pt_fill < 0.3 * len(table.rows):
+                    new_pt = _rediscover_taxed_price_col(table.rows, active_roles.get("qty"))
+                    if new_pt is not None:
+                        cont_roles["price_taxed"] = new_pt
+            raw = extract_items(table.rows, cont_roles, 0)
         else:
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
             if ttype == "unclassified":
