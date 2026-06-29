@@ -48,6 +48,7 @@ export interface CpaItem {
   confidence: number | null;
   validation_status: string; // ok / needs_review / corrected
   edit_note: string | null;
+  run_id: string | null;
   created_at: string;
 }
 
@@ -83,6 +84,13 @@ export interface CpaRun {
   finished_at: string | null;
 }
 
+export interface CpaDashboardCharts {
+  top_goods: { name: string; item_count: number; avg_price: number }[];
+  price_ranges: { range: string; count: number }[];
+  validation: { status: string; count: number }[];
+  cluster_sizes: { range: string; count: number }[];
+}
+
 export interface CpaDashboard {
   contract_count: number;
   item_count: number;
@@ -90,6 +98,7 @@ export interface CpaDashboard {
   pending_cluster_count: number;
   confirmed_cluster_count: number;
   price_range: { min: number; max: number; avg: number } | null;
+  charts: CpaDashboardCharts | null;
   recent_runs: CpaRun[];
 }
 

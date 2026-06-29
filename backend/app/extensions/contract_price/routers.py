@@ -25,6 +25,7 @@ from app.extensions.auth.middleware import get_current_user
 from app.extensions.contract_price import crud, service, storage
 from app.extensions.contract_price.models import CpaDocument
 from app.extensions.contract_price.schemas import (
+    BatchDeleteRequest,
     ClusterConfirm,
     ClusterMerge,
     ConfigOut,
@@ -239,6 +240,7 @@ async def list_items(
     goods_name: str | None = None,
     source_contract_no: str | None = None,
     cluster_id: UUID | None = None,
+    run_id: UUID | None = None,
     only_outliers: bool = False,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -246,7 +248,7 @@ async def list_items(
     _: CurrentUser = Depends(get_current_user),
 ):
     items, total = await crud.list_items(
-        db, goods_name, source_contract_no, cluster_id, only_outliers, skip, limit
+        db, goods_name, source_contract_no, cluster_id, run_id, only_outliers, skip, limit
     )
     return Page[ItemOut](items=items, total=total, skip=skip, limit=limit)
 
@@ -262,6 +264,37 @@ async def update_item(
     if item is None:
         raise HTTPException(status_code=404, detail="item not found")
     return item
+
+
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_item(
+    item_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    deleted = await crud.delete_item(db, item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="item not found")
+
+
+@router.post("/items/batch-delete")
+async def batch_delete_items(
+    body: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    count = await crud.delete_items_batch(db, body.item_ids)
+    return {"deleted": count}
+
+
+@router.delete("/items/by-run/{run_id}")
+async def delete_items_by_run(
+    run_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    count = await crud.delete_items_by_run(db, run_id)
+    return {"deleted": count}
 
 
 # --- Functional area 4: runs -----------------------------------------------
@@ -322,6 +355,7 @@ async def dashboard(
     return DashboardOut(
         **counts,
         price_range=await crud.price_range(db),
+        charts=await crud.dashboard_charts(db),
         recent_runs=recent,
     )
 

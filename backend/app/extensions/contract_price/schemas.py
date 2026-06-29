@@ -55,6 +55,7 @@ class ItemOut(ORMBase):
     confidence: Optional[float] = None
     validation_status: str = "ok"
     edit_note: Optional[str] = None
+    run_id: Optional[UUID] = None
     created_at: datetime
 
 
@@ -97,6 +98,7 @@ class DashboardOut(BaseModel):
     pending_cluster_count: int
     confirmed_cluster_count: int
     price_range: Optional[dict] = None
+    charts: Optional[dict] = None  # {top_goods, price_ranges, validation, cluster_sizes}
     recent_runs: list[RunOut] = []
 
 
@@ -171,6 +173,10 @@ class PipelineRunResponse(BaseModel):
     run_id: UUID
     status: str
     message: str
+
+
+class BatchDeleteRequest(BaseModel):
+    item_ids: list[UUID]
 
 
 class Page(BaseModel, Generic[T]):

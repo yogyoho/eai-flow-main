@@ -10,7 +10,7 @@ import os
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.contract_price.models import (
@@ -194,6 +194,7 @@ async def list_items(
     goods_name: Optional[str] = None,
     source_contract_no: Optional[str] = None,
     cluster_id: Optional[UUID] = None,
+    run_id: Optional[UUID] = None,
     only_outliers: bool = False,
     skip: int = 0,
     limit: int = 50,
@@ -205,6 +206,8 @@ async def list_items(
         stmt = stmt.where(CpaItem.source_contract_no == source_contract_no)
     if cluster_id:
         stmt = stmt.where(CpaItem.cluster_id == cluster_id)
+    if run_id:
+        stmt = stmt.where(CpaItem.run_id == run_id)
     if only_outliers:
         stmt = stmt.where(CpaItem.is_outlier.is_(True))
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
@@ -224,8 +227,28 @@ async def update_item(
             setattr(item, key, fields[key])
     if fields.get("note"):
         item.edit_note = fields["note"]
+    if fields.get("run_id") is not None:
+        item.run_id = fields["run_id"]
     await session.commit()
     return item
+
+
+async def delete_item(session: AsyncSession, item_id: UUID) -> bool:
+    result = await session.execute(delete(CpaItem).where(CpaItem.id == item_id))
+    await session.commit()
+    return (result.rowcount or 0) > 0
+
+
+async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int:
+    result = await session.execute(delete(CpaItem).where(CpaItem.id.in_(item_ids)))
+    await session.commit()
+    return result.rowcount or 0
+
+
+async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
+    result = await session.execute(delete(CpaItem).where(CpaItem.run_id == run_id))
+    await session.commit()
+    return result.rowcount or 0
 
 
 # --- Runs (functional area 4) ----------------------------------------------
@@ -328,6 +351,72 @@ async def price_range(session: AsyncSession) -> Optional[dict]:
     if lo is None:
         return None
     return {"min": float(lo), "max": float(hi), "avg": round(float(avg), 2)}
+
+
+async def dashboard_charts(session: AsyncSession) -> dict:
+    """Four aggregations for the dashboard charts.
+
+    Adapted to what the current data supports (1 contract, supplier/sign_date
+    mostly null, category all '未分类'): top goods clusters by price, price-range
+    histogram, validation-status split, cluster-size distribution. When
+    supplier/sign_date/category are populated (more contracts + field
+    extraction), swap in category/supplier/time charts.
+    """
+    # 1. top goods clusters (by item count) with avg priced unit_price
+    rows = await session.execute(
+        select(
+            CpaCluster.representative_name,
+            func.count(CpaItem.id).label("item_count"),
+            func.round(func.avg(CpaItem.unit_price), 2).label("avg_price"),
+        )
+        .join(CpaItem, CpaItem.cluster_id == CpaCluster.id)
+        .where(CpaItem.unit_price.isnot(None))
+        .group_by(CpaCluster.id, CpaCluster.representative_name)
+        .order_by(func.count(CpaItem.id).desc())
+        .limit(10)
+    )
+    top_goods = [
+        {"name": n, "item_count": int(c), "avg_price": float(a) if a is not None else 0.0}
+        for n, c, a in rows.all()
+    ]
+
+    # 2. unit_price histogram by magnitude bucket
+    rows = await session.execute(
+        text(
+            "SELECT CASE WHEN unit_price < 10 THEN '0-10' "
+            "WHEN unit_price < 50 THEN '10-50' "
+            "WHEN unit_price < 200 THEN '50-200' "
+            "WHEN unit_price < 1000 THEN '200-1000' "
+            "ELSE '1000+' END AS rng, count(*) AS cnt "
+            "FROM cpa_items WHERE unit_price IS NOT NULL GROUP BY rng"
+        )
+    )
+    price_ranges = [{"range": r, "count": int(c)} for r, c in rows.all()]
+
+    # 3. validation-status distribution (ok / needs_review / corrected)
+    rows = await session.execute(
+        select(CpaItem.validation_status, func.count()).group_by(CpaItem.validation_status)
+    )
+    validation = [{"status": s, "count": int(c)} for s, c in rows.all()]
+
+    # 4. cluster-size distribution
+    rows = await session.execute(
+        text(
+            "SELECT CASE WHEN item_count = 1 THEN '1' "
+            "WHEN item_count <= 5 THEN '2-5' "
+            "WHEN item_count <= 10 THEN '6-10' "
+            "ELSE '10+' END AS sz, count(*) AS cnt "
+            "FROM cpa_clusters GROUP BY sz"
+        )
+    )
+    cluster_sizes = [{"range": r, "count": int(c)} for r, c in rows.all()]
+
+    return {
+        "top_goods": top_goods,
+        "price_ranges": price_ranges,
+        "validation": validation,
+        "cluster_sizes": cluster_sizes,
+    }
 
 
 # --- Config (functional area 5) --------------------------------------------
