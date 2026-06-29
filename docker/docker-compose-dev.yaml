@@ -265,6 +265,12 @@ services:
       - OCR_PORT=8010
     ports:
       - "8010:8010"
+    volumes:
+      # Persist rapid_table's runtime-downloaded slanet-plus.onnx so a rebuild
+      # (which recreates the container + wipes the writable layer) doesn't lose
+      # the model and force a re-download from modelscope (unreachable on a
+      # flaky/restricted network → /ocr 500). See bug-445.
+      - ocr_rapid_table_models:/usr/local/lib/python3.12/site-packages/rapid_table/models
     networks:
       - eai-flow-net
     restart: unless-stopped
@@ -290,6 +296,9 @@ volumes:
   # image build are not shadowed by the host backend/ directory mount.
   gateway-venv:
   gateway-uv-cache:
+  # rapid_table's runtime-downloaded table-structure model (slanet-plus.onnx),
+  # so OCR container rebuilds don't wipe it (bug-445).
+  ocr_rapid_table_models:
 
 networks:
   eai-flow-net:  # 改用与业务服务相同的网络名
