@@ -398,9 +398,6 @@ export function ItemsView() {
                                   }`}
                                 >
                                   {STATUS_LABEL[item.validation_status] ?? item.validation_status}
-                                  {item.confidence != null && (
-                                    <span className="ml-1 opacity-60">{(item.confidence * 100).toFixed(0)}%</span>
-                                  )}
                                 </span>
                               </TableCell>
                               <TableCell className="text-right tabular-nums">

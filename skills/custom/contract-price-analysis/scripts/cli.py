@@ -190,6 +190,32 @@ def _is_hejia_magnitude(rows: list, pt_col: int | None, untaxed_col: int | None)
     return pt_med is not None and ux_med is not None and ux_med > 0 and pt_med > 2 * ux_med
 
 
+def _find_hejia_col(rows: list, qty_col: int | None) -> int | None:
+    """Rightmost mostly-numeric column = 含税合价 (工程量清单 layout: 合价 is the
+    last column). Used to recover 含税单价 = 合价/工程量 when the 单价 cell is
+    empty/abnormally-glued. Excludes qty. None if no confident numeric col."""
+    n = len(rows)
+    if n < 2:
+        return None
+    maxcol = max((len(r) for r in rows), default=0)
+    for c in range(maxcol - 1, -1, -1):  # rightmost first
+        if c == qty_col:
+            continue
+        cnt = sum(1 for r in rows if c < len(r) and len(split_glued(r[c] or "")) == 1)
+        if cnt >= max(2, n * 0.4):
+            return c
+    return None
+
+
+def _row_single_num(rows: list, row_idx: int, col: int) -> float | None:
+    """Single clean number from rows[row_idx][col], else None."""
+    try:
+        nums = split_glued(rows[row_idx][col] or "")
+        return nums[0] if len(nums) == 1 else None
+    except (IndexError, TypeError):
+        return None
+
+
 def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
@@ -222,11 +248,15 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
             and active_roles is not None
             and looks_like_continuation(table.rows, active_roles, active_col_count)
         )
+        hejia_col: int | None = None  # 含税合价 col (rightmost numeric) for 反算
+        qty_col: int | None = None
 
         if ttype == "goods_price":
             active_roles = roles
             active_col_count = col_count
             meta["goods_tables"] += 1
+            qty_col = roles.get("qty")
+            hejia_col = _find_hejia_col(table.rows, qty_col)
             raw = extract_items(table.rows, roles, header_rows)
         elif is_continuation:
             meta["continuation_tables"] += 1
@@ -245,6 +275,8 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
                 table.rows, active_roles.get("price_taxed"), active_roles.get("price_untaxed")
             ):
                 cont_roles["price_taxed"] = None
+            qty_col = active_roles.get("qty")
+            hejia_col = _find_hejia_col(table.rows, qty_col)
             raw = extract_items(table.rows, cont_roles, 0)
         else:
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
@@ -257,6 +289,16 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         for r in raw:
             taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
             untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
+            # RECOVERY: 含税单价 missing/abnormal — the 含税单价 cell is empty OR
+            # an unsplittable glue ('9697.45556.99' = 税金+含税单价, no space,
+            # clearly not a normal number). Recover via the definitional relation
+            # 含税单价 = 含税合价 ÷ 工程量 (合价 = rightmost numeric col).
+            if taxed is None and hejia_col is not None and qty_col is not None:
+                h = _row_single_num(table.rows, r["row_idx"], hejia_col)
+                q = parse_qty(r["qty_raw"])
+                if h and q and q > 0:
+                    taxed = round(h / q, 2)
+                    vstatus_t, reason_t = "ok", "合价/工程量反算"
             # Skip price-less rows: no usable price (both taxed & untaxed empty)
             # → useless for price analysis. Covers work-content tables (no price
             # column) and OCR-miss rows. Don't store them as needs_review noise.
