@@ -113,6 +113,9 @@ class CpaItem(Base):
         String(20), default="ok"
     )  # ok / needs_review / corrected
     edit_note: Mapped[Optional[str]] = mapped_column(Text)
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cpa_run_history.id"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

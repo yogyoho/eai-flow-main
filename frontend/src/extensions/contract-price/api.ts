@@ -125,6 +125,7 @@ export const contractPriceApi = {
     goods_name?: string;
     source_contract_no?: string;
     cluster_id?: string;
+    run_id?: string;
     only_outliers?: boolean;
     skip?: number;
     limit?: number;
@@ -144,6 +145,18 @@ export const contractPriceApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  deleteItem: (id: string) =>
+    authFetch<void>(`${API_BASE}/items/${id}`, { method: "DELETE" }),
+
+  batchDeleteItems: (itemIds: string[]) =>
+    authFetch<{ deleted: number }>(`${API_BASE}/items/batch-delete`, {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    }),
+
+  deleteItemsByRun: (runId: string) =>
+    authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, { method: "DELETE" }),
 
   // Functional area 4: runs
   listRuns: (params?: { run_status?: string; skip?: number; limit?: number }) =>

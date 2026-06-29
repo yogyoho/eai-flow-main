@@ -106,6 +106,9 @@ class CpaItem(Base):
     confidence: Mapped[Optional[float]] = mapped_column(Numeric(5, 4))
     validation_status: Mapped[str] = mapped_column(String(20), default="ok")
     edit_note: Mapped[Optional[str]] = mapped_column(Text)
+    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cpa_run_history.id"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

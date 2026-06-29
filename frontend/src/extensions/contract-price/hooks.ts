@@ -148,6 +148,36 @@ export function useConfirmAllDocuments() {
   });
 }
 
+export function useDeleteItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => contractPriceApi.deleteItem(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useBatchDeleteItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemIds: string[]) => contractPriceApi.batchDeleteItems(itemIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useDeleteItemsByRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) => contractPriceApi.deleteItemsByRun(runId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
 export function useRunCluster() {
   const qc = useQueryClient();
   return useMutation({

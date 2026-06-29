@@ -161,6 +161,11 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         for r in raw:
             taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
             untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
+            # Skip price-less rows: no usable price (both taxed & untaxed empty)
+            # → useless for price analysis. Covers work-content tables (no price
+            # column) and OCR-miss rows. Don't store them as needs_review noise.
+            if taxed is None and untaxed is None:
+                continue
             vstatus = "needs_review" if "needs_review" in (vstatus_t, vstatus_u) else "ok"
             items.append(
                 {
@@ -214,7 +219,7 @@ def _build_groups_db(result, db_items: list) -> list:
     return groups
 
 
-async def _persist_parse(documents: list, all_items: list, run_record: dict) -> None:
+async def _persist_parse(documents: list, all_items: list, run_record: dict, run_id: str | None = None) -> None:
     """Phase-1 persist: upsert documents (by storage_uri) + write their items.
 
     No clustering (that's _persist_clusters after the confirm gate). Re-parsing
@@ -275,25 +280,27 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict) -> 
                 dpk = doc_id_map.get(it.get("source_doc_uri"))
                 if dpk is None:
                     continue  # no resolvable doc → skip rather than violate FK
-                session.add(
-                    CpaItem(
-                        document_id=dpk,
-                        goods_name=it["goods_name"],
-                        spec_model=it.get("spec_model"),
-                        tech_params=it.get("tech_params"),
-                        quantity=it.get("quantity"),
-                        unit=it.get("unit"),
-                        unit_price=it.get("unit_price"),
-                        price_untaxed=it.get("price_untaxed"),
-                        is_outlier=bool(it.get("is_outlier")),
-                        source_page=it.get("source_page"),
-                        source_bbox=it.get("source_bbox"),
-                        source_table_idx=it.get("source_table_idx"),
-                        source_row_idx=it.get("source_row_idx"),
-                        confidence=it.get("confidence"),
-                        validation_status=it.get("validation_status", "ok"),
-                    )
-                )
+                item_kwargs: dict = {
+                    "document_id": dpk,
+                    "goods_name": it["goods_name"],
+                    "spec_model": it.get("spec_model"),
+                    "tech_params": it.get("tech_params"),
+                    "quantity": it.get("quantity"),
+                    "unit": it.get("unit"),
+                    "unit_price": it.get("unit_price"),
+                    "price_untaxed": it.get("price_untaxed"),
+                    "is_outlier": bool(it.get("is_outlier")),
+                    "source_page": it.get("source_page"),
+                    "source_bbox": it.get("source_bbox"),
+                    "source_table_idx": it.get("source_table_idx"),
+                    "source_row_idx": it.get("source_row_idx"),
+                    "confidence": it.get("confidence"),
+                    "validation_status": it.get("validation_status", "ok"),
+                }
+                if run_id:
+                    from uuid import UUID as _UUID
+                    item_kwargs["run_id"] = _UUID(run_id)
+                session.add(CpaItem(**item_kwargs))
             session.add(
                 CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
             )
@@ -387,12 +394,31 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
                     tables, f"s3://{cfg.minio_bucket}/{key}", keywords
                 )
                 project_name, project_location = extract_project_fields(page_texts)
-                # Persist preview PNGs for pages that contain a goods table, so
-                # the traceback UI can overlay bboxes later.
+                # Persist preview PNGs for pages that contain a goods/continuation
+                # table, so the traceback UI can overlay bboxes later. Include
+                # continuation pages (unclassified tables that look_like_continuation)
+                # since items extracted from them carry source_page pointing here.
+                goods_pages: set[int] = set()
+                active_roles_ct: dict | None = None
+                active_col_count_ct = 0
+                for t in tables:
+                    ttype_ct, roles_ct, _ = classify(t.rows, keywords)
+                    col_count_ct = max((len(r) for r in t.rows), default=0)
+                    is_cont = (
+                        ttype_ct == "unclassified"
+                        and active_roles_ct is not None
+                        and looks_like_continuation(t.rows, active_roles_ct, active_col_count_ct)
+                    )
+                    if ttype_ct == "goods_price":
+                        goods_pages.add(t.page_no)
+                        active_roles_ct = roles_ct
+                        active_col_count_ct = col_count_ct
+                    elif is_cont:
+                        goods_pages.add(t.page_no)
+                    elif ttype_ct == "unclassified":
+                        active_roles_ct = None
+
                 preview_prefix = None
-                goods_pages = {
-                    t.page_no for t in tables if classify(t.rows, keywords)[0] == "goods_price"
-                }
                 for t in tables:
                     if t.page_no in goods_pages and t.page_preview_b64 and not preview_prefix:
                         doc_id = ch["hash"][:8]
@@ -458,7 +484,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
         "error": error,
         "scope": {"engine": "ocr-v2", "phase": "parse"},
     }
-    await _persist_parse(documents, all_items, run_record)
+    await _persist_parse(documents, all_items, run_record, run_id)
     return docs_processed
 
 

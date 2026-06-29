@@ -1229,6 +1229,13 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS progress JSONB"
         ))
+        # T9 task grouping: link items to the parse run that created them.
+        await conn.execute(text(
+            "ALTER TABLE cpa_items ADD COLUMN IF NOT EXISTS run_id UUID REFERENCES cpa_run_history(id)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_cpa_items_run_id ON cpa_items(run_id)"
+        ))
         # backfill: docs already through the legacy single-phase pipeline
         # (have clustered items) are 'clustered'; others stay 'pending'.
         await conn.execute(text(

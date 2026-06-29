@@ -1,7 +1,7 @@
 "use client";
 
-import { Crosshair, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Crosshair, Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { contractPriceApi } from "@/extensions/contract-price/api";
 
@@ -16,19 +16,47 @@ interface Props {
 }
 
 /**
- * Traceback overlay: pulls the OCR page preview PNG and overlays a red box at
- * the item's bbox so a reviewer can eyeball whether the OCR'd price matches
- * the source. This is the human-in-the-loop half of the price-validation
- * loop — needs_review items are meaningless without a way to see the original.
- *
- * Style mirrors the dashboard: db-card surface, font-cyber accents.
+ * Traceback overlay: fetches the OCR page preview PNG via credentialed fetch
+ * (so auth cookies are sent), converts to a blob URL, and overlays a red box
+ * at the item's bbox so a reviewer can eyeball whether the OCR'd price matches
+ * the source.
  */
 export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
-  const [src, setSrc] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPreview = useCallback(async () => {
+    if (!docId || !page) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const url = contractPriceApi.previewUrl(docId, page);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        if (res.status === 404) throw new Error("该页无预览图（可能为非表格页或未生成预览）");
+        if (res.status === 401) throw new Error("登录已过期，请刷新页面重新登录");
+        throw new Error(`加载失败 (${res.status})`);
+      }
+      const blob = await res.blob();
+      // revoke previous blob URL to avoid memory leak
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      setBlobUrl(URL.createObjectURL(blob));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载预览失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [docId, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    setSrc(docId && page ? contractPriceApi.previewUrl(docId, page) : null);
-  }, [docId, page]);
+    setBlobUrl(null);
+    setError(null);
+    if (docId && page) loadPreview();
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [docId, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // esc to close
   useEffect(() => {
@@ -64,10 +92,19 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
         </div>
 
         <div className="p-5 space-y-3">
-          {src ? (
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              加载预览…
+            </div>
+          ) : error ? (
+            <div className="text-sm text-amber-600 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-2">
+              {error}
+            </div>
+          ) : blobUrl ? (
             <div className="relative inline-block leading-none">
               <img
-                src={src}
+                src={blobUrl}
                 alt={`第 ${page} 页预览`}
                 className="max-w-full h-auto rounded-md border border-border"
               />
