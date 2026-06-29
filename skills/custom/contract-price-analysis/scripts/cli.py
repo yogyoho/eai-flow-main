@@ -297,10 +297,6 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         elif is_continuation:
             meta["continuation_tables"] += 1
             cont_roles = dict(active_roles)
-            # The name column can also shift on continuation pages: the inherited
-            # name index lands on 序号 (pure-numeric) instead of 项目名称 (text).
-            # Re-derive if the inherited name col is mostly numeric.
-            cont_roles["name"] = _rediscover_name_col(table.rows, active_roles.get("name"))
             # The inherited 含税单价 column index can be wrong on continuation
             # pages: off-by-one shift (→ empty col) OR pointing at 含税合价
             # (→ large 合价 values misread as 单价). ALWAYS re-derive via the
@@ -327,6 +323,18 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         # price validation: glued/magnitude only. Outlier detection moved to
         # cluster level (_build_groups_db → compute_stats, same-goods peers).
         for r in raw:
+            # Ragged-row fix: if the extracted name is pure-numeric (序号, because
+            # a spurious leading empty cell shifted THIS row), find the real name
+            # = the first text cell in the row. Per-row because column-level
+            # heuristics fail on ragged pages (some rows shifted, others not).
+            nm = (r["name"] or "").strip()
+            if _PURE_NUM.match(nm) or _PURE_NUM_BRACKET.match(nm):
+                row = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
+                for cell in row:
+                    c = (cell or "").strip()
+                    if c and not _PURE_NUM.match(c) and not _PURE_NUM_BRACKET.match(c):
+                        r["name"] = c
+                        break
             taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
             untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
             # RECOVERY: 含税单价 missing/abnormal — the 含税单价 cell is empty OR
