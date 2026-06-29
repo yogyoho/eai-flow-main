@@ -7,12 +7,20 @@ Two concerns specific to OCR'd prices:
      wrong value still looks plausible, so it silently corrupts price stats.
 
 Policy: do NOT auto-split glued numbers (guessing which is the price is wrong
-half the time) — flag them needs_review for a human + traceback. Apply
-plausibility checks (magnitude, cross-row outlier) to single numbers.
+half the time) — flag them needs_review for a human + traceback. Apply a
+magnitude check to single numbers.
+
+Outlier detection is NOT done here. An earlier table-wide "deviates >10x from
+the column median" check was removed: it compared each item against the median
+of ALL goods' prices in the table (平整场地 1.31/m² vs 多孔砖墙 511/m³), so every
+legitimately cheap or expensive good was false-flagged needs_review (75% of
+flags). Real outliers (one supplier charging 10x for the SAME goods) are
+detected at cluster level — `_build_groups_db` runs compute_stats per cluster
+(same-goods peers) and sets is_outlier. That is the correct comparison group.
+``peers`` is kept in the signature for call-site compatibility but ignored.
 """
 
 import re
-import statistics
 
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 
@@ -35,7 +43,8 @@ def validate_price(raw: str, peers: list = None):
 
     validation_status: ok | needs_review. Glued/multi-number cells and
     implausible magnitudes go to needs_review (excluded from mean stats until
-    a human confirms via traceback).
+    a human confirms via traceback). ``peers`` is ignored — outlier detection
+    moved to cluster level (see module docstring).
     """
     nums = split_glued(raw or "")
     if not nums:
@@ -45,10 +54,4 @@ def validate_price(raw: str, peers: list = None):
     val = nums[0]
     if val < 0.01:
         return val, "needs_review", "量级异常 (<0.01)"
-    if peers:
-        positive = [p for p in peers if p and p > 0]
-        if positive:
-            med = statistics.median(positive)
-            if med > 0 and (val > med * 10 or val < med / 10):
-                return val, "needs_review", "偏离同列中位 (>10x)"
     return val, "ok", ""

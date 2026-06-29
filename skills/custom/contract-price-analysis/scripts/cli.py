@@ -23,7 +23,7 @@ from scripts.config import get_config
 from scripts.document_parser import parse_document
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
-from scripts.price_validator import parse_qty, split_glued, validate_price
+from scripts.price_validator import parse_qty, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
@@ -156,15 +156,11 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
                 active_roles = None  # break the propagation chain
             continue
 
-        # peers = single-number 含税 cells (cross-row outlier check on 含税价)
-        peers = [
-            split_glued(r["price_taxed_raw"])[0]
-            for r in raw
-            if len(split_glued(r["price_taxed_raw"])) == 1
-        ]
+        # price validation: glued/magnitude only. Outlier detection moved to
+        # cluster level (_build_groups_db → compute_stats, same-goods peers).
         for r in raw:
-            taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"], peers)
-            untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"], peers)
+            taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
+            untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
             vstatus = "needs_review" if "needs_review" in (vstatus_t, vstatus_u) else "ok"
             items.append(
                 {
