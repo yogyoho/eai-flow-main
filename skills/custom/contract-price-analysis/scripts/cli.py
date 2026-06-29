@@ -160,6 +160,36 @@ def _rediscover_taxed_price_col(rows: list, qty_col: int | None) -> int | None:
     return best if best_frac >= 0.5 else None
 
 
+def _is_hejia_magnitude(rows: list, pt_col: int | None, untaxed_col: int | None) -> bool:
+    """True if the pt column's values are 合价-magnitude — i.e. the inherited
+    含税单价 column actually points at 含税合价 (large) not 含税单价 (small).
+
+    含税单价 ≈ 不含税单价 × 1.09 (<2×), so a real 单价 column is under 2× the
+    不含税单价 column. A 合价 column = 单价 × 工程量, which for typical qty>2 is
+    well over 2×. Used as a fallback when the 含税单价 is glued/missing and the
+    arithmetic cross-check can't find a clean 单价 — prevents 合价 being silently
+    used as unit_price. Low-qty items (合价≈单价) slip through (minor error).
+    """
+    if pt_col is None or untaxed_col is None:
+        return False
+
+    def col_med(c: int) -> float | None:
+        vals = []
+        for r in rows:
+            if c < len(r):
+                nums = split_glued(r[c] or "")
+                if len(nums) == 1:
+                    vals.append(nums[0])
+        if len(vals) < 2:
+            return None
+        vals.sort()
+        return vals[len(vals) // 2]
+
+    pt_med = col_med(pt_col)
+    ux_med = col_med(untaxed_col)
+    return pt_med is not None and ux_med is not None and ux_med > 0 and pt_med > 2 * ux_med
+
+
 def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
@@ -201,19 +231,20 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         elif is_continuation:
             meta["continuation_tables"] += 1
             cont_roles = dict(active_roles)
-            # Page-level column shift: the inherited 含税单价 index can be off by
-            # one on continuation pages (colspan-expansion count differs). If the
-            # inherited column is mostly-empty, rediscover it by 单价×qty≈合价.
-            pt_col = active_roles.get("price_taxed")
-            if pt_col is not None and table.rows:
-                pt_fill = sum(
-                    1 for r in table.rows
-                    if pt_col < len(r) and split_glued((r[pt_col] or ""))
-                )
-                if pt_fill < 0.3 * len(table.rows):
-                    new_pt = _rediscover_taxed_price_col(table.rows, active_roles.get("qty"))
-                    if new_pt is not None:
-                        cont_roles["price_taxed"] = new_pt
+            # The inherited 含税单价 column index can be wrong on continuation
+            # pages: off-by-one shift (→ empty col) OR pointing at 含税合价
+            # (→ large 合价 values misread as 单价). ALWAYS re-derive via the
+            # arithmetic cross-check 含税单价×工程量≈含税合价; if no clean 单价 is
+            # found AND the inherited column is 合价-magnitude (>2× 不含税单价),
+            # the true 含税单价 is glued/missing → drop it (needs_review), don't
+            # let 合价 masquerade as unit_price.
+            new_pt = _rediscover_taxed_price_col(table.rows, active_roles.get("qty"))
+            if new_pt is not None:
+                cont_roles["price_taxed"] = new_pt
+            elif _is_hejia_magnitude(
+                table.rows, active_roles.get("price_taxed"), active_roles.get("price_untaxed")
+            ):
+                cont_roles["price_taxed"] = None
             raw = extract_items(table.rows, cont_roles, 0)
         else:
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
