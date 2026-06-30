@@ -238,7 +238,7 @@ export function ItemsView() {
     if (!run) return runId ? `任务 ${runId.slice(0, 8)}…` : "未关联分析任务";
     const d = new Date(run.started_at);
     const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const phase = typeof run.progress === "object" && run.progress ? (run.progress as Record<string, unknown>).phase : null;
+    const phase = run.scope ? (run.scope as Record<string, unknown>).phase : null;
     return `${phase === "parse" ? "合同数据抽取任务" : "聚类分析任务"}_${ds}`;
   };
 

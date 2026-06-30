@@ -86,6 +86,7 @@ class RunOut(ORMBase):
     duration_ms: Optional[int] = None
     excel_path: Optional[str] = None
     error: Optional[str] = None
+    scope: Optional[dict] = None
     progress: Optional[dict] = None
     started_at: datetime
     finished_at: Optional[datetime] = None

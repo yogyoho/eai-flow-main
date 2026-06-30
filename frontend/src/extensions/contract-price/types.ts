@@ -79,6 +79,7 @@ export interface CpaRun {
   duration_ms: number | null;
   excel_path: string | null;
   error: string | null;
+  scope: Record<string, unknown> | null;
   progress: { total: number; done: number; failed: number; phase?: string } | null;
   started_at: string;
   finished_at: string | null;
