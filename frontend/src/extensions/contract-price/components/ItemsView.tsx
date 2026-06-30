@@ -382,9 +382,9 @@ export function ItemsView() {
                               />
                             </TableHead>
                             <TableHead>货物名称</TableHead>
-                            <TableHead>规格</TableHead>
+                            <TableHead className="whitespace-nowrap">规格</TableHead>
                             <TableHead>来源合同</TableHead>
-                            <TableHead>状态</TableHead>
+                            <TableHead className="whitespace-nowrap">状态</TableHead>
                             <TableHead className="text-right">单价</TableHead>
                             <TableHead className="text-right w-[180px]">操作</TableHead>
                           </TableRow>
@@ -448,7 +448,7 @@ export function ItemsView() {
                               <TableCell className="text-muted-foreground">
                                 {item.source_contract_no ?? "—"}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 <span
                                   className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
                                     STATUS_TONE[item.validation_status] ?? STATUS_TONE.ok
