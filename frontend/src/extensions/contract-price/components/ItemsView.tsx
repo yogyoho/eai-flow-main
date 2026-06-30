@@ -120,6 +120,7 @@ export function ItemsView() {
   const [onlyReview, setOnlyReview] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
   const [note, setNote] = useState("");
   const [trace, setTrace] = useState<CpaItem | null>(null);
   const [page, setPage] = useState(0);
@@ -218,7 +219,7 @@ export function ItemsView() {
       />
 
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4">
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
             <form
@@ -378,7 +379,13 @@ export function ItemsView() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {item.is_outlier ? (
+                                {editingId === item.id ? (
+                                  <Input
+                                    value={nameInput}
+                                    onChange={(e) => setNameInput(e.target.value)}
+                                    className="h-8 min-w-[140px]"
+                                  />
+                                ) : item.is_outlier ? (
                                   <span className="inline-flex items-center gap-1">
                                     <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
                                     {item.goods_name}
@@ -430,7 +437,11 @@ export function ItemsView() {
                                       onClick={async () => {
                                         await updateItem.mutateAsync({
                                           id: item.id,
-                                          body: { unit_price: Number(priceInput), note: note || undefined },
+                                          body: {
+                                            unit_price: Number(priceInput),
+                                            goods_name: nameInput.trim() || undefined,
+                                            note: note || undefined,
+                                          },
                                         });
                                         setEditingId(null);
                                         setNote("");
@@ -450,6 +461,7 @@ export function ItemsView() {
                                       onClick={() => {
                                         setEditingId(item.id);
                                         setPriceInput(String(item.unit_price ?? ""));
+                                        setNameInput(item.goods_name ?? "");
                                       }}
                                     >
                                       修正
