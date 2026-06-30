@@ -239,7 +239,7 @@ export function ItemsView() {
     const d = new Date(run.started_at);
     const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     const phase = typeof run.progress === "object" && run.progress ? (run.progress as Record<string, unknown>).phase : null;
-    return `${phase === "parse" ? "📄" : "📊"} ${ds} · ${run.status === "completed" ? "✅" : "⏳"} · ${run.items_extracted}条`;
+    return `${phase === "parse" ? "合同数据抽取任务" : "聚类分析任务"}_${ds}`;
   };
 
   return (
