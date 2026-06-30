@@ -133,6 +133,9 @@ export const contractPriceApi = {
     }),
 
   // Functional area 3: items
+  listItemContracts: () =>
+    authFetch<{ source_contract_no: string; count: number }[]>(`${API_BASE}/items/contracts`),
+
   listItems: (params?: {
     goods_name?: string;
     source_contract_no?: string;

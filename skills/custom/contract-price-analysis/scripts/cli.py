@@ -546,11 +546,13 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
         logger.warning("Cluster persistence skipped (DB unavailable): %s", exc)
 
 
-async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
+async def run_parse(trigger: str = "manual", run_id: str | None = None, force_key: str | None = None) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
     No clustering (that is run_cluster, after the user confirms/skips). Returns
     the number of documents processed. ``run_id`` enables live progress polling.
+    ``force_key``: re-parse a single MinIO object by key, bypassing the hash
+    cache (single-document reparse; preserves doc_id via storage_uri upsert).
     """
     started = time.monotonic()
     cfg = get_config()
@@ -564,7 +566,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
 
     store = ContractStore(cfg)
     cached = await _load_cached_hashes()
-    changed = scan_changed(store, cached)
+    changed = scan_changed(store, cached, force_key=force_key)
     logger.info("Scan: %d changed / %d cached contracts", len(changed), len(cached))
 
     docs_processed = 0
@@ -765,9 +767,10 @@ def main():
     parser.add_argument("--phase", choices=["parse", "cluster"], default="parse")
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
     parser.add_argument("--run-id", default=None, help="cpa_run_history id for live progress polling")
+    parser.add_argument("--force-key", default=None, help="re-parse a single MinIO object key (single-doc reparse, bypasses hash cache)")
     args = parser.parse_args()
     if args.phase == "parse":
-        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id))
+        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id, force_key=args.force_key))
         print(f"Done. Parsed {n} document(s).")
     else:
         n = asyncio.run(run_cluster(trigger=args.trigger))

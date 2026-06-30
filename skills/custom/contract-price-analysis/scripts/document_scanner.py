@@ -15,11 +15,15 @@ logger = logging.getLogger(__name__)
 _ACCEPTED = (".pdf", ".docx")
 
 
-def scan_changed(store: ContractStore, cached_hashes: dict) -> list:
+def scan_changed(store: ContractStore, cached_hashes: dict, force_key: str | None = None) -> list:
     """Return [{key, size, hash}] for new/changed contract objects.
 
     ``cached_hashes`` is {storage_key: file_hash}. Objects under previews/ are
     derivatives and skipped.
+
+    ``force_key``: if set, re-process ONLY that single object regardless of
+    whether its hash changed (used by single-document reparse). The object is
+    still hashed for persistence, but the cache check is bypassed.
     """
     changed = []
     for obj in store.list_objects():
@@ -28,11 +32,13 @@ def scan_changed(store: ContractStore, cached_hashes: dict) -> list:
             continue
         if key.startswith("previews/"):
             continue
+        if force_key is not None and key != force_key:
+            continue
         try:
             digest = store.sha256(key)
         except Exception as exc:
             logger.warning("hash failed for %s: %s", key, exc)
             continue
-        if cached_hashes.get(key) != digest:
+        if force_key is not None or cached_hashes.get(key) != digest:
             changed.append({"key": key, "size": obj.size, "hash": digest})
     return changed

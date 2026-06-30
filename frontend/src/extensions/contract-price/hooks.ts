@@ -51,6 +51,13 @@ export function useItems(params: Record<string, unknown> = {}) {
   });
 }
 
+export function useItemContracts() {
+  return useQuery({
+    queryKey: ["cpa", "item-contracts"] as const,
+    queryFn: () => contractPriceApi.listItemContracts(),
+  });
+}
+
 export function useRuns(params: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: KEYS.runs(params),

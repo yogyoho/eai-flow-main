@@ -159,6 +159,40 @@ async def get_preview(
     return Response(content=png, media_type="image/png")
 
 
+@router.post("/documents/{doc_id}/reparse", response_model=PipelineRunResponse)
+async def reparse_document(
+    doc_id: UUID,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Re-parse a single document by force (bypass SHA-256 cache), preserving doc_id.
+
+    Resolves the doc's MinIO key from storage_uri (s3://bucket/<key>) and kicks
+    off a parse run scoped to that one object. The pipeline upserts by
+    storage_uri, so the existing cpa_documents row is updated in place and its
+    items are replaced (doc_id unchanged).
+    """
+    await crud.cleanup_stale_runs(db)
+    if await crud.has_running_run(db, "parse"):
+        raise HTTPException(status_code=409, detail="a parse run is already in progress")
+    doc = await db.get(CpaDocument, doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    # storage_uri looks like "s3://cpa-contracts/<key>"
+    key = doc.storage_uri.split("/", 3)[-1] if doc.storage_uri.count("/") >= 3 else doc.file_name
+    run = await crud.create_run(
+        db,
+        trigger_type="manual",
+        status="running",
+        scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key},
+    )
+    background.add_task(
+        service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key
+    )
+    return PipelineRunResponse(run_id=run.id, status="running", message=f"reparse started: {key}")
+
+
 # --- Functional area 2: clusters -------------------------------------------
 
 
@@ -267,6 +301,15 @@ async def move_item(
 
 
 # --- Functional area 3: items ----------------------------------------------
+
+
+@router.get("/items/contracts")
+async def list_item_contracts(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Distinct source_contract_no with item counts (items-page filter options)."""
+    return await crud.list_item_contracts(db)
 
 
 @router.get("/items", response_model=Page[ItemOut])
@@ -405,6 +448,7 @@ async def trigger_pipeline(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Kick off a parse-phase run in the background; returns the run id immediately."""
+    await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
     if await crud.has_running_run(db, "parse"):
         raise HTTPException(status_code=409, detail="a parse run is already in progress")
     run = await crud.create_run(
@@ -429,6 +473,7 @@ async def trigger_cluster(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Phase 2: cluster confirmed/skipped documents' items in the background."""
+    await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
     if await crud.has_running_run(db, "cluster"):
         raise HTTPException(status_code=409, detail="a cluster run is already in progress")
     run = await crud.create_run(

@@ -32,12 +32,16 @@ async def run_pipeline_subprocess(
     mode: str = "table",
     trigger: str = "manual",
     phase: str = "parse",
+    force_key: str | None = None,
 ) -> None:
     """Run the skill CLI as a subprocess and record the outcome.
 
     ``phase``: "parse" (scan→OCR→extract→persist items) or "cluster" (cluster
     confirmed/skipped docs' items). Designed to run in a background task
     (fire-and-forget from the request handler).
+
+    ``force_key``: re-parse a single MinIO object key (single-document reparse),
+    bypassing the SHA-256 hash cache. doc_id is preserved via storage_uri upsert.
     """
     cmd = [
         sys.executable,  # same interpreter (venv) as the gateway process
@@ -50,6 +54,8 @@ async def run_pipeline_subprocess(
         "--run-id",
         str(run_id),
     ]
+    if force_key:
+        cmd += ["--force-key", force_key]
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")
 

@@ -272,6 +272,21 @@ async def delete_item(session: AsyncSession, item_id: UUID) -> bool:
     return (result.rowcount or 0) > 0
 
 
+async def list_item_contracts(session: AsyncSession) -> list[dict]:
+    """Distinct source_contract_no with item counts (for the items-page filter).
+
+    Only non-null contracts. Ordered by count desc so the most-represented
+    contracts appear first in the dropdown.
+    """
+    rows = await session.execute(
+        select(CpaItem.source_contract_no, func.count())
+        .where(CpaItem.source_contract_no.is_not(None))
+        .group_by(CpaItem.source_contract_no)
+        .order_by(func.count().desc())
+    )
+    return [{"source_contract_no": no, "count": int(cnt)} for no, cnt in rows.all()]
+
+
 async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int:
     result = await session.execute(delete(CpaItem).where(CpaItem.id.in_(item_ids)))
     await session.commit()
@@ -323,6 +338,27 @@ async def has_running_run(session: AsyncSession, phase: str) -> bool:
         )
     )
     return bool(row)
+
+
+async def cleanup_stale_runs(session: AsyncSession, max_age_seconds: int = 3600) -> int:
+    """Mark orphaned 'running' runs (older than max_age_seconds) as 'failed'.
+
+    A gateway restart mid-run leaves the row at status='running' forever,
+    which blocks re-trigger via has_running_run. This self-heal is called at
+    the top of each trigger endpoint so orphans are cleared automatically.
+    Returns the number of runs marked failed.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
+    result = await session.execute(
+        update(CpaRunHistory)
+        .where(CpaRunHistory.status == "running")
+        .where(CpaRunHistory.started_at < cutoff)
+        .values(status="failed", error="orphaned by restart (auto-cleaned)", finished_at=func.now())
+    )
+    await session.commit()
+    return result.rowcount or 0
 
 
 async def create_run(session: AsyncSession, **fields) -> CpaRunHistory:
