@@ -73,11 +73,62 @@ export function useRunPipeline() {
   });
 }
 
+export function useMoveItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ item_id, target_cluster_id }: { item_id: string; target_cluster_id: string }) =>
+      contractPriceApi.moveItem(item_id, target_cluster_id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
 export function useConfirmCluster() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
       contractPriceApi.confirmCluster(id, { expected_version }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useRejectCluster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
+      contractPriceApi.rejectCluster(id, { expected_version }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useUpdateCluster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { category?: string; representative_name?: string } }) =>
+      contractPriceApi.updateCluster(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+export function useMergeClusters() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      cluster_ids,
+      representative_name,
+      category,
+    }: {
+      cluster_ids: string[];
+      representative_name: string;
+      category?: string;
+    }) => contractPriceApi.mergeClusters(cluster_ids, representative_name, category),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },

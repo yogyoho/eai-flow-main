@@ -129,6 +129,7 @@ class ItemUpdate(BaseModel):
     tech_params: Optional[dict] = None
     goods_name: Optional[str] = None
     spec_model: Optional[str] = None
+    validation_status: Optional[str] = None  # ok | needs_review | corrected
     note: Optional[str] = None
 
 
@@ -158,6 +159,13 @@ class ClusterMerge(BaseModel):
     cluster_ids: list[UUID]
     representative_name: str
     category: str = "未分类"
+
+
+class ClusterUpdate(BaseModel):
+    """Edit a cluster's display fields (manual curation)."""
+
+    category: Optional[str] = None
+    representative_name: Optional[str] = None
 
 
 class ItemMove(BaseModel):

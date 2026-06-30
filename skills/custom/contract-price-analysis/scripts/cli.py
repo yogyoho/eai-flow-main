@@ -422,6 +422,7 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
 
         async with async_session() as session:
             doc_id_map: dict = {}
+            doc_contract_map: dict = {}
             now = datetime.now(timezone.utc)
             for doc in documents:
                 existing = (
@@ -442,6 +443,7 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
                         preview_prefix=doc.get("preview_prefix"),
                         project_name=doc.get("project_name"),
                         project_location=doc.get("project_location"),
+                        contract_no=doc.get("contract_no"),
                         parsed_at=now,
                     )
                     session.add(existing)
@@ -459,8 +461,12 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
                         existing.project_name = doc["project_name"]
                     if doc.get("project_location"):
                         existing.project_location = doc["project_location"]
+                    if doc.get("contract_no"):
+                        existing.contract_no = doc["contract_no"]
                     await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
                 doc_id_map[doc["storage_uri"]] = existing.id
+                if doc.get("contract_no"):
+                    doc_contract_map[doc["storage_uri"]] = doc["contract_no"]
 
             for it in all_items:
                 dpk = doc_id_map.get(it.get("source_doc_uri"))
@@ -482,6 +488,7 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
                     "source_row_idx": it.get("source_row_idx"),
                     "confidence": it.get("confidence"),
                     "validation_status": it.get("validation_status", "ok"),
+                    "source_contract_no": doc_contract_map.get(it.get("source_doc_uri")),
                 }
                 if run_id:
                     from uuid import UUID as _UUID
@@ -579,7 +586,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
                 items, meta = _extract_from_tables(
                     tables, f"s3://{cfg.minio_bucket}/{key}", keywords
                 )
-                project_name, project_location = extract_project_fields(page_texts)
+                project_name, project_location, contract_no = extract_project_fields(page_texts)
                 # Persist preview PNGs for pages that contain a goods/continuation
                 # table, so the traceback UI can overlay bboxes later. Include
                 # continuation pages (unclassified tables that look_like_continuation)
@@ -631,6 +638,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None) -> int:
                         "preview_prefix": preview_prefix,
                         "project_name": project_name,
                         "project_location": project_location,
+                        "contract_no": contract_no,
                     }
                 )
                 all_items.extend(items)

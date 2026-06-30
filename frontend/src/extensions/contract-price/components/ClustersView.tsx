@@ -1,13 +1,20 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, PackageSearch, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, Check, Crosshair, GitMerge, PackageSearch, RefreshCw, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { contractPriceApi } from "@/extensions/contract-price/api";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyRow, PageHeader } from "@/extensions/contract-price/components/PageHeader";
+import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
 import {
   Table,
   TableBody,
@@ -16,7 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/contract-price/components/ui/table";
-import { useClusters, useCluster, useConfirmCluster } from "@/extensions/contract-price/hooks";
+import type { CpaCluster, CpaItem } from "@/extensions/contract-price/types";
+import {
+  useCluster,
+  useClusters,
+  useConfirmCluster,
+  useMergeClusters,
+  useMoveItem,
+  useRejectCluster,
+  useUpdateCluster,
+} from "@/extensions/contract-price/hooks";
 import { cn } from "@/lib/utils";
 
 const statusBadge: Record<string, string> = {
@@ -25,40 +41,133 @@ const statusBadge: Record<string, string> = {
   rejected: "bg-muted text-muted-foreground",
 };
 
+const statusLabel: Record<string, string> = {
+  pending: "待审",
+  confirmed: "已确认",
+  rejected: "已拒绝",
+};
+
+/** Inline borderless input that looks like text until focused; commits on blur. */
+function InlineEdit({
+  value,
+  placeholder,
+  onCommit,
+  className,
+}: {
+  value: string | null;
+  placeholder: string;
+  onCommit: (v: string) => void;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => {
+    setDraft(value ?? "");
+  }, [value]);
+  const commit = () => {
+    const next = draft.trim();
+    if (next !== (value ?? "")) onCommit(next);
+  };
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      placeholder={placeholder}
+      className={cn(
+        "h-8 border-transparent bg-transparent px-1 hover:border-border focus-visible:border-border",
+        className,
+      )}
+    />
+  );
+}
+
 export function ClustersView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"pending" | "confirmed" | "all">("pending");
-  const qc = useQueryClient();
+  const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "all">("pending");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeName, setMergeName] = useState("");
+  const [mergeCategory, setMergeCategory] = useState("未分类");
+  const [moveItem, setMoveItem] = useState<{ itemId: string; name: string } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<string | null>(null);
+  const [trace, setTrace] = useState<CpaItem | null>(null);
 
   const clustersQuery = useClusters({ cluster_status: filter === "all" ? undefined : filter, limit: 100 });
   const clusterQuery = useCluster(selectedId);
   const confirmMutation = useConfirmCluster();
+  const rejectMutation = useRejectCluster();
+  const updateMutation = useUpdateCluster();
+  const mergeMutation = useMergeClusters();
+  const moveMutation = useMoveItem();
 
   const clusters = clustersQuery.data?.items ?? [];
   const detail = clusterQuery.data;
+
+  const toggleCheck = (id: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const openMerge = () => {
+    // default representative name = first checked cluster's name
+    const first = clusters.find((c) => checked.has(c.id));
+    setMergeName(first?.representative_name ?? "");
+    setMergeCategory(first?.category ?? "未分类");
+    setMergeOpen(true);
+  };
+
+  const doMerge = async () => {
+    if (!mergeName.trim() || checked.size < 2) return;
+    await mergeMutation.mutateAsync({
+      cluster_ids: [...checked],
+      representative_name: mergeName.trim(),
+      category: mergeCategory.trim() || "未分类",
+    });
+    setMergeOpen(false);
+    setChecked(new Set());
+    setSelectedId(null);
+  };
+
+  const doMove = async () => {
+    if (!moveItem || !moveTarget) return;
+    await moveMutation.mutateAsync({ item_id: moveItem.itemId, target_cluster_id: moveTarget });
+    setMoveItem(null);
+    setMoveTarget(null);
+  };
 
   return (
     <div className="space-y-6 p-8">
       <PageHeader
         title="聚类审核"
-        description="审核自动聚类分组：移动误归类的货物、合并同义组，确认后统计才生效。"
+        description="审核自动聚类分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。"
         icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <>
             <div className="flex rounded-md border">
-              {(["pending", "confirmed", "all"] as const).map((f) => (
+              {(["pending", "confirmed", "rejected", "all"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFilter(f)}
+                  onClick={() => { setFilter(f); setChecked(new Set()); }}
                   className={cn(
                     "px-3 py-1.5 text-sm transition-colors",
-                    filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {f === "pending" ? "待审核" : f === "confirmed" ? "已确认" : "全部"}
+                  {f === "pending" ? "待审核" : f === "confirmed" ? "已确认" : f === "rejected" ? "已拒绝" : "全部"}
                 </button>
               ))}
             </div>
+            {checked.size >= 2 ? (
+              <Button size="sm" onClick={openMerge} disabled={mergeMutation.isPending}>
+                <GitMerge className="h-4 w-4" />
+                合并选中({checked.size})
+              </Button>
+            ) : null}
             <Button variant="outline" size="sm" onClick={() => clustersQuery.refetch()}>
               <RefreshCw className="h-4 w-4" />
               刷新
@@ -67,8 +176,8 @@ export function ClustersView() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-        {/* Left: cluster list */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+        {/* Left: cluster list with multi-select */}
         <Card className="h-fit">
           <CardContent className="p-0">
             {clustersQuery.isLoading ? (
@@ -78,12 +187,18 @@ export function ClustersView() {
             ) : (
               <ul className="divide-y divide-border">
                 {clusters.map((c) => (
-                  <li key={c.id}>
+                  <li key={c.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked.has(c.id)}
+                      onChange={() => toggleCheck(c.id)}
+                      className="ml-3 accent-primary shrink-0"
+                    />
                     <button
                       onClick={() => setSelectedId(c.id)}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-accent",
-                        selectedId === c.id && "bg-accent"
+                        "flex flex-1 items-center justify-between gap-2 px-2 py-3 text-left transition-colors hover:bg-accent",
+                        selectedId === c.id && "bg-accent",
                       )}
                     >
                       <div className="min-w-0">
@@ -94,8 +209,8 @@ export function ClustersView() {
                           {c.category} · {c.item_count} 项
                         </p>
                       </div>
-                      <span className={cn("rounded px-1.5 py-0.5 text-xs", statusBadge[c.status])}>
-                        {c.status === "pending" ? "待审" : c.status === "confirmed" ? "已确认" : c.status}
+                      <span className={cn("rounded px-1.5 py-0.5 text-xs shrink-0", statusBadge[c.status])}>
+                        {statusLabel[c.status] ?? c.status}
                       </span>
                     </button>
                   </li>
@@ -118,27 +233,46 @@ export function ClustersView() {
               <p className="py-12 text-center text-sm text-muted-foreground">分组不存在。</p>
             ) : (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <h2 className="text-lg font-semibold text-foreground">
                       {detail.representative_name}
                     </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {detail.category} · {detail.item_count} 项 · v{detail.version}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>类别:</span>
+                      <InlineEdit
+                        value={detail.category}
+                        placeholder="类别"
+                        onCommit={(v) => updateMutation.mutate({ id: detail.id, body: { category: v } })}
+                        className="w-32"
+                      />
+                      <span>· {detail.item_count} 项 · v{detail.version}</span>
+                    </div>
                   </div>
                   {detail.status === "pending" ? (
-                    <Button
-                      size="sm"
-                      onClick={() => confirmMutation.mutate({ id: detail.id, expected_version: detail.version })}
-                      disabled={confirmMutation.isPending}
-                    >
-                      <Check className="h-4 w-4" />
-                      确认分组
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => confirmMutation.mutate({ id: detail.id, expected_version: detail.version })}
+                        disabled={confirmMutation.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                        确认分组
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => rejectMutation.mutate({ id: detail.id, expected_version: detail.version })}
+                        disabled={rejectMutation.isPending}
+                        title="拒绝该分组（从已确认统计中剔除）"
+                      >
+                        <X className="h-4 w-4" />
+                        拒绝
+                      </Button>
+                    </div>
                   ) : (
-                    <span className={cn("rounded px-2 py-0.5 text-xs", statusBadge[detail.status])}>
-                      已确认
+                    <span className={cn("rounded px-2 py-0.5 text-xs shrink-0", statusBadge[detail.status])}>
+                      {statusLabel[detail.status] ?? detail.status}
                     </span>
                   )}
                 </div>
@@ -166,6 +300,7 @@ export function ClustersView() {
                     <TableRow>
                       <TableHead>货物名称</TableHead>
                       <TableHead>规格</TableHead>
+                      <TableHead className="text-right">工程量</TableHead>
                       <TableHead className="text-right">单价</TableHead>
                       <TableHead>来源合同</TableHead>
                       <TableHead className="text-right">操作</TableHead>
@@ -173,7 +308,7 @@ export function ClustersView() {
                   </TableHeader>
                   <TableBody>
                     {detail.items.length === 0 ? (
-                      <EmptyRow colSpan={5}>该组暂无明细。</EmptyRow>
+                      <EmptyRow colSpan={6}>该组暂无明细。</EmptyRow>
                     ) : (
                       detail.items.map((item) => (
                         <TableRow key={item.id} className={item.is_outlier ? "bg-destructive/10" : ""}>
@@ -188,6 +323,11 @@ export function ClustersView() {
                             )}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{item.spec_model ?? "—"}</TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
+                            {item.quantity != null
+                              ? `${item.quantity}${item.unit ? item.unit : ""}`
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {item.unit_price?.toLocaleString() ?? "—"}
                           </TableCell>
@@ -195,25 +335,26 @@ export function ClustersView() {
                             {item.source_contract_no ?? "—"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="移出本组（清除分组，待重新归类）"
-                              onClick={async () => {
-                                // Move to a fresh empty bucket by setting cluster_id null via a noop:
-                                // backend move requires a target; we move it into the first other cluster or skip.
-                                const target = clusters.find((c) => c.id !== detail.id)?.id;
-                                if (!target) {
-                                  alert("暂无其他分组可移动。请先确认或创建其他组。");
-                                  return;
-                                }
-                                await contractPriceApi.moveItem(item.id, target);
-                                await clusterQuery.refetch();
-                                void qc.invalidateQueries({ queryKey: ["cpa"] });
-                              }}
-                            >
-                              移出
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={item.source_page == null}
+                                title={item.source_page == null ? "无溯源坐标" : "溯源到原文"}
+                                onClick={() => setTrace(item)}
+                              >
+                                <Crosshair className="h-3.5 w-3.5 text-rose-500" />
+                                溯源
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="移动到其他分组"
+                                onClick={() => { setMoveItem({ itemId: item.id, name: item.goods_name }); setMoveTarget(null); }}
+                              >
+                                移动到…
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -222,15 +363,85 @@ export function ClustersView() {
                 </Table>
 
                 {confirmMutation.isError ? (
-                  <p className="text-sm text-destructive">
-                    确认失败：{(confirmMutation.error).message}
-                  </p>
+                  <p className="text-sm text-destructive">确认失败：{(confirmMutation.error).message}</p>
+                ) : null}
+                {rejectMutation.isError ? (
+                  <p className="text-sm text-destructive">拒绝失败：{(rejectMutation.error).message}</p>
                 ) : null}
               </>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Merge dialog */}
+      {mergeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMergeOpen(false)} />
+          <div className="relative w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-xl">
+            <h3 className="mb-1 text-lg font-semibold text-foreground">合并 {checked.size} 个分组</h3>
+            <p className="mb-4 text-xs text-muted-foreground">
+              选中分组的全部明细将归并到一个新组，原分组删除。代表性名称会成为新组名。
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-foreground">代表性名称</label>
+                <Input value={mergeName} onChange={(e) => setMergeName(e.target.value)} placeholder="新组名" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-foreground">类别</label>
+                <Input value={mergeCategory} onChange={(e) => setMergeCategory(e.target.value)} placeholder="类别" />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}>取消</Button>
+              <Button size="sm" onClick={doMerge} disabled={!mergeName.trim() || mergeMutation.isPending}>
+                <GitMerge className="h-4 w-4" />
+                合并
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Move-to-target dialog */}
+      {moveItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMoveItem(null)} />
+          <div className="relative w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-xl">
+            <h3 className="mb-1 text-lg font-semibold text-foreground">移动明细到其他分组</h3>
+            <p className="mb-4 truncate text-xs text-muted-foreground">货物：{moveItem.name}</p>
+            <label className="mb-1 block text-sm font-medium text-foreground">目标分组</label>
+            <Select value={moveTarget ?? ""} onValueChange={setMoveTarget}>
+              <SelectTrigger>
+                <SelectValue placeholder="选择目标分组" />
+              </SelectTrigger>
+              <SelectContent>
+                {clusters
+                  .filter((c: CpaCluster) => c.id !== selectedId)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.representative_name}（{c.category} · {c.item_count}项）
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setMoveItem(null)}>取消</Button>
+              <Button size="sm" onClick={doMove} disabled={!moveTarget || moveMutation.isPending}>
+                移动
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <TracebackDrawer
+        docId={trace?.document_id ?? null}
+        page={trace?.source_page ?? null}
+        bbox={trace?.source_bbox ?? null}
+        onClose={() => setTrace(null)}
+      />
     </div>
   );
 }

@@ -108,6 +108,18 @@ export const contractPriceApi = {
       body: JSON.stringify(body ?? {}),
     }),
 
+  rejectCluster: (id: string, body?: { expected_version?: number }) =>
+    authFetch<{ status: string; version: number }>(`${API_BASE}/clusters/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+
+  updateCluster: (id: string, body: { category?: string; representative_name?: string }) =>
+    authFetch<CpaCluster>(`${API_BASE}/clusters/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
   mergeClusters: (cluster_ids: string[], representative_name: string, category?: string) =>
     authFetch<{ cluster_id: string; item_count: number }>(`${API_BASE}/clusters/merge`, {
       method: "POST",
@@ -138,6 +150,7 @@ export const contractPriceApi = {
       tech_params?: Record<string, string>;
       goods_name?: string;
       spec_model?: string;
+      validation_status?: string;
       note?: string;
     }
   ) =>

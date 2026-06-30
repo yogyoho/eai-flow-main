@@ -12,7 +12,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -85,6 +85,24 @@ function FilterCheckbox({ checked, onChange, label }: { checked: boolean; onChan
   );
 }
 
+/** Render tech_params dict as "k: v · k: v", or "无" when empty/null. */
+function formatTechParams(tp: Record<string, string> | null | undefined): string {
+  if (!tp) return "无";
+  const entries = Object.entries(tp).filter(([, v]) => v != null && v !== "");
+  if (entries.length === 0) return "无";
+  return entries.map(([k, v]) => `${k}: ${v}`).join(" · ");
+}
+
+/** Compact label/value field for the expanded detail row. */
+function DetailField({ label, value, span }: { label: string; value: string; span?: boolean }) {
+  return (
+    <div className={span ? "col-span-2 sm:col-span-3 lg:col-span-4" : ""}>
+      <span className="text-muted-foreground">{label}: </span>
+      <span className="text-foreground tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 /** Group items by run_id; null-run items go into a "历史数据" bucket. */
 function groupByRun(items: CpaItem[], runs: CpaRun[]) {
   const runMap = new Map(runs.map((r) => [r.id, r]));
@@ -129,6 +147,7 @@ export function ItemsView() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // item id to confirm
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
   const [confirmGroupDelete, setConfirmGroupDelete] = useState<string | null>(null); // run id
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data, isLoading, isFetching, refetch } = useItems({
     goods_name: applied || undefined,
@@ -175,6 +194,14 @@ export function ItemsView() {
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -366,9 +393,19 @@ export function ItemsView() {
                         </TableHeader>
                         <TableBody>
                           {group.items.map((item) => (
+                            <Fragment key={item.id}>
                             <TableRow
-                              key={item.id}
-                              className={item.is_outlier ? "bg-destructive/10" : ""}
+                              className={cn(
+                                item.is_outlier ? "bg-destructive/10" : "",
+                                selected.has(item.id) ? "bg-primary/10 ring-1 ring-inset ring-primary/30" : "",
+                              )}
+                              style={{ cursor: "pointer" }}
+                              onClick={(e) => {
+                                const tag = (e.target as HTMLElement).tagName;
+                                if (tag !== "BUTTON" && tag !== "INPUT" && tag !== "A" && tag !== "SVG" && tag !== "PATH") {
+                                  toggleSelect(item.id);
+                                }
+                              }}
                             >
                               <TableCell>
                                 <input
@@ -379,20 +416,34 @@ export function ItemsView() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium">
-                                {editingId === item.id ? (
-                                  <Input
-                                    value={nameInput}
-                                    onChange={(e) => setNameInput(e.target.value)}
-                                    className="h-8 min-w-[140px]"
-                                  />
-                                ) : item.is_outlier ? (
-                                  <span className="inline-flex items-center gap-1">
-                                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                                    {item.goods_name}
-                                  </span>
-                                ) : (
-                                  item.goods_name
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {editingId !== item.id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpand(item.id)}
+                                      className="text-muted-foreground hover:text-foreground shrink-0"
+                                      title={expanded.has(item.id) ? "收起明细" : "展开明细"}
+                                    >
+                                      {expanded.has(item.id)
+                                        ? <ChevronDown className="h-3.5 w-3.5" />
+                                        : <ChevronRight className="h-3.5 w-3.5" />}
+                                    </button>
+                                  )}
+                                  {editingId === item.id ? (
+                                    <Input
+                                      value={nameInput}
+                                      onChange={(e) => setNameInput(e.target.value)}
+                                      className="h-8 min-w-[140px]"
+                                    />
+                                  ) : item.is_outlier ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                      {item.goods_name}
+                                    </span>
+                                  ) : (
+                                    item.goods_name
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-muted-foreground">{item.spec_model ?? "—"}</TableCell>
                               <TableCell className="text-muted-foreground">
@@ -466,6 +517,22 @@ export function ItemsView() {
                                     >
                                       修正
                                     </Button>
+                                    {item.validation_status === "needs_review" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-emerald-600 hover:text-emerald-600"
+                                        title="溯源确认正确后标记为已校验(价格进入统计)"
+                                        onClick={() =>
+                                          updateItem.mutateAsync({
+                                            id: item.id,
+                                            body: { validation_status: "ok" },
+                                          })
+                                        }
+                                      >
+                                        ✓ 已校验
+                                      </Button>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -510,6 +577,24 @@ export function ItemsView() {
                                 )}
                               </TableCell>
                             </TableRow>
+                            {expanded.has(item.id) && (
+                              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                <TableCell colSpan={7} className="py-3">
+                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
+                                    <DetailField label="工程量" value={item.quantity != null ? `${item.quantity}${item.unit ? " " + item.unit : ""}` : "—"} />
+                                    <DetailField label="含税单价" value={item.unit_price != null ? item.unit_price.toLocaleString() : "—"} />
+                                    <DetailField label="不含税单价(审计)" value={item.price_untaxed != null ? item.price_untaxed.toLocaleString() : "—"} />
+                                    <DetailField
+                                      label="置信度"
+                                      value={item.confidence != null ? `${(item.confidence * 100).toFixed(0)}%` : "—"}
+                                    />
+                                    <DetailField label="溯源页" value={item.source_page != null ? `第 ${item.source_page} 页` : "—"} />
+                                    <DetailField label="技术参数" value={formatTechParams(item.tech_params)} span />
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            </Fragment>
                           ))}
                         </TableBody>
                       </Table>

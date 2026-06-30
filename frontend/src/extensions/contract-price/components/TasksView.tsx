@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, PackageSearch, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,8 +28,34 @@ function formatDate(s: string | null): string {
   return new Date(s).toLocaleString("zh-CN", { hour12: false });
 }
 
+/** Download a run's Excel via credentialed fetch → blob (auth-cookie safe,
+ * unlike window.open which can silently fail on expired sessions). */
+async function downloadExcel(runId: string) {
+  const res = await fetch(`/api/extensions/contract-price/runs/${runId}/excel`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`下载失败 (${res.status})`);
+  const blob = await res.blob();
+  // try Content-Disposition filename, else derive from run id
+  const cd = res.headers.get("content-disposition") ?? "";
+  const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
+  const filename = match?.[1] ? decodeURIComponent(match[1]) : `run-${runId.slice(0, 8)}.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function TasksView() {
-  const { data, isLoading, isFetching, refetch } = useRuns({ limit: 50 });
+  const [runStatus, setRunStatus] = useState<"all" | "running" | "completed" | "failed">("all");
+  const { data, isLoading, isFetching, refetch } = useRuns({
+    run_status: runStatus === "all" ? undefined : runStatus,
+    limit: 50,
+  });
   const runs = data?.items ?? [];
 
   // Poll while any run is in progress so the progress bar advances live.
@@ -46,10 +72,26 @@ export function TasksView() {
         description="手动与定时分析任务的运行记录，可下载产出的 Excel 报告。"
         icon={<PackageSearch className="w-4 h-4" />}
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            刷新
-          </Button>
+          <>
+            <div className="flex rounded-md border">
+              {(["all", "running", "completed", "failed"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setRunStatus(f)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs transition-colors",
+                    runStatus === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f === "all" ? "全部" : f === "running" ? "运行中" : f === "completed" ? "完成" : "失败"}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              刷新
+            </Button>
+          </>
         }
       />
 
@@ -113,11 +155,9 @@ export function TasksView() {
                           variant="ghost"
                           title="下载 Excel"
                           onClick={() => {
-                            // Trigger download via the API (auth cookie sent by browser navigation).
-                            window.open(
-                              `/api/extensions/contract-price/runs/${run.id}/excel`,
-                              "_blank"
-                            );
+                            downloadExcel(run.id).catch((e) => {
+                              alert(e instanceof Error ? e.message : "下载失败");
+                            });
                           }}
                         >
                           <Download className="h-4 w-4" />

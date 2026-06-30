@@ -27,7 +27,10 @@ from app.extensions.contract_price.models import CpaDocument
 from app.extensions.contract_price.schemas import (
     BatchDeleteRequest,
     ClusterConfirm,
+    ClusterDetail,
     ClusterMerge,
+    ClusterOut,
+    ClusterUpdate,
     ConfigOut,
     ConfigUpdate,
     DashboardOut,
@@ -159,7 +162,7 @@ async def get_preview(
 # --- Functional area 2: clusters -------------------------------------------
 
 
-@router.get("/clusters", response_model=Page)
+@router.get("/clusters", response_model=Page[ClusterOut])
 async def list_clusters(
     cluster_status: str | None = None,
     category: str | None = None,
@@ -172,7 +175,7 @@ async def list_clusters(
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
-@router.get("/clusters/{cluster_id}")
+@router.get("/clusters/{cluster_id}", response_model=ClusterDetail)
 async def get_cluster(
     cluster_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -200,6 +203,37 @@ async def confirm_cluster(
     if cluster is None:
         raise HTTPException(status_code=404, detail="cluster not found")
     return {"status": cluster.status, "version": cluster.version}
+
+
+@router.post("/clusters/{cluster_id}/reject")
+async def reject_cluster(
+    cluster_id: UUID,
+    body: ClusterConfirm,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Reject a cluster (manual curation — drops it from confirmed stats)."""
+    try:
+        cluster = await crud.reject_cluster(db, cluster_id, body.expected_version)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if cluster is None:
+        raise HTTPException(status_code=404, detail="cluster not found")
+    return {"status": cluster.status, "version": cluster.version}
+
+
+@router.patch("/clusters/{cluster_id}", response_model=ClusterOut)
+async def update_cluster(
+    cluster_id: UUID,
+    body: ClusterUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Edit a cluster's display fields (category / representative_name)."""
+    cluster = await crud.update_cluster(db, cluster_id, body.model_dump(exclude_unset=True))
+    if cluster is None:
+        raise HTTPException(status_code=404, detail="cluster not found")
+    return cluster
 
 
 @router.post("/clusters/merge")

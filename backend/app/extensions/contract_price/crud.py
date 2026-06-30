@@ -149,6 +149,39 @@ async def confirm_cluster(
     return cluster
 
 
+async def reject_cluster(
+    session: AsyncSession,
+    cluster_id: UUID,
+    expected_version: Optional[int] = None,
+) -> Optional[CpaCluster]:
+    """Mark a cluster rejected (manual curation — drop it from confirmed stats)."""
+    cluster = await session.get(CpaCluster, cluster_id)
+    if cluster is None:
+        return None
+    if expected_version is not None and cluster.version != expected_version:
+        raise ValueError(f"version mismatch: expected {expected_version}, got {cluster.version}")
+    cluster.status = "rejected"
+    cluster.version += 1
+    await session.commit()
+    return cluster
+
+
+async def update_cluster(
+    session: AsyncSession,
+    cluster_id: UUID,
+    fields: dict[str, Any],
+) -> Optional[CpaCluster]:
+    """Patch a cluster's display fields (category / representative_name)."""
+    cluster = await session.get(CpaCluster, cluster_id)
+    if cluster is None:
+        return None
+    for key in ("category", "representative_name"):
+        if fields.get(key) is not None:
+            setattr(cluster, key, fields[key])
+    await session.commit()
+    return cluster
+
+
 async def merge_clusters(
     session: AsyncSession,
     cluster_ids: list[UUID],
@@ -222,7 +255,7 @@ async def update_item(
     item = await session.get(CpaItem, item_id)
     if item is None:
         return None
-    for key in ("unit_price", "tech_params", "goods_name", "spec_model"):
+    for key in ("unit_price", "tech_params", "goods_name", "spec_model", "validation_status"):
         if fields.get(key) is not None:
             setattr(item, key, fields[key])
     if fields.get("note"):

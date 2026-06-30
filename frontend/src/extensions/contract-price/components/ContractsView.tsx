@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { contractPriceApi } from "@/extensions/contract-price/api";
 import { EmptyRow, PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import {
@@ -81,6 +82,7 @@ function ProjectFieldInput({
 export function ContractsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
+  const [parseStatus, setParseStatus] = useState<"all" | "parsed" | "needs_review" | "failed" | "pending">("all");
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const update = useUpdateDocument();
@@ -116,6 +118,7 @@ export function ContractsView() {
 
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
+    parse_status: parseStatus === "all" ? undefined : parseStatus,
     limit: 50,
   });
 
@@ -206,6 +209,21 @@ export function ContractsView() {
             <Button type="submit" size="sm">
               搜索
             </Button>
+            <div className="ml-auto flex rounded-md border">
+              {(["all", "parsed", "needs_review", "failed"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setParseStatus(f)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs transition-colors",
+                    parseStatus === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f === "all" ? "全部" : f === "parsed" ? "已解析" : f === "needs_review" ? "待核验" : "失败"}
+                </button>
+              ))}
+            </div>
           </form>
 
           <Table>
