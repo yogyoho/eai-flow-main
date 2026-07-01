@@ -42,6 +42,27 @@ description: |
 12. **直接写到 `outputs/`**：落到 `/mnt/user-data/outputs/{项目名称}消防设计专篇.md`，不先写别处再 `cp`/`mv`/二次 `write_file` 复制。写完用一次 `present_files` 展示——后端自动同步进文档空间（docmgr）。
 13. **工具失败不盲目重试**：禁用相同参数重试；最多修正一次（如纠正路径）再试，**连续失败 2 次必须停止并如实告诉用户**。
 
+### 关于工具范围（⚠️ 不要调用无关工具）
+
+14. 本技能**仅用**以下工具：`read_file` / `bash` / `write_file` / `present_files` / `knowledge-factory_kf_resolve_template` / `ask_clarification`。
+15. **禁止**调用 `text-to-cad_*` / `cad_*` / `word-document-server_*` 等与消防报告编写无关的工具——它们是 CAD 模型生成 / Word 排版工具，**不能用来执行 Python、读取文档或推进报告**。若想"跑代码"用 `bash`；想"读文档"用 `read_file` 或先按第 17 条转换。
+
+### 关于上传的源文档（.docx/.pdf 设计说明书等）—— ⚠️ 必读
+
+16. 系统配置 `uploads.auto_convert_documents=false`（host 端解析有安全风险，刻意关闭）——**上传的 docx 不会自动生成 .md**，且容器内未安装 markitdown / python-docx。所以读取上传 docx 的**唯一可靠路径**是用 `bash` 跑一次本技能自带的转换脚本（见第 17 条）。**不要**自己写多个提取脚本、不要 base64 编码、不要反复试不同库。
+
+17. 转换命令（**只跑一次**，用虚拟路径）：
+    ```
+    bash: python /mnt/skills/custom/fire-protection-report-v2/references/docx_to_md.py \
+              "/mnt/user-data/uploads/<文件名>.docx" \
+              "/mnt/user-data/workspace/<文件名>.md"
+    ```
+    然后 `read_file "/mnt/user-data/workspace/<文件名>.md"`，从中提取项目信息（名称、编号、规模、火灾危险性分类、建筑一览等）填入报告。脚本同时支持 python-docx（结构更好）和标准库 zipfile+xml（容器内走这条，永远可用）。
+
+18. **路径一律用虚拟路径**（`/mnt/user-data/uploads/...`、`/mnt/user-data/workspace/...`、`/mnt/skills/...`），不要用容器物理路径（`/app/backend/...`）。
+
+19. 若转换失败、文件非 docx/pdf、或关键信息缺失：用 `ask_clarification` 一次性向用户补齐（项目名/编号、火灾危险性分类、建筑规模），不要卡在提取上反复尝试。
+
 ## 概述
 
 此技能为化工和石化工程项目生成专业的消防设计专篇报告。优先从知识工厂获取报告模板元数据，利用模板中从样本报告抽取的结构化知识（生成提示、合规规则、内容契约）驱动更精准的报告生成。当知识工厂模板不可用时，自动回退到内置参考文档。
@@ -83,6 +104,8 @@ description: |
 ### 步骤1：了解需求
 
 当用户请求消防设计专篇时，确定以下信息。用户可能不会一次提供全部信息，对于缺失的关键信息应主动追问，对于可从上下文推断的信息直接使用：
+
+**若用户上传了源文档**（如 设计说明书.docx）：先按关键规则第 17 条用 `bash` 跑一次 `docx_to_md.py` 转成 `.md` 并 `read_file`，从中提取下列信息——不要追问用户已经在文档里提供的内容。
 
 **必须确认**（缺少则追问）：
 - 项目名称和编号

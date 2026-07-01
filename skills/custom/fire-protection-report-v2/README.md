@@ -21,6 +21,7 @@ fire-protection-report-v2/
 ├── SKILL.md                    # 技能定义（模板优先工作流）
 ├── references/
 │   ├── report_structure.md     # 8章结构（fallback）
+│   ├── docx_to_md.py           # 上传 docx→md 转换脚本（auto_convert 关闭时的可靠路径）
 │   ├── terminology.md          # 术语词典（始终加载）
 │   ├── content_guidelines.md   # 编写指南（始终加载）
 │   └── chapter_examples/
