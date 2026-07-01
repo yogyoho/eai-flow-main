@@ -3,9 +3,7 @@ name: fire-protection-report-v2
 description: |
   当用户请求为化工/石化/工业项目生成、创建或编写消防设计专篇、消防设计报告、消防设计篇章时使用此技能。
   
-  此技能必须先调用 MCP 工具 knowledge-factory_kf_resolve_template 从知识工厂（Knowledge Factory）获取报告模板元数据，
-  使用模板中的 generation_hint、compliance_rules、content_contract 等元数据驱动高质量报告生成。
-  调用该 MCP 是强制的第一个工具动作；仅当工具明确返回 found=false 时，才回退到内置参考文档。
+  报告结构优先取自知识工厂模板（generation_hint / compliance_rules / content_contract 等元数据驱动生成），不可用时回退内置参考文档。
   
   触发场景：用户提及"消防设计专篇"、"消防设计报告"、"消防设计篇章"、"化工项目消防设计"、
   "消防设计专篇生成"、"消防设计说明书"、"消防验收报告"、"消防设计审查"、"防火设计专篇"等关键词；
@@ -19,8 +17,8 @@ description: |
 
 ### 关于输出方式
 
-1. 本技能生成**结构化 Markdown 文本**，通过文档空间（docmgr）API 写入 AIDocument，供用户在文档空间中编辑排版后导出 Word。
-2. 不直接生成 .docx 文件——用户会在文档空间中自行编辑和排版，然后通过文档空间的 Word 导出功能获得最终文档。
+1. 本技能生成**结构化 Markdown 文本**，用 `write_file` 写入 `/mnt/user-data/outputs/`，再 `present_files` 展示——**后端会自动把 outputs 文件同步进文档空间（docmgr）为 AIDocument**，供用户在文档空间编辑排版后导出 Word。
+2. **不直接生成 .docx，也不调用任何"docmgr API/工具"**——项目无 docmgr MCP，agent 没有也无法直接创建 AIDocument。文档空间的 AIDocument 由 `present_files` 的后端回调自动创建（见关键规则第 12 条与步骤 5）。
 3. 不使用 `word-document-server` MCP 工具、`markdown-to-docx` skill 或自写 Python 脚本来生成 Word。
 
 这样设计是因为：文档空间提供了协作编辑、版本管理、排版工具和 Word 导出的完整工作流，比在技能中硬编码排版参数更灵活、更可维护。
@@ -36,13 +34,13 @@ description: |
 
 8. 实际执行顺序：**① 调用 `knowledge-factory_kf_resolve_template` → ② 读 `terminology.md` + `content_guidelines.md` → ③ 内存中起草报告 → ④ 写入文档空间**。步骤 ① 是硬前置，未完成不得进入 ②。
 9. 起草报告内容在内存中完成，不写中间文件。
-10. 通过文档空间 API 将内容写入 AIDocument。
+10. 落盘用一次 `write_file` 写入 `outputs/`，再 `present_files` 触发后端自动同步为文档空间 AIDocument。
 
-### 关于写盘与防循环（⚠️ 防止死循环 — 必读）
+### 关于写盘与防循环（⚠️ 防止死循环 — 完整规范见步骤5"写盘铁律"）
 
-11. **一次性写完整报告，禁止分块拼接和事后修补。** 报告必须在内存中**完整生成全部 8 章（含封面、附录）后**，用**一次 `write_file`**（`append=false`）写入。**严禁**：分章节 `append`、写完后再用 `str_replace` 改已落盘的文件。分块 append 会制造重复段落，str_replace 修补会误删相邻内容——二者都会引发"改一个错、引入一个新错"的级联，直到撞上循环上限被强制中止、前功尽弃。若发现内容有误，**在内存里重新生成完整内容再整体覆盖**，绝不局部打补丁。
-12. **直接写到 `outputs/`，禁止"先写 workspace 再复制"。** 报告直接落到 `/mnt/user-data/outputs/{项目名称}消防设计专篇.md`；不要先写到别的目录再用 `cp`/`mv`/二次 `write_file` 复制过去（"复制到 output 目录"这一步本身容易因路径报错而重试成死循环）。写完用一次 `present_files` 展示即可。
-13. **工具失败不得盲目重试。** 任何工具调用返回错误时，**禁止用完全相同的参数重试**；最多修正一次参数（例如纠正路径）再试，**连续失败 2 次必须停止，把错误原因如实告诉用户**，不得继续循环。
+11. **一次性写完整报告**：内存中完整生成全部 8 章（含封面、附录）后，用**一次 `write_file`（`append=false`）**写入。禁止分章节 `append`、禁止写完用 `str_replace` 修补落盘文件——二者引发"改一错、引入一新错"的级联，撞上循环上限被强制中止。有误则在内存整体重生成后再整体覆盖。
+12. **直接写到 `outputs/`**：落到 `/mnt/user-data/outputs/{项目名称}消防设计专篇.md`，不先写别处再 `cp`/`mv`/二次 `write_file` 复制。写完用一次 `present_files` 展示——后端自动同步进文档空间（docmgr）。
+13. **工具失败不盲目重试**：禁用相同参数重试；最多修正一次（如纠正路径）再试，**连续失败 2 次必须停止并如实告诉用户**。
 
 ## 概述
 
@@ -73,6 +71,9 @@ description: |
 - GB50116-2013 - 火灾自动报警系统设计规范
 - GB50140-2005 - 建筑灭火器配置设计规范
 - GB50974-2014 - 消防给水及消火栓系统技术规范
+- GB50057-2010 - 建筑物防雷设计规范（第4章防雷设计引用）
+- GB50223-2008 - 建筑工程抗震设防分类标准（第4章抗震措施引用）
+- GB50189-2015 - 公共建筑节能设计标准（第4章节能措施引用）
 - 《中华人民共和国消防法》（2019修订）
 
 ---
@@ -114,7 +115,7 @@ knowledge-factory_kf_resolve_template(
 **拿到 `found=true` 时**：
 - 使用返回的 `sections` / `root_sections` 作为报告结构
 - 每个章节独立拥有 `generation_hint`、`compliance_rules`、`content_contract`、`example_snippet`
-- 输出提示：`✅ 已从知识工厂获取模板：{template_name} v{version}（完整度: {completeness_score}/100, 匹配级别: {match_level}）`
+- 输出提示：`✅ 已从知识工厂获取模板：{name} v{version}（完整度: {completeness_score}/100, 匹配级别: {match_level}）`
 - **不要**读取 `report_structure.md`（直接用模板返回的 sections）
 
 **仅当你已实际调用并得到 `found=false`（或调用确实抛错）时**才回退：
@@ -133,7 +134,7 @@ knowledge-factory_kf_resolve_template(
 
 ### 步骤4：起草报告内容（在内存中完整生成，一次性写出）
 
-此步骤在内存中**完整生成全部 8 章**（含封面、附录）。**不要**分章节、不要写中间文件、不要边写边 `append`。完整内容在步骤 5 用**一次 `write_file`** 落盘——务必遵守关键规则第 11~13 条，否则极易触发死循环被强制中止。
+此步骤在内存中**完整生成全部 8 章**（含封面、附录），不分章节、不写中间文件、不边写边 `append`。完整内容在步骤 5 用**一次 `write_file`** 落盘——写盘铁律见步骤 5，务必遵守，否则极易触发死循环。
 
 **Markdown 输出格式规范**：
 
@@ -217,14 +218,14 @@ write_file(
 )
 ```
 
-**写盘铁律**（违反即触发死循环）：
-- ✅ 一次 `write_file` 写入完整内容，`append=false`。
+**写盘铁律**（全技能唯一的防循环规范——关键规则 11~13 与步骤 4 均指向此处；违反即触发死循环）：
+- ✅ 一次 `write_file` 写入完整内容，`append=false`；有误则在内存整体重生成后再整体覆盖。
 - ❌ 禁止分多次 `append` 拼章节（会制造重复段落）。
-- ❌ 禁止写完后再用 `str_replace` 修改落盘文件（会误删相邻内容）。
+- ❌ 禁止写完再用 `str_replace` 修改落盘文件（会误删相邻内容）。
 - ❌ 禁止"先写 workspace 再 `cp`/`mv` 复制到 outputs"——直接写到 `outputs/`。
-- 写完用一次 `present_files`（`filepaths` 指向 outputs 里的文件）展示给用户即可。
+- 写完用一次 `present_files`（`filepaths` 指向 outputs 里的文件）展示——后端会自动把该 outputs 文件同步进文档空间（docmgr）为 AIDocument，**无需、也不存在单独的"docmgr API"工具可调**。
 
-若同时需要进文档空间（docmgr）：写完 outputs 文件后，**可再调用一次 docmgr API** 创建 AIDocument；但文件落盘只允许上面这一次 `write_file`，不得在 docmgr 写入失败后反复重试（见第 13 条）。
+文件落盘全流程只允许上面这一次 `write_file`；不得在 `present_files` 或同步失败后反复重试（见第 13 条）。
 
 ### 步骤6：合规检查（调用 fire-regulatory-compliance-check）
 
@@ -276,12 +277,12 @@ python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_ch
 - 项目位置（城市/区域、占地面积、周边环境）
 - 功能定位和建设规模（总建筑面积、主要建筑物）
 - 建设内容（建筑物和设施清单）及建设性质
-- 气象条件表格（温度、湿度、气压、降水、风向、风速、蒸发量、雷暴日、地震烈度）
+- 气象条件表格（温度、湿度、气压、降水、风向、风速、蒸发量、雷暴日、地震烈度、土壤防渗、地下水位、日照）
 - 周边消防站情况
 
 ### 第3章：火灾危险性分析
 - 项目主项表（编号、代号、名称、数量、专业、备注）
-- 各建筑火灾危险性分类（甲/乙/丙/丁/戊），参考 GB50016 和 GB50160
+- 各建筑火灾危险性分类（甲/乙/丙/丁/戊），参考 GB50016 和 GB50160，甲乙类：严重危险级，丙类：中危险级，丁戊类：轻危险级
 
 ### 第4章：防火安全措施
 - 总平面布置和防火间距
@@ -291,7 +292,7 @@ python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_ch
 - 建筑物通风措施（通风特性表）
 
 ### 第5章：消防设施
-- 室外水消防系统（水量、消火栓）
+- 室外水消防系统（水量、半固定式消防给水竖管系统即消火栓、固定式泡沫灭火系统）
 - 室内水消防系统（消火栓、水喷雾、消防水池及泵房）
 - 移动式灭火器（类型、数量、布置）
 - 火灾报警系统（探测器、手动报警器、控制系统）
@@ -335,8 +336,8 @@ python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_ch
    - `knowledge-factory_kf_resolve_template` — 智能模板匹配（核心工具）
    - `knowledge-factory_kf_list_domains` — 列出可用领域（辅助发现）
 
-2. **docmgr API**（文档空间写入）：
-   - 用于将生成的 Markdown 内容创建为 AIDocument
+2. **文档空间（docmgr）写入**（无独立 MCP，经 `present_files` 回调自动完成）：
+   - agent 用 `write_file` 写入 `/mnt/user-data/outputs/` 后调用 `present_files`，后端回调自动把该文件同步为 AIDocument
    - 用户可在文档空间中编辑排版后导出 Word
 
 ## 参考文件
@@ -344,7 +345,9 @@ python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_ch
 - `references/report_structure.md` — 8章结构详细说明（模板不可用时 fallback）
 - `references/terminology.md` — 消防术语词典（补充知识，始终加载）
 - `references/content_guidelines.md` — 各章节内容编写指南（补充知识，始终加载）
-- `references/chapter_examples/sample_fire_design.md` — 报告样例内容
+- `references/chapter_examples/sample_fire_design.md` — 报告样例（仅供方法论参考：风格、详略、论述逻辑；**不自动加载**，需要时 `read_file` 取具体片段即可）
+
+> 与 `coal-eia-report` 一致：`chapter_examples/` 下的样例不参与自动加载，仅在你需要参考行文风格/详略时按需读取。
 
 ## 注意事项
 

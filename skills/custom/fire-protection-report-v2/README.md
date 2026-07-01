@@ -12,7 +12,7 @@ v2 核心改进：
 | 内容约束 | 隐式 | 显式 content_contract（字数/结构/禁用词/要素） |
 | 合规规则 | 全局 GB 列表 | 每章独立 compliance_rules |
 | 模板演进 | 改文件 | 知识工厂编辑模板 → 即时生效 |
-| 输出方式 | word-document-server MCP 直接生成 .docx | 结构化 Markdown → 文档空间（用户编辑排版后导出 Word） |
+| 输出方式 | word-document-server MCP 直接生成 .docx | 结构化 Markdown 写入 outputs → present_files 自动同步文档空间（用户编辑排版后导出 Word） |
 
 ## 目录结构
 
@@ -42,5 +42,5 @@ fire-protection-report-v2/
 ## 依赖
 
 - `knowledge-factory_kf_resolve_template`（knowledge-factory MCP Server）— 模板匹配
-- `docmgr API`（文档空间）— 写入 AIDocument
+- `present_files` 回调（无独立 docmgr MCP）— 写入 outputs 后自动同步为文档空间 AIDocument
 - 无需 word-document-server MCP — 用户在文档空间编辑排版后自行导出 Word
