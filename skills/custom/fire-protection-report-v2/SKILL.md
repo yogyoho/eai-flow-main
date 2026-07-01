@@ -58,8 +58,9 @@ description: |
               "/mnt/user-data/workspace/<文件名>.md"
     ```
     然后 `read_file "/mnt/user-data/workspace/<文件名>.md"`，从中提取项目信息（名称、编号、规模、火灾危险性分类、建筑一览等）填入报告。脚本同时支持 python-docx（结构更好）和标准库 zipfile+xml（容器内走这条，永远可用）。
+    **⚠️ 禁止自己写 docx 提取脚本**——直接用本技能自带的 `docx_to_md.py`（它已在本次提交里实战验证过：215KB docx→46K字/2092段/26表）。自己写的脚本容易有语法错误且浪费轮次，实测已出现过。
 
-18. **路径一律用虚拟路径**（`/mnt/user-data/uploads/...`、`/mnt/user-data/workspace/...`、`/mnt/skills/...`），不要用容器物理路径（`/app/backend/...`）。
+18. **路径一律用虚拟路径**（`/mnt/user-data/uploads/...`、`/mnt/user-data/workspace/...`、`/mnt/skills/...`），**禁止**用容器物理路径（`/app/backend/...`）——物理路径只在 bash 进程内部偶然有效，传给 `write_file`/`read_file`/`present_files` 等工具一定出错。脚本里也写虚拟路径，不要写成 `/app/backend/.deer-flow/...`。
 
 19. 若转换失败、文件非 docx/pdf、或关键信息缺失：用 `ask_clarification` 一次性向用户补齐（项目名/编号、火灾危险性分类、建筑规模），不要卡在提取上反复尝试。
 
@@ -241,12 +242,18 @@ write_file(
 )
 ```
 
+**步骤5a：立即调 present_files（⚠️ 不可跳过——不调则不会同步到文档空间）**
+
+在 `write_file` 之后**立即独立调用** `present_files`（不是 `write_file` 的参数）：
+```
+present_files(filepaths=["/mnt/user-data/outputs/{项目名称}消防设计专篇.md"])
+```
+
 **写盘铁律**（全技能唯一的防循环规范——关键规则 11~13 与步骤 4 均指向此处；违反即触发死循环）：
 - ✅ 一次 `write_file` 写入完整内容，`append=false`；有误则在内存整体重生成后再整体覆盖。
 - ❌ 禁止分多次 `append` 拼章节（会制造重复段落）。
 - ❌ 禁止写完再用 `str_replace` 修改落盘文件（会误删相邻内容）。
 - ❌ 禁止"先写 workspace 再 `cp`/`mv` 复制到 outputs"——直接写到 `outputs/`。
-- 写完用一次 `present_files`（`filepaths` 指向 outputs 里的文件）展示——后端会自动把该 outputs 文件同步进文档空间（docmgr）为 AIDocument，**无需、也不存在单独的"docmgr API"工具可调**。
 
 文件落盘全流程只允许上面这一次 `write_file`；不得在 `present_files` 或同步失败后反复重试（见第 13 条）。
 
