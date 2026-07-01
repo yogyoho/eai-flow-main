@@ -49,16 +49,15 @@ description: |
 
 ### 关于上传的源文档（.docx/.pdf 设计说明书等）—— ⚠️ 必读
 
-16. 系统配置 `uploads.auto_convert_documents=false`（host 端解析有安全风险，刻意关闭）——**上传的 docx 不会自动生成 .md**，且容器内未安装 markitdown / python-docx。所以读取上传 docx 的**唯一可靠路径**是用 `bash` 跑一次本技能自带的转换脚本（见第 17 条）。**不要**自己写多个提取脚本、不要 base64 编码、不要反复试不同库。
+16. 系统配置 `uploads.auto_convert_documents=true`——**上传的 docx/pdf 会自动在 `uploads/` 下生成同名的 `.md` 文件**（gateway 使用 markitdown 转换，已在容器内验证可用）。所以读取上传源文档**只需 `read_file /mnt/user-data/uploads/<文档名>.md`** 提取项目信息——不需要 bash、不需要写转换脚本。
 
-17. 转换命令（**只跑一次**，用虚拟路径）：
+17. 若 `.md` 未自动生成（极端情况，如超大文件转换超时），回退用技能自带转换脚本（按第 5 条规则，先调 kf_resolve_template 再读 reference）：
     ```
-    bash: python /mnt/skills/custom/fire-protection-report-v2/references/docx_to_md.py \
+    bash: /app/backend/.venv/bin/python /mnt/skills/custom/fire-protection-report-v2/references/docx_to_md.py \
               "/mnt/user-data/uploads/<文件名>.docx" \
               "/mnt/user-data/workspace/<文件名>.md"
     ```
-    然后 `read_file "/mnt/user-data/workspace/<文件名>.md"`，从中提取项目信息（名称、编号、规模、火灾危险性分类、建筑一览等）填入报告。脚本同时支持 python-docx（结构更好）和标准库 zipfile+xml（容器内走这条，永远可用）。
-    **⚠️ 禁止自己写 docx 提取脚本**——直接用本技能自带的 `docx_to_md.py`（它已在本次提交里实战验证过：215KB docx→46K字/2092段/26表）。自己写的脚本容易有语法错误且浪费轮次，实测已出现过。
+    但正常情况下不需要——先检查 uploads/ 下是否有 `.md`。**禁止自己编写 docx 提取脚本**，也不要用物理路径 `/app/backend/...`。
 
 18. **路径一律用虚拟路径**（`/mnt/user-data/uploads/...`、`/mnt/user-data/workspace/...`、`/mnt/skills/...`），**禁止**用容器物理路径（`/app/backend/...`）——物理路径只在 bash 进程内部偶然有效，传给 `write_file`/`read_file`/`present_files` 等工具一定出错。脚本里也写虚拟路径，不要写成 `/app/backend/.deer-flow/...`。
 
