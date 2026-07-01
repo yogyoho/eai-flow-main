@@ -15,6 +15,10 @@ description: |
 
 ## ⛔ 关键规则
 
+### 关于输出语言
+
+0. **所有输出一律用中文。** 包括但不限于：对话对用户的回复正文、任务描述、**SESSION INTENT → 会话意图**、**SUMMARY → 摘要**、**ARTIFACTS → 产出文件**、**NEXT STEP → 下一步**——这些框架标签**不准出现英文原文**，必须用中文替换。报告本身（Markdown 内容）更是全程中文。这是硬规则，用户的对话语言是中文，所有框架级标签和说明文字也必须用中文。
+
 ### 关于输出方式
 
 1. 本技能生成**结构化 Markdown 文本**，用 `write_file` 写入 `/mnt/user-data/outputs/`，再 `present_files` 展示——**后端会自动把 outputs 文件同步进文档空间（docmgr）为 AIDocument**，供用户在文档空间编辑排版后导出 Word。
