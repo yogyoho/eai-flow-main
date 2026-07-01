@@ -17,12 +17,13 @@ cd "$SCRIPT_DIR"
 PROJECT_NAME="eai-prod"
 NETWORK_NAME="${PROJECT_NAME}_eai-flow-net"
 
-# Compose 文件列表
+# Compose 文件列表（核心 + 扩展 + Temporal + RAGFlow + MCP/CAD 四服务）
 COMPOSE_FILES=(
   -f docker-compose.yaml
   -f docker-compose.extensions.yaml
   -f docker-compose.temporal.yaml
   -f docker-compose.ragflow.yaml
+  -f docker-compose.mcp-cad.yaml
 )
 
 RED='\033[0;31m'
@@ -61,13 +62,17 @@ preflight() {
     log_info "可用磁盘空间: ${available_gb}GB"
   fi
 
-  # 内存
-  local total_mem_mb
-  total_mem_mb=$(free -m | awk 'NR==2 {print $2}')
-  if [[ "$total_mem_mb" -lt 8000 ]]; then
-    log_warn "内存不足 8GB（当前 $((total_mem_mb / 1024))GB），建议至少 16GB"
+  # 内存（free 在 Windows Git Bash 下不可用，跳过）
+  if command -v free &>/dev/null; then
+    local total_mem_mb
+    total_mem_mb=$(free -m | awk 'NR==2 {print $2}')
+    if [[ "$total_mem_mb" -lt 8000 ]]; then
+      log_warn "内存不足 8GB（当前 $((total_mem_mb / 1024))GB），建议至少 16GB"
+    else
+      log_info "内存: $((total_mem_mb / 1024))GB"
+    fi
   else
-    log_info "内存: $((total_mem_mb / 1024))GB"
+    log_info "内存检测跳过（free 不可用）"
   fi
 
   # 检查必要文件
@@ -130,14 +135,8 @@ start_all() {
 
   local compose_cmd=(
     docker compose -p "$PROJECT_NAME"
-    "${CORE_FILES[@]}"
+    "${COMPOSE_FILES[@]}"
   )
-
-  # Temporal 工作流引擎
-  compose_cmd+=(-f docker-compose.temporal.yaml)
-
-  # RAGFlow 知识库（必选）
-  compose_cmd+=(-f docker-compose.ragflow.yaml)
 
   compose_cmd+=(up -d)
 
@@ -151,7 +150,7 @@ start_all() {
   local max_wait=120
   local waited=0
   while [[ $waited -lt $max_wait ]]; do
-    if curl -sf http://localhost:8001/health &>/dev/null; then
+    if curl -sf "http://localhost:${PORT:-4026}/api/license/status" &>/dev/null; then
       log_info "Gateway 健康检查通过 (${waited}s)"
       break
     fi
@@ -198,9 +197,7 @@ start_all() {
 stop_all() {
   log_info "=== 停止 EAI-Flow 生产服务 ==="
   docker compose -p "$PROJECT_NAME" \
-    "${CORE_FILES[@]}" \
-    -f docker-compose.temporal.yaml \
-    -f docker-compose.ragflow.yaml \
+    "${COMPOSE_FILES[@]}" \
     down "$@"
   log_info "服务已停止"
 }
@@ -209,10 +206,7 @@ stop_all() {
 show_status() {
   log_info "=== EAI-Flow 服务状态 ==="
   docker compose -p "$PROJECT_NAME" \
-    -f docker-compose.yaml \
-    -f docker-compose.extensions.yaml \
-    -f docker-compose.temporal.yaml \
-    -f docker-compose.ragflow.yaml \
+    "${COMPOSE_FILES[@]}" \
     ps 2>/dev/null || log_info "服务未运行"
 }
 

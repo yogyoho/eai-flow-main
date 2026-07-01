@@ -21,6 +21,15 @@ services:
       - MINIO_HOST=ragflow-minio
       - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      # 内网需代理才能下载 tiktoken 等外部资源（首次初始化）。
+      # 在 .env 中设置 RAGFLOW_HTTP_PROXY=http://<代理地址>:<端口>；
+      # 不需要时留空，下面的 NO_PROXY 保证内部服务不走代理。
+      - HTTP_PROXY=${RAGFLOW_HTTP_PROXY:-}
+      - HTTPS_PROXY=${RAGFLOW_HTTP_PROXY:-}
+      - http_proxy=${RAGFLOW_HTTP_PROXY:-}
+      - https_proxy=${RAGFLOW_HTTP_PROXY:-}
+      - NO_PROXY=localhost,127.0.0.1,.local,ragflow-mysql,ragflow-es,ragflow-redis,ragflow-minio
+      - no_proxy=localhost,127.0.0.1,.local,ragflow-mysql,ragflow-es,ragflow-redis,ragflow-minio
     volumes:
       - prod-ragflow-data:/ragflow
     ports:

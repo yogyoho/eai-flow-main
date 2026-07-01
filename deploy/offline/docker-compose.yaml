@@ -41,11 +41,16 @@ services:
   frontend:
     image: deer-flow-frontend:latest
     container_name: prod-eai-flow-frontend
-    command: sh -c "cd /app/frontend && pnpm dev --port 3000 --hostname 0.0.0.0"
+    # Dev server + intranet allowedDevOrigins fix (auto-patches next.config.js)
+    command: ["sh", "/usr/local/bin/frontend-start.sh"]
+    volumes:
+      - ./docker/frontend-start.sh:/usr/local/bin/frontend-start.sh:ro
     environment:
       # 关键：告诉 Next.js 服务端如何访问 Gateway（Docker 内部网络）
       - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
-      - DEER_FLOW_TRUSTED_ORIGINS=http://localhost:${PORT:-4026}
+      # 受信来源（CSRF/跨域）。生产须在 .env 中加入实际访问地址，如
+      # http://10.0.0.5:4026,http://eai.prod.local:4026 —— 否则通过服务器 IP 登录会被拒。
+      - DEER_FLOW_TRUSTED_ORIGINS=${DEER_FLOW_TRUSTED_ORIGINS:-http://localhost:${PORT:-4026}}
       # 前端通过 nginx 代理访问后端，无需直接端口
       - NEXT_PUBLIC_BACKEND_BASE_URL=
       - NEXT_PUBLIC_LANGGRAPH_BASE_URL=
@@ -57,6 +62,8 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - NODE_ENV=production
       - SKIP_ENV_VALIDATION=1
+      # Next.js dev allowedDevOrigins（通过哪些 IP/域名访问时允许 RSC 水合）
+      - INTRANET_HOSTS=${INTRANET_HOSTS:-localhost}
     networks:
       - prod-eai-flow-net
     restart: unless-stopped
@@ -65,7 +72,7 @@ services:
   gateway:
     image: deer-flow-gateway:latest
     container_name: prod-eai-flow-gateway
-    command: sh -c "cd backend && uv sync --all-packages && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
+    command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
     volumes:
       # 配置文件（必须预先存在，否则 Docker 会创建同名目录）
       - ./config.yaml:/app/backend/config.yaml:ro
@@ -94,6 +101,8 @@ services:
       # RAGFlow & Temporal 内部服务地址（使用 Docker 服务名而非容器名，避免耦合）
       - RAGFLOW_BASE_URL=http://ragflow:9380
       - TEMPORAL_URL=temporal:7233
+      # 合同价格分析技能调用 OCR 服务的地址（见 docker-compose.mcp-cad.yaml `ocr` 服务）
+      - OCR_SERVICE_URL=http://ocr:8010
       # 数据库连接（通过 Docker 服务名）
       - KF_DATABASE_URL=postgresql+asyncpg://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
     env_file:

@@ -26,6 +26,8 @@ const config = {
     defaultLocale: "en",
   },
   devIndicators: false,
+  // allowedDevOrigins: 在生产离线部署中由 deploy/offline/frontend-start.sh
+  // 启动时根据 .env 的 INTRANET_HOSTS 自动注入,此处不硬编码服务器 IP。
   async rewrites() {
     const afterFiles = [];
     const fallback = [];

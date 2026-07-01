@@ -28,6 +28,15 @@ RUN (sed -i 's|http://deb.debian.org|http://mirrors.tuna.tsinghua.edu.cn|g; s|ht
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -i ${PIP_INDEX_URL} -r requirements.txt
+
+# Bake the runtime-downloaded ONNX models into the image so /ocr works fully
+# offline (air-gapped). rapid_table + rapid_layout fetch these on first
+# inference from modelscale/github; without them /ocr returns 500 on an
+# offline host. RapidOCR text models ship inside the rapidocr-onnxruntime
+# wheel (no copy needed). Paths are python:3.12-slim specific.
+COPY models/slanet-plus.onnx /usr/local/lib/python3.12/site-packages/rapid_table/models/slanet-plus.onnx
+COPY models/layout_cdla.onnx /usr/local/lib/python3.12/site-packages/rapid_layout/models/layout_cdla.onnx
+
 COPY schemas.py ocr_engine.py server.py ./
 
 EXPOSE 8010

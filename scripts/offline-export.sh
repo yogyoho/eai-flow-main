@@ -92,7 +92,7 @@ PUBLIC_IMAGES=(
 )
 
 # Services to build (compose service names)
-BUILD_SERVICES="gateway frontend collab"
+BUILD_SERVICES="gateway frontend collab cad text-to-cad ocr cad-viewer"
 
 # Compose files for building (in order)
 COMPOSE_FILES=(
@@ -119,15 +119,21 @@ fi
 
 # ── Step 1: Pull public images ─────────────────────────────────────────────────
 
-info "Step 1/5: Pulling ${#PUBLIC_IMAGES[@]} public images..."
+info "Step 1/5: Resolving ${#PUBLIC_IMAGES[@]} public images (local-only, no pull)..."
 echo ""
 
 for img in "${PUBLIC_IMAGES[@]}"; do
-    info "  Pulling: ${img}"
-    if docker pull "$img"; then
-        ok "  Pulled:  ${img}"
+    # Offline export = ship the locally-present (dev-verified) image only.
+    # NEVER pull: the package must match exactly what the dev environment
+    # validated. Floating tags (nginx:alpine, minio/minio:latest) would drift
+    # to a different digest if pulled, and pulling contradicts the offline
+    # premise. A missing image means the dev env isn't populated yet.
+    if docker image inspect "$img" &>/dev/null; then
+        ok "  Local:   ${img}  (dev-verified, will export)"
     else
-        warn "  Failed to pull: ${img} (may already exist locally)"
+        err "  Image not found locally: ${img}"
+        err "  Populate it first on this online dev machine (make docker-start), then re-run."
+        exit 1
     fi
 done
 
@@ -135,7 +141,7 @@ echo ""
 
 # ── Step 2: Build project images ───────────────────────────────────────────────
 
-info "Step 2/5: Building project images..."
+info "Step 2/5: Resolving project images (local-only, rebuild only if missing)..."
 echo ""
 
 COMPOSE_CMD="docker compose -p eai-docker"
@@ -144,11 +150,22 @@ for f in "${COMPOSE_FILES[@]}"; do
 done
 
 for svc in $BUILD_SERVICES; do
-    info "  Building: ${svc}"
-    if $COMPOSE_CMD build "$svc"; then
-        ok "  Built:    ${svc}"
+    COMPOSE_IMG="eai-docker-${svc}:latest"
+    # Ship the locally-present (dev-verified) image. Rebuilding here is both
+    # wasteful and risky: the Dockerfiles run online `uv sync` / `pnpm install`
+    # that can flake on a restricted network, and a fresh build could diverge
+    # from what dev validated. Only build when the image is truly absent.
+    if docker image inspect "$COMPOSE_IMG" &>/dev/null; then
+        ok "  Local:   ${svc}  (${COMPOSE_IMG}, dev-verified)"
     else
-        warn "  Build may have issues for: ${svc}"
+        info "  Building: ${svc} (not found locally)"
+        if $COMPOSE_CMD build "$svc"; then
+            ok "  Built:    ${svc}"
+        else
+            err "  Build failed for: ${svc}"
+            err "  Populate it via 'make docker-start' on this dev machine, then re-run."
+            exit 1
+        fi
     fi
 done
 
@@ -164,6 +181,10 @@ declare -A SERVICE_TAG_MAP=(
     ["eai-docker-collab:latest"]="eai-flow-collab:latest"
     ["eai-docker-procurement-backend:latest"]="eai-flow-procurement-backend:latest"
     ["eai-docker-procurement-frontend:latest"]="eai-flow-procurement-frontend:latest"
+    ["eai-docker-cad:latest"]="eai-flow-cad:latest"
+    ["eai-docker-text-to-cad:latest"]="eai-flow-text-to-cad:latest"
+    ["eai-docker-ocr:latest"]="eai-flow-ocr:latest"
+    ["eai-docker-cad-viewer:latest"]="eai-flow-cad-viewer:latest"
 )
 
 for COMPOSE_IMG in "${!SERVICE_TAG_MAP[@]}"; do
@@ -233,6 +254,7 @@ mkdir -p "${OUTPUT_DIR}/docker/nginx"
 cp "deploy/offline/docker-compose.yaml"            "${OUTPUT_DIR}/docker/"
 cp "deploy/offline/docker-compose.extensions.yaml" "${OUTPUT_DIR}/docker/"
 cp "deploy/offline/docker-compose.temporal.yaml"   "${OUTPUT_DIR}/docker/"
+cp "deploy/offline/docker-compose.mcp-cad.yaml"    "${OUTPUT_DIR}/docker/"
 if [ "$WITH_RAGFLOW" = true ]; then
     cp "deploy/offline/docker-compose.ragflow.yaml" "${OUTPUT_DIR}/docker/"
 fi
@@ -242,6 +264,10 @@ fi
 
 # Docker support files — production nginx config (no IPv6, no procurement, no HMR)
 cp "deploy/offline/nginx/nginx.conf"     "${OUTPUT_DIR}/docker/nginx/nginx.conf"
+
+# Postgres one-shot init scripts (Temporal user/db automation)
+mkdir -p "${OUTPUT_DIR}/postgres-init"
+cp "deploy/offline/postgres-init/"*.sh   "${OUTPUT_DIR}/postgres-init/" 2>/dev/null || true
 
 # Pre-configured configuration files (NOT templates — ready to use out of the box)
 # User only needs to edit: config.yaml models section (LLM endpoint) + .env BETTER_AUTH_SECRET
@@ -538,6 +564,7 @@ start_services() {
         docker/docker-compose.extensions.yaml \
         docker/docker-compose.temporal.yaml \
         docker/docker-compose.ragflow.yaml \
+        docker/docker-compose.mcp-cad.yaml \
         docker/docker-compose.business.yaml; do
         if [ -f "$f" ]; then
             COMPOSE_CMD="${COMPOSE_CMD} -f ${f}"
@@ -674,6 +701,6 @@ echo "  Environment requirements for target server:"
 echo "    - Linux x86_64 (Ubuntu 22.04+ / CentOS 8+ / Debian 12+)"
 echo "    - Docker Engine >= 24.0 + docker compose v2"
 echo "    - 8GB RAM, 40GB disk (recommended: 16GB RAM, 100GB SSD)"
-echo "    - Port 8080 (or configured PORT in .env) open for browser access"
+echo "    - Port 4026 (or configured PORT in .env) open for browser access"
 echo "    - Internal LLM API reachable from Docker containers"
 echo ""

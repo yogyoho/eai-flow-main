@@ -1,3 +1,4 @@
+/* Google Fonts disabled for intranet deployment — replace with @fontsource packages or system fonts */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -1305,6 +1306,48 @@
 .cyber-scroll::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.3); border-radius: 2px; }
 .cyber-scroll::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.6); }
 
-/* Font for cyber labels */
+/* Fonts — scoped to .cyber-scope so only sci-fi pages adopt the reference's
+   Space Grotesk / JetBrains Mono / Share Tech Mono stack (app default untouched). */
+.cyber-scope {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Font for cyber labels (Share Tech Mono loaded via @import at top of file) */
 .font-cyber { font-family: "Share Tech Mono", "JetBrains Mono", monospace; }
+
+/* Additional glow / clip helpers ported from the reference cyber theme */
+.glow-red { box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.25); }
+.text-shadow-glow-green { text-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+.clip-corners {
+  clip-path: polygon(
+    0px 0px,
+    calc(100% - 10px) 0px,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0px calc(100% - 10px)
+  );
+}
+.border-glow-cyan { border: 1px solid rgba(6, 182, 212, 0.25); }
+.border-glow-cyan:hover { border: 1px solid rgba(6, 182, 212, 0.6); }
+
+/* Futuristic scanline overlay */
+.scanlines { position: relative; overflow: hidden; }
+.scanlines::before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 99;
+  pointer-events: none;
+  opacity: 0.12;
+}
+
+/* Slow spin used by cyber CPU / sparkles icons */
+@keyframes cyber-spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: cyber-spin-slow 6s linear infinite; }
 

@@ -94,7 +94,7 @@ export default function LandingNew() {
             className="w-8 h-auto object-contain"
           />
           <span className="text-xl font-bold text-primary tracking-wide">
-            北京华宇工程有限公司
+            吉林化工工程有限公司
           </span>
         </div>
 
@@ -176,7 +176,7 @@ export default function LandingNew() {
 
             <motion.div variants={itemVariants} className="space-y-6">
               <h1 className="text-3xl md:text-6xl font-extrabold text-foreground dark:text-white leading-[1.15] tracking-tight">
-                北京华宇工程: 煤炭设计领域智能应用平台
+                吉林化工工程: 石化设计领域智能应用平台
               </h1>
               {/* 渐变装饰线 */}
               <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/70 to-teal-400 rounded-full"></div>
@@ -297,7 +297,7 @@ export default function LandingNew() {
 
       {/* 底部版权 */}
       <footer className="relative z-10 bg-[#1a1a1a] dark:bg-[#1a1a1a] text-muted-foreground dark:text-muted-foreground py-8 text-center text-sm">
-        <p>© 北京华宇工程有限公司 2026 v0.5.0</p>
+        <p>© 吉林化工工程有限公司 2026 v0.5.0</p>
       </footer>
     </div>
   );

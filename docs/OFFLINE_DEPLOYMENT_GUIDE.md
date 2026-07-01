@@ -1,5 +1,7 @@
 # EAI-Flow 内网离线部署操作手册
 
+> 版本 2.1 | 2026-07-01 | 内网服务器（10.180.41.157）生产部署验证通过
+>
 > 版本 2.0 | 2026-06-10 | 本机验证通过
 
 ## 目录
@@ -520,6 +522,83 @@ curl -X POST http://localhost:4026/api/v1/auth/initialize \
 
 如提示 `system_already_initialized`（409），表示管理员已存在。
 
+### 问题 7：前端页面显示不全 / 登录按钮缺失（React 未水合）
+
+**症状**：页面有静态内容（标题、卡片文字），但右上角登录按钮、交互组件缺失；浏览器控制台无 JS 报错，或只有 WebSocket 重连错误。
+
+**根因**：Next.js 16 dev 模式 + nginx 反代环境下，两类问题会阻断 RSC 水合：
+1. nginx 对 `/_next/webpack-hmr` 返回非 WebSocket 响应（如 204），导致 dev client HMR 异常循环
+2. `next.config.js` 未配置 `allowedDevOrigins`，dev 模式拒绝非 localhost 来源
+
+**排查与修复**：
+```bash
+# 1. 看 frontend 日志是否有 allowedDevOrigins 提示
+docker logs prod-eai-flow-frontend 2>&1 | grep -i allowedDevOrigins
+
+# 2. 确认 nginx 没有 204 hack 拦截 webpack-hmr
+docker exec prod-eai-flow-nginx grep -n 'webpack-hmr' /etc/nginx/nginx.conf
+# 应无输出（让 HMR 走 location / 的正常 WebSocket 代理）
+
+# 3. 确认 allowedDevOrigins 已注入
+docker exec prod-eai-flow-frontend grep allowedDevOrigins /app/frontend/next.config.js
+```
+如缺失，参考附录 F.14 / F.15 修复。详见 F.14、F.15、F.16（Google Fonts 超时也会阻塞渲染）。
+
+### 问题 8：RAGFlow 反复重启 / 初始化卡住
+
+```bash
+docker logs prod-eai-flow-ragflow --tail 20
+```
+
+按报错对号入座（详见附录 F.11–F.13）：
+- `pip: not found` → 镜像缺 PATH，需构建 `v0.25.3-fixed`（F.11）
+- `No module named 'strenum'` → named volume 覆盖镜像内容，删空 volume 重填（F.12）
+- `Failed to resolve 'openaipublic.blob.core.windows.net'` → 容器需代理下载 tiktoken（F.13）
+
+### 问题 9：Temporal 端口被占：`Bind for 0.0.0.0:17233 failed`
+
+```bash
+ss -tlnp | grep 17233   # Linux 看占用
+```
+
+Linux 上一般空闲；Windows/Hyper-V 可能保留该端口段。改 `.env` 中 `TEMPORAL_PORT=27233` 后 `docker compose -p eai-prod up -d --force-recreate temporal`。详见 F.7。
+
+### 问题 10：Docker 网络 `declared as external, but could not be found`
+
+`deploy.sh` 部署时报错。检查 `.env` 是否有 `NETWORK_NAME=...`：
+```bash
+grep NETWORK_NAME .env
+```
+如有且值不是 `eai-prod_eai-flow-net`，注释掉该行（compose 文件已硬编码正确网络名）。详见 F.6。
+
+### 问题 11：nginx 挂载失败：`not a directory`
+
+```bash
+ls -la nginx/nginx.conf   # 应是文件,不是目录
+```
+
+如显示为目录，是首次挂载时 Docker 自动创建。删除后拷贝真实文件：
+```bash
+rm -rf nginx && mkdir nginx && cp docker/nginx/nginx.conf nginx/nginx.conf
+docker compose -p eai-prod -f docker/docker-compose.yaml up -d --force-recreate nginx
+```
+详见 F.10。
+
+### 问题 12：磁盘满导致容器创建失败
+
+```bash
+df -h /                       # 看根分区
+docker system df              # 看 Docker 占用
+```
+
+`load-images.sh` 后 `images/*.tar`（约 5GB）不再需要，可删。**切勿用 `docker system prune -af`**——会删掉刚加载、尚未启动的镜像。安全清理：
+```bash
+rm -rf /opt/eai-flow-offline/images/                          # 镜像 tar 已加载,可删
+docker image prune                                            # 只删悬挂镜像(无 tag)
+docker container rm $(docker ps -aq --filter status=exited)   # 删已退出容器
+```
+详见 F.9。
+
 ---
 
 ## 附录
@@ -618,3 +697,151 @@ curl -X POST http://localhost:4026/api/v1/auth/initialize \
 
 - **根因**：dev target 镜像无默认 CMD
 - **修复**：`docker-compose.yaml` 前端服务添加 `command: pnpm dev --port 3000 --hostname 0.0.0.0`
+
+---
+
+以下问题在 **2026-07-01 内网服务器（10.180.41.157）生产部署** 中发现并已修复：
+
+#### F.5 deploy.sh 在非 Linux 环境崩溃：`free: command not found`
+
+- **根因**：`deploy/offline/deploy.sh` 的内存检查直接调用 `free`，该命令仅 Linux 有；在 Windows Git Bash 等环境下 `set -euo pipefail` 直接退出
+- **修复**：内存检查用 `if command -v free &>/dev/null` 守护，缺失时跳过（不影响 Linux 目标服务器）
+
+#### F.6 Docker 网络找不到：`network eai-prod_eai-flow-net declared as external, but could not be found`
+
+- **根因**：`deploy/offline/.env` 中有 `NETWORK_NAME=eai-flow-net`，`deploy.sh` 在 `source .env` 后该值覆盖了脚本计算的 `eai-prod_eai-flow-net`，导致创建了错误名字的网络
+- **修复**：注释掉 `.env` 中的 `NETWORK_NAME`（compose 文件已硬编码 `name: eai-prod_eai-flow-net`，该变量仅供文档参考）
+
+#### F.7 Temporal 端口被占：`Bind for 0.0.0.0:17233 failed`
+
+- **根因**：Windows Hyper-V / WSL2 会保留一段动态端口（常包含 17xxx 段），Linux 上不会
+- **修复**：`.env` 中改 `TEMPORAL_PORT=27233`（或其他未占用端口）。Linux 目标服务器一般无此问题，保留默认 17233 即可
+
+#### F.8 镜像 tag 与 compose 不匹配：`MISSING: postgres:16-alpine`
+
+- **根因**：`offline-export.sh` 早期版本 `docker save` 时用 `image_to_filename` 丢失了 `-alpine` 等后缀；或镜像被其他工具重新 tag。compose 引用 `postgres:16-alpine` 但本地只有 `postgres:16`
+- **修复**：手动 `docker tag` 对齐 4 个易错镜像：
+  ```bash
+  docker tag postgres:16 postgres:16-alpine
+  docker tag redis:7 redis:7-alpine
+  docker tag elasticsearch:8.11.0 elasticsearch:8.11.3
+  docker tag infiniflow/ragflow:v0.24.0 infiniflow/ragflow:v0.25.3
+  ```
+- **根治**：`offline-export.sh` 已改为纯本地镜像导出（见 F.19），打包时镜像即 dev 验证过的那批，tag 一致
+
+#### F.9 `docker system prune -af` 误删已加载的部署镜像
+
+- **根因**：磁盘满时执行 `docker system prune -af`，`-a` 会删除**所有未被运行容器使用**的镜像——刚 `load-images.sh` 加载但尚未 `up` 的镜像被一并清掉
+- **修复**：从开发机用管道重推（不需要 scp 中间文件）：
+  ```bash
+  docker save <image1> <image2> | ssh root@<server> "docker load"
+  ```
+- **预防**：磁盘清理用 `docker image prune`（只删悬挂镜像）而非 `-a`；或清理 `images/*.tar` 文件（load 后不再需要）
+
+#### F.10 nginx 启动失败：`mount src=.../nginx.conf ... not a directory`
+
+- **根因**：compose v5 在 compose 文件所在目录（`docker/`）解析相对路径 `./nginx/nginx.conf`；首次挂载时宿主机不存在该文件，Docker 把它当成目录创建，之后 nginx 想挂载文件却挂到了目录上
+- **修复**：在包根目录建 `nginx/nginx.conf` 实体文件（`cp docker/nginx/nginx.conf nginx/nginx.conf`），或部署前确保文件存在
+
+#### F.11 RAGFlow 反复重启：`sh: 1: pip: not found`
+
+- **根因**：`infiniflow/ragflow:v0.25.3` 的 entrypoint 调用 `pip`，但 venv 在 `/ragflow/.venv/bin/`，未加入 `PATH`；只有 `pip3` 没有 `pip`
+- **修复**：构建修复版镜像并重新 tag：
+  ```dockerfile
+  FROM infiniflow/ragflow:v0.25.3
+  ENV PATH=/ragflow/.venv/bin:${PATH}
+  RUN ln -sf pip3 /ragflow/.venv/bin/pip
+  ```
+  ```bash
+  docker build -t infiniflow/ragflow:v0.25.3-fixed -f- . <<'EOF'
+  FROM infiniflow/ragflow:v0.25.3
+  ENV PATH=/ragflow/.venv/bin:${PATH}
+  RUN ln -sf pip3 /ragflow/.venv/bin/pip
+  EOF
+  docker tag infiniflow/ragflow:v0.25.3-fixed infiniflow/ragflow:v0.25.3
+  ```
+
+#### F.12 RAGFlow 报 `ModuleNotFoundError: No module named 'strenum'`
+
+- **根因**：compose 把 named volume `prod-ragflow-data` 挂载到 `/ragflow`，**首次创建的空 volume 覆盖了镜像内 `/ragflow` 的全部内容**（含 `.venv/site-packages`），导致 `strenum` 等 wheel 自带模块也找不到
+- **修复**：删除空 volume，重启后 Docker 用（已修复的）镜像内容重新填充：
+  ```bash
+  docker stop prod-eai-flow-ragflow && docker rm prod-eai-flow-ragflow
+  docker volume rm eai-prod_prod-ragflow-data
+  docker compose -p eai-prod -f docker/docker-compose.ragflow.yaml up -d
+  ```
+  **注意**：必须先完成 F.11 的镜像修复，否则新 volume 仍会缺 `pip`/`strenum`
+
+#### F.13 RAGFlow 初始化卡住：`Failed to resolve 'openaipublic.blob.core.windows.net'`
+
+- **根因**：RAGFlow 首次启动需要从 Azure 下载 `cl100k_base.tiktoken` 编码文件；内网容器无公网，DNS 解析失败导致初始化循环
+- **修复**：给 RAGFlow 容器注入代理环境变量（代理地址从服务器 `env | grep -i proxy` 获取）：
+  ```bash
+  docker run ... \
+    -e HTTP_PROXY=http://<代理地址>:<端口> \
+    -e HTTPS_PROXY=http://<代理地址>:<端口> \
+    -e NO_PROXY="localhost,127.0.0.1,.local,ragflow-mysql,ragflow-es,ragflow-redis,ragflow-minio" \
+    infiniflow/ragflow:v0.25.3
+  ```
+  **关键**：`NO_PROXY` 必须包含内部服务名（ragflow-mysql 等），否则内部连接也走代理会失败
+
+#### F.14 前端页面显示不全 / 组件不渲染（React 未水合）
+
+- **根因**：为消除 HMR WebSocket 报错，曾给 nginx 加 `location = /_next/webpack-hmr { return 204; }`。这会让 Next.js dev client 的 HMR 连接收到非 WebSocket 响应，进入异常重连循环，**间接阻断 RSC（React Server Components）水合流程**，导致登录按钮等客户端组件不渲染
+- **修复**：**删除** `return 204` 的 hack，让 `/_next/webpack-hmr` 走 `location /` 的正常 WebSocket 代理（该块已有 `proxy_set_header Upgrade $http_upgrade; Connection 'upgrade';`）
+- **验证**：浏览器控制台不再有持续的 WebSocket 重连错误，页面右上角登录按钮、卡片等全部渲染
+
+#### F.15 Next.js dev 模式拒绝非 localhost 来源（页面不水合，控制台无报错）
+
+- **根因**：Next.js 16 开发模式默认只允许 `localhost` 来源的 RSC 请求；通过 nginx 反代用服务器 IP 访问时，origin 校验失败，RSC flight 数据虽下发但客户端不消费
+- **症状**：HTML 静态内容正常，但所有 `useEffect` 不触发，登录按钮等客户端组件缺失；frontend 容器日志提示 `add it to "allowedDevOrigins" in next.config.js`
+- **修复**：`frontend/next.config.js` 增加：
+  ```js
+  const config = {
+    // ...
+    devIndicators: false,
+    allowedDevOrigins: ['<服务器IP>', '<域名>'],  // 例如 ['10.180.41.157']
+    // ...
+  };
+  ```
+  生产环境前端用 `frontend-start.sh` 启动脚本，自动用 `sed` 注入该配置（见 deploy/offline/frontend-start.sh）
+
+#### F.16 Google Fonts 加载超时导致页面阻塞
+
+- **根因**：`frontend/src/styles/globals.css` 和 `frontend/src/extensions/dashboard/dashboard.css` 第一行 `@import url('https://fonts.googleapis.com/...')`，内网无法访问 Google CDN，浏览器等待超时（~30s）才继续渲染
+- **修复**：注释掉两个 CSS 文件首行的 `@import url(fonts.googleapis...)`，字体回退到系统字体
+- **根治**：如需美观字体，改用 `@fontsource` npm 包自托管（`pnpm add @fontsource/space-grotesk`，在入口 `import "@fontsource/space-grotesk"`），不依赖外部 CDN
+
+#### F.17 frontend 容器启动循环（YAML 解析失败）
+
+- **根因**：compose 的 `command:` 内联 `sh -c "..."` 脚本里含 `: `（冒号+空格，如 `allowedDevOrigins: [...]`），YAML 把它当成 key 分隔符解析失败
+- **修复**：把启动逻辑独立成 `deploy/offline/frontend-start.sh`，compose 用数组形式引用：
+  ```yaml
+  command: ["sh", "/usr/local/bin/frontend-start.sh"]
+  volumes:
+    - ./docker/frontend-start.sh:/usr/local/bin/frontend-start.sh:ro
+  ```
+
+#### F.18 前端 CSS 改动不生效（Turbopack 缓存）
+
+- **根因**：`pnpm dev`（Turbopack）把 CSS 编译产物缓存在 `.next/`，修改源 CSS 后未触发重编译，浏览器拿到的编译产物仍含旧内容（如已注释的 Google Fonts `@import`）
+- **修复**：清缓存强制重编译：
+  ```bash
+  docker exec prod-eai-flow-frontend rm -rf /app/frontend/.next
+  docker restart prod-eai-flow-frontend
+  ```
+
+#### F.19 SSH 在 `load-images.sh` 加载大镜像时断开
+
+- **根因**：`install.sh` → `load-images.sh` 顺序 `docker load` 17 个镜像（约 5GB），耗时 5-10 分钟，期间无输出，SSH 空闲超时或网络抖动导致连接断开，加载中断
+- **修复**：
+  - **本机推送镜像**（推荐）：跳过 `load-images.sh`，从开发机管道直推：
+    ```bash
+    docker save <镜像名> | ssh root@<服务器> "docker load"
+    ```
+  - **服务器端**：用 `nohup` 后台执行，断开后继续：
+    ```bash
+    nohup bash load-images.sh > /tmp/load.log 2>&1 &
+    tail -f /tmp/load.log
+    ```
+  - **SSH 配置**：客户端加 `-o ServerAliveInterval=60` 保持连接

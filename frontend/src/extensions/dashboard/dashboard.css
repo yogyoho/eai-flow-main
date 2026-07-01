@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+/* Google Fonts disabled for intranet deployment — replace with @fontsource packages or system fonts */
 
 /* ─── Reference Dashboard Design Tokens ─── */
 :root {
