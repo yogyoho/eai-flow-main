@@ -308,6 +308,9 @@ class TemplateSection(BaseModel):
     rag_sources: Optional[list[RAGSourceConfig]] = None
     generation_hint: Optional[str] = None
     example_snippet: Optional[str] = None
+    # ponytail: longer real excerpt of the sample section (≤1500 chars, sliced from source).
+    # Gives the agent a fuller reference at generation time; example_snippet stays as the short curated fragment.
+    full_section_example: Optional[str] = None
     completeness_score: Optional[int] = None
     # ── Rich metadata (all optional, transparently passed through JSONB) ──
     table_schemas: Optional[list[TableSchema]] = None
@@ -474,14 +477,18 @@ class ExtractionTaskCreate(BaseModel):
     merge_mode: Optional[str] = None
     config: Optional[ExtractionConfig] = None
 
-    @field_validator("source_report_ids")
-    @classmethod
-    def at_least_one_source(cls, v, info):
-        """At least one of source_report_ids or uploaded_file_ids must be provided."""
-        uploaded = info.data.get("uploaded_file_ids", [])
-        if not v and not uploaded:
+    @model_validator(mode="after")
+    def at_least_one_source(self):
+        """At least one of source_report_ids or uploaded_file_ids must be provided.
+
+        必须用 model_validator(after)：若用 field_validator('source_report_ids')，
+        校验 source_report_ids 时，声明在其后的 uploaded_file_ids 尚未校验、
+        不在 info.data 里，纯直接上传(B 模式, source_report_ids=[])会被误判为
+        "两者皆空"。model_validator(after) 在全部字段校验完后才跑，能同时看到两者。
+        """
+        if not self.source_report_ids and not self.uploaded_file_ids:
             raise ValueError("请提供 source_report_ids（知识库文档）或 uploaded_file_ids（直接上传文件）")
-        return v
+        return self
 
 
 # ============== Extraction Task Response ==============

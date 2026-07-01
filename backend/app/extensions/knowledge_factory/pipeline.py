@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .llm import ExtractionLLMClient
+from .doc_parser import CLAUSE_PUNCTUATION
 from .schemas import (
     ExtractionConfig,
     StepStatus,
@@ -94,6 +95,9 @@ def _is_noise(title: str) -> bool:
     not a real chapter heading."""
     # Survey/checkbox items: contain □ or ? or ？
     if any(c in title for c in ("□", "?", "？")):
+        return True
+    # 子句/句末标点：真标题（名词短语）不含这些；含则一定是正文段被误判（bug-404）
+    if any(c in title for c in CLAUSE_PUNCTUATION):
         return True
     # Inline numbered paragraphs with 、 separator are not chapter headings:
     # "4、噪声：合理布局，噪声高的设备..." (too long, content-like)
@@ -227,13 +231,13 @@ def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
     for h in h1_headings:
         parts.append(f"- {h['title']}")
 
-    parts.append("\n## 各章节内容摘要（每章节前300字）\n")
+    parts.append("\n## 各章节内容摘要（每章节前450字）\n")
 
     for h in h1_headings:
         title = h["title"]
         idx = full_content.find(title)
         if idx >= 0:
-            snippet = full_content[idx:idx + 300]
+            snippet = full_content[idx:idx + 450]
             parts.append(f"### {title}\n{snippet}\n")
         else:
             parts.append(f"### {title}\n（内容未找到）\n")
@@ -1402,13 +1406,19 @@ class ExtractionPipeline:
             if not section_content:
                 section_content = _find_section_content(title, level, doc_contents)
 
-            # min_section_length: 叶子节（无 children）内容过短则跳过 LLM 元数据抽取，
-            # 省一次 LLM 调用并标记。补齐该参数的语义（之前只过滤 reference 骨架，不过滤输出）。
+            # min_section_length: 叶子节（无 children）内容过短则跳过 LLM 元数据抽取。
+            # min_section_length 对 level=1 的全量有效，对子节(level>=2)按层级递减：
+            # level 1→100, level 2→50, level 3→33, floor=20。规程/标准类文档的子节
+            # 文字精炼天然短，"一、巷道名称及用途"下正文常仅 30-40 字，100 字门槛
+            # 会错误地清掉几乎所有 H3 叶子节的元数据。
             _has_children = bool(sec.get("children"))
             _min_len = getattr(config, "min_section_length", 0) or 0
-            if _min_len > 0 and not _has_children and len(section_content) < _min_len:
+            _effective_min = _min_len
+            if _min_len > 0 and level > 1:
+                _effective_min = max(_min_len // level, 20)
+            if _effective_min > 0 and not _has_children and len(section_content) < _effective_min:
                 done["n"] += 1
-                logger.info(f"[Task {task_id_meta}] {sec_id} 内容过短({len(section_content)}<{_min_len})，跳过元数据抽取")
+                logger.info(f"[Task {task_id_meta}] {sec_id} 内容过短({len(section_content)}<{_effective_min})，跳过元数据抽取")
                 return {**sec, "_short_content": True, "completeness_score": 0,
                         "content_contract": {"key_elements": [], "structure_type": "narrative_text",
                         "style_rules": None, "min_word_count": None, "forbidden_phrases": []}}
@@ -1444,6 +1454,13 @@ class ExtractionPipeline:
                 grounded_dropped["n"] += dropped
                 logger.info(f"[Task {task_id_meta}] {sec_id} 锚定校验丢弃/标记 {dropped} 个幻觉字段")
 
+            # Fallback: 子节内容短时 LLM 常省略 generation_hint / example_snippet
+            # （遵循提示词"不存在则省略"），但前端模板编辑依赖这两个字段，不能为 null。
+            if not metadata.get("generation_hint"):
+                metadata["generation_hint"] = f"参照原文档'{title}'章节内容，按照标准格式撰写。"
+            if not metadata.get("example_snippet"):
+                metadata["example_snippet"] = section_content[:200] if section_content else "（暂无示例，请参阅原文档）"
+
             # Match LLM-suggested rag_sources against real KB records
             raw_rag_sources = metadata.get("rag_sources", [])
             matched_rag_sources = _match_rag_sources(raw_rag_sources, available_kbs)
@@ -1455,6 +1472,9 @@ class ExtractionPipeline:
                 "rag_sources": matched_rag_sources,
                 "generation_hint": metadata.get("generation_hint"),
                 "example_snippet": metadata.get("example_snippet"),
+                # ponytail: 章节样例原文长摘录(≤1500字)，直接取自源文档，天然 grounded；
+                # 供 agent 生成时参考更完整样例（example_snippet 仅 200 字 LLM 精选片段）。
+                "full_section_example": section_content[:1500] if section_content else None,
                 "completeness_score": metadata.get("completeness_score"),
                 # Rich metadata — only present when LLM found content
                 "table_schemas": metadata.get("table_schemas"),

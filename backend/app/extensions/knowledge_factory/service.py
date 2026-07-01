@@ -195,9 +195,6 @@ class DictionaryService:
         from .dictionary_loader import load_rule_dictionaries_from_file
         data = load_rule_dictionaries_from_file()
 
-        existing = await db.execute(select(func.count()).select_from(BusinessDictionary))
-        is_empty = (existing.scalar() or 0) == 0
-
         mapping = {
             "industries": "industry",
             "report_types": "report_type",
@@ -205,30 +202,12 @@ class DictionaryService:
             "rule_types": "rule_type",
             "severity_levels": "severity_level",
         }
-
-        if is_empty:
-            for json_key, category in mapping.items():
-                for idx, item in enumerate(data.get(json_key, [])):
-                    db.add(BusinessDictionary(
-                        id=item["value"],
-                        category=category,
-                        label=item["label"],
-                        sort_order=idx,
-                    ))
-            await db.commit()
-        else:
-            # 已有数据：清除并重建所有字典类目
-            for category in mapping.values():
-                await db.execute(delete(BusinessDictionary).where(BusinessDictionary.category == category))
-            for json_key, category in mapping.items():
-                for idx, item in enumerate(data.get(json_key, [])):
-                    db.add(BusinessDictionary(
-                        id=item["value"],
-                        category=category,
-                        label=item["label"],
-                        sort_order=idx,
-                    ))
-            await db.commit()
+        # 增量补齐:只插入种子中尚不存在的条目,绝不删除用户已添加/编辑的字典项。
+        # 旧实现"表非空则清除并重建所有类目"会在每次 gateway 启动时清空用户自定义
+        # (如用户新增的报告类型),表现为"添加后丢失"。改用 _ensure_items 增量补齐。
+        for json_key, category in mapping.items():
+            items = [{"value": it["value"], "label": it["label"]} for it in data.get(json_key, [])]
+            await DictionaryService._ensure_items(db, category, items)
 
     @staticmethod
     async def _ensure_items(db: AsyncSession, category: str, items: list[dict]) -> None:
@@ -814,6 +793,7 @@ def _parse_section(data: dict) -> TemplateSection:
         rag_sources=_get(data, "rag_sources", "ragSources"),
         generation_hint=_get(data, "generation_hint", "generationHint"),
         example_snippet=_get(data, "example_snippet", "exampleSnippet"),
+        full_section_example=_get(data, "full_section_example", "fullSectionExample"),
         completeness_score=_get(data, "completeness_score", "completenessScore"),
         # 富元数据：之前 _parse_section 漏映射，导致 API 返回丢 table_schemas 等
         table_schemas=_get(data, "table_schemas", "tableSchemas"),

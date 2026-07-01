@@ -146,6 +146,7 @@ class TemplateSection(Base):
     rag_sources: Mapped[list | None] = mapped_column(ARRAY(String(200)), nullable=True)
     generation_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
     example_snippet: Mapped[str | None] = mapped_column(Text, nullable=True)
+    full_section_example: Mapped[str | None] = mapped_column(Text, nullable=True)
     completeness_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships

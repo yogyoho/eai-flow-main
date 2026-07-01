@@ -608,12 +608,16 @@ async def migrate_db() -> None:
                 rag_sources VARCHAR(200)[],
                 generation_hint TEXT,
                 example_snippet TEXT,
+                full_section_example TEXT,
                 completeness_score INT,
                 UNIQUE(template_id, section_id)
             )
         """))
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_template_sections_template ON template_sections(template_id)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE template_sections ADD COLUMN IF NOT EXISTS full_section_example TEXT"
         ))
 
         # --- Laws: regulations and standards ---

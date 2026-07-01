@@ -514,3 +514,45 @@ class TestRunInDb:
 
             with pytest.raises(RuntimeError, match="KF_DATABASE_URL"):
                 await _run_in_db(_query)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# _parse_section — full_section_example round-trip
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestParseSectionFullExample:
+    """full_section_example (longer real sample excerpt, ≤1500 chars) must
+    round-trip _parse_section → TemplateSection → model_dump so it reaches the
+    agent via kf_resolve_template. Parity with example_snippet handling."""
+
+    def test_full_section_example_present(self):
+        from app.extensions.knowledge_factory.service import _parse_section
+
+        section = _parse_section({
+            "id": "ch5",
+            "title": "消防设施",
+            "full_section_example": "本项目设计室外消火栓水量30L/s……（≤1500字样例原文摘录）",
+        })
+        assert section.full_section_example.startswith("本项目设计室外消火栓")
+        # Must survive model_dump() — the serialization path kf_resolve_template returns
+        dumped = section.model_dump()
+        assert dumped["full_section_example"] == section.full_section_example
+
+    def test_full_section_example_optional_default_none(self):
+        """Older templates extracted before this field existed map to None."""
+        from app.extensions.knowledge_factory.service import _parse_section
+
+        section = _parse_section({"id": "ch1", "title": "设计依据"})
+        assert section.full_section_example is None
+
+    def test_camel_case_alias_accepted(self):
+        """Legacy camelCase key maps too (parity with exampleSnippet)."""
+        from app.extensions.knowledge_factory.service import _parse_section
+
+        section = _parse_section({
+            "id": "ch2",
+            "title": "概述",
+            "fullSectionExample": "camelCase 摘录",
+        })
+        assert section.full_section_example == "camelCase 摘录"
