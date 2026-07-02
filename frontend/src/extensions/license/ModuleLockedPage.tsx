@@ -6,14 +6,10 @@ interface ModuleLockedPageProps {
 }
 
 const MODULE_LABELS: Record<string, string> = {
-  project: "项目管理",
-  docmgr: "文档管理",
-  knowledge: "知识库",
-  collab: "协同编辑",
-  report: "报告生成",
-  approval: "审批流程",
-  workflow: "工作流",
-  dashboard: "仪表盘",
+  project: "项目协作",
+  dashboard: "工作台",
+  typography: "报告输出",
+  contract_price: "合同价格分析",
 };
 
 export function ModuleLockedPage({ module }: ModuleLockedPageProps) {

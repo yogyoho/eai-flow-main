@@ -26,8 +26,10 @@ PRIVATE_KEY_PATH = os.path.join(SCRIPT_DIR, "private_key.pem")
 ALGORITHM = "RS256"
 
 ALL_MODULES = [
-    "project", "docmgr", "knowledge", "collab",
-    "report", "approval", "workflow", "dashboard",
+    "project",
+    "dashboard",
+    "typography",
+    "contract_price",
 ]
 
 
@@ -70,7 +72,7 @@ def generate_license(
         enabled = set(modules.split(","))
         modules_dict = {m: (m in enabled) for m in ALL_MODULES}
     else:
-        modules_dict = {"project": True, "docmgr": True}
+        modules_dict = {m: True for m in ALL_MODULES}
 
     # Build features dict
     features_dict: dict = {}
