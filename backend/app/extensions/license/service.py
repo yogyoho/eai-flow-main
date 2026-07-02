@@ -28,8 +28,10 @@ GRACE_PERIOD_DAYS = int(os.getenv("GRACE_PERIOD_DAYS", "7"))
 DEFAULT_LICENSE_PATH = Path(os.getenv("LICENSE_FILE_PATH", "/etc/deerflow/license.lic"))
 ALGORITHM = "RS256"
 ALL_MODULES = [
-    "project", "docmgr", "knowledge", "collab",
-    "report", "approval", "workflow", "dashboard",
+    "project",
+    "dashboard",
+    "typography",
+    "contract_price",
 ]
 
 
