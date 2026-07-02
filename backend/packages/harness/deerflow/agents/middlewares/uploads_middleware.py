@@ -137,7 +137,8 @@ class UploadsMiddleware(AgentMiddleware[UploadsMiddlewareState]):
                 self._format_file_entry(file, lines)
 
         lines.append("To work with these files:")
-        lines.append("- Read from the file first — use the outline line numbers and `read_file` to locate relevant sections.")
+        lines.append("- If a skill matches your task, invoke that skill FIRST — the uploaded file is input to the skill's workflow (the skill will read it via `read_file` when needed). Do NOT bypass a matching skill just because a file was uploaded.")
+        lines.append("- Otherwise (no matching skill), read from the file first — use the outline line numbers and `read_file` to locate relevant sections.")
         lines.append("- Use `grep` to search for keywords when you are not sure which section to look at")
         lines.append("  (e.g. `grep(pattern='revenue', path='/mnt/user-data/uploads/')`).")
         lines.append("- Use `glob` to find files by name pattern")

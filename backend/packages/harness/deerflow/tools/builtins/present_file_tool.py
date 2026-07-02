@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +10,10 @@ from langgraph.types import Command
 
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.runtime.user_context import get_effective_user_id
+from deerflow.tools.callbacks import fire_present_files_callbacks
 from deerflow.tools.types import Runtime
+
+logger = logging.getLogger(__name__)
 
 OUTPUTS_VIRTUAL_PREFIX = f"{VIRTUAL_PATH_PREFIX}/outputs"
 
@@ -80,6 +85,31 @@ def _normalize_presented_filepath(
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
 
 
+def _try_fire_sync_callback(runtime: Runtime, virtual_paths: list[str]) -> None:
+    """Best-effort trigger of the present_files → docmgr sync callback.
+
+    ponytail: fire-and-forget on the running loop. The tool is sync but the
+    registered callbacks are async (sync_outputs_to_docmgr), so we schedule via
+    create_task. Silently no-op when there is no running loop, no thread_id, or
+    no paths — sync is best-effort and must never break the tool response.
+    """
+    if not virtual_paths:
+        return
+    thread_id = _get_thread_id(runtime)
+    if not thread_id:
+        return
+    try:
+        user_id = get_effective_user_id()
+    except Exception:
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.debug("present_files: no running loop, skipping docmgr sync callback")
+        return
+    loop.create_task(fire_present_files_callbacks(user_id, thread_id, virtual_paths))
+
+
 @tool("present_files", parse_docstring=True)
 def present_file_tool(
     runtime: Runtime,
@@ -111,6 +141,9 @@ def present_file_tool(
         return Command(
             update={"messages": [ToolMessage(f"Error: {exc}", tool_call_id=tool_call_id)]},
         )
+
+    # Trigger app-layer docmgr sync (creates AIDocument rows so files appear in 文档空间).
+    _try_fire_sync_callback(runtime, normalized_paths)
 
     # The merge_artifacts reducer will handle merging and deduplication
     return Command(

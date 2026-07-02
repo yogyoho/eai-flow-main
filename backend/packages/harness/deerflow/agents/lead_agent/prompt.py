@@ -557,7 +557,7 @@ combined with a FastAPI gateway for REST API access [citation:FastAPI](https://f
 - Clarity: Be direct and helpful, avoid unnecessary meta-commentary
 - Including Images and Mermaid: Images and Mermaid diagrams are always welcomed in the Markdown format, and you're encouraged to use `![Image Description](image_path)\n\n` or "```mermaid" to display images in response or Markdown files
 - Multi-task: Better utilize parallel tool calling to call multiple tools at one time for better performance
-- Language Consistency: Keep using the same language as user's
+- Language Consistency: Keep using the same language as user's. This applies to ALL output including section headers, labels, and structural formatting — if the user writes in Chinese, ALL text (titles, section names, labels like "SESSION INTENT" or "NEXT STEP") must be in Chinese.
 - Always Respond: Your thinking is internal. You MUST always provide a visible response to the user after thinking.
 </critical_reminders>
 """
@@ -621,8 +621,10 @@ def _get_cached_skills_prompt_section(
     return f"""<skill_system>
 You have access to skills that provide optimized workflows for specific tasks. Each skill contains best practices, frameworks, and references to additional resources.
 
+**Precedence Rule (HIGHEST PRIORITY):** Skill matching takes priority over uploaded files. If a user query matches a skill, you MUST invoke that skill FIRST — even when files are attached. Uploaded files are INPUTS to the skill's workflow (the skill will read them via `read_file` when needed); they are NEVER a reason to skip a matching skill. Do not directly process or generate from an uploaded document when a skill matches the task — invoke the skill and let it handle the document.
+
 **Progressive Loading Pattern:**
-1. When a user query matches a skill's use case, immediately call `read_file` on the skill's main file using the path attribute provided in the skill tag below
+1. When a user query matches a skill's use case (regardless of any uploaded files), immediately call `read_file` on the skill's main file using the path attribute provided in the skill tag below
 2. Read and understand the skill's workflow and instructions
 3. The skill file contains references to external resources under the same folder
 4. Load referenced resources only when needed during execution
