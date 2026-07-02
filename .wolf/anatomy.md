@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T22:18:33.554Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T22:20:11.508Z
 > Files: 1434 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1127,7 +1127,7 @@
 
 - `routers.py` — License API routers. (~1264 tok)
 - `schemas.py` — Pydantic schemas for license module. (~552 tok)
-- `service.py` — License verification and management service. (~4320 tok)
+- `service.py` — License verification and management service. (~4312 tok)
 
 ## backend/app/extensions/models/
 
