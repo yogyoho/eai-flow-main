@@ -391,6 +391,12 @@ async def migrate_db() -> None:
                 "parser_config JSON DEFAULT NULL"
             )
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS "
+                "language VARCHAR(20) DEFAULT 'Chinese'"
+            )
+        )
 
         # Create scrap_drafts table for web scraper
         await conn.execute(text("""

@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Loader2, CheckCircle2, Info } from "lucide-react";
+import { CheckCircle2, Database, Info, Loader2, Trash2, UploadCloud, X } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +27,8 @@ interface Props {
   onSuccess: (task: ExtractionTaskResponse) => void;
 }
 
+type ExtractMode = "B" | "A";
+
 const DEFAULT_CONFIG: ExtractionConfig = {
   llm_model: "",
   chunk_strategy: "semantic",
@@ -41,6 +43,11 @@ const MAX_DEPTH_OPTIONS = [
   { value: 4, label: "H4（4级）", description: "章、节、条、款" },
   { value: 5, label: "H5（5级）", description: "章、节、条、款、项" },
   { value: 6, label: "H6（6级）", description: "最深层级" },
+];
+
+const MODE_OPTIONS: { value: ExtractMode; label: string; desc: string; icon: typeof UploadCloud }[] = [
+  { value: "B", label: "直接上传文件", desc: "推荐 · doc_parser 解析，提取更精准", icon: UploadCloud },
+  { value: "A", label: "从知识库选择", desc: "已上传到 RAGFlow 的样例报告", icon: Database },
 ];
 
 interface ReportItem {
@@ -70,6 +77,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
   const [reportTypeOptions, setReportTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [selectedIndustry, setSelectedIndustry] = useState("");
   const [selectedReportType, setSelectedReportType] = useState("");
+  const [mode, setMode] = useState<ExtractMode>("B");
 
   // 自动生成模板名称：业务领域_报告类型_模板
   const updateAutoTemplateName = (industryValue: string, reportTypeValue: string) => {
@@ -104,11 +112,11 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([]);
   const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([]);
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFiles = async (fileList: File[]) => {
+    if (fileList.length === 0) return;
 
     const kb = kbList.find((k) => k.status === "active") || kbList[0];
     if (!kb) { toast.error("没有可用的知识库，请先在样例管理 tab 创建知识库"); return; }
@@ -122,7 +130,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
       const csrfToken = csrfMatch?.[1] ?? "";
       const ids: string[] = [];
       const names: string[] = [];
-      for (const file of Array.from(files)) {
+      for (const file of fileList) {
         const formData = new FormData();
         formData.append("file", file);
         const headers: Record<string, string> = {};
@@ -151,7 +159,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
       }
       setUploadedDocIds((prev) => [...prev, ...ids]);
       setUploadedFileNames((prev) => [...prev, ...names]);
-      toast.success(`已上传 ${files.length} 个文件`);
+      toast.success(`已上传 ${fileList.length} 个文件`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "上传失败";
       toast.error(msg);
@@ -160,6 +168,22 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void uploadFiles(Array.from(e.target.files ?? []));
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    void uploadFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const removeUploadedFile = (index: number) => {
+    setUploadedDocIds((prev) => prev.filter((_, i) => i !== index));
+    setUploadedFileNames((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const [mergeMode, setMergeMode] = useState<MergeMode>("merge");
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -261,12 +285,15 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
   };
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  const canSubmit = mode === "A" ? selectedReports.size > 0 : uploadedDocIds.length > 0;
 
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error("请输入任务名称"); return; }
-    if (selectedReports.size === 0 && uploadedDocIds.length === 0) {
-      toast.error("请至少选择 1 份样例报告或上传 1 个 Word/PDF 文件");
-      return;
+    if (mode === "A" && selectedReports.size === 0) {
+      toast.error("请至少选择 1 份样例报告"); return;
+    }
+    if (mode === "B" && uploadedDocIds.length === 0) {
+      toast.error("请上传至少 1 个 Word/PDF 文件"); return;
     }
 
     setSubmitting(true);
@@ -280,8 +307,9 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
         domain: selectedDomain,
         industry: selectedIndustry || undefined,
         report_type: selectedReportType || undefined,
-        source_report_ids: Array.from(selectedReports),
-        uploaded_file_ids: uploadedDocIds.length > 0 ? uploadedDocIds : undefined,
+        // 按模式分流：A=知识库样例，B=直接上传文件
+        source_report_ids: mode === "A" ? Array.from(selectedReports) : [],
+        uploaded_file_ids: mode === "B" && uploadedDocIds.length > 0 ? uploadedDocIds : undefined,
         target_template_name: finalTemplateName,
         target_template_id: isExisting ? selectedTemplateId : undefined,
         merge_mode: isExisting ? mergeMode : undefined,
@@ -311,7 +339,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
 
           {/* Body */}
           <div className="flex-1 px-6 py-5 space-y-5">
-            {/* 任务名称 + 模板名称 */}
+            {/* 任务名称 + 模板名称（共享） */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">任务名称</label>
@@ -335,7 +363,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
               </div>
             </div>
 
-            {/* 业务领域 + 报告类型 */}
+            {/* 业务领域 + 报告类型（共享） */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">业务领域</label>
@@ -359,38 +387,199 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
               </div>
             </div>
 
-            {/* 报告大纲 + 知识库筛选 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">报告大纲</label>
-                <AdminSelect
-                  value={selectedDomain}
-                  onChange={setSelectedDomain}
-                  options={
-                    domains.length > 0
-                      ? domains.map((d) => ({ value: d.id, label: d.name }))
-                      : [{ value: "default", label: "默认" }]
-                  }
-                  placeholder="选择大纲"
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">知识库筛选</label>
-                <AdminSelect
-                  value={selectedKb}
-                  onChange={setSelectedKb}
-                  options={[
-                    { value: "__all__", label: "全部知识库" },
-                    ...kbList.map((kb) => ({ value: kb.id, label: kb.name })),
-                  ]}
-                  placeholder="全部知识库"
-                  className="w-full"
-                />
+            {/* 样例来源：模式切换（默认 B 直接上传） */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">样例来源</label>
+              <div className="grid grid-cols-2 gap-2">
+                {MODE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setMode(opt.value)}
+                    className={cn(
+                      "flex items-start gap-2.5 p-3 rounded-lg border-2 text-left transition-all",
+                      mode === opt.value
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/40 hover:bg-accent/50"
+                    )}
+                  >
+                    <opt.icon className={cn(
+                      "w-4 h-4 mt-0.5 shrink-0",
+                      mode === opt.value ? "text-primary" : "text-muted-foreground"
+                    )} />
+                    <div className="min-w-0">
+                      <div className={cn(
+                        "text-sm font-semibold",
+                        mode === opt.value ? "text-primary" : "text-foreground"
+                      )}>
+                        {opt.label}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* 目标模板选择 */}
+            {/* —— B 模式：文件拖拽框（默认）—— */}
+            {mode === "B" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  上传样例报告
+                  <span className="text-xs text-muted-foreground ml-2">直接上传 Word/PDF，优先用 doc_parser 解析，提取更精准</span>
+                </label>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => !uploadingFiles && fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-lg px-6 py-10 text-center cursor-pointer transition-colors",
+                    dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-accent/30",
+                    uploadingFiles && "cursor-wait opacity-80"
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".docx,.pdf"
+                    multiple
+                    onChange={handleFileUpload}
+                    disabled={uploadingFiles}
+                    className="hidden"
+                  />
+                  {uploadingFiles ? (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-7 h-7 animate-spin" />
+                      <span className="text-sm">上传中...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <UploadCloud className="w-7 h-7" />
+                      <span className="text-sm text-foreground font-medium">点击或拖拽 Word/PDF 文件到此处</span>
+                      <span className="text-xs">支持 .docx / .pdf，可多选</span>
+                    </div>
+                  )}
+                </div>
+                {uploadedFileNames.length > 0 && (
+                  <div className="space-y-1">
+                    {uploadedFileNames.map((fname, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded px-2 py-1.5"
+                      >
+                        <span className="flex items-center gap-1 min-w-0">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{fname}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeUploadedFile(i); }}
+                          className="text-muted-foreground hover:text-destructive shrink-0 ml-2"
+                          aria-label={`移除 ${fname}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* —— A 模式：报告大纲 + 知识库筛选 + 源报告选择 —— */}
+            {mode === "A" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">报告大纲</label>
+                    <AdminSelect
+                      value={selectedDomain}
+                      onChange={setSelectedDomain}
+                      options={
+                        domains.length > 0
+                          ? domains.map((d) => ({ value: d.id, label: d.name }))
+                          : [{ value: "default", label: "默认" }]
+                      }
+                      placeholder="选择大纲"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">知识库筛选</label>
+                    <AdminSelect
+                      value={selectedKb}
+                      onChange={setSelectedKb}
+                      options={[
+                        { value: "__all__", label: "全部知识库" },
+                        ...kbList.map((kb) => ({ value: kb.id, label: kb.name })),
+                      ]}
+                      placeholder="全部知识库"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-foreground">源报告选择（至少 1 份）</label>
+                    <span className="text-xs text-muted-foreground">已选 {selectedReports.size} 份</span>
+                  </div>
+                  <div className="border border-border rounded-lg divide-y divide-border max-h-52 overflow-y-auto">
+                    {loadingData ? (
+                      <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" /> 加载报告中...
+                      </div>
+                    ) : filteredReports.length === 0 ? (
+                      <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                        暂无已解析的报告
+                      </div>
+                    ) : (
+                      filteredReports.map((r) => (
+                        <label
+                          key={r.id}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors group",
+                            selectedReports.has(r.id) && "bg-primary/5"
+                          )}
+                        >
+                          <div className="relative shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedReports.has(r.id)}
+                              onChange={() => toggleReport(r.id)}
+                              className="sr-only"
+                            />
+                            <div className={cn(
+                              "w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200",
+                              "group-hover:border-primary/60",
+                              selectedReports.has(r.id)
+                                ? "bg-primary border-primary"
+                                : "border-input bg-background"
+                            )}>
+                              <CheckCircle2 className={cn(
+                                "w-3.5 h-3.5 text-primary-foreground transition-all duration-200",
+                                selectedReports.has(r.id) ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                              )} />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{r.kb_name}</p>
+                          </div>
+                          <CheckCircle2 className={cn(
+                            "w-4 h-4 shrink-0",
+                            selectedReports.has(r.id) ? "text-primary" : "text-transparent"
+                          )} />
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* 目标模板（共享） */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">目标模板</label>
               <AdminSelect
@@ -424,7 +613,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
               })()}
             </div>
 
-            {/* 合并模式（仅选择已有模板时显示） */}
+            {/* 合并模式（共享，仅选择已有模板时显示） */}
             {selectedTemplateId !== "__new__" && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">合并模式</label>
@@ -462,96 +651,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
               </div>
             )}
 
-            {/* 源报告选择 */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-foreground">源报告选择（至少 1 份）</label>
-                <span className="text-xs text-muted-foreground">已选 {selectedReports.size} 份</span>
-              </div>
-              <div className="border border-border rounded-lg divide-y divide-border max-h-52 overflow-y-auto">
-                {loadingData ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> 加载报告中...
-                  </div>
-                ) : filteredReports.length === 0 ? (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                    暂无已解析的报告
-                  </div>
-                ) : (
-                  filteredReports.map((r) => (
-                    <label
-                      key={r.id}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors group",
-                        selectedReports.has(r.id) && "bg-primary/5"
-                      )}
-                    >
-                      <div className="relative shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={selectedReports.has(r.id)}
-                          onChange={() => toggleReport(r.id)}
-                          className="sr-only"
-                        />
-                        <div className={cn(
-                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200",
-                          "group-hover:border-primary/60",
-                          selectedReports.has(r.id)
-                            ? "bg-primary border-primary"
-                            : "border-input bg-background"
-                        )}>
-                          <CheckCircle2 className={cn(
-                            "w-3.5 h-3.5 text-primary-foreground transition-all duration-200",
-                            selectedReports.has(r.id) ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                          )} />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{r.kb_name}</p>
-                      </div>
-                      <CheckCircle2 className={cn(
-                        "w-4 h-4 shrink-0",
-                        selectedReports.has(r.id) ? "text-primary" : "text-transparent"
-                      )} />
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* 直接上传 Word/PDF */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                直接上传 Word/PDF
-                <span className="text-xs text-muted-foreground ml-2">优先用 doc_parser 解析，提取更精准</span>
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".docx,.pdf"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploadingFiles}
-                  className="text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-primary/10 file:text-primary hover:file:bg-primary/20 disabled:opacity-50"
-                />
-                {uploadingFiles && (
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
-                )}
-              </div>
-              {uploadedFileNames.length > 0 && (
-                <div className="space-y-1">
-                  {uploadedFileNames.map((name, i) => (
-                    <p key={i} className="text-xs text-green-600 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> {name}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 抽取配置 */}
+            {/* 抽取配置（共享） */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">抽取配置</label>
               <div className="grid grid-cols-2 gap-3">
@@ -619,7 +719,7 @@ export default function ExtractionTaskModal({ onClose, onSuccess }: Props) {
               取消
             </button>
             <button
-              disabled={submitting || selectedReports.size === 0}
+              disabled={submitting || !canSubmit}
               onClick={handleSubmit}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >

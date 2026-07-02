@@ -2,9 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft,
+  ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
   CheckCircle2, Copy, Download, FileText, Grid3X3, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
+  RefreshCw, Scissors, Search, Share2, FolderCheck, FolderOpen, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -42,7 +42,7 @@ type View = "list" | "editor";
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
-  const [activeNav, setActiveNav] = useState<"folder" | "starred" | "shared" | "file_ref" | "file_ref_folder">("folder");
+  const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
   const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const handleSelectDoc = (doc: AIDocument) => { setActiveDocId(doc.id); setView("editor"); };
   const handleBack = () => { setActiveDocId(null); setView("list"); };
@@ -67,8 +67,8 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
 
 function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFolderChange }: {
   onSelectDoc: (doc: AIDocument) => void;
-  activeNav: "folder" | "starred" | "shared" | "file_ref" | "file_ref_folder";
-  onNavChange: (nav: "folder" | "starred" | "shared" | "file_ref" | "file_ref_folder") => void;
+  activeNav: "folder" | "file_ref_folder";
+  onNavChange: (nav: "folder" | "file_ref_folder") => void;
   currentFolder: string;
   onFolderChange: (folder: string) => void;
 }) {
@@ -86,28 +86,35 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [shareDoc, setShareDoc] = useState<AIDocument | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [personalArchiveOpen, setPersonalArchiveOpen] = useState(false);
-  const [personalActiveFolderId, setPersonalActiveFolderId] = useState<string | null>(null);
+  const [personalOpen, setPersonalOpen] = useState(true);
+  const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
   const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
-  const personalFolderTree = useFolderTree("personal", "file_ref");
+  // 文件夹树不限定 doc_type：否则删掉 file_ref 后只剩 document 的文件夹
+  // （如 AI 报告）会从树里消失，用户进不去（bug-412 关联）。
+  const personalFolderTree = useFolderTree("personal");
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
   useEffect(() => {
     if (navSynced.current) return;
     navSynced.current = true;
-    if (activeNav === "starred") setFilter({ starred: true });
-    else if (activeNav === "shared") setFilter({ shared: true });
-    else if (activeNav === "file_ref") setFilter({ doc_type: "file_ref", project_scope: "personal" });
-    else if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
-    else setFilter({ folder: currentFolder, doc_type: "document" });
+    if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
+    // Default: 全部个人文件，不限定 doc_type（document 与 file_ref 合并显示）
+    else setFilter({ project_scope: "personal", folder: currentFolder });
   }, [activeNav, currentFolder, setFilter]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
     clearTimeout(debouncedSearch.current);
     debouncedSearch.current = setTimeout(() => setFilter((f) => ({ ...f, q: v || undefined })), 400);
+  };
+
+  const handleFilterToggle = (mode: "all" | "starred" | "shared") => {
+    setFilterMode(mode);
+    if (mode === "starred") setFilter((f) => ({ ...f, starred: true, shared: undefined }));
+    else if (mode === "shared") setFilter((f) => ({ ...f, shared: true, starred: undefined }));
+    else setFilter((f) => ({ ...f, starred: undefined, shared: undefined }));
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -118,13 +125,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     if (nav === "folder") {
       const nextFolder = folder ?? "默认文件夹";
       onFolderChange(nextFolder);
-      setFilter({ folder: nextFolder, doc_type: "document", q: search || undefined });
-    } else if (nav === "starred") {
-      setFilter({ starred: true, q: search || undefined });
-    } else if (nav === "shared") {
-      setFilter({ shared: true, q: search || undefined });
-    } else if (nav === "file_ref") {
-      setFilter({ doc_type: "file_ref", project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
+      // 合并显示全部类型（document + file_ref），不再限定 doc_type
+      setFilter({ project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
     } else if (nav === "file_ref_folder") {
       if (folder) onFolderChange(folder);
       setFilter({ project_scope: "project", folder, folder_id: folderId || undefined, q: search || undefined });
@@ -166,7 +168,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     setSelectedIds(new Set());
   };
 
-  const isFileRefView = activeNav === "file_ref" || activeNav === "file_ref_folder";
+  const isFileRefView = activeNav === "file_ref_folder";
 
   const handleCreate = async (title: string) => {
     const doc = await createDoc({ title, content: "", folder: currentFolder });
@@ -203,54 +205,32 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           </div>
           <span className="font-semibold text-foreground text-l">文档空间</span>
         </div>
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-          {/* 我的文件夹 */}
-          <div className="text-xs font-medium text-muted-foreground px-3 py-1">我的文件夹</div>
-          <button onClick={() => handleNavClick("folder")}
-            className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
-              activeNav === "folder" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-            <FileText className="w-4 h-4" />我的文档
-          </button>
-          <button onClick={() => handleNavClick("starred")}
-            className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
-              activeNav === "starred" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-            <Star className="w-4 h-4" />我的收藏
-          </button>
-          <button onClick={() => handleNavClick("shared")}
-            className={cn("w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
-              activeNav === "shared" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted")}>
-            <Share2 className="w-4 h-4" />我的分享
-          </button>
-
-          <div className="h-px bg-border my-2" />
-
-          {/* AI任务存档 */}
-          <div className="text-xs font-medium text-muted-foreground px-3 py-1">AI任务存档</div>
-          {/* 个人文件夹 - 树形结构 */}
-          <div className="pt-2 mt-2">
+        <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
+          {/* 我的文档 — 树形结构 */}
+          <div>
             <button
-              onClick={() => setPersonalArchiveOpen((v) => !v)}
+              onClick={() => setPersonalOpen((v) => !v)}
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Archive className="w-3.5 h-3.5" />
-                <span>个人文件夹</span>
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>我的文档</span>
               </div>
-              {personalArchiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
-            {personalArchiveOpen && (
+            {personalOpen && (
               <ProjectFolderTree
-                folders={personalFolderTree.folders}
+                folders={personalFolderTree.folders.flatMap(f => f.children || [])}
                 expandedKeys={personalFolderTree.expandedKeys}
                 onToggleExpand={personalFolderTree.toggleExpand}
                 onSelectFolder={(folderId, folderName) => {
-                  setPersonalActiveFolderId(folderId);
-                  handleNavClick("file_ref", folderName, folderId);
+                  setActiveFolderId(folderId);
+                  handleNavClick("folder", folderName, folderId);
                 }}
                 onCreateFolder={async (name, parentId) => { await personalFolderTree.createFolder(name, parentId); }}
                 onRenameFolder={personalFolderTree.renameFolder}
                 onDeleteFolder={personalFolderTree.deleteFolder}
-                activeFolderId={personalActiveFolderId}
+                activeFolderId={activeFolderId}
               />
             )}
           </div>
@@ -292,6 +272,20 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 <Plus className="w-4 h-4" />新建文档
               </Button>
             )}
+            <div className="flex items-center gap-0.5 bg-muted/60 rounded-md p-0.5">
+              {(["all", "starred", "shared"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => handleFilterToggle(mode)}
+                  className={cn(
+                    "px-2.5 py-1 text-xs rounded-sm font-medium transition-colors",
+                    filterMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {mode === "all" ? "全部" : mode === "starred" ? "收藏" : "分享"}
+                </button>
+              ))}
+            </div>
             <div className="relative w-60">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="搜索文档..."
@@ -334,14 +328,17 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
             <span className="text-xs text-muted-foreground">共 {total} 篇文档</span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 bg-muted/30">
+        <div className={cn(
+          "flex-1 p-6 bg-muted/30",
+          docs.length === 0 ? "flex flex-col items-center justify-center" : "overflow-y-auto"
+        )}>
           {loading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">加载中...</div>
           ) : docs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-center">
-              <FileText className="w-12 h-12 text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">{isFileRefView ? "暂无文件" : "暂无文档"}</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">{isFileRefView ? "AI任务产出的文件会出现在这里" : "点击「新建文档」开始创作"}</p>
+            <div className="flex flex-col items-center text-center max-w-xs">
+              <MousePointerClick className="w-10 h-10 text-muted-foreground/25 mb-4" />
+              <p className="text-sm font-medium text-muted-foreground">点击左侧文件夹查看文档</p>
+              <p className="text-xs text-muted-foreground/60 mt-1.5 leading-relaxed">{isFileRefView ? "选中项目文件夹后，同步的文件会出现在这里" : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}</p>
             </div>
           ) : viewMode === "grid-icon" || viewMode === "grid-summary" ? (
             <AnimatePresence>

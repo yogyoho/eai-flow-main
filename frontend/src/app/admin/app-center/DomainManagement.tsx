@@ -42,7 +42,11 @@ const ACCENT_SELECT_OPTIONS: TableSelectOption[] = ACCENT_OPTIONS.map((c) => ({
   swatch: ACCENT_SWATCH[c],
 }));
 
-export function DomainManagement() {
+export function DomainManagement({
+  onDomainsChanged,
+}: {
+  onDomainsChanged?: () => void;
+}) {
   const [domains, setDomains] = useState<DomainResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -83,6 +87,7 @@ export function DomainManagement() {
       setNewAccent("blue");
       setNewUniversal(false);
       await load();
+      onDomainsChanged?.();
     } finally {
       setSaving(null);
     }
@@ -101,6 +106,7 @@ export function DomainManagement() {
         isUniversal: patch.isUniversal,
       });
       await load();
+      onDomainsChanged?.();
     } finally {
       setSaving(null);
     }
@@ -112,6 +118,7 @@ export function DomainManagement() {
     try {
       await deleteDomain(key);
       await load();
+      onDomainsChanged?.();
     } catch {
       alert("删除失败：该业务域下仍有应用，请先迁移应用后再删除。");
     } finally {

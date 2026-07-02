@@ -1,11 +1,16 @@
 "use client";
 
 import { Blocks } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { AppManagement } from "./AppManagement";
 import { DomainManagement } from "./DomainManagement";
 
 export default function AdminAppCenterPage() {
+  // ponytail: refreshKey lets DomainManagement notify AppManagement to re-fetch domains
+  const [refreshKey, setRefreshKey] = useState(0);
+  const notifyDomainsChanged = useCallback(() => setRefreshKey((k) => k + 1), []);
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-8">
@@ -24,8 +29,8 @@ export default function AdminAppCenterPage() {
         </header>
 
         <div className="space-y-10">
-          <DomainManagement />
-          <AppManagement />
+          <DomainManagement onDomainsChanged={notifyDomainsChanged} />
+          <AppManagement refreshKey={refreshKey} />
         </div>
       </div>
     </div>

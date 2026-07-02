@@ -32,7 +32,7 @@ const STAGE_OPTIONS: TableSelectOption[] = [
   { value: "manage", label: "管理" },
 ];
 
-export function AppManagement() {
+export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
   const [apps, setApps] = useState<AppResponse[]>([]);
   const [domains, setDomains] = useState<DomainResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +68,7 @@ export function AppManagement() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshKey]);
 
   async function handleUpdate(
     appId: string,

@@ -353,6 +353,12 @@ class AIDocumentService:
         for filepath in sandbox_path.rglob("*"):
             if not filepath.is_file():
                 continue
+            # Skip framework-internal files under hidden paths (notably
+            # .tool-results/, where tool_output_budget_middleware auto-dumps large
+            # MCP tool returns). These are intermediates, not deliverables — syncing
+            # them pollutes 文档空间 with raw tool-output blobs (bug-410).
+            if any(p.startswith(".") for p in filepath.relative_to(sandbox_path).parts):
+                continue
             if synced >= max_per_sync:
                 break
 

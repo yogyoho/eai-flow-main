@@ -150,13 +150,31 @@ def _heading_level_from_number(num_str: str) -> int:
     return min(num_str.count(".") + 1, 3)
 
 
+# ── Body-text guard (bug-404) ──
+# 真标题是简短名词短语；含子句/句末标点（，。；！？ 及 ASCII 对应）的一定是
+# 被误套了标题样式的正文段。顿号 、 可在真标题里作连词（"设计、施工及验收"），
+# 故不列入——只看真正的子句/句末边界标点。两处样式法（expat/python-docx）与
+# regex 兜底共用此判定，保持单一真相源。
+CLAUSE_PUNCTUATION = set("，。；！？,;!?")
+
+
+def _looks_like_body_text(text: str) -> bool:
+    """真标题不含子句/句末标点；含则判定为正文段（样式法误判守卫）。
+
+    实测 3218 掘进作业规程：被误判为章节的 8 段正文全部含 ，或 。，
+    而 9 个真章节标题一个都不含——这是零误伤的判别线。
+    """
+    return any(ch in CLAUSE_PUNCTUATION for ch in text)
+
+
 def _is_noise_line(line: str) -> bool:
     if any(c in line for c in ("□", "?", "？")):
         return True
+    # 子句/句末标点：真标题不含这些（见 _looks_like_body_text）
+    if _looks_like_body_text(line):
+        return True
     t = line.strip()
-    # 编号+顿号的长行：只在含句末标点（句号/分号/冒号后续内容）时才当噪音段落，
-    # 避免误杀长中文标题（如"12、环境保护措施及其技术经济论证"无标点是合法标题）。
-    # 原阈值 len>15 过于激进，中文标题普遍>15字。
+    # 编号+顿号的长行：原 len>15 判定（现已被上面子句标点覆盖大部分，保留兜底）。
     if re.match(r"^\d+[、，]", t) and len(t) > 15 and any(p in t for p in ("。", "；", "，")):
         return True
     return False
@@ -381,7 +399,8 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
             if text:
                 paragraphs.append(text)
                 lv = style_levels.get(cur_style) or _HEADING_STYLES.get(cur_style)
-                if lv is not None:
+                if lv is not None and not _looks_like_body_text(text):
+                    # 守卫：正文段即便被套了标题样式（含子句标点），也不当 heading（bug-404）
                     headings.append(Heading(title=text, level=lv,
                                            line_number=line_no, style_name=f"Heading {lv}",
                                            para_idx=len(paragraphs) - 1))
@@ -469,7 +488,9 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
             line_no += 1; continue
         paragraphs.append(text)
         s = (para.style.name if para.style else "").lower()
-        if "heading 1" in s or s == "heading1":
+        if _looks_like_body_text(text):
+            pass  # 守卫：正文段即便套了标题样式也不当 heading（bug-404）
+        elif "heading 1" in s or s == "heading1":
             headings.append(Heading(title=text, level=1, line_number=line_no, style_name=para.style.name, para_idx=len(paragraphs) - 1))
         elif "heading 2" in s or s == "heading2":
             headings.append(Heading(title=text, level=2, line_number=line_no, style_name=para.style.name, para_idx=len(paragraphs) - 1))
@@ -546,10 +567,13 @@ def build_structure_hint(parsed: ParsedDocument, max_chars: int = 5000) -> str:
     parts = [f"## 文档章节目录（自动识别，共 {len(h1s)} 章）\n"]
     for h in h1s:
         parts.append(f"- {h.title}")
-    parts.append("\n## 各章节内容摘要（每章节前300字）\n")
+    parts.append("\n## 各章节内容摘要（每章节前450字）\n")
     for h in h1s:
-        idx = parsed.full_text.find(h.title)
-        parts.append(f"### {h.title}\n{parsed.full_text[idx:idx + 300] if idx >= 0 else '(未找到)'}\n")
+        # 用 text_offset 而非 find(title)：find 在有目录页的文档上命中
+        # 目录条目（带页码），而非正文章节。text_offset 已由 finalize_sections
+        # 正确计算到 body 段落位置。（bug-404）
+        idx = h.text_offset if h.text_offset >= 0 else parsed.full_text.find(h.title)
+        parts.append(f"### {h.title}\n{parsed.full_text[idx:idx + 450] if idx >= 0 else '(未找到)'}\n")
 
     result = "\n".join(parts)
     return result[:max_chars] + ("\n...(内容已截断)" if len(result) > max_chars else "")

@@ -28,14 +28,18 @@ _SCHEMA_INFERENCE_SYSTEM_PROMPT = """你是一个专业的文档结构分析专�
    - required: 是否必需
    - purpose: 章节目的/作用（50字以内）
 4. 输出一棵树形结构，代表该类文档的标准模板
-5. 章节层级不超过 {max_depth} 级（level 值不超过 {max_depth}）
+5. 重要：你必须尽量将章节结构延伸到 {max_depth} 级——你在章节摘要中看到的所有二级标题（"第X节"、"一、"等）
+   和三级标题（"1、"、"（一）"等）都应该作为 children 节点出现在对应章节下。
+   不要只输出一级章节，每一章必须有完整的子节树。
 
 ## 优先骨架规则
 
 当提供参考章节结构（reference_chapters）时：
 - 必须以 reference_chapters 中的章节为骨架，不可缺省任何 H1 章节
 - 章节顺序必须与 reference_chapters 对齐
-- 可以新增 reference_chapters 中不存在的子节（H2/H3）
+- 应该为每个 H1 章节从文档内容中提取 H2/H3 子节并写入 children——文档里
+  一定有这些子节，仔细阅读章节摘要文本；不填 children 等于丢失了最重要的
+  结构化信息
 - 如果实际文档结构与 reference_chapters 明显不同（如报告类型不匹配），
   保留 reference_chapters 的所有 H1 章节但可将不适用者标记为 required=false，
   并在 purpose 中以 [偏差] 开头说明原因
@@ -120,8 +124,11 @@ _METADATA_EXTRACTION_SYSTEM_PROMPT = """你是一个专业的文档抽取专家�
 - sub_section_profile: 子章节深度指导
   expected_h2_count, expected_h3_count, volume_estimate（short|medium|long）, notes
 
-重要：只输出章节中确实存在的内容。如果某类元数据不存在，直接省略该字段，
-不要输出空数组或 null。这可以避免输出膨胀和 token 超载。"""
+重要：`generation_hint`（生成提示）和 `example_snippet`（示例片段，100-200字）
+是模板的基础字段，**必须输出，不可省略**——即使原文档内容很短，也要基于已有内容写出。
+其他富元数据字段（table_schemas、figure_requirements、formula_references、
+calc_script_bindings、sub_section_profile）仅在章节中确实存在对应内容时才输出，
+无则完全省略这些字段，不要输出空数组或 null。"""
 
 
 _METADATA_EXTRACTION_USER_PROMPT_TEMPLATE = """## 章节信息

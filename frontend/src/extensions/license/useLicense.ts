@@ -32,6 +32,8 @@ export function useLicense() {
     /** Check if a specific module is available */
     hasModule: (name: string): boolean => {
       if (!data) return false;
+      // Dev mode skips license validation — all modules available
+      if (data.is_dev_mode) return true;
       if (data.in_grace_period) return true;
       return data.valid && (data.modules[name] ?? false);
     },

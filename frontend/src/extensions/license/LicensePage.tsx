@@ -109,8 +109,18 @@ export default function LicensePage() {
       <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-lg font-semibold">当前许可证</h2>
         {status?.is_dev_mode && (
-          <div className="mb-4 rounded bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-            ⚠️ 开发模式 — 许可证验证已跳过
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 px-4 py-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-base leading-none">
+              &#9889;
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                开发模式已启用
+              </p>
+              <p className="text-xs text-amber-600/80 dark:text-amber-400/70">
+                许可证验证已跳过，所有功能模块均可用
+              </p>
+            </div>
           </div>
         )}
         <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -158,22 +168,52 @@ export default function LicensePage() {
 
         {/* Module badges */}
         {status?.modules && Object.keys(status.modules).length > 0 && (
-          <div className="mt-4">
-            <dt className="mb-2 text-sm text-gray-500">模块授权</dt>
-            <dd className="flex flex-wrap gap-2">
+          <div className="mt-5">
+            <span className="mb-3 block text-xs font-medium uppercase tracking-widest text-gray-400">
+              模块授权
+            </span>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {Object.entries(status.modules).map(([name, enabled]) => (
-                <span
+                <div
                   key={name}
-                  className={`rounded-full px-3 py-1 text-xs ${
+                  className={`group relative overflow-hidden rounded-lg border px-3 py-2.5 transition-all duration-200 hover:shadow-md ${
                     enabled
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                      ? "border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/40 hover:bg-emerald-500/[0.07] dark:border-emerald-500/15 dark:bg-emerald-500/[0.03]"
+                      : "border-gray-200 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30"
                   }`}
                 >
-                  {name}
-                </span>
+                  {/* top accent strip */}
+                  <div
+                    className={`absolute inset-x-0 top-0 h-px ${
+                      enabled
+                        ? "bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent dark:via-emerald-400/40"
+                        : "bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"
+                    }`}
+                  />
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`flex size-2 shrink-0 rounded-full ${
+                        enabled
+                          ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)] dark:bg-emerald-500 dark:shadow-[0_0_8px_rgba(52,211,153,0.3)]"
+                          : "bg-gray-300 dark:bg-gray-600"
+                      }`}
+                    />
+                    <span
+                      className={`truncate text-[13px] font-medium ${
+                        enabled
+                          ? "text-gray-800 dark:text-gray-200"
+                          : "text-gray-400 dark:text-gray-500"
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  </div>
+                  <p className="mt-1 pl-[26px] text-[11px] text-gray-400 dark:text-gray-500">
+                    {enabled ? "已授权" : "未授权"}
+                  </p>
+                </div>
               ))}
-            </dd>
+            </div>
           </div>
         )}
 
@@ -238,9 +278,11 @@ export default function LicensePage() {
         <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold">导出许可证</h2>
           <button
+            type="button"
             onClick={handleExport}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
+            <Download className="h-4 w-4" />
             下载 license.lic
           </button>
         </div>

@@ -84,6 +84,9 @@ export function BasicSettings() {
   const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set());
   const { theme, setTheme, systemTheme } = useTheme();
   const currentTheme = (theme ?? "system") as "system" | "light" | "dark";
+  // 当前访问主机名 — 服务链接(RAGFlow/MinIO 等)用同一主机 + 各自端口,
+  // 避免硬编码 localhost 导致生产环境跳转到 127.0.0.1。
+  const [hostname, setHostname] = useState("localhost");
 
   const languageOptions: { value: Locale; label: string }[] = [
     { value: "en-US", label: enUS.locale.localName },
@@ -114,6 +117,7 @@ export function BasicSettings() {
   useEffect(() => {
     loadConfig();
     loadModelChoices();
+    setHostname(window.location.hostname);
   }, []);
 
   const loadConfig = async () => {
@@ -452,7 +456,7 @@ export function BasicSettings() {
             <ServiceLinkCard
               title={t.settings.basic.services.ragflow}
               description={t.settings.basic.services.ragflowDesc}
-              href="http://localhost:9381/"
+              href={`http://${hostname}:${process.env.NEXT_PUBLIC_RAGFLOW_WEB_PORT || "9381"}/`}
             />
           </div>
         </CardContent>
