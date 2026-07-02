@@ -8098,6 +8098,162 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-02T22:08:08.127Z"
+    },
+    {
+      "id": "bug-497",
+      "timestamp": "2026-07-02T22:27:03.408Z",
+      "error_message": "CSS fix: project, dashboard",
+      "file": "frontend/src/extensions/license/ModuleLockedPage.tsx",
+      "root_cause": "project: \"项目管理\", → \"项目协作\",; dashboard: \"仪表盘\", → \"工作台\",",
+      "fix": "Changed project: \"项目管理\", → \"项目协作\",; dashboard: \"仪表盘\", → \"工作台\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:27:03.408Z"
+    },
+    {
+      "id": "bug-498",
+      "timestamp": "2026-07-02T22:27:07.860Z",
+      "error_message": "CSS fix: href",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "href: \"/knowledge\", label: \"知识库\", icon: BookOpen, licenseModule: \"knowledge\" → \"/knowledge\", label: \"知识库\", icon: BookOpen",
+      "fix": "Changed href: \"/knowledge\", label: \"知识库\", icon: BookOpen, licenseModule: \"knowledge\" → \"/knowledge\", label: \"知识库\", icon: BookOpen",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:27:07.860Z"
+    },
+    {
+      "id": "bug-499",
+      "timestamp": "2026-07-02T22:27:11.652Z",
+      "error_message": "Wrong reference: None should be dashboard",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Used \"None\" instead of \"dashboard\"",
+      "fix": "Changed None → dashboard",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-07-02T22:27:36.019Z"
+    },
+    {
+      "id": "bug-500",
+      "timestamp": "2026-07-02T22:27:26.464Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Had \"report\"",
+      "fix": "Changed to \"typography\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:27:26.464Z"
+    },
+    {
+      "id": "bug-501",
+      "timestamp": "2026-07-02T22:29:18.868Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:29:18.868Z"
+    },
+    {
+      "id": "bug-502",
+      "timestamp": "2026-07-02T22:34:55.438Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/config/app_config.py",
+      "root_cause": "53 lines replaced/restructured",
+      "fix": "Rewrote 68→12 lines (53 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:34:55.438Z"
+    },
+    {
+      "id": "bug-503",
+      "timestamp": "2026-07-02T22:37:24.540Z",
+      "error_message": "Incorrect value in code",
+      "file": "scripts/migrate_license_modules_v2.sql",
+      "root_cause": "Had 'project'",
+      "fix": "Changed to 'contract_price'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sql"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:37:24.540Z"
+    },
+    {
+      "id": "bug-504",
+      "timestamp": "2026-07-02T22:37:54.567Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/runtime/events/store/memory.py",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 17→7 lines (15 removed) | Also: <<<<<<< HEAD; =======",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-02T22:38:29.514Z"
+    },
+    {
+      "id": "bug-505",
+      "timestamp": "2026-07-02T22:41:41.332Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_run_event_store_by_run_index.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T22:41:41.332Z"
+    },
+    {
+      "id": "bug-tier1-list-msg-cursor",
+      "timestamp": "2026-07-03T06:50:00Z",
+      "error_message": "test_list_messages_by_run_matches_reference_across_cursors failed: returned 1 message where reference expected [] (case limit=1, before_seq=2, after_seq=1)",
+      "file": "backend/packages/harness/deerflow/runtime/events/store/memory.py",
+      "root_cause": "移植上游 820560e5 路线b 时 list_messages_by_run 用了 elif(before_seq/after_seq 互斥),但 fork 原版是独立 if(两者都 filter, after_seq 决定取前/后 limit) → 同时传 before+after 时只用 before_seq, after_seq 被忽略",
+      "fix": "改回独立 if 匹配 fork 原版语义: before/after 都 filter, 再按 after_seq 分支 [:limit] vs [-limit:]. 同时改上游测试去掉 _messages_by_run 断言(路线b无此属性)用公开 list_messages_by_run 验证",
+      "tags": ["upstream-sync", "tier1", "events-store", "route-b", "cursor-semantics"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T06:50:00Z"
     }
   ]
 }

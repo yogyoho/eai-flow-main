@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T22:20:11.508Z
-> Files: 1434 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T22:41:53.938Z
+> Files: 1439 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1025,7 +1025,7 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2047 tok)
-- `database.py` — Database connection and session management for extensions module. (~19378 tok)
+- `database.py` — Database connection and session management for extensions module. (~19380 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~4778 tok)
@@ -1272,7 +1272,7 @@
 
 ## backend/packages/harness/deerflow/config/
 
-- `app_config.py` — Pydantic: CircuitBreakerConfig (~6207 tok)
+- `app_config.py` — Pydantic: CircuitBreakerConfig (~6689 tok)
 - `extensions_config.py` — Unified extensions configuration for MCP servers and skills. (~3251 tok)
 - `paths.py` — Virtual path prefix seen by agents inside the sandbox (~4389 tok)
 
@@ -1297,6 +1297,10 @@
 
 - `__init__.py` — LangGraph-compatible runtime — runs, streaming, and lifecycle management. (~461 tok)
 - `serialization.py` — Canonical serialization for LangChain / LangGraph objects. (~1418 tok)
+
+## backend/packages/harness/deerflow/runtime/events/store/
+
+- `memory.py` — In-memory RunEventStore. Used when run_events.backend=memory (default) and in tests. (~1661 tok)
 
 ## backend/packages/harness/deerflow/sandbox/
 
@@ -1359,6 +1363,7 @@
 - `test_prompt_template.py` — Verify the static data-source instruction is present in the rendered system prompt. (~150 tok)
 - `test_review_rollback.py` — Tests for review rejection rollback — apply_rejection_rollback. (~1667 tok)
 - `test_review_service.py` — Tests for the review service layer. (~2255 tok)
+- `test_run_event_store_by_run_index.py` — Regression tests for MemoryRunEventStore's run-keyed event/message index. (~1697 tok)
 - `test_serialization_strip_images.py` — Tests for the API serialization helpers ported from upstream (Tier 2 C). (~809 tok)
 - `test_sub_workflow.py` — TDD tests for sub_workflow node type and child workflow support. (~4381 tok)
 - `test_sync_outputs_to_docmgr.py` — Tests for sync_outputs_to_docmgr and present_files callback integration. (~1923 tok)
@@ -1861,7 +1866,7 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocumentManagement.tsx` — CollabEditor (~18763 tok)
+- `DocumentManagement.tsx` — CollabEditor (~18841 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~11185 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
@@ -1933,6 +1938,7 @@
 - `api.ts` — frontend/src/extensions/license/api.ts (~656 tok)
 - `DevModeBanner.tsx` — frontend/src/extensions/license/DevModeBanner.tsx (~158 tok)
 - `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3538 tok)
+- `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~237 tok)
 - `useLicense.ts` — Raw license status data (~433 tok)
 
 ## frontend/src/extensions/output/
@@ -2016,7 +2022,7 @@
 
 ## frontend/src/extensions/shell/
 
-- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1883 tok)
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1868 tok)
 
 ## frontend/src/extensions/types/
 
@@ -2160,6 +2166,7 @@
 
 - `config-upgrade.sh` — config-upgrade.sh - Upgrade config.yaml to match config.example.yaml (~1225 tok)
 - `docker.sh` — Declares for (~4435 tok)
+- `migrate_license_modules_v2.sql` — 一次性迁移：把 app_definitions.license_module 对齐 v2 四键方案。 (~284 tok)
 - `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~6470 tok)
 - `serve.sh` — serve.sh — Unified DeerFlow service launcher (~2834 tok)
 - `test_kanban.py` — ", handle_api) (~2873 tok)
@@ -2310,5 +2317,6 @@
 
 ## tools/license/
 
+- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1302 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)
