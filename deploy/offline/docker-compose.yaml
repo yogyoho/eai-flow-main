@@ -45,6 +45,15 @@ services:
     command: ["sh", "/usr/local/bin/frontend-start.sh"]
     volumes:
       - ./docker/frontend-start.sh:/usr/local/bin/frontend-start.sh:ro
+      # 客户化源码覆盖(公司名/页脚/Google Fonts/RAGFlow 链接):挂载后重建容器不丢
+      - ./frontend-overrides/App.tsx:/app/frontend/src/components/landing-new/App.tsx:ro
+      - ./frontend-overrides/DashboardPage.tsx:/app/frontend/src/extensions/dashboard/DashboardPage.tsx:ro
+      - ./frontend-overrides/globals.css:/app/frontend/src/styles/globals.css:ro
+      - ./frontend-overrides/dashboard.css:/app/frontend/src/extensions/dashboard/dashboard.css:ro
+      - ./frontend-overrides/basic-settings.tsx:/app/frontend/src/app/settings/basic-settings.tsx:ro
+      # 自定义 favicon
+      - ./favicon.ico:/app/frontend/public/favicon.ico:ro
+      - ./favicon.svg:/app/frontend/public/favicon.svg:ro
     environment:
       # 关键：告诉 Next.js 服务端如何访问 Gateway（Docker 内部网络）
       - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
@@ -64,6 +73,8 @@ services:
       - SKIP_ENV_VALIDATION=1
       # Next.js dev allowedDevOrigins（通过哪些 IP/域名访问时允许 RSC 水合）
       - INTRANET_HOSTS=${INTRANET_HOSTS:-localhost}
+      # RAGFlow Web UI 端口(设置页"访问"按钮跳转用);prod=19381, dev=9381
+      - NEXT_PUBLIC_RAGFLOW_WEB_PORT=${RAGFLOW_WEB_PORT:-19381}
     networks:
       - prod-eai-flow-net
     restart: unless-stopped
@@ -76,7 +87,7 @@ services:
     volumes:
       # 配置文件（必须预先存在，否则 Docker 会创建同名目录）
       - ./config.yaml:/app/backend/config.yaml:ro
-      - ./extensions_config.json:/app/backend/extensions_config.json:ro
+      - ./extensions_config.json:/app/backend/extensions_config.json
       # 持久化数据
       - ./skills:/app/skills:ro
       - ./data:/app/backend/.deer-flow

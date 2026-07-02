@@ -81,6 +81,21 @@
       "oauth": null,
       "description": "External data source query tools (read-only) for report writing agent"
     },
+    "contract-price-analysis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.contract_price.mcp"
+      ],
+      "env": {},
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "\u5408\u540c\u5206\u9879\u4ef7\u683c\u53ea\u8bfb\u67e5\u8be2\u5de5\u5177(\u8d27\u7269\u4ef7\u683c\u7edf\u8ba1/\u5f02\u5e38/\u5f85\u6838\u9a8c/\u603b\u89c8),\u4f9b\u5bf9\u8bdd agent \u76f4\u63a5\u8c03\u7528\u3002\u4e0d\u89e6\u53d1\u6d41\u6c34\u7ebf\u3002"
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "stdio",
@@ -125,7 +140,7 @@
       "url": "http://cad:8003/mcp",
       "headers": {},
       "oauth": null,
-      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
+      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container \u2014 start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
     },
     "text-to-cad": {
       "enabled": true,
@@ -137,7 +152,7 @@
       "url": "http://text-to-cad:8004/mcp",
       "headers": {},
       "oauth": null,
-      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
+      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container \u2014 start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
     },
     "plugin_fba4fa1d-92cc-45d3-850c-c5a595168705": {
       "enabled": true,
@@ -152,7 +167,7 @@
       "url": null,
       "headers": {},
       "oauth": null,
-      "description": "示例工具(演示接线): 演示插件→MCP 接线:启用后 Agent 获得 demo_greet 工具。"
+      "description": "\u793a\u4f8b\u5de5\u5177(\u6f14\u793a\u63a5\u7ebf): \u6f14\u793a\u63d2\u4ef6\u2192MCP \u63a5\u7ebf:\u542f\u7528\u540e Agent \u83b7\u5f97 demo_greet \u5de5\u5177\u3002"
     }
   },
   "skills": {
@@ -166,6 +181,9 @@
       "enabled": true
     },
     "coal-eia-report": {
+      "enabled": true
+    },
+    "coal-mine-tunneling-regulation": {
       "enabled": true
     },
     "cad-modeling": {

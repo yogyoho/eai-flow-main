@@ -30,24 +30,31 @@ description: |
 ## 工作流(查询已处理数据)
 
 ### 步骤1:判断能回答
-本技能只能回答**已入库数据**范围内的查询。若用户问的货物/合同从未经管理模块处理过(query 查不到),如实告知"未找到该货物的价格数据,请先在合同价格分析管理页面上传并分析相关合同"——**不要尝试触发流水线**。
+本技能只能回答**已入库数据**范围内的查询。若用户问的货物/合同从未经管理模块处理过(工具查不到),如实告知"未找到该货物的价格数据,请先在合同价格分析管理页面上传并分析相关合同"——**不要尝试触发流水线,也不要退化成网搜**(网搜的价格与本系统合同数据无关)。
 
-### 步骤2:用 query.py 查询(秒级,只读)
-```bash
-cd skills/custom/contract-price-analysis
-PYTHONPATH=. python -m scripts.query --goods 多孔砖墙        # 指定货物的含税单价统计(均值/中位/区间/异常/校验状态/来源合同)
-PYTHONPATH=. python -m scripts.query --goods 电缆 --summary   # 查货物 + 附数据总览
-PYTHONPATH=. python -m scripts.query --outliers              # 异常高价分项
-PYTHONPATH=. python -m scripts.query --needs-review          # 待核验分项(OCR 不确定)
-PYTHONPATH=. python -m scripts.query --cluster <uuid>        # 某聚类的明细 + 统计
-PYTHONPATH=. python -m scripts.query                         # 不带参数 = 数据总览
-```
-把脚本输出原样转述给用户即可。DB 不可达时脚本会明确报错(不会编造数据)。
+### 步骤2:调用 MCP 工具查询(直接函数调用,无需 bash)
+本技能通过 MCP 服务器 `contract-price-analysis` 暴露**只读查询工具**,直接调用即可(不要去找 bash / sandbox / CLI 脚本):
+
+| 工具 | 用途 |
+|------|------|
+| `query_goods_price(goods_name)` | **核心**:按货物名称模糊查含税单价统计(均值/中位/区间/校验状态/异常/来源合同/样本)。用户问"X 的单价/均价/对比"→ 调它 |
+| `price_analysis_summary()` | 数据总览:合同数/分项数/聚类数/待核验数/价格区间与均值 |
+| `list_price_outliers()` | 异常高价分项 |
+| `list_needs_review_items()` | 待核验分项(OCR 不确定,需人工溯源) |
+
+工具返回 JSON,把其中价格统计原样转述给用户即可。统计只用已校验数据(ok/corrected),待核验项不入均值。
 
 ### 步骤3:报告 + 可信度
 - 报告价格时附样本数(基于 N 条已校验数据)。
-- 若全部/多数为 needs_review,提示"价格待人工溯源核验,仅供参考"。
+- 若返回 `confidence_note: 价格待人工溯源核验,仅供参考` 或多数为 needs_review,明确提示用户。
 - 跨合同对比时,注明各数据来自哪个合同号(`source_contract_no`)。
+
+### 步骤4(仅诊断用):若 MCP 工具不可用
+若工具未注册/报错,可在 gateway 容器内用 CLI 诊断数据是否就绪(**仅诊断,非对话常规路径**):
+```bash
+cd /app/backend && PYTHONPATH=/app/skills/custom/contract-price-analysis uv run python -m scripts.query --goods <名称>
+```
+不要在对话里向用户暴露此命令;数据就绪后告知用户"工具已恢复"。
 
 ## 边界:这些不做(转交管理模块)
 | 用户请求 | 本技能回应 |

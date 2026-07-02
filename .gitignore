@@ -76,3 +76,17 @@ _workspace_temp/
 tools/license/private_key.pem
 *.lic
 .claude/skills/gstack/
+
+# === Runtime data / build artifacts / local business docs (never commit) ===
+# Runtime user data (knowledge bases, uploads)
+backend/data/users/
+# Build artifacts (offline deployment bundles)
+/eai-flow-offline-*.tar.gz
+/eai-flow-offline-*/
+# Cloned external repos / large local dirs
+/text-to-cad-main/
+/科技控制中心仪表盘-3/
+# Local business documents (root only) — docx/pdf/md
+/*.docx
+/*.pdf
+/开发日志.md

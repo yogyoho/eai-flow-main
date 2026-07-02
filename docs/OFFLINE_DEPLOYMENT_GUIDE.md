@@ -207,14 +207,35 @@ docker --version
 docker compose version
 ```
 
-### 2.4 端口检查
+### 2.4 磁盘：扩展 root 逻辑卷（强烈建议，部署前先做）
+
+Ubuntu Server 用 LVM 安装时，安装器默认只给 root 逻辑卷分配固定大小（常见 100GB），剩余物理盘空间留在卷组里未分配。**部署前先把它扩满**，避免后续频繁磁盘满（ES 水位、容器创建失败、RAGFlow 503 等都是它的并发症）。
+
+```bash
+# 1. 检查:VG 是否有大量未分配空间(VFree 远大于 0)
+vgs
+# 若 VFree 有几十/几百 GB 甚至 TB,说明 root LV 没用满,继续:
+
+# 2. 把 VG 剩余空间全扩给 root LV(在线,不停机)
+lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+
+# 3. 在线扩展 ext4 文件系统
+resize2fs /dev/ubuntu-vg/ubuntu-lv
+
+# 4. 验证:root 应接近物理盘大小
+df -h /
+```
+
+> 本机实测：root 从 100GB → 2TB，使用率从 68% → 4%。详见 F.22。
+
+### 2.5 端口检查
 
 ```bash
 # 确认以下端口未被占用（可在 .env 中修改）
 ss -tlnp | grep -E "4026|15432|17233"
 ```
 
-### 2.5 解压并配置
+### 2.6 解压并配置
 
 ```bash
 cd /opt
@@ -243,7 +264,7 @@ vi config.yaml
 | 内网可连外网 | 无需修改，8 个云端模型直接可用 |
 | 完全离线 | 取消注释末尾内网 LLM 模板，修改 `model` 和 `base_url` |
 
-### 2.6 一键部署
+### 2.7 一键部署
 
 ```bash
 ./install.sh
@@ -586,6 +607,14 @@ docker compose -p eai-prod -f docker/docker-compose.yaml up -d --force-recreate 
 
 ### 问题 12：磁盘满导致容器创建失败
 
+**第一步先查 LVM 是否只分了 100GB（根治，见 F.22）**：
+```bash
+vgs                  # 看 VFree(空闲)是否远大于 0
+lvs                  # 看 root LV 的 LSize 是否远小于 VSize
+```
+若 `VFree` 有 ~1.9T 没分配 → 执行 `lvextend -l +100%FREE ... && resize2fs ...`（F.22），root 立刻从 100GB 扩到 2TB，根治。**这是 Ubuntu Server LVM 默认安装的通病，磁盘满多半是没扩 LV，而非真的没空间。**
+
+如果 VG 确实已用满、物理盘就是不够，再做清理：
 ```bash
 df -h /                       # 看根分区
 docker system df              # 看 Docker 占用
@@ -597,7 +626,18 @@ rm -rf /opt/eai-flow-offline/images/                          # 镜像 tar 已�
 docker image prune                                            # 只删悬挂镜像(无 tag)
 docker container rm $(docker ps -aq --filter status=exited)   # 删已退出容器
 ```
-详见 F.9。
+详见 F.9（清理）和 F.22（扩 LV 根治）。
+
+### 问题 13：知识库创建后不同步到 RAGFlow（RAGFlow 平台看不到）
+
+```bash
+# 看 gateway 日志是否有 401 / skipping sync
+docker logs prod-eai-flow-gateway 2>&1 | grep -iE 'ragflow|skipping sync|401'
+```
+
+若日志显示 `RAGFlow service unavailable, skipping sync` 或调 RAGFlow API 返回 401，是 `RAGFLOW_API_KEY` 没配。在 RAGFlow Web UI（`:19381`）生成 API Key 后填入 `.env`，**force-recreate** gateway（不是 restart）。详见 F.20。
+
+若 gateway 完全连不上 `ragflow:9380`，是 ragflow 容器被手动 `docker run` 起的（没注册服务名），用 compose 重建。详见 F.21。
 
 ---
 
@@ -845,3 +885,73 @@ docker container rm $(docker ps -aq --filter status=exited)   # 删已退出容�
     tail -f /tmp/load.log
     ```
   - **SSH 配置**：客户端加 `-o ServerAliveInterval=60` 保持连接
+
+#### F.20 RAGFlow 知识库不同步 / Gateway 日志 `RAGFlow service unavailable, skipping sync`
+
+- **症状**：在 EAI-Flow `/knowledge` 创建知识库后，RAGFlow 平台（`http://<IP>:19381/datasets`）没有对应 dataset；gateway 日志：
+  ```
+  HTTP Request: GET http://ragflow:9380/api/v1/datasets "HTTP/1.1 401"
+  WARNING - RAGFlow service unavailable, skipping sync
+  ```
+- **根因**：`RAGFLOW_API_KEY` 未配置（`RAGFlowConfig.from_env()` 默认空字符串）。知识库同步走 RAGFlow REST API，需 `Authorization: Bearer <key>`，空 key → 401 → `knowledge/service.py` 静默跳过同步，知识库只在 EAI-Flow 本地建。**与 `RAGFLOW_BASE_URL` 是否硬编码无关**（默认值是 `http://localhost:9380`，但 compose env 已覆盖为 `http://ragflow:9380`，gateway 连通正常）
+- **获取 API Key**：浏览器打开 `http://<服务器IP>:19381` → 注册/登录 RAGFlow 账号 → 个人设置 → 创建 API Key
+- **修复**：在 `.env` 填 `RAGFLOW_API_KEY=ragflow-xxxx`，**force-recreate** gateway 让 `env_file` 重新加载（`docker restart` 不会重读 env）：
+  ```bash
+  # 1. 写入 key
+  echo 'RAGFLOW_API_KEY=ragflow-xxxx' >> /opt/eai-flow-offline/.env
+  cp /opt/eai-flow-offline/.env /opt/eai-flow-offline/docker/.env
+  # 2. 重建 gateway（不是 restart！）
+  cd /opt/eai-flow-offline
+  docker compose -p eai-prod --project-directory /opt/eai-flow-offline \
+    -f docker/docker-compose.yaml up -d --force-recreate gateway
+  # 3. 验证
+  docker exec prod-eai-flow-gateway printenv RAGFLOW_API_KEY
+  docker exec prod-eai-flow-gateway sh -c \
+    'curl -s -H "Authorization: Bearer $RAGFLOW_API_KEY" http://ragflow:9380/api/v1/datasets'
+  # 返回 {"code":0,...} 即通
+  ```
+- **前提**：RAGFlow 需配置一个嵌入模型（如 bge-m3），否则建库时会因无嵌入模型失败。在 RAGFlow Web UI → 模型提供商 → 添加 OpenAI-API-Compatible（指向内网嵌入服务）→ 设置默认嵌入模型
+
+#### F.21 RAGFlow 容器手动 `docker run` 起来导致 gateway 找不到 / Web UI 端口不通
+
+- **症状**：① gateway 日志 `ragflow:9380` 连接失败；② Web UI `http://<IP>:19381` 打不开；但 `docker ps` 显示 ragflow 容器在跑
+- **根因**：部署排错时若用 `docker run` 手动起 ragflow 容器（脱离 compose 管理），会：① 容器只注册**容器名** `prod-eai-flow-ragflow`，Docker DNS 无法用**服务名** `ragflow` 解析（gateway 的 `RAGFLOW_BASE_URL` 用的是服务名）；② 手动 run 容易漏掉 `-p 19381:80`（Web 端口）
+- **验证**：
+  ```bash
+  docker inspect prod-eai-flow-ragflow --format '{{index .Config.Labels "com.docker.compose.service"}}'
+  # 空 = 手动起的;ragflow = compose 管的
+  docker exec prod-eai-flow-gateway getent hosts ragflow   # 能解析 = 正常
+  ```
+- **修复**：始终用 compose 管理 ragflow：
+  ```bash
+  cd /opt/eai-flow-offline
+  docker compose -p eai-prod --project-directory /opt/eai-flow-offline \
+    -f docker/docker-compose.ragflow.yaml up -d
+  ```
+  compose 起的容器会同时注册服务名 `ragflow`（供 gateway 解析）和发布双端口（API 19380 + Web 19381）
+
+#### F.22 服务器磁盘"不够"但物理盘很大（root LV 只分了 100GB）
+
+- **症状**：`df -h /` 显示根分区只有 ~100GB，频繁磁盘满（ES 水位触发、容器创建失败、镜像加载失败），但服务器实际物理盘有 2TB
+- **根因**：Ubuntu Server 用 LVM 安装时，安装器默认只给 root 逻辑卷（LV）分配固定大小（常见 100GB 或 VG 的 50%），**剩余的物理盘空间留在卷组（VG）里完全未分配**。`/dev/sda3` 整个分区作为 LVM 物理卷（PV）给了 VG，但 LV 没用满
+- **诊断**：
+  ```bash
+  lsblk                              # 看物理盘 sda 大小(2T) vs root LV 大小(100G)
+  pvs                                # PV: /dev/sda3 → VG ubuntu-vg
+  vgs                                # VG: VSize ~2T, VFree 1.9T(空闲!)
+  lvs                                # LV: ubuntu-lv 仅 100G
+  df -h /                            # root 挂载 98G
+  ```
+  若 `vgs` 的 `VFree` 有大量空间、`lvs` 的 `LSize` 远小于 `VSize`，即为本问题
+- **修复**：把 VG 剩余空间全扩给 root LV，再在线扩展 ext4 文件系统。**不停机、不重启、不丢数据**，服务全程在跑：
+  ```bash
+  # 1. 扩展 LV 到用满 VG(在线,立即生效)
+  lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+  # 2. 在线扩展 ext4(root 挂载着也能扩)
+  resize2fs /dev/ubuntu-vg/ubuntu-lv
+  # 3. 验证
+  df -h /      # 应从 98G 变成 ~2T,使用率从 68% 降到 4%
+  ```
+  扩展后 root 从 100GB → ~2TB，ES 默认磁盘水位（85%/90%/95%）不会再触发，磁盘压力彻底解决
+- **预防**：Ubuntu Server 安装时若选 LVM，安装界面有个「Use entire disk」之外还可手动调整 LV 大小；或在部署前先跑上面的 `lvextend` 把 VG 用满。建议**部署前第一件事**就执行此扩展
+- **关联**：本问题常被误判为"磁盘满了要清理容器/镜像"，但根源是空间没分配。清理（F.9/F.12）只是临时缓解，扩 LV 才是根治

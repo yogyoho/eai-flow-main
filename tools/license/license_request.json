@@ -1,8 +1,8 @@
 {
-    "generated_at":  "2026-06-11T00:27:38.849Z",
-    "machine_id":  "525f02cbd69d27c6193d74d88b21c6d5",
-    "system_info":  {
-                        "platform":  "Linux",
-                        "hostname":  "cf2c018b3977"
-                    }
+  "machine_id": "525f02cbd69d27c6193d74d88b21c6d5",
+  "generated_at": "2026-07-02T11:26:41.127Z",
+  "system_info": {
+    "hostname": "69732a678a4f",
+    "platform": "Linux"
+  }
 }
