@@ -20,11 +20,11 @@ interface ProjectCardProps {
 }
 
 const REPORT_TYPE_COLORS: Record<string, string> = {
-  environmental_impact: "border-green-500/20 bg-green-500/10 text-green-600",
-  geological_survey: "border-amber-500/20 bg-amber-500/10 text-amber-600",
-  feasibility_study: "border-blue-500/20 bg-blue-500/10 text-blue-600",
-  safety_assessment: "border-red-500/20 bg-red-500/10 text-red-600",
-  energy_assessment: "border-purple-500/20 bg-purple-500/10 text-purple-600",
+  environmental_impact: "border-success/20 bg-success/10 text-success",
+  geological_survey: "border-warning/20 bg-warning/10 text-warning",
+  feasibility_study: "border-primary/20 bg-primary/10 text-primary",
+  safety_assessment: "border-destructive/20 bg-destructive/10 text-destructive",
+  energy_assessment: "border-info/20 bg-info/10 text-info",
   other: "border-primary/20 bg-primary/10 text-primary",
 };
 
@@ -92,8 +92,8 @@ export function ProjectCard({ project, onClick, onEdit, onDelete, onEnterChat }:
                     (project.progressPercentage ?? 0) >= 100
                       ? "bg-success"
                       : (project.progressPercentage ?? 0) >= 50
-                        ? "bg-blue-500"
-                        : "bg-amber-500",
+                        ? "bg-primary"
+                        : "bg-warning",
                   )}
                   style={{ width: `${Math.min(project.progressPercentage ?? 0, 100)}%` }}
                 />

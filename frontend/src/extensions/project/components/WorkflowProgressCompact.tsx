@@ -31,12 +31,6 @@ function getNodeDetail(node: WorkflowNodeStatus) {
   return null;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: "bg-emerald-100 text-emerald-700",
-  running: "bg-primary/10 text-primary ring-1 ring-primary/30",
-  pending: "bg-muted text-muted-foreground",
-  error: "bg-red-100 text-red-700",
-};
 
 export function WorkflowProgressCompact({ projectId, workflowGraph, canAdvancePhase, onPhaseCompleted }: WorkflowProgressCompactProps) {
   const [status, setStatus] = useState<WorkflowStatusResponse | null>(null);
@@ -146,30 +140,77 @@ export function WorkflowProgressCompact({ projectId, workflowGraph, canAdvancePh
             </div>
           ) : (
             <>
-              <div className="flex items-center flex-wrap gap-1">
-                {nodes.map((node, i) => (
-                  <div key={node.nodeId} className="flex items-center">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium ${
-                        STATUS_STYLES[node.status] ?? STATUS_STYLES.pending!
-                      }`}
-                    >
-                      {node.status === "completed" && <Check className="h-3 w-3 mr-1" />}
-                      {node.status === "running" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                      {node.label}
-                      {getNodeDetail(node) && (
-                        <span className="ml-1.5 text-[10px] opacity-70">({getNodeDetail(node)})</span>
+              <div className="flex items-center flex-wrap gap-1.5 py-1">
+                {nodes.map((node, i) => {
+                  const detail = getNodeDetail(node);
+                  return (
+                    <div key={node.nodeId} className="flex items-center">
+                      {node.status === "completed" ? (
+                        <div className="p-2 bg-success/5 border border-success/30 rounded-lg flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 bg-success/10 text-success rounded-full flex items-center justify-center text-[7px] font-bold shrink-0">
+                            <Check className="w-2 h-2" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-normal truncate" style={{ color: "var(--cyber-text-main, currentColor)" }}>
+                              {node.label}
+                            </h4>
+                            {detail && (
+                              <p className="text-[9px] text-success font-cyber font-bold mt-0.5">{detail}</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : node.status === "running" ? (
+                        <div className="p-2 bg-primary/10 border border-primary/30 rounded-lg flex items-center gap-2 shadow-[0_0_12px_rgba(7,70,255,0.12)]">
+                          <span className="w-2 h-2 rounded-full bg-primary animate-ping inline-block shrink-0" />
+                          <div className="min-w-0">
+                            <h4
+                              className="text-xs font-normal flex items-center gap-1.5 truncate"
+                              style={{ color: "var(--cyber-text-main, currentColor)" }}
+                            >
+                              {node.label}
+                            </h4>
+                            {detail && (
+                              <p className="text-[9px] text-primary font-cyber font-bold mt-0.5">{detail}</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : node.status === "error" ? (
+                        <div className="p-2 bg-destructive/5 border border-destructive/30 rounded-lg flex items-center gap-2">
+                          <span className="w-3.5 h-3.5 rounded-full bg-destructive shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-normal truncate" style={{ color: "var(--cyber-text-main, currentColor)" }}>
+                              {node.label}
+                            </h4>
+                            {detail && (
+                              <p className="text-[9px] text-destructive font-cyber font-bold mt-0.5">{detail}</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-lg flex items-center gap-2 bg-muted border border-border">
+                          <span className="w-3.5 h-3.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-normal truncate" style={{ color: "var(--cyber-text-main, currentColor)" }}>
+                              {node.label}
+                            </h4>
+                            {detail && (
+                              <p className="text-[9px] font-cyber mt-0.5" style={{ color: "var(--cyber-text-muted, var(--color-muted-foreground))" }}>
+                                {detail}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </span>
-                    {i < nodes.length - 1 && (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5" />
-                    )}
-                  </div>
-                ))}
+                      {i < nodes.length - 1 && (
+                        <ChevronRight className="h-3 w-3 text-muted-foreground/30 mx-0.5 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               {/* Chapter-completion gate feedback */}
               {gateMessage && (
-                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-[12px] text-amber-700 border border-amber-200">
+                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-warning/10 px-2.5 py-2 text-[12px] text-warning border border-warning/20">
                   <Ban className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>{gateMessage}</span>
                 </div>
@@ -177,7 +218,7 @@ export function WorkflowProgressCompact({ projectId, workflowGraph, canAdvancePh
               {/* Success feedback */}
               {!advancing && runningNode && !gateMessage && canAct && (
                 <div className="mt-2 flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle className="h-3.5 w-3.5 text-success" />
                   <span>当前阶段「{runningNode.label}」进行中，点击"阶段推进"完成本阶段</span>
                 </div>
               )}

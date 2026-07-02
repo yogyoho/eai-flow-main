@@ -36,6 +36,9 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const [identity, setIdentity] = useState<ProjectIdentity | null>(null);
   const [workflowGraph, setWorkflowGraph] = useState<WorkflowGraph | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fileCount, setFileCount] = useState<number | null>(null);
+  const [lastSync, setLastSync] = useState<{ time: string; synced: number } | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const { user: currentUser } = useAuth();
 
   const loadProject = useCallback(async () => {
@@ -92,6 +95,41 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadProject]);
+
+  // Load file count + sync docs (for header subtitle)
+  const loadStats = useCallback(async () => {
+    try {
+      const stats = await projectApi.getStats(projectId);
+      setFileCount(stats.documentCount);
+    } catch {
+      setFileCount(0);
+    }
+  }, [projectId]);
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await projectApi.syncDocs(projectId);
+      setLastSync({ time: new Date().toLocaleTimeString("zh-CN"), synced: result.synced ?? 0 });
+      loadStats();
+    } catch {
+      // Non-critical
+    } finally {
+      setSyncing(false);
+    }
+  }, [projectId, loadStats]);
+
+  useEffect(() => {
+    if (project) {
+      handleSync();
+    }
+  }, [project, handleSync]);
+
+  // Header subtitle data
+  const totalCount = useMemo(
+    () => project?.chapters?.length ?? 0,
+    [project?.chapters],
+  );
 
   // Derive visible tabs from identity
   const visibleTabs = identity ? getVisibleTabs(identity) : [];
@@ -164,78 +202,144 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0 gap-1">
-        <Link href="/projects">
-          <Button variant="ghost" size="icon" className="h-8 w-8 mr-2">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <h1 className="text-[15px] font-semibold text-[#0F172A] mr-4">{project.name}</h1>
-        <span className="inline-flex h-[22px] items-center rounded-[4px] px-2 text-[11px] font-medium bg-[#F9FAFB] text-[#94A3B8]">
-          {project.reportType}
-        </span>
-        {identity && identity.projectRole && (
-          <span className="inline-flex h-[22px] items-center rounded-[4px] px-2 text-[11px] font-medium bg-primary/10 text-primary ml-2">
-            {MEMBER_ROLE_LABELS[identity.projectRole as keyof typeof MEMBER_ROLE_LABELS] ?? identity.projectRole}
-          </span>
-        )}
+    <div
+      className="flex h-full flex-col"
+      style={{ background: "var(--cyber-bg-primary)" }}
+    >
+      <header
+        className="flex flex-col px-6 shrink-0 pb-4 pt-3"
+        style={{ borderBottom: "1px solid var(--cyber-border-muted)" }}
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Left: back button + title + subtitle */}
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/projects">
+              <button
+                type="button"
+                className="p-2 rounded-lg border flex items-center justify-center group cursor-pointer shrink-0"
+                style={{
+                  background: "var(--cyber-bg-tertiary)",
+                  borderColor: "var(--cyber-border-muted)",
+                  color: "var(--cyber-text-muted)",
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: "var(--cyber-text-main)" }}>
+                  {project.name}
+                </h1>
+                <span className="text-[10px] uppercase font-cyber px-2.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary font-bold tracking-widest shrink-0">
+                  {project.reportType}
+                </span>
+                {identity && identity.projectRole && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground font-bold shrink-0">
+                    {MEMBER_ROLE_LABELS[identity.projectRole as keyof typeof MEMBER_ROLE_LABELS] ?? identity.projectRole}
+                  </span>
+                )}
+              </div>
+              {/* Subtitle — matches SciFiProjectDetail */}
+              <p className="text-[11px] font-mono mt-1" style={{ color: "var(--cyber-text-muted)" }}>
+                创建于: {project.createdAt
+                  ? new Date(project.createdAt).toLocaleDateString("zh-CN")
+                  : "未知"}
+                <span className="mx-1.5">•</span>
+                章节: {totalCount}
+                <span className="mx-1.5">•</span>
+                文件数: {fileCount !== null ? fileCount : "..."}
+                {lastSync && (
+                  <>
+                    <span className="mx-1.5">•</span>
+                    {syncing ? (
+                      <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />同步中...</span>
+                    ) : (
+                      <>上次同步: {lastSync.time} · 新增 {lastSync.synced} 个文件</>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
 
-        <div className="flex-1" />
-
-        {/* Tabs in header */}
-        {visibleTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-              onClick={() => setActiveTab(tab.id)}
+          {/* Right: tabs + actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Tabs in header — cyber-themed matching SciFiProjectDetail */}
+            <div
+              className="flex items-center gap-2 p-1 rounded-xl overflow-x-auto"
+              style={{
+                background: "var(--cyber-bg-tertiary)",
+                border: "1px solid var(--cyber-border-muted)",
+              }}
             >
-              <Icon className="h-3.5 w-3.5" />
-              {tab.label}
-            </button>
-          );
-        })}
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                const activeColors: Record<string, string> = {
+                  overview: "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(7,70,255,0.3)]",
+                  editor: "bg-[#7c3aed] text-white shadow-[0_0_10px_rgba(124,58,237,0.3)]",
+                  review: "bg-success text-white shadow-[0_0_10px_rgba(82,196,26,0.3)]",
+                };
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      isActive
+                        ? (activeColors[tab.id] ?? "bg-primary text-primary-foreground")
+                        : "hover:bg-muted/50"
+                    }`}
+                    style={!isActive ? { color: "var(--cyber-text-muted)" } : undefined}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
 
-        {/* Settings gear icon */}
-        {canSeeSettings && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 ml-1"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        )}
+              <div className="h-4 w-[1px] mx-1" style={{ background: "var(--cyber-border-muted)" }} />
 
-        {/* Enter conversation */}
-        <Button
-          size="sm"
-          className="h-[30px] ml-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={entering}
-          onClick={async () => {
-            setEntering(true);
-            try {
-              const { threadId } = await projectApi.enter(projectId);
-              window.open(`/workspace/chats/${threadId}?from=project&projectId=${projectId}&projectName=${encodeURIComponent(project.name)}`, "_blank");
-            } catch {
-              toast.error("进入对话失败");
-            } finally {
-              setEntering(false);
-            }
-          }}
-        >
-          <MessageSquare className="h-3.5 w-3.5 mr-1" />
-          {entering ? "进入中..." : "进入对话"}
-        </Button>
+              {/* Enter conversation */}
+              <button
+                type="button"
+                disabled={entering}
+                onClick={async () => {
+                  setEntering(true);
+                  try {
+                    const { threadId } = await projectApi.enter(projectId);
+                    window.open(`/workspace/chats/${threadId}?from=project&projectId=${projectId}&projectName=${encodeURIComponent(project.name)}`, "_blank");
+                  } catch {
+                    toast.error("进入对话失败");
+                  } finally {
+                    setEntering(false);
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground flex items-center gap-1.5 transition-all shadow-md group cursor-pointer"
+              >
+                <MessageSquare className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                <span>{entering ? "进入中..." : "进入对话"}</span>
+              </button>
+            </div>
+
+            {/* Settings gear icon */}
+            {canSeeSettings && (
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="p-1.5 rounded-lg border cursor-pointer"
+                style={{
+                  background: "var(--cyber-bg-tertiary)",
+                  borderColor: "var(--cyber-border-muted)",
+                  color: "var(--cyber-text-muted)",
+                }}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </header>
 
       <div className="flex-1 overflow-hidden">

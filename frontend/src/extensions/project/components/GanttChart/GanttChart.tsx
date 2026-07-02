@@ -100,10 +100,10 @@ export function GanttChart({ entries }: GanttChartProps) {
             {/* Today line */}
             {todayOffset > 0 && todayOffset < timelineWidth && (
               <div
-                className="absolute top-0 bottom-0 w-px bg-red-400 z-10"
+                className="absolute top-0 bottom-0 w-px bg-destructive z-10"
                 style={{ left: todayOffset }}
               >
-                <span className="absolute top-0 -translate-x-1/2 text-[10px] text-red-500 bg-background px-1">
+                <span className="absolute top-0 -translate-x-1/2 text-[10px] text-destructive bg-background px-1">
                   今天
                 </span>
               </div>
@@ -132,7 +132,7 @@ export function GanttChart({ entries }: GanttChartProps) {
           <span className="inline-block w-3 h-3 rounded-sm bg-primary" /> 实际
         </span>
         <span className="flex items-center gap-1">
-          <span className="text-amber-500">■</span> 延期
+          <span className="text-warning">■</span> 延期
         </span>
         <span className="flex items-center gap-1">◆ 里程碑</span>
       </div>

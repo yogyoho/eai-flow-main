@@ -71,7 +71,7 @@ function StepIndicator({ step }: { step: ApprovalStep }) {
   if (step.status === "in_progress") {
     return (
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary">
-        <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+        <span className="h-2 w-2 rounded-full bg-card animate-pulse" />
       </div>
     );
   }
@@ -120,7 +120,7 @@ export function ApprovalWorkflow({ project, onRefresh }: ApprovalWorkflowProps) 
                   key={ch.id}
                   onClick={() => setSelectedId(ch.id)}
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${
-                    ch.id === selectedId ? "bg-primary text-white" : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                    ch.id === selectedId ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-border"
                   }`}
                 >
                   {ch.title}
@@ -133,9 +133,9 @@ export function ApprovalWorkflow({ project, onRefresh }: ApprovalWorkflowProps) 
         {selectedChapter ? (
           <div className="space-y-5 p-6">
             {/* Chapter info */}
-            <div className="rounded-[8px] border border-[#E2E8F0] bg-white p-4 flex flex-col gap-2">
+            <div className="rounded-[8px] border border-border bg-card p-4 flex flex-col gap-2">
               <h3 className="text-[16px] font-semibold text-foreground">{selectedChapter.title}</h3>
-              <div className="flex items-center gap-4 text-[12px] text-[#64748B]">
+              <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
                 {selectedChapter.assignedName && <span>撰写：{selectedChapter.assignedName}</span>}
                 <span>{selectedChapter.wordCountCurrent.toLocaleString()}字</span>
                 {selectedChapter.updatedAt && (
@@ -153,17 +153,17 @@ export function ApprovalWorkflow({ project, onRefresh }: ApprovalWorkflowProps) 
                   <div className="flex flex-col items-center mr-3">
                     <StepIndicator step={step} />
                     {idx < steps.length - 1 && (
-                      <div className={`w-px flex-1 min-h-[24px] ${step.status === "completed" ? "bg-success" : "bg-[#E2E8F0]"}`} />
+                      <div className={`w-px flex-1 min-h-[24px] ${step.status === "completed" ? "bg-success" : "bg-border"}`} />
                     )}
                   </div>
                   <div className="pb-6 flex-1">
-                    <p className={`text-[13px] font-medium ${step.status === "pending" ? "text-[#94A3B8]" : "text-foreground"}`}>
+                    <p className={`text-[13px] font-medium ${step.status === "pending" ? "text-muted-foreground" : "text-foreground"}`}>
                       {step.label}
                     </p>
                     <div className="mt-0.5 flex items-center gap-2 text-[12px]">
-                      {step.assignee && <span className="text-[#64748B]">{step.assignee}</span>}
+                      {step.assignee && <span className="text-muted-foreground">{step.assignee}</span>}
                       {step.status === "in_progress" && <span className="text-primary">进行中</span>}
-                      {step.status === "pending" && <span className="text-[#94A3B8]">待处理</span>}
+                      {step.status === "pending" && <span className="text-muted-foreground">待处理</span>}
                     </div>
                   </div>
                 </div>
@@ -186,32 +186,32 @@ export function ApprovalWorkflow({ project, onRefresh }: ApprovalWorkflowProps) 
             )}
 
             {/* Comment textarea */}
-            <div className="rounded-[8px] border border-[#E2E8F0] bg-white p-3 flex flex-col gap-2">
-              <p className="text-[12px] text-[#64748B]">审核意见（可选）</p>
+            <div className="rounded-[8px] border border-border bg-card p-3 flex flex-col gap-2">
+              <p className="text-[12px] text-muted-foreground">审核意见（可选）</p>
               <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="输入审核意见..." className="min-h-[80px] resize-none text-sm" />
             </div>
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-[#94A3B8]">暂无待审批章节</div>
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">暂无待审批章节</div>
         )}
       </div>
 
       {/* Right panel: chapter content preview */}
-      <div className="w-[360px] shrink-0 overflow-y-auto border-l border-[#E2E8F0] bg-white p-5 flex flex-col gap-3">
+      <div className="w-[360px] shrink-0 overflow-y-auto border-l border-border bg-card p-5 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <h4 className="text-[14px] font-semibold text-foreground">章节内容预览</h4>
-          <span className="ml-auto text-[12px] text-[#64748B]">
+          <span className="ml-auto text-[12px] text-muted-foreground">
             {selectedChapter?.wordCountCurrent.toLocaleString() ?? 0} / {selectedChapter?.wordCountTarget.toLocaleString() ?? 0} 字
           </span>
         </div>
         {selectedChapter?.content ? (
-          <div className="prose prose-sm max-w-none text-[#64748B]">
+          <div className="prose prose-sm max-w-none text-muted-foreground">
             {selectedChapter.content.split("\n").map((p, i) => (
               <p key={i} className="leading-relaxed">{p}</p>
             ))}
           </div>
         ) : (
-          <p className="text-[13px] text-[#94A3B8]">暂无内容</p>
+          <p className="text-[13px] text-muted-foreground">暂无内容</p>
         )}
       </div>
     </div>

@@ -10,14 +10,14 @@ export interface ReportTypeOption {
 }
 
 const COLOR_PALETTE = [
-  "border-green-500/20 bg-green-500/10 text-green-600",
-  "border-amber-500/20 bg-amber-500/10 text-amber-600",
-  "border-blue-500/20 bg-blue-500/10 text-blue-600",
-  "border-red-500/20 bg-red-500/10 text-red-600",
-  "border-purple-500/20 bg-purple-500/10 text-purple-600",
-  "border-teal-500/20 bg-teal-500/10 text-teal-600",
-  "border-pink-500/20 bg-pink-500/10 text-pink-600",
-  "border-indigo-500/20 bg-indigo-500/10 text-indigo-600",
+  "border-success/20 bg-success/10 text-success",
+  "border-warning/20 bg-warning/10 text-warning",
+  "border-primary/20 bg-primary/10 text-primary",
+  "border-destructive/20 bg-destructive/10 text-destructive",
+  "border-primary/20 bg-primary/10 text-primary",
+  "border-info/20 bg-info/10 text-info",
+  "border-destructive/20 bg-destructive/10 text-destructive",
+  "border-primary/20 bg-primary/10 text-primary",
 ] as const;
 
 // ── Module-level cache ──

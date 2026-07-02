@@ -36,9 +36,9 @@ interface ReviewTabProps {
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  pending: { label: "待审核", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Clock },
-  approved: { label: "已通过", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-  rejected: { label: "已拒绝", color: "bg-red-50 text-red-700 border-red-200", icon: XCircle },
+  pending: { label: "待审核", color: "bg-warning/10 text-warning border-warning/20", icon: Clock },
+  approved: { label: "已通过", color: "bg-success/10 text-success border-success/20", icon: CheckCircle2 },
+  rejected: { label: "已拒绝", color: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
 };
 
 export function ReviewTab({ project, projectId, onRefresh, identity }: ReviewTabProps) {
@@ -241,7 +241,7 @@ export function ReviewTab({ project, projectId, onRefresh, identity }: ReviewTab
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="h-8 bg-success hover:opacity-90 text-white"
                         disabled={submitting}
                         onClick={() => handleAction("approved")}
                       >
@@ -273,9 +273,9 @@ export function ReviewTab({ project, projectId, onRefresh, identity }: ReviewTab
                         <div
                           className={`flex h-7 items-center rounded-full px-3 text-[11px] font-medium ${
                             step.status === "approved"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-success/10 text-success"
                               : step.status === "rejected"
-                                ? "bg-red-100 text-red-700"
+                                ? "bg-destructive/10 text-destructive"
                                 : i === (approvalStatus.currentStep ?? 0)
                                   ? "bg-primary/10 text-primary"
                                   : "bg-muted text-muted-foreground"

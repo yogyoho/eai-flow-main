@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { projectApi } from "@/extensions/project/api";
 import { AddMemberDialog } from "@/extensions/project/components/AddMemberDialog";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard/KanbanBoard";
@@ -48,9 +48,9 @@ interface OverviewTabProps {
 // ── Status Badge Styles ──
 
 const STATUS_BADGE_STYLES: Record<ChapterStatus, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  writing: "bg-blue-100 text-blue-600",
-  review: "bg-amber-100 text-amber-600",
+  draft: "bg-muted text-muted-foreground",
+  writing: "bg-primary/10 text-primary",
+  review: "bg-warning/10 text-warning",
   completed: "bg-success/10 text-success",
 };
 
@@ -61,36 +61,69 @@ const STATUS_LABELS: Record<ChapterStatus, string> = {
   completed: "已完成",
 };
 
-// ── Stat Card (matches ProjectCard style) ──
+// ── Stat Card (cyber-themed, matches SciFiProjectDetail style) ──
+
+const STAT_CARD_COLORS = {
+  blue: {
+    border: "border-primary/15 bg-primary/5",
+    text: "text-primary",
+    dot: "bg-primary/10",
+  },
+  green: {
+    border: "border-success/15 bg-success/5",
+    text: "text-success",
+    dot: "bg-success/10",
+  },
+  cyan: {
+    border: "border-info/15 bg-info/5",
+    text: "text-info",
+    dot: "bg-info/10",
+  },
+  amber: {
+    border: "border-warning/15 bg-warning/5",
+    text: "text-warning",
+    dot: "bg-warning/10",
+  },
+} as const;
 
 function StatCard({
   icon: Icon,
   label,
   value,
   sub,
+  color = "blue",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number | string;
   sub?: string;
+  color?: keyof typeof STAT_CARD_COLORS;
 }) {
+  const c = STAT_CARD_COLORS[color];
   return (
-    <div className="flex cursor-default flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
-      <div className="flex-1 p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-sm font-bold text-primary">
-            <Icon className="h-[18px] w-[18px]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[22px] font-semibold text-foreground leading-tight">{value}</p>
-            <p className="text-[12px] text-muted-foreground">{label}</p>
-          </div>
+    <div
+      className={`rounded-xl p-4 flex flex-col justify-between group hover:scale-[1.015] transition-all relative overflow-hidden border ${c.border}`}
+    >
+      <span className={`absolute top-0 right-0 w-2 h-2 ${c.dot}`} />
+      <div className="flex items-center justify-between gap-2.5">
+        <span className="text-xs font-bold" style={{ color: "var(--cyber-text-main)" }}>
+          {label}
+        </span>
+        <div className={`p-1 rounded-md border ${c.border} ${c.text}`}>
+          <Icon className={`w-4 h-4 ${color === "blue" ? "animate-pulse" : ""}`} />
         </div>
       </div>
+      <div
+        className={`my-2 text-3xl font-extrabold font-cyber ${c.text} ${
+          color === "blue" ? "text-shadow-glow" : ""
+        }`}
+      >
+        {value}
+      </div>
       {sub && (
-        <div className="border-t border-border bg-muted/50 px-5 py-2">
-          <p className="text-[11px] text-muted-foreground">{sub}</p>
-        </div>
+        <p className="text-[10px] font-mono tracking-wider" style={{ color: "var(--cyber-text-muted)" }}>
+          {sub}
+        </p>
       )}
     </div>
   );
@@ -123,7 +156,7 @@ function ChapterNode({
         style={{ paddingLeft: `${depth * 20 + 12}px` }}
       >
         <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="flex-1 truncate text-sm text-foreground">{chapter.title}</span>
+        <span className="flex-1 truncate text-xs font-normal text-foreground">{chapter.title}</span>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_STYLES[status]}`}>
           {STATUS_LABELS[status]}
         </span>
@@ -147,7 +180,7 @@ function ChapterNode({
           {onMarkComplete && canComplete && (
             <button
               type="button"
-              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-success hover:opacity-80 hover:bg-success/10 transition-colors"
               disabled={isCompleting}
               onClick={() => onMarkComplete(chapter.id)}
             >
@@ -178,9 +211,6 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const [lastSync, setLastSync] = useState<{ time: string; synced: number } | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
   const canManageMembers = identity?.isAdmin || identity?.hasAnyPermission(["member:add", "member:remove"]);
 
   const handleMarkComplete = useCallback(
@@ -259,15 +289,10 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
     [projectId, onRefresh],
   );
 
-  const [docCount, setDocCount] = useState<number | null>(null);
-  const [docTotalSize, setDocTotalSize] = useState<number>(0);
-
   const loadStats = useCallback(async () => {
     try {
       const stats = await projectApi.getStats(projectId);
       setFileCount(stats.documentCount);
-      setDocCount(stats.documentCount);
-      setDocTotalSize(stats.documentTotalSize);
     } catch {
       setFileCount(0);
     }
@@ -277,23 +302,10 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
     loadStats();
   }, [loadStats]);
 
-  // Sync documents on mount and expose for refresh
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    try {
-      const result = await projectApi.syncDocs(projectId);
-      setLastSync({ time: new Date().toLocaleTimeString("zh-CN"), synced: result.synced ?? 0 });
-      loadStats();
-    } catch {
-      // Non-critical
-    } finally {
-      setSyncing(false);
-    }
-  }, [projectId, loadStats]);
-
+  // Sync documents on mount
   useEffect(() => {
-    handleSync();
-  }, [handleSync]);
+    projectApi.syncDocs(projectId).then(() => loadStats()).catch(() => {});
+  }, [projectId, loadStats]);
 
   // Listen for phase-advanced and doc-status-changed events to refresh stats
   useEffect(() => {
@@ -333,38 +345,14 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
-        {/* Header — simplified, no duplicates */}
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">项目概览</h2>
-          <p className="text-[13px] text-muted-foreground">
-            创建于{" "}
-            {project.createdAt
-              ? new Date(project.createdAt).toLocaleDateString("zh-CN", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              : "未知"}
-            {lastSync && (
-              <span className="ml-3 text-[11px] text-muted-foreground/70">
-                {syncing ? (
-                  <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />同步中...</span>
-                ) : (
-                  <>· 上次同步: {lastSync.time} · 新增 {lastSync.synced} 个文件</>
-                )}
-              </span>
-            )}
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard icon={BookOpen} label="活跃章节" value={`${activeCount}/${totalCount}`} sub="编写中" />
-          <StatCard icon={Users} label="成员数" value={project.members?.length ?? 0} />
-          <StatCard icon={FileText} label="文件数" value={fileCount !== null ? String(fileCount) : "..."} />
-          <StatCard icon={FileText} label="已写字数" value={totalWords.toLocaleString()} sub="累计" />
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 md:px-8 py-6 flex flex-col gap-6 max-w-7xl mx-auto">
+        {/* Stats Grid — cyber-themed cards matching SciFiProjectDetail */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard icon={BookOpen} label="活跃章节" value={`${activeCount}/${totalCount}`} sub="编写中 / CYBERNETIC CO-WRITING" color="blue" />
+          <StatCard icon={Users} label="成员数" value={project.members?.length ?? 0} sub="ACTIVE RESEARCHERS" color="green" />
+          <StatCard icon={FileText} label="文件数" value={fileCount !== null ? String(fileCount) : "..."} sub="COMPILED DOSSIERS" color="cyan" />
+          <StatCard icon={BookOpen} label="已写字数" value={totalWords.toLocaleString()} sub="累计 / ACCUMULATIVE GLYPHS" color="amber" />
         </div>
 
         {/* Chapter Status Distribution */}
@@ -413,13 +401,13 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
               </div>
 
               {kanbanView ? (
-                <div className="px-5 pb-4 pt-2 overflow-x-auto">
+                <div className="px-5 pb-4 pt-2 max-h-[480px] overflow-y-auto overflow-x-auto pr-1 cyber-scroll">
                   <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} onCardEdit={handleEditChapter} />
                 </div>
               ) : (
                 <div className="px-5 pb-4 pt-2">
                   {project.chapters?.length > 0 ? (
-                    <div className="divide-y divide-border/40">
+                    <div className="max-h-[480px] overflow-y-auto pr-1 cyber-scroll divide-y divide-border/40">
                       {project.chapters.map((ch) => (
                         <ChapterNode
                           key={ch.id}
@@ -507,6 +495,6 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
         onOpenChange={setAddMemberOpen}
         onAdded={onRefresh}
       />
-    </ScrollArea>
+    </div>
   );
 }

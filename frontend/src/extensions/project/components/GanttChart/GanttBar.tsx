@@ -50,7 +50,7 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
         style={{
           left: plannedStart,
           width: plannedWidth,
-          borderColor: overdue ? "#f59e0b" : "var(--color-primary, #3b82f6)",
+          borderColor: overdue ? "var(--color-warning, #f59e0b)" : "var(--color-primary, #3b82f6)",
         }}
       />
 
@@ -58,7 +58,7 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
       {(entry.actual_start || entry.progress_pct > 0) && (
         <div
           className={`absolute top-1.5 h-7 rounded-sm flex items-center px-2 text-xs text-white ${
-            overdue ? "bg-amber-500" : "bg-primary"
+            overdue ? "bg-warning" : "bg-primary"
           }`}
           style={{
             left: actualStart,

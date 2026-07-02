@@ -52,10 +52,10 @@ function StepIndicator({
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
                   isDone
-                    ? "bg-[#22C55E] text-white"
+                    ? "bg-success text-primary-foreground"
                     : isActive
-                      ? "bg-[#3B82F6] text-white ring-4 ring-[#3B82F6]/20"
-                      : "bg-[#F1F5F9] text-[#94A3B8]",
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {isDone ? <CheckCircle className="h-4 w-4" /> : step.stepOrder}
@@ -68,7 +68,7 @@ function StepIndicator({
               <div
                 className={cn(
                   "h-0.5 w-8 mx-1",
-                  isDone ? "bg-[#22C55E]" : "bg-[#E2E8F0]",
+                  isDone ? "bg-success" : "bg-border",
                 )}
               />
             )}
@@ -141,8 +141,8 @@ function SubmitApprovalView({
   return (
     <div className="p-5">
       <div className="flex flex-col items-center gap-4 py-12">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF]">
-          <Send className="h-6 w-6 text-[#3B82F6]" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Send className="h-6 w-6 text-primary" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">审核流程未启动</p>
@@ -153,7 +153,7 @@ function SubmitApprovalView({
         <button
           type="button"
           onClick={() => setShowDialog(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors"
         >
           <Send className="h-4 w-4" />
           提交审核
@@ -175,12 +175,12 @@ function SubmitApprovalView({
                     value={step.stepName}
                     onChange={(e) => updateStep(idx, "stepName", e.target.value)}
                     placeholder="步骤名称"
-                    className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-[#3B82F6]"
+                    className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
                   />
                   <select
                     value={step.reviewerId}
                     onChange={(e) => updateStep(idx, "reviewerId", e.target.value)}
-                    className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-[#3B82F6]"
+                    className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
                   >
                     <option value="">选择审核人</option>
                     {members.map((m) => (
@@ -205,7 +205,7 @@ function SubmitApprovalView({
             <button
               type="button"
               onClick={addStep}
-              className="mt-3 w-full rounded-lg border border-dashed border-[#E2E8F0] py-2 text-sm text-muted-foreground hover:text-foreground hover:border-[#CBD5E1] transition-colors"
+              className="mt-3 w-full rounded-lg border border-dashed border-border py-2 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
             >
               + 添加步骤
             </button>
@@ -223,7 +223,7 @@ function SubmitApprovalView({
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex items-center gap-1.5 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-50"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 确认提交
@@ -269,7 +269,7 @@ function ReviewerActionSection({
   );
 
   return (
-    <div className="mx-5 mt-4 rounded-lg border border-[#E2E8F0] bg-[#FAFBFC] p-4">
+    <div className="mx-5 mt-4 rounded-lg border border-border bg-muted p-4">
       <p className="text-sm font-medium text-foreground mb-3">
         当前步骤：{stepName}
       </p>
@@ -278,14 +278,14 @@ function ReviewerActionSection({
         onChange={(e) => setComment(e.target.value)}
         placeholder="审核意见（可选）"
         rows={3}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[#3B82F6] resize-none"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
       />
       <div className="mt-3 flex justify-end gap-2">
         <button
           type="button"
           onClick={() => handleAction("reject")}
           disabled={acting}
-          className="flex items-center gap-1.5 rounded-lg border border-[#EF4444] px-4 py-2 text-sm text-[#EF4444] hover:bg-[#FEF2F2] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-destructive px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
         >
           {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
           退回
@@ -294,7 +294,7 @@ function ReviewerActionSection({
           type="button"
           onClick={() => handleAction("approve")}
           disabled={acting}
-          className="flex items-center gap-1.5 rounded-lg bg-[#22C55E] px-4 py-2 text-sm text-white hover:bg-[#16A34A] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg bg-success px-4 py-2 text-sm text-primary-foreground hover:opacity-90 transition-colors disabled:opacity-50"
         >
           {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
           通过
@@ -376,14 +376,14 @@ export function ApprovalTab({
     <div className="flex flex-col h-full">
       {/* Step indicator */}
       {steps.length > 0 && (
-        <div className="border-b border-[#E2E8F0]">
+        <div className="border-b border-border">
           <StepIndicator steps={steps} currentStep={currentStep} />
         </div>
       )}
 
       {/* Manager: withdraw button */}
       {isManager && (
-        <div className="px-5 py-3 border-b border-[#E2E8F0]">
+        <div className="px-5 py-3 border-b border-border">
           <button
             type="button"
             onClick={async () => {
@@ -395,7 +395,7 @@ export function ApprovalTab({
                 toast.error("撤回审核失败");
               }
             }}
-            className="flex items-center gap-1.5 rounded-lg border border-[#D97706] px-3 py-1.5 text-sm text-[#D97706] hover:bg-[#FFFBEB] transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-warning px-3 py-1.5 text-sm text-warning hover:bg-warning/10 transition-colors"
           >
             <RotateCcw className="h-4 w-4" />
             撤回审核
@@ -418,7 +418,7 @@ export function ApprovalTab({
               className={cn(
                 "rounded-lg border p-4",
                 step.stepOrder === currentStep
-                  ? "border-[#3B82F6] bg-[#EFF6FF]/30"
+                  ? "border-primary bg-primary/5"
                   : "border-border bg-background",
               )}
             >
@@ -431,10 +431,10 @@ export function ApprovalTab({
                     className={cn(
                       "rounded-full px-2 py-0.5 text-[11px] font-medium",
                       step.status === "approved"
-                        ? "bg-[#ECFDF5] text-[#22C55E]"
+                        ? "bg-success/10 text-success"
                         : step.status === "rejected"
-                          ? "bg-[#FEF2F2] text-[#EF4444]"
-                          : "bg-[#FFFBEB] text-[#D97706]",
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-warning/10 text-warning",
                     )}
                   >
                     {step.status === "approved"
@@ -452,7 +452,7 @@ export function ApprovalTab({
                   {step.records.map((record) => (
                     <div
                       key={record.id}
-                      className="rounded-md bg-[#F9FAFB] px-3 py-2 text-xs"
+                      className="rounded-md bg-muted px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">
@@ -461,7 +461,7 @@ export function ApprovalTab({
                         <span
                           className={cn(
                             "font-medium",
-                            record.action === "approve" ? "text-[#22C55E]" : "text-[#EF4444]",
+                            record.action === "approve" ? "text-success" : "text-destructive",
                           )}
                         >
                           {record.action === "approve" ? "通过" : "退回"}

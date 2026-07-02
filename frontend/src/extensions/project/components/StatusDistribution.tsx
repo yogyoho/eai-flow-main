@@ -9,34 +9,63 @@ interface StatusDistributionProps {
   chapters: ProjectChapter[];
 }
 
-const STATUS_ITEMS: { key: ChapterStatus; label: string; dotColor: string; activeColor: string }[] = [
-  { key: "draft", label: "待编写", dotColor: "bg-slate-300", activeColor: "text-slate-600" },
-  { key: "writing", label: "编写中", dotColor: "bg-blue-400", activeColor: "text-blue-600" },
-  { key: "review", label: "审核中", dotColor: "bg-amber-400", activeColor: "text-amber-600" },
-  { key: "completed", label: "已完成", dotColor: "bg-success", activeColor: "text-success" },
+type StatusAccent = "slate" | "blue" | "amber" | "emerald";
+
+const STATUS_ITEMS: {
+  key: ChapterStatus;
+  label: string;
+  dotColor: string;
+  accent: StatusAccent;
+}[] = [
+  { key: "draft", label: "待编写", dotColor: "bg-muted-foreground", accent: "slate" },
+  { key: "writing", label: "编写中", dotColor: "bg-primary", accent: "blue" },
+  { key: "review", label: "审核中", dotColor: "bg-warning", accent: "amber" },
+  { key: "completed", label: "已完成", dotColor: "bg-success", accent: "emerald" },
 ];
 
+const RING_CLS: Record<StatusAccent, string> = {
+  slate: "ring-muted-foreground/15",
+  blue: "ring-primary/15",
+  amber: "ring-warning/15",
+  emerald: "ring-success/15",
+};
+
 export function StatusDistribution({ chapters }: StatusDistributionProps) {
-  const counts = useMemo(() => {
+  const { counts, totalCount } = useMemo(() => {
     const flat = flattenChapters(chapters);
     const map = { draft: 0, writing: 0, review: 0, completed: 0 } as Record<ChapterStatus, number>;
     for (const ch of flat) {
       map[inferStatus(ch)]++;
     }
-    return map;
+    return { counts: map, totalCount: flat.length };
   }, [chapters]);
 
   return (
-    <div className="flex items-center gap-4 px-1">
-      {STATUS_ITEMS.map((item) => (
-        <div key={item.key} className="flex items-center gap-1.5 text-[13px]">
-          <span className={`h-2 w-2 rounded-full ${item.dotColor}`} />
-          <span className={counts[item.key] > 0 ? item.activeColor : "text-muted-foreground"}>
-            {item.label}
-          </span>
-          <span className="font-medium text-foreground">{counts[item.key]}</span>
-        </div>
-      ))}
+    <div className="themed-card-sci rounded-xl p-3 flex flex-wrap items-center justify-between gap-4 text-xs">
+      <div className="flex items-center gap-4 flex-wrap">
+        {STATUS_ITEMS.map((item) => {
+          const count = counts[item.key];
+          return (
+            <div
+              key={item.key}
+              className="relative flex items-center gap-2 px-3 py-1.5 rounded-lg border border-transparent"
+              style={{ color: "var(--cyber-text-muted)" }}
+            >
+              {item.key === "writing" && (
+                <span className="w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10 animate-ping absolute" />
+              )}
+              <span className={`w-2.5 h-2.5 rounded-full ${item.dotColor} ring-2 ${RING_CLS[item.accent]}`} />
+              <span>{item.label}</span>
+              <span className="font-bold px-1 rounded bg-muted text-muted-foreground text-[10px]">
+                {item.key === "completed" ? `${count}/${totalCount}` : count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="hidden lg:inline-block text-[10px] italic text-muted-foreground">
+        &gt; FILTERS READY // CLICK STAT NODE TO PIN CATEGORIES
+      </span>
     </div>
   );
 }

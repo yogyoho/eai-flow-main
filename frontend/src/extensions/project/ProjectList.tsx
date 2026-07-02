@@ -33,16 +33,16 @@ import { cn } from "@/lib/utils";
 // ─── Color palette for dynamic types (cycles by index) ────────────────────────
 
 const TYPE_PALETTE = [
-  "bg-green-500/10 text-green-600",
-  "bg-amber-500/10 text-amber-600",
-  "bg-blue-500/10 text-blue-600",
-  "bg-red-500/10 text-red-600",
-  "bg-purple-500/10 text-purple-600",
-  "bg-cyan-500/10 text-cyan-600",
-  "bg-rose-500/10 text-rose-600",
-  "bg-teal-500/10 text-teal-600",
-  "bg-indigo-500/10 text-indigo-600",
-  "bg-orange-500/10 text-orange-600",
+  "bg-success/10 text-success",
+  "bg-warning/10 text-warning",
+  "bg-primary/10 text-primary",
+  "bg-destructive/10 text-destructive",
+  "bg-info/10 text-info",
+  "bg-primary/10 text-primary",
+  "bg-destructive/10 text-destructive",
+  "bg-info/10 text-info",
+  "bg-primary/10 text-primary",
+  "bg-warning/10 text-warning",
 ];
 
 const DEFAULT_TYPE_COLOR = "bg-primary/10 text-primary";
@@ -50,14 +50,14 @@ const DEFAULT_TYPE_COLOR = "bg-primary/10 text-primary";
 // ─── Status colors for badges ─────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  setup: "bg-slate-500/10 text-slate-600",
-  outline: "bg-blue-500/10 text-blue-600",
-  writing: "bg-violet-500/10 text-violet-600",
-  editing: "bg-amber-500/10 text-amber-600",
-  approval: "bg-orange-500/10 text-orange-600",
+  setup: "bg-muted text-muted-foreground",
+  outline: "bg-primary/10 text-primary",
+  writing: "bg-primary/10 text-primary",
+  editing: "bg-warning/10 text-warning",
+  approval: "bg-warning/10 text-warning",
   active: "bg-primary/10 text-primary",
   completed: "bg-success/10 text-success",
-  archived: "bg-gray-500/10 text-gray-500",
+  archived: "bg-muted text-muted-foreground",
 };
 
 // ─── Stat card data ────────────────────────────────────────────────────────────
@@ -84,15 +84,15 @@ function computeStats(projects: ProjectListItem[]): StatCard[] {
       icon: <Edit className="h-5 w-5" />,
       label: "进行中",
       count: inProgress,
-      iconBg: "bg-blue-500/10",
-      iconColor: "text-[#3B82F6]",
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
     },
     {
       icon: <Loader2 className="h-5 w-5" />,
       label: "审批中",
       count: projects.filter((p) => p.status === "approval").length,
-      iconBg: "bg-orange-500/10",
-      iconColor: "text-orange-600",
+      iconBg: "bg-warning/10",
+      iconColor: "text-warning",
     },
     {
       icon: <FolderKanban className="h-5 w-5" />,
@@ -464,7 +464,7 @@ export function ProjectList() {
                       variant="ghost"
                       size="icon"
                       onClick={(e) => handleDelete(project.id, e)}
-                      className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

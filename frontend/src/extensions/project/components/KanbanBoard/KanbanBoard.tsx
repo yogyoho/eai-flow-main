@@ -13,10 +13,10 @@ export interface KanbanBoardProps {
 }
 
 const COLUMNS = [
-  { id: "draft", label: "待编写", color: "border-t-gray-400" },
-  { id: "writing", label: "编写中", color: "border-t-blue-500" },
-  { id: "review", label: "审核中", color: "border-t-amber-500" },
-  { id: "completed", label: "已完成", color: "border-t-green-500" },
+  { id: "draft", label: "待编写", color: "border-t-muted-foreground" },
+  { id: "writing", label: "编写中", color: "border-t-primary" },
+  { id: "review", label: "审核中", color: "border-t-warning" },
+  { id: "completed", label: "已完成", color: "border-t-success" },
 ] as const;
 
 export function KanbanBoard({ cards, onCardMove, onCardEdit: _onCardEdit }: KanbanBoardProps) {

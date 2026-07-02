@@ -268,7 +268,7 @@ function StepBasicInfo({
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">项目基本信息</h3>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           填写项目的基本信息，带 <span className="text-red-500">*</span> 的为必填项
         </p>
       </div>
@@ -376,7 +376,7 @@ function StepTemplate({
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">选择内容大纲模板</h3>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           选择一个内容模板定义报告的章节大纲结构，或使用空白模板从零开始
         </p>
       </div>
@@ -457,7 +457,7 @@ function StepWorkflow({
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">选择工作流模板</h3>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           工作流定义项目的写作流程：分阶段写作、AI 生成初稿、人工审阅等。选择一个适合项目类型的流程模板，或跳过手动管理
         </p>
       </div>
@@ -584,7 +584,7 @@ function StepTeam({
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">组建项目团队</h3>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           团队由组长和组员组成，负责报告编写。审核、批准等环节由团队外的相关部门或领导负责。
         </p>
       </div>
@@ -748,7 +748,7 @@ function StepConfirm({
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">确认项目信息</h3>
-        <p className="mt-1 text-[13px] text-[#475569]">请核实以下信息无误后点击创建</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">请核实以下信息无误后点击创建</p>
       </div>
 
       <div className="space-y-4">
@@ -1020,7 +1020,7 @@ export function ProjectCreateWizard() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F9FAFB]">
+    <div className="flex h-screen bg-muted">
       {/* Sidebar */}
       <WizardSidebar currentStep={step} />
 
