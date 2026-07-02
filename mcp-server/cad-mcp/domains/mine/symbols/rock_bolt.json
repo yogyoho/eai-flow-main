@@ -1,0 +1,12 @@
+{
+  "type": "rock_bolt",
+  "domain": "mine",
+  "insertion_base": [0, 0],
+  "default_size_mm": 800,
+  "default_layer": "支护",
+  "primitives": [
+    { "op": "line", "x1": 0, "y1": 0, "x2": 0, "y2": 800 },
+    { "op": "line", "x1": -90, "y1": 0, "x2": 90, "y2": 0 }
+  ],
+  "label_anchor": [120, 400]
+}

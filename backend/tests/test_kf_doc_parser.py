@@ -298,6 +298,98 @@ def test_expat_vmerge_vertical(tmp_path):
     assert r.tables[0].rows[0][1] == "r2c2"
 
 
+# ── body-text guard: 样式法把正文段误读成 heading 的守卫 (bug-404) ──
+
+def test_looks_like_body_text_rejects_clause_punctuation():
+    """真标题是名词短语，不含子句/句末标点（，。；！？）；含则一定是被误套了
+    标题样式的正文段。顿号 、 可在真标题里作连词，故不判定为正文。"""
+    from app.extensions.knowledge_factory.doc_parser import _looks_like_body_text
+    # 3218 掘进作业规程里被误判为章节的真实正文段（全部含子句标点）
+    assert _looks_like_body_text("2、掘进中涉及的开口、拐弯时，需对开口处及其左右两侧各不小于5000mm范围内的顶板进行锚索补强") is True
+    assert _looks_like_body_text("（4）遇顶板巷帮岩体破碎、巷道成型差时，顶板支护时，根据现场实际情况") is True
+    assert _looks_like_body_text("②掘进巷道回风流甲烷传感器处安设1路摄像仪，监视回风流甲烷传感器的运行情况。") is True
+    assert _looks_like_body_text("26、对应力集中区（向斜和背斜轴部）用锚杆钻机探测一次顶板岩性，并增加一组") is True
+    assert _looks_like_body_text("8、工作面积水、巷中积水严禁上输送机，生产过程中开机开水") is True
+    # 真章节标题（名词短语，无子句标点）
+    assert _looks_like_body_text("概况") is False
+    assert _looks_like_body_text("巷道布置及支护说明") is False
+    assert _looks_like_body_text("施工工艺") is False
+    assert _looks_like_body_text("灾害应急措施及避灾路线") is False
+    assert _looks_like_body_text("第一章 总则") is False
+    # 顿号在真标题里作连词，不算子句标点
+    assert _looks_like_body_text("设计、施工及验收") is False
+
+
+def test_expat_skips_body_paragraph_with_heading_style(tmp_path):
+    """正文段被套了 Heading1 样式但含子句标点 → 守卫应过滤掉，不识别为 heading。
+
+    回归 3218.docx：作者把"2、掘进中…，需对…补强"等正文段也标成了 chapter
+    样式（styleId '2'/outlineLvl 0），样式法曾忠实读成 H1，污染章节结构。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        # 真章节（名词短语，无标点）
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>概况</w:t></w:r></w:p>'
+        # 正文段被误套 Heading1（含逗号）—— 应被守卫过滤
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>2、掘进中涉及的开口，需对顶板补强</w:t></w:r></w:p>'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>施工工艺</w:t></w:r></w:p>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "body.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    titles = [h.title for h in r.headings]
+    assert "概况" in titles and "施工工艺" in titles
+    assert "2、掘进中涉及的开口，需对顶板补强" not in titles, "含子句标点的正文段不应被当成 heading"
+
+
+def test_is_noise_line_rejects_clause_punctuation():
+    """_is_noise_line 也应拦含子句标点的行（regex 兜底路径一致性）。"""
+    assert _is_noise_line("②掘进巷道回风流甲烷传感器处安设1路摄像仪，监视回风流甲烷传感器。") is True
+    # 真标题仍通过
+    assert _is_noise_line("第一节 概述") is False
+    assert _is_noise_line("一、巷道名称及用途") is False
+
+
+# ── build_structure_hint: text_offset 优先（防 TOC 劫持，bug-404）──
+
+def test_structure_hint_uses_text_offset_not_find():
+    """当文档含目录页时，find(title) 命中目录条目（带页码），
+    而非正文章节。text_offset 已正确指向正文位置，应优先使用。
+
+    回归：LLM 收到目录条目摘要，无 H2/H3 信息 → 产出一级扁平结构。
+    """
+    from app.extensions.knowledge_factory.doc_parser import build_structure_hint
+    # 模拟有目录页的文档: TOC 在前(title1+页码)，正文在后(含子节 H2)
+    paragraphs = [
+        "title1 3",              # TOC 条目 (find 命中的位置 0)
+        "title2 5",              # 更多目录
+        "",                      # 空行
+        "title1",                # para_idx=3: 正文章节位置
+        "正文内容，包含子节信息。",
+        "sub1 第一节",           # H2 子节
+        "子节内容...",
+        "title2",                # para_idx=7: 第二个正文 H1
+        "正文2",
+    ]
+    full_text = "\n\n".join(paragraphs)
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    doc.headings = [
+        Heading(title="title1", level=1, para_idx=3),
+        Heading(title="title2", level=1, para_idx=7),
+    ]
+    doc.full_text = full_text
+    doc.finalize_sections(paragraphs)
+    hint = build_structure_hint(doc, 2000)
+    # 正文章节后的 snippet 应包含 "sub1 第一节"
+    assert "sub1 第一节" in hint, f"应用 text_offset 取正文, 得: {hint[:500]}"
+    # 不应出现目录页码 "title1 3"（完整目录行含数字）
+    assert "title1 3" not in hint, "目录条目不应出现在章节摘要中"
+
+
 # ── _parse_style_levels: basedOn 继承（TDD RED→GREEN）──
 
 def test_style_levels_resolves_basedon_inheritance(tmp_path):

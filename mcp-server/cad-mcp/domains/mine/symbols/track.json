@@ -1,0 +1,13 @@
+{
+  "type": "track",
+  "domain": "mine",
+  "insertion_base": [0, 0],
+  "default_size_mm": 1200,
+  "default_layer": "巷道",
+  "primitives": [
+    { "op": "polyline", "points": [[-600, 0], [600, 0], [600, 180], [-600, 180]], "closed": true },
+    { "op": "line", "x1": -150, "y1": 180, "x2": -150, "y2": 240 },
+    { "op": "line", "x1": 150, "y1": 180, "x2": 150, "y2": 240 }
+  ],
+  "label_anchor": [640, 90]
+}
