@@ -35,6 +35,7 @@ import ShareDialog from "./ShareDialog";
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
 import { useFolderTree } from "./useFolderTree";
+import { useLicense } from "@/extensions/license/useLicense";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
@@ -75,6 +76,9 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(true);
+  // 项目文件夹是 project 许可的子能力；未授权则隐藏整段（含 CollabEditor 入口）
+  const { hasModule, isLoading: licenseLoading } = useLicense();
+  const canUseProject = licenseLoading || hasModule("project");
   const [viewMode, setViewMode] = useState<"grid-icon" | "grid-summary" | "list">("grid-icon");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -234,7 +238,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               />
             )}
           </div>
-          {/* 项目文件夹 - 树形结构 */}
+          {canUseProject && ( // 项目文件夹 - 树形结构
           <div className="pt-2 mt-2">
             <button
               onClick={() => setArchiveOpen((v) => !v)}
@@ -262,6 +266,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               />
             )}
           </div>
+          )}
         </nav>
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
