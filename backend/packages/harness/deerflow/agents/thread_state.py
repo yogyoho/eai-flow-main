@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Annotated, NotRequired, TypedDict
 
 from langchain.agents import AgentState
@@ -120,6 +121,40 @@ def merge_delegations(
             continue
         merged[task_id] = {**prev, **entry} if prev else dict(entry)
     return list(merged.values())
+
+
+_DELEGATION_LEDGER_MAX_ENTRIES = 50
+_SKILL_CONTEXT_MAX_ENTRIES = 8
+_SKILL_DESCRIPTION_MAX_CHARS = 500
+
+
+class SkillEntry(TypedDict):
+    name: str
+    path: str
+    description: str
+    loaded_at: int
+
+
+def _normalize_skill_entry(entry: Mapping[str, object]) -> SkillEntry:
+    description = entry.get("description")
+    loaded_at = entry.get("loaded_at")
+    return {
+        "name": str(entry.get("name") or ""),
+        "path": str(entry["path"]),
+        "description": " ".join(description.split())[:_SKILL_DESCRIPTION_MAX_CHARS] if isinstance(description, str) else "",
+        "loaded_at": loaded_at if isinstance(loaded_at, int) else 0,
+    }
+
+
+def merge_skill_context(existing: list[SkillEntry] | None, new: list[SkillEntry] | None) -> list[SkillEntry]:
+    by_path: dict[str, SkillEntry] = {}
+    for entry in [*(existing or []), *(new or [])]:
+        normalized = _normalize_skill_entry(entry)
+        by_path[normalized["path"]] = normalized
+    merged = sorted(by_path.values(), key=lambda e: e["loaded_at"])
+    if len(merged) > _SKILL_CONTEXT_MAX_ENTRIES:
+        merged = merged[-_SKILL_CONTEXT_MAX_ENTRIES:]
+    return merged
 
 
 class ThreadState(AgentState):
