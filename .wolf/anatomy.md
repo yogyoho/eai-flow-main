@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-03T01:23:35.331Z
-> Files: 1443 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-03T03:14:07.640Z
+> Files: 1445 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -65,7 +65,7 @@
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
-- `Makefile` — DeerFlow - Unified Development Environment (~1868 tok)
+- `Makefile` — DeerFlow - Unified Development Environment (~1922 tok)
 - `manage.sh` — EAI Flow Docker Management Script (~752 tok)
 - `pr_body.txt` — # Summary (~93 tok)
 - `README_zh.md` — 🦌 DeerFlow - 2.0 (~4785 tok)
@@ -253,7 +253,7 @@
 - `federated-prancing-spindle.md` — 知识库三级数据隔离：私有可见 / 部门可见 / 公开可见 (~739 tok)
 - `giggly-mixing-toucan.md` — Plan: 沙箱输出文件自动同步到文档空间 (~1024 tok)
 - `goofy-foraging-puzzle.md` — Fix: Admin API Security + Role System Enhancement (~1487 tok)
-- `goofy-pondering-whisper.md` — Tier 0 + Tier 1 上游同步执行方案 (~1199 tok)
+- `goofy-pondering-whisper.md` — alembic(debb0fd1) 集成评估 → 跳过决策 (~495 tok)
 - `harmonic-twirling-crab.md` — Implementation Plan: Close Spec Gaps Across 4 Domains (~2160 tok)
 - `humble-sniffing-quail.md` — WeChat iLink: admin UI bind + per-user binding-code authorization (~2582 tok)
 - `lazy-exploring-liskov.md` — Knowledge Factory Card Beautification Plan (~1240 tok)
@@ -441,7 +441,7 @@
 - `.gitignore` — Git ignore rules (~86 tok)
 - `.python-version` (~2 tok)
 - `AGENTS.md` (~16 tok)
-- `CLAUDE.md` — CLAUDE.md (~10296 tok)
+- `CLAUDE.md` — CLAUDE.md (~12171 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow Backend (~2414 tok)
 - `debug.py` — main (~1415 tok)
 - `Dockerfile` — Docker container definition (~1121 tok)
@@ -1239,6 +1239,7 @@
 - `mcp.py` — API: 2 endpoints (~4485 tok)
 - `memory.py` — Memory API router for retrieving and managing user memory data with per-user isolation. (~4026 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1552 tok)
+- `suggestions.py` — API: 2 endpoints (~2145 tok)
 - `threads.py` — Thread CRUD, state, and history endpoints. (~7982 tok)
 - `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1270 tok)
 
@@ -1370,6 +1371,7 @@
 - `test_run_event_store_by_run_index.py` — Regression tests for MemoryRunEventStore's run-keyed event/message index. (~1697 tok)
 - `test_serialization_strip_images.py` — Tests for the API serialization helpers ported from upstream (Tier 2 C). (~809 tok)
 - `test_sub_workflow.py` — TDD tests for sub_workflow node type and child workflow support. (~4381 tok)
+- `test_suggestions_router.py` — test_strip_markdown_code_fence_removes_wrapping, test_strip_markdown_code_fence_no_fence_keeps_conte (~1874 tok)
 - `test_sync_outputs_to_docmgr.py` — Tests for sync_outputs_to_docmgr and present_files callback integration. (~1923 tok)
 - `test_sync_thread_files_folder.py` — Regression tests: chat-originated docs must be filed into the folder tree. (~1607 tok)
 - `test_template_management.py` — Tests for workflow template management. (~571 tok)
