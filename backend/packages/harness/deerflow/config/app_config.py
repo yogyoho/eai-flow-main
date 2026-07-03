@@ -29,6 +29,7 @@ from deerflow.config.stream_bridge_config import StreamBridgeConfig, load_stream
 from deerflow.config.subagents_config import SubagentsAppConfig, load_subagents_config_from_dict
 from deerflow.config.summarization_config import SummarizationConfig, load_summarization_config_from_dict
 from deerflow.config.title_config import TitleConfig, load_title_config_from_dict
+from deerflow.config.token_budget_config import TokenBudgetConfig
 from deerflow.config.token_usage_config import TokenUsageConfig
 from deerflow.config.tool_config import ToolConfig, ToolGroupConfig
 from deerflow.config.tool_output_config import ToolOutputConfig
@@ -105,6 +106,7 @@ class AppConfig(BaseModel):
         ge=1,
         description="Hard server-side ceiling for a client-supplied run recursion_limit. Client values above this are clamped; prevents runaway LangGraph super-steps (LLM cost / DoS).",
     )
+    token_budget: TokenBudgetConfig = Field(default_factory=TokenBudgetConfig, description="Token Budget tracking and limits configuration.")
     models: list[ModelConfig] = Field(default_factory=list, description="Available models")
     sandbox: SandboxConfig = Field(description="Sandbox configuration")
     tools: list[ToolConfig] = Field(default_factory=list, description="Available tools")
