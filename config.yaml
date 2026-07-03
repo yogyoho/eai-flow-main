@@ -233,7 +233,7 @@ summarization:
     type: messages
     value: 10
   trim_tokens_to_summarize: 15564
-  summary_prompt: null
+  summary_prompt: "请用中文对以下对话进行简洁总结。保留关键事实、决策、用户偏好和待办事项。输出格式：先用1-2句话概括主题，再列出3-5个关键点。"
   preserve_recent_skill_count: 5
   preserve_recent_skill_tokens: 25000
   preserve_recent_skill_tokens_per_skill: 5000
