@@ -8250,10 +8250,64 @@
       "file": "backend/packages/harness/deerflow/runtime/events/store/memory.py",
       "root_cause": "移植上游 820560e5 路线b 时 list_messages_by_run 用了 elif(before_seq/after_seq 互斥),但 fork 原版是独立 if(两者都 filter, after_seq 决定取前/后 limit) → 同时传 before+after 时只用 before_seq, after_seq 被忽略",
       "fix": "改回独立 if 匹配 fork 原版语义: before/after 都 filter, 再按 after_seq 分支 [:limit] vs [-limit:]. 同时改上游测试去掉 _messages_by_run 断言(路线b无此属性)用公开 list_messages_by_run 验证",
-      "tags": ["upstream-sync", "tier1", "events-store", "route-b", "cursor-semantics"],
+      "tags": [
+        "upstream-sync",
+        "tier1",
+        "events-store",
+        "route-b",
+        "cursor-semantics"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-03T06:50:00Z"
+    },
+    {
+      "id": "bug-507",
+      "timestamp": "2026-07-03T00:36:01.473Z",
+      "error_message": "Wrong reference: close_oidc_service should be stop_channel_service",
+      "file": "backend/tests/test_gateway_lifespan_shutdown.py",
+      "root_cause": "Used \"close_oidc_service\" instead of \"stop_channel_service\"",
+      "fix": "Changed close_oidc_service → stop_channel_service",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T00:36:01.473Z"
+    },
+    {
+      "id": "bug-508",
+      "timestamp": "2026-07-03T00:39:02.187Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/config/app_config.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 11→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T00:39:02.187Z"
+    },
+    {
+      "id": "bug-509",
+      "timestamp": "2026-07-03T00:40:12.029Z",
+      "error_message": "Significant refactor of ",
+      "file": "config.example.yaml",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 30→12 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T00:40:12.029Z"
     }
   ]
 }

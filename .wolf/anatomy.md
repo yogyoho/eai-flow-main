@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T22:41:53.938Z
-> Files: 1439 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-03T01:23:35.331Z
+> Files: 1443 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -53,7 +53,7 @@
 - `CLAUDE.md` — page login info (~3649 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
-- `config.example.yaml` — Configuration for the DeerFlow application (~14284 tok)
+- `config.example.yaml` — Configuration for the DeerFlow application (~14629 tok)
 - `config.yaml` (~1943 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
@@ -1231,7 +1231,7 @@
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1728 tok)
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2509 tok)
 - `internal_auth.py` — Authentication for trusted Gateway internal callers. (~534 tok)
-- `services.py` — Run lifecycle service layer. (~5430 tok)
+- `services.py` — Run lifecycle service layer. (~6246 tok)
 
 ## backend/app/gateway/routers/
 
@@ -1272,7 +1272,7 @@
 
 ## backend/packages/harness/deerflow/config/
 
-- `app_config.py` — Pydantic: CircuitBreakerConfig (~6689 tok)
+- `app_config.py` — Pydantic: CircuitBreakerConfig (~7173 tok)
 - `extensions_config.py` — Unified extensions configuration for MCP servers and skills. (~3251 tok)
 - `paths.py` — Virtual path prefix seen by agents inside the sandbox (~4389 tok)
 
@@ -1323,9 +1323,11 @@
 ## backend/tests/
 
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
+- `test_app_config_reload.py` — test_app_config_defaults_missing_database_to_sqlite, test_app_config_defaults_empty_database_to_sqli (~5209 tok)
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
+- `test_channels.py` — Tests for the IM channel system (MessageBus, ChannelStore, ChannelManager). (~35665 tok)
 - `test_checkpointer.py` — Unit tests for checkpointer config, packaging metadata, and factories. (~6660 tok)
 - `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8977 tok)
 - `test_contract_price_extension.py` — Tests for the contract_price extension (models, routes, schemas). (~731 tok)
@@ -1337,6 +1339,8 @@
 - `test_data_source_routers.py` — Router-level tests for data_source endpoints. Service layer is mocked. (~1808 tok)
 - `test_data_source_service.py` — Tests for data_source schemas + service logic. (~3641 tok)
 - `test_document_space.py` — test_ai_document_model_has_new_fields, test_ai_document_create_schema_accepts_file_ref_fields, test_ (~5554 tok)
+- `test_gateway_lifespan_shutdown.py` — Regression tests for Gateway lifespan shutdown. (~1167 tok)
+- `test_gateway_services.py` — Tests for app.gateway.services — run lifecycle service layer. (~6526 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
 - `test_kf_doc_parser.py` — Unit tests for doc_parser — heading detection, text normalization, regex fallback. (~4319 tok)

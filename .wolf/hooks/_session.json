@@ -68,8 +68,8 @@
       "first_read": "2026-07-02T22:26:12.930Z"
     },
     "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/app_config.py": {
-      "count": 2,
-      "tokens": 6207,
+      "count": 4,
+      "tokens": 6765,
       "first_read": "2026-07-02T22:32:14.776Z"
     },
     "D:/eai/eai-flow-main/backend/packages/harness/deerflow/runtime/events/store/memory.py": {
@@ -96,6 +96,46 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-07-02T22:54:36.943Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_gateway_lifespan_shutdown.py": {
+      "count": 2,
+      "tokens": 1224,
+      "first_read": "2026-07-03T00:33:24.488Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/gateway/services.py": {
+      "count": 1,
+      "tokens": 5430,
+      "first_read": "2026-07-03T00:37:26.922Z"
+    },
+    "D:/eai/eai-flow-main/config.example.yaml": {
+      "count": 2,
+      "tokens": 14284,
+      "first_read": "2026-07-03T00:37:27.105Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_gateway_services.py": {
+      "count": 1,
+      "tokens": 5622,
+      "first_read": "2026-07-03T00:42:54.782Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_channels.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-03T00:56:10.306Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/channels/slack.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-03T00:57:59.152Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/channels/telegram.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-03T00:57:59.961Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_app_config_reload.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-03T01:23:25.289Z"
     }
   },
   "files_written": [
@@ -386,6 +426,84 @@
       "action": "edit",
       "tokens": 13,
       "at": "2026-07-02T22:41:53.955Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_services.py",
+      "action": "edit",
+      "tokens": 62,
+      "at": "2026-07-03T00:28:09.758Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_lifespan_shutdown.py",
+      "action": "edit",
+      "tokens": 25,
+      "at": "2026-07-03T00:33:32.897Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_lifespan_shutdown.py",
+      "action": "edit",
+      "tokens": 29,
+      "at": "2026-07-03T00:36:01.467Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_lifespan_shutdown.py",
+      "action": "edit",
+      "tokens": 111,
+      "at": "2026-07-03T00:36:03.815Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_lifespan_shutdown.py",
+      "action": "edit",
+      "tokens": 63,
+      "at": "2026-07-03T00:36:06.782Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/app/gateway/services.py",
+      "action": "edit",
+      "tokens": 122,
+      "at": "2026-07-03T00:38:49.760Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/app_config.py",
+      "action": "edit",
+      "tokens": 138,
+      "at": "2026-07-03T00:39:02.176Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/config.example.yaml",
+      "action": "edit",
+      "tokens": 192,
+      "at": "2026-07-03T00:40:12.024Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_gateway_services.py",
+      "action": "edit",
+      "tokens": 128,
+      "at": "2026-07-03T00:43:08.283Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_channels.py",
+      "action": "edit",
+      "tokens": 53,
+      "at": "2026-07-03T00:56:23.839Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/app_config.py",
+      "action": "edit",
+      "tokens": 23,
+      "at": "2026-07-03T01:21:21.854Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/app_config.py",
+      "action": "edit",
+      "tokens": 562,
+      "at": "2026-07-03T01:21:31.638Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_app_config_reload.py",
+      "action": "edit",
+      "tokens": 53,
+      "at": "2026-07-03T01:23:35.361Z"
     }
   ],
   "edit_counts": {
@@ -402,13 +520,19 @@
     "backend/app/extensions/database.py": 7,
     "scripts/migrate_license_modules_v2.sql": 2,
     "frontend/src/extensions/docmgr/DocumentManagement.tsx": 4,
-    "backend/packages/harness/deerflow/config/app_config.py": 2,
+    "backend/packages/harness/deerflow/config/app_config.py": 5,
     "backend/packages/harness/deerflow/runtime/events/store/memory.py": 6,
-    "backend/tests/test_run_event_store_by_run_index.py": 3
+    "backend/tests/test_run_event_store_by_run_index.py": 3,
+    "backend/tests/test_gateway_services.py": 2,
+    "backend/tests/test_gateway_lifespan_shutdown.py": 4,
+    "backend/app/gateway/services.py": 1,
+    "config.example.yaml": 1,
+    "backend/tests/test_channels.py": 1,
+    "backend/tests/test_app_config_reload.py": 1
   },
-  "anatomy_hits": 12,
-  "anatomy_misses": 7,
-  "repeated_reads_warned": 3,
+  "anatomy_hits": 15,
+  "anatomy_misses": 12,
+  "repeated_reads_warned": 7,
   "cerebrum_warnings": 0,
-  "stop_count": 11
+  "stop_count": 18
 }
