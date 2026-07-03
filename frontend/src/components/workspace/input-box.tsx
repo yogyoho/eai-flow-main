@@ -59,6 +59,9 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
+import type { Skill } from "@/core/skills";
+import { useSkills } from "@/core/skills/hooks";
+import { useSuggestionsConfig } from "@/core/suggestions/hooks";
 import type { AgentThreadContext } from "@/core/threads";
 import { textOfMessage } from "@/core/threads/utils";
 import { cn } from "@/lib/utils";
@@ -161,6 +164,7 @@ export function InputBox({
   );
 
   const [followups, setFollowups] = useState<string[]>([]);
+  const { data: suggestionsConfig } = useSuggestionsConfig();
   const [followupsHidden, setFollowupsHidden] = useState(false);
   const [followupsLoading, setFollowupsLoading] = useState(false);
   const lastGeneratedForAiIdRef = useRef<string | null>(null);
@@ -389,6 +393,9 @@ export function InputBox({
     if (!lastAiId || lastAiId === lastGeneratedForAiIdRef.current) {
       return;
     }
+    if (suggestionsConfig === undefined) {
+      return;
+    }
     lastGeneratedForAiIdRef.current = lastAiId;
 
     const recent = messagesRef.current
@@ -402,6 +409,11 @@ export function InputBox({
       .slice(-6);
 
     if (recent.length === 0) {
+      return;
+    }
+
+    if (!suggestionsConfig?.enabled) {
+      setFollowups([]);
       return;
     }
 
@@ -441,7 +453,14 @@ export function InputBox({
       });
 
     return () => controller.abort();
-  }, [context.model_name, disabled, isMock, status, threadId]);
+  }, [
+    context.model_name,
+    disabled,
+    isMock,
+    status,
+    threadId,
+    suggestionsConfig?.enabled,
+  ]);
 
   return (
     <div

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 
 from fastapi import APIRouter, Depends, Request
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -32,6 +33,35 @@ class SuggestionsRequest(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     suggestions: list[str] = Field(default_factory=list, description="Suggested follow-up questions")
+
+
+class SuggestionsConfigResponse(BaseModel):
+    enabled: bool = Field(..., description="Whether follow-up suggestions are enabled globally")
+
+
+# Matches a complete <think>...</think> block (case-insensitive, spans newlines).
+_THINK_BLOCK_RE = re.compile(r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL)
+# Matches a dangling, unclosed <think> (model truncated at max_tokens mid-thought).
+_OPEN_THINK_RE = re.compile(r"<think\b[^>]*>", re.IGNORECASE)
+
+
+def _strip_think_blocks(text: str) -> str:
+    """Remove reasoning-model ``<think>...</think>`` blocks from the response.
+
+    Reasoning models such as MiniMax-M3 inline their chain-of-thought into the
+    message ``content`` wrapped in ``<think>...</think>`` (``reasoning_split``
+    defaults to false), rather than exposing a separate ``reasoning_content``
+    field. The thinking text frequently contains ``[`` / ``]`` characters, which
+    corrupted the downstream ``find('[')`` / ``rfind(']')`` JSON extraction and
+    produced empty suggestions. We strip the reasoning before parsing so only
+    the actual answer remains.
+    """
+    text = _THINK_BLOCK_RE.sub("", text)
+    # Drop any unclosed <think> (and everything after it) left by truncation.
+    open_match = _OPEN_THINK_RE.search(text)
+    if open_match:
+        text = text[: open_match.start()]
+    return text.strip()
 
 
 def _strip_markdown_code_fence(text: str) -> str:
@@ -99,6 +129,18 @@ def _format_conversation(messages: list[SuggestionMessage]) -> str:
     return "\n".join(parts).strip()
 
 
+@router.get(
+    "/suggestions/config",
+    response_model=SuggestionsConfigResponse,
+    summary="Get Suggestions Configuration",
+    description="Returns the global configuration for follow-up suggestions.",
+)
+async def get_suggestions_config(
+    config: AppConfig = Depends(get_config),
+) -> SuggestionsConfigResponse:
+    return SuggestionsConfigResponse(enabled=config.suggestions.enabled)
+
+
 @router.post(
     "/threads/{thread_id}/suggestions",
     response_model=SuggestionsResponse,
@@ -112,6 +154,8 @@ async def generate_suggestions(
     request: Request,
     config: AppConfig = Depends(get_config),
 ) -> SuggestionsResponse:
+    if not config.suggestions.enabled:
+        return SuggestionsResponse(suggestions=[])
     if not body.messages:
         return SuggestionsResponse(suggestions=[])
 
