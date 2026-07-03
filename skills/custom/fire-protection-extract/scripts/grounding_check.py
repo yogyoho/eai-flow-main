@@ -12,8 +12,6 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
-
 
 def corpus(structure):
     parts = [p["text"] for p in structure["paras"]]
@@ -121,11 +119,18 @@ def check(report_md, structure, mapping):
 
 def main(argv):
     if len(argv) != 3:
-        print("usage: grounding_check.py <report.md> <structure.json> <mapping.yaml>", file=sys.stderr)
+        print("usage: grounding_check.py <report.md> <structure.json> <mapping.json|.yaml>", file=sys.stderr)
         return 2
     report = Path(argv[0]).read_text(encoding="utf-8")
     structure = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
-    mapping = yaml.safe_load(Path(argv[2]).read_text(encoding="utf-8"))
+    # try JSON (stdlib) first, fall back to YAML (needs PyYAML)
+    mp = Path(argv[2])
+    mp_text = mp.read_text(encoding="utf-8")
+    if mp.suffix == ".json":
+        mapping = json.loads(mp_text)
+    else:
+        import yaml
+        mapping = yaml.safe_load(mp_text)
     res = check(report, structure, mapping)
     print(json.dumps(res, ensure_ascii=False, indent=2))
     return 0 if (res["rate"] >= 0.85 and not res["missing_anchors"] and not res["conflict_failures"]) else 1

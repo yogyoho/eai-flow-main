@@ -12,8 +12,6 @@ import json
 import sys
 from pathlib import Path
 
-import yaml
-
 
 def find_para(paras, anchor):
     for p in paras:
@@ -123,12 +121,23 @@ def build_report(structure, mapping, project_name="XX"):
     return f"# {title}\n\n{body}\n"
 
 
+def _load_mapping(path_str):
+    """Load mapping from .json or .yaml.  Prefer .json (stdlib); fall back to .yaml (needs PyYAML)."""
+    p = Path(path_str)
+    text = p.read_text(encoding="utf-8")
+    if p.suffix == ".json":
+        return json.loads(text)
+    # yaml fallback
+    import yaml
+    return yaml.safe_load(text)
+
+
 def main(argv):
     if len(argv) != 3:
-        print("usage: extract.py <structure.json> <mapping.yaml> <report.md>", file=sys.stderr)
+        print("usage: extract.py <structure.json> <mapping.json|.yaml> <report.md>", file=sys.stderr)
         return 2
     structure = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
-    mapping = yaml.safe_load(Path(argv[1]).read_text(encoding="utf-8"))
+    mapping = _load_mapping(argv[1])
     report = build_report(structure, mapping)
     Path(argv[2]).write_text(report, encoding="utf-8")
     print(f"OK -> {argv[2]} ({len(report)} chars)")

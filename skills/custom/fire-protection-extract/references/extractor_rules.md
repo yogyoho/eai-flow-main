@@ -13,7 +13,7 @@
 ## 防抄错
 1. 锚定位（非相似度）→ 防抄错段/错表。
 2. `authoritative: true` → 冲突字段权威源。如消防水量取消防章（30L/s/DN200），不取给水章（8L/s/DN150）。
-   生产校验由 grounding_check 读 yaml 的 `conflict_assertions: [{must_contain, must_not_contain}]` 完成（如§5.1 要求 DN200 在、DN150 不在）。
+   生产校验由 grounding_check 读 mapping 的 `conflict_assertions: [{must_contain, must_not_contain}]` 完成（如§5.1 要求 DN200 在、DN150 不在）。
 3. 逐字溯源校验 → 抄录块必须是源子串，否则标红。
 4. 覆盖检查 → 每小节有源或标 template/compute，否则报警漏抄。
 
@@ -27,8 +27,11 @@
 （如 §9.2 独有的「生活用水量10L/s」，§9.1 是 8L/s），否则会静默抄到错误段落——这正是要防的"抄错数值"。
 grounding_check 的冲突断言（DN200 在 / DN150 不在）是这条的兜底验证。
 
-## YAML 注意
-PyYAML (YAML 1.1) 会把裸键 `no`/`yes`/`on`/`off` 强制成布尔。本契约的表号键必须写成 quoted 形式 `"no":`（已如此）。
+## 依赖与格式
+- 映射契约同时提供 `.yaml`（人读/编辑）和 `.json`（机读，std-lib 零依赖）。
+  `extract.py` / `grounding_check.py` 优先读 `.json`；`.yaml` 需 PyYAML 才可读。
+- `parse_spec.py` 优先用 python-docx（结构好），装不上自动回退 zipfile+xml 标准库路径（永远可用）。
+- PyYAML (YAML 1.1) 会把裸键 `no`/`yes`/`on`/`off` 强制成布尔。契约里的表号键必须写成 quoted 形式 `"no":`（JSON 里无此问题）。
 
 ## 复用件
 - 解析：本技能 `scripts/parse_spec.py`（替代 v2 的 docx_to_md.py 用于结构化抽取；纯文本场景仍可用 v2 的）。

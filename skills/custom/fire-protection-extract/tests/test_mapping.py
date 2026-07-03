@@ -1,11 +1,11 @@
-import yaml
+import json
 from pathlib import Path
 
-MAPPING = Path(__file__).resolve().parents[1] / "references" / "fire_spec_mapping.yaml"
+MAPPING = Path(__file__).resolve().parents[1] / "references" / "fire_spec_mapping.json"
 
 
 def load_mapping():
-    return yaml.safe_load(MAPPING.read_text(encoding="utf-8"))
+    return json.loads(MAPPING.read_text(encoding="utf-8"))
 
 
 def test_mapping_schema():
