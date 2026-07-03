@@ -81,7 +81,7 @@ def test_extract_skill_files_complete():
         "scripts/parse_spec.py",
         "scripts/extract.py",
         "scripts/grounding_check.py",
-        "references/fire_spec_mapping.yaml",
+        "references/fire_spec_mapping.json",
         "references/extractor_rules.md",
     ]
     for rel in required:
