@@ -505,10 +505,14 @@ export function findToolCallResult(toolCallId: string, messages: Message[]) {
 }
 
 export function isHiddenFromUIMessage(message: Message) {
+  const content = extractTextFromMessage(message);
   return (
     message.additional_kwargs?.hide_from_ui === true ||
     (typeof message.name === "string" &&
-      HIDDEN_CONTROL_MESSAGE_NAMES.has(message.name))
+      HIDDEN_CONTROL_MESSAGE_NAMES.has(message.name)) ||
+    (message.type === "human" &&
+      content.includes("<slash_skill_activation>") &&
+      stripUploadedFilesTag(content).length === 0)
   );
 }
 
@@ -529,7 +533,7 @@ export interface FileInMessage {
  */
 export function stripUploadedFilesTag(content: string): string {
   return content
-    .replace(/<uploaded_files>[\s\S]*?<\/uploaded_files>/g, "")
+    .replace(/<(uploaded_files|slash_skill_activation)>[\s\S]*?<\/\1>/g, "")
     .trim();
 }
 
@@ -553,6 +557,7 @@ export function stripUploadedFilesTag(content: string): string {
  */
 export const INTERNAL_MARKER_TAGS = [
   "uploaded_files",
+  "slash_skill_activation",
   "system-reminder",
   "memory",
   "current_date",
