@@ -40,11 +40,21 @@ def table_md(t):
     rows = t["rows"]
     if not rows:
         return ""
-    head = rows[0]
+
+    def _flat(cell):
+        # Markdown tables can't represent multi-line cells; a Word cell often
+        # contains embedded newlines (e.g. 「占地\n面积」「钢筋混凝\n土框架」).
+        # Flatten them to a single line so each row renders as one markdown
+        # line — otherwise the row spills across lines, corrupting the table
+        # AND breaking grounding_check's cell reconstruction (lines not
+        # starting with 「|」 are dropped, losing cell text → false negatives).
+        return cell.replace("\n", " ")
+
+    head = [_flat(c) for c in rows[0]]
     out = ["| " + " | ".join(head) + " |",
            "|" + "|".join(["---"] * len(head)) + "|"]
     for r in rows[1:]:
-        out.append("| " + " | ".join(r) + " |")
+        out.append("| " + " | ".join(_flat(c) for c in r) + " |")
     return "\n".join(out)
 
 

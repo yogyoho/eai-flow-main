@@ -20,7 +20,9 @@ sections:
   - fire: "2.1 项目位置"
     class: verbatim
     sources:
-      - {kind: para, anchor: "建设基地综合大队，占地面积23.8"}
+      # 真文 i=195: 「基地综合大队项目新建在基地内炼油大队南侧，占地面积23.8 亩。」
+      # 原锚「建设基地综合大队」是误抄——源里没有「建设」前缀；改用该段独有的「南侧，占地面积23.8」。
+      - {kind: para, anchor: "南侧，占地面积23.8"}
   - fire: "2.2 项目建设功能定位"
     class: verbatim
     sources:
@@ -36,7 +38,8 @@ sections:
   - fire: "2.5 建设性质"
     class: verbatim
     sources:
-      - {kind: para, anchor: "本项目建设性质为新建"}
+      # 真文 i=133: 「本项目的建设性质为新建。」——原锚漏了「的」字。
+      - {kind: para, anchor: "本项目的建设性质为新建"}
   - fire: "2.6 工程所在地气象条件"
     class: verbatim
     sources:
@@ -44,13 +47,17 @@ sections:
   - fire: "2.7 周围消防站情况"
     class: verbatim
     sources:
-      - {kind: para, anchor: "距离北侧现有石化炼油消防队27.18m"}
+      # 真文 i=255: 「新建消防大队距离北侧现有石化邻近消防队25.22m」——原锚错把「邻近」作「炼油」、25.22m 作 27.18m。
+      - {kind: para, anchor: "距离北侧现有石化邻近消防队25.22m"}
   - fire: "3 火灾危险性分析"
     class: verbatim
     sources:
-      - {kind: para, anchor: "本项目建设内容为消防站"}
+      # 真文 i=946: 项目火灾危险性总述。原锚「本项目建设内容为消防站」在源里根本不存在（误抄）。
+      - {kind: para, anchor: "消防系统的设计充分考虑了项目的生产类别、火灾危险性"}
       - {kind: table, "no": "表2.3-1"}
-      - {kind: para, anchor: "火灾危险级为轻危险级"}
+      # 真文 i=682: 执勤楼火灾危险性=丙类、耐火等级=二级。「轻危险级」在本项目源里不存在；
+      # 项目的真实火灾危险性是「丙类/二级」，用此段作火灾危险性结论的权威摘抄。
+      - {kind: para, anchor: "一层车库火灾危险性为丙类，耐火等级为二级"}
   - fire: "4.1 总平面布置、防火间距及消防通道"
     class: verbatim
     sources:
@@ -88,7 +95,9 @@ sections:
   - fire: "5.3 移动式灭火器"
     class: verbatim
     sources:
-      - {kind: para, anchor: "根据装置各危险场所的生产类别、危险等级，设置相应的移动式干粉灭火器"}
+      # 真文 i=953: 「根据本项目各场所的火灾危险类别、保护面积等因素，设置了相应的灭火器」——
+      # 原锚整段是误抄（「装置各危险场所/生产类别/危险等级/移动式干粉」源里均无）。
+      - {kind: para, anchor: "根据本项目各场所的火灾危险类别"}
   - fire: "5.4 火灾报警系统"
     class: verbatim
     sources:
@@ -97,11 +106,13 @@ sections:
   - fire: "5.5 视频监控系统"
     class: verbatim
     sources:
-      - {kind: para_run, from: "为能及时发现消防站内的危险情况", to: "利用指挥中心内现有大屏幕查看"}
+      # 真文 i=586: 「为能及时发现救援基地内的危险情况」——原锚「消防站内」源里是「救援基地内」。
+      - {kind: para_run, from: "为能及时发现救援基地内的危险情况", to: "利用指挥中心内现有大屏幕查看"}
   - fire: "6 灭火救援设施"
     class: verbatim
     sources:
-      - {kind: para, anchor: "该建设场地的西侧是乡道，南侧为纬一路"}
+      # 真文 i=257: 「南侧为形成的纬一路」——原锚漏「形成的」三字。
+      - {kind: para, anchor: "该建设场地的西侧是乡道，南侧为形成的纬一路"}
   - fire: "7 消防设施专项投资概算"
     class: compute
     note: "说明书无此数据，标[需计算]，由人工/概算技能补，不伪造"
