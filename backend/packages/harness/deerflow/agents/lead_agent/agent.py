@@ -334,6 +334,21 @@ def _build_middlewares(
 
         middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash))
 
+    # Maintain + inject the subagent delegation ledger (only when delegation is on).
+    # Registered before coalescing so its injected <system-reminder> SystemMessage
+    # is folded into the single leading SystemMessage for strict backends.
+    if cfg.get("subagent_enabled", False):
+        from deerflow.agents.middlewares.delegation_ledger_middleware import DelegationLedgerMiddleware
+
+        middlewares.append(DelegationLedgerMiddleware())
+
+    # Coalesce every SystemMessage into a single leading one before the request
+    # reaches the provider. Strict backends (vLLM, SGLang, Qwen, Anthropic)
+    # reject non-leading SystemMessages. See system_message_coalescing_middleware.py.
+    from deerflow.agents.middlewares.system_message_coalescing_middleware import SystemMessageCoalescingMiddleware
+
+    middlewares.append(SystemMessageCoalescingMiddleware())
+
     # Add SubagentLimitMiddleware to truncate excess parallel task calls
     subagent_enabled = cfg.get("subagent_enabled", False)
     if subagent_enabled:
