@@ -177,6 +177,9 @@
     "fire-protection-report-v2": {
       "enabled": true
     },
+    "fire-protection-extract": {
+      "enabled": true
+    },
     "kf-extract-template": {
       "enabled": true
     },
