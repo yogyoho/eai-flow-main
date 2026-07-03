@@ -102,41 +102,34 @@ tool_groups:
 - name: file:write
 - name: bash
 tools:
+# === 自托管搜索,内网友好(退到注释为外网备选) ===
 - name: web_search
   group: web
-  use: deerflow.community.ddg_search.tools:web_search_tool
+  use: deerflow.community.searxng.tools:web_search_tool
+  base_url: http://searxng:8080
   max_results: 5
+  # 备选: ddg_search(DuckDuckGo 免费,无需Key)
+  # use: deerflow.community.ddg_search.tools:web_search_tool
+  # max_results: 5
 - name: web_fetch
   group: web
-  use: deerflow.community.jina_ai.tools:web_fetch_tool
-  timeout: 10
+  use: deerflow.community.browserless.tools:web_fetch_tool
+  base_url: http://browserless:3000
+  timeout_s: 30
+  # 备选: jina_ai(Reader API,需Key)
+  # use: deerflow.community.jina_ai.tools:web_fetch_tool
+  # timeout: 10
+  # 备选: crawl4ai(自托管爬虫,JS重页面,无需Key)
+  # use: deerflow.community.crawl4ai.tools:web_fetch_tool
+  # base_url: http://localhost:11235
+  # timeout: 30
 - name: image_search
   group: web
   use: deerflow.community.image_search.tools:image_search_tool
   max_results: 5
-- name: web_capture                          # Browserless 截图(自托管,无需 API Key,内网友好)
+- name: web_capture                          # Browserless 截图(自托管,无需Key)
   group: web
   use: deerflow.community.browserless.tools:web_capture_tool
-
-  # === 自托管备选(注释掉上面同名的 ddg_search/jina_ai, 启用下面即可切换) ===
-  # SearXNG — 自建搜索聚合引擎,可索引内网 Wiki/文档库
-  # - name: web_search
-  #   group: web
-  #   use: deerflow.community.searxng.tools:web_search_tool
-  #   base_url: http://searxng:8080
-  #   max_results: 5
-  # Crawl4AI — 自托管爬虫,JS 重页面友好,内网无需 API Key
-  # - name: web_fetch
-  #   group: web
-  #   use: deerflow.community.crawl4ai.tools:web_fetch_tool
-  #   base_url: http://localhost:11235
-  #   timeout: 30
-  # Browserless web_fetch — 自托管无头浏览器抓取(与 crawl4ai 二选一)
-  # - name: web_fetch
-  #   group: web
-  #   use: deerflow.community.browserless.tools:web_fetch_tool
-  #   base_url: http://browserless:3000
-  #   timeout_s: 30
 - name: ls
   group: file:read
   use: deerflow.sandbox.tools:ls_tool
