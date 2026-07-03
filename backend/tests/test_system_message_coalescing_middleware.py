@@ -230,6 +230,7 @@ class TestCoalesceRequest:
         assert "You are DeerFlow." in result.system_message.content
         assert "<system-reminder>date</system-reminder>" in result.system_message.content
 
+    @pytest.mark.skip(reason="eai dynamic_context reminder via HumanMessage, upstream SystemMessage dedup N/A")
     def test_reminder_dedup_keeps_only_last(self):
         """When multiple SystemMessages have dynamic_context_reminder=True,
         only the last one survives; earlier ones are dropped."""
@@ -453,6 +454,7 @@ class TestRealisticScenario:
         assert any(isinstance(m, HumanMessage) and "User prefers Python." in m.content for m in final)
         assert any(isinstance(m, HumanMessage) and m.content == "What is the capital of France?" for m in final)
 
+    @pytest.mark.skip(reason="eai dynamic_context reminder via HumanMessage, upstream SystemMessage dedup N/A")
     def test_midnight_crossing_single_system_message_in_final_payload(self):
         """Midnight crossing: 3 SystemMessages total → coalesced to 1.
 
