@@ -100,6 +100,11 @@ class AppConfig(BaseModel):
         description="Maximum wall-clock seconds for a top-level agent run. Set to null or <=0 to disable.",
     )
     token_usage: TokenUsageConfig = Field(default_factory=TokenUsageConfig, description="Token usage tracking configuration")
+    max_recursion_limit: int = Field(
+        default=1000,
+        ge=1,
+        description="Hard server-side ceiling for a client-supplied run recursion_limit. Client values above this are clamped; prevents runaway LangGraph super-steps (LLM cost / DoS).",
+    )
     models: list[ModelConfig] = Field(default_factory=list, description="Available models")
     sandbox: SandboxConfig = Field(description="Sandbox configuration")
     tools: list[ToolConfig] = Field(default_factory=list, description="Available tools")

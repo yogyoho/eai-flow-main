@@ -33,6 +33,18 @@ token_usage:
   enabled: true
 
 # ============================================================================
+# Recursion Limit — Hard ceiling for a client-supplied run recursion_limit
+# ============================================================================
+# A run's recursion_limit caps the number of LangGraph super-steps (each is at
+# least one LLM call). The Gateway never trusts a client-supplied value
+# verbatim: any value above this ceiling is clamped down to it, preventing
+# runaway API cost / DoS. Invalid or non-positive client values fall back to
+# the server default of 100. Raise this only if you legitimately run very
+# deeply nested subagent graphs.
+max_recursion_limit: 1000
+
+
+# ============================================================================
 # Models Configuration
 # ============================================================================
 # Configure available LLM models for the agent to use
