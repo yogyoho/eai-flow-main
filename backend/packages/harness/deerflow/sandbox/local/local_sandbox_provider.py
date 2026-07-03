@@ -63,7 +63,6 @@ class LocalSandboxProvider(SandboxProvider):
     """
 
     uses_thread_data_mounts = True
-    needs_upload_permission_adjustment = False
 
     def __init__(self, max_cached_threads: int = DEFAULT_MAX_CACHED_THREAD_SANDBOXES):
         """Initialize the local sandbox provider with static path mappings.
