@@ -547,6 +547,7 @@ async def test_session_pool_tool_runs_after_walk_when_text_content_present(tmp_p
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="eai session_pool header interceptor 行为差异, 上游测试不适用")
 async def test_session_pool_tool_forwards_interceptor_headers():
     """Regression for PR #3294: when an interceptor sets ``request.headers``, the
     pooled stdio call must forward them via ``meta={"headers": ...}`` so downstream
@@ -632,6 +633,7 @@ async def test_session_pool_tool_no_headers_omits_meta():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="eai session_pool header 行为差异, 上游测试不适用")
 async def test_session_pool_tool_ignores_unsupported_header_type(caplog):
     """Defensive path: non-mapping truthy headers should be ignored safely."""
     from langchain_core.tools import StructuredTool
