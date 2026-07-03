@@ -641,11 +641,6 @@ function ToolCall({
       );
     }
     const command: string | undefined = (args as { command: string })?.command;
-    const output = typeof result === "string"
-      ? result
-      : result && typeof result === "object" && "output" in result
-        ? (result as { output: string }).output
-        : null;
     return (
       <ChainOfThoughtStep
         key={id}
@@ -658,14 +653,6 @@ function ToolCall({
             showLineNumbers={false}
             language="bash"
             code={command}
-          />
-        )}
-        {output && (
-          <CodeBlock
-            className="mx-0 cursor-pointer border-none px-0 max-h-64 overflow-auto"
-            showLineNumbers={false}
-            language="text"
-            code={output}
           />
         )}
       </ChainOfThoughtStep>
