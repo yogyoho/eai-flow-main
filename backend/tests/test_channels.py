@@ -2574,6 +2574,235 @@ class TestChannelService:
 
         assert service._config == {"telegram": {"enabled": False}}
 
+    def test_from_app_config_does_not_create_runtime_channels_from_channel_connections(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        from app.channels.service import ChannelService
+        from deerflow.config import paths as paths_module
+        from deerflow.config.channel_connections_config import ChannelConnectionsConfig
+
+        monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+        monkeypatch.setattr(paths_module, "_paths", None)
+        app_config = SimpleNamespace(
+            model_extra={},
+            channel_connections=ChannelConnectionsConfig.model_validate(
+                {
+                    "enabled": True,
+                    "telegram": {"enabled": True, "bot_username": "deerflow_bot"},
+                    "slack": {"enabled": True},
+                    "discord": {"enabled": True},
+                }
+            ),
+        )
+
+        service = ChannelService.from_app_config(app_config)
+
+        assert service._config == {}
+
+    def test_from_app_config_preserves_existing_runtime_channels_with_channel_connections_enabled(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        from app.channels.runtime_config_store import ChannelRuntimeConfigStore
+        from app.channels.service import ChannelService
+        from deerflow.config import paths as paths_module
+        from deerflow.config.channel_connections_config import ChannelConnectionsConfig
+
+        monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+        monkeypatch.setattr(paths_module, "_paths", None)
+        ChannelRuntimeConfigStore().set_provider_config(
+            "slack",
+            {
+                "enabled": True,
+                "bot_token": "xoxb-ui",
+                "app_token": "xapp-ui",
+            },
+        )
+        app_config = SimpleNamespace(
+            model_extra={
+                "channels": {
+                    "telegram": {"enabled": True, "bot_token": "telegram-token"},
+                    "slack": {"enabled": True, "bot_token": "xoxb", "app_token": "xapp"},
+                    "discord": {"enabled": True, "bot_token": "discord-bot-token"},
+                }
+            },
+            channel_connections=ChannelConnectionsConfig.model_validate(
+                {
+                    "enabled": True,
+                    "telegram": {"enabled": True, "bot_username": "deerflow_bot"},
+                    "slack": {"enabled": True},
+                    "discord": {"enabled": True},
+                }
+            ),
+        )
+
+        service = ChannelService.from_app_config(app_config)
+
+        assert service._config["telegram"]["bot_token"] == "telegram-token"
+        # The runtime (UI-entered) value must win over the yaml value.
+        assert service._config["slack"]["app_token"] == "xapp-ui"
+        assert service._config["discord"]["bot_token"] == "discord-bot-token"
+
+    def test_from_app_config_loads_persisted_runtime_channel_config(self, monkeypatch, tmp_path):
+        from app.channels.runtime_config_store import ChannelRuntimeConfigStore
+        from app.channels.service import ChannelService
+        from deerflow.config import paths as paths_module
+        from deerflow.config.channel_connections_config import ChannelConnectionsConfig
+
+        monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+        monkeypatch.setattr(paths_module, "_paths", None)
+        ChannelRuntimeConfigStore().set_provider_config(
+            "slack",
+            {
+                "enabled": True,
+                "bot_token": "xoxb-ui",
+                "app_token": "xapp-ui",
+            },
+        )
+        app_config = SimpleNamespace(
+            model_extra={},
+            channel_connections=ChannelConnectionsConfig.model_validate(
+                {
+                    "enabled": True,
+                    "slack": {"enabled": True},
+                }
+            ),
+        )
+
+        service = ChannelService.from_app_config(app_config)
+
+        assert service._config["slack"] == {
+            "enabled": True,
+            "bot_token": "xoxb-ui",
+            "app_token": "xapp-ui",
+        }
+
+    def test_from_app_config_runtime_disconnect_suppresses_file_channel_config(self, monkeypatch, tmp_path):
+        from app.channels.runtime_config_store import ChannelRuntimeConfigStore
+        from app.channels.service import ChannelService
+        from deerflow.config import paths as paths_module
+        from deerflow.config.channel_connections_config import ChannelConnectionsConfig
+
+        monkeypatch.setenv("DEER_FLOW_HOME", str(tmp_path))
+        monkeypatch.setattr(paths_module, "_paths", None)
+        ChannelRuntimeConfigStore().set_provider_config(
+            "feishu",
+            {
+                "enabled": False,
+                "_runtime_disabled": True,
+            },
+        )
+        app_config = SimpleNamespace(
+            model_extra={
+                "channels": {
+                    "feishu": {
+                        "enabled": True,
+                        "app_id": "file-app-id",
+                        "app_secret": "file-secret",
+                    }
+                }
+            },
+            channel_connections=ChannelConnectionsConfig.model_validate(
+                {
+                    "enabled": True,
+                    "feishu": {"enabled": True},
+                }
+            ),
+        )
+
+        service = ChannelService.from_app_config(app_config)
+
+        assert "feishu" not in service._config
+
+    @pytest.mark.skip(reason="eai ③ IM 重构 channels service, 上游启动重试 starts=2 期望不适用, 待 ③ IM bot-merge 完成后重评")
+    def test_start_retries_configured_channel_until_ready(self, monkeypatch):
+        from app.channels.service import ChannelService
+
+        class FlakyReadyChannel(Channel):
+            starts = 0
+
+            def __init__(self, bus, config):
+                super().__init__(name="slack", bus=bus, config=config)
+
+            async def start(self):
+                type(self).starts += 1
+                self._running = type(self).starts >= 2
+
+            async def stop(self):
+                self._running = False
+
+            async def send(self, msg):
+                return None
+
+        monkeypatch.setattr(
+            "deerflow.reflection.resolve_class",
+            lambda import_path, base_class=None: FlakyReadyChannel,
+        )
+
+        async def go():
+            service = ChannelService(
+                channels_config={
+                    "slack": {
+                        "enabled": True,
+                        "bot_token": "xoxb-ui",
+                        "app_token": "xapp-ui",
+                    },
+                }
+            )
+
+            try:
+                await service.start()
+
+                assert FlakyReadyChannel.starts == 2
+                assert service.get_status()["channels"]["slack"]["running"] is True
+            finally:
+                await service.stop()
+
+        _run(go())
+
+    def test_connection_repo_is_forwarded_to_manager(self):
+        from app.channels.service import ChannelService
+
+        repo = object()
+        service = ChannelService(channels_config={}, connection_repo=repo)
+
+        assert service.manager._connection_repo is repo
+
+    def test_require_bound_identity_is_forwarded_to_manager(self):
+        from app.channels.service import ChannelService
+
+        service = ChannelService(channels_config={}, require_bound_identity=True)
+
+        assert service.manager._require_bound_identity is True
+
+    def test_remove_channel_stops_running_channel_and_forgets_config(self):
+        from app.channels.service import ChannelService
+
+        async def go():
+            service = ChannelService(
+                channels_config={
+                    "slack": {
+                        "enabled": True,
+                        "bot_token": "xoxb-ui",
+                        "app_token": "xapp-ui",
+                    },
+                }
+            )
+            channel = AsyncMock()
+            service._channels["slack"] = channel
+            service._running = True
+
+            assert await service.remove_channel("slack") is True
+
+            channel.stop.assert_awaited_once()
+            assert "slack" not in service._channels
+            assert "slack" not in service._config
+
+        _run(go())
+
     def test_disabled_channel_with_string_creds_emits_warning(self, caplog):
         """Warning is emitted when a channel has string credentials but enabled=false."""
         import logging
