@@ -54,6 +54,7 @@ from app.gateway.routers import (
 )
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
+from deerflow.uploads.manager import cleanup_stale_upload_staging_files
 
 AppConfig = deerflow_app_config.AppConfig
 get_app_config = deerflow_app_config.get_app_config
@@ -248,6 +249,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             from app.extensions.database import close_db
 
             await close_db()
+
+    try:
+        removed_upload_staging_files = await asyncio.to_thread(cleanup_stale_upload_staging_files)
+        if removed_upload_staging_files:
+            logger.info("Removed %d stale upload staging file(s)", removed_upload_staging_files)
+    except Exception:
+        logger.warning("Upload staging file cleanup skipped", exc_info=True)
 
     # Initialize LangGraph runtime components (StreamBridge, RunManager, checkpointer, store)
     async with langgraph_runtime(app, startup_config):
