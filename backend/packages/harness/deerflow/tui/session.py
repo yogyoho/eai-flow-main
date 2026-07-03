@@ -70,14 +70,18 @@ class Session:
         loop.close()
 
 
-def open_session(persistence: bool = True) -> Session:
-    """Build an embedded session backed by the configured checkpointer.
+def open_session(persistence: bool = True, *, gateway_url: str | None = None) -> Session:
+    """Build an embedded or gateway session.
 
-    ``persistence`` controls the shared ``threads_meta`` writer (and its background
-    DB loop/engine). Headless one-shots never use the writer, so they pass
-    ``persistence=False`` to avoid standing up an event loop + connection pool only
-    to discard it.
+    When *gateway_url* is set, the TUI connects to a remote server via
+    langgraph-sdk. Otherwise it uses the embedded ``DeerFlowClient``.
     """
+    if gateway_url:
+        return _open_gateway_session(gateway_url)  # remote mode
+    return _open_embedded_session(persistence)      # embedded mode
+
+
+def _open_embedded_session(persistence: bool) -> Session:
     from deerflow.client import DeerFlowClient
     from deerflow.runtime.checkpointer.provider import get_checkpointer
 
@@ -90,3 +94,102 @@ def open_session(persistence: bool = True) -> Session:
 
     loop, writer = build_persistence()
     return Session(client=client, writer=writer, _loop=loop)
+
+
+def _open_gateway_session(gateway_url: str) -> Session:
+    """Build a session that talks to a remote gateway via langgraph-sdk."""
+    from langgraph_sdk import get_sync_client
+    import uuid, threading
+
+    url = gateway_url.rstrip("/")
+    sdk = get_sync_client(url=url)
+    gw_thread_id: str | None = None  # mutable, captured by wrapper
+
+    class GatewayClient:
+        """Thin wrapper around langgraph-sdk matching DeerFlowClient's API."""
+
+        def list_models(self):
+            return {"models": []}  # gateway has no GET /models? let it pass
+
+        def list_skills(self, enabled_only: bool = True):
+            return {"skills": []}
+
+        def list_threads(self, limit: int = 100):
+            r = sdk.threads.search(limit=limit)
+            return {"thread_list": [{"thread_id": t.get("thread_id"), "title": t.get("metadata", {}).get("title", "")} for t in (r if isinstance(r, list) else [])]}
+
+        def chat(self, message: str, *, thread_id: str | None = None, **kw):
+            tid = thread_id or gw_thread_id
+            if tid is None:
+                th = sdk.threads.create()
+                tid = gw_thread_id = th["thread_id"]
+            events = list(sdk.runs.stream(tid, assistant_id="lead_agent",
+                input={"messages": [{"role": "user", "content": message}]},
+                stream_mode=["messages-tuple"]))
+            text = ""
+            for ev in events:
+                if ev.event == "messages-tuple" and isinstance(ev.data, dict):
+                    msg = ev.data
+                    if msg.get("type") == "ai" and isinstance(msg.get("content"), str):
+                        text += msg["content"]
+            return text
+
+        def stream(self, message: str, *, thread_id: str | None = None, **kw):
+            from dataclasses import dataclass
+            import queue
+            nonlocal gw_thread_id
+            tid = thread_id or gw_thread_id
+            if tid is None:
+                th = sdk.threads.create()
+                tid = gw_thread_id = th["thread_id"]
+
+            @dataclass
+            class _Evt:
+                type: str; data: dict
+
+            q = queue.Queue()
+            def _run():
+                try:
+                    for ev in sdk.runs.stream(tid, assistant_id="lead_agent",
+                        input={"messages": [{"role": "user", "content": message}]},
+                        stream_mode=["messages-tuple","values","custom"]):
+                        q.put(_Evt(type=ev.event, data=ev.data if isinstance(ev.data, dict) else {}))
+                    q.put(_Evt(type="end", data={}))
+                except Exception as exc:
+                    q.put(_Evt(type="error", data={"message": str(exc)}))
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            while True:
+                item = q.get()
+                if item.type in ("end","error"):
+                    yield item
+                    break
+                yield item
+
+        def get_goal(self, thread_id: str):
+            return {"goal": None}
+
+        def set_goal(self, thread_id: str, objective: str):
+            return {"goal": objective}
+
+        def clear_goal(self, thread_id: str):
+            return {}
+
+        def get_mcp_config(self):
+            return {"mcp_servers": {}}
+
+        def get_memory(self):
+            return {}
+
+        def list_uploads(self, thread_id: str):
+            return {"files": []}
+
+        def list_thread(self, thread_id: str):
+            return {}
+
+        def search_threads(self, limit: int):
+            return self.list_threads(limit)
+
+    client = GatewayClient()
+    return Session(client=client, writer=None, _loop=None)
