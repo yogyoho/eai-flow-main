@@ -202,6 +202,21 @@ make down   # 停止并移除容器
    make check  # 校验 Node.js 22+、pnpm、uv、nginx
    ```
 
+   如果你要提交本地安装、配置或运行问题，可以执行：
+
+   ```bash
+   make support-bundle
+   ```
+
+   命令会直接打印 reporter 下一步建议，并在 `.deer-flow/support-bundles/` 下生成
+   `*-issue-summary.md`、面向 AI 辅助提 issue 的 `*-issue-draft.md`，以及可选证据
+   zip。提交 GitHub issue 时，先把 `*-issue-summary.md` 粘贴到 issue 正文；如果由
+   AI 助手代填 issue，就从 `*-issue-draft.md` 开始，并先替换所有 REQUIRED 占位符，
+   不要编造未知事实。只有维护者要求证据包，或摘要不足以诊断时，再附上 zip。维护者
+   或 AI 辅助 triage 可以优先读取 `triage.json`；bundle 只包含脱敏后的诊断信息和
+   文件 manifest，不包含 `.env`、原始对话消息或用户文件内容；提交前仍建议自己快速
+   检查一遍。
+
 2. **安装依赖**：
    ```bash
    make install  # 安装 backend + frontend 依赖
@@ -429,7 +444,7 @@ Skills 采用按需渐进加载，不会一次性把所有内容都塞进上下�
 
 通过 Gateway 安装 `.skill` 压缩包时，DeerFlow 会接受标准的可选 frontmatter 元数据，比如 `version`、`author`、`compatibility`，不会把本来合法的外部 skill 拒之门外。
 
-Tools 也是同样的思路。DeerFlow 自带一组核心工具：网页搜索、网页抓取、文件操作、bash 执行；同时也支持通过 MCP Server 和 Python 函数扩展自定义工具。你可以替换任何一项，也可以继续往里加。
+Tools 也是同样的思路。DeerFlow 自带一组核心工具：网页搜索、网页抓取、网页渲染截图、文件操作、bash 执行；同时也支持通过 MCP Server 和 Python 函数扩展自定义工具。你可以替换任何一项，也可以继续往里加。
 
 Gateway 生成后续建议时，现在会先把普通字符串输出和 block/list 风格的富文本内容统一归一化，再去解析 JSON 数组响应，因此不同 provider 的内容包装方式不会再悄悄把建议吞掉。
 
