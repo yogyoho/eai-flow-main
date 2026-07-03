@@ -20,6 +20,8 @@ import {
   ArtifactHeader,
   ArtifactTitle,
 } from "@/components/ai-elements/artifact";
+import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
+import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 import {
   SelectContent,
@@ -43,7 +45,13 @@ import { useI18n } from "@/core/i18n/hooks";
 import { findToolCallResult } from "@/core/messages/utils";
 import { installSkill } from "@/core/skills/api";
 import { streamdownPlugins } from "@/core/streamdown";
-import { checkCodeFile, getFileName } from "@/core/utils/files";
+import {
+  canBrowserPreviewFile,
+  checkCodeFile,
+  getFileExtensionDisplayName,
+  getFileIcon,
+  getFileName,
+} from "@/core/utils/files";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +86,13 @@ export function ArtifactFileDetail({
     }
     return filepathFromProps;
   }, [filepathFromProps, isWriteFile]);
+  const artifactOptions = useMemo(() => {
+    const list = artifacts ?? [];
+    if (list.includes(filepath)) {
+      return list;
+    }
+    return [filepath, ...list];
+  }, [artifacts, filepath]);
   const isSkillFile = useMemo(() => {
     return filepath.endsWith(".skill");
   }, [filepath]);
@@ -93,6 +108,9 @@ export function ArtifactFileDetail({
     }
     return checkCodeFile(filepath);
   }, [filepath, isWriteFile, isSkillFile]);
+  const canPreviewInBrowser = useMemo(() => {
+    return canBrowserPreviewFile(filepath);
+  }, [filepath]);
   const isSupportPreview = useMemo(() => {
     return language === "html" || language === "markdown";
   }, [language]);
@@ -169,9 +187,9 @@ export function ArtifactFileDetail({
                 </SelectTrigger>
                 <SelectContent className="select-none">
                   <SelectGroup>
-                    {(artifacts ?? []).map((filepath) => (
-                      <SelectItem key={filepath} value={filepath}>
-                        {getFileName(filepath)}
+                    {artifactOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {getFileName(option)}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -312,14 +330,66 @@ export function ArtifactFileDetail({
             readonly
           />
         )}
-        {!isCodeFile && (
+        {!isCodeFile && canPreviewInBrowser && (
           <iframe
             className="size-full"
             src={urlOfArtifact({ filepath, threadId, isMock })}
           />
         )}
+        {!isCodeFile && !canPreviewInBrowser && (
+          <ArtifactDownloadFallback
+            filepath={filepath}
+            threadId={threadId}
+            isMock={isMock}
+          />
+        )}
       </ArtifactContent>
     </Artifact>
+  );
+}
+
+function ArtifactDownloadFallback({
+  filepath,
+  threadId,
+  isMock,
+}: {
+  filepath: string;
+  threadId: string;
+  isMock?: boolean;
+}) {
+  const filename = getFileName(filepath);
+  const fileType = getFileExtensionDisplayName(filepath);
+
+  return (
+    <div className="flex size-full items-center justify-center p-6">
+      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+        <div className="text-muted-foreground">
+          {getFileIcon(filepath, "size-12")}
+        </div>
+        <div className="space-y-1">
+          <div className="font-medium break-all">{filename}</div>
+          <div className="text-muted-foreground text-sm">{fileType} file</div>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          This file type cannot be previewed in the browser.
+        </p>
+        <Button asChild>
+          <a
+            href={urlOfArtifact({
+              filepath,
+              threadId,
+              download: true,
+              isMock,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <DownloadIcon className="size-4" />
+            Download
+          </a>
+        </Button>
+      </div>
+    </div>
   );
 }
 
