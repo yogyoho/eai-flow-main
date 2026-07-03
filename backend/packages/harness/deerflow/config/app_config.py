@@ -139,6 +139,31 @@ class AppConfig(BaseModel):
     _tools_by_name: dict[str, ToolConfig] = PrivateAttr(default_factory=dict)
     _tool_groups_by_name: dict[str, ToolGroupConfig] = PrivateAttr(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_null_config_sections(cls, data: Any) -> Any:
+        """Treat a present-but-null config section as absent so its default applies.
+
+        Commenting out every entry under a top-level YAML key — e.g. ``models:``
+        (a list) or ``memory:`` (an object), with only comments beneath it as
+        shipped throughout ``config.example.yaml`` — makes PyYAML parse the value
+        as ``None``. Without this, the documented ``cp config.example.yaml
+        config.yaml`` first-run flow crashes with an opaque ``Input should be a
+        valid list`` / ``valid dictionary`` pydantic error for that section.
+
+        Dropping the ``None`` lets each field fall back to its default: list
+        sections become ``[]`` via ``default_factory=list`` and object sections
+        get their default config. This generalizes the earlier list-only
+        handling to every section that defines a default. The ``database``
+        section is independent and still owned by ``_apply_database_defaults``
+        (in ``from_file``), which applies concrete defaults beyond null-coercion.
+        Required sections without a default (``sandbox``) intentionally still
+        error when null — there is nothing to fall back to.
+        """
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items() if value is not None}
+        return data
+
     @classmethod
     def resolve_config_path(cls, config_path: str | None = None) -> Path:
         """Resolve the config file path.
