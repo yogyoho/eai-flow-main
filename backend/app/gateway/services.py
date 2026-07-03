@@ -34,8 +34,6 @@ from deerflow.runtime import (
     run_agent,
 )
 from deerflow.runtime.runs.naming import resolve_root_run_name
-from deerflow.runtime.secret_context import redact_config_secrets
-from deerflow.runtime.user_context import reset_current_user, set_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +169,6 @@ def inject_authenticated_user_context(config: dict[str, Any], request: Request) 
     runtime_context = config.setdefault("context", {})
     if isinstance(runtime_context, dict):
         runtime_context["user_id"] = str(user_id)
-        runtime_context["user_role"] = getattr(user, "system_role", None)
-        runtime_context["oauth_provider"] = getattr(user, "oauth_provider", None)
-        runtime_context["oauth_id"] = getattr(user, "oauth_id", None)
 
 
 def resolve_agent_factory(assistant_id: str | None):
@@ -188,41 +183,6 @@ def resolve_agent_factory(assistant_id: str | None):
     from deerflow.agents.lead_agent.agent import make_lead_agent
 
     return make_lead_agent
-
-
-# Lead-agent recursion budget bounds. The Gateway must NOT trust a
-# client-supplied ``recursion_limit`` verbatim: an arbitrarily large value lets
-# a single run execute unbounded LangGraph super-steps (each at least one LLM
-# call), enabling runaway API cost / DoS. ``_DEFAULT_RECURSION_LIMIT`` is the
-# server default when the client sends nothing; the hard ceiling any client
-# value is clamped to is configurable via ``AppConfig.max_recursion_limit``.
-_DEFAULT_RECURSION_LIMIT = 100
-_DEFAULT_MAX_RECURSION_LIMIT = 1000
-
-
-def _resolve_max_recursion_limit() -> int:
-    """Resolve the clamp ceiling from ``AppConfig.max_recursion_limit``.
-
-    Falls back to ``_DEFAULT_MAX_RECURSION_LIMIT`` when the app config cannot be
-    loaded (e.g. no ``config.yaml`` in a bare unit-test environment) so that the
-    clamp still applies rather than crashing the run-config assembly.
-    """
-    try:
-        return get_app_config().max_recursion_limit
-    except Exception:
-        return _DEFAULT_MAX_RECURSION_LIMIT
-
-
-def _clamp_recursion_limit(value: Any, max_limit: int) -> int:
-    """Clamp a client-supplied ``recursion_limit`` into a safe server range.
-
-    Non-integer values (including ``bool``, an ``int`` subclass) and non-positive
-    values fall back to ``_DEFAULT_RECURSION_LIMIT``; valid positive integers are
-    capped at ``max_limit`` (from ``AppConfig.max_recursion_limit``).
-    """
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        return _DEFAULT_RECURSION_LIMIT
-    return min(value, max_limit)
 
 
 def build_run_config(
@@ -246,12 +206,7 @@ def build_run_config(
     the LangGraph Platform-compatible HTTP API and the IM channel path behave
     identically.
     """
-    # Lead-agent recursion budget (LangGraph super-steps for the lead graph
-    # only). Independent of subagent depth: a `task()` dispatch runs the whole
-    # subagent inside ONE lead tools-node step, and subagents enforce their own
-    # limit via `subagents.max_turns`. Do not conflate this 100 with the
-    # general-purpose subagent's max_turns.
-    config: dict[str, Any] = {"recursion_limit": _DEFAULT_RECURSION_LIMIT}
+    config: dict[str, Any] = {"recursion_limit": 100}
     if request_config:
         # LangGraph >= 0.6.0 introduced ``context`` as the preferred way to
         # pass thread-level data and rejects requests that include both
@@ -271,14 +226,7 @@ def build_run_config(
                 context = dict(context_value)
             else:
                 raise ValueError("request config 'context' must be a mapping or null.")
-            context["thread_id"] = thread_id
             config["context"] = context
-            # The checkpointer always scopes state by configurable["thread_id"],
-            # regardless of whether the caller drives the run via context (e.g.
-            # request-scoped secrets, #3861). thread_id comes from the URL path,
-            # not caller config, so mirror it here while keeping secret-bearing
-            # context keys out of configurable.
-            config["configurable"] = {"thread_id": thread_id}
         else:
             configurable = {"thread_id": thread_id}
             configurable.update(request_config.get("configurable", {}))
@@ -286,22 +234,6 @@ def build_run_config(
         for k, v in request_config.items():
             if k not in ("configurable", "context"):
                 config[k] = v
-        # Never trust a client-supplied recursion_limit verbatim: clamp it to a
-        # safe server range so a single run cannot execute unbounded LangGraph
-        # super-steps (runaway LLM cost / DoS). Applied after the passthrough so
-        # it overrides whatever the client sent.
-        if "recursion_limit" in request_config:
-            max_limit = _resolve_max_recursion_limit()
-            clamped = _clamp_recursion_limit(request_config["recursion_limit"], max_limit)
-            if clamped != request_config["recursion_limit"]:
-                logger.warning(
-                    "build_run_config: clamped client recursion_limit %r -> %d (max %d). thread_id=%s",
-                    request_config["recursion_limit"],
-                    clamped,
-                    max_limit,
-                    thread_id,
-                )
-            config["recursion_limit"] = clamped
     else:
         config["configurable"] = {"thread_id": thread_id}
 
@@ -396,80 +328,6 @@ async def start_run(
             kwargs={"input": body.input, "config": body.config},
             multitask_strategy=body.multitask_strategy,
             model_name=model_name,
-        try:
-            record = await run_mgr.create_or_reject(
-                thread_id,
-                body.assistant_id,
-                on_disconnect=disconnect,
-                metadata=body.metadata or {},
-                # Persist a secret-redacted copy of the config: the run record is
-                # written to runs.kwargs_json and echoed by the run API, so a
-                # request-scoped secret (#3861) must not ride along. The live
-                # config built below keeps the secrets for the actual run.
-                kwargs={"input": body.input, "config": redact_config_secrets(body.config)},
-                multitask_strategy=body.multitask_strategy,
-                model_name=model_name,
-                user_id=owner_user_id,
-            )
-        except ConflictError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        except UnsupportedStrategyError as exc:
-            raise HTTPException(status_code=501, detail=str(exc)) from exc
-
-        # Upsert thread metadata so the thread appears in /threads/search,
-        # even for threads that were never explicitly created via POST /threads
-        # (e.g. stateless runs).
-        try:
-            existing = await run_ctx.thread_store.get(thread_id)
-            if existing is None and owner_user_id:
-                unscoped_existing = await run_ctx.thread_store.get(thread_id, user_id=None)
-                if unscoped_existing is not None:
-                    if unscoped_existing.get("user_id") != owner_user_id:
-                        await run_ctx.thread_store.update_owner(thread_id, owner_user_id, user_id=None)
-                    existing = await run_ctx.thread_store.get(thread_id)
-            if existing is None:
-                await run_ctx.thread_store.create(
-                    thread_id,
-                    assistant_id=body.assistant_id,
-                    metadata=body.metadata,
-                )
-            else:
-                await run_ctx.thread_store.update_status(thread_id, "running")
-        except Exception:
-            logger.warning("Failed to upsert thread_meta for %s (non-fatal)", sanitize_log_param(thread_id))
-
-        agent_factory = resolve_agent_factory(body.assistant_id)
-        command = getattr(body, "command", None)
-        if command and command.get("resume") is not None:
-            graph_input = Command(resume=command["resume"])
-        else:
-            graph_input = normalize_input(body.input)
-        config = build_run_config(thread_id, body.config, body.metadata, assistant_id=body.assistant_id)
-        await apply_checkpoint_to_run_config(config, body=body, thread_id=thread_id, request=request)
-
-        # Merge DeerFlow-specific context overrides into both ``configurable`` and ``context``.
-        # The ``context`` field is a custom extension for the langgraph-compat layer
-        # that carries agent configuration (model_name, thinking_enabled, etc.).
-        # Only agent-relevant keys are forwarded; unknown keys (e.g. thread_id) are ignored.
-        merge_run_context_overrides(config, getattr(body, "context", None))
-        inject_authenticated_user_context(config, request)
-
-        stream_modes = normalize_stream_modes(body.stream_mode)
-
-        task = asyncio.create_task(
-            run_agent(
-                bridge,
-                run_mgr,
-                record,
-                ctx=run_ctx,
-                agent_factory=agent_factory,
-                graph_input=graph_input,
-                config=config,
-                stream_modes=stream_modes,
-                stream_subgraphs=body.stream_subgraphs,
-                interrupt_before=body.interrupt_before,
-                interrupt_after=body.interrupt_after,
-            )
         )
     except ConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
