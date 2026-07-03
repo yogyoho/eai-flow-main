@@ -26,13 +26,13 @@ def find_run(paras, frm, to):
     start = next((i for i, p in enumerate(paras) if frm in p["text"]), None)
     if start is None:
         return None
-    end = start
+    end = None
     for i in range(start, len(paras)):
         if to in paras[i]["text"]:
             end = i
             break
-    else:
-        end = len(paras) - 1
+    if end is None:
+        return None  # to 锚未找到 → 让 caller 发 [⚠未找到区间]，绝不静默复制到文末
     return paras[start:end + 1]
 
 
@@ -68,9 +68,11 @@ def extract(structure, mapping):
         cls = sec.get("class")
         if cls == "template":
             tpl = (mapping.get("templates") or {}).get(sec.get("template"))
-            if tpl:
+            if tpl is None:
+                lines.append(f"[⚠未找到模板: {sec.get('template') or '<未指定>'}]")
+            else:
                 lines.append(tpl.rstrip())
-                lines.append("")
+            lines.append("")
             continue
         if cls == "compute":
             lines.append(f"[需计算] {sec.get('note', '')}")

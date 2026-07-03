@@ -19,7 +19,7 @@ def build_tiny_spec(path):
     doc.add_paragraph("2 给排水及消防")
     doc.add_paragraph("2.1 消防")
     # 给水 paragraph (the WRONG source for fire water — must not be picked)
-    doc.add_paragraph("生活水系统设计生活用水量8L/s，管径DN150，自东侧市政管网引入。")
+    doc.add_paragraph("生活水系统设计室外消火栓水量30L/s，生活用水量8L/s，管径DN150，自东侧市政管网引入。")
     # 消防 paragraph (the AUTHORITATIVE source for fire water)
     doc.add_paragraph("表2.1-1 消防水量")
     t = doc.add_table(rows=2, cols=2)

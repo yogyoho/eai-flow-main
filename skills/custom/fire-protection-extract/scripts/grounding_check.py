@@ -101,9 +101,20 @@ def check(report_md, structure, mapping):
     # 3. coverage
     uncovered = [sec["fire"] for sec in mapping["sections"]
                  if sec.get("class") == "verbatim" and not sec.get("sources")]
+    # 4. conflict assertions (e.g. §5.1 must contain DN200, must not contain DN150)
+    conflict_failures = []
+    for sec in mapping["sections"]:
+        for ca in sec.get("conflict_assertions", []) or []:
+            mc = ca.get("must_contain")
+            mnc = ca.get("must_not_contain")
+            if mc and mc not in report_md:
+                conflict_failures.append((sec["fire"], "missing", mc))
+            if mnc and mnc in report_md:
+                conflict_failures.append((sec["fire"], "unexpected", mnc))
     return {
         "grounded": grounded, "checked": checked, "rate": rate,
         "missing_anchors": missing, "uncovered_sections": uncovered,
+        "conflict_failures": conflict_failures,
         "failed_samples": failed[:5],
     }
 
@@ -117,7 +128,7 @@ def main(argv):
     mapping = yaml.safe_load(Path(argv[2]).read_text(encoding="utf-8"))
     res = check(report, structure, mapping)
     print(json.dumps(res, ensure_ascii=False, indent=2))
-    return 0 if res["rate"] >= 0.85 and not res["missing_anchors"] else 1
+    return 0 if (res["rate"] >= 0.85 and not res["missing_anchors"] and not res["conflict_failures"]) else 1
 
 
 if __name__ == "__main__":

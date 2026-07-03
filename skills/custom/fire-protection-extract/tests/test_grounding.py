@@ -10,7 +10,7 @@ def _mapping():
             {"fire": "1 概况", "class": "verbatim",
              "sources": [{"kind": "para", "anchor": "占地面积23.8亩"}]},
             {"fire": "2 消防水", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "室外消火栓水量30L/s"}]},
+             "sources": [{"kind": "para", "anchor": "生活用水量10L/s（36m³/h）"}]},
             {"fire": "3 表", "class": "verbatim",
              "sources": [{"kind": "table", "no": "表2.1-1"}]},
         ],
@@ -43,3 +43,15 @@ def test_drift_detected(tiny_spec):
     res = check(report, s, _mapping())
     assert res["grounded"] < res["checked"]
     assert res["rate"] < 1.0
+
+
+def test_conflict_assertions_checked(tiny_spec):
+    s = parse_spec(tiny_spec)
+    m = _mapping()
+    m["sections"][1]["conflict_assertions"] = [{"must_contain": "30L/s", "must_not_contain": "DN150"}]
+    res = check(build_report(s, m), s, m)
+    assert res["conflict_failures"] == []
+    # break it: require something absent
+    m["sections"][1]["conflict_assertions"] = [{"must_contain": "ZZZNOMATCH"}]
+    res2 = check(build_report(s, m), s, m)
+    assert len(res2["conflict_failures"]) == 1

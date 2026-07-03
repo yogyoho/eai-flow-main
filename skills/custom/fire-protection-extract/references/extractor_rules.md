@@ -13,6 +13,7 @@
 ## 防抄错
 1. 锚定位（非相似度）→ 防抄错段/错表。
 2. `authoritative: true` → 冲突字段权威源。如消防水量取消防章（30L/s/DN200），不取给水章（8L/s/DN150）。
+   生产校验由 grounding_check 读 yaml 的 `conflict_assertions: [{must_contain, must_not_contain}]` 完成（如§5.1 要求 DN200 在、DN150 不在）。
 3. 逐字溯源校验 → 抄录块必须是源子串，否则标红。
 4. 覆盖检查 → 每小节有源或标 template/compute，否则报警漏抄。
 

@@ -82,6 +82,8 @@ sections:
       - {kind: table, "no": "表8.2-1"}
   - fire: "5.1 室外消防水系统"
     class: verbatim
+    conflict_assertions:
+      - {must_contain: "DN200", must_not_contain: "DN150"}
     sources:
       # 锚必须落在 §9.2 消防段独有的续文上。「室外消火栓水量30L/s」在 §9.1 给水和 §9.2 消防
       # 两段都出现（§9.1=DN150、§9.2=DN200），用前者做锚会先命中 §9.1 抄错。用「生活用水量10L/s」

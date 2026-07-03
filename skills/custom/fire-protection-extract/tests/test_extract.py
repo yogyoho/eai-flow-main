@@ -15,7 +15,7 @@ def _tiny_mapping():
             {"fire": "2.1 概况", "class": "verbatim",
              "sources": [{"kind": "para", "anchor": "占地面积23.8亩"}]},
             {"fire": "2.2 给水(冲突)", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "室外消火栓水量30L/s", "authoritative": True}]},
+             "sources": [{"kind": "para", "anchor": "生活用水量10L/s（36m³/h）", "authoritative": True}]},
             {"fire": "2.3 表", "class": "verbatim",
              "sources": [{"kind": "table", "no": "表2.1-1"}]},
             {"fire": "3 投资", "class": "compute", "note": "无源"},
