@@ -280,8 +280,25 @@ function MessageContent_({
         // script source — wrap in code fence so #comments stay as comments
         text = "```\n" + text + "\n```";
       } else {
-        // prose / markdown — demote headings to bold paragraphs
+        // prose / markdown:
+        // 1. demote `# headings` → **bold**
         text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
+        // 2. YAML frontmatter (SKILL.md `name:` / `description:` lines):
+        //    markdown collapses single newlines into spaces, turning
+        //    "name: x\ndescription: | y" into "name: x description: | y"
+        //    as one unreadable blob. Detect frontmatter by checking whether
+        //    the first paragraph is all `key: value` lines, and preserve
+        //    them with double newlines so each field renders on its own line.
+        const firstBlockEnd = text.indexOf("\n\n");
+        const firstBlock = firstBlockEnd === -1 ? text : text.slice(0, firstBlockEnd);
+        const firstLines = firstBlock.split("\n");
+        if (
+          firstLines.length >= 2 &&
+          firstLines.every((l) => /^\w[\w-]*:/.test(l) || l.trim() === "")
+        ) {
+          const rest = firstBlockEnd === -1 ? "" : text.slice(firstBlockEnd);
+          text = firstLines.map((l) => l.trim() ? `**${l}**` : l).join("\n\n") + rest;
+        }
       }
     }
     return text;
