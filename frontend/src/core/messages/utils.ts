@@ -33,7 +33,10 @@ const HIDDEN_CONTROL_MESSAGE_NAMES = new Set([
   "todo_completion_reminder",
 ]);
 
-export function getMessageGroups(messages: Message[]): MessageGroup[] {
+export function getMessageGroups(
+  messages: Message[],
+  keepReasoning: boolean = false,
+): MessageGroup[] {
   if (messages.length === 0) {
     return [];
   }
@@ -106,15 +109,15 @@ export function getMessageGroups(messages: Message[]): MessageGroup[] {
     }
 
     if (message.type === "ai") {
-      // A message with answer content and no tool calls becomes its own
-      // assistant bubble below, which already renders the message's
-      // reasoning_content inside the bubble's <Reasoning> collapsible. Such a
-      // message must NOT also feed the processing group, or the ChainOfThought
-      // panel above the bubble paints the identical reasoning a second time
-      // (#3868). Intermediate reasoning (no content) and tool-calling steps
-      // still belong in the processing group.
+      // Standard bubble path: a message with answer content and no tool calls
+      // becomes its own assistant bubble. When keepReasoning is on (ui config
+      // show_tool_output toggle), intermediate AI narration with reasoning
+      // content ALSO creates an assistant bubble so the user sees the agent's
+      // full thought progression instead of only the final answer bubble.
       const becomesAssistantBubble =
         hasContent(message) && !hasToolCalls(message);
+      const keepsAsBubble =
+        keepReasoning && !becomesAssistantBubble && hasReasoning(message);
 
       if (hasPresentFiles(message)) {
         groups.push({
@@ -133,7 +136,6 @@ export function getMessageGroups(messages: Message[]): MessageGroup[] {
         (hasReasoning(message) || hasToolCalls(message))
       ) {
         const lastGroup = groups[groups.length - 1];
-        // Accumulate consecutive intermediate AI messages into one processing group.
         if (lastGroup?.type !== "assistant:processing") {
           groups.push({
             id: message.id,
@@ -145,7 +147,7 @@ export function getMessageGroups(messages: Message[]): MessageGroup[] {
         }
       }
 
-      if (becomesAssistantBubble) {
+      if (becomesAssistantBubble || keepsAsBubble) {
         groups.push({ id: message.id, type: "assistant", messages: [message] });
       }
     }

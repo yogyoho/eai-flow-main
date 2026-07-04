@@ -9,6 +9,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/core/i18n/hooks";
+import { useUIConfig } from "@/core/ui/config";
 import {
   buildTokenDebugSteps,
   type TokenUsageInlineMode,
@@ -180,12 +181,14 @@ export function MessageList({
   isHistoryLoading?: boolean;
 }) {
   const { t } = useI18n();
+  const { data: uiConfig } = useUIConfig();
   const rehypePlugins = useRehypeSplitWordsIntoSpans(thread.isLoading);
   const updateSubtask = useUpdateSubtask();
   const messages = thread.messages;
+  const keepReasoning = uiConfig?.show_tool_output === true;
   const groupedMessages = useMemo(
-    () => getMessageGroups(messages),
-    [messages],
+    () => getMessageGroups(messages, keepReasoning),
+    [messages, keepReasoning],
   );
   const lastGroupIndex = groupedMessages.length - 1;
   const turnUsageMessagesByGroupIndex =

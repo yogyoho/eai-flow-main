@@ -17,8 +17,9 @@ import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { getAPIClient } from "../api";
 import { fetch } from "../api/fetcher";
 import { getBackendBaseURL } from "../config";
+import { useUIConfig } from "../ui/config";
 import { useI18n } from "../i18n/hooks";
-import { isHiddenFromUIMessage } from "../messages/utils";
+import { hasReasoning, isHiddenFromUIMessage } from "../messages/utils";
 import type { FileInMessage } from "../messages/utils";
 import type { LocalSettings } from "../settings";
 import { useUpdateSubtask } from "../tasks/context";
@@ -76,15 +77,13 @@ function messageIdentity(message: Message): string | undefined {
   return undefined;
 }
 
-function dedupeMessagesByIdentity(messages: Message[]): Message[] {
+function dedupeMessagesByIdentity(
+  messages: Message[],
+  keepReasoning: boolean = false,
+): Message[] {
   const lastIndexByIdentity = new Map<string, number>();
   const lastVisibleIndexByIdentity = new Map<string, number>();
 
-  // This is a UI-display dedupe rule, not a general LangChain message-stream
-  // contract. Hidden messages that share an identity with a visible message are
-  // treated as control messages for this merged view; hidden messages carrying
-  // independent tracing/task semantics should use a distinct id or a custom
-  // stream/state channel instead of relying on message dedupe preservation.
   messages.forEach((message, index) => {
     const identity = messageIdentity(message);
     if (identity) {
@@ -95,9 +94,27 @@ function dedupeMessagesByIdentity(messages: Message[]): Message[] {
     }
   });
 
+  // Collect the set of message IDs that carry reasoning content. When
+  // keepReasoning is on (debug/tool-output visibility toggle), intermediate AI
+  // narration messages must survive dedup so the user sees the full agent
+  // thought progression instead of only the final bubble.
+  const reasoningIds = keepReasoning
+    ? new Set(
+        messages
+          .filter((m) => m.type === "ai" && hasReasoning(m))
+          .map((m) => messageIdentity(m))
+          .filter(isNonEmptyString),
+      )
+    : null;
+
   return messages.filter((message, index) => {
     const identity = messageIdentity(message);
     if (!identity) {
+      return true;
+    }
+    // When the toggle is on, preserve ALL reasoning-bearing AI messages
+    // so the progression (think → tool-call → answer) stays visible.
+    if (reasoningIds?.has(identity)) {
       return true;
     }
     const visibleIndex = lastVisibleIndexByIdentity.get(identity);
@@ -174,6 +191,7 @@ export function mergeMessages(
   historyMessages: Message[],
   threadMessages: Message[],
   optimisticMessages: Message[],
+  keepReasoning: boolean = false,
 ): Message[] {
   // Only visible live messages should trim overlapping history. Hidden messages
   // are UI control messages in this path, not observability records; any hidden
@@ -203,11 +221,14 @@ export function mergeMessages(
     }
   }
 
-  return dedupeMessagesByIdentity([
-    ...historyMessages.slice(0, cutoff),
-    ...threadMessages,
-    ...optimisticMessages,
-  ]);
+  return dedupeMessagesByIdentity(
+    [
+      ...historyMessages.slice(0, cutoff),
+      ...threadMessages,
+      ...optimisticMessages,
+    ],
+    keepReasoning,
+  );
 }
 
 function getMessagesAfterBaseline(
@@ -383,6 +404,7 @@ export function useThreadStream({
 
   const queryClient = useQueryClient();
   const updateSubtask = useUpdateSubtask();
+  const { data: uiConfig } = useUIConfig();
 
   const thread = useStream<AgentThreadState>({
     client: getAPIClient(isMock),
@@ -831,8 +853,14 @@ export function useThreadStream({
   );
 
   const mergedMessages = useMemo(
-    () => mergeMessages(history, thread.messages, visibleOptimisticMessages),
-    [history, thread.messages, visibleOptimisticMessages],
+    () =>
+      mergeMessages(
+        history,
+        thread.messages,
+        visibleOptimisticMessages,
+        uiConfig?.show_tool_output === true,
+      ),
+    [history, thread.messages, visibleOptimisticMessages, uiConfig?.show_tool_output],
   );
   const pendingUsageMessages = thread.isLoading
     ? getMessagesAfterBaseline(
