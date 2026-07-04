@@ -303,34 +303,42 @@ function MessageContent_({
           text = "```\n" + text + "\n```";
         } else {
           // 3. YAML frontmatter / skill-metadata → blockquote.
-          //    Two forms: (a) each key:value on its own line, or (b) all
-          //    concatenated into one line (markdown single-\n collapse).
-          const nl2 = text.indexOf("\n\n");
-          const blk = nl2 === -1 ? text : text.slice(0, nl2);
-          const blkLines = blk.split("\n");
+          //    Scan all paragraphs (agent may add a preamble line before the
+          //    actual YAML), find the first block that looks like key:value.
           const isYamlLine = (l: string) => /^[^:\n]+:/.test(l) || l.trim() === "";
-          if (blkLines.length >= 2 && blkLines.every(isYamlLine)) {
-            // multi-line YAML block
-            const rest = nl2 === -1 ? "" : text.slice(nl2);
-            text =
-              blkLines
-                .filter((l) => l.trim())
-                .map((l) => `> ${l}`)
-                .join("\n") + rest;
-          } else if (
-            blkLines.length === 1 &&
-            (blkLines[0].match(/[^\s]+:\s/g) || []).length >= 2
-          ) {
-            // single-line YAML blob: "name: x description: | y" →
-            // split on ` word:` boundaries, render each as blockquote line
-            const split = blkLines[0].replace(/\s+(?=\S+:\s)/g, "\n");
-            const rest = nl2 === -1 ? "" : text.slice(nl2);
-            text =
-              split
+          const paras = text.split("\n\n");
+          let yamlIdx = -1;
+          for (let i = 0; i < paras.length; i++) {
+            const lines = paras[i].split("\n");
+            const isSingleWithManyColons =
+              lines.length === 1 &&
+              (lines[0].match(/[^\s]+:\s/g) || []).length >= 2;
+            if (isSingleWithManyColons || (lines.length >= 2 && lines.every(isYamlLine))) {
+              yamlIdx = i;
+              break;
+            }
+          }
+          if (yamlIdx >= 0) {
+            const yamlPara = paras[yamlIdx];
+            const lines = yamlPara.split("\n");
+            let rendered: string;
+            if (lines.length === 1 && (lines[0].match(/[^\s]+:\s/g) || []).length >= 2) {
+              // single-line YAML blob → split on ` word:` boundaries
+              rendered = lines[0]
+                .replace(/\s+(?=\S+:\s)/g, "\n")
                 .split("\n")
                 .filter((l) => l.trim())
                 .map((l) => `> ${l}`)
-                .join("\n") + rest;
+                .join("\n");
+            } else {
+              // multi-line YAML block
+              rendered = lines
+                .filter((l) => l.trim())
+                .map((l) => `> ${l}`)
+                .join("\n");
+            }
+            paras[yamlIdx] = rendered;
+            text = paras.join("\n\n");
           }
         }
       }
