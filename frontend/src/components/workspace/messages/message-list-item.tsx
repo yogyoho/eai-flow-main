@@ -274,9 +274,10 @@ function MessageContent_({
     // Normal chat never carries any of these patterns.
     let text = rawContent ?? "";
     if (text.length > 0) {
-      // 0. strip HTML comments (<!-- 源:¶515-530 -->) AND inline source
-      //    markers (¶220: — paragraph-index citations the agent echoes).
+      // 0. strip YAML frontmatter (SKILL.md ---...--- blocks), HTML
+      //    comments, and inline paragraph markers.
       text = text
+        .replace(/^---[\s\S]*?---\s*/g, "")
         .replace(/<!--[\s\S]*?-->/g, "")
         .replace(/\n?¶\d{1,4}:\s*/g, "\n")
         .trim();
@@ -301,29 +302,6 @@ function MessageContent_({
           head.includes("/mnt/")
         ) {
           text = "```\n" + text + "\n```";
-        } else {
-          // 3. Metadata blobs / YAML frontmatter → blockquote.
-          //    Tool-result echoes (SKILL.md) produce long paragraphs with
-          //    key:value patterns. Detect ANY paragraph >150 chars with
-          //    2+ `word: ` keys and render as subdued blockquote.
-          const paras = text.split("\n\n");
-          for (let i = 0; i < paras.length; i++) {
-            const p = paras[i];
-            if (
-              p.length > 150 &&
-              (p.match(/[^\s]+:\s/g) || []).length >= 2
-            ) {
-              // split on ` word:` boundaries, render each key:value pair
-              // as a blockquote line so it doesn't look like a heading blob
-              paras[i] = p
-                .replace(/\s+(?=\S+:\s)/g, "\n")
-                .split("\n")
-                .filter((l) => l.trim())
-                .map((l) => `> ${l}`)
-                .join("\n");
-            }
-          }
-          text = paras.join("\n\n");
         }
       }
     }
