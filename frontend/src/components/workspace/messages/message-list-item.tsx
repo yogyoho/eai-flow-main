@@ -280,32 +280,33 @@ function MessageContent_({
       } else {
         // 1. demote `# headings` → **bold** paragraph
         text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-        // 2. directory listing (ls output): space-separated paths like
-        //    "/mnt/…/a /mnt/…/b …" → wrap in code fence so each file
-        //    renders on its own line instead of one collapsed blob.
-        const firstLine = text.split("\n")[0] ?? "";
+        // 2. ls / directory listing: any line with 4+ consecutive
+        //    /mnt/… paths → wrap entire content in code fence so
+        //    each file appears on its own line.
+        const head = text.split("\n").slice(0, 3).join("\n");
         if (
-          firstLine.length > 80 &&
-          (firstLine.match(/\//g) || []).length >= 5 &&
-          firstLine.includes("/mnt/")
+          head.length > 60 &&
+          (head.match(/\//g) || []).length >= 4 &&
+          head.includes("/mnt/")
         ) {
           text = "```\n" + text + "\n```";
         } else {
-          // 3. YAML frontmatter: render as markdown blockquote (`> `)
-          //    instead of bold, so SKILL.md metadata looks like a subdued
-          //    reference block rather than a heading.
+          // 3. YAML frontmatter / skill-metadata lines: any block
+          //    whose lines all match `key: value` (including CJK
+          //    keys like 触发场景：) → render as blockquote (`> `).
           const nl2 = text.indexOf("\n\n");
           const blk = nl2 === -1 ? text : text.slice(0, nl2);
           const blkLines = blk.split("\n");
           if (
             blkLines.length >= 2 &&
-            blkLines.every((l) => /^\w[\w-]*:/.test(l) || l.trim() === "")
+            blkLines.every((l) => /^[^:\n]+:/.test(l) || l.trim() === "")
           ) {
             const rest = nl2 === -1 ? "" : text.slice(nl2);
-            text = blkLines
-              .filter((l) => l.trim())
-              .map((l) => `> ${l}`)
-              .join("\n") + rest;
+            text =
+              blkLines
+                .filter((l) => l.trim())
+                .map((l) => `> ${l}`)
+                .join("\n") + rest;
           }
         }
       }
