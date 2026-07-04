@@ -287,7 +287,7 @@ function MessageContent_({
         text = "```\n" + text + "\n```";
       } else if (
         /(?:^|\n)\s*\[\d+\/\d+\]/m.test(text.slice(0, 300)) ||
-        /(?:^|\n)\s*grounded:/m.test(text)
+        /"grounded"\s*:\s*\d+/m.test(text.slice(0, 500))
       ) {
         // pipeline output ([1/3]...[2/3]...[3/3]) or grounding JSON → code fence
         text = "```\n" + text + "\n```";
