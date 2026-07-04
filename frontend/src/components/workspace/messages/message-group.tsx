@@ -647,10 +647,21 @@ function ToolCall({
     // is on (config.yaml → GET /api/ui/config), surface it so execution-style
     // skills (e.g. fire-protection-extract) are transparent during debugging.
     const showOutput = uiConfig?.show_tool_output === true;
-    const output =
-      showOutput && typeof result === "string" && result.length > 0
-        ? result
-        : null;
+    // convertToSteps JSON-parses tool results — stdout that happens to be
+    // valid JSON (e.g. grounding_check output) becomes an object. Flatten
+    // both raw strings and JSON objects into a displayable string.
+    let output: string | null = null;
+    if (showOutput) {
+      if (typeof result === "string" && result.length > 0) {
+        output = result;
+      } else if (result && typeof result === "object") {
+        try {
+          output = JSON.stringify(result, null, 2);
+        } catch {
+          output = null;
+        }
+      }
+    }
     return (
       <ChainOfThoughtStep
         key={id}

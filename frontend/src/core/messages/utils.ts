@@ -149,22 +149,23 @@ export function getMessageGroups(
 
       if (becomesAssistantBubble || keepsAsBubble) {
         let displayMessage = message;
-        // When the debug toggle (show_tool_output) is on, demote headings
-        // and wrap script source for ALL assistant bubbles — both
-        // becomesAssistantBubble (final answers with SKILL.md content) and
-        // keepsAsBubble (intermediate tool-result narration).
-        if (
-          keepReasoning &&
-          typeof message.content === "string"
-        ) {
-          const c = message.content;
-          if (/^\s*#!\//m.test(c.slice(0, 200))) {
-            displayMessage = { ...message, content: `\`\`\`\n${c}\n\`\`\`` };
-          } else {
-            displayMessage = {
-              ...message,
-              content: c.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**"),
-            };
+        if (keepReasoning) {
+          // When the debug toggle is on, normalise content to a plain string
+          // (LangChain messages carry either string or ContentBlock[]) and
+          // apply two transforms:
+          //   - script source (#!shebang)  → wrap in ``` code fence
+          //   - markdown (# headings)      → demote to **bold** paragraphs
+          let text =
+            typeof message.content === "string"
+              ? message.content
+              : extractTextFromMessage(message);
+          if (text.length > 0) {
+            if (/^\s*#!\//m.test(text.slice(0, 200))) {
+              text = `\`\`\`\n${text}\n\`\`\``;
+            } else {
+              text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
+            }
+            displayMessage = { ...message, content: text };
           }
         }
         groups.push({
