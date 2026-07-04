@@ -31,3 +31,27 @@ def build_tiny_spec(path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(path))
     return str(path)
+
+
+def build_continuation_spec(path):
+    """A docx where a table spans two chunks: 表4.5-1 + 续表4.5-1.
+
+    Real design specs split wide tables across 续表 (continuation) chunks, each
+    repeating the header row. parse_spec must merge the 续表 rows into the parent
+    表号 (dropping the repeated header), or the mapping's single 表号 reference
+    only sees the first chunk.
+    """
+    doc = Document()
+    # parent chunk
+    doc.add_paragraph("表4.5-1 通风特性表")
+    t1 = doc.add_table(rows=2, cols=3)
+    t1.rows[0].cells[0].text, t1.rows[0].cells[1].text, t1.rows[0].cells[2].text = "建筑", "部位", "风量"
+    t1.rows[1].cells[0].text, t1.rows[1].cells[1].text, t1.rows[1].cells[2].text = "执勤楼", "卫生间", "4788"
+    # continuation chunk (same header repeated)
+    doc.add_paragraph("续表4.5-1 通风特性表")
+    t2 = doc.add_table(rows=2, cols=3)
+    t2.rows[0].cells[0].text, t2.rows[0].cells[1].text, t2.rows[0].cells[2].text = "建筑", "部位", "风量"
+    t2.rows[1].cells[0].text, t2.rows[1].cells[1].text, t2.rows[1].cells[2].text = "执勤楼", "淋浴间", "3600"
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    doc.save(str(path))
+    return str(path)

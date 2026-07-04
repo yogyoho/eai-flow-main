@@ -12,12 +12,34 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-TABLE_NO_RE = re.compile(r"^(表\s*\d[\d.\-]*[A-Za-z]?)\s*(.*)$")
+TABLE_CAPTION_RE = re.compile(r"^(续)?表\s*(\d[\d.\-]*[A-Za-z]?)\s*(.*)$")
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 
 def _norm_no(raw):
     return re.sub(r"\s+", "", raw)
+
+
+def _parse_caption(text):
+    """Return (no, title, is_continuation) for a 表X.Y-Z / 续表X.Y-Z caption, else None."""
+    m = TABLE_CAPTION_RE.match(text)
+    if not m:
+        return None
+    return "表" + _norm_no(m.group(2)), m.group(3).strip(), bool(m.group(1))
+
+
+def _register_table(tables, rows, pending_no, pending_title, pending_cont):
+    """Insert or merge a table. 续表 captions merge their rows into the parent 表号."""
+    no = pending_no or f"__auto{len(tables)}"
+    if pending_cont and no in tables:
+        parent = tables[no]
+        # a 续表 repeats the parent's header row; drop it so it isn't duplicated mid-table
+        add = rows[1:] if (rows and parent["rows"] and rows[0] == parent["rows"][0]) else rows
+        parent["rows"].extend(add)
+        parent["n_rows"] = len(parent["rows"])
+    else:
+        tables[no] = {"title": pending_title or "", "rows": rows, "n_rows": len(rows)}
+    return no
 
 
 # ── python-docx path ──────────────────────────────────────────────
@@ -30,23 +52,21 @@ def _parse_with_docx(docx_path):
 
     doc = Document(str(docx_path))
     paras, tables = [], {}
-    pending_no, pending_title = None, None
+    pending_no, pending_title, pending_cont = None, None, False
     for child in doc.element.body.iterchildren():
         if child.tag == qn("w:p"):
             text = Paragraph(child, doc).text.strip()
             if not text:
                 continue
             paras.append({"i": len(paras), "text": text})
-            m = TABLE_NO_RE.match(text)
-            if m:
-                pending_no = _norm_no(m.group(1))
-                pending_title = m.group(2).strip()
+            cap = _parse_caption(text)
+            if cap:
+                pending_no, pending_title, pending_cont = cap
         elif child.tag == qn("w:tbl"):
             tbl = Table(child, doc)
             rows = [[c.text.strip() for c in row.cells] for row in tbl.rows]
-            no = pending_no or f"__auto{len(tables)}"
-            tables[no] = {"title": pending_title or "", "rows": rows, "n_rows": len(rows)}
-            pending_no, pending_title = None, None
+            _register_table(tables, rows, pending_no, pending_title, pending_cont)
+            pending_no, pending_title, pending_cont = None, None, False
     return {"paras": paras, "tables": tables}
 
 
@@ -90,18 +110,16 @@ def _iter_body_children(docx_path):
 
 def _parse_with_stdlib(docx_path):
     paras, tables = [], {}
-    pending_no, pending_title = None, None
+    pending_no, pending_title, pending_cont = None, None, False
     for kind, payload in _iter_body_children(docx_path):
         if kind == "p":
             paras.append({"i": len(paras), "text": payload})
-            m = TABLE_NO_RE.match(payload)
-            if m:
-                pending_no = _norm_no(m.group(1))
-                pending_title = m.group(2).strip()
+            cap = _parse_caption(payload)
+            if cap:
+                pending_no, pending_title, pending_cont = cap
         elif kind == "tbl":
-            no = pending_no or f"__auto{len(tables)}"
-            tables[no] = {"title": pending_title or "", "rows": payload, "n_rows": len(payload)}
-            pending_no, pending_title = None, None
+            _register_table(tables, payload, pending_no, pending_title, pending_cont)
+            pending_no, pending_title, pending_cont = None, None, False
     return {"paras": paras, "tables": tables}
 
 
