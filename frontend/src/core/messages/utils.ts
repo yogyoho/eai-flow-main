@@ -148,7 +148,15 @@ export function getMessageGroups(
       }
 
       if (becomesAssistantBubble || keepsAsBubble) {
-        groups.push({ id: message.id, type: "assistant", messages: [message] });
+        // When keepReasoning creates an assistant bubble for a message that
+        // also belongs to a processing group (content + tool_calls), suffix the
+        // id so React keys don't collide — both groups would otherwise use
+        // the same message.id as their key (lc_run-<uuid>).
+        groups.push({
+          id: keepsAsBubble ? `${message.id}-bubble` : message.id,
+          type: "assistant",
+          messages: [message],
+        });
       }
     }
   }
