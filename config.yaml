@@ -212,7 +212,7 @@ uploads:
   max_total_size: 104857600
 sandbox:
   use: deerflow.sandbox.local:LocalSandboxProvider
-  allow_host_bash: false
+  allow_host_bash: true
   bash_output_max_chars: 20000
   read_file_output_max_chars: 50000
   ls_output_max_chars: 20000
@@ -223,6 +223,8 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null
+ui:
+  show_tool_output: true
 summarization:
   enabled: true
   model_name: null
