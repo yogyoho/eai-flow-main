@@ -148,21 +148,14 @@ export function getMessageGroups(
       }
 
       if (becomesAssistantBubble || keepsAsBubble) {
-        // When keepReasoning creates an assistant bubble from tool-result
-        // content, the payload may be a script source file (bash/python) or
-        // a markdown document (SKILL.md). Script sources must be wrapped in
-        // a code fence so #comments don't render as H1; markdown documents
-        // have headings demoted to bold for consistent paragraph sizing.
-        // Code blocks already in the content are left untouched.
         let displayMessage = message;
         if (keepsAsBubble && typeof message.content === "string") {
           const c = message.content;
-          if (c.startsWith("#!/") || c.startsWith("#!")) {
-            // script source → wrap in code fence to preserve #comments
-            displayMessage = {
-              ...message,
-              content: `\`\`\`\n${c}\n\`\`\``,
-            };
+          // Script shebang may be buried behind an agent preamble line
+          // (e.g. "The file contains:\n#!/usr/bin/env bash"). Check the
+          // first ~200 chars so preamble doesn't defeat detection.
+          if (/^\s*#!\//m.test(c.slice(0, 200))) {
+            displayMessage = { ...message, content: `\`\`\`\n${c}\n\`\`\`` };
           } else {
             // markdown / prose → demote headings to **bold**
             displayMessage = {
@@ -171,8 +164,6 @@ export function getMessageGroups(
             };
           }
         }
-        // Suffix the keepsAsBubble id so React keys don't collide — the same
-        // message.id also appears in the processing group (lc_run-<uuid> clash).
         groups.push({
           id: keepsAsBubble ? `${message.id}-bubble` : message.id,
           type: "assistant",
