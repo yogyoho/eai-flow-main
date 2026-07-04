@@ -148,14 +148,25 @@ export function getMessageGroups(
       }
 
       if (becomesAssistantBubble || keepsAsBubble) {
-        // When keepReasoning creates an assistant bubble for a message that
-        // also belongs to a processing group (content + tool_calls), suffix the
-        // id so React keys don't collide — both groups would otherwise use
-        // the same message.id as their key (lc_run-<uuid>).
+        // When keepReasoning creates an assistant bubble from tool-result
+        // content (e.g. read_file of SKILL.md), the payload carries markdown
+        // formatting (# headers, ` ``` ` code blocks). Demote headings to
+        // **bold** so font sizes stay at paragraph level; code blocks are
+        // untouched and render monospace as expected.
+        let displayMessage = message;
+        if (keepsAsBubble && typeof message.content === "string") {
+          const demoted = message.content.replace(
+            /^(#{1,6})\s+(.+)$/gm,
+            "**$2**",
+          );
+          displayMessage = { ...message, content: demoted };
+        }
+        // Suffix the keepsAsBubble id so React keys don't collide — the same
+        // message.id also appears in the processing group (lc_run-<uuid> clash).
         groups.push({
           id: keepsAsBubble ? `${message.id}-bubble` : message.id,
           type: "assistant",
-          messages: [message],
+          messages: [displayMessage],
         });
       }
     }
