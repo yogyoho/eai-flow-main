@@ -22,11 +22,21 @@ PROJECT="$2"
 # 沙箱的 replace_virtual_paths_in_command 会把命令串里的 /mnt/user-data/ →
 # 宿主机路径（在 env 赋值里也一样翻译）。但脚本内部的路径不在命令串里，沙箱
 # 不会翻译，所以这里用宿主机路径。
-#   /mnt/skills → /app/skills （固定映射，永远不变）
+#   /mnt/skills → /app/skills （LocalSandboxProvider 的固定映射；AIO 等其
+#     他 provider 可能不同——回退到 /mnt/skills 作为兜底）
 #   /mnt/user-data/... → 从环境变量取值（已被沙箱翻译为宿主机路径）
 WORK_DIR="${WORK:-/mnt/user-data/workspace}"
 OUT_DIR="${OUT:-/mnt/user-data/outputs}"
-SKILL_DIR="/app/skills/custom/fire-protection-extract"
+for _try in "/app/skills" "/mnt/skills"; do
+  if [ -f "${_try}/custom/fire-protection-extract/scripts/parse_spec.py" ]; then
+    SKILL_DIR="${_try}/custom/fire-protection-extract"
+    break
+  fi
+done
+if [ -z "${SKILL_DIR:-}" ]; then
+  echo "ERROR: skills dir not found (tried /app/skills, /mnt/skills)" >&2
+  exit 1
+fi
 
 STRUCT="${WORK_DIR}/${PROJECT}_struct.json"
 REPORT="${OUT_DIR}/${PROJECT}消防设计专篇.md"
