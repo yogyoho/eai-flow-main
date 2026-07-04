@@ -270,34 +270,43 @@ function MessageContent_({
     if (isHuman) {
       return rawContent ? stripUploadedFilesTag(rawContent) : "";
     }
-    // Demote `# headings` → **bold** and wrap script source in code fences
-    // before MarkdownContent renders. Normal chat never carries markdown
-    // headings or shebangs; only tool-result echoes (SKILL.md, script source
-    // read by the agent) produce them.
+    // Clean up tool-result echoes before MarkdownContent renders them.
+    // Normal chat never carries any of these patterns.
     let text = rawContent ?? "";
     if (text.length > 0) {
       if (/^\s*#!\//m.test(text.slice(0, 200))) {
-        // script source — wrap in code fence so #comments stay as comments
+        // script source → code fence
         text = "```\n" + text + "\n```";
       } else {
-        // prose / markdown:
-        // 1. demote `# headings` → **bold**
+        // 1. demote `# headings` → **bold** paragraph
         text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-        // 2. YAML frontmatter (SKILL.md `name:` / `description:` lines):
-        //    markdown collapses single newlines into spaces, turning
-        //    "name: x\ndescription: | y" into "name: x description: | y"
-        //    as one unreadable blob. Detect frontmatter by checking whether
-        //    the first paragraph is all `key: value` lines, and preserve
-        //    them with double newlines so each field renders on its own line.
-        const firstBlockEnd = text.indexOf("\n\n");
-        const firstBlock = firstBlockEnd === -1 ? text : text.slice(0, firstBlockEnd);
-        const firstLines = firstBlock.split("\n");
+        // 2. directory listing (ls output): space-separated paths like
+        //    "/mnt/…/a /mnt/…/b …" → wrap in code fence so each file
+        //    renders on its own line instead of one collapsed blob.
+        const firstLine = text.split("\n")[0] ?? "";
         if (
-          firstLines.length >= 2 &&
-          firstLines.every((l) => /^\w[\w-]*:/.test(l) || l.trim() === "")
+          firstLine.length > 80 &&
+          (firstLine.match(/\//g) || []).length >= 5 &&
+          firstLine.includes("/mnt/")
         ) {
-          const rest = firstBlockEnd === -1 ? "" : text.slice(firstBlockEnd);
-          text = firstLines.map((l) => l.trim() ? `**${l}**` : l).join("\n\n") + rest;
+          text = "```\n" + text + "\n```";
+        } else {
+          // 3. YAML frontmatter: render as markdown blockquote (`> `)
+          //    instead of bold, so SKILL.md metadata looks like a subdued
+          //    reference block rather than a heading.
+          const nl2 = text.indexOf("\n\n");
+          const blk = nl2 === -1 ? text : text.slice(0, nl2);
+          const blkLines = blk.split("\n");
+          if (
+            blkLines.length >= 2 &&
+            blkLines.every((l) => /^\w[\w-]*:/.test(l) || l.trim() === "")
+          ) {
+            const rest = nl2 === -1 ? "" : text.slice(nl2);
+            text = blkLines
+              .filter((l) => l.trim())
+              .map((l) => `> ${l}`)
+              .join("\n") + rest;
+          }
         }
       }
     }
