@@ -19,7 +19,7 @@ import { fetch } from "../api/fetcher";
 import { getBackendBaseURL } from "../config";
 import { useUIConfig } from "../ui/config";
 import { useI18n } from "../i18n/hooks";
-import { hasReasoning, isHiddenFromUIMessage } from "../messages/utils";
+import { isHiddenFromUIMessage } from "../messages/utils";
 import type { FileInMessage } from "../messages/utils";
 import type { LocalSettings } from "../settings";
 import { useUpdateSubtask } from "../tasks/context";
@@ -94,27 +94,17 @@ function dedupeMessagesByIdentity(
     }
   });
 
-  // Collect the set of message IDs that carry reasoning content. When
-  // keepReasoning is on (debug/tool-output visibility toggle), intermediate AI
-  // narration messages must survive dedup so the user sees the full agent
-  // thought progression instead of only the final bubble.
-  const reasoningIds = keepReasoning
-    ? new Set(
-        messages
-          .filter((m) => m.type === "ai" && hasReasoning(m))
-          .map((m) => messageIdentity(m))
-          .filter(isNonEmptyString),
-      )
-    : null;
-
   return messages.filter((message, index) => {
     const identity = messageIdentity(message);
     if (!identity) {
       return true;
     }
-    // When the toggle is on, preserve ALL reasoning-bearing AI messages
-    // so the progression (think → tool-call → answer) stays visible.
-    if (reasoningIds?.has(identity)) {
+    // When keepReasoning is on (debug toggle), preserve ALL AI messages — not
+    // just the last occurrence — so the agent's full thought progression
+    // (think → tool-call → answer) stays visible. Regular prose narration
+    // (e.g. "让我来解析说明书...") doesn't carry formal reasoning markers,
+    // so we gate on message type rather than hasReasoning().
+    if (keepReasoning && message.type === "ai") {
       return true;
     }
     const visibleIndex = lastVisibleIndexByIdentity.get(identity);

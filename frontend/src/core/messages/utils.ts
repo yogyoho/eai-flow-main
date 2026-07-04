@@ -117,7 +117,7 @@ export function getMessageGroups(
       const becomesAssistantBubble =
         hasContent(message) && !hasToolCalls(message);
       const keepsAsBubble =
-        keepReasoning && !becomesAssistantBubble && hasReasoning(message);
+        keepReasoning && !becomesAssistantBubble && hasContent(message);
 
       if (hasPresentFiles(message)) {
         groups.push({
