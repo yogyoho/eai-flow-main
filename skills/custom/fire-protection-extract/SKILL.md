@@ -1,68 +1,47 @@
 ---
 name: fire-protection-extract
 description: |
-  ⛔ 当用户已上传设计说明书(.docx)并请求编写消防设计专篇时，应使用本技能，不使用 fire-protection-report-v2。
-  本技能从设计说明书**逐字摘抄**重组出消防专篇（映射契约驱动 + 逐字溯源校验），而非从零生成。
-  触发词：消防设计专篇/消防设计报告/消防设计篇章 + 有设计说明书。无说明书时改用 fire-protection-report-v2。
+  ⛔ 用户已上传设计说明书(.docx)并请求编写消防设计专篇 → 用本技能（不用 fire-protection-report-v2）。
+  本技能只跑一条流水线命令，报告由脚本自动生成并落盘。你不是报告作者。
+  无说明书时改用 fire-protection-report-v2。
 ---
 
-# 消防设计专篇 — 脚本执行指令
+# 消防设计专篇 — 一键流水线
 
-**你是执行器，不是作者。** 报告由流水线自动生成（parse → extract → verify），你的工作只有一个：**按顺序执行下面 3 个 bash 命令**，然后检查结果。
+报告由 `run.sh` 自动生成（解析说明书 → 按契约逐字摘抄 → 溯源校验 → 落盘）。**你的全部工作是两步：跑命令、展示成品。**
 
-已验证：网关容器已部署 parse_spec / extract / grounding_check 脚本，Python 3.12 环境可用（无 python-docx 时自动回退 stdlib zipfile+xml），映射契约为 JSON 格式（零依赖），以下 bash 命令可直接执行，不需要提前检查环境或阅读脚本源码。
+## 你的两步操作
 
----
-
-## 执行流水线（三步，不可跳步，不可替换为手动操作）
-
-> 把 `<设计说明书.docx>` 替换为 uploads/ 下实际的文件名，`<项目名>` 替换为项目名称。
-
-### 第一步：解析（parse）—— 把 docx 转成结构化数据
+### 第 1 步：跑流水线（一条命令完成全部）
 ```bash
-python /mnt/skills/custom/fire-protection-extract/scripts/parse_spec.py \
+bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
   "/mnt/user-data/uploads/<设计说明书.docx>" \
-  "/mnt/user-data/workspace/<项目名>_struct.json"
+  "<项目名>"
 ```
-输出应为 `OK [backend] paras=NNN tables=NNN -> ...`。 记录 paras 和 tables 的数量。
+- 把 `<设计说明书.docx>` 换成 uploads/ 下实际文件名，`<项目名>` 换成项目名。
+- 命令结束时报告已写入 `/mnt/user-data/outputs/<项目名>消防设计专篇.md`。
+- 终端最后一行 `REPORT_READY: <path>` 就是成品路径。
 
-### 第二步：抽取（extract）—— 按映射契约生成报告
-```bash
-python /mnt/skills/custom/fire-protection-extract/scripts/extract.py \
-  "/mnt/user-data/workspace/<项目名>_struct.json" \
-  "/mnt/skills/custom/fire-protection-extract/references/fire_spec_mapping.json" \
-  "/mnt/user-data/outputs/<项目名>消防设计专篇.md"
+### 第 2 步：展示成品
 ```
-输出应为 `OK -> ... (NNNNN chars)`。**如果终端输出中出现 `[⚠未找到` 字样，说明锚点失配，需要校准契约。** 此时用 read_file 查看 structure.json 找到正确的锚点文本，复制一份 mapping.json 到 workspace 修改锚点后重新从第二步执行（不要改原始契约文件）。
-
-### 第三步：校验（verify）—— 逐字溯源验证
-```bash
-python /mnt/skills/custom/fire-protection-extract/scripts/grounding_check.py \
-  "/mnt/user-data/outputs/<项目名>消防设计专篇.md" \
-  "/mnt/user-data/workspace/<项目名>_struct.json" \
-  "/mnt/skills/custom/fire-protection-extract/references/fire_spec_mapping.json"
-```
-退出码 0 = 通过。非 0 = 阅读 JSON 输出定位失败项，修契约后从第二步重跑，最多 2 轮。
-
----
-
-## 三步全部通过后
-
-1. 用 read_file 快速浏览报告的开头（前 ~30 行）和结尾（后 ~20 行），确认标题和 8 章结构完整
-2. 如报告中有 `[⚠` 标记或 `[需计算]` 以外的缺失——回到第二步校准锚点
-3. 用一次 write_file（append=false）把 `/mnt/user-data/outputs/<项目名>消防设计专篇.md` 重新写入（已是最终版本，主要是为了落盘规范化）
-4. 调 present_files(filepaths=["/mnt/user-data/outputs/<项目名>消防设计专篇.md"])
-5. **（可选但推荐）** 调合规检查：
-```bash
-python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py \
-  --report "/mnt/user-data/outputs/<项目名>消防设计专篇.md" \
-  --output "/mnt/user-data/outputs/<项目名>消防合规检查报告.md"
+present_files(filepaths=["/mnt/user-data/outputs/<项目名>消防设计专篇.md"])
 ```
 
----
+完。向用户报告"消防设计专篇已生成"+ grounding 结果即可。
 
-## 参考（仅在出问题时阅读）
+## ⛔ 不要做的事（违反会导致抄错）
 
-- `references/extractor_rules.md` — 锚点选取规则、防抄错机制。仅当需要手动校准锚点时参考。
-- `references/fire_spec_mapping.json` — 映射契约（机器文件，extract.py 自动加载），不要直接阅读。
-- `scripts/parse_spec.py` / `extract.py` / `grounding_check.py` — 引擎脚本，不要阅读，直接通过 bash 执行。内置 python-docx → stdlib 自动回退。
+- **不要 read_file 设计说明书**（`.docx` 或自动转换的 `.md`）——`run.sh` 内部会读，你不需要理解它的内容。
+- **不要 write_file / str_replace 报告内容**——报告已由 `run.sh` 写好；你手动改写会引入抄错（例如把 6589.62㎡ 改成 7026.25㎡、把指标表的数当建设规模）。
+- **不要 read_file 脚本或 `fire_spec_mapping.json`**——机器文件，`run.sh` 自动加载。
+- **不要手动起草/拼凑报告**——这不是生成式技能。
+
+## 仅在以下情况介入
+
+- **`run.sh` 输出"含失配锚"**：说明书结构与样本契约有差异。按 `references/extractor_rules.md` 校准一份 `workspace` 下的 mapping 副本，设环境变量 `FIRE_EXTRACT_SKILL_DIR` 指向它（或临时改 mapping 路径）后重跑第 1 步。**不要手改报告正文。**
+- **§7 投资概算显示 `[需计算]` 是正常的**——说明书无此数据，由概算专业另算。不要补数。
+- **大面积失配**：说明书结构与样本差异太大 → `ask_clarification` 告知用户，考虑回退 `fire-protection-report-v2`。
+
+## 参考文件（仅出问题时按需读）
+- `references/extractor_rules.md` — 锚点选取/防抄错规则（校准 mapping 时参考）
+- `scripts/run.sh` — 流水线入口（执行件，不读直接跑）

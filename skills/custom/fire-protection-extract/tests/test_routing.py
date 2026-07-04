@@ -57,9 +57,10 @@ def test_extract_has_spec_assertion():
     fm = _frontmatter(EXTRACT_MD)
     desc = fm.get("description", "")
     assert ".docx" in desc, "extract description must reference .docx uploads"
-    assert "不使用 fire-protection-report-v2" in desc, (
-        "extract must explicitly say NOT to use v2"
-    )
+    assert (
+        "不使用 fire-protection-report-v2" in desc
+        or "不用 fire-protection-report-v2" in desc
+    ), "extract must explicitly say NOT to use v2"
 
 
 def test_both_frontmatter_names_match_registry():
@@ -116,7 +117,10 @@ def _route(has_spec: bool, prompt: str) -> str:
     # - If no design spec → use v2
     # Both descriptions start with "⛔" rules encoding this
     v2_excludes_spec = "不要使用本技能" in v2_desc and "设计说明书" in v2_desc
-    ext_prefers_spec = "不使用 fire-protection-report-v2" in ext_desc
+    ext_prefers_spec = (
+        "不使用 fire-protection-report-v2" in ext_desc
+        or "不用 fire-protection-report-v2" in ext_desc
+    )
 
     if has_spec and ext_prefers_spec and v2_excludes_spec:
         return "fire-protection-extract"
