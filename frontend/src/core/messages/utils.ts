@@ -149,15 +149,18 @@ export function getMessageGroups(
 
       if (becomesAssistantBubble || keepsAsBubble) {
         let displayMessage = message;
-        if (keepsAsBubble && typeof message.content === "string") {
+        // When the debug toggle (show_tool_output) is on, demote headings
+        // and wrap script source for ALL assistant bubbles — both
+        // becomesAssistantBubble (final answers with SKILL.md content) and
+        // keepsAsBubble (intermediate tool-result narration).
+        if (
+          keepReasoning &&
+          typeof message.content === "string"
+        ) {
           const c = message.content;
-          // Script shebang may be buried behind an agent preamble line
-          // (e.g. "The file contains:\n#!/usr/bin/env bash"). Check the
-          // first ~200 chars so preamble doesn't defeat detection.
           if (/^\s*#!\//m.test(c.slice(0, 200))) {
             displayMessage = { ...message, content: `\`\`\`\n${c}\n\`\`\`` };
           } else {
-            // markdown / prose → demote headings to **bold**
             displayMessage = {
               ...message,
               content: c.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**"),
