@@ -41,3 +41,16 @@ def test_sample_pipeline_meets_acceptance(tmp_path):
     res = check(report, structure, mapping)
     assert not res["missing_anchors"], f"unresolved anchors: {res['missing_anchors'][:5]}"
     assert res["rate"] >= 0.85, f"grounding rate {res['rate']:.2%} < 85%; failures: {res['failed_samples']}"
+    # 6. regression: §8 must NOT dump the whole spec body. The original mapping
+    #    used para_run "区域位置图"→"设备一览表"; "设备一览表" first appears deep
+    #    in the body (¶847), so the run captured ~744 paragraphs and inflated the
+    #    report to ~37k chars. "有线电视系统" (cable TV) is out of scope for a fire
+    #    report — it only ever appeared via that §8 body leak.
+    assert "有线电视系统" not in report, (
+        "§8 over-copy regression: out-of-scope body content '有线电视系统' leaked in — "
+        "check §8 para_run anchors don't overshoot into the spec body"
+    )
+    assert len(report) < 25000, (
+        f"report suspiciously large ({len(report)} chars) — likely a para_run overshoot; "
+        "was 37095 when §8 grabbed the whole spec"
+    )
