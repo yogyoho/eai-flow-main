@@ -28,6 +28,7 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/ui/config",
     "/api/license/status",
 )
 
