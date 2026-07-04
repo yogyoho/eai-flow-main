@@ -274,15 +274,30 @@ function MessageContent_({
     // Normal chat never carries any of these patterns.
     let text = rawContent ?? "";
     if (text.length > 0) {
+      // 0. strip HTML comments: extract.py emits <!-- 源:¶515-530 --> source
+      //    citations. In markdown these are invisible, but MarkdownContent
+      //    may pass them through as garbled text (especially when the comment
+      //    spans multiple lines or contains CJK).
+      text = text.replace(/<!--[\s\S]*?-->/g, "").trim();
+      if (!text) return "";
       if (/^\s*#!\//m.test(text.slice(0, 200))) {
         // script source → code fence
+        text = "```\n" + text + "\n```";
+      } else if (
+        /(?:^|\n)\s*\[\d+\/\d+\]/m.test(text.slice(0, 300)) ||
+        /(?:^|\n)\s*grounded:/m.test(text)
+      ) {
+        // pipeline output ([1/3]...[2/3]...[3/3]) or grounding JSON → code fence
         text = "```\n" + text + "\n```";
       } else {
         // 1. demote `# headings` → **bold** paragraph
         text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-        // 2. ls / directory listing: any line with 4+ consecutive
-        //    /mnt/… paths → wrap entire content in code fence so
-        //    each file appears on its own line.
+        // 2. add line breaks between GB standard codes (template output)
+        text = text.replace(
+          /(GB\s*\d[\d.-]*)\s+(?=\S)/g,
+          "$1\n",
+        );
+        // 3. ls / directory listing detection
         const head = text.split("\n").slice(0, 3).join("\n");
         if (
           head.length > 60 &&
@@ -291,9 +306,7 @@ function MessageContent_({
         ) {
           text = "```\n" + text + "\n```";
         } else {
-          // 3. YAML frontmatter / skill-metadata lines: any block
-          //    whose lines all match `key: value` (including CJK
-          //    keys like 触发场景：) → render as blockquote (`> `).
+          // 4. YAML frontmatter / skill-metadata → blockquote
           const nl2 = text.indexOf("\n\n");
           const blk = nl2 === -1 ? text : text.slice(0, nl2);
           const blkLines = blk.split("\n");
