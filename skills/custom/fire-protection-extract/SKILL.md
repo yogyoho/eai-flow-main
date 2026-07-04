@@ -24,7 +24,8 @@ description: |
 
 ### 第 1 步：跑流水线（一条命令完成全部）
 ```bash
-bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
+WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
+  bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
   "/mnt/user-data/uploads/<设计说明书.docx>" \
   "<项目名>"
 ```
