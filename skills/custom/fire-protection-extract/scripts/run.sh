@@ -18,11 +18,11 @@ fi
 DOCX="$1"
 PROJECT="$2"
 
-# 路径可用环境变量覆盖（便于测试）；默认为容器内虚拟路径。
-SKILL_DIR="${FIRE_EXTRACT_SKILL_DIR:-/mnt/skills/custom/fire-protection-extract}"
-WORK_DIR="${FIRE_EXTRACT_WORK:-/mnt/user-data/workspace}"
-OUT_DIR="${FIRE_EXTRACT_OUT:-/mnt/user-data/outputs}"
-MAPPING="${SKILL_DIR}/references/fire_spec_mapping.json"
+# 硬编码路径（不用变量——bash 沙箱扫描变量展开时不识别 ${VAR}/... 为安全路径）
+SKILL_DIR="/mnt/skills/custom/fire-protection-extract"
+WORK_DIR="/mnt/user-data/workspace"
+OUT_DIR="/mnt/user-data/outputs"
+MAPPING="/mnt/skills/custom/fire-protection-extract/references/fire_spec_mapping.json"
 
 STRUCT="${WORK_DIR}/${PROJECT}_struct.json"
 REPORT="${OUT_DIR}/${PROJECT}消防设计专篇.md"
@@ -30,13 +30,13 @@ REPORT="${OUT_DIR}/${PROJECT}消防设计专篇.md"
 mkdir -p "$WORK_DIR" "$OUT_DIR"
 
 echo "[1/3] 解析说明书..."
-python "${SKILL_DIR}/scripts/parse_spec.py" "$DOCX" "$STRUCT"
+python /mnt/skills/custom/fire-protection-extract/scripts/parse_spec.py "$DOCX" "$STRUCT"
 
 echo "[2/3] 按契约抽取报告..."
-python "${SKILL_DIR}/scripts/extract.py" "$STRUCT" "$MAPPING" "$REPORT"
+python /mnt/skills/custom/fire-protection-extract/scripts/extract.py "$STRUCT" "$MAPPING" "$REPORT"
 
 echo "[3/3] 逐字溯源校验..."
-if python "${SKILL_DIR}/scripts/grounding_check.py" "$REPORT" "$STRUCT" "$MAPPING"; then
+if python /mnt/skills/custom/fire-protection-extract/scripts/grounding_check.py "$REPORT" "$STRUCT" "$MAPPING"; then
   GROUNDING="PASS"
 else
   GROUNDING="CHECK_OUTPUT_ABOVE"
