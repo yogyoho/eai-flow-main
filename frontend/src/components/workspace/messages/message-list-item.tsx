@@ -270,12 +270,19 @@ function MessageContent_({
     if (isHuman) {
       return rawContent ? stripUploadedFilesTag(rawContent) : "";
     }
-    // Demote `# headings` → **bold** before MarkdownContent renders them
-    // as H1/H2. Normal chat never carries markdown headings; only tool-result
-    // echoes (SKILL.md, script source read by the agent) produce them.
+    // Demote `# headings` → **bold** and wrap script source in code fences
+    // before MarkdownContent renders. Normal chat never carries markdown
+    // headings or shebangs; only tool-result echoes (SKILL.md, script source
+    // read by the agent) produce them.
     let text = rawContent ?? "";
     if (text.length > 0) {
-      text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
+      if (/^\s*#!\//m.test(text.slice(0, 200))) {
+        // script source — wrap in code fence so #comments stay as comments
+        text = "```\n" + text + "\n```";
+      } else {
+        // prose / markdown — demote headings to bold paragraphs
+        text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
+      }
     }
     return text;
   }, [rawContent, isHuman]);
