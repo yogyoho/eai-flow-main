@@ -274,11 +274,12 @@ function MessageContent_({
     // Normal chat never carries any of these patterns.
     let text = rawContent ?? "";
     if (text.length > 0) {
-      // 0. strip HTML comments: extract.py emits <!-- 源:¶515-530 --> source
-      //    citations. In markdown these are invisible, but MarkdownContent
-      //    may pass them through as garbled text (especially when the comment
-      //    spans multiple lines or contains CJK).
-      text = text.replace(/<!--[\s\S]*?-->/g, "").trim();
+      // 0. strip HTML comments (<!-- 源:¶515-530 -->) AND inline source
+      //    markers (¶220: — paragraph-index citations the agent echoes).
+      text = text
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/\n?¶\d{1,4}:\s*/g, "\n")
+        .trim();
       if (!text) return "";
       if (/^\s*#!\//m.test(text.slice(0, 200))) {
         // script source → code fence
@@ -292,12 +293,7 @@ function MessageContent_({
       } else {
         // 1. demote `# headings` → **bold** paragraph
         text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-        // 2. add line breaks between GB standard codes (template output)
-        text = text.replace(
-          /(GB\s*\d[\d.-]*)\s+(?=\S)/g,
-          "$1\n",
-        );
-        // 3. ls / directory listing detection
+        // 2. ls / directory listing detection
         const head = text.split("\n").slice(0, 3).join("\n");
         if (
           head.length > 60 &&
@@ -306,17 +302,32 @@ function MessageContent_({
         ) {
           text = "```\n" + text + "\n```";
         } else {
-          // 4. YAML frontmatter / skill-metadata → blockquote
+          // 3. YAML frontmatter / skill-metadata → blockquote.
+          //    Two forms: (a) each key:value on its own line, or (b) all
+          //    concatenated into one line (markdown single-\n collapse).
           const nl2 = text.indexOf("\n\n");
           const blk = nl2 === -1 ? text : text.slice(0, nl2);
           const blkLines = blk.split("\n");
-          if (
-            blkLines.length >= 2 &&
-            blkLines.every((l) => /^[^:\n]+:/.test(l) || l.trim() === "")
-          ) {
+          const isYamlLine = (l: string) => /^[^:\n]+:/.test(l) || l.trim() === "";
+          if (blkLines.length >= 2 && blkLines.every(isYamlLine)) {
+            // multi-line YAML block
             const rest = nl2 === -1 ? "" : text.slice(nl2);
             text =
               blkLines
+                .filter((l) => l.trim())
+                .map((l) => `> ${l}`)
+                .join("\n") + rest;
+          } else if (
+            blkLines.length === 1 &&
+            (blkLines[0].match(/[^\s]+:\s/g) || []).length >= 2
+          ) {
+            // single-line YAML blob: "name: x description: | y" →
+            // split on ` word:` boundaries, render each as blockquote line
+            const split = blkLines[0].replace(/\s+(?=\S+:\s)/g, "\n");
+            const rest = nl2 === -1 ? "" : text.slice(nl2);
+            text =
+              split
+                .split("\n")
                 .filter((l) => l.trim())
                 .map((l) => `> ${l}`)
                 .join("\n") + rest;
