@@ -62,6 +62,15 @@ class CircuitBreakerConfig(BaseModel):
     recovery_timeout_sec: int = Field(default=60, description="Time in seconds before attempting to recover the circuit")
 
 
+class UIConfig(BaseModel):
+    """Frontend UI behavior toggles surfaced via Gateway config endpoint."""
+
+    show_tool_output: bool = Field(
+        default=False,
+        description="Show tool (bash) stdout in the chat UI. Default off (upstream deer-flow hides it for chat cleanliness); flip to true to make execution-style skills (e.g. fire-protection-extract) transparent during debugging.",
+    )
+
+
 def _legacy_config_candidates() -> tuple[Path, ...]:
     """Return source-tree config.yaml locations for monorepo compatibility."""
     backend_dir = Path(__file__).resolve().parents[4]
@@ -118,6 +127,7 @@ class AppConfig(BaseModel):
     tool_output: ToolOutputConfig = Field(default_factory=ToolOutputConfig, description="Tool output budget protection configuration")
     tool_search: ToolSearchConfig = Field(default_factory=ToolSearchConfig, description="Tool search / deferred loading configuration")
     title: TitleConfig = Field(default_factory=TitleConfig, description="Automatic title generation configuration")
+    ui: UIConfig = Field(default_factory=UIConfig, description="Frontend UI behavior toggles")
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig, description="Conversation summarization configuration")
     memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Memory subsystem configuration")
     agents_api: AgentsApiConfig = Field(default_factory=AgentsApiConfig, description="Custom-agent management API configuration")

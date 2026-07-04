@@ -33,6 +33,7 @@ import {
 } from "@/core/messages/utils";
 import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import { extractTitleFromMarkdown } from "@/core/utils/markdown";
+import { useUIConfig } from "@/core/ui/config";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -435,6 +436,7 @@ function ToolCall({
   const { t } = useI18n();
   const { setOpen, autoOpen, autoSelect, selectedArtifact, select } =
     useArtifacts();
+  const { data: uiConfig } = useUIConfig();
   const tokenLabel = tokenDebugStep
     ? formatDebugToken(tokenDebugStep, t)
     : null;
@@ -641,6 +643,14 @@ function ToolCall({
       );
     }
     const command: string | undefined = (args as { command: string })?.command;
+    // Bash stdout is hidden by upstream deer-flow design. When ui.show_tool_output
+    // is on (config.yaml → GET /api/ui/config), surface it so execution-style
+    // skills (e.g. fire-protection-extract) are transparent during debugging.
+    const showOutput = uiConfig?.show_tool_output === true;
+    const output =
+      showOutput && typeof result === "string" && result.length > 0
+        ? result
+        : null;
     return (
       <ChainOfThoughtStep
         key={id}
@@ -653,6 +663,14 @@ function ToolCall({
             showLineNumbers={false}
             language="bash"
             code={command}
+          />
+        )}
+        {output && (
+          <CodeBlock
+            className="mx-0 border-none px-0 max-h-64 overflow-auto"
+            showLineNumbers={false}
+            language="text"
+            code={output}
           />
         )}
       </ChainOfThoughtStep>

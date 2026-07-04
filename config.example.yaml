@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 15
+config_version: 16
 
 # ============================================================================
 # Logging
@@ -893,6 +893,17 @@ title:
   max_words: 6
   max_chars: 60
   model_name: null # Use default model (first model in models list)
+
+# ============================================================================
+# Frontend UI behavior toggles
+# ============================================================================
+# Surfaced to the frontend via GET /api/ui/config. Flip show_tool_output to
+# true to make tool (bash) stdout visible in the chat UI — helpful when
+# debugging execution-style skills (e.g. fire-protection-extract) where the
+# pipeline's stdout carries the real process information. Default off matches
+# upstream deer-flow, which hides tool output to keep chat clean.
+ui:
+  show_tool_output: false
 
 # ============================================================================
 # Summarization Configuration

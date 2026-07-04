@@ -49,6 +49,7 @@ from app.gateway.routers import (
     suggestions,
     thread_runs,
     threads,
+    ui,
     uploads,
     wechat_bot,
 )
@@ -455,6 +456,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)
+
+    # UI config API is mounted at /api/ui/config (frontend UI behavior toggles)
+    app.include_router(ui.router)
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
