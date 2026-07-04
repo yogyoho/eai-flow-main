@@ -149,24 +149,22 @@ export function getMessageGroups(
 
       if (becomesAssistantBubble || keepsAsBubble) {
         let displayMessage = message;
-        if (keepReasoning) {
-          // When the debug toggle is on, normalise content to a plain string
-          // (LangChain messages carry either string or ContentBlock[]) and
-          // apply two transforms:
-          //   - script source (#!shebang)  → wrap in ``` code fence
-          //   - markdown (# headings)      → demote to **bold** paragraphs
-          let text =
-            typeof message.content === "string"
-              ? message.content
-              : extractTextFromMessage(message);
-          if (text.length > 0) {
-            if (/^\s*#!\//m.test(text.slice(0, 200))) {
-              text = `\`\`\`\n${text}\n\`\`\``;
-            } else {
-              text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-            }
-            displayMessage = { ...message, content: text };
+        // Always demote `# headings` → **bold** in assistant bubbles: normal
+        // chat never carries markdown headings, but tool-result echoes (e.g.
+        // SKILL.md content read by the agent) do — and they render as H1/H2.
+        // For the code-fence transform (shebang → ```), only activate behind
+        // the show_tool_output toggle since it could affect normal chat.
+        let text =
+          typeof message.content === "string"
+            ? message.content
+            : extractTextFromMessage(message);
+        if (text.length > 0) {
+          if (keepReasoning && /^\s*#!\//m.test(text.slice(0, 200))) {
+            text = `\`\`\`\n${text}\n\`\`\``;
+          } else {
+            text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
           }
+          displayMessage = { ...message, content: text };
         }
         groups.push({
           id: keepsAsBubble ? `${message.id}-bubble` : message.id,
