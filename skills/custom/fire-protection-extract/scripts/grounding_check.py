@@ -37,6 +37,8 @@ def _is_decorative(block):
         return True
     if b.startswith("<!--"):
         return True
+    if b.startswith("> 源:"):
+        return True
     return False
 
 
@@ -62,7 +64,8 @@ def _search_text(block):
                 continue
             cells.extend(row_cells)
         return "".join(cells)
-    lines = [ln for ln in b.splitlines() if not ln.strip().startswith("<!--")]
+    lines = [ln for ln in b.splitlines()
+             if not (ln.strip().startswith("<!--") or ln.strip().startswith("> 源:"))]
     return "\n".join(lines)
 
 

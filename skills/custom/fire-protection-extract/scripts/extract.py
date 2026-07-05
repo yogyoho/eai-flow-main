@@ -82,7 +82,7 @@ def extract(structure, mapping):
                 p = find_para(paras, src["anchor"])
                 if p:
                     lines.append(p["text"])
-                    lines.append(f"<!-- 源:¶{p['i']} -->")
+                    lines.append(f"> 源: §{sec['fire']} ¶{p['i']}")
                     citations.append((sec["fire"], "¶", p["i"], src["anchor"]))
                 else:
                     lines.append(f"[⚠未找到锚: {src['anchor'][:24]}…]")
@@ -91,7 +91,7 @@ def extract(structure, mapping):
                 if run:
                     for p in run:
                         lines.append(p["text"])
-                    lines.append(f"<!-- 源:¶{run[0]['i']}-{run[-1]['i']} -->")
+                    lines.append(f"> 源: §{sec['fire']} ¶{run[0]['i']}-{run[-1]['i']}")
                     citations.append((sec["fire"], "¶run", (run[0]["i"], run[-1]["i"]), src["from"]))
                 else:
                     lines.append(f"[⚠未找到区间: {src['from'][:24]}…]")
@@ -99,7 +99,7 @@ def extract(structure, mapping):
                 t = tables.get(src["no"])
                 if t:
                     lines.append(table_md(t))
-                    lines.append(f"<!-- 源:{src['no']} -->")
+                    lines.append(f"> 源: §{sec['fire']} {src['no']}")
                     citations.append((sec["fire"], "表", src["no"], ""))
                 else:
                     lines.append(f"[⚠未找到表: {src['no']}]")
