@@ -383,17 +383,7 @@ class AIDocumentService:
 
         # Scan outputs/ per thread
         result: list[dict] = []
-        # 按生成时间降序：outputs 目录 mtime（最近写文件的线程排最上）
-        def _thread_mtime(p: Path) -> float:
-            try:
-                return (p / "user-data" / "outputs").stat().st_mtime
-            except OSError:
-                try:
-                    return p.stat().st_mtime
-                except OSError:
-                    return 0.0
-
-        for thread_dir in sorted(threads_dir.iterdir(), key=_thread_mtime, reverse=True):
+        for thread_dir in threads_dir.iterdir():
             if not thread_dir.is_dir():
                 continue
             outputs_dir = thread_dir / "user-data" / "outputs"
@@ -443,6 +433,12 @@ class AIDocumentService:
                 "files": files,
             })
 
+        # 按线程内最新文件 mtime 倒序（最近生成/修改的排最上）
+        def _thread_max_mtime(thread: dict) -> float:
+            mtimes = [f["modified_at"].timestamp() for f in thread["files"] if f.get("modified_at")]
+            return max(mtimes) if mtimes else 0.0
+
+        result.sort(key=_thread_max_mtime, reverse=True)
         return result
 
     @staticmethod
