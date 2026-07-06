@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
   CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
+  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -32,6 +32,7 @@ import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./Fil
 import FolderPickerDialog from "./FolderPickerDialog";
 import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
+// ShareDialog retained for potential future use; share UI entry points removed below.
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
@@ -123,13 +124,16 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const debouncedSearch = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewDocState, setPreviewDocState] = useState<AIDocument | null>(null);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [shareDoc, setShareDoc] = useState<AIDocument | null>(null);
+  // 分享功能已下线（保留 ShareDialog 组件以备后续）
+  const showShareDialog = false;
+  const shareDoc: AIDocument | null = null;
+  const setShowShareDialog = (_: boolean) => {};
+  const setShareDoc = (_: AIDocument | null) => {};
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [personalOpen, setPersonalOpen] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
+  const [filterMode, setFilterMode] = useState<"all" | "starred">("all");
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
@@ -173,11 +177,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     debouncedSearch.current = setTimeout(() => setFilter((f) => ({ ...f, q: v || undefined })), 400);
   };
 
-  const handleFilterToggle = (mode: "all" | "starred" | "shared") => {
+  const handleFilterToggle = (mode: "all" | "starred") => {
     setFilterMode(mode);
-    if (mode === "starred") setFilter((f) => ({ ...f, starred: true, shared: undefined }));
-    else if (mode === "shared") setFilter((f) => ({ ...f, shared: true, starred: undefined }));
-    else setFilter((f) => ({ ...f, starred: undefined, shared: undefined }));
+    if (mode === "starred") setFilter((f) => ({ ...f, starred: true }));
+    else setFilter((f) => ({ ...f, starred: undefined }));
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -254,11 +257,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const selectedThread = personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) || null;
   const displayDocs = selectedThread
     ? selectedThread.files
-        .filter((f: any) =>
-          filterMode === "all" ? true
-          : filterMode === "starred" ? f.starred
-          : f.shared,
-        )
+        .filter((f: any) => (filterMode === "all" ? true : f.starred))
         .map((f: any) => adaptPersonalFile(f, selectedThread))
     : docs;
   const displayTotal = selectedThread ? selectedThread.files.length : total;
@@ -435,7 +434,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               </Button>
             )}
             <div className="flex items-center gap-0.5 bg-muted/60 rounded-md p-0.5">
-              {(["all", "starred", "shared"] as const).map((mode) => (
+              {(["all", "starred"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => handleFilterToggle(mode)}
@@ -444,7 +443,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                     filterMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {mode === "all" ? "全部" : mode === "starred" ? "收藏" : "分享"}
+                  {mode === "all" ? "全部" : "收藏"}
                 </button>
               ))}
             </div>
@@ -562,7 +561,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                       onSelect={() => onSelectDoc(doc)}
                       onToggleStar={() => selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false)}
                       onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
-                      onShare={() => { setShareDoc(doc); setShowShareDialog(true); }}
+                      onShare={() => {}}
                       selected={selectedIds.has(doc.id)}
                       onToggleSelect={() => handleToggleSelect(doc.id)} />
                 ))}
@@ -686,10 +685,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               <button type="button" onClick={() => { handleCloseMenu(); onSelectDoc(doc); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
                 <PenLine className="w-3 h-3" /> 打开编辑
-              </button>
-              <button type="button" onClick={() => { handleCloseMenu(); setShareDoc(doc); setShowShareDialog(true); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
-                <Share2 className="w-3 h-3" /> 分享
               </button>
               <div className="h-px bg-border my-1 mx-2" />
               <button type="button" onClick={async () => { handleCloseMenu(); if (confirm(`确认删除该${isFileRef ? "文件" : "文档"}？`)) await deleteDoc(doc.id); }}
