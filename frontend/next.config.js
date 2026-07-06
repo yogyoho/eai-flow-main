@@ -3,10 +3,6 @@
  * for Docker builds.
  */
 import "./src/env.js";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function getInternalServiceURL(envKey, fallbackURL) {
   const configured = process.env[envKey]?.trim();
@@ -20,7 +16,7 @@ const withNextra = nextra({});
 
 /** @type {import("next").NextConfig} */
 const config = {
-  transpilePackages: ["lowlight", "highlight.js"],
+  transpilePackages: [],
   output:
     process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
       ? "standalone"

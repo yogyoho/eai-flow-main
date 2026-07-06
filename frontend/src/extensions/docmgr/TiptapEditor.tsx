@@ -1,6 +1,5 @@
 "use client";
 
-import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -24,27 +23,8 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Markdown } from "tiptap-markdown";
-import { createLowlight } from "lowlight";
-import bash from "highlight.js/lib/languages/bash";
-import css from "highlight.js/lib/languages/css";
-import go from "highlight.js/lib/languages/go";
-import java from "highlight.js/lib/languages/java";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import markdown from "highlight.js/lib/languages/markdown";
-import python from "highlight.js/lib/languages/python";
-import rust from "highlight.js/lib/languages/rust";
-import sql from "highlight.js/lib/languages/sql";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
 
 import { cn } from "@/lib/utils";
-
-// 语法高亮：注册常见语言（lowlight v3 限制 exports，逐语言从 highlight.js 注册）
-const lowlight = createLowlight({
-  bash, css, go, java, javascript, json, markdown, python, rust, sql, typescript, xml, yaml,
-});
 
 import EditorDragHandle from "./components/EditorDragHandle";
 import SlashMenu from "./components/SlashMenu";
@@ -262,8 +242,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 
     const editor = useEditor({
       extensions: [
-        StarterKit.configure({ codeBlock: false }),
-        CodeBlockLowlight.configure({ lowlight }),
+        StarterKit,
         Underline,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Highlight.configure({ multicolor: false }),
