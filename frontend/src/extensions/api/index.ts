@@ -579,6 +579,16 @@ export const docmgrApi = {
       body: JSON.stringify(data),
     });
   },
+
+  // Personal outputs — direct filesystem view of 我的文档
+  listPersonalOutputs: () =>
+    request<{ threads: Array<{ thread_id: string; display_name: string; files: Array<{ name: string; rel_path: string; size: number; mime: string; modified_at: string; starred: boolean; shared: boolean }> }> }>("/docmgr/personal-outputs"),
+
+  togglePersonalStar: (threadId: string, data: { rel_path: string; starred: boolean }) =>
+    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/star`, { method: "PUT", body: JSON.stringify(data) }),
+
+  togglePersonalShare: (threadId: string, data: { rel_path: string; shared: boolean }) =>
+    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/share`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 // ===== Folder API =====

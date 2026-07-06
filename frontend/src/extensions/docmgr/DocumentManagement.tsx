@@ -34,7 +34,7 @@ import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
 import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
 import { useDocuments } from "./useDocuments";
-import { useFolderTree } from "./useFolderTree";
+import { usePersonalOutputs } from "./usePersonalOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
@@ -94,9 +94,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
   const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
-  // 文件夹树不限定 doc_type：否则删掉 file_ref 后只剩 document 的文件夹
-  // （如 AI 报告）会从树里消失，用户进不去（bug-412 关联）。
-  const personalFolderTree = useFolderTree("personal");
+  // Personal outputs — direct filesystem view (replaces old personal folder tree)
+  const personalOutputs = usePersonalOutputs();
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
@@ -223,19 +222,59 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
             {personalOpen && (
-              <ProjectFolderTree
-                folders={personalFolderTree.folders.flatMap(f => f.children || [])}
-                expandedKeys={personalFolderTree.expandedKeys}
-                onToggleExpand={personalFolderTree.toggleExpand}
-                onSelectFolder={(folderId, folderName) => {
-                  setActiveFolderId(folderId);
-                  handleNavClick("folder", folderName, folderId);
-                }}
-                onCreateFolder={async (name, parentId) => { await personalFolderTree.createFolder(name, parentId); }}
-                onRenameFolder={personalFolderTree.renameFolder}
-                onDeleteFolder={personalFolderTree.deleteFolder}
-                activeFolderId={activeFolderId}
-              />
+              <div className="ml-2 space-y-0.5">
+                {personalOutputs.threads.length === 0 && !personalOutputs.loading && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">暂无输出文件</p>
+                )}
+                {personalOutputs.loading && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">加载中...</p>
+                )}
+                {personalOutputs.threads.map((thread) => {
+                  const isExpanded = personalOutputs.expandedKeys.has(thread.thread_id);
+                  return (
+                    <div key={thread.thread_id}>
+                      <button
+                        onClick={() => personalOutputs.toggleExpand(thread.thread_id)}
+                        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FolderOpen className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{thread.display_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] text-muted-foreground/60">{thread.files.length} 个文件</span>
+                          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="ml-5 space-y-0.5">
+                          {thread.files.map((file) => (
+                            <div
+                              key={file.rel_path}
+                              className="flex items-center justify-between px-3 py-1 text-xs text-muted-foreground hover:bg-muted/50 rounded transition-colors"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <FileText className="w-3 h-3 shrink-0 opacity-60" />
+                                <span className="truncate">{file.name}</span>
+                                <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                                  {file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`}
+                                </span>
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); personalOutputs.toggleStar(thread.thread_id, file.rel_path, file.starred); }}
+                                className="shrink-0 p-0.5 hover:text-amber-400 transition-colors"
+                                title={file.starred ? "取消收藏" : "收藏"}
+                              >
+                                <Star className={cn("w-3 h-3", file.starred && "text-amber-400")} fill={file.starred ? "currentColor" : "none"} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
           {canUseProject && ( // 项目文件夹 - 树形结构
