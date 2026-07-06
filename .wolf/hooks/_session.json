@@ -176,6 +176,31 @@
       "count": 1,
       "tokens": 6842,
       "first_read": "2026-07-06T13:11:54.225Z"
+    },
+    "C:/Users/admin/.claude/plans/robust-sauteeing-kitten.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-06T14:09:40.163Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/gateway/routers/wechat_bot.py": {
+      "count": 1,
+      "tokens": 1270,
+      "first_read": "2026-07-06T14:10:12.378Z"
+    },
+    "D:/eai/eai-flow-main/backend/app/channels/wechat.py": {
+      "count": 4,
+      "tokens": 16113,
+      "first_read": "2026-07-06T14:10:12.449Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/core/channels/api.ts": {
+      "count": 1,
+      "tokens": 1310,
+      "first_read": "2026-07-06T14:10:12.507Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/core/channels/hooks.ts": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-07-06T14:10:12.808Z"
     }
   },
   "files_written": [
@@ -445,9 +470,9 @@
     "frontend/src/app/admin/app-center/AppManagement.tsx": 9,
     "frontend/src/components/workspace/settings/wechat-settings-page.tsx": 1
   },
-  "anatomy_hits": 24,
-  "anatomy_misses": 11,
-  "repeated_reads_warned": 92,
+  "anatomy_hits": 28,
+  "anatomy_misses": 12,
+  "repeated_reads_warned": 95,
   "cerebrum_warnings": 0,
-  "stop_count": 15
+  "stop_count": 16
 }

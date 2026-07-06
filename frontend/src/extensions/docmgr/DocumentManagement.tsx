@@ -8,7 +8,7 @@ import {
   Trash2, Wand2, X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -264,6 +264,18 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const displayTotal = selectedThread ? selectedThread.files.length : total;
   const displayLoading = !selectedThread && loading;
 
+  // 全局搜索：跨所有线程搜文件名 / 线程名
+  const isSearching = search.trim().length > 0;
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [] as Array<{ file: any; thread_id: string; thread_name: string }>;
+    const q = search.trim().toLowerCase();
+    return personalOutputs.threads.flatMap(t =>
+      t.files
+        .filter(f => f.name.toLowerCase().includes(q) || t.display_name.toLowerCase().includes(q))
+        .map(f => ({ file: f, thread_id: t.thread_id, thread_name: t.display_name })),
+    );
+  }, [isSearching, search, personalOutputs.threads]);
+
   const handlePersonalStar = (docId: string) => {
     if (!selectedThread) return;
     const file = selectedThread.files.find((f: any) => `${selectedThread.thread_id}/${f.rel_path}` === docId);
@@ -472,7 +484,65 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           "flex-1 p-6 bg-muted/30",
           displayDocs.length === 0 ? "flex flex-col items-center justify-center" : "overflow-y-auto"
         )}>
-          {displayLoading ? (
+          {isSearching ? (
+            <div className="overflow-y-auto h-full">
+              <div className="max-w-5xl mx-auto">
+                <div className="mb-5">
+                  <h2 className="text-lg font-semibold text-foreground">搜索结果</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    关键词 “<span className="text-foreground font-medium">{search.trim()}</span>” — 找到
+                    <span className="text-primary font-medium mx-1">{searchResults.length}</span>个文件
+                  </p>
+                </div>
+                {searchResults.length === 0 ? (
+                  <div className="flex flex-col items-center text-center py-20 text-muted-foreground">
+                    <Search className="w-12 h-12 mb-3 opacity-25" />
+                    <p className="text-sm">未找到匹配的文件</p>
+                    <p className="text-xs mt-1 opacity-70">试试其他关键词，或检查文件名</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {searchResults.map(({ file, thread_id, thread_name }) => {
+                      const doc = adaptPersonalFile(file, { thread_id, display_name: thread_name });
+                      return (
+                        <div
+                          key={`${thread_id}/${file.rel_path}`}
+                          onClick={() => onSelectDoc(doc)}
+                          className="group bg-background border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-amber-50 shrink-0">
+                              <FileText className="w-4 h-4 text-amber-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                                {file.name}
+                              </div>
+                              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                <WindowsFolder className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{thread_name}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground/60 mt-2">
+                                {file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`}
+                                {file.starred && <span className="ml-2 text-amber-500">★ 已收藏</span>}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); personalOutputs.toggleStar(thread_id, file.rel_path, file.starred); }}
+                              className={cn("p-1 rounded transition-colors shrink-0", file.starred ? "text-amber-400" : "text-muted-foreground/40 hover:text-amber-400")}
+                              title={file.starred ? "取消收藏" : "收藏"}
+                            >
+                              <Star className="w-3.5 h-3.5" fill={file.starred ? "currentColor" : "none"} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : displayLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">加载中...</div>
           ) : displayDocs.length === 0 ? (
             <div className="flex flex-col items-center text-center max-w-xs">
