@@ -676,3 +676,13 @@ async def toggle_personal_share(
     )
     await db.commit()
     return {"ok": True}
+
+
+@router.get("/personal-docs/starred")
+async def list_starred_personal(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Return all starred personal doc (thread_id, rel_path) pairs."""
+    items = await AIDocumentService.list_starred_personal(db, current_user.id)
+    return {"items": items}
