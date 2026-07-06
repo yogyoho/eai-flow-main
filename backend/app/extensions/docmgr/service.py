@@ -383,7 +383,17 @@ class AIDocumentService:
 
         # Scan outputs/ per thread
         result: list[dict] = []
-        for thread_dir in sorted(threads_dir.iterdir(), reverse=True):
+        # 按生成时间降序：outputs 目录 mtime（最近写文件的线程排最上）
+        def _thread_mtime(p: Path) -> float:
+            try:
+                return (p / "user-data" / "outputs").stat().st_mtime
+            except OSError:
+                try:
+                    return p.stat().st_mtime
+                except OSError:
+                    return 0.0
+
+        for thread_dir in sorted(threads_dir.iterdir(), key=_thread_mtime, reverse=True):
             if not thread_dir.is_dir():
                 continue
             outputs_dir = thread_dir / "user-data" / "outputs"
