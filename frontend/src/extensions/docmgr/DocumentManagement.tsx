@@ -379,7 +379,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           <div>
             <button
               onClick={() => { setPersonalOpen((v) => !v); setSelectedThreadId(null); }}
-              className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+              className={cn(
+                "flex w-full items-center justify-between px-3 py-1.5 text-sm rounded-lg transition-colors",
+                selectedThreadId === null
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
             >
               <div className="flex items-center gap-2">
                 {personalOpen
@@ -403,7 +408,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                     <div key={thread.thread_id}>
                       <button
                         onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); setActiveFolderId(null); }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                        className={cn(
+                          "flex w-full items-center justify-between px-3 py-1.5 text-xs rounded-lg transition-colors",
+                          selectedThreadId === thread.thread_id
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           {isExpanded
