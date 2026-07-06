@@ -74,7 +74,7 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
         setDraft((prev) => ({ ...prev, businessDomain: d[0].key }));
       }
       if (!draft.licenseModule && m.length > 0) {
-        setDraft((prev) => ({ ...prev, licenseModule: m[0] }));
+        setDraft((prev) => ({ ...prev, licenseModule: m[0] ?? "" }));
       }
     } finally {
       setIsLoading(false);

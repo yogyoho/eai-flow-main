@@ -143,8 +143,8 @@
       "first_read": "2026-07-06T08:50:54.916Z"
     },
     "D:/eai/eai-flow-main/frontend/src/app/admin/app-center/AppManagement.tsx": {
-      "count": 3,
-      "tokens": 3740,
+      "count": 4,
+      "tokens": 3944,
       "first_read": "2026-07-06T12:58:32.896Z"
     },
     "D:/eai/eai-flow-main/backend/app/extensions/license/schemas.py": {
@@ -412,6 +412,12 @@
       "action": "edit",
       "tokens": 115,
       "at": "2026-07-06T13:12:44.445Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/app/admin/app-center/AppManagement.tsx",
+      "action": "edit",
+      "tokens": 37,
+      "at": "2026-07-06T13:17:43.620Z"
     }
   ],
   "edit_counts": {
@@ -436,12 +442,12 @@
     "backend/app/extensions/license/routers.py": 2,
     "frontend/src/core/i18n/locales/en-US.ts": 1,
     "backend/tests/test_license_modules_sync.py": 1,
-    "frontend/src/app/admin/app-center/AppManagement.tsx": 8,
+    "frontend/src/app/admin/app-center/AppManagement.tsx": 9,
     "frontend/src/components/workspace/settings/wechat-settings-page.tsx": 1
   },
   "anatomy_hits": 24,
   "anatomy_misses": 11,
-  "repeated_reads_warned": 91,
+  "repeated_reads_warned": 92,
   "cerebrum_warnings": 0,
-  "stop_count": 14
+  "stop_count": 15
 }

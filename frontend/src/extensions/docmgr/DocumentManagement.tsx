@@ -51,6 +51,21 @@ function WindowsFolder({ className }: { className?: string }) {
   );
 }
 
+/** Windows 风格「打开的」黄色文件夹（展开态） */
+function WindowsFolderOpen({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* 后片 */}
+      <path d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z" fill="#E6A106" />
+      {/* 内部（露出浅黄） */}
+      <path d="M3 10.5h18l-1.2 7.2c-.15.9-.93 1.55-1.84 1.55H4.04c-.91 0-1.69-.65-1.84-1.55L3 10.5z" fill="#FFE082" />
+      {/* 打开的前盖（翻开向右） */}
+      <path d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.97 0 1.62.99 1.27 1.9l-.7 1.56H3z" fill="#FFC83D" />
+      <path d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.2 0 .38.04.54.11L7.5 10.5H3z" fill="#FFD86B" />
+    </svg>
+  );
+}
+
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
@@ -289,7 +304,9 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
-                <WindowsFolder className="w-4 h-4" />
+                {personalOpen
+                  ? <WindowsFolderOpen className="w-4 h-4" />
+                  : <WindowsFolder className="w-4 h-4" />}
                 <span>我的文档</span>
               </div>
               {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -311,7 +328,9 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                         className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <WindowsFolder className="w-3.5 h-3.5 shrink-0" />
+                          {isExpanded
+                            ? <WindowsFolderOpen className="w-3.5 h-3.5 shrink-0" />
+                            : <WindowsFolder className="w-3.5 h-3.5 shrink-0" />}
                           <span className="truncate">{thread.display_name}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">

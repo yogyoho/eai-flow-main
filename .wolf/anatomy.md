@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T13:12:44.412Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T13:17:43.598Z
 > Files: 1414 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1522,7 +1522,7 @@
 
 ## frontend/src/app/admin/app-center/
 
-- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3944 tok)
+- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3946 tok)
 - `controls.tsx` — 强调色时显示的色块（可选） (~452 tok)
 - `DomainManagement.tsx` — accent → 实心色块背景类（用于下拉项的色点） (~2761 tok)
 - `page.tsx` — AdminAppCenterPage (~275 tok)

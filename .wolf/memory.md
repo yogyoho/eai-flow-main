@@ -7426,3 +7426,5 @@
 | 21:12 | Edited frontend/src/app/admin/app-center/AppManagement.tsx | 3→8 lines | ~88 |
 | 21:12 | Edited frontend/src/app/admin/app-center/AppManagement.tsx | 8→9 lines | ~115 |
 | 21:13 | Session end: 39 writes across 21 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 35 reads | ~69737 tok |
+| 21:17 | Edited frontend/src/app/admin/app-center/AppManagement.tsx | added nullish coalescing | ~37 |
+| 21:18 | Session end: 40 writes across 21 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 35 reads | ~69978 tok |
