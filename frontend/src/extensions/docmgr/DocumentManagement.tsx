@@ -52,6 +52,42 @@ function WindowsFolder({ className }: { className?: string }) {
   );
 }
 
+/** 判断是否二进制文件（点击应直接下载而非进编辑器） */
+function isBinaryFile(mime: string | undefined | null, name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const textExts = new Set([
+    "txt","md","markdown","py","js","mjs","cjs","ts","tsx","jsx","vue","svelte",
+    "java","c","cpp","cc","h","hpp","go","rs","rb","php","swift","kt","scala",
+    "sh","bash","zsh","fish","sql","html","htm","css","scss","sass","less",
+    "json","yaml","yml","xml","svg","toml","ini","conf","cfg","csv","tsv","log","env",
+  ]);
+  if (mime) {
+    if (mime.startsWith("text/")) return false;
+    if (["application/json", "application/javascript", "application/xml",
+         "application/x-yaml", "application/x-sh", "application/x-python",
+         "image/svg+xml"].includes(mime)) return false;
+  }
+  if (!mime || mime === "application/octet-stream") {
+    return !textExts.has(ext);
+  }
+  return true; // image/* · application/pdf · office · zip · ...
+}
+
+/** 代码文件扩展名 → 代码块语言（用于编辑器里 ```lang 包裹） */
+function getLanguageFromName(name: string): string | null {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const map: Record<string, string> = {
+    py: "python", js: "javascript", mjs: "javascript", cjs: "javascript",
+    ts: "typescript", tsx: "tsx", jsx: "jsx", vue: "vue", svelte: "svelte",
+    java: "java", c: "c", cpp: "cpp", cc: "cpp", h: "c", hpp: "cpp",
+    go: "go", rs: "rust", rb: "ruby", php: "php", swift: "swift", kt: "kotlin",
+    sh: "bash", bash: "bash", zsh: "bash", sql: "sql",
+    html: "html", htm: "html", css: "css", scss: "scss",
+    json: "json", yaml: "yaml", yml: "yaml", xml: "xml", toml: "toml",
+  };
+  return map[ext] || null;
+}
+
 /** Windows 风格「打开的」黄色文件夹（展开态） */
 function WindowsFolderOpen({ className }: { className?: string }) {
   return (
@@ -74,6 +110,11 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
   const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
   const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const handleSelectDoc = (doc: AIDocument) => {
+    // 二进制文件（PDF / Word / Excel / 图片 / 压缩包等）→ 直接下载，不进编辑器
+    if (doc.source_thread_id && doc.file_ref_path && isBinaryFile(doc.file_mime, doc.title)) {
+      downloadPersonalFile(doc.source_thread_id, doc.file_ref_path, doc.title);
+      return;
+    }
     // 个人文档（直接映射）：用 thread_id + rel_path 读 artifacts，不走 AIDocument id
     if (doc.source_thread_id && doc.file_ref_path && doc.id.includes("/")) {
       setActivePersonalFile({ thread_id: doc.source_thread_id, rel_path: doc.file_ref_path, title: doc.title });
@@ -85,6 +126,23 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     setView("editor");
   };
   const handleBack = () => { setActiveDocId(null); setActivePersonalFile(null); setView("list"); };
+  // 二进制文件直接下载（拉取 artifacts blob → 触发浏览器下载）
+  const downloadPersonalFile = async (threadId: string, relPath: string, filename: string) => {
+    try {
+      const res = await fetch(`/api/threads/${threadId}/artifacts/mnt/user-data/outputs/${encodeURIComponent(relPath)}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("download failed", e);
+    }
+  };
   return (
     <div className="h-full flex overflow-hidden bg-background relative">
       {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
@@ -1122,7 +1180,10 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
       fetch(`/api/threads/${personalFile.thread_id}/artifacts/${artifactPath}`)
         .then((r) => r.text())
         .then((content) => {
-          setDoc({ id: "personal", title: personalFile.title, content, doc_type: "file_ref" } as AIDocument);
+          // 代码文件用代码块包裹（在 markdown 编辑器里有语法高亮 + 等宽显示）
+          const lang = getLanguageFromName(personalFile.title);
+          const displayContent = lang ? "```" + lang + "\n" + content + "\n```" : content;
+          setDoc({ id: "personal", title: personalFile.title, content: displayContent, doc_type: "file_ref" } as AIDocument);
           setTitle(personalFile.title);
           setLoading(false);
         })
@@ -1153,7 +1214,13 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
       setSaving(true);
       try {
         if (personalFile) {
-          await docmgrApi.savePersonalContent(personalFile.thread_id, { rel_path: personalFile.rel_path, content });
+          // 代码文件在编辑器里被 ```lang 包裹，保存时去掉 fence 写回原始内容
+          let saveContent = content;
+          if (getLanguageFromName(personalFile.title)) {
+            const m = content.match(/^```[^\n]*\n([\s\S]*)\n```\s*$/);
+            if (m) saveContent = m[1];
+          }
+          await docmgrApi.savePersonalContent(personalFile.thread_id, { rel_path: personalFile.rel_path, content: saveContent });
         } else if (docId) {
           await docmgrApi.update(docId, { title: titleRef.current, content });
         }
