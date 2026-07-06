@@ -88,8 +88,8 @@
       "first_read": "2026-07-06T08:14:00.487Z"
     },
     "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md": {
-      "count": 2,
-      "tokens": 1947,
+      "count": 3,
+      "tokens": 2004,
       "first_read": "2026-07-06T08:14:18.560Z"
     },
     "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/references/fire_spec_mapping.json": {
@@ -257,6 +257,12 @@
       "action": "edit",
       "tokens": 523,
       "at": "2026-07-06T08:52:04.225Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md",
+      "action": "edit",
+      "tokens": 193,
+      "at": "2026-07-06T09:24:29.595Z"
     }
   ],
   "edit_counts": {
@@ -270,11 +276,12 @@
     ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/models/__init__.py": 1,
     ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/schemas.py": 1,
     ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py": 2,
-    ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py": 2
+    ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py": 2,
+    "skills/custom/fire-protection-extract/SKILL.md": 1
   },
   "anatomy_hits": 17,
   "anatomy_misses": 11,
-  "repeated_reads_warned": 88,
+  "repeated_reads_warned": 89,
   "cerebrum_warnings": 0,
-  "stop_count": 10
+  "stop_count": 11
 }

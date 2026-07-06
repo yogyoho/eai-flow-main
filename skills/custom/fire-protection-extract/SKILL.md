@@ -1,17 +1,24 @@
 ---
 name: fire-protection-extract
 description: |
-  ⛔ 用户已上传设计说明书(.docx)并请求编写消防设计专篇 → 用本技能（不用 fire-protection-report-v2）。
+  用户已上传设计说明书（.docx/.pdf，文件名可能为「总说明书」「设计说明书」等）并请求编写消防设计专篇 → 用本技能（不用 fire-protection-report-v2）。
   报告由流水线脚本自动生成（bash run.sh），你不是报告作者。
-  无说明书时改用 fire-protection-report-v2。
+  未上传附件时改用 fire-protection-report-v2。
   **如果 bash 工具不可用（工具列表里没有 bash），直接回退到 fire-protection-report-v2——不要手动读取设计说明书来拼凑报告。**
 ---
 
-# ⛔ 本技能的适用条件（路由确认）
+# 适用条件（路由确认）
 
-**当以下条件全部满足时，你正在使用正确的技能：**
-1. 用户已上传设计说明书（.docx）
+**以下条件全部满足 → 使用本技能：**
+1. 用户已上传附件（.docx 或 .pdf）
 2. 用户请求编写消防设计专篇
+
+**附件类型识别：**
+- 文件名含「设计说明书」「总说明书」「说明书」→ 直接确认
+- 文件名不含上述关键字 → 先读附件第一页内容，检查是否包含「设计说明书」「总说明书」「说明书」任一关键字
+- 确认为设计说明书 → 继续；不匹配 → 回退到 fire-protection-report-v2
+
+**未上传附件 → 直接用 fire-protection-report-v2，不要切到本技能。**
 
 **如果你看到的是 fire-protection-report-v2 的内容——你选错了。立即切换到 fire-protection-extract。**
 

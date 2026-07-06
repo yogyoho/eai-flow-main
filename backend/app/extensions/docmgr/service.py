@@ -412,12 +412,18 @@ class AIDocumentService:
                     "shared": shared,
                 })
 
+            # 空目录不显示（多轮对话后有文件自然出现）
+            if not files:
+                continue
+
             # Fallback display name
             if not display_name:
                 for f in files:
                     if f["name"].endswith(".md"):
                         display_name = f["name"].removesuffix(".md")
                         break
+            if not display_name and files:
+                display_name = Path(files[0]["name"]).stem
             if not display_name:
                 display_name = tid[:8]
 

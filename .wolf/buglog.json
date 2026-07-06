@@ -583,6 +583,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-06T08:51:49.086Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-07-06T09:24:29.602Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/custom/fire-protection-extract/SKILL.md",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 18→25 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-06T09:24:29.602Z"
     }
   ]
 }

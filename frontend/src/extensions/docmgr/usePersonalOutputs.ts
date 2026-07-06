@@ -37,14 +37,32 @@ export function usePersonalOutputs() {
   }, []);
 
   const toggleStar = useCallback(async (threadId: string, relPath: string, current: boolean) => {
-    await docmgrApi.togglePersonalStar(threadId, { rel_path: relPath, starred: !current });
-    await fetchOutputs();
-  }, [fetchOutputs]);
+    // 乐观更新：即时切换 UI 状态
+    setThreads(prev => prev.map(t => t.thread_id === threadId ? {
+      ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: !current } : f),
+    } : t));
+    try {
+      await docmgrApi.togglePersonalStar(threadId, { rel_path: relPath, starred: !current });
+    } catch {
+      // 失败回滚
+      setThreads(prev => prev.map(t => t.thread_id === threadId ? {
+        ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: current } : f),
+      } : t));
+    }
+  }, []);
 
   const toggleShare = useCallback(async (threadId: string, relPath: string, current: boolean) => {
-    await docmgrApi.togglePersonalShare(threadId, { rel_path: relPath, shared: !current });
-    await fetchOutputs();
-  }, [fetchOutputs]);
+    setThreads(prev => prev.map(t => t.thread_id === threadId ? {
+      ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, shared: !current } : f),
+    } : t));
+    try {
+      await docmgrApi.togglePersonalShare(threadId, { rel_path: relPath, shared: !current });
+    } catch {
+      setThreads(prev => prev.map(t => t.thread_id === threadId ? {
+        ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, shared: current } : f),
+      } : t));
+    }
+  }, []);
 
   return { threads, loading, expandedKeys, toggleExpand, toggleStar, toggleShare, refresh: fetchOutputs };
 }

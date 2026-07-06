@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T08:52:04.207Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T09:24:29.547Z
 > Files: 1411 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -2245,7 +2245,7 @@
 
 ## skills/custom/fire-protection-extract/
 
-- `SKILL.md` — ⛔ 本技能的适用条件（路由确认） (~1947 tok)
+- `SKILL.md` — 适用条件（路由确认） (~2004 tok)
 
 ## skills/custom/fire-protection-extract/references/
 
