@@ -88,7 +88,7 @@
       "first_read": "2026-07-06T08:14:00.487Z"
     },
     "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md": {
-      "count": 1,
+      "count": 2,
       "tokens": 1947,
       "first_read": "2026-07-06T08:14:18.560Z"
     },
@@ -274,7 +274,7 @@
   },
   "anatomy_hits": 17,
   "anatomy_misses": 11,
-  "repeated_reads_warned": 87,
+  "repeated_reads_warned": 88,
   "cerebrum_warnings": 0,
-  "stop_count": 9
+  "stop_count": 10
 }

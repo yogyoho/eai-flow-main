@@ -337,7 +337,16 @@ class AIDocumentService:
         from deerflow.config.paths import Paths
 
         paths = Paths()
-        threads_dir = paths.base_dir / "users" / str(user_id) / "threads"
+
+        # 双 auth：extensions user_id ≠ 核心 auth user_id（文件系统 owner）。
+        # 线程 outputs/ 存在核心 auth user 目录下，用 get_effective_user_id()
+        # 获取；fallback 到 extensions user_id。
+        from deerflow.runtime.user_context import get_effective_user_id
+
+        effective_uid = get_effective_user_id()
+        threads_dir = paths.base_dir / "users" / effective_uid / "threads"
+        if not threads_dir.is_dir():
+            threads_dir = paths.base_dir / "users" / str(user_id) / "threads"
         if not threads_dir.is_dir():
             return []
 
