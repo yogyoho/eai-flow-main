@@ -398,7 +398,8 @@ class AIDocumentService:
                     pass
             return 0.0
 
-        all_threads.sort(key=_sort_key, reverse=True)
+        # 次级 key thread_id 保证排序稳定（created_at 相同/为空时分页不重复/遗漏）
+        all_threads.sort(key=lambda t: (_sort_key(t), t["thread_id"]), reverse=True)
 
         total = len(all_threads)
         page = all_threads[skip:skip + limit]

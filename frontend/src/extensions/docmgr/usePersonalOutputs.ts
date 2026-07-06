@@ -40,9 +40,13 @@ export function usePersonalOutputs() {
     setLoadingMore(true);
     try {
       const data = await docmgrApi.listPersonalOutputs({ skip: skipRef.current, limit: PAGE_SIZE });
-      setThreads(prev => [...prev, ...data.threads]);
+      setThreads(prev => {
+        const existing = new Set(prev.map(t => t.thread_id));
+        const fresh = data.threads.filter(t => !existing.has(t.thread_id));
+        skipRef.current += fresh.length;
+        return [...prev, ...fresh];
+      });
       setHasMore(data.has_more);
-      skipRef.current += data.threads.length;
     } catch (err) {
       console.error("Failed to load more:", err);
     } finally { setLoadingMore(false); }
