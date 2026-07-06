@@ -13,9 +13,9 @@ def _tiny_mapping():
         "report_title": "T 消防设计专篇",
         "sections": [
             {"fire": "2.1 概况", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "占地面积23.8亩"}]},
+             "sources": [{"kind": "para", "paras": [7]}]},
             {"fire": "2.2 给水(冲突)", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "生活用水量10L/s（36m³/h）", "authoritative": True}]},
+             "sources": [{"kind": "para", "paras": [12], "authoritative": True}]},
             {"fire": "2.3 表", "class": "verbatim",
              "sources": [{"kind": "table", "no": "表2.1-1"}]},
             {"fire": "3 投资", "class": "compute", "note": "无源"},
@@ -42,9 +42,9 @@ def test_extract_conflict_uses_authoritative_not_wrong_source(tiny_spec):
 
 def test_missing_anchor_is_flagged_not_silent(tiny_spec):
     m = _tiny_mapping()
-    m["sections"][0]["sources"] = [{"kind": "para", "anchor": "这句根本不存在ZZZZ"}]
+    m["sections"][0]["sources"] = [{"kind": "para", "paras": [9999]}]
     body, _ = extract(_structure(tiny_spec), m)
-    assert "[⚠未找到锚" in body
+    assert "[⚠未找到段落" in body
 
 
 def test_build_report_has_title_and_headings(tiny_spec):

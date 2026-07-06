@@ -8,9 +8,9 @@ def _mapping():
         "report_title": "T",
         "sections": [
             {"fire": "1 概况", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "占地面积23.8亩"}]},
+             "sources": [{"kind": "para", "paras": [7]}]},
             {"fire": "2 消防水", "class": "verbatim",
-             "sources": [{"kind": "para", "anchor": "生活用水量10L/s（36m³/h）"}]},
+             "sources": [{"kind": "para", "paras": [12]}]},
             {"fire": "3 表", "class": "verbatim",
              "sources": [{"kind": "table", "no": "表2.1-1"}]},
         ],
@@ -31,7 +31,7 @@ def test_all_blocks_grounded(tiny_spec):
 def test_missing_anchor_reported(tiny_spec):
     s = parse_spec(tiny_spec)
     m = _mapping()
-    m["sections"][0]["sources"][0]["anchor"] = "不存在ZZZ"
+    m["sections"][0]["sources"][0]["paras"] = [9999]
     res = check(build_report(s, m), s, m)
     assert len(res["missing_anchors"]) == 1
     assert res["missing_anchors"][0][0] == "1 概况"

@@ -10,6 +10,12 @@ from mcp.types import TextContent
 logger = logging.getLogger(__name__)
 
 
+def _json_response(data: dict) -> list[TextContent]:
+    """Wrap JSON data in a markdown code block for LLM-friendly consumption."""
+    json_text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
+    return [TextContent(type="text", text=f"```json\n{json_text}\n```")]
+
+
 async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextContent]:
     """List available extraction domains, optionally filtered by industry.
 
@@ -41,4 +47,4 @@ async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextConten
         return {"domains": items, "total": len(items)}
 
     result = await _run_in_db(_query)
-    return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+    return _json_response(result)

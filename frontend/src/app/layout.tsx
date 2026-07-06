@@ -8,6 +8,7 @@ import { I18nProvider } from "@/core/i18n/context";
 import { detectLocaleServer } from "@/core/i18n/server";
 import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { LicenseShell } from "@/extensions/license/LicenseShell";
+import { ChunkErrorHandler } from "@/components/chunk-error-handler";
 
 export const metadata: Metadata = {
   title: "EAIFlow",
@@ -21,6 +22,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressContentEditableWarning suppressHydrationWarning>
       <body>
+        <ChunkErrorHandler />
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
           <I18nProvider initialLocale={locale}>
             <AuthProvider>

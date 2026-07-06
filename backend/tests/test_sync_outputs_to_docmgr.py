@@ -81,8 +81,8 @@ class TestPresentFileToolSyncTrigger:
     """Test that present_file_tool fires the sync callback."""
 
     @pytest.mark.asyncio
-    async def test_try_fire_sync_callback_schedules_task(self):
-        """_try_fire_sync_callback schedules an async task without raising."""
+    async def test_try_fire_sync_callback_invokes_callback(self):
+        """_try_fire_sync_callback awaits the registered callback."""
         from deerflow.tools.builtins.present_file_tool import _try_fire_sync_callback
 
         received = []
@@ -100,16 +100,14 @@ class TestPresentFileToolSyncTrigger:
             patch("deerflow.tools.builtins.present_file_tool.get_effective_user_id", return_value="user-abc"),
             patch("deerflow.tools.builtins.present_file_tool._get_thread_id", return_value="test-thread-123"),
         ):
-            _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
-            # Let the background task execute
-            await asyncio.sleep(0.1)
+            await _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
 
         assert len(received) == 1
-        assert received[0][0] == "user-abc"
-        assert received[0][1] == "test-thread-123"
+        assert received[0] == ("user-abc", "test-thread-123", ["/mnt/user-data/outputs/report.md"])
 
-    def test_try_fire_sync_callback_no_thread_id_is_noop(self):
-        """If thread_id is None, callback is not scheduled."""
+    @pytest.mark.asyncio
+    async def test_try_fire_sync_callback_no_thread_id_is_noop(self):
+        """If thread_id is None, callback is not invoked."""
         from deerflow.tools.builtins.present_file_tool import _try_fire_sync_callback
 
         runtime = MagicMock()
@@ -117,8 +115,7 @@ class TestPresentFileToolSyncTrigger:
 
         with patch("deerflow.tools.builtins.present_file_tool.get_effective_user_id", return_value="user-abc"):
             with patch("deerflow.tools.builtins.present_file_tool._get_thread_id", return_value=None):
-                # Should not raise and should not schedule anything
-                _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
+                await _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
 
 
 # ─── sync_outputs_to_docmgr service tests ────────────────────────────────────

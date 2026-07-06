@@ -17,6 +17,13 @@ from mcp.types import TextContent
 
 logger = logging.getLogger(__name__)
 
+
+def _json_response(data: dict) -> list[TextContent]:
+    """Wrap JSON data in a markdown code block for LLM-friendly consumption."""
+    json_text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
+    return [TextContent(type="text", text=f"```json\n{json_text}\n```")]
+
+
 # Use a well-known system UUID so check logs are attributable.
 # In the MCP subprocess there is no authenticated HTTP caller.
 _SYSTEM_USER_ID = UUID("00000000-0000-0000-0000-000000000000")
@@ -72,7 +79,7 @@ async def handle_kf_check_compliance(
     industry: str | None = arguments.get("industry")
 
     if not chapter_content:
-        return [TextContent(type="text", text=json.dumps({"error": "chapter_content is required"}, ensure_ascii=False))]
+        return _json_response({"error": "chapter_content is required"})
 
     async def _check(session):
         # Lazy import inside the handler — MCP server is a separate process,
@@ -129,10 +136,10 @@ async def handle_kf_check_compliance(
         else:
             response["summary"] = f"All {result.total_rules} rules passed."
 
-        return [TextContent(type="text", text=json.dumps(response, ensure_ascii=False, indent=2))]
+        return _json_response(response)
 
     try:
         return await _run_in_db(_check)
     except Exception as exc:
         logger.exception("kf_check_compliance failed")
-        return [TextContent(type="text", text=json.dumps({"success": False, "error": f"Compliance check engine error: {exc}", "passed": 0, "failed": 0, "warnings": 0, "issues": []}, ensure_ascii=False, indent=2))]
+        return _json_response({"success": False, "error": f"Compliance check engine error: {exc}", "passed": 0, "failed": 0, "warnings": 0, "issues": []})

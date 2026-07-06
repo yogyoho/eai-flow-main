@@ -299,10 +299,10 @@ export function MessageList({
                   group.type === "assistant" && "group/assistant-turn",
                 )}
               >
-                {group.messages.map((msg) => {
+                {group.messages.map((msg, msgIndex) => {
                   return (
                     <MessageListItem
-                      key={`${group.id}/${msg.id}`}
+                      key={`${group.id}/${msg.id ?? `i${msgIndex}`}`}
                       message={msg}
                       isLoading={thread.isLoading}
                       threadId={threadId}
@@ -468,7 +468,7 @@ export function MessageList({
             );
           }
           return (
-            <div key={"group-" + group.id} className="w-full">
+            <div key={"group-" + groupIndex + "-" + (group.id ?? "unknown")} className="w-full">
               <MessageGroup
                 messages={group.messages}
                 isLoading={thread.isLoading}

@@ -180,6 +180,15 @@
     "fire-protection-extract": {
       "enabled": true
     },
+    "report-format": {
+      "enabled": true
+    },
+    "report-enrich": {
+      "enabled": false
+    },
+    "report-polish": {
+      "enabled": false
+    },
     "kf-extract-template": {
       "enabled": true
     },

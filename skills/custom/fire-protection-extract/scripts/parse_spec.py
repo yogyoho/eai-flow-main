@@ -13,7 +13,58 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 TABLE_CAPTION_RE = re.compile(r"^(续)?表\s*(\d[\d.\-]*[A-Za-z]?)\s*(.*)$")
+HEADING_NUM_RE = re.compile(r"^\d+(\.\d+)*\s+\S")  # "1 概述", "1.1 项目位置"
+HEADING_CN_RE = re.compile(r"^[（(][一二三四五六七八九十]+[）)]")  # "（一）概述"
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
+def _detect_heading_level_docx(para):
+    """Return heading level (1-3) or None.  Uses style first, then font heuristics."""
+    style_name = (para.style.name or "").lower()
+    for i in range(1, 4):
+        if f"heading {i}" in style_name or f"heading{i}" in style_name:
+            return i
+    if "heading" in style_name:
+        return 2
+    if "toc" in style_name:
+        return 1
+
+    if not para.runs:
+        return None
+    run = para.runs[0]
+    font_size = run.font.size
+    is_bold = run.bold
+    if font_size:
+        pt = font_size.pt
+        if pt >= 16:
+            return 1
+        if pt >= 14 and is_bold:
+            return 2
+        if pt >= 13 and is_bold:
+            return 3
+
+    # Numbering-pattern heuristic for short paragraphs (style-less headings)
+    text = para.text.strip()
+    if text and len(text) < 60:
+        if HEADING_NUM_RE.match(text) and is_bold:
+            return 2
+        if HEADING_CN_RE.match(text):
+            return 2
+    return None
+
+
+def _detect_heading_level_text(text):
+    """Text-only fallback: numbering patterns.  Less reliable — no font info.
+    Infers level from numbering depth: "1"→L1, "1.1"→L2, "1.1.1"→L3."""
+    if not text or len(text) >= 60:
+        return None
+    m = HEADING_NUM_RE.match(text)
+    if m:
+        dots = m.group().count(".")
+        return min(dots + 1, 3)  # 0 dots→L1, 1 dot→L2, 2+ dots→L3
+    if HEADING_CN_RE.match(text):
+        return 2
+    return None
 
 
 def _norm_no(raw):
@@ -51,14 +102,21 @@ def _parse_with_docx(docx_path):
     from docx.text.paragraph import Paragraph
 
     doc = Document(str(docx_path))
-    paras, tables = [], {}
+    paras, tables, headings = [], {}, []
     pending_no, pending_title, pending_cont = None, None, False
     for child in doc.element.body.iterchildren():
         if child.tag == qn("w:p"):
-            text = Paragraph(child, doc).text.strip()
+            para = Paragraph(child, doc)
+            text = para.text.strip()
             if not text:
                 continue
-            paras.append({"i": len(paras), "text": text})
+            idx = len(paras)
+            entry = {"i": idx, "text": text}
+            h_level = _detect_heading_level_docx(para)
+            if h_level:
+                entry["heading"] = h_level
+                headings.append({"level": h_level, "text": text, "para_i": idx})
+            paras.append(entry)
             cap = _parse_caption(text)
             if cap:
                 pending_no, pending_title, pending_cont = cap
@@ -67,7 +125,7 @@ def _parse_with_docx(docx_path):
             rows = [[c.text.strip() for c in row.cells] for row in tbl.rows]
             _register_table(tables, rows, pending_no, pending_title, pending_cont)
             pending_no, pending_title, pending_cont = None, None, False
-    return {"paras": paras, "tables": tables}
+    return {"paras": paras, "tables": tables, "headings": headings}
 
 
 # ── stdlib fallback (zipfile + xml) ───────────────────────────────
@@ -109,18 +167,24 @@ def _iter_body_children(docx_path):
 
 
 def _parse_with_stdlib(docx_path):
-    paras, tables = [], {}
+    paras, tables, headings = [], {}, []
     pending_no, pending_title, pending_cont = None, None, False
     for kind, payload in _iter_body_children(docx_path):
         if kind == "p":
-            paras.append({"i": len(paras), "text": payload})
+            idx = len(paras)
+            entry = {"i": idx, "text": payload}
+            h_level = _detect_heading_level_text(payload)
+            if h_level:
+                entry["heading"] = h_level
+                headings.append({"level": h_level, "text": payload, "para_i": idx})
+            paras.append(entry)
             cap = _parse_caption(payload)
             if cap:
                 pending_no, pending_title, pending_cont = cap
         elif kind == "tbl":
             _register_table(tables, payload, pending_no, pending_title, pending_cont)
             pending_no, pending_title, pending_cont = None, None, False
-    return {"paras": paras, "tables": tables}
+    return {"paras": paras, "tables": tables, "headings": headings}
 
 
 # ── public API ────────────────────────────────────────────────────

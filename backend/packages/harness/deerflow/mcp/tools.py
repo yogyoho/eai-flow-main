@@ -101,9 +101,9 @@ def _local_uri_to_virtual_path(
 
     try:
         real = src.resolve()
+        if not real.is_file():
+            return None
     except OSError:
-        return None
-    if not real.is_file():
         return None
 
     try:

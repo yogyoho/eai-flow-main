@@ -15,6 +15,12 @@ from mcp.types import TextContent
 logger = logging.getLogger(__name__)
 
 
+def _json_response(data: dict) -> list[TextContent]:
+    """Wrap JSON data in a markdown code block for LLM-friendly consumption."""
+    json_text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
+    return [TextContent(type="text", text=f"```json\n{json_text}\n```")]
+
+
 async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextContent]:
     """Intelligently match and return the best report template for a given domain/industry/report-type.
 
@@ -131,7 +137,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         return result_data
 
     result = await _run_in_db(_query)
-    return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2, default=str))]
+    return _json_response(result)
 
 
 async def handle_kf_get_template(arguments: dict, _run_in_db) -> list[TextContent]:
@@ -143,11 +149,8 @@ async def handle_kf_get_template(arguments: dict, _run_in_db) -> list[TextConten
     try:
         tid = UUID(template_id)
     except (ValueError, AttributeError):
-        return [TextContent(type="text", text=json.dumps(
-            {"found": False, "reason": "invalid_uuid",
-             "detail": f"Invalid template_id: {template_id}"},
-            ensure_ascii=False, indent=2
-        ))]
+        return _json_response({"found": False, "reason": "invalid_uuid",
+                               "detail": f"Invalid template_id: {template_id}"})
 
     async def _query(db):
         template = await TemplateService.get_template(db, tid)
@@ -157,7 +160,7 @@ async def handle_kf_get_template(arguments: dict, _run_in_db) -> list[TextConten
         return TemplateService.to_template_document(template).model_dump() | {"found": True}
 
     result = await _run_in_db(_query)
-    return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2, default=str))]
+    return _json_response(result)
 
 
 async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextContent]:
@@ -190,10 +193,7 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
     file_paths = arguments.get("file_paths", [])
 
     if not source_report_ids and not file_paths:
-        return [TextContent(type="text", text=json.dumps(
-            {"success": False, "error": "请提供 source_report_ids（知识库文档 UUID）或 file_paths（文件路径）"},
-            ensure_ascii=False, indent=2
-        ))]
+        return _json_response({"success": False, "error": "请提供 source_report_ids（知识库文档 UUID）或 file_paths（文件路径）"})
 
     domain = arguments.get("domain", "default")
     industry = arguments.get("industry") or None
@@ -224,10 +224,7 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
                 try:
                     uid = uuid.UUID(rid) if isinstance(rid, str) else rid
                 except (ValueError, AttributeError):
-                    return [TextContent(type="text", text=json.dumps(
-                        {"success": False, "error": f"无效的 UUID: {rid}"},
-                        ensure_ascii=False, indent=2
-                    ))]
+                    return _json_response({"success": False, "error": f"无效的 UUID: {rid}"})
                 result = await db.execute(
                     sa_select(Document, KnowledgeBase)
                     .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
@@ -235,10 +232,7 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
                 )
                 row = result.first()
                 if not row:
-                    return [TextContent(type="text", text=json.dumps(
-                        {"success": False, "error": f"文档 {rid} 不存在——请先在样例管理 tab 上传到知识库"},
-                        ensure_ascii=False, indent=2
-                    ))]
+                    return _json_response({"success": False, "error": f"文档 {rid} 不存在——请先在样例管理 tab 上传到知识库"})
                 doc, kb = row
                 report_docs.append({
                     "id": str(doc.id),
@@ -311,13 +305,10 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
             "cross_section_rules": result.cross_section_rules,
             "step_summaries": result.step_summaries,
         }
-        return [TextContent(type="text", text=json.dumps(output, ensure_ascii=False, indent=2, default=str))]
+        return _json_response(output)
     except Exception as e:
         logger.error(f"[kf_extract_template] Pipeline failed: {e}")
-        return [TextContent(type="text", text=json.dumps(
-            {"success": False, "error": f"模板提取失败: {str(e)}"},
-            ensure_ascii=False, indent=2
-        ))]
+        return _json_response({"success": False, "error": f"模板提取失败: {str(e)}"})
 
 
 async def handle_kf_query_templates(arguments: dict, _run_in_db) -> list[TextContent]:
@@ -348,4 +339,4 @@ async def handle_kf_query_templates(arguments: dict, _run_in_db) -> list[TextCon
         return {"templates": items, "total": total}
 
     result = await _run_in_db(_query)
-    return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+    return _json_response(result)

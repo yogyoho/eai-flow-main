@@ -102,15 +102,14 @@ tool_groups:
 - name: file:write
 - name: bash
 tools:
-# === 自托管搜索,内网友好(退到注释为外网备选) ===
+# === 搜索配置 ===
 - name: web_search
   group: web
-  use: deerflow.community.searxng.tools:web_search_tool
-  base_url: http://searxng:8080
+  use: deerflow.community.ddg_search.tools:web_search_tool
   max_results: 5
-  # 备选: ddg_search(DuckDuckGo 免费,无需Key)
-  # use: deerflow.community.ddg_search.tools:web_search_tool
-  # max_results: 5
+  # 备选: searxng(自托管搜索,内网友好)
+  # use: deerflow.community.searxng.tools:web_search_tool
+  # base_url: http://searxng:8080
 - name: web_fetch
   group: web
   use: deerflow.community.browserless.tools:web_fetch_tool
@@ -224,7 +223,7 @@ title:
   max_chars: 60
   model_name: null
 ui:
-  show_tool_output: true
+  show_tool_output: false
 summarization:
   enabled: true
   model_name: null
@@ -258,6 +257,8 @@ agents_api:
 skill_evolution:
   enabled: false
   moderation_model_name: null
+suggestions:
+  enabled: true
 checkpointer:
   type: sqlite
   connection_string: /tmp/deerflow/checkpoints.db

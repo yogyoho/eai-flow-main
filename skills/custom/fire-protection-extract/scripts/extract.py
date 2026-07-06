@@ -1,37 +1,19 @@
 #!/usr/bin/env python3
 """按映射契约从 structure.json 逐字摘抄组装消防专篇 Markdown。
 
-每个 source 原子摘抄：
-  para      -> 找到含 anchor 子串的源段，整段逐字复制
-  para_run  -> 从含 from 的段到含 to 的段（闭区间），逐段复制
-  table     -> 按 no 取整表，渲染为 Markdown 表
-未命中锚/表 -> 显式 [⚠未找到...] 标记（绝不静默跳过，绝不编造）。
+Each source atom:
+  para  -> 按段落索引逐字复制（paras: [i]）
+  range -> 按闭区间逐段复制（paras: [from, to]）
+  table -> 按 no 取整表，渲染为 Markdown 表
+未命中 → 显式 [⚠未找到...] 标记。
 class=template -> 输出 mapping.templates[name]；class=compute -> 输出 [需计算]。
+
+段落索引由 E3 工作流中的 LLM 分析 structure.json 后生成——不在此引擎中做字符串
+匹配。引擎只做一件事：按给定的段落区间逐字复制。
 """
 import json
 import sys
 from pathlib import Path
-
-
-def find_para(paras, anchor):
-    for p in paras:
-        if anchor in p["text"]:
-            return p
-    return None
-
-
-def find_run(paras, frm, to):
-    start = next((i for i, p in enumerate(paras) if frm in p["text"]), None)
-    if start is None:
-        return None
-    end = None
-    for i in range(start, len(paras)):
-        if to in paras[i]["text"]:
-            end = i
-            break
-    if end is None:
-        return None  # to 锚未找到 → 让 caller 发 [⚠未找到区间]，绝不静默复制到文末
-    return paras[start:end + 1]
 
 
 def table_md(t):
@@ -40,12 +22,6 @@ def table_md(t):
         return ""
 
     def _flat(cell):
-        # Markdown tables can't represent multi-line cells; a Word cell often
-        # contains embedded newlines (e.g. 「占地\n面积」「钢筋混凝\n土框架」).
-        # Flatten them to a single line so each row renders as one markdown
-        # line — otherwise the row spills across lines, corrupting the table
-        # AND breaking grounding_check's cell reconstruction (lines not
-        # starting with 「|」 are dropped, losing cell text → false negatives).
         return cell.replace("\n", " ")
 
     head = [_flat(c) for c in rows[0]]
@@ -59,11 +35,17 @@ def table_md(t):
 def extract(structure, mapping):
     paras, tables = structure["paras"], structure["tables"]
     lines, citations = [], []
+    n_paras = len(paras)
+
     for sec in mapping["sections"]:
         lines.append("")
-        lines.append(f"## {sec['fire']}")
+        level = sec.get("heading_level", 2)
+        prefix = "#" * level
+        lines.append(f"{prefix} {sec['fire']}")
         lines.append("")
         cls = sec.get("class")
+        if cls == "heading":
+            continue
         if cls == "template":
             tpl = (mapping.get("templates") or {}).get(sec.get("template"))
             if tpl is None:
@@ -76,34 +58,49 @@ def extract(structure, mapping):
             lines.append(f"[需计算] {sec.get('note', '')}")
             lines.append("")
             continue
-        for src in sec.get("sources", []) or []:
-            kind = src["kind"]
-            if kind == "para":
-                p = find_para(paras, src["anchor"])
-                if p:
+
+        sources = sec.get("sources", []) or []
+        src_ref = sec.get("source_label", "设计说明书")
+
+        for src in sources:
+            kind = src.get("kind")
+            idxs = src.get("paras")
+
+            # backward-compat: "para_run" is the pre-migration name for "range"
+            resolved_kind = "range" if kind == "para_run" else kind
+
+            if resolved_kind == "para" and idxs and len(idxs) >= 1 and 0 <= idxs[0] < n_paras:
+                p = paras[idxs[0]]
+                lines.append(p["text"])
+                lines.append(f"> 源: {src_ref} ¶{p['i']}")
+                citations.append((sec["fire"], "¶", p["i"], str(idxs[0])))
+
+            elif resolved_kind == "range" and idxs and len(idxs) >= 2 and 0 <= idxs[0] < n_paras and idxs[1] < n_paras:
+                start, end = idxs[0], idxs[1]
+                for p in paras[start:end + 1]:
                     lines.append(p["text"])
-                    lines.append(f"> 源: §{sec['fire']} ¶{p['i']}")
-                    citations.append((sec["fire"], "¶", p["i"], src["anchor"]))
-                else:
-                    lines.append(f"[⚠未找到锚: {src['anchor'][:24]}…]")
-            elif kind == "para_run":
-                run = find_run(paras, src["from"], src["to"])
-                if run:
-                    for p in run:
-                        lines.append(p["text"])
-                    lines.append(f"> 源: §{sec['fire']} ¶{run[0]['i']}-{run[-1]['i']}")
-                    citations.append((sec["fire"], "¶run", (run[0]["i"], run[-1]["i"]), src["from"]))
-                else:
-                    lines.append(f"[⚠未找到区间: {src['from'][:24]}…]")
+                    lines.append("")
+                lines.append(f"> 源: {src_ref} ¶{paras[start]['i']}-{paras[end]['i']}")
+                citations.append((sec["fire"], "¶run", (paras[start]["i"], paras[end]["i"]), str(idxs)))
+
             elif kind == "table":
-                t = tables.get(src["no"])
+                no = src.get("no", "")
+                t = tables.get(no)
                 if t:
                     lines.append(table_md(t))
-                    lines.append(f"> 源: §{sec['fire']} {src['no']}")
-                    citations.append((sec["fire"], "表", src["no"], ""))
+                    lines.append(f"> 源: {src_ref} {no}")
+                    citations.append((sec["fire"], "表", no, ""))
                 else:
-                    lines.append(f"[⚠未找到表: {src['no']}]")
+                    lines.append(f"[⚠未找到表: {no}]")
+
+            elif resolved_kind in ("para", "range"):
+                lines.append(f"[⚠未找到段落: {idxs}]")
+
+            else:
+                lines.append(f"[⚠未知源类型: {kind or '<未指定>'}]")
+
             lines.append("")
+
     return "\n".join(lines).strip(), citations
 
 
@@ -113,8 +110,6 @@ def build_report(structure, mapping, project_name="XX"):
     if "{项目名}" in title:
         title = title.replace("{项目名}", project_name)
     else:
-        # 无显式 {项目名} 占位符时，视首词为项目名槽
-        # （如 "T 消防设计专篇" -> "<项目名> 消防设计专篇"）。
         parts = title.split(None, 1)
         rest = parts[1] if len(parts) > 1 else ""
         title = f"{project_name} {rest}".rstrip()
@@ -125,9 +120,12 @@ def _load_mapping(path_str):
     """Load mapping from .json or .yaml.  Prefer .json (stdlib); fall back to .yaml (needs PyYAML)."""
     p = Path(path_str)
     text = p.read_text(encoding="utf-8")
-    if p.suffix == ".json":
+    # Try JSON first (covers .json and extensionless paths)
+    try:
         return json.loads(text)
-    # yaml fallback
+    except json.JSONDecodeError:
+        pass
+    # Fall back to YAML
     import yaml
     return yaml.safe_load(text)
 

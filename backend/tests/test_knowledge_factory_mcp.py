@@ -12,6 +12,15 @@ from uuid import uuid4
 import pytest
 
 
+def _parse_json_result(result):
+    """Strip markdown code-fence wrapper added by KF MCP handlers, then parse JSON."""
+    text = result[0].text
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        text = text.rsplit("\n```", 1)[0] if text.endswith("```") else text
+    return json.loads(text)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
@@ -193,7 +202,7 @@ class TestKfResolveTemplate:
             )
 
         assert len(result) == 1
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is True
         assert data["match_level"] in ("exact", "keyword", "loose")
 
@@ -213,7 +222,7 @@ class TestKfResolveTemplate:
             _fake_run_in_db,
         )
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is False
         assert "reason" in data
 
@@ -233,7 +242,7 @@ class TestKfResolveTemplate:
             _fake_run_in_db,
         )
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is False
         assert data["reason"] == "low_quality"
 
@@ -278,7 +287,7 @@ class TestKfGetTemplate:
 
         result = await handle_kf_get_template({"template_id": tid}, _fake_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is True
         assert data["template_id"] == tid
 
@@ -293,7 +302,7 @@ class TestKfGetTemplate:
             {"template_id": "not-a-valid-uuid"}, mock_run_in_db
         )
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is False
         assert data["reason"] == "invalid_uuid"
 
@@ -306,7 +315,7 @@ class TestKfGetTemplate:
 
         result = await handle_kf_get_template({"template_id": ""}, mock_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is False
         assert data["reason"] == "invalid_uuid"
 
@@ -325,7 +334,7 @@ class TestKfGetTemplate:
 
         result = await handle_kf_get_template({"template_id": tid}, _fake_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["found"] is False
         assert data["reason"] == "template_not_found"
 
@@ -362,7 +371,7 @@ class TestKfQueryTemplates:
             _fake_run_in_db,
         )
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["total"] == 1
         assert len(data["templates"]) == 1
         assert data["templates"][0]["name"] == "消防模板"
@@ -379,7 +388,7 @@ class TestKfQueryTemplates:
 
         result = await handle_kf_query_templates({}, _fake_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["total"] == 0
         assert data["templates"] == []
 
@@ -411,7 +420,7 @@ class TestKfListDomains:
 
         result = await handle_kf_list_domains({}, _fake_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["total"] == 1
         assert data["domains"][0]["id"] == "env"
 
@@ -427,7 +436,7 @@ class TestKfListDomains:
 
         result = await handle_kf_list_domains({"industry": "化工"}, _fake_run_in_db)
 
-        data = json.loads(result[0].text)
+        data = _parse_json_result(result)
         assert data["total"] == 0
 
 

@@ -91,7 +91,7 @@ class FolderService:
                 Folder.parent_id.is_(None),  # root folders only
                 own_folders | project_folders,
             )
-            .order_by(Folder.sort_order, Folder.created_at)
+            .order_by(Folder.sort_order, Folder.created_at.desc())
             .options(selectinload(Folder.children))
         )
 
@@ -133,7 +133,7 @@ class FolderService:
         child_stmt = (
             select(Folder)
             .where(Folder.parent_id == folder.id)
-            .order_by(Folder.sort_order, Folder.created_at)
+            .order_by(Folder.sort_order, Folder.created_at.desc())
             .options(selectinload(Folder.children))
         )
         child_result = await db.execute(child_stmt)

@@ -343,6 +343,16 @@ class AIDocumentService:
         if not sandbox_path.exists():
             return {"synced": 0, "skipped": 0}
 
+        # 线程无标题时 _get_thread_title 回退成 thread_id[:8]（无意义 id 片段，
+        # 用户在文档空间认不出）。改用 outputs 里首个 .md 文件名作文件夹名。
+        if folder_name == thread_id[:8]:
+            for fp in sorted(sandbox_path.rglob("*")):
+                if fp.is_file() and fp.suffix.lower() == ".md":
+                    rel = fp.relative_to(sandbox_path)
+                    if not any(p.startswith(".") for p in rel.parts):
+                        folder_name = fp.stem
+                        break
+
         # Resolve (or create) the per-thread subfolder under the personal/project
         # root so docs are filed into the folder tree — not left homeless. Without
         # this, docs get folder_id=NULL and never appear in 文档空间.

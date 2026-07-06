@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from pathlib import Path
 from typing import Annotated
@@ -85,13 +84,15 @@ def _normalize_presented_filepath(
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
 
 
-def _try_fire_sync_callback(runtime: Runtime, virtual_paths: list[str]) -> None:
-    """Best-effort trigger of the present_files → docmgr sync callback.
+async def _try_fire_sync_callback(runtime: Runtime, virtual_paths: list[str]) -> None:
+    """Trigger the present_files → docmgr sync callback (creates AIDocument rows).
 
-    ponytail: fire-and-forget on the running loop. The tool is sync but the
-    registered callbacks are async (sync_outputs_to_docmgr), so we schedule via
-    create_task. Silently no-op when there is no running loop, no thread_id, or
-    no paths — sync is best-effort and must never break the tool response.
+    present_file_tool is async, so this runs on the agent's main event loop and
+    can await the registered async callbacks (sync_outputs_to_docmgr) directly.
+    A sync @tool would instead execute in a run_in_executor worker thread with
+    NO running loop, silently breaking the sync — that is why the tool is async.
+    No-op on missing thread_id/paths; per-callback errors are swallowed inside
+    fire(). Never raises — sync is best-effort and must not break the tool.
     """
     if not virtual_paths:
         return
@@ -103,15 +104,13 @@ def _try_fire_sync_callback(runtime: Runtime, virtual_paths: list[str]) -> None:
     except Exception:
         return
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        logger.debug("present_files: no running loop, skipping docmgr sync callback")
-        return
-    loop.create_task(fire_present_files_callbacks(user_id, thread_id, virtual_paths))
+        await fire_present_files_callbacks(user_id, thread_id, virtual_paths)
+    except Exception:
+        logger.exception("present_files → docmgr sync failed")
 
 
 @tool("present_files", parse_docstring=True)
-def present_file_tool(
+async def present_file_tool(
     runtime: Runtime,
     filepaths: list[str],
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -143,7 +142,8 @@ def present_file_tool(
         )
 
     # Trigger app-layer docmgr sync (creates AIDocument rows so files appear in 文档空间).
-    _try_fire_sync_callback(runtime, normalized_paths)
+    # Async tool runs on the main loop → safe to await the async sync callback.
+    await _try_fire_sync_callback(runtime, normalized_paths)
 
     # The merge_artifacts reducer will handle merging and deduplication
     return Command(

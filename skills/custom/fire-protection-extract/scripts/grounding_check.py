@@ -71,19 +71,26 @@ def _search_text(block):
 
 def check(report_md, structure, mapping):
     paras, tables = structure["paras"], structure["tables"]
-    # 1. anchor resolvability
+    # 1. anchor resolvability (index-based or table-based)
     missing = []
+    n_paras = len(paras)
     for sec in mapping["sections"]:
         for src in sec.get("sources", []) or []:
             ok = False
-            if src["kind"] == "para":
-                ok = any(src["anchor"] in p["text"] for p in paras)
-            elif src["kind"] == "para_run":
-                ok = any(src["from"] in p["text"] for p in paras)
-            elif src["kind"] == "table":
-                ok = src["no"] in tables
+            kind = src.get("kind", "")
+            # backward-compat: "para_run" is the pre-migration name for "range"
+            if kind in ("para", "range", "para_run"):
+                idxs = src.get("paras", [])
+                # require non-negative integer indices within bounds
+                ok = (idxs and all(isinstance(i, int) and 0 <= i < n_paras for i in idxs))
+                # also verify the paragraph at each index has non-empty text
+                if ok:
+                    ok = all(paras[i].get("text", "").strip() for i in idxs)
+            elif kind == "table":
+                ok = src.get("no", "") in tables
             if not ok:
-                missing.append((sec["fire"], src.get("anchor") or src.get("from") or src.get("no")))
+                label = src.get("no") or str(src.get("paras", src))
+                missing.append((sec["fire"], label))
     # 2. grounding
     corp = _norm(corpus(structure))
     blocks = [b.strip() for b in re.split(r"\n\s*\n", report_md)]

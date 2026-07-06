@@ -214,8 +214,8 @@ export function mergeMessages(
   return dedupeMessagesByIdentity(
     [
       ...historyMessages.slice(0, cutoff),
-      ...threadMessages,
       ...optimisticMessages,
+      ...threadMessages,
     ],
     keepReasoning,
   );

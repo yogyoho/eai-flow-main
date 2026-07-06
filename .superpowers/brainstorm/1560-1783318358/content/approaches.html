@@ -1,0 +1,67 @@
+<h2>三个方案：直接映射"我的文档"到线程 outputs/</h2>
+<p class="subtitle">共同前提：项目文件夹保持不变。个人文档的收藏/分享保留。</p>
+
+<div class="options" style="display:flex;flex-direction:column;gap:14px;">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>新 API + 轻量元数据表（推荐）</h3>
+      <p>全新 <code>GET /docmgr/personal-outputs</code> 端点直接扫描 filesystem 返回线程文件夹+文件列表。收藏/分享存到一个新的轻量表 <code>personal_doc_meta(user_id, thread_id, rel_path, is_starred, is_shared)</code>。旧的个人 <code>AIDocument</code>/<code>Folder</code> 记录不再使用。同步链路 <code>sync_thread_files</code> 对个人 scope 停用。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>数据路径干净：outputs → API → 前端，无 DB 中间层</li>
+          <li>文件写完立即可见（无同步延迟、无时序问题）</li>
+          <li>不会误入 uploads/workspace（只看 outputs）</li>
+          <li>收藏/分享专用表，不影响文档主体逻辑</li>
+          <li>旧 DB 数据可以逐步清理</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>需要新增 API + 一张表</li>
+          <li>旧个人文档的收藏/分享状态需要迁移</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>复用 AIDocument 做轻量索引（最小改动）</h3>
+      <p>保留个人 <code>AIDocument</code> 表但只存最少字段（file_ref_path, thread_id, user_id, is_starred, is_shared），不再写 <code>Folder</code>。前端新 API 直接查 <code>AIDocument</code> 按 thread_id 聚合显示，不再走 folder tree。同步链路保留但只同步 outputs/。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>改动最小，复用现有表结构</li>
+          <li>收藏/分享字段已存在</li>
+          <li>现有数据的收藏/分享不丢失</li>
+          <li>后端 sync_thread_files 改一下 skip 逻辑即可</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>AIDocument 仍在中间——还是没有真正"直接映射"</li>
+          <li>同步延迟问题仍存在（仍需 sync 触发）</li>
+          <li>Folder 表对个人 scope 变成僵尸数据</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>纯文件系统（无 DB）</h3>
+      <p>完全跳过 DB。前端调 artifacts API 列出 <code>outputs/</code> 下文件。收藏/分享用文件系统 JSON 存储（如 <code>.deer-flow/meta/{thread_id}.json</code>）。所有元数据（star, share）与文件在同一位置。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>最彻底的直接映射，零 DB 依赖</li>
+          <li>元数据跟随文件，备份/迁移简单</li>
+          <li>个人与项目完全解耦</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>文件系统 JSON 读写并发不友好</li>
+          <li>搜索/过滤效率低（无法用 SQL）</li>
+          <li>分享功能需要额外设计（文件系统无网络语义）</li>
+          <li>改动最大，出问题调试难</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>
