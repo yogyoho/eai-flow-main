@@ -599,6 +599,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-06T09:24:29.602Z"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-07-06T13:11:57.444Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/license/ModuleLockedPage.tsx",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 13→7 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-06T13:11:57.444Z"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-07-06T13:11:59.472Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/license/api.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-06T13:11:59.472Z"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-07-06T13:12:07.115Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/license/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-06T13:12:07.115Z"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-07-06T13:12:29.862Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/app-center/AppManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-06T13:12:29.862Z"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-07-06T13:12:35.485Z",
+      "error_message": "CSS fix: licenseModule",
+      "file": "frontend/src/app/admin/app-center/AppManagement.tsx",
+      "root_cause": "licenseModule: draft.licenseModule.trim() || undefined, → draft.licenseModule,",
+      "fix": "Changed licenseModule: draft.licenseModule.trim() || undefined, → draft.licenseModule,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-06T13:12:44.451Z"
     }
   ]
 }

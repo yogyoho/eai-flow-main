@@ -1,17 +1,11 @@
 // frontend/src/extensions/license/ModuleLockedPage.tsx
 "use client";
 
+import { MODULE_LABELS } from "./labels";
+
 interface ModuleLockedPageProps {
   module: string;
 }
-
-const MODULE_LABELS: Record<string, string> = {
-  platform: "基础平台",
-  project: "项目协作",
-  dashboard: "工作台",
-  typography: "报告输出",
-  contract_price: "合同价格分析",
-};
 
 export function ModuleLockedPage({ module }: ModuleLockedPageProps) {
   const label = MODULE_LABELS[module] ?? module;

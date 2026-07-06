@@ -343,6 +343,9 @@ export interface Translations {
       bindStarted: string;
       bindFailed: string;
       openQr: string;
+      shareQrTitle: string;
+      shareQrDescription: string;
+      openShareQr: string;
     };
     memory: {
       title: string;

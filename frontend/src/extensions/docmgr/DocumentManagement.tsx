@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
   CheckCircle2, Copy, Download, FileText, Grid3X3, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, Share2, FolderCheck, FolderOpen, Star, Sparkles, Archive,
+  RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -39,6 +39,17 @@ import { useLicense } from "@/extensions/license/useLicense";
 
 type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
 type View = "list" | "editor";
+
+/** Windows 风格黄色文件夹图标（资源管理器样式） */
+function WindowsFolder({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z" fill="#E6A106" />
+      <path d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2h-17c-1.1 0-2-.9-2-2v-8z" fill="#FFC83D" />
+      <path d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2V11H1.5V9.5z" fill="#FFD86B" />
+    </svg>
+  );
+}
 
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
@@ -278,7 +289,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
-                <FolderOpen className="w-3.5 h-3.5" />
+                <WindowsFolder className="w-4 h-4" />
                 <span>我的文档</span>
               </div>
               {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -300,7 +311,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                         className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <FolderOpen className="w-3 h-3 shrink-0" />
+                          <WindowsFolder className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate">{thread.display_name}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">

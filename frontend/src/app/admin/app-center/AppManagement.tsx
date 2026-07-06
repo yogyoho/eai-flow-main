@@ -12,6 +12,8 @@ import {
   type AppResponse,
   type DomainResponse,
 } from "@/extensions/app-center/api";
+import { getLicenseModules } from "@/extensions/license/api";
+import { MODULE_LABELS } from "@/extensions/license/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -35,9 +37,15 @@ const STAGE_OPTIONS: TableSelectOption[] = [
 export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
   const [apps, setApps] = useState<AppResponse[]>([]);
   const [domains, setDomains] = useState<DomainResponse[]>([]);
+  const [licenseModules, setLicenseModules] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  const licenseOptions: TableSelectOption[] = licenseModules.map((k) => ({
+    value: k,
+    label: MODULE_LABELS[k] ?? k,
+  }));
 
   const [draft, setDraft] = useState({
     appId: "",
@@ -54,11 +62,19 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
   async function load() {
     setIsLoading(true);
     try {
-      const [a, d] = await Promise.all([fetchAllApps(), fetchDomains()]);
+      const [a, d, m] = await Promise.all([
+        fetchAllApps(),
+        fetchDomains(),
+        getLicenseModules(),
+      ]);
       setApps(a);
       setDomains(d);
+      setLicenseModules(m);
       if (!draft.businessDomain && d.length > 0) {
         setDraft((prev) => ({ ...prev, businessDomain: d[0].key }));
+      }
+      if (!draft.licenseModule && m.length > 0) {
+        setDraft((prev) => ({ ...prev, licenseModule: m[0] }));
       }
     } finally {
       setIsLoading(false);
@@ -107,14 +123,15 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
         businessDomain: draft.businessDomain,
         stageTag: draft.stageTag || undefined,
         path: draft.path.trim(),
-        licenseModule: draft.licenseModule.trim() || undefined,
+        licenseModule: draft.licenseModule,
         sortKey: draft.sortKey.trim() || draft.appId.trim(),
         isEnabled: true,
       });
       setShowForm(false);
       setDraft({
         appId: "", name: "", description: "", iconName: "layout-dashboard",
-        businessDomain: domains[0]?.key ?? "", stageTag: "", path: "", licenseModule: "", sortKey: "",
+        businessDomain: domains[0]?.key ?? "", stageTag: "", path: "",
+        licenseModule: licenseModules[0] ?? "", sortKey: "",
       });
       await load();
     } finally {
@@ -177,7 +194,12 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
               />
             </FormField>
             <FormField label="License 模块">
-              <Input value={draft.licenseModule} onChange={(e) => setDraft({ ...draft, licenseModule: e.target.value })} className="h-9" placeholder="留空=无需授权" />
+              <TableSelect
+                value={draft.licenseModule}
+                options={licenseOptions}
+                onChange={(v) => setDraft({ ...draft, licenseModule: v })}
+                placeholder="选择许可模块"
+              />
             </FormField>
             <FormField label="排序键(拼音)">
               <Input value={draft.sortKey} onChange={(e) => setDraft({ ...draft, sortKey: e.target.value })} className="h-9" placeholder="留空=用 App ID" />
@@ -252,11 +274,12 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <InlineInput
+                    <TableSelect
                       value={a.licenseModule ?? ""}
-                      placeholder="无"
+                      options={licenseOptions}
+                      onChange={(v) => handleUpdate(a.appId, { licenseModule: v })}
                       disabled={saving === a.appId}
-                      onSave={(v) => handleUpdate(a.appId, { licenseModule: v || undefined })}
+                      placeholder="选择许可模块"
                     />
                   </td>
                   <td className="px-3 py-2 text-center">

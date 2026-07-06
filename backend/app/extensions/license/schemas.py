@@ -74,3 +74,13 @@ class LicenseHistoryResponse(BaseModel):
 
     items: list[LicenseHistoryItem]
     total: int
+
+
+class LicenseModulesResponse(BaseModel):
+    """GET /api/license/modules response — canonical license key list.
+
+    Used by the admin App Management page to populate the license_module
+    dropdown. Mirrors app.extensions.license.service.ALL_MODULES.
+    """
+
+    modules: list[str]

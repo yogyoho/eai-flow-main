@@ -156,6 +156,25 @@ export function WechatSettingsPage() {
               {t.settings.wechat.openQr}
             </a>
           ) : null}
+          {isBound && bindStatus?.qrcode_url ? (
+            <div className="bg-muted/40 rounded-md border p-3">
+              <div className="text-sm font-medium">
+                {t.settings.wechat.shareQrTitle}
+              </div>
+              <div className="text-muted-foreground mt-1 text-sm">
+                {t.settings.wechat.shareQrDescription}
+              </div>
+              <a
+                href={bindStatus.qrcode_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary mt-2 inline-flex items-center gap-1 text-sm underline"
+              >
+                <QrCodeIcon className="size-4" />
+                {t.settings.wechat.openShareQr}
+              </a>
+            </div>
+          ) : null}
           {statusLoading ? (
             <div className="text-muted-foreground text-sm">
               {t.common.loading}

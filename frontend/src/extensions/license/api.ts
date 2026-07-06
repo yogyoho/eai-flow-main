@@ -83,3 +83,11 @@ export async function exportLicense(): Promise<Blob> {
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
   return res.blob();
 }
+
+/** Canonical license module keys (for the admin App Management dropdown). */
+export async function getLicenseModules(): Promise<string[]> {
+  const res = await csrfFetch(`${BASE}/modules`);
+  if (!res.ok) throw new Error(`License modules failed: ${res.status}`);
+  const data = (await res.json()) as { modules: string[] };
+  return data.modules;
+}

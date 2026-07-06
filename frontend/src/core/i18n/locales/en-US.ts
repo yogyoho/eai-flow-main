@@ -431,6 +431,10 @@ export const enUS: Translations = {
       bindStarted: "Binding started — scan the QR code.",
       bindFailed: "Failed to start binding.",
       openQr: "Open the binding QR code",
+      shareQrTitle: "Share the bot QR code",
+      shareQrDescription:
+        "Have other users scan this QR code to add ClawBot to their WeChat. Once added, each user sends /connect <binding-code> to the bot in WeChat to link their own DeerFlow account.",
+      openShareQr: "Open the bot QR code",
     },
     memory: {
       title: "Memory",

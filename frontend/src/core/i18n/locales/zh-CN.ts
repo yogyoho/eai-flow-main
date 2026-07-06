@@ -410,6 +410,10 @@ export const zhCN: Translations = {
       bindStarted: "已开始绑定 — 请扫描二维码。",
       bindFailed: "启动绑定失败。",
       openQr: "打开绑定二维码",
+      shareQrTitle: "分享机器人二维码",
+      shareQrDescription:
+        "让其他用户扫描此二维码将 ClawBot 添加到他们的微信。添加后，他们各自在微信中向 ClawBot 发送 /connect <绑定码> 即可绑定自己的 DeerFlow 账号。",
+      openShareQr: "打开机器人二维码",
     },
     memory: {
       title: "记忆",

@@ -13,9 +13,10 @@ from app.extensions.license.schemas import (
     LicenseHistoryItem,
     LicenseHistoryResponse,
     LicenseImportResponse,
+    LicenseModulesResponse,
     LicenseStatusResponse,
 )
-from app.extensions.license.service import LicenseError, LicenseService
+from app.extensions.license.service import ALL_MODULES, LicenseError, LicenseService
 from app.extensions.models import User
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,16 @@ async def get_license_status(
     if status_data.get("machine_id") == "DEV-MODE":
         status_data["is_dev_mode"] = True
     return LicenseStatusResponse(**status_data)
+
+
+@router.get("/modules", response_model=LicenseModulesResponse)
+async def get_license_modules():
+    """Return the canonical license module keys (for admin App Management dropdown).
+
+    No auth — key names are not sensitive (cf. /status); used to populate the
+    license_module dropdown so admins can only assign enrolled keys.
+    """
+    return LicenseModulesResponse(modules=ALL_MODULES)
 
 
 @router.post("/import", response_model=LicenseImportResponse)

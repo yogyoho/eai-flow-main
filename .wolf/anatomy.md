@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T09:24:29.547Z
-> Files: 1411 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T13:12:44.412Z
+> Files: 1414 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1137,8 +1137,8 @@
 
 ## backend/app/extensions/license/
 
-- `routers.py` — License API routers. (~1264 tok)
-- `schemas.py` — Pydantic schemas for license module. (~552 tok)
+- `routers.py` — License API routers. (~1187 tok)
+- `schemas.py` — Pydantic schemas for license module. (~633 tok)
 - `service.py` — License verification and management service. (~4320 tok)
 
 ## backend/app/extensions/models/
@@ -1350,6 +1350,7 @@
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
 - `test_kf_doc_parser.py` — Unit tests for doc_parser — heading detection, text normalization, regex fallback. (~1679 tok)
+- `test_license_modules_sync.py` — License module key sync guard. (~776 tok)
 - `test_mcp_config_hardening.py` — Tests for MCP config endpoint hardening (upstream #3425, dev-adapted). (~1138 tok)
 - `test_mcp_path_resolution.py` — Tests for MCP server path resolution (container paths -> local paths). (~3264 tok)
 - `test_missing_activities.py` — TDD tests for missing activities from spec §4.4. (~2122 tok)
@@ -1521,7 +1522,7 @@
 
 ## frontend/src/app/admin/app-center/
 
-- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3740 tok)
+- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3944 tok)
 - `controls.tsx` — 强调色时显示的色块（可选） (~452 tok)
 - `DomainManagement.tsx` — accent → 实心色块背景类（用于下拉项的色点） (~2761 tok)
 - `page.tsx` — AdminAppCenterPage (~275 tok)
@@ -1713,7 +1714,7 @@
 ## frontend/src/components/workspace/settings/
 
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1533 tok)
-- `wechat-settings-page.tsx` — WechatSettingsPage (~1582 tok)
+- `wechat-settings-page.tsx` — WechatSettingsPage (~1802 tok)
 
 ## frontend/src/core/channels/
 
@@ -1727,9 +1728,9 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~6842 tok)
-- `types.ts` — Exports Translations (~3798 tok)
-- `zh-CN.ts` — Exports zhCN (~4831 tok)
+- `en-US.ts` — Exports enUS (~6928 tok)
+- `types.ts` — Exports Translations (~3823 tok)
+- `zh-CN.ts` — Exports zhCN (~4886 tok)
 
 ## frontend/src/core/mcp/
 
@@ -1939,8 +1940,10 @@
 
 ## frontend/src/extensions/license/
 
-- `api.ts` — frontend/src/extensions/license/api.ts (~656 tok)
+- `api.ts` — Canonical license module keys (for the admin App Management dropdown). (~756 tok)
+- `labels.ts` — Canonical license module key → user-facing label. (~148 tok)
 - `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~2873 tok)
+- `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~209 tok)
 
 ## frontend/src/extensions/output/
 

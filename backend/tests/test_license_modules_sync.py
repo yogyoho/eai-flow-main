@@ -34,7 +34,7 @@ def test_generator_all_modules_is_canonical():
 
 def test_module_locked_page_labels_match_canonical():
     src = (
-        REPO_ROOT / "frontend" / "src" / "extensions" / "license" / "ModuleLockedPage.tsx"
+        REPO_ROOT / "frontend" / "src" / "extensions" / "license" / "labels.ts"
     ).read_text(encoding="utf-8")
     for key in EXPECTED_KEYS:
         assert re.search(rf"\b{key}:\s*\"", src), f"ModuleLockedPage missing label for {key}"
