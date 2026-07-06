@@ -327,6 +327,17 @@ class WechatChannel(Channel):
             "ilink_bot_id": self._ilink_bot_id,
         }
 
+    async def fetch_share_qrcode(self) -> dict[str, Any]:
+        """获取新鲜的分享用 QR（admin 转发给用户扫，把 ClawBot 加进微信）。
+
+        只调 get_bot_qrcode，不 poll status、不轮换 bot_token、不覆盖 auth state。
+        [EAI-ADD] 普通用户加 ClawBot 到微信的唯一可获取 QR 来源。
+        """
+        return await self._request_public_get_json(
+            "/ilink/bot/get_bot_qrcode",
+            params={"bot_type": self._qrcode_bot_type},
+        )
+
     async def send(self, msg: OutboundMessage, *, _max_retries: int = 3) -> None:
         text = msg.text.strip()
         if not text:

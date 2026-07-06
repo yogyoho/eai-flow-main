@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T14:29:14.400Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T15:03:32.739Z
 > Files: 1415 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1035,7 +1035,7 @@
 - `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~13990 tok)
 - `message_bus.py` — MessageBus — async pub/sub hub that decouples channels from the agent dispatcher. (~1977 tok)
 - `service.py` — ChannelService — manages the lifecycle of all IM channels. (~5166 tok)
-- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~16113 tok)
+- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~16228 tok)
 
 ## backend/app/extensions/
 
@@ -1253,7 +1253,7 @@
 - `memory.py` — Memory API router for retrieving and managing user memory data with per-user isolation. (~4026 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1552 tok)
 - `threads.py` — Thread CRUD, state, and history endpoints. (~8280 tok)
-- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1270 tok)
+- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1579 tok)
 
 ## backend/collab-server/
 
@@ -1719,9 +1719,9 @@
 
 ## frontend/src/core/channels/
 
-- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1310 tok)
-- `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1034 tok)
-- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 6 m (~454 tok)
+- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1432 tok)
+- `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1077 tok)
+- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 7 m (~502 tok)
 
 ## frontend/src/core/config/
 
@@ -1730,7 +1730,7 @@
 ## frontend/src/core/i18n/locales/
 
 - `en-US.ts` — Exports enUS (~6928 tok)
-- `types.ts` — Exports Translations (~3823 tok)
+- `types.ts` — Exports Translations (~3833 tok)
 - `zh-CN.ts` — Exports zhCN (~4886 tok)
 
 ## frontend/src/core/mcp/

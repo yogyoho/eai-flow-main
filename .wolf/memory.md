@@ -7432,3 +7432,12 @@
 | 22:13 | Created C:/Users/admin/.claude/plans/robust-sauteeing-kitten.md | — | ~804 |
 | 22:13 | Session end: 41 writes across 22 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 40 reads | ~89532 tok |
 | 22:29 | Created C:/Users/admin/.claude/plans/robust-sauteeing-kitten.md | — | ~956 |
+| 23:00 | Edited backend/app/channels/wechat.py | modified get_bind_state() | ~220 |
+| 23:00 | Edited backend/app/gateway/routers/wechat_bot.py | modified WechatBindCodeResponse() | ~57 |
+| 23:01 | Edited backend/app/gateway/routers/wechat_bot.py | modified refresh_wechat_share_qrcode() | ~329 |
+| 23:01 | Edited frontend/src/core/channels/types.ts | expanded (+6 lines) | ~78 |
+| 23:02 | Edited frontend/src/core/channels/api.ts | 11→12 lines | ~82 |
+| 23:02 | Edited frontend/src/core/channels/api.ts | added 1 condition(s) | ~221 |
+| 23:03 | Edited frontend/src/core/channels/hooks.ts | 11→12 lines | ~83 |
+| 23:03 | Edited frontend/src/core/channels/hooks.ts | modified useCreateWechatBindCode() | ~68 |
+| 23:03 | Edited frontend/src/core/i18n/locales/types.ts | 7→8 lines | ~59 |

@@ -11,6 +11,7 @@ import type {
   ChannelRuntimeConfigValues,
   WechatBindCodeResponse,
   WechatBotBindStatus,
+  WechatShareQrcodeResponse,
 } from "./types";
 
 function channelsUrl(path: string): string {
@@ -155,4 +156,17 @@ export async function createWechatBindCode(): Promise<WechatBindCodeResponse> {
     );
   }
   return response.json() as Promise<WechatBindCodeResponse>;
+}
+
+export async function refreshWechatShareQrcode(): Promise<WechatShareQrcodeResponse> {
+  const response = await fetch(wechatBotUrl("/share-qrcode/refresh"), {
+    method: "POST",
+  });
+  if (!response.ok) {
+    await throwChannelApiError(
+      response,
+      `Failed to refresh WeChat share QR: ${response.statusText}`,
+    );
+  }
+  return response.json() as Promise<WechatShareQrcodeResponse>;
 }

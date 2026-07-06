@@ -65,3 +65,9 @@ export interface WechatBindCodeResponse {
   instruction: string;
   expires_in: number;
 }
+
+// Fresh share QR for end users to add ClawBot to their WeChat.
+export interface WechatShareQrcodeResponse {
+  qrcode: string;
+  qrcode_img_content: string | null;
+}

@@ -345,7 +345,8 @@ export interface Translations {
       openQr: string;
       shareQrTitle: string;
       shareQrDescription: string;
-      openShareQr: string;
+      refreshShareQr: string;
+      shareQrFreshHint: string;
     };
     memory: {
       title: string;

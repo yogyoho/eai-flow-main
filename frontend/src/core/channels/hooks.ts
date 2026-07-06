@@ -9,6 +9,7 @@ import {
   getWechatBotBindStatus,
   listChannelConnections,
   listChannelProviders,
+  refreshWechatShareQrcode,
   startWechatBotBind,
 } from "./api";
 import type { ChannelProviderId, ChannelRuntimeConfigValues } from "./types";
@@ -118,4 +119,8 @@ export function useWechatBotBindStatus(enabled: boolean) {
 
 export function useCreateWechatBindCode() {
   return useMutation({ mutationFn: () => createWechatBindCode() });
+}
+
+export function useRefreshWechatShareQrcode() {
+  return useMutation({ mutationFn: () => refreshWechatShareQrcode() });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -23,8 +24,13 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Markdown } from "tiptap-markdown";
+import { createLowlight } from "lowlight";
+import { grammars as commonGrammars } from "lowlight/lib/common";
 
 import { cn } from "@/lib/utils";
+
+// 语法高亮：注册常见语言（python/js/ts/json/yaml/xml/sql/bash/go 等）
+const lowlight = createLowlight(commonGrammars);
 
 import EditorDragHandle from "./components/EditorDragHandle";
 import SlashMenu from "./components/SlashMenu";
@@ -242,7 +248,8 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 
     const editor = useEditor({
       extensions: [
-        StarterKit,
+        StarterKit.configure({ codeBlock: false }),
+        CodeBlockLowlight.configure({ lowlight }),
         Underline,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Highlight.configure({ multicolor: false }),
