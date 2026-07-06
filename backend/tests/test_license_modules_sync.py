@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_KEYS = ["project", "dashboard", "typography", "contract_price"]
+EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price"]
 REMOVED_KEYS = ["docmgr", "knowledge", "collab", "report", "approval", "workflow"]
 
 
@@ -51,11 +51,11 @@ def test_sidebar_nav_licensing_matches_classification():
     # 收费项必须带正确 licenseModule
     assert re.search(r'href: "/dashboard"[^}]*licenseModule: "dashboard"', src, re.S)
     assert re.search(r'href: "/projects"[^}]*licenseModule: "project"', src, re.S)
-    # 免费项不得带 licenseModule
-    for free in ["/docmgr", "/knowledge-factory", "/knowledge"]:
-        m = re.search(rf'href: "{free}"[^}}]*\}}', src)
-        assert m, f"{free} nav item not found in Sidebar.tsx"
-        assert "licenseModule" not in m.group(0), f"{free} should be free but has licenseModule"
+    # 基础平台模块必须挂 platform
+    for href in ["/writing", "/docmgr", "/knowledge-factory", "/knowledge", "/app-center", "/admin", "/settings"]:
+        m = re.search(rf'href: "{href}"[^}}]*\}}', src)
+        assert m, f"{href} nav item not found"
+        assert 'licenseModule: "platform"' in m.group(0), f"{href} missing platform"
 
 
 def test_seed_uses_no_removed_license_keys():

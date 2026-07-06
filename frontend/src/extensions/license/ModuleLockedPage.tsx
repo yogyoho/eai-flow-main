@@ -6,6 +6,7 @@ interface ModuleLockedPageProps {
 }
 
 const MODULE_LABELS: Record<string, string> = {
+  platform: "基础平台",
   project: "项目协作",
   dashboard: "工作台",
   typography: "报告输出",

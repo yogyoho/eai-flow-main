@@ -26,6 +26,7 @@ PRIVATE_KEY_PATH = os.path.join(SCRIPT_DIR, "private_key.pem")
 ALGORITHM = "RS256"
 
 ALL_MODULES = [
+    "platform",
     "project",
     "dashboard",
     "typography",

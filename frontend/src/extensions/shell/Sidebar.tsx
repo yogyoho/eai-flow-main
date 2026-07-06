@@ -46,18 +46,17 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard" },
-  { href: "/writing", label: "智能写作", icon: Bot, newTab: true },
+  { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform" },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project" },
-  { href: "/docmgr", label: "文档空间", icon: FolderCheck },
-  { href: "/knowledge-factory", label: "知识工厂", icon: Factory },
-  { href: "/knowledge", label: "知识库", icon: BookOpen },
-  { href: "/app-center", label: "应用中心", icon: Blocks },
-  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true },
+  { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform" },
+  { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform" },
+  { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform" },
+  { href: "/app-center", label: "应用中心", icon: Blocks, licenseModule: "platform" },
+  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true, licenseModule: "platform" },
+  { href: "/settings", label: "设置", icon: Settings, licenseModule: "platform" },
 ];
 
-const bottomNavItems: { href: string; label: string; icon: React.ElementType }[] = [
-  { href: "/settings", label: "设置", icon: Settings },
-];
+const bottomNavItems: NavItem[] = [];
 
 function NavIcon({
   href,

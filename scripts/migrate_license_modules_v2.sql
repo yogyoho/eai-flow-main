@@ -1,4 +1,4 @@
--- 一次性迁移：把 app_definitions.license_module 对齐 v2 四键方案。
+-- 一次性迁移：把 app_definitions.license_module 对齐 v2 五键方案 (platform + 4 商业键)。
 -- 在每个已存在的部署上、签发首张正式 license 之前跑一次。幂等。
 -- 新部署靠 database.py 种子自动得到正确值，无需跑此脚本。
 --
@@ -8,6 +8,9 @@
 
 BEGIN;
 
+-- 基础平台模块 (7 个基础模块 → platform)
+UPDATE app_definitions SET license_module = 'platform'      WHERE app_id IN ('smart-writing', 'docmgr', 'knowledge-factory', 'knowledge', 'admin');
+-- 商业模块
 UPDATE app_definitions SET license_module = 'dashboard'      WHERE app_id = 'dashboard';
 UPDATE app_definitions SET license_module = NULL             WHERE app_id IN ('docmgr', 'knowledge', 'knowledge-factory');
 UPDATE app_definitions SET license_module = 'typography'     WHERE app_id = 'output';
