@@ -91,6 +91,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [personalOpen, setPersonalOpen] = useState(true);
+  const [selectedThread, setSelectedThread] = useState<{ thread_id: string; display_name: string; files: any[] } | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
   const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
@@ -173,6 +174,34 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
   const isFileRefView = activeNav === "file_ref_folder";
 
+  // 选中线程后，主体区显示该线程文件（适配为 DocCard 期望的形状）
+  const adaptPersonalFile = (file: any, thread: any) => ({
+    id: `${thread.thread_id}/${file.rel_path}`,
+    title: file.name,
+    doc_type: "file_ref" as const,
+    file_mime: file.mime,
+    file_size: file.size,
+    file_ref_path: file.rel_path,
+    source_thread_id: thread.thread_id,
+    updated_at: file.modified_at,
+    is_starred: file.starred,
+    is_shared: file.shared,
+    content: null,
+    folder: thread.display_name,
+    status: "active",
+  });
+  const displayDocs = selectedThread
+    ? selectedThread.files.map((f: any) => adaptPersonalFile(f, selectedThread))
+    : docs;
+  const displayTotal = selectedThread ? selectedThread.files.length : total;
+  const displayLoading = !selectedThread && loading;
+
+  const handlePersonalStar = (docId: string) => {
+    if (!selectedThread) return;
+    const file = selectedThread.files.find((f: any) => `${selectedThread.thread_id}/${f.rel_path}` === docId);
+    if (file) personalOutputs.toggleStar(selectedThread.thread_id, file.rel_path, file.starred);
+  };
+
   const handleCreate = async (title: string) => {
     const doc = await createDoc({ title, content: "", folder: currentFolder });
     setShowNewModal(false);
@@ -212,7 +241,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           {/* 我的文档 — 树形结构 */}
           <div>
             <button
-              onClick={() => setPersonalOpen((v) => !v)}
+              onClick={() => { setPersonalOpen((v) => !v); setSelectedThread(null); }}
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
@@ -234,7 +263,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   return (
                     <div key={thread.thread_id}>
                       <button
-                        onClick={() => personalOutputs.toggleExpand(thread.thread_id)}
+                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThread(thread); setActiveFolderId(null); }}
                         className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -369,32 +398,32 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 <List className="h-3.5 w-3.5" />
               </button>
             </div>
-            <span className="text-xs text-muted-foreground">共 {total} 篇文档</span>
+            <span className="text-xs text-muted-foreground">共 {displayTotal} 篇文档</span>
           </div>
         </div>
         <div className={cn(
           "flex-1 p-6 bg-muted/30",
-          docs.length === 0 ? "flex flex-col items-center justify-center" : "overflow-y-auto"
+          displayDocs.length === 0 ? "flex flex-col items-center justify-center" : "overflow-y-auto"
         )}>
-          {loading ? (
+          {displayLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">加载中...</div>
-          ) : docs.length === 0 ? (
+          ) : displayDocs.length === 0 ? (
             <div className="flex flex-col items-center text-center max-w-xs">
               <MousePointerClick className="w-10 h-10 text-muted-foreground/25 mb-4" />
               <p className="text-sm font-medium text-muted-foreground">点击左侧文件夹查看文档</p>
-              <p className="text-xs text-muted-foreground/60 mt-1.5 leading-relaxed">{isFileRefView ? "选中项目文件夹后，同步的文件会出现在这里" : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1.5 leading-relaxed">{selectedThread ? "该线程暂无输出文件" : isFileRefView ? "选中项目文件夹后，同步的文件会出现在这里" : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}</p>
             </div>
           ) : viewMode === "grid-icon" || viewMode === "grid-summary" ? (
             <AnimatePresence>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {docs.map((doc) => (
+                {displayDocs.map((doc) => (
                     <DocCard key={doc.id} doc={doc}
                       variant={viewMode === "grid-icon" ? "icon" : "summary"}
                       isMenuOpen={openMenuId === doc.id}
                       onOpenMenu={handleOpenMenu}
                       menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
                       onSelect={() => onSelectDoc(doc)}
-                      onToggleStar={() => toggleStar(doc.id, doc.is_starred ?? false)}
+                      onToggleStar={() => selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false)}
                       onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
                       onShare={() => { setShareDoc(doc); setShowShareDialog(true); }}
                       selected={selectedIds.has(doc.id)}
@@ -415,7 +444,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {docs.map((doc) => {
+                  {displayDocs.map((doc) => {
                     const isFileRef = doc.doc_type === "file_ref";
                     const fileSize = formatFileSize(doc.file_size);
                     const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
@@ -459,7 +488,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                         <td className="py-4 px-4 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                              onClick={(e) => { e.stopPropagation(); toggleStar(doc.id, doc.is_starred ?? false); }}>
+                              onClick={(e) => { e.stopPropagation(); selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false); }}>
                               <Star className={cn("w-4 h-4", doc.is_starred && "text-amber-400")} fill={doc.is_starred ? "currentColor" : "none"} />
                             </button>
                             <button ref={(el) => { menuButtonRef.current[doc.id] = el; }}
@@ -508,7 +537,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           </div>
         )}
         {openMenuId && menuAnchor && (() => {
-          const doc = docs.find((d) => d.id === openMenuId);
+          const doc = displayDocs.find((d) => d.id === openMenuId);
           if (!doc) return null;
           const isFileRef = doc.doc_type === "file_ref";
           return (
