@@ -511,8 +511,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                           className="group bg-background border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-amber-50 shrink-0">
-                              <FileText className="w-4 h-4 text-amber-500" />
+                            <div className="p-2 rounded-lg bg-blue-50 shrink-0">
+                              <FileText className="w-4 h-4 text-blue-500" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">

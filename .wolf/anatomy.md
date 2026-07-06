@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T13:17:43.598Z
-> Files: 1414 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T14:13:00.090Z
+> Files: 1415 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -283,6 +283,7 @@
 - `piped-dazzling-raven.md` — Plan: Drag-and-Drop Block Reordering for Tiptap Editor (~1104 tok)
 - `purrfect-stirring-tome.md` — E 续:前端四大纠缠功能移植 — 详细执行计划 (~1893 tok)
 - `purring-scribbling-toast.md` — Plan: 许可证管理页面 + 申请文件下载 (~700 tok)
+- `robust-sauteeing-kitten.md` — 修复：微信分享二维码过期 (~754 tok)
 - `sharded-drifting-wolf.md` — Fix Plan: 3 Workflow Bugs (~1676 tok)
 - `snappy-scribbling-piglet-agent-aac5246b64c3241fb.md` — App-Center DB Persistence Migration Plan (~7989 tok)
 - `tab-ok-explore-review-version-fizzy-token.md` — Version History Panel Improvements (~1244 tok)
