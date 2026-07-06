@@ -431,10 +431,11 @@ export const enUS: Translations = {
       bindStarted: "Binding started — scan the QR code.",
       bindFailed: "Failed to start binding.",
       openQr: "Open the binding QR code",
-      shareQrTitle: "Share the bot QR code",
+      shareQrTitle: "Add ClawBot to WeChat",
       shareQrDescription:
-        "Have other users scan this QR code to add ClawBot to their WeChat. Once added, each user sends /connect <binding-code> to the bot in WeChat to link their own DeerFlow account.",
-      openShareQr: "Open the bot QR code",
+        "Other users scan this QR under WeChat → Settings → Plugins → ClawBot → Details → Scan QR to add ClawBot to their WeChat. They then send /connect <binding-code> to the bot in WeChat to link their own DeerFlow account.",
+      refreshShareQr: "Get share QR code",
+      shareQrFreshHint: "This QR is time-limited; re-fetch if WeChat reports it expired.",
     },
     memory: {
       title: "Memory",

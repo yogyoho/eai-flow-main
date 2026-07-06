@@ -13,10 +13,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/core/auth/AuthProvider";
 import {
   useCreateWechatBindCode,
+  useRefreshWechatShareQrcode,
   useStartWechatBotBind,
   useWechatBotBindStatus,
 } from "@/core/channels/hooks";
-import type { WechatBindCodeResponse } from "@/core/channels/types";
+import type {
+  WechatBindCodeResponse,
+  WechatShareQrcodeResponse,
+} from "@/core/channels/types";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +34,11 @@ export function WechatSettingsPage() {
     useWechatBotBindStatus(true);
   const startBind = useStartWechatBotBind();
   const createCode = useCreateWechatBindCode();
+  const refreshShareQr = useRefreshWechatShareQrcode();
   const [code, setCode] = useState<WechatBindCodeResponse | null>(null);
+  const [shareQr, setShareQr] = useState<WechatShareQrcodeResponse | null>(
+    null,
+  );
 
   const status = bindStatus?.status;
   const isPending = status === "pending";
@@ -156,23 +164,60 @@ export function WechatSettingsPage() {
               {t.settings.wechat.openQr}
             </a>
           ) : null}
-          {isBound && bindStatus?.qrcode_url ? (
+          {isBound ? (
             <div className="bg-muted/40 rounded-md border p-3">
-              <div className="text-sm font-medium">
-                {t.settings.wechat.shareQrTitle}
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {t.settings.wechat.shareQrTitle}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-sm">
+                    {t.settings.wechat.shareQrDescription}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={refreshShareQr.isPending}
+                  onClick={() => {
+                    void refreshShareQr
+                      .mutateAsync()
+                      .then((res) => {
+                        setShareQr(res);
+                        toast.success(t.settings.wechat.shareQrTitle);
+                      })
+                      .catch((error) => {
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : t.settings.wechat.bindFailed,
+                        );
+                      });
+                  }}
+                >
+                  {refreshShareQr.isPending ? (
+                    <LoaderCircleIcon className="animate-spin" />
+                  ) : (
+                    <QrCodeIcon />
+                  )}
+                  {t.settings.wechat.refreshShareQr}
+                </Button>
               </div>
-              <div className="text-muted-foreground mt-1 text-sm">
-                {t.settings.wechat.shareQrDescription}
+              {shareQr?.qrcode_img_content ? (
+                <a
+                  href={shareQr.qrcode_img_content}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary mt-3 inline-flex items-center gap-1 text-sm underline"
+                >
+                  <QrCodeIcon className="size-4" />
+                  {t.settings.wechat.openQr}
+                </a>
+              ) : null}
+              <div className="text-muted-foreground mt-2 text-xs">
+                {t.settings.wechat.shareQrFreshHint}
               </div>
-              <a
-                href={bindStatus.qrcode_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary mt-2 inline-flex items-center gap-1 text-sm underline"
-              >
-                <QrCodeIcon className="size-4" />
-                {t.settings.wechat.openShareQr}
-              </a>
             </div>
           ) : null}
           {statusLoading ? (

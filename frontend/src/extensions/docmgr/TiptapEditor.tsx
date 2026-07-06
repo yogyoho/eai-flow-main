@@ -25,7 +25,8 @@ import {
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Markdown } from "tiptap-markdown";
 import { createLowlight } from "lowlight";
-import { grammars as commonGrammars } from "lowlight/lib/common";
+// lowlight v3 限制 exports，用相对路径 + next.config webpack alias 解析 common grammars
+import { grammars as commonGrammars } from "lowlight/lib/common.js";
 
 import { cn } from "@/lib/utils";
 

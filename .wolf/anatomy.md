@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T15:03:32.739Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T15:05:59.186Z
 > Files: 1415 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1715,7 +1715,7 @@
 ## frontend/src/components/workspace/settings/
 
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1533 tok)
-- `wechat-settings-page.tsx` — WechatSettingsPage (~1802 tok)
+- `wechat-settings-page.tsx` — WechatSettingsPage (~2275 tok)
 
 ## frontend/src/core/channels/
 
@@ -1729,9 +1729,9 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~6928 tok)
+- `en-US.ts` — Exports enUS (~6966 tok)
 - `types.ts` — Exports Translations (~3833 tok)
-- `zh-CN.ts` — Exports zhCN (~4886 tok)
+- `zh-CN.ts` — Exports zhCN (~4911 tok)
 
 ## frontend/src/core/mcp/
 

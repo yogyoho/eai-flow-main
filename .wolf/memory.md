@@ -7441,3 +7441,9 @@
 | 23:03 | Edited frontend/src/core/channels/hooks.ts | 11→12 lines | ~83 |
 | 23:03 | Edited frontend/src/core/channels/hooks.ts | modified useCreateWechatBindCode() | ~68 |
 | 23:03 | Edited frontend/src/core/i18n/locales/types.ts | 7→8 lines | ~59 |
+| 23:04 | Edited frontend/src/core/i18n/locales/zh-CN.ts | 8→9 lines | ~108 |
+| 23:04 | Edited frontend/src/core/i18n/locales/en-US.ts | 7→8 lines | ~151 |
+| 23:05 | Edited frontend/src/components/workspace/settings/wechat-settings-page.tsx | 6→10 lines | ~72 |
+| 23:05 | Edited frontend/src/components/workspace/settings/wechat-settings-page.tsx | 3→7 lines | ~90 |
+| 23:05 | Edited frontend/src/components/workspace/settings/wechat-settings-page.tsx | CSS: message | ~634 |
+| 23:07 | Session end: 56 writes across 25 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 41 reads | ~94296 tok |
