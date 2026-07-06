@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 61686737,
-    "total_reads": 21811,
-    "total_writes": 25765,
+    "total_tokens_estimated": 61787047,
+    "total_reads": 21869,
+    "total_writes": 25805,
     "total_sessions": 375,
-    "anatomy_hits": 11709,
-    "anatomy_misses": 8944,
-    "repeated_reads_blocked": 16532,
-    "estimated_savings_vs_bare_cli": 104627505
+    "anatomy_hits": 11745,
+    "anatomy_misses": 8966,
+    "repeated_reads_blocked": 16710,
+    "estimated_savings_vs_bare_cli": 104769265
   },
   "sessions": [
     {
@@ -278867,6 +278867,588 @@
         "writes_count": 20,
         "repeated_reads_blocked": 89,
         "anatomy_lookups": 17
+      }
+    },
+    {
+      "id": "session-2026-07-06-1609",
+      "started": "2026-07-06T08:09:41.943Z",
+      "ended": "2026-07-06T12:59:07.923Z",
+      "reads": [
+        {
+          "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/befb5658-311f-4777-8446-94a8b01b0396/tool-results/bym2i25vh.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/befb5658-311f-4777-8446-94a8b01b0396/tool-results/bkew2jlob.txt",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 1376,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/grounding_check.py",
+          "tokens_estimated": 1593,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 1697,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/parse_spec.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/compliance_check.py",
+          "tokens_estimated": 1433,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/gen_passport.py",
+          "tokens_estimated": 616,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/merge_structures.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/calibration_view.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_contract_store.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_extract.py",
+          "tokens_estimated": 505,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_grounding.py",
+          "tokens_estimated": 550,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_mapping.py",
+          "tokens_estimated": 348,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_routing.py",
+          "tokens_estimated": 1658,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md",
+          "tokens_estimated": 2004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/references/fire_spec_mapping.json",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/CLAUDE.md",
+          "tokens_estimated": 3649,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/CLAUDE.md",
+          "tokens_estimated": 3649,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/ruff.toml",
+          "tokens_estimated": 59,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/_fixtures.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_parse_spec.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/models/__init__.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/schemas.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 7044,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 6553,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/app/admin/app-center/AppManagement.tsx",
+          "tokens_estimated": 3740,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/docs/superpowers/plans/2026-07-06-personal-docmgr-direct-mapping.md",
+          "tokens_estimated": 7457,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 427,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 242,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/grounding_check.py",
+          "tokens_estimated": 283,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 1493,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 183,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 61,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/compliance_check.py",
+          "tokens_estimated": 115,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/models/__init__.py",
+          "tokens_estimated": 352,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/schemas.py",
+          "tokens_estimated": 225,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 1737,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 523,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md",
+          "tokens_estimated": 193,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 36474,
+        "output_tokens_estimated": 13681,
+        "reads_count": 29,
+        "writes_count": 20,
+        "repeated_reads_blocked": 89,
+        "anatomy_lookups": 18
+      }
+    },
+    {
+      "id": "session-2026-07-06-1609",
+      "started": "2026-07-06T08:09:41.943Z",
+      "ended": "2026-07-06T13:02:07.107Z",
+      "reads": [
+        {
+          "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/befb5658-311f-4777-8446-94a8b01b0396/tool-results/bym2i25vh.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/befb5658-311f-4777-8446-94a8b01b0396/tool-results/bkew2jlob.txt",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 1376,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/grounding_check.py",
+          "tokens_estimated": 1593,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 1697,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/parse_spec.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/compliance_check.py",
+          "tokens_estimated": 1433,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/gen_passport.py",
+          "tokens_estimated": 616,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/merge_structures.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/calibration_view.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_contract_store.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_extract.py",
+          "tokens_estimated": 505,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_grounding.py",
+          "tokens_estimated": 550,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_mapping.py",
+          "tokens_estimated": 348,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_routing.py",
+          "tokens_estimated": 1658,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md",
+          "tokens_estimated": 2004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/references/fire_spec_mapping.json",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/CLAUDE.md",
+          "tokens_estimated": 3649,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/CLAUDE.md",
+          "tokens_estimated": 3649,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/ruff.toml",
+          "tokens_estimated": 59,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/_fixtures.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/tests/test_parse_spec.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/models/__init__.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/schemas.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 7044,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 6553,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/app/admin/app-center/AppManagement.tsx",
+          "tokens_estimated": 3740,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/docs/superpowers/plans/2026-07-06-personal-docmgr-direct-mapping.md",
+          "tokens_estimated": 7457,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 427,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/extract.py",
+          "tokens_estimated": 242,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/grounding_check.py",
+          "tokens_estimated": 283,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 1493,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/auto_calibrate.py",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/contract_store.py",
+          "tokens_estimated": 183,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 61,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/run.sh",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/scripts/compliance_check.py",
+          "tokens_estimated": 115,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/models/__init__.py",
+          "tokens_estimated": 352,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/schemas.py",
+          "tokens_estimated": 225,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/service.py",
+          "tokens_estimated": 1737,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/.worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py",
+          "tokens_estimated": 523,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/skills/custom/fire-protection-extract/SKILL.md",
+          "tokens_estimated": 193,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 36474,
+        "output_tokens_estimated": 13681,
+        "reads_count": 29,
+        "writes_count": 20,
+        "repeated_reads_blocked": 89,
+        "anatomy_lookups": 18
       }
     }
   ],

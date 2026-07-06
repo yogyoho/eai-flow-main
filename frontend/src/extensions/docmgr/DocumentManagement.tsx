@@ -104,6 +104,28 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [personalOpen, setPersonalOpen] = useState(true);
   const [selectedThread, setSelectedThread] = useState<{ thread_id: string; display_name: string; files: any[] } | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    sidebarDragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+    const onMove = (ev: MouseEvent) => {
+      if (!sidebarDragRef.current) return;
+      const delta = ev.clientX - sidebarDragRef.current.startX;
+      setSidebarWidth(Math.max(180, Math.min(480, sidebarDragRef.current.startWidth + delta)));
+    };
+    const onUp = () => {
+      sidebarDragRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [sidebarWidth]);
   const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
     useDocuments({ folder: currentFolder });
   // Personal outputs — direct filesystem view (replaces old personal folder tree)
@@ -241,7 +263,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
   return (
     <div className="flex h-full w-full bg-background">
-      <div className="w-60 border-r border-border flex flex-col shrink-0 bg-muted/50">
+      <div className="border-r border-border flex flex-col shrink-0 bg-muted/50 relative" style={{ width: sidebarWidth }}>
         <div className="p-3.5 flex items-center gap-2 border-b border-border">
           <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
             <FolderCheck className="w-4 h-4" />
@@ -347,6 +369,11 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           </div>
           )}
         </nav>
+        <div
+          onMouseDown={handleSidebarDragStart}
+          className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors z-30"
+          title="拖动调整宽度"
+        />
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0 bg-background">

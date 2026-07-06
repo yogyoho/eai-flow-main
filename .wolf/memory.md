@@ -7404,3 +7404,5 @@
 | 17:15 | Session end: 19 writes across 11 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 28 reads | ~46165 tok |
 | 17:24 | Edited skills/custom/fire-protection-extract/SKILL.md | expanded (+7 lines) | ~180 |
 | 17:24 | Session end: 20 writes across 12 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 28 reads | ~46415 tok |
+| 20:59 | Session end: 20 writes across 12 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 29 reads | ~50155 tok |
+| 21:02 | Session end: 20 writes across 12 files (2026-07-06-personal-docmgr-direct-mapping.md, extract.py, grounding_check.py, auto_calibrate.py, contract_store.py) | 29 reads | ~50155 tok |

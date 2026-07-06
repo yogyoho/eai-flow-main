@@ -141,6 +141,11 @@
       "count": 1,
       "tokens": 6553,
       "first_read": "2026-07-06T08:50:54.916Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/app/admin/app-center/AppManagement.tsx": {
+      "count": 1,
+      "tokens": 3740,
+      "first_read": "2026-07-06T12:58:32.896Z"
     }
   },
   "files_written": [
@@ -279,9 +284,9 @@
     ".worktrees/personal-docmgr-direct-mapping/backend/app/extensions/docmgr/routers.py": 2,
     "skills/custom/fire-protection-extract/SKILL.md": 1
   },
-  "anatomy_hits": 17,
+  "anatomy_hits": 18,
   "anatomy_misses": 11,
   "repeated_reads_warned": 89,
   "cerebrum_warnings": 0,
-  "stop_count": 11
+  "stop_count": 13
 }
