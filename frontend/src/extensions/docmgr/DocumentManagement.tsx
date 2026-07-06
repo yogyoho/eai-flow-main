@@ -43,10 +43,21 @@ type View = "list" | "editor";
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
+  const [activePersonalFile, setActivePersonalFile] = useState<{ thread_id: string; rel_path: string; title: string } | null>(null);
   const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
   const [currentFolder, setCurrentFolder] = useState("默认文件夹");
-  const handleSelectDoc = (doc: AIDocument) => { setActiveDocId(doc.id); setView("editor"); };
-  const handleBack = () => { setActiveDocId(null); setView("list"); };
+  const handleSelectDoc = (doc: AIDocument) => {
+    // 个人文档（直接映射）：用 thread_id + rel_path 读 artifacts，不走 AIDocument id
+    if (doc.source_thread_id && doc.file_ref_path && doc.id.includes("/")) {
+      setActivePersonalFile({ thread_id: doc.source_thread_id, rel_path: doc.file_ref_path, title: doc.title });
+      setActiveDocId(null);
+    } else {
+      setActiveDocId(doc.id);
+      setActivePersonalFile(null);
+    }
+    setView("editor");
+  };
+  const handleBack = () => { setActiveDocId(null); setActivePersonalFile(null); setView("list"); };
   return (
     <div className="h-full flex overflow-hidden bg-background relative">
       {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
@@ -54,10 +65,10 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
         <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
       </div>
       {/* Editor slides in on top when active */}
-      {view === "editor" && activeDocId && (
-        <motion.div key={activeDocId} className="absolute inset-0 z-10 flex overflow-hidden"
+      {view === "editor" && (activeDocId || activePersonalFile) && (
+        <motion.div key={activeDocId || activePersonalFile?.rel_path} className="absolute inset-0 z-10 flex overflow-hidden"
           initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-          <DocumentEditor docId={activeDocId} onBack={handleBack} />
+          <DocumentEditor docId={activeDocId} personalFile={activePersonalFile} onBack={handleBack} />
         </motion.div>
       )}
     </div>
@@ -968,7 +979,7 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
 
 // ─── Document Editor ──────────────────────────────────────────────────────────
 
-function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }) {
+function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; onBack: () => void }) {
   const [doc, setDoc] = useState<AIDocument | null>(null);
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
@@ -984,6 +995,20 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
 
   useEffect(() => {
     setLoading(true);
+    // 个人文档：直接读线程 outputs/ 文件内容（artifacts API）
+    if (personalFile) {
+      const artifactPath = `mnt/user-data/outputs/${personalFile.rel_path}`;
+      fetch(`/api/threads/${personalFile.thread_id}/artifacts/${artifactPath}`)
+        .then((r) => r.text())
+        .then((content) => {
+          setDoc({ id: "personal", title: personalFile.title, content, doc_type: "file_ref" } as AIDocument);
+          setTitle(personalFile.title);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
+    if (!docId) { setLoading(false); return; }
     docmgrApi.get(docId).then(async (d) => {
       // For file_ref documents, load file content via preview API
       if (d.doc_type === "file_ref" && !d.content) {
@@ -998,9 +1023,11 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
       setTitle(d.title);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [docId]);
+  }, [docId, personalFile]);
 
   const scheduleSave = useCallback((content: string) => {
+    if (personalFile) return; // 个人文档只读，不自动保存（文件由 Agent 生成）
+    if (!docId) return;
     setSaved(false);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
@@ -1008,10 +1035,11 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
       try { await docmgrApi.update(docId, { title: titleRef.current, content }); setSaved(true); setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })); }
       finally { setSaving(false); }
     }, 1500);
-  }, [docId]);
+  }, [docId, personalFile]);
 
   const handleTitleBlur = async () => {
-    if (!doc || title === doc.title) return;
+    if (!doc || title === doc.title || personalFile) return;
+    if (!docId) return;
     setSaving(true);
     try {
       const content = editorRef.current?.getMarkdown() ?? doc.content ?? "";
@@ -1024,6 +1052,15 @@ function DocumentEditor({ docId, onBack }: { docId: string; onBack: () => void }
   const handleExport = async (fmt: "md" | "docx") => {
     if (fmt === "docx") {
       setShowExportDialog(true);
+      return;
+    }
+    // 个人文档：直接用已读 content 下载
+    if (personalFile || !docId) {
+      const blob = new Blob([doc?.content ?? ""], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${title}.${fmt}`; a.click();
+      URL.revokeObjectURL(url);
       return;
     }
     const res = await docmgrApi.export(docId, fmt);
