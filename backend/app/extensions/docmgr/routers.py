@@ -640,12 +640,13 @@ async def access_shared_document(
 
 @router.get("/personal-outputs", response_model=PersonalOutputsResponse)
 async def list_personal_outputs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """List personal thread outputs — direct filesystem view of 我的文档."""
-    threads = await AIDocumentService.list_personal_outputs(db, current_user.id)
-    return PersonalOutputsResponse(threads=threads)
+    """List personal thread outputs — paginated direct filesystem view of 我的文档."""
+    return await AIDocumentService.list_personal_outputs(db, current_user.id, skip, limit)
 
 
 @router.put("/personal-docs/{thread_id}/star")

@@ -581,8 +581,12 @@ export const docmgrApi = {
   },
 
   // Personal outputs — direct filesystem view of 我的文档
-  listPersonalOutputs: () =>
-    request<{ threads: Array<{ thread_id: string; display_name: string; files: Array<{ name: string; rel_path: string; size: number; mime: string; modified_at: string; starred: boolean; shared: boolean }> }> }>("/docmgr/personal-outputs"),
+  listPersonalOutputs: (params: { skip?: number; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.skip != null) qs.set("skip", String(params.skip));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    return request<{ threads: Array<{ thread_id: string; display_name: string; files: Array<{ name: string; rel_path: string; size: number; mime: string; modified_at: string; starred: boolean; shared: boolean }> }>; total: number; has_more: boolean }>(`/docmgr/personal-outputs${qs.toString() ? `?${qs}` : ""}`);
+  },
 
   togglePersonalStar: (threadId: string, data: { rel_path: string; starred: boolean }) =>
     request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/star`, { method: "PUT", body: JSON.stringify(data) }),

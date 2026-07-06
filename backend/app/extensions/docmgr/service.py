@@ -330,27 +330,28 @@ class AIDocumentService:
     async def list_personal_outputs(
         db: AsyncSession,
         user_id: UUID,
-    ) -> list[dict]:
-        """Scan users/{user_id}/threads/*/outputs/ and return per-thread file listings."""
+        skip: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        """分页扫描线程 outputs/：先按 created_at 排序全部线程（不扫文件），
+
+        切片后只对分页内的线程扫描文件详情。返回 {threads, total, has_more}。
+        """
         import sqlite3
+        from datetime import datetime as _dt
 
         from deerflow.config.paths import Paths
-
-        paths = Paths()
-
-        # 双 auth：extensions user_id ≠ 核心 auth user_id（文件系统 owner）。
-        # 线程 outputs/ 存在核心 auth user 目录下，用 get_effective_user_id()
-        # 获取；fallback 到 extensions user_id。
         from deerflow.runtime.user_context import get_effective_user_id
 
+        paths = Paths()
         effective_uid = get_effective_user_id()
         threads_dir = paths.base_dir / "users" / effective_uid / "threads"
         if not threads_dir.is_dir():
             threads_dir = paths.base_dir / "users" / str(user_id) / "threads"
         if not threads_dir.is_dir():
-            return []
+            return {"threads": [], "total": 0, "has_more": False}
 
-        # Resolve display names + created_at from threads_meta (sqlite)
+        # created_at + display_name from threads_meta（一次 sqlite 查询）
         display_names: dict[str, str] = {}
         thread_created: dict[str, str] = {}
         try:
@@ -371,29 +372,64 @@ class AIDocumentService:
         except Exception:
             pass
 
-        # Resolve star/share from personal_doc_meta (postgres)
+        # 第一遍：收集所有线程目录（只检查 outputs 目录存在，不扫文件）+ 排序
+        all_threads: list[dict] = []
+        for thread_dir in threads_dir.iterdir():
+            if not thread_dir.is_dir():
+                continue
+            if not (thread_dir / "user-data" / "outputs").is_dir():
+                continue
+            tid = thread_dir.name
+            all_threads.append({
+                "thread_id": tid,
+                "thread_dir": thread_dir,
+                "_created_at": thread_created.get(tid, ""),
+                "display_name": display_names.get(tid, ""),
+            })
+
+        def _sort_key(t: dict) -> float:
+            ca = t.get("_created_at")
+            if ca:
+                try:
+                    if isinstance(ca, (int, float)):
+                        return float(ca)
+                    return _dt.fromisoformat(str(ca).replace("Z", "+00:00")).timestamp()
+                except Exception:
+                    pass
+            return 0.0
+
+        all_threads.sort(key=_sort_key, reverse=True)
+
+        total = len(all_threads)
+        page = all_threads[skip:skip + limit]
+        has_more = skip + limit < total
+
+        if not page:
+            return {"threads": [], "total": total, "has_more": has_more}
+
+        # star/share：只查分页内的线程
+        page_tids = [t["thread_id"] for t in page]
         star_share: dict[tuple[str, str], tuple[bool, bool]] = {}
         try:
             from app.extensions.models import PersonalDocMeta
 
             meta_rows = await db.execute(
-                select(PersonalDocMeta).where(PersonalDocMeta.user_id == user_id),
+                select(PersonalDocMeta).where(
+                    PersonalDocMeta.user_id == user_id,
+                    PersonalDocMeta.thread_id.in_(page_tids),
+                ),
             )
             for m in meta_rows.scalars().all():
                 star_share[(m.thread_id, m.rel_path)] = (m.is_starred, m.is_shared)
         except Exception:
             pass
 
-        # Scan outputs/ per thread
+        # 第二遍：只对分页线程扫描文件详情
         result: list[dict] = []
-        for thread_dir in threads_dir.iterdir():
-            if not thread_dir.is_dir():
-                continue
-            outputs_dir = thread_dir / "user-data" / "outputs"
-            if not outputs_dir.is_dir():
-                continue
-            tid = thread_dir.name
-            display_name = display_names.get(tid)
+        for t in page:
+            outputs_dir = t["thread_dir"] / "user-data" / "outputs"
+            tid = t["thread_id"]
+            display_name = t["display_name"] or None
 
             files: list[dict] = []
             for fp in sorted(outputs_dir.rglob("*")):
@@ -415,11 +451,9 @@ class AIDocumentService:
                     "shared": shared,
                 })
 
-            # 空目录不显示（多轮对话后有文件自然出现）
             if not files:
-                continue
+                continue  # 空目录不显示
 
-            # Fallback display name
             if not display_name:
                 for f in files:
                     if f["name"].endswith(".md"):
@@ -434,31 +468,9 @@ class AIDocumentService:
                 "thread_id": tid,
                 "display_name": display_name,
                 "files": files,
-                "_created_at": thread_created.get(tid, ""),
             })
 
-        # 按对话线程创建时间倒序（最新创建的对话排最上）；
-        # 无 created_at 时 fallback 到线程内最新文件 mtime
-        from datetime import datetime as _dt
-
-        def _thread_sort_key(thread: dict) -> float:
-            ca = thread.get("_created_at")
-            if ca:
-                try:
-                    # sqlite created_at 可能是 ISO 字符串或 timestamp
-                    if isinstance(ca, (int, float)):
-                        return float(ca)
-                    return _dt.fromisoformat(str(ca).replace("Z", "+00:00")).timestamp()
-                except Exception:
-                    pass
-            mtimes = [f["modified_at"].timestamp() for f in thread["files"] if f.get("modified_at")]
-            return max(mtimes) if mtimes else 0.0
-
-        result.sort(key=_thread_sort_key, reverse=True)
-        # 清理内部排序字段，不返回给前端
-        for t in result:
-            t.pop("_created_at", None)
-        return result
+        return {"threads": result, "total": total, "has_more": has_more}
 
     @staticmethod
     async def upsert_personal_star(

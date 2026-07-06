@@ -374,7 +374,15 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           </div>
           <span className="font-semibold text-foreground text-l">文档空间</span>
         </div>
-        <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
+        <nav
+          className="flex-1 overflow-y-auto px-2 py-1 space-y-1"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+              personalOutputs.fetchMore();
+            }
+          }}
+        >
           {/* 我的文档 — 树形结构 */}
           <div>
             <button
@@ -391,6 +399,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   ? <WindowsFolderOpen className="w-4 h-4" />
                   : <WindowsFolder className="w-4 h-4" />}
                 <span>我的文档</span>
+                <span className="text-[10px] text-muted-foreground/60">共 {personalOutputs.total} 个</span>
               </div>
               {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
@@ -454,6 +463,14 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                     </div>
                   );
                 })}
+                {personalOutputs.loadingMore && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5 flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" /> 加载更多...
+                  </p>
+                )}
+                {personalOutputs.hasMore && !personalOutputs.loadingMore && (
+                  <p className="text-[10px] text-muted-foreground/50 px-3 py-1.5">↓ 滚动加载更多</p>
+                )}
               </div>
             )}
           </div>

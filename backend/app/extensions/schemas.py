@@ -682,6 +682,8 @@ class PersonalThreadOutput(BaseModel):
 
 class PersonalOutputsResponse(BaseModel):
     threads: list[PersonalThreadOutput]
+    total: int = 0
+    has_more: bool = False
 
 
 class PersonalDocStarRequest(BaseModel):

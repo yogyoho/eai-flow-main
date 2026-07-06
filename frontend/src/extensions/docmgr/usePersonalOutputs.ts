@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { docmgrApi } from "../api";
 
 interface PersonalDocFile {
@@ -11,22 +11,44 @@ interface PersonalThreadOutput {
   thread_id: string; display_name: string; files: PersonalDocFile[];
 }
 
+const PAGE_SIZE = 20;
+
 export function usePersonalOutputs() {
   const [threads, setThreads] = useState<PersonalThreadOutput[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const skipRef = useRef(0);
 
-  const fetchOutputs = useCallback(async () => {
+  const fetchFirst = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await docmgrApi.listPersonalOutputs();
+      const data = await docmgrApi.listPersonalOutputs({ skip: 0, limit: PAGE_SIZE });
       setThreads(data.threads);
+      setTotal(data.total);
+      setHasMore(data.has_more);
+      skipRef.current = data.threads.length;
     } catch (err) {
       console.error("Failed to fetch personal outputs:", err);
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchOutputs(); }, [fetchOutputs]);
+  const fetchMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await docmgrApi.listPersonalOutputs({ skip: skipRef.current, limit: PAGE_SIZE });
+      setThreads(prev => [...prev, ...data.threads]);
+      setHasMore(data.has_more);
+      skipRef.current += data.threads.length;
+    } catch (err) {
+      console.error("Failed to load more:", err);
+    } finally { setLoadingMore(false); }
+  }, [loadingMore, hasMore]);
+
+  useEffect(() => { fetchFirst(); }, [fetchFirst]);
 
   const toggleExpand = useCallback((threadId: string) => {
     setExpandedKeys((prev) => {
@@ -37,14 +59,12 @@ export function usePersonalOutputs() {
   }, []);
 
   const toggleStar = useCallback(async (threadId: string, relPath: string, current: boolean) => {
-    // 乐观更新：即时切换 UI 状态
     setThreads(prev => prev.map(t => t.thread_id === threadId ? {
       ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: !current } : f),
     } : t));
     try {
       await docmgrApi.togglePersonalStar(threadId, { rel_path: relPath, starred: !current });
     } catch {
-      // 失败回滚
       setThreads(prev => prev.map(t => t.thread_id === threadId ? {
         ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: current } : f),
       } : t));
@@ -64,5 +84,5 @@ export function usePersonalOutputs() {
     }
   }, []);
 
-  return { threads, loading, expandedKeys, toggleExpand, toggleStar, toggleShare, refresh: fetchOutputs };
+  return { threads, total, hasMore, loading, loadingMore, expandedKeys, toggleExpand, toggleStar, toggleShare, fetchMore, refresh: fetchFirst };
 }
