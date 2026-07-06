@@ -128,7 +128,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [personalOpen, setPersonalOpen] = useState(true);
-  const [selectedThread, setSelectedThread] = useState<{ thread_id: string; display_name: string; files: any[] } | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred" | "shared">("all");
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -249,6 +249,9 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     folder: thread.display_name,
     status: "active",
   });
+  // 从 personalOutputs.threads 派生当前选中线程 —— 单一数据源，
+  // 这样 toggleStar 的乐观更新会同时反映到左侧列表和主体区域
+  const selectedThread = personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) || null;
   const displayDocs = selectedThread
     ? selectedThread.files.map((f: any) => adaptPersonalFile(f, selectedThread))
     : docs;
@@ -300,7 +303,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           {/* 我的文档 — 树形结构 */}
           <div>
             <button
-              onClick={() => { setPersonalOpen((v) => !v); setSelectedThread(null); }}
+              onClick={() => { setPersonalOpen((v) => !v); setSelectedThreadId(null); }}
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
@@ -324,7 +327,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   return (
                     <div key={thread.thread_id}>
                       <button
-                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThread(thread); setActiveFolderId(null); }}
+                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); setActiveFolderId(null); }}
                         className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
