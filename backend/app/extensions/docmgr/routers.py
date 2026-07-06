@@ -686,3 +686,27 @@ async def list_starred_personal(
     """Return all starred personal doc (thread_id, rel_path) pairs."""
     items = await AIDocumentService.list_starred_personal(db, current_user.id)
     return {"items": items}
+
+
+class PersonalDocContentRequest(BaseModel):
+    rel_path: str = Field(..., min_length=1, max_length=500)
+    content: str
+
+
+@router.put("/personal-docs/{thread_id}/content")
+async def save_personal_content(
+    thread_id: str,
+    data: PersonalDocContentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """写回线程 outputs/ 文件（编辑器保存）。"""
+    try:
+        await AIDocumentService.write_personal_output(
+            db, current_user.id, thread_id, data.rel_path, data.content,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="outputs directory not found")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return {"ok": True}

@@ -1026,14 +1026,19 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   }, [docId, personalFile]);
 
   const scheduleSave = useCallback((content: string) => {
-    if (personalFile) return; // 个人文档只读，不自动保存（文件由 Agent 生成）
-    if (!docId) return;
     setSaved(false);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       setSaving(true);
-      try { await docmgrApi.update(docId, { title: titleRef.current, content }); setSaved(true); setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })); }
-      finally { setSaving(false); }
+      try {
+        if (personalFile) {
+          await docmgrApi.savePersonalContent(personalFile.thread_id, { rel_path: personalFile.rel_path, content });
+        } else if (docId) {
+          await docmgrApi.update(docId, { title: titleRef.current, content });
+        }
+        setSaved(true);
+        setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+      } finally { setSaving(false); }
     }, 1500);
   }, [docId, personalFile]);
 

@@ -497,6 +497,35 @@ class AIDocumentService:
         return [{"thread_id": r.thread_id, "rel_path": r.rel_path} for r in rows]
 
     @staticmethod
+    async def write_personal_output(
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        content: str,
+    ) -> None:
+        """写回线程 outputs/ 文件（编辑器保存）。"""
+        import asyncio
+
+        from deerflow.config.paths import Paths
+        from deerflow.runtime.user_context import get_effective_user_id
+
+        paths = Paths()
+        effective_uid = get_effective_user_id()
+        base = paths.base_dir / "users" / effective_uid / "threads" / thread_id / "user-data" / "outputs"
+        if not base.is_dir():
+            base = paths.base_dir / "users" / str(user_id) / "threads" / thread_id / "user-data" / "outputs"
+        if not base.is_dir():
+            raise FileNotFoundError(f"outputs dir not found for thread {thread_id}")
+
+        target = (base / rel_path).resolve()
+        # 防路径穿越：target 必须在 outputs 目录内
+        if not str(target).startswith(str(base.resolve())):
+            raise ValueError(f"path escape detected: {rel_path}")
+
+        await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))
+
+    @staticmethod
     async def sync_thread_files(
         db: AsyncSession,
         user_id: UUID,

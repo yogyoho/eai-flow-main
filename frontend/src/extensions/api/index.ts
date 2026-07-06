@@ -589,6 +589,10 @@ export const docmgrApi = {
 
   togglePersonalShare: (threadId: string, data: { rel_path: string; shared: boolean }) =>
     request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/share`, { method: "PUT", body: JSON.stringify(data) }),
+
+  /** 写回线程 outputs/ 文件（编辑器保存）。 */
+  savePersonalContent: (threadId: string, data: { rel_path: string; content: string }) =>
+    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 // ===== Folder API =====
