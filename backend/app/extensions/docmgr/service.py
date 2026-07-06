@@ -350,19 +350,22 @@ class AIDocumentService:
         if not threads_dir.is_dir():
             return []
 
-        # Resolve display names from threads_meta (sqlite)
+        # Resolve display names + created_at from threads_meta (sqlite)
         display_names: dict[str, str] = {}
+        thread_created: dict[str, str] = {}
         try:
             meta_db = paths.base_dir / "data" / "deerflow.db"
             if meta_db.exists():
                 conn = sqlite3.connect(str(meta_db))
                 try:
                     rows = conn.execute(
-                        "SELECT thread_id, display_name FROM threads_meta"
+                        "SELECT thread_id, display_name, created_at FROM threads_meta"
                     ).fetchall()
-                    for tid, dn in rows:
+                    for tid, dn, ca in rows:
                         if dn:
                             display_names[tid] = dn
+                        if ca:
+                            thread_created[tid] = ca
                 finally:
                     conn.close()
         except Exception:
@@ -431,14 +434,30 @@ class AIDocumentService:
                 "thread_id": tid,
                 "display_name": display_name,
                 "files": files,
+                "_created_at": thread_created.get(tid, ""),
             })
 
-        # 按线程内最新文件 mtime 倒序（最近生成/修改的排最上）
-        def _thread_max_mtime(thread: dict) -> float:
+        # 按对话线程创建时间倒序（最新创建的对话排最上）；
+        # 无 created_at 时 fallback 到线程内最新文件 mtime
+        from datetime import datetime as _dt
+
+        def _thread_sort_key(thread: dict) -> float:
+            ca = thread.get("_created_at")
+            if ca:
+                try:
+                    # sqlite created_at 可能是 ISO 字符串或 timestamp
+                    if isinstance(ca, (int, float)):
+                        return float(ca)
+                    return _dt.fromisoformat(str(ca).replace("Z", "+00:00")).timestamp()
+                except Exception:
+                    pass
             mtimes = [f["modified_at"].timestamp() for f in thread["files"] if f.get("modified_at")]
             return max(mtimes) if mtimes else 0.0
 
-        result.sort(key=_thread_max_mtime, reverse=True)
+        result.sort(key=_thread_sort_key, reverse=True)
+        # 清理内部排序字段，不返回给前端
+        for t in result:
+            t.pop("_created_at", None)
         return result
 
     @staticmethod
