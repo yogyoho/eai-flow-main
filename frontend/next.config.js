@@ -21,17 +21,6 @@ const withNextra = nextra({});
 /** @type {import("next").NextConfig} */
 const config = {
   transpilePackages: ["lowlight", "highlight.js"],
-  webpack: (config) => {
-    // lowlight v3 的 package.json 限制 exports，无法直接 import "lowlight/lib/common"。
-    // 用 alias 指向实际文件，绕过 exports 字段。
-    config.resolve = config.resolve || {};
-    config.resolve.alias = {
-      ...(config.resolve.alias || {}),
-      "lowlight/lib/common": path.join(__dirname, "node_modules/lowlight/lib/common.js"),
-      "lowlight/lib/common.js": path.join(__dirname, "node_modules/lowlight/lib/common.js"),
-    };
-    return config;
-  },
   output:
     process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
       ? "standalone"

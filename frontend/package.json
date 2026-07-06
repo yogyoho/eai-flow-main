@@ -90,6 +90,7 @@
     "framer-motion": "^12.38.0",
     "gsap": "^3.13.0",
     "hast": "^1.0.0",
+    "highlight.js": "^11.11.1",
     "isomorphic-dompurify": "^3.9.0",
     "katex": "^0.16.28",
     "lib0": "^0.2.117",
