@@ -30,6 +30,9 @@ from app.extensions.schemas import (
     FolderTreeResponse,
     FolderUpdate,
     MessageResponse,
+    PersonalDocShareRequest,
+    PersonalDocStarRequest,
+    PersonalOutputsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -630,3 +633,46 @@ async def access_shared_document(
     if not result:
         raise HTTPException(status_code=404, detail="Shared document not found or link invalid")
     return result
+
+
+# ─── Personal Outputs (Direct Filesystem) ────────────────────────────────────
+
+
+@router.get("/personal-outputs", response_model=PersonalOutputsResponse)
+async def list_personal_outputs(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """List personal thread outputs — direct filesystem view of 我的文档."""
+    threads = await AIDocumentService.list_personal_outputs(db, current_user.id)
+    return PersonalOutputsResponse(threads=threads)
+
+
+@router.put("/personal-docs/{thread_id}/star")
+async def toggle_personal_star(
+    thread_id: str,
+    data: PersonalDocStarRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Toggle star on a personal doc."""
+    await AIDocumentService.upsert_personal_star(
+        db, current_user.id, thread_id, data.rel_path, data.starred,
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.put("/personal-docs/{thread_id}/share")
+async def toggle_personal_share(
+    thread_id: str,
+    data: PersonalDocShareRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Toggle share on a personal doc."""
+    await AIDocumentService.upsert_personal_share(
+        db, current_user.id, thread_id, data.rel_path, data.shared,
+    )
+    await db.commit()
+    return {"ok": True}

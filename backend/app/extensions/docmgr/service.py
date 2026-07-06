@@ -4,6 +4,7 @@ import json
 import logging
 import mimetypes
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -324,6 +325,161 @@ class AIDocumentService:
             pass
 
         return thread_id[:8]
+
+    @staticmethod
+    async def list_personal_outputs(
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[dict]:
+        """Scan users/{user_id}/threads/*/outputs/ and return per-thread file listings."""
+        import sqlite3
+
+        from deerflow.config.paths import Paths
+
+        paths = Paths()
+        threads_dir = paths.base_dir / "users" / str(user_id) / "threads"
+        if not threads_dir.is_dir():
+            return []
+
+        # Resolve display names from threads_meta (sqlite)
+        display_names: dict[str, str] = {}
+        try:
+            meta_db = paths.base_dir / "data" / "deerflow.db"
+            if meta_db.exists():
+                conn = sqlite3.connect(str(meta_db))
+                try:
+                    rows = conn.execute(
+                        "SELECT thread_id, display_name FROM threads_meta"
+                    ).fetchall()
+                    for tid, dn in rows:
+                        if dn:
+                            display_names[tid] = dn
+                finally:
+                    conn.close()
+        except Exception:
+            pass
+
+        # Resolve star/share from personal_doc_meta (postgres)
+        star_share: dict[tuple[str, str], tuple[bool, bool]] = {}
+        try:
+            from app.extensions.models import PersonalDocMeta
+
+            meta_rows = await db.execute(
+                select(PersonalDocMeta).where(PersonalDocMeta.user_id == user_id),
+            )
+            for m in meta_rows.scalars().all():
+                star_share[(m.thread_id, m.rel_path)] = (m.is_starred, m.is_shared)
+        except Exception:
+            pass
+
+        # Scan outputs/ per thread
+        result: list[dict] = []
+        for thread_dir in sorted(threads_dir.iterdir(), reverse=True):
+            if not thread_dir.is_dir():
+                continue
+            outputs_dir = thread_dir / "user-data" / "outputs"
+            if not outputs_dir.is_dir():
+                continue
+            tid = thread_dir.name
+            display_name = display_names.get(tid)
+
+            files: list[dict] = []
+            for fp in sorted(outputs_dir.rglob("*")):
+                if not fp.is_file():
+                    continue
+                rel = str(fp.relative_to(outputs_dir))
+                if any(p.startswith(".") for p in Path(rel).parts):
+                    continue
+                st = fp.stat()
+                mime, _ = mimetypes.guess_type(fp.name)
+                starred, shared = star_share.get((tid, rel), (False, False))
+                files.append({
+                    "name": fp.name,
+                    "rel_path": rel,
+                    "size": st.st_size,
+                    "mime": mime or "application/octet-stream",
+                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc),
+                    "starred": starred,
+                    "shared": shared,
+                })
+
+            # Fallback display name
+            if not display_name:
+                for f in files:
+                    if f["name"].endswith(".md"):
+                        display_name = f["name"].removesuffix(".md")
+                        break
+            if not display_name:
+                display_name = tid[:8]
+
+            result.append({
+                "thread_id": tid,
+                "display_name": display_name,
+                "files": files,
+            })
+
+        return result
+
+    @staticmethod
+    async def upsert_personal_star(
+        db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, starred: bool,
+    ) -> None:
+        from app.extensions.models import PersonalDocMeta
+        from sqlalchemy.dialects.postgresql import insert
+
+        stmt = insert(PersonalDocMeta).values(
+            user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_starred=starred,
+        ).on_conflict_do_update(
+            constraint="uq_personal_meta_user_thread_path",
+            set_={"is_starred": starred, "updated_at": func.now()},
+        )
+        await db.execute(stmt)
+        if not starred:
+            row = (await db.execute(
+                select(PersonalDocMeta).where(
+                    PersonalDocMeta.user_id == user_id,
+                    PersonalDocMeta.thread_id == thread_id,
+                    PersonalDocMeta.rel_path == rel_path,
+                )
+            )).scalar_one_or_none()
+            if row and not row.is_shared:
+                await db.delete(row)
+
+    @staticmethod
+    async def upsert_personal_share(
+        db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, shared: bool,
+    ) -> None:
+        from app.extensions.models import PersonalDocMeta
+        from sqlalchemy.dialects.postgresql import insert
+
+        stmt = insert(PersonalDocMeta).values(
+            user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_shared=shared,
+        ).on_conflict_do_update(
+            constraint="uq_personal_meta_user_thread_path",
+            set_={"is_shared": shared, "updated_at": func.now()},
+        )
+        await db.execute(stmt)
+        if not shared:
+            row = (await db.execute(
+                select(PersonalDocMeta).where(
+                    PersonalDocMeta.user_id == user_id,
+                    PersonalDocMeta.thread_id == thread_id,
+                    PersonalDocMeta.rel_path == rel_path,
+                )
+            )).scalar_one_or_none()
+            if row and not row.is_starred:
+                await db.delete(row)
+
+    @staticmethod
+    async def list_starred_personal(db: AsyncSession, user_id: UUID) -> list[dict]:
+        from app.extensions.models import PersonalDocMeta
+
+        rows = (await db.execute(
+            select(PersonalDocMeta).where(
+                PersonalDocMeta.user_id == user_id, PersonalDocMeta.is_starred.is_(True),
+            )
+        )).scalars().all()
+        return [{"thread_id": r.thread_id, "rel_path": r.rel_path} for r in rows]
 
     @staticmethod
     async def sync_thread_files(

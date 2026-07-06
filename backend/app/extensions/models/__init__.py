@@ -261,6 +261,27 @@ class Folder(Base):
         return f"<Folder(id={self.id}, name={self.name})>"
 
 
+class PersonalDocMeta(Base):
+    """Lightweight per-user per-thread doc metadata (star / share)."""
+
+    __tablename__ = "personal_doc_meta"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    thread_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    rel_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    is_starred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "thread_id", "rel_path", name="uq_personal_meta_user_thread_path"),
+    )
+
+    owner: Mapped["User"] = relationship("User")
+
+
 class Conversation(Base):
     """Conversation model - maps thread_id to user_id for data isolation."""
 

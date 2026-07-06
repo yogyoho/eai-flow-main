@@ -662,3 +662,33 @@ class FolderDeleteConfirm(BaseModel):
     folder_name: str
     subfolder_count: int
     doc_count: int
+
+
+class PersonalDocFile(BaseModel):
+    name: str
+    rel_path: str
+    size: int
+    mime: str
+    modified_at: datetime
+    starred: bool = False
+    shared: bool = False
+
+
+class PersonalThreadOutput(BaseModel):
+    thread_id: str
+    display_name: str
+    files: list[PersonalDocFile]
+
+
+class PersonalOutputsResponse(BaseModel):
+    threads: list[PersonalThreadOutput]
+
+
+class PersonalDocStarRequest(BaseModel):
+    rel_path: str = Field(..., min_length=1, max_length=500)
+    starred: bool
+
+
+class PersonalDocShareRequest(BaseModel):
+    rel_path: str = Field(..., min_length=1, max_length=500)
+    shared: bool
