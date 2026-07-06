@@ -253,7 +253,13 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   // 这样 toggleStar 的乐观更新会同时反映到左侧列表和主体区域
   const selectedThread = personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) || null;
   const displayDocs = selectedThread
-    ? selectedThread.files.map((f: any) => adaptPersonalFile(f, selectedThread))
+    ? selectedThread.files
+        .filter((f: any) =>
+          filterMode === "all" ? true
+          : filterMode === "starred" ? f.starred
+          : f.shared,
+        )
+        .map((f: any) => adaptPersonalFile(f, selectedThread))
     : docs;
   const displayTotal = selectedThread ? selectedThread.files.length : total;
   const displayLoading = !selectedThread && loading;
