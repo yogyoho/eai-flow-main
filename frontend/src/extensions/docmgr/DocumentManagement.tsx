@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
-  CheckCircle2, Copy, Download, FileText, Grid3X3, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
+  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
   RefreshCw, Scissors, Search, Share2, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
@@ -116,7 +116,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   // 项目文件夹是 project 许可的子能力；未授权则隐藏整段（含 CollabEditor 入口）
   const { hasModule, isLoading: licenseLoading } = useLicense();
   const canUseProject = licenseLoading || hasModule("project");
-  const [viewMode, setViewMode] = useState<"grid-icon" | "grid-summary" | "list">("grid-icon");
+  const [viewMode, setViewMode] = useState<"grid-icon" | "list">("grid-icon");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const menuButtonRef = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -452,16 +452,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 )}
                 title="图标网格"
               >
-                <Grid3X3 className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setViewMode("grid-summary")}
-                className={cn(
-                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
-                  viewMode === "grid-summary" ? "text-foreground bg-muted" : "text-muted-foreground",
-                )}
-                title="摘要网格"
-              >
                 <LayoutGrid className="h-3.5 w-3.5" />
               </button>
               <button
@@ -490,12 +480,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               <p className="text-sm font-medium text-muted-foreground">点击左侧文件夹查看文档</p>
               <p className="text-xs text-muted-foreground/60 mt-1.5 leading-relaxed">{selectedThread ? "该线程暂无输出文件" : isFileRefView ? "选中项目文件夹后，同步的文件会出现在这里" : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}</p>
             </div>
-          ) : viewMode === "grid-icon" || viewMode === "grid-summary" ? (
+          ) : viewMode === "grid-icon" ? (
             <AnimatePresence>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {displayDocs.map((doc) => (
                     <DocCard key={doc.id} doc={doc}
-                      variant={viewMode === "grid-icon" ? "icon" : "summary"}
+                      variant="icon"
                       isMenuOpen={openMenuId === doc.id}
                       onOpenMenu={handleOpenMenu}
                       menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
