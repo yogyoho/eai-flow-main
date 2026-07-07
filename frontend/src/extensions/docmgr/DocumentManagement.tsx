@@ -367,7 +367,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   }, [openMenuId]);
 
   return (
-    <div className={cn("flex h-full bg-background", view === "editor" ? "" : "w-full")}>
+    <div
+      className={cn("flex h-full bg-background", view === "editor" ? "overflow-hidden" : "w-full")}
+      style={view === "editor" ? { width: sidebarWidth, flex: "none" } : undefined}
+    >
       <div className="border-r border-border flex flex-col shrink-0 bg-muted/50 relative" style={{ width: sidebarWidth }}>
         <div className="p-3.5 flex items-center gap-2 border-b border-border">
           <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
