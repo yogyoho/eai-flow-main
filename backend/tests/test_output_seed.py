@@ -1,4 +1,5 @@
 """Regression: seed_builtin_templates is per-id idempotent (adds only missing builtins)."""
+
 import uuid
 from unittest.mock import AsyncMock
 

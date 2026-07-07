@@ -1,22 +1,19 @@
 """End-to-end: generate_docx produces cover + TOC + body sections with numbering."""
+
 from pathlib import Path
 
 from docx import Document
 
 from app.extensions.output.generator import generate_docx
 
-
 TPL_WITH_COVER_TOC = {
-    "page_settings": {"paperSize": "A4", "orientation": "portrait",
-                      "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},
-    "body_styles": {"fontFamily": "宋体", "fontSize": 12, "lineHeight": 1.5,
-                    "paragraphSpacing": 6, "firstLineIndent": 2},
+    "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},
+    "body_styles": {"fontFamily": "宋体", "fontSize": 12, "lineHeight": 1.5, "paragraphSpacing": 6, "firstLineIndent": 2},
     "heading_styles": [
         {"level": 1, "fontFamily": "黑体", "fontSize": 16, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
         {"level": 2, "fontFamily": "黑体", "fontSize": 14, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
     ],
-    "cover_template": {"showLogo": False, "showTitle": True, "showClient": True,
-                       "showDate": True, "showProjectNumber": True},
+    "cover_template": {"showLogo": False, "showTitle": True, "showClient": True, "showDate": True, "showProjectNumber": True},
     "toc_settings": {"maxDepth": 2, "showPageNumbers": True, "leaderDots": True},
     "header_footer": {"headerText": "", "footerText": "", "showPageNumber": True, "showLogo": False},
 }
@@ -25,17 +22,14 @@ TPL_WITH_COVER_TOC = {
 def test_three_sections_cover_toc_body(tmp_path: Path):
     md = "# 总论\n\n正文段。\n## 子节\n\n更多正文。\n"
     out = tmp_path / "r.docx"
-    generate_docx(md, TPL_WITH_COVER_TOC, out,
-                  cover_fields={"title": "消防专篇", "client": "甲公司",
-                                "date": "2026-07", "project_number": "P001"})
+    generate_docx(md, TPL_WITH_COVER_TOC, out, cover_fields={"title": "消防专篇", "client": "甲公司", "date": "2026-07", "project_number": "P001"})
     doc = Document(str(out))
     assert len(doc.sections) == 3  # cover / toc / body
 
 
 def test_cover_section_has_no_page_number(tmp_path: Path):
     out = tmp_path / "r.docx"
-    generate_docx("# 总论\n", TPL_WITH_COVER_TOC, out,
-                  cover_fields={"title": "T", "date": "2026-07"})
+    generate_docx("# 总论\n", TPL_WITH_COVER_TOC, out, cover_fields={"title": "T", "date": "2026-07"})
     doc = Document(str(out))
     assert "pgNumType" not in doc.sections[0]._sectPr.xml
 
@@ -77,8 +71,7 @@ def test_body_headings_carry_decimal_numbers(tmp_path: Path):
 
 def test_cover_title_rendered(tmp_path: Path):
     out = tmp_path / "r.docx"
-    generate_docx("# 总论\n", TPL_WITH_COVER_TOC, out,
-                  cover_fields={"title": "我的消防专篇", "date": "2026-07"})
+    generate_docx("# 总论\n", TPL_WITH_COVER_TOC, out, cover_fields={"title": "我的消防专篇", "date": "2026-07"})
     doc = Document(str(out))
     assert any("我的消防专篇" in p.text for p in doc.paragraphs)
 

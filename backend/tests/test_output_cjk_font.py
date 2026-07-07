@@ -1,4 +1,5 @@
 """Regression: generate_docx must set w:eastAsia font so Chinese renders correctly."""
+
 from pathlib import Path
 
 from docx import Document

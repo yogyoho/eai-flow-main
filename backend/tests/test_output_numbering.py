@@ -1,4 +1,5 @@
 """Tests for decimal heading-number computation."""
+
 from app.extensions.output.generator import Block, _compute_heading_numbers
 
 

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import datetime
 import re
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Cm, Inches, Pt, RGBColor
+from docx.shared import Cm, Pt, RGBColor
 
 # ---------------------------------------------------------------------------
 # Minimal markdown parser — produces a list of typed blocks
@@ -45,7 +44,7 @@ def _split_frontmatter(md: str) -> tuple[dict, str]:
             return {}, md  # malformed → degrade to whole-body
         key, _, val = line.partition(":")
         meta[key.strip()] = val.strip().strip('"').strip("'")
-    return meta, md[m.end():]
+    return meta, md[m.end() :]
 
 
 @dataclass
@@ -67,9 +66,7 @@ def _compute_heading_numbers(blocks: list[Block], heading_styles: list[dict]) ->
     in the middle produces counter-intuitive numbers for deeper levels —
     acceptable since templates configure all-or-none per the spec.
     """
-    numbering_by_level: dict[int, str] = {
-        hs.get("level", 0): hs.get("numbering", "none") for hs in heading_styles
-    }
+    numbering_by_level: dict[int, str] = {hs.get("level", 0): hs.get("numbering", "none") for hs in heading_styles}
     counters = [0, 0, 0, 0]  # levels 1..4
     result: dict[int, str] = {}
     for i, b in enumerate(blocks):
@@ -340,6 +337,7 @@ def parse_markdown(md: str) -> list[Block]:
 # Inline formatting helper — handles **bold**, *italic*, `code`
 # ---------------------------------------------------------------------------
 
+
 def _add_inline_text(paragraph, text: str) -> None:
     """Add text with inline **bold**, *italic*, `code` formatting."""
     # Tokenize: split on bold/italic/code patterns while keeping delimiters
@@ -553,10 +551,13 @@ def generate_docx(
                     for ci in range(ncols):
                         cell = table.rows[0].cells[ci]
                         shading = cell._element.get_or_add_tcPr()
-                        shading_elem = shading.makeelement(qn("w:shd"), {
-                            qn("w:fill"): bg,
-                            qn("w:val"): "clear",
-                        })
+                        shading_elem = shading.makeelement(
+                            qn("w:shd"),
+                            {
+                                qn("w:fill"): bg,
+                                qn("w:val"): "clear",
+                            },
+                        )
                         shading.append(shading_elem)
 
     # === Per-section footers + page numbering + header_footer + watermark ===
@@ -788,10 +789,13 @@ def generate_docx_simple(
                     for ci in range(ncols):
                         cell = table.rows[0].cells[ci]
                         shading = cell._element.get_or_add_tcPr()
-                        shading_elem = shading.makeelement(qn("w:shd"), {
-                            qn("w:fill"): bg,
-                            qn("w:val"): "clear",
-                        })
+                        shading_elem = shading.makeelement(
+                            qn("w:shd"),
+                            {
+                                qn("w:fill"): bg,
+                                qn("w:val"): "clear",
+                            },
+                        )
                         shading.append(shading_elem)
 
     # --- Header / Footer ---

@@ -1,4 +1,5 @@
 """Tests for TOC field rendering + updateFields setting."""
+
 from docx import Document
 
 from app.extensions.output.generator import _render_toc, _set_update_fields

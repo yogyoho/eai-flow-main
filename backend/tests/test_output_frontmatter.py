@@ -1,4 +1,5 @@
 """Tests for markdown front-matter splitting."""
+
 from app.extensions.output.generator import _split_frontmatter
 
 

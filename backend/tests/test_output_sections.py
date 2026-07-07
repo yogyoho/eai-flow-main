@@ -1,4 +1,5 @@
 """Tests for per-section page numbering + footer PAGE field."""
+
 from docx import Document
 
 from app.extensions.output.generator import _add_page_number_footer, _set_section_pagenum

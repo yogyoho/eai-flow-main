@@ -1,4 +1,5 @@
 """Tests for cover-page rendering + cover field resolution."""
+
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
@@ -10,8 +11,7 @@ def _texts(doc):
 
 
 def test_renders_all_fields_when_all_shown():
-    ct = {"showLogo": False, "showTitle": True, "showClient": True,
-          "showDate": True, "showProjectNumber": True}
+    ct = {"showLogo": False, "showTitle": True, "showClient": True, "showDate": True, "showProjectNumber": True}
     cf = {"title": "消防专篇", "client": "甲公司", "date": "2026-07", "project_number": "P001"}
     doc = Document()
     _render_cover(doc, ct, cf)
@@ -73,9 +73,9 @@ def test_resolve_prefers_api_over_frontmatter_over_fallback():
     fm = {"title": "FM标题", "date": "2026-01"}
     blocks = [Block(kind="heading", level=1, text="H1兜底")]
     resolved = _resolve_cover_fields(api, fm, blocks)
-    assert resolved["title"] == "API标题"      # api wins
-    assert resolved["client"] == "API客户"      # api
-    assert resolved["date"] == "2026-01"         # frontmatter (no api)
+    assert resolved["title"] == "API标题"  # api wins
+    assert resolved["client"] == "API客户"  # api
+    assert resolved["date"] == "2026-01"  # frontmatter (no api)
 
 
 def test_resolve_title_falls_back_to_first_h1():
@@ -88,6 +88,7 @@ def test_resolve_title_falls_back_to_first_h1():
 
 def test_resolve_date_falls_back_to_today():
     import datetime
+
     api = {}
     fm = {}
     blocks = []

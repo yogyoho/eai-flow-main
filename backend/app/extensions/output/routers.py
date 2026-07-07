@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import logging
-import os
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -144,15 +142,15 @@ async def generate_report(
     source: str = Form(...),
     format: str = Form("docx"),
     layout_template_id: str = Form(...),
-    watermark: Optional[str] = Form(None),
-    project_id: Optional[str] = Form(None),
-    chapter_ids: Optional[str] = Form(None),
-    content: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    cover_title: Optional[str] = Form(None),
-    cover_client: Optional[str] = Form(None),
-    cover_date: Optional[str] = Form(None),
-    cover_project_number: Optional[str] = Form(None),
+    watermark: str | None = Form(None),
+    project_id: str | None = Form(None),
+    chapter_ids: str | None = Form(None),
+    content: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    cover_title: str | None = Form(None),
+    cover_client: str | None = Form(None),
+    cover_date: str | None = Form(None),
+    cover_project_number: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a report from a project, uploaded markdown file, or direct content string."""

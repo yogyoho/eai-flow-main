@@ -1,4 +1,5 @@
 """Tests for routers template_data assembly + cover field collection."""
+
 from types import SimpleNamespace
 
 from app.extensions.output.routers import _build_template_data, _collect_cover_fields
@@ -38,9 +39,7 @@ def test_build_template_data_cover_none_when_absent():
 
 
 def test_collect_cover_fields_drops_none():
-    fields = _collect_cover_fields(
-        cover_title="T", cover_client=None, cover_date="2026-07", cover_project_number=None
-    )
+    fields = _collect_cover_fields(cover_title="T", cover_client=None, cover_date="2026-07", cover_project_number=None)
     assert fields == {"title": "T", "date": "2026-07"}
 
 
