@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 import tempfile
 from dataclasses import dataclass, field
@@ -81,6 +82,31 @@ def _compute_heading_numbers(blocks: list[Block], heading_styles: list[dict]) ->
             counters[deeper] = 0
         result[i] = ".".join(str(counters[k]) for k in range(level))
     return result
+
+
+def _resolve_cover_fields(api_fields: dict, frontmatter: dict, blocks: list[Block]) -> dict:
+    """Resolve cover field values by priority: API params > front-matter > fallback.
+
+    - title: api > front-matter > first H1 block text
+    - client/project_number: api > front-matter (omit if neither)
+    - date: api > front-matter > today (ISO)
+    """
+    resolved: dict = {}
+    title = api_fields.get("title") or frontmatter.get("title")
+    if not title:
+        for b in blocks:
+            if b.kind == "heading" and b.level == 1:
+                title = b.text
+                break
+    if title:
+        resolved["title"] = title
+    for key in ("client", "project_number"):
+        val = api_fields.get(key) or frontmatter.get(key)
+        if val:
+            resolved[key] = val
+    date_val = api_fields.get("date") or frontmatter.get("date")
+    resolved["date"] = date_val or datetime.date.today().isoformat()
+    return resolved
 
 
 def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:

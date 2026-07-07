@@ -1,8 +1,8 @@
-"""Tests for cover-page rendering."""
+"""Tests for cover-page rendering + cover field resolution."""
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-from app.extensions.output.generator import _render_cover
+from app.extensions.output.generator import Block, _render_cover, _resolve_cover_fields
 
 
 def _texts(doc):
@@ -63,3 +63,39 @@ def test_renders_logo_placeholder_when_shown():
     doc = Document()
     _render_cover(doc, ct, {})
     assert any("LOGO" in t for t in _texts(doc))
+
+
+# --- _resolve_cover_fields (Task 7) ---
+
+
+def test_resolve_prefers_api_over_frontmatter_over_fallback():
+    api = {"title": "API标题", "client": "API客户"}
+    fm = {"title": "FM标题", "date": "2026-01"}
+    blocks = [Block(kind="heading", level=1, text="H1兜底")]
+    resolved = _resolve_cover_fields(api, fm, blocks)
+    assert resolved["title"] == "API标题"      # api wins
+    assert resolved["client"] == "API客户"      # api
+    assert resolved["date"] == "2026-01"         # frontmatter (no api)
+
+
+def test_resolve_title_falls_back_to_first_h1():
+    api = {}
+    fm = {}
+    blocks = [Block(kind="paragraph", text="p"), Block(kind="heading", level=1, text="首个H1")]
+    resolved = _resolve_cover_fields(api, fm, blocks)
+    assert resolved["title"] == "首个H1"
+
+
+def test_resolve_date_falls_back_to_today():
+    import datetime
+    api = {}
+    fm = {}
+    blocks = []
+    resolved = _resolve_cover_fields(api, fm, blocks)
+    assert resolved["date"] == datetime.date.today().isoformat()
+
+
+def test_resolve_omits_missing_optional_fields():
+    resolved = _resolve_cover_fields({}, {}, [])
+    assert "client" not in resolved
+    assert "project_number" not in resolved
