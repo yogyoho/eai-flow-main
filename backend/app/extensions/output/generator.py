@@ -264,7 +264,7 @@ def generate_docx(
 
             # Apply heading font
             for run in heading.runs:
-                run.font.name = _resolve_font(hs.get("fontFamily", body_font))
+                _set_run_font(run, _resolve_font(hs.get("fontFamily", body_font)))
                 run.font.size = Pt(hs.get("fontSize", 16))
                 if hs.get("fontWeight", 700) >= 700:
                     run.bold = True
@@ -279,7 +279,7 @@ def generate_docx(
             style_paragraph(para, first_indent=indent * body_size.pt / 28.35 * 0.5 if indent else None)
             _add_inline_text(para, block.text)
             for run in para.runs:
-                run.font.name = body_font
+                _set_run_font(run, body_font)
                 run.font.size = body_size
 
         elif block.kind == "ul_item":
@@ -290,7 +290,7 @@ def generate_docx(
             para.add_run("• ")
             _add_inline_text(para, block.text)
             for run in para.runs:
-                run.font.name = body_font
+                _set_run_font(run, body_font)
                 run.font.size = body_size
 
         elif block.kind == "ol_item":
@@ -303,7 +303,7 @@ def generate_docx(
             para.add_run(f"{counter}. ")
             _add_inline_text(para, block.text)
             for run in para.runs:
-                run.font.name = body_font
+                _set_run_font(run, body_font)
                 run.font.size = body_size
 
         elif block.kind == "hr":
@@ -339,7 +339,7 @@ def generate_docx(
                             para = cell.paragraphs[0]
                             _add_inline_text(para, cell_text.strip())
                             for run in para.runs:
-                                run.font.name = body_font
+                                _set_run_font(run, body_font)
                                 run.font.size = Pt(body_size.pt - 1)
                                 if ri == 0 and tstyles:
                                     run.bold = True
