@@ -190,6 +190,49 @@ def _set_update_fields(doc) -> None:
         settings.append(el)
 
 
+def _set_section_pagenum(section, fmt: str | None = None, start: int | None = None) -> None:
+    """Set pgNumType (page number format + restart) on a section's sectPr. Idempotent."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    sectPr = section._sectPr
+    pgNum = sectPr.find(qn("w:pgNumType"))
+    if pgNum is None:
+        pgNum = OxmlElement("w:pgNumType")
+        sectPr.append(pgNum)
+    if fmt:
+        pgNum.set(qn("w:fmt"), fmt)
+    if start is not None:
+        pgNum.set(qn("w:start"), str(start))
+
+
+def _add_page_number_footer(section) -> None:
+    """Add a centered PAGE field to the section's footer. Caller must unlink first."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    footer_para = section.footer.paragraphs[0]
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    def _fld(char_type: str) -> None:
+        run = footer_para.add_run()
+        el = OxmlElement("w:fldChar")
+        el.set(qn("w:fldCharType"), char_type)
+        run._element.append(el)
+
+    _fld("begin")
+    run_instr = footer_para.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+    run_instr._element.append(instr)
+    _fld("end")
+
+    for run in footer_para.runs:
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+
 def parse_markdown(md: str) -> list[Block]:
     """Parse markdown text into a flat list of blocks."""
     blocks: list[Block] = []
