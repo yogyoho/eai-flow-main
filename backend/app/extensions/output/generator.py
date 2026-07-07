@@ -83,6 +83,55 @@ def _compute_heading_numbers(blocks: list[Block], heading_styles: list[dict]) ->
     return result
 
 
+def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:
+    """Render the cover page at the start of the document body.
+
+    ``cover_template`` toggles which fields appear (showLogo/showTitle/showClient/
+    showDate/showProjectNumber). ``cover_fields`` carries resolved values
+    (title/client/date/project_number); a line is rendered only if its toggle is
+    on AND its value is present. No-op content-wise when ``cover_template`` is falsy.
+    """
+    ct = cover_template or {}
+
+    if ct.get("showLogo"):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run("[编制单位 LOGO]")
+        _set_run_font(run, "宋体")
+        run.font.size = Pt(10)
+        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    for _ in range(3):  # vertical spacing before title
+        doc.add_paragraph()
+
+    if ct.get("showTitle") and cover_fields.get("title"):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(str(cover_fields["title"]))
+        _set_run_font(run, "黑体")
+        run.font.size = Pt(22)
+        run.bold = True
+
+    for _ in range(4):  # spacing before info lines
+        doc.add_paragraph()
+
+    def _info_line(label: str, value) -> None:
+        if not value:
+            return
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(f"{label}:{value}")
+        _set_run_font(run, "宋体")
+        run.font.size = Pt(14)
+
+    if ct.get("showClient"):
+        _info_line("建设单位", cover_fields.get("client"))
+    if ct.get("showProjectNumber"):
+        _info_line("项目编号", cover_fields.get("project_number"))
+    if ct.get("showDate"):
+        _info_line("日期", cover_fields.get("date"))
+
+
 def parse_markdown(md: str) -> list[Block]:
     """Parse markdown text into a flat list of blocks."""
     blocks: list[Block] = []
