@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T04:40:14.526Z
-> Files: 1417 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T05:25:06.466Z
+> Files: 1427 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1151,9 +1151,9 @@
 ## backend/app/extensions/output/
 
 - `__init__.py` (~0 tok)
-- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~4196 tok)
+- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~9375 tok)
 - `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
-- `routers.py` — FastAPI router for layout template CRUD and report generation. (~2215 tok)
+- `routers.py` — FastAPI router for layout template CRUD and report generation. (~2593 tok)
 - `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
 - `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~3179 tok)
 - `service.py` — Business logic for layout template CRUD. (~1135 tok)
@@ -1358,6 +1358,15 @@
 - `test_missing_activities.py` — TDD tests for missing activities from spec §4.4. (~2122 tok)
 - `test_model_extensions.py` — Tests for extended Department and ProjectMember models. (~711 tok)
 - `test_notification_activities.py` — Tests for notification activities. (~1512 tok)
+- `test_output_cjk_font.py` — Regression: generate_docx must set w:eastAsia font so Chinese renders correctly. (~380 tok)
+- `test_output_cover.py` — Tests for cover-page rendering + cover field resolution. (~1027 tok)
+- `test_output_frontmatter.py` — Tests for markdown front-matter splitting. (~320 tok)
+- `test_output_generate_integration.py` — End-to-end: generate_docx produces cover + TOC + body sections with numbering. (~1193 tok)
+- `test_output_numbering.py` — Tests for decimal heading-number computation. (~426 tok)
+- `test_output_routers.py` — Tests for routers template_data assembly + cover field collection. (~474 tok)
+- `test_output_sections.py` — Tests for per-section page numbering + footer PAGE field. (~364 tok)
+- `test_output_seed.py` — Regression: seed_builtin_templates is per-id idempotent (adds only missing builtins). (~484 tok)
+- `test_output_toc.py` — Tests for TOC field rendering + updateFields setting. (~341 tok)
 - `test_p0_permission_gates.py` — Tests for P0 permission gates: (~1741 tok)
 - `test_phase_review.py` — Tests for PhaseReview model, schemas, and DAG validation. (~1148 tok)
 - `test_plugin_mcp_wiring.py` — Tests for plugin→MCP wiring (sync_mcp_registration) + demo module. (~2618 tok)
@@ -1455,6 +1464,7 @@
 - `2026-06-18-plugin-mcp-wiring.md` — 插件→MCP 接线(type=tool)+ demo Implementation Plan (~4498 tok)
 - `2026-06-22-app-center-categorization.md` — App Center 分类体系重构 实现计划 (~6561 tok)
 - `2026-07-06-personal-docmgr-direct-mapping.md` — 文档空间-我的文档：直接映射线程 outputs/ — 实现计划 (~6525 tok)
+- `2026-07-07-output-cover-toc-numbering.md` — Output 模块:封面 + 目录 + 标题自动编号 Implementation Plan (~14437 tok)
 
 ## docs/superpowers/specs/
 

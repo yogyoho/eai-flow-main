@@ -7462,3 +7462,31 @@
 | 12:36 | Session end: 5 writes across 2 files (analyze_fire_template.py, seed.py) | 5 reads | ~13034 tok |
 | 12:40 | Created docs/superpowers/specs/2026-07-07-output-cover-toc-numbering-design.md | — | ~2736 |
 | 12:41 | Session end: 6 writes across 3 files (analyze_fire_template.py, seed.py, 2026-07-07-output-cover-toc-numbering-design.md) | 5 reads | ~15966 tok |
+| 12:57 | Created docs/superpowers/plans/2026-07-07-output-cover-toc-numbering.md | — | ~15459 |
+| 12:58 | Edited docs/superpowers/plans/2026-07-07-output-cover-toc-numbering.md | modified section() | ~74 |
+| 13:05 | Created backend/tests/test_output_frontmatter.py | — | ~320 |
+| 13:05 | Edited backend/app/extensions/output/generator.py | modified _split_frontmatter() | ~299 |
+| 13:07 | Created backend/tests/test_output_numbering.py | — | ~426 |
+| 13:07 | Edited backend/app/extensions/output/generator.py | modified _compute_heading_numbers() | ~383 |
+| 13:09 | Created backend/tests/test_output_cjk_font.py | — | ~380 |
+| 13:09 | Edited backend/app/extensions/output/generator.py | inline fix | ~13 |
+| 13:10 | Edited backend/app/extensions/output/generator.py | inline fix | ~19 |
+| 13:11 | Created backend/tests/test_output_cover.py | — | ~678 |
+| 13:11 | Edited backend/app/extensions/output/generator.py | modified _render_cover() | ~516 |
+| 13:12 | Created backend/tests/test_output_toc.py | — | ~341 |
+| 13:12 | Edited backend/app/extensions/output/generator.py | modified _add_toc_field() | ~559 |
+| 13:13 | Created backend/tests/test_output_sections.py | — | ~364 |
+| 13:13 | Edited backend/app/extensions/output/generator.py | modified _set_section_pagenum() | ~406 |
+| 13:14 | Edited backend/app/extensions/output/generator.py | added 1 import(s) | ~12 |
+| 13:14 | Edited backend/app/extensions/output/generator.py | modified _resolve_cover_fields() | ~293 |
+| 13:14 | Created backend/tests/test_output_cover.py | — | ~1027 |
+| 13:18 | Edited backend/app/extensions/output/generator.py | added 1 import(s) | ~32 |
+| 13:19 | Edited backend/app/extensions/output/generator.py | modified _apply_section_chrome() | ~738 |
+| 13:20 | Edited backend/app/extensions/output/generator.py | modified generate_docx() | ~2361 |
+| 13:21 | Created backend/tests/test_output_generate_integration.py | — | ~1193 |
+| 13:23 | Edited backend/app/extensions/output/routers.py | modified _build_template_data() | ~414 |
+| 13:23 | Edited backend/app/extensions/output/routers.py | 5→9 lines | ~104 |
+| 13:23 | Edited backend/app/extensions/output/routers.py | reduced (-8 lines) | ~68 |
+| 13:23 | Created backend/tests/test_output_routers.py | — | ~474 |
+| 13:23 | Edited backend/app/extensions/output/routers.py | 6→7 lines | ~66 |
+| 13:25 | Created backend/tests/test_output_seed.py | — | ~484 |
