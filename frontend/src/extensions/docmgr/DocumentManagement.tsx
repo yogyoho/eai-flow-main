@@ -144,14 +144,14 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     }
   };
   return (
-    <div className="h-full flex overflow-hidden bg-background">
-      {/* 目录树：list/editor 都显示，宽度可横向拖动（DocumentList 内部 sidebarWidth + 拖动手柄） */}
-      <div className={cn("h-full flex overflow-hidden", view === "editor" ? "shrink-0" : "flex-1 w-full")}>
-        <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} view={view} />
+    <div className="h-full flex overflow-hidden bg-background relative">
+      {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
+      <div className={cn("h-full w-full flex overflow-hidden", view === "editor" && "hidden")}>
+        <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
       </div>
-      {/* 编辑器：flex-1 填充目录树右侧剩余空间 */}
+      {/* Editor slides in on top when active */}
       {view === "editor" && (activeDocId || activePersonalFile) && (
-        <motion.div key={activeDocId || activePersonalFile?.rel_path} className="flex-1 flex overflow-hidden"
+        <motion.div key={activeDocId || activePersonalFile?.rel_path} className="absolute inset-0 z-10 flex overflow-hidden"
           initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
           <DocumentEditor docId={activeDocId} personalFile={activePersonalFile} onBack={handleBack} />
         </motion.div>
@@ -367,10 +367,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   }, [openMenuId]);
 
   return (
-    <div
-      className={cn("flex h-full bg-background", view === "editor" ? "overflow-hidden" : "w-full")}
-      style={view === "editor" ? { width: sidebarWidth, flex: "none" } : undefined}
-    >
+    <div className="flex h-full w-full bg-background">
       <div className="border-r border-border flex flex-col shrink-0 bg-muted/50 relative" style={{ width: sidebarWidth }}>
         <div className="p-3.5 flex items-center gap-2 border-b border-border">
           <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
