@@ -775,6 +775,50 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-06T15:05:59.223Z"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-07-07T04:04:14.615Z",
+      "error_message": "Incorrect value in code",
+      "file": "_workspace_temp/analyze_fire_template.py",
+      "root_cause": "Had \"  page: {cm(w*914400/1440*0)? } -> raw w={w} twip",
+      "fix": "Changed to \"  page: w={round(w/567,2)}cm h={round(h/567,2)}cm",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T04:04:14.615Z"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-07-07T04:19:09.197Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/output/seed.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 28→36 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T04:19:09.197Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-07-07T05:10:00.000Z",
+      "error_message": "Adding a new built-in layout template to BUILTIN_TEMPLATES had no effect — the template never appeared in an existing DB after restart.",
+      "file": "backend/app/extensions/output/seed.py",
+      "root_cause": "seed_builtin_templates used an 'if ANY builtin exists, skip ALL' idempotency guard (select ... is_builtin limit 1; if first(): return). Once the original 4 builtins were seeded, the guard bailed before the loop, so a newly appended builtin (e.g. 消防设计专篇 ...0005) was silently never INSERTed into existing DBs. Only a fresh/empty DB would get it.",
+      "fix": "Changed seed_builtin_templates to per-id upsert: select existing builtin IDs once, then INSERT only those whose id is missing (already-seeded rows untouched). Verified: appended 消防设计专篇 (id ...0000000005) to BUILTIN_TEMPLATES, restarted gateway, queried layout_templates -> new row present with correct cover_template/toc_settings/heading_styles JSONB, existing 4 builtins + user副本 untouched.",
+      "tags": ["seeding", "idempotency", "output", "layout-templates", "startup"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T05:10:00.000Z"
     }
   ]
 }

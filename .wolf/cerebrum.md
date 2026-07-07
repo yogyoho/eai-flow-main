@@ -103,6 +103,8 @@
 
 - **`docker logs gateway` shows NO stdout for Python logger output (2026-06-23):** `logger.warning`/`logger.info` from gateway/middleware code does NOT appear in `docker compose -p eai-docker logs gateway`. For runtime debugging of middleware, query state directly (`GET /api/langgraph/threads/{tid}/state`) or write a temporary debug line to a file (`open("/tmp/x.log","a")`) — not `logger.*`.
 
+- **Adding a built-in to a `seed_*.py` list does NOT seed it in existing DBs if the seed function is "all-or-nothing" (2026-07-07, [[bug-050]]):** `output/seed.py::seed_builtin_templates` used `select is_builtin limit 1; if first(): return` — so once the first 4 layout templates were seeded, a newly-appended builtin (消防设计专篇 ...0005) was silently never INSERTed on restart (only a fresh DB would get it). Fixed to per-id upsert (select existing ids, INSERT only missing). **Lesson:** after appending ANY entry to a `BUILTIN_*` list, verify via `docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "SELECT ... FROM <table>"` that it actually landed — "I added it to the list" ≠ "it's in the DB". Audit other seed functions (plugins.seed etc.) for the same all-or-nothing guard before relying on new seed entries propagating.
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->

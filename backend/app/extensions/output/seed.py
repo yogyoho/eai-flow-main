@@ -169,17 +169,69 @@ BUILTIN_TEMPLATES = [
         "reference_style": "gb7714",
         "appendix_rules": {"numbering": "A-B-C", "separateToc": False},
     },
+    {
+        # 参照样例:基地项目-消防设计专篇.docx(吉林院)
+        # 样例无封面(直接从目录开始),封面字段按国标惯例;页面/分节/目录/编号照实测。
+        "id": "00000000-0000-4000-8000-000000000005",
+        "name": "消防设计专篇",
+        "report_type": "fire_protection",
+        "page_settings": {
+            # 实测:A4 纵向,上下 2.54cm / 左右 3.17cm(1440/1797 twips)
+            "paperSize": "A4",
+            "orientation": "portrait",
+            "marginTop": 2.54,
+            "marginBottom": 2.54,
+            "marginLeft": 3.17,
+            "marginRight": 3.17,
+        },
+        "body_styles": {
+            "fontFamily": "宋体",
+            "fontSize": 12,
+            "lineHeight": 1.5,
+            "paragraphSpacing": 6,
+            "firstLineIndent": 2,
+        },
+        "heading_styles": [
+            # 样例原值 H1=H2=14pt、自定义"标题3"=16pt 系模板缺陷;此处归一化为递减层级。
+            # 编号方案实测为 decimal 多级(1 / 1.1 / 4.2.1),数字直接写在标题文本里。
+            {"level": 1, "fontFamily": "黑体", "fontSize": 16, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
+            {"level": 2, "fontFamily": "黑体", "fontSize": 14, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
+            {"level": 3, "fontFamily": "黑体", "fontSize": 13, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
+            {"level": 4, "fontFamily": "宋体", "fontSize": 12, "fontWeight": 700, "color": "#000000", "numbering": "decimal"},
+        ],
+        "cover_template": {
+            "showLogo": True,
+            "logoPosition": "center",
+            "showTitle": True,
+            "showClient": True,
+            "showDate": True,
+            "showProjectNumber": True,
+        },
+        # 实测目录域:TOC \o "1-2" \h \z \u —— 取 1-2 级
+        "toc_settings": {"maxDepth": 2, "showPageNumbers": True, "leaderDots": True},
+        "table_styles": {"headerBg": "#2B579A", "headerColor": "#FFFFFF", "borderColor": "#CCCCCC", "stripeRows": True},
+        "figure_styles": {"captionPosition": "below", "numbering": "chapter", "showSource": True},
+        "header_footer": {"headerText": "", "footerText": "", "showPageNumber": True, "showLogo": False},
+        "reference_style": "gb7714",
+        "appendix_rules": {"numbering": "A-B-C", "separateToc": False},
+    },
 ]
 
 
 async def seed_builtin_templates(db: AsyncSession) -> None:
-    """Insert built-in templates if none exist. Idempotent."""
-    stmt = select(LayoutTemplate).where(LayoutTemplate.is_builtin.is_(True)).limit(1)
-    result = await db.execute(stmt)
-    if result.scalars().first():
-        return
+    """Seed built-in templates whose id is not yet present (per-id idempotent).
 
+    Previously this skipped ALL builtins as soon as any existed, which meant a
+    newly added builtin never landed in an existing DB. Now we seed only the
+    builtins whose id is missing, leaving already-seeded rows untouched.
+    """
+    existing_ids_stmt = select(LayoutTemplate.id).where(LayoutTemplate.is_builtin.is_(True))
+    existing_ids = {row[0] for row in (await db.execute(existing_ids_stmt)).all()}
+
+    added = 0
     for tpl_data in BUILTIN_TEMPLATES:
+        if uuid.UUID(tpl_data["id"]) in existing_ids:
+            continue
         template = LayoutTemplate(
             id=uuid.UUID(tpl_data["id"]),
             name=tpl_data["name"],
@@ -197,6 +249,8 @@ async def seed_builtin_templates(db: AsyncSession) -> None:
             appendix_rules=tpl_data.get("appendix_rules"),
         )
         db.add(template)
+        added += 1
 
-    await db.commit()
-    logger.info("Seeded %d built-in layout templates", len(BUILTIN_TEMPLATES))
+    if added:
+        await db.commit()
+        logger.info("Seeded %d new built-in layout templates", added)

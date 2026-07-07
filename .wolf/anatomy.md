@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-06T15:05:59.186Z
-> Files: 1415 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T04:19:09.164Z
+> Files: 1416 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -320,6 +320,7 @@
 
 ## _workspace_temp/
 
+- `analyze_fire_template.py` — Analyze the 消防设计专篇 sample .docx → extract layout-template-relevant facts. (~1935 tok)
 - `analyze_settings_page.py` (~913 tok)
 - `debug_db_after_gateway_import.py` — main (~263 tok)
 - `debug_db.py` — main (~244 tok)
@@ -1154,7 +1155,7 @@
 - `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
 - `routers.py` — FastAPI router for layout template CRUD and report generation. (~2215 tok)
 - `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
-- `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~2445 tok)
+- `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~3179 tok)
 - `service.py` — Business logic for layout template CRUD. (~1135 tok)
 
 ## backend/app/extensions/plugin/

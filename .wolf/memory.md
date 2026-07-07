@@ -7452,3 +7452,10 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 12:00 | Created _workspace_temp/analyze_fire_template.py | — | ~1907 |
+| 12:04 | Edited _workspace_temp/analyze_fire_template.py | "  page: {cm(w*914400/1440" → "  page: w={round(w/567,2)" | ~31 |
+| 12:08 | Edited _workspace_temp/analyze_fire_template.py | 4→7 lines | ~55 |
+| 12:15 | Edited backend/app/extensions/output/seed.py | expanded (+46 lines) | ~660 |
+| 12:19 | Edited backend/app/extensions/output/seed.py | modified seed_builtin_templates() | ~460 |
+| 12:25 | Verified seed | psql layout_templates | 「消防设计专篇」...0005 landed, cover/toc/heading JSONB correct; existing 4 untouched |
+| 12:26 | Analyzed sample docx | 基地项目-消防设计专篇.docx | A4/2.54-3.17cm, 6 sections (cover→roman TOC→arabic body→landscape), native TOC \o "1-2", decimal numbering in text, NO cover page |
