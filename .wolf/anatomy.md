@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T05:25:06.466Z
-> Files: 1427 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T06:03:23.191Z
+> Files: 1429 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -332,6 +332,7 @@
 - `docker_startup.log` (~6636 tok)
 - `docker-compose.external.yaml` — EAIFlow Docker Compose - 连接到外部 Postgres 和 RAGFlow 服务 (~2747 tok)
 - `e2e_validate_test.py` — Test file (~670 tok)
+- `fire-cover-test.md` — 总论 (~113 tok)
 - `nul` (~0 tok)
 - `plan_backup.md` — 招标采购九大功能技术方案 & 实施路线图 (~197 tok)
 - `plan_temp.md` — 招标采购九大功能技术方案 & 实施路线图 (~197 tok)
@@ -339,6 +340,7 @@
 - `settings_functional_design_analysis.md` — EAIFlow 系统设置页面功能设计分析报告 (~822 tok)
 - `simulate_http_handler.py` — Simulate actual HTTP request handler with proper dependency resolution. (~365 tok)
 - `simulate_request.py` — Simulate exact request handling path. (~400 tok)
+- `smoke_fire.py` — Live smoke: generate a DOCX from the seeded fire template (id ...0005) and assert structure. (~640 tok)
 - `temp_plan.txt` (~197 tok)
 - `test_asyncpg_strategies.py` — Test different asyncpg connection strategies. (~562 tok)
 - `test_cascade.py` — Test content guard cascading and GroupedModelSelect dropdown content. (~827 tok)

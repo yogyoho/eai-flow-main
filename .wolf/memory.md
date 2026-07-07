@@ -7490,3 +7490,17 @@
 | 13:23 | Created backend/tests/test_output_routers.py | — | ~474 |
 | 13:23 | Edited backend/app/extensions/output/routers.py | 6→7 lines | ~66 |
 | 13:25 | Created backend/tests/test_output_seed.py | — | ~484 |
+| 13:30 | Created _workspace_temp/smoke_fire.py | — | ~640 |
+| 12:55 | 完成 output 封面+目录+编号 feature | generator.py/routers.py/seed.py + 9 测试 | 45 单测绿 + 真模板 live smoke 通过(3节/罗马+阿拉伯/TOC域/decimal编号) |
+| 13:32 | Session end: 35 writes across 16 files (analyze_fire_template.py, seed.py, 2026-07-07-output-cover-toc-numbering-design.md, 2026-07-07-output-cover-toc-numbering.md, test_output_frontmatter.py) | 5 reads | ~49803 tok |
+| 14:03 | Created _workspace_temp/fire-cover-test.md | — | ~120 |
+
+## Session: 2026-07-07 14:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-07 14:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
