@@ -7459,3 +7459,6 @@
 | 12:19 | Edited backend/app/extensions/output/seed.py | modified seed_builtin_templates() | ~460 |
 | 12:25 | Verified seed | psql layout_templates | 「消防设计专篇」...0005 landed, cover/toc/heading JSONB correct; existing 4 untouched |
 | 12:26 | Analyzed sample docx | 基地项目-消防设计专篇.docx | A4/2.54-3.17cm, 6 sections (cover→roman TOC→arabic body→landscape), native TOC \o "1-2", decimal numbering in text, NO cover page |
+| 12:36 | Session end: 5 writes across 2 files (analyze_fire_template.py, seed.py) | 5 reads | ~13034 tok |
+| 12:40 | Created docs/superpowers/specs/2026-07-07-output-cover-toc-numbering-design.md | — | ~2736 |
+| 12:41 | Session end: 6 writes across 3 files (analyze_fire_template.py, seed.py, 2026-07-07-output-cover-toc-numbering-design.md) | 5 reads | ~15966 tok |

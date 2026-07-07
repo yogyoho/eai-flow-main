@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 62209182,
-    "total_reads": 22064,
-    "total_writes": 26021,
+    "total_tokens_estimated": 62238182,
+    "total_reads": 22074,
+    "total_writes": 26032,
     "total_sessions": 376,
-    "anatomy_hits": 11882,
-    "anatomy_misses": 9024,
+    "anatomy_hits": 11890,
+    "anatomy_misses": 9026,
     "repeated_reads_blocked": 17178,
-    "estimated_savings_vs_bare_cli": 105288165
+    "estimated_savings_vs_bare_cli": 105289765
   },
   "sessions": [
     {
@@ -281798,6 +281798,155 @@
         "output_tokens_estimated": 0,
         "reads_count": 4,
         "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-07-1131",
+      "started": "2026-07-07T03:31:32.944Z",
+      "ended": "2026-07-07T04:36:15.786Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/generator.py",
+          "tokens_estimated": 4196,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 2445,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/schemas.py",
+          "tokens_estimated": 1065,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/routers.py",
+          "tokens_estimated": 2215,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/fire_analysis_out.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 1907,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 31,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 660,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 460,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 9921,
+        "output_tokens_estimated": 3113,
+        "reads_count": 5,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-07-1131",
+      "started": "2026-07-07T03:31:32.944Z",
+      "ended": "2026-07-07T04:41:06.921Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/generator.py",
+          "tokens_estimated": 4196,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 2445,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/schemas.py",
+          "tokens_estimated": 1065,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/routers.py",
+          "tokens_estimated": 2215,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/fire_analysis_out.txt",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 1907,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 31,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/_workspace_temp/analyze_fire_template.py",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 660,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 460,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/docs/superpowers/specs/2026-07-07-output-cover-toc-numbering-design.md",
+          "tokens_estimated": 2932,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 9921,
+        "output_tokens_estimated": 6045,
+        "reads_count": 5,
+        "writes_count": 6,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 4
       }

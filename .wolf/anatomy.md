@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T04:19:09.164Z
-> Files: 1416 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T04:40:14.526Z
+> Files: 1417 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1496,6 +1496,7 @@
 - `2026-06-22-app-center-categorization-design.md` — 应用中心分类体系设计 (~725 tok)
 - `2026-07-06-personal-docmgr-direct-mapping-design.md` — 文档空间-我的文档：直接映射线程 outputs/ 目录 (~1118 tok)
 - `2026-07-06-report-pipeline-design.md` — 报告处理 Pipeline 拆分设计 (~181 tok)
+- `2026-07-07-output-cover-toc-numbering-design.md` — Output 模块:封面 + 目录 + 标题自动编号 设计 (~2565 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
