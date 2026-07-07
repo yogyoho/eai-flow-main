@@ -54,6 +54,35 @@ class Block:
     rows: list[list[str]] = field(default_factory=list)
 
 
+def _compute_heading_numbers(blocks: list[Block], heading_styles: list[dict]) -> dict[int, str]:
+    """Compute decimal multilevel numbers for heading blocks.
+
+    Returns ``{block_index: number_string}`` (e.g. ``{0: "1", 1: "1.1", 3: "1.2.1"}``)
+    for heading blocks whose level has ``numbering == "decimal"``. Headings on
+    levels with ``numbering != "decimal"`` (or unspecified) are omitted.
+
+    Note: meaningful only when every relevant level is "decimal". Mixing "none"
+    in the middle produces counter-intuitive numbers for deeper levels —
+    acceptable since templates configure all-or-none per the spec.
+    """
+    numbering_by_level: dict[int, str] = {
+        hs.get("level", 0): hs.get("numbering", "none") for hs in heading_styles
+    }
+    counters = [0, 0, 0, 0]  # levels 1..4
+    result: dict[int, str] = {}
+    for i, b in enumerate(blocks):
+        if b.kind != "heading":
+            continue
+        level = max(1, min(b.level, 4))
+        if numbering_by_level.get(level, "none") != "decimal":
+            continue
+        counters[level - 1] += 1
+        for deeper in range(level, 4):
+            counters[deeper] = 0
+        result[i] = ".".join(str(counters[k]) for k in range(level))
+    return result
+
+
 def parse_markdown(md: str) -> list[Block]:
     """Parse markdown text into a flat list of blocks."""
     blocks: list[Block] = []
