@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 62199261,
-    "total_reads": 22060,
+    "total_tokens_estimated": 62209182,
+    "total_reads": 22064,
     "total_writes": 26021,
-    "total_sessions": 375,
-    "anatomy_hits": 11878,
+    "total_sessions": 376,
+    "anatomy_hits": 11882,
     "anatomy_misses": 9024,
     "repeated_reads_blocked": 17178,
-    "estimated_savings_vs_bare_cli": 105287365
+    "estimated_savings_vs_bare_cli": 105288165
   },
   "sessions": [
     {
@@ -281760,6 +281760,46 @@
         "writes_count": 56,
         "repeated_reads_blocked": 98,
         "anatomy_lookups": 29
+      }
+    },
+    {
+      "id": "session-2026-07-07-1131",
+      "started": "2026-07-07T03:31:32.944Z",
+      "ended": "2026-07-07T03:49:00.890Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/generator.py",
+          "tokens_estimated": 4196,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/seed.py",
+          "tokens_estimated": 2445,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/schemas.py",
+          "tokens_estimated": 1065,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/extensions/output/routers.py",
+          "tokens_estimated": 2215,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 9921,
+        "output_tokens_estimated": 0,
+        "reads_count": 4,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 4
       }
     }
   ],

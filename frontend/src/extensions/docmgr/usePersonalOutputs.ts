@@ -21,6 +21,7 @@ export function usePersonalOutputs() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const skipRef = useRef(0);
+  const fetchingMoreRef = useRef(false);
 
   const fetchFirst = useCallback(async () => {
     setLoading(true);
@@ -36,7 +37,10 @@ export function usePersonalOutputs() {
   }, []);
 
   const fetchMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    // 用 ref 同步拦截并发（onScroll 高频触发，state 异步会导致多次请求堆积卡死）
+    if (fetchingMoreRef.current) return;
+    if (!hasMore) return;
+    fetchingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const data = await docmgrApi.listPersonalOutputs({ skip: skipRef.current, limit: PAGE_SIZE });
@@ -49,8 +53,11 @@ export function usePersonalOutputs() {
       setHasMore(data.has_more);
     } catch (err) {
       console.error("Failed to load more:", err);
-    } finally { setLoadingMore(false); }
-  }, [loadingMore, hasMore]);
+    } finally {
+      fetchingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [hasMore]);
 
   useEffect(() => { fetchFirst(); }, [fetchFirst]);
 
