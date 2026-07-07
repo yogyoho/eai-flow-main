@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document
+from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Inches, Pt, RGBColor
 
@@ -384,15 +385,19 @@ def generate_docx(
     template_data: dict,
     output_path: Path,
     watermark: str | None = None,
+    cover_fields: dict | None = None,
 ) -> str:
-    """Generate a DOCX file from markdown content using layout template styling.
+    """Generate a DOCX from markdown using layout template styling.
 
-    Returns the output file path.
+    Renders up to three sections: cover (no page number) → TOC (roman) → body
+    (arabic from 1). Cover/TOC are added only when the template declares
+    ``cover_template`` / ``toc_settings``. Returns the output file path.
     """
-    blocks = parse_markdown(markdown_content)
+    frontmatter, body_md = _split_frontmatter(markdown_content)
+    blocks = parse_markdown(body_md)
     doc = Document()
 
-    # --- Page setup ---
+    # --- Page setup (applies to the first section; subsequent inherit via add_section) ---
     ps = template_data.get("page_settings", {})
     section = doc.sections[0]
     section.page_width = Cm(21.0) if ps.get("paperSize", "A4") == "A4" else Cm(29.7)
@@ -428,15 +433,33 @@ def generate_docx(
         if alignment is not None:
             pf.alignment = alignment
 
-    # --- Render blocks ---
+    has_cover = bool(template_data.get("cover_template"))
+    has_toc = bool(template_data.get("toc_settings"))
+    resolved_cover = _resolve_cover_fields(cover_fields or {}, frontmatter, blocks) if has_cover else {}
+    numbers = _compute_heading_numbers(blocks, template_data.get("heading_styles", []))
+
+    # === Section 0: COVER ===
+    if has_cover:
+        try:
+            _render_cover(doc, template_data.get("cover_template"), resolved_cover)
+        except Exception:  # cover must never abort generation
+            pass
+        doc.add_section(WD_SECTION.NEW_PAGE)
+
+    # === Section 1: TOC ===
+    if has_toc and _render_toc(doc, template_data.get("toc_settings")):
+        doc.add_section(WD_SECTION.NEW_PAGE)
+
+    # === Section 2: BODY ===
     ol_counters: dict[int, int] = {}
 
-    for block in blocks:
+    for i, block in enumerate(blocks):
         if block.kind == "heading":
             level = min(block.level, 4)
             hs = heading_styles.get(level, {})
             heading = doc.add_heading(level=level)
-            _add_inline_text(heading, block.text)
+            h_text = f"{numbers[i]} {block.text}" if i in numbers else block.text
+            _add_inline_text(heading, h_text)
 
             # Apply heading font
             for run in heading.runs:
@@ -463,7 +486,7 @@ def generate_docx(
             indent_cm = block.level * 0.6
             para.paragraph_format.left_indent = Cm(indent_cm)
             para.paragraph_format.first_line_indent = Cm(-0.3)
-            para.add_run("• ")
+            _set_run_font(para.add_run("• "), body_font)
             _add_inline_text(para, block.text)
             for run in para.runs:
                 _set_run_font(run, body_font)
@@ -476,7 +499,7 @@ def generate_docx(
             para = doc.add_paragraph()
             indent_cm = indent_level * 0.6
             para.paragraph_format.left_indent = Cm(indent_cm)
-            para.add_run(f"{counter}. ")
+            _set_run_font(para.add_run(f"{counter}. "), body_font)
             _add_inline_text(para, block.text)
             for run in para.runs:
                 _set_run_font(run, body_font)
@@ -536,45 +559,71 @@ def generate_docx(
                         })
                         shading.append(shading_elem)
 
-    # --- Header / Footer ---
-    hf = template_data.get("header_footer")
-    if hf:
-        if hf.get("headerText"):
-            section.header.paragraphs[0].text = hf["headerText"]
-            for run in section.header.paragraphs[0].runs:
-                run.font.size = Pt(9)
-                run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-        if hf.get("footerText") or hf.get("showPageNumber"):
-            footer_para = section.footer.paragraphs[0]
-            if hf.get("footerText"):
-                footer_para.text = hf["footerText"]
-            if hf.get("showPageNumber"):
-                from docx.oxml.ns import qn
+    # === Per-section footers + page numbering + header_footer + watermark ===
+    _apply_section_chrome(doc, template_data, watermark, has_cover, has_toc)
 
-                run = footer_para.add_run()
-                fld_char_begin = run._element.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "begin"})
-                run._element.append(fld_char_begin)
-                run2 = footer_para.add_run()
-                instr = run2._element.makeelement(qn("w:instrText"), {})
-                instr.text = " PAGE "
-                run2._element.append(instr)
-                run3 = footer_para.add_run()
-                fld_char_end = run3._element.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "end"})
-                run3._element.append(fld_char_end)
-            for run in footer_para.runs:
-                run.font.size = Pt(9)
-                run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-
-    # --- Watermark placeholder (as a header note) ---
-    if watermark:
-        labels = {"draft": "初稿", "review": "送审稿", "final": "正式稿"}
-        label = labels.get(watermark, watermark)
-        existing = section.header.paragraphs[0].text if section.header.paragraphs else ""
-        section.header.paragraphs[0].text = f"【{label}】{chr(10)}{existing}".strip()
+    # === Auto-update TOC on open ===
+    if has_toc:
+        _set_update_fields(doc)
 
     # Save
     doc.save(str(output_path))
     return str(output_path)
+
+
+def _apply_section_chrome(doc, template_data: dict, watermark: str | None, has_cover: bool, has_toc: bool) -> None:
+    """Apply per-section footer page numbers, pgNumType, header_footer text, watermark.
+
+    Sections layout: [cover?][toc?][body...]. Cover: no page number. TOC: roman.
+    Body section(s): decimal restart 1 + header_footer template config + watermark.
+    """
+    hf = template_data.get("header_footer") or {}
+    show_pn = hf.get("showPageNumber", True)
+    sections = doc.sections
+    last_idx = len(sections) - 1
+
+    for idx, sec in enumerate(sections):
+        is_cover = has_cover and idx == 0
+        is_toc = has_toc and ((idx == 1) if has_cover else (idx == 0))
+
+        if is_cover:
+            continue  # cover: no footer page number, no chrome
+
+        sec.footer.is_linked_to_previous = False
+        sec.header.is_linked_to_previous = False
+
+        if is_toc:
+            _set_section_pagenum(sec, fmt="upperRoman", start=1)
+            if show_pn:
+                _add_page_number_footer(sec)
+        else:
+            # body section(s): decimal page numbers, restart at 1
+            _set_section_pagenum(sec, fmt="decimal", start=1)
+            _apply_header_footer_text(sec, hf)
+            if show_pn:
+                _add_page_number_footer(sec)
+
+    # watermark on body (last) section header
+    if watermark and last_idx >= 0:
+        labels = {"draft": "初稿", "review": "送审稿", "final": "正式稿"}
+        label = labels.get(watermark, watermark)
+        body_sec = sections[last_idx]
+        existing = body_sec.header.paragraphs[0].text if body_sec.header.paragraphs else ""
+        body_sec.header.paragraphs[0].text = f"【{label}】{chr(10)}{existing}".strip()
+        for run in body_sec.header.paragraphs[0].runs:
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+
+def _apply_header_footer_text(section, hf: dict) -> None:
+    """Apply headerText/footerText from template header_footer config to a body section."""
+    if hf.get("headerText"):
+        section.header.paragraphs[0].text = hf["headerText"]
+        for run in section.header.paragraphs[0].runs:
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    if hf.get("footerText"):
+        section.footer.paragraphs[0].text = hf["footerText"]
 
 
 # ---------------------------------------------------------------------------
