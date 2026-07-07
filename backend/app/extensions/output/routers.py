@@ -29,6 +29,46 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/extensions/output", tags=["output"])
 
+
+def _build_template_data(template) -> dict:
+    """Assemble the template_data dict passed to generate_docx.
+
+    Includes cover_template + toc_settings (these were previously dropped —
+    that was the bug that made cover/TOC configuration inert).
+    """
+    return {
+        "page_settings": template.page_settings or {},
+        "body_styles": template.body_styles or {},
+        "heading_styles": template.heading_styles or [],
+        "table_styles": template.table_styles,
+        "figure_styles": template.figure_styles,
+        "header_footer": template.header_footer,
+        "reference_style": template.reference_style,
+        "appendix_rules": template.appendix_rules,
+        "cover_template": template.cover_template,
+        "toc_settings": template.toc_settings,
+    }
+
+
+def _collect_cover_fields(
+    cover_title: str | None,
+    cover_client: str | None,
+    cover_date: str | None,
+    cover_project_number: str | None,
+) -> dict:
+    """Collect non-None cover Form params into a {title/client/date/project_number} dict."""
+    fields: dict = {}
+    if cover_title:
+        fields["title"] = cover_title
+    if cover_client:
+        fields["client"] = cover_client
+    if cover_date:
+        fields["date"] = cover_date
+    if cover_project_number:
+        fields["project_number"] = cover_project_number
+    return fields
+
+
 # Directory for generated files
 _OUTPUT_DIR = Path(tempfile.gettempdir()) / "eai_output"
 _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -109,6 +149,10 @@ async def generate_report(
     chapter_ids: Optional[str] = Form(None),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
+    cover_title: Optional[str] = Form(None),
+    cover_client: Optional[str] = Form(None),
+    cover_date: Optional[str] = Form(None),
+    cover_project_number: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a report from a project, uploaded markdown file, or direct content string."""
@@ -146,17 +190,9 @@ async def generate_report(
     else:
         raise HTTPException(status_code=400, detail="source must be 'project' or 'markdown'")
 
-    # Build template data dict for the generator
-    template_data = {
-        "page_settings": template.page_settings or {},
-        "body_styles": template.body_styles or {},
-        "heading_styles": template.heading_styles or [],
-        "table_styles": template.table_styles,
-        "figure_styles": template.figure_styles,
-        "header_footer": template.header_footer,
-        "reference_style": template.reference_style,
-        "appendix_rules": template.appendix_rules,
-    }
+    # Build template data dict for the generator (incl. cover_template/toc_settings)
+    template_data = _build_template_data(template)
+    cover_fields = _collect_cover_fields(cover_title, cover_client, cover_date, cover_project_number)
 
     # Generate DOCX
     task_id = str(uuid.uuid4())
@@ -170,6 +206,7 @@ async def generate_report(
             template_data=template_data,
             output_path=output_path,
             watermark=watermark,
+            cover_fields=cover_fields,
         )
     except Exception as e:
         logger.error("Report generation failed: %s", e, exc_info=True)
