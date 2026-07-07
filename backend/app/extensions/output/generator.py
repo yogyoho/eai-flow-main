@@ -132,6 +132,64 @@ def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:
         _info_line("日期", cover_fields.get("date"))
 
 
+def _add_toc_field(paragraph, max_depth: int) -> None:
+    """Inject a native Word TOC field (TOC \\o "1-N" \\h \\z \\u) into paragraph XML."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    def _fld(char_type: str) -> None:
+        run = paragraph.add_run()
+        el = OxmlElement("w:fldChar")
+        el.set(qn("w:fldCharType"), char_type)
+        if char_type == "begin":
+            el.set(qn("w:dirty"), "true")
+        run._element.append(el)
+
+    _fld("begin")
+    run_instr = paragraph.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = f' TOC \\o "1-{max_depth}" \\h \\z \\u '
+    run_instr._element.append(instr)
+    _fld("separate")
+
+    run_placeholder = paragraph.add_run("（打开文档后右键“更新域”生成目录）")
+    _set_run_font(run_placeholder, "宋体")
+    run_placeholder.font.size = Pt(10)
+    run_placeholder.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    _fld("end")
+
+
+def _render_toc(doc, toc_settings: dict | None) -> bool:
+    """Add a 目录 heading + TOC field. Returns True if rendered, False if skipped."""
+    if not toc_settings:
+        return False
+    max_depth = toc_settings.get("maxDepth") or 0
+    if max_depth <= 0:
+        return False
+    heading = doc.add_paragraph()
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = heading.add_run("目录")
+    _set_run_font(run, "黑体")
+    run.font.size = Pt(16)
+    run.bold = True
+    _add_toc_field(doc.add_paragraph(), max_depth)
+    return True
+
+
+def _set_update_fields(doc) -> None:
+    """Write <w:updateFields w:val="true"/> into settings.xml so Word/WPS auto-updates the TOC on open."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    settings = doc.settings.element
+    if settings.find(qn("w:updateFields")) is None:
+        el = OxmlElement("w:updateFields")
+        el.set(qn("w:val"), "true")
+        settings.append(el)
+
+
 def parse_markdown(md: str) -> list[Block]:
     """Parse markdown text into a flat list of blocks."""
     blocks: list[Block] = []
