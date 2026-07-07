@@ -20,6 +20,31 @@ LIST_UL_RE = re.compile(r"^(\s*)[-*+]\s+(.+)$")
 LIST_OL_RE = re.compile(r"^(\s*)\d+\.\s+(.+)$")
 HR_RE = re.compile(r"^(-{3,}|\*{3,}|_{3,})$")
 
+FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.S)
+
+
+def _split_frontmatter(md: str) -> tuple[dict, str]:
+    """Split leading ``---\\nkey: value\\n---\\n`` front-matter from markdown.
+
+    Only flat ``key: value`` lines are supported (no nested YAML, no new dep).
+    Returns ``(meta_dict, body_markdown)``. If there is no front-matter, or any
+    non-blank/non-comment line lacks a colon (malformed), returns ``({}, md)``
+    — i.e. treat the whole input as body so generation never crashes.
+    """
+    m = FRONTMATTER_RE.match(md)
+    if not m:
+        return {}, md
+    meta: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if ":" not in line:
+            return {}, md  # malformed → degrade to whole-body
+        key, _, val = line.partition(":")
+        meta[key.strip()] = val.strip().strip('"').strip("'")
+    return meta, md[m.end():]
+
 
 @dataclass
 class Block:
