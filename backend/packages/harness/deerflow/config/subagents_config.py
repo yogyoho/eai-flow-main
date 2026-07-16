@@ -6,6 +6,23 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+# ── Delegation cap constants (upstream #4115) ───────────────────────────
+DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN = 6
+MIN_TOTAL_SUBAGENTS_PER_RUN = 1
+MAX_TOTAL_SUBAGENTS_PER_RUN = 50
+MIN_CONCURRENT_SUBAGENT_CALLS = 2
+MAX_CONCURRENT_SUBAGENT_CALLS = 4
+
+
+def clamp_subagent_concurrency(value: int) -> int:
+    """Clamp per-response task call concurrency to the enforced middleware range."""
+    return max(MIN_CONCURRENT_SUBAGENT_CALLS, min(MAX_CONCURRENT_SUBAGENT_CALLS, value))
+
+
+def clamp_total_subagents_per_run(value: int) -> int:
+    """Clamp per-run task delegation totals to the enforced middleware range."""
+    return max(MIN_TOTAL_SUBAGENTS_PER_RUN, min(MAX_TOTAL_SUBAGENTS_PER_RUN, value))
+
 
 class SubagentOverrideConfig(BaseModel):
     """Per-agent configuration overrides."""
@@ -80,6 +97,12 @@ class SubagentsAppConfig(BaseModel):
         default=None,
         ge=1,
         description="Optional default max-turn override for all subagents (None = keep builtin defaults)",
+    )
+    max_total_per_run: int = Field(
+        default=DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN,
+        ge=MIN_TOTAL_SUBAGENTS_PER_RUN,
+        le=MAX_TOTAL_SUBAGENTS_PER_RUN,
+        description="Total subagent delegations allowed in one lead-agent run (upstream #4115). A deterministic backstop against repeated legal-sized task batches. Valid range: 1-50.",
     )
     agents: dict[str, SubagentOverrideConfig] = Field(
         default_factory=dict,
