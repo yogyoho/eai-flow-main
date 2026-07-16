@@ -147,8 +147,16 @@ class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
 
         patched: list = []
         patch_count = 0
+        drop_count = 0
         for msg in messages:
-            if isinstance(msg, ToolMessage) and msg.tool_call_id in tool_call_ids:
+            if isinstance(msg, ToolMessage):
+                if msg.tool_call_id in tool_call_ids:
+                    continue  # Will be re-emitted after its AIMessage
+                # Orphan: ToolMessage whose originating AIMessage tool_call is no longer
+                # in the request (e.g. removed by summarization). Drop it so strict
+                # providers don't reject the request with HTTP 400. Persisted state is
+                # untouched; this only affects the single model call (upstream #4080).
+                drop_count += 1
                 continue
 
             patched.append(msg)
@@ -175,11 +183,15 @@ class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
                     )
                     patch_count += 1
 
-        if patched == messages:
+        if patched == messages and not drop_count:
             return None
 
-        if patch_count:
-            logger.warning(f"Injecting {patch_count} placeholder ToolMessage(s) for dangling tool calls")
+        if drop_count or patch_count:
+            logger.warning(
+                "DanglingToolCallMiddleware: %d orphan(s) dropped, %d placeholder(s) injected",
+                drop_count,
+                patch_count,
+            )
         return patched
 
     @override

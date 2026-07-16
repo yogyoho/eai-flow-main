@@ -493,7 +493,8 @@ class TestLoopDetection:
         mw._apply(_make_state(tool_calls=call), runtime_new)
 
         assert "thread-0" not in mw._history
-        assert "thread-0" not in mw._tool_freq
+        assert "thread-0" not in mw._tool_name_history
+        assert "thread-0" not in mw._tool_name_counter
         assert "thread-0" not in mw._tool_freq_warned
         assert "thread-new" in mw._history
         assert len(mw._history) == 3
@@ -920,7 +921,8 @@ class TestToolFrequencyDetection:
         # Reset only thread-A
         mw.reset(thread_id="thread-A")
 
-        assert "thread-A" not in mw._tool_freq
+        assert "thread-A" not in mw._tool_name_history
+        assert "thread-A" not in mw._tool_name_counter
         assert "thread-A" not in mw._tool_freq_warned
 
         # thread-B state should still be intact — 3rd call queues a warn.

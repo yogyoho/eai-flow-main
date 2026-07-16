@@ -303,7 +303,7 @@ class TestBuildPatchedMessagesPatching:
         assert isinstance(patched[4], ToolMessage)
         assert patched[4].tool_call_id == "call_2"
 
-    def test_orphan_tool_message_is_preserved_during_grouping(self):
+    def test_orphan_tool_message_is_dropped_during_grouping(self):
         mw = DanglingToolCallMiddleware()
         orphan = _tool_msg("orphan_call", "orphan")
         msgs = [
@@ -316,12 +316,14 @@ class TestBuildPatchedMessagesPatching:
         patched = mw._build_patched_messages(msgs)
 
         assert patched is not None
+        # The orphan ToolMessage (no matching AIMessage tool_call) is dropped so strict
+        # providers don't reject the request with HTTP 400 (upstream #4080).
+        assert all(getattr(m, "tool_call_id", None) != "orphan_call" for m in patched)
         assert isinstance(patched[0], AIMessage)
         assert isinstance(patched[1], ToolMessage)
         assert patched[1].tool_call_id == "call_1"
-        assert patched[2] is orphan
-        assert isinstance(patched[3], HumanMessage)
-        assert patched.count(orphan) == 1
+        assert isinstance(patched[2], HumanMessage)
+        assert len(patched) == 3
 
     def test_invalid_tool_call_is_patched(self):
         mw = DanglingToolCallMiddleware()

@@ -19,6 +19,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from langgraph.checkpoint.base import empty_checkpoint
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 
 from app.gateway.authz import require_permission
 from app.gateway.deps import get_checkpointer
@@ -278,6 +279,24 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
             assistant_id=getattr(body, "assistant_id", None),
             metadata=body.metadata,
         )
+    except IntegrityError:
+        # The idempotency read above and this insert are not atomic: a concurrent
+        # create for the same thread_id can commit in between, so the SQL-backed
+        # store rejects ours on the duplicate primary key. Honour the documented
+        # idempotency contract by returning the now-existing record instead of a
+        # 500 (upstream #3800). (The memory store overwrites rather than raising,
+        # so it never reaches here.)
+        existing_record = await thread_store.get(thread_id)
+        if existing_record is not None:
+            return ThreadResponse(
+                thread_id=thread_id,
+                status=existing_record.get("status", "idle"),
+                created_at=coerce_iso(existing_record.get("created_at", "")),
+                updated_at=coerce_iso(existing_record.get("updated_at", "")),
+                metadata=existing_record.get("metadata", {}),
+            )
+        logger.exception("Failed to write thread_meta for %s", sanitize_log_param(thread_id))
+        raise HTTPException(status_code=500, detail="Failed to create thread")
     except Exception:
         logger.exception("Failed to write thread_meta for %s", sanitize_log_param(thread_id))
         raise HTTPException(status_code=500, detail="Failed to create thread")
