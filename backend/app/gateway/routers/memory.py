@@ -3,18 +3,47 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from deerflow.agents.memory.updater import (
-    clear_memory_data,
-    create_memory_fact,
-    delete_memory_fact,
-    get_memory_data,
-    import_memory_data,
-    reload_memory_data,
-    update_memory_fact,
-)
+from deerflow.agents.memory import get_memory_manager
 from deerflow.config.memory_config import get_memory_config
 
 router = APIRouter(prefix="/api", tags=["memory"])
+
+
+# Thin delegation shims: route the legacy module-level calls through the pluggable
+# MemoryManager (#4122). Router endpoints keep their exact call sites / signatures;
+# only the backing implementation changed. Fact CRUD reaches DeerMem-internal
+# create_fact / delete_fact / update_fact (not on the MemoryManager ABC) directly.
+def get_memory_data(user_id):
+    return get_memory_manager().get_memory(user_id=user_id)
+
+
+def clear_memory_data(user_id):
+    return get_memory_manager().clear_memory(user_id=user_id)
+
+
+def import_memory_data(memory_data, user_id):
+    return get_memory_manager().import_memory(memory_data, user_id=user_id)
+
+
+def reload_memory_data(user_id):
+    manager = get_memory_manager()
+    if hasattr(manager, "reload_memory"):
+        return manager.reload_memory(user_id=user_id)
+    return manager.get_memory(user_id=user_id)
+
+
+def create_memory_fact(*, content, category, confidence, user_id):
+    manager = get_memory_manager()
+    memory_data, _fact_id = manager.create_fact(content=content, category=category, confidence=confidence, user_id=user_id)
+    return memory_data
+
+
+def delete_memory_fact(fact_id, user_id):
+    return get_memory_manager().delete_fact(fact_id, user_id=user_id)
+
+
+def update_memory_fact(*, fact_id, content, category, confidence, user_id):
+    return get_memory_manager().update_fact(fact_id=fact_id, content=content, category=category, confidence=confidence, user_id=user_id)
 
 
 def _resolve_user_id(request: Request, user_id: str | None = None) -> str | None:
