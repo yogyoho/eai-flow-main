@@ -4,6 +4,7 @@ import asyncio
 import atexit
 import concurrent.futures
 import copy
+import html
 import json
 import logging
 import math
@@ -277,6 +278,15 @@ def _normalize_memory_update_fact(fact: Any) -> dict[str, Any] | None:
         if normalized_source_error:
             normalized_fact["sourceError"] = normalized_source_error
 
+    # Fact lifetime (expected_valid_days): optional LLM-assigned review window (upstream #4143).
+    # Accept int/float (reject bool which subclasses int), coerce to int, keep only positive;
+    # the creation-time cap is applied in the newFacts apply path.
+    raw_evd = fact.get("expected_valid_days")
+    if isinstance(raw_evd, (int, float)) and not isinstance(raw_evd, bool):
+        evd = int(raw_evd)
+        if evd > 0:
+            normalized_fact["expected_valid_days"] = evd
+
     return normalized_fact
 
 
@@ -322,12 +332,39 @@ def _normalize_memory_update_data(update_data: dict[str, Any]) -> dict[str, Any]
                 }
             )
 
+    # ── Normalize staleness review lifetime extensions (upstream #4143) ──
+    stale_extensions_raw = update_data.get("staleFactsToExtend")
+    normalized_stale_extensions: list[dict[str, Any]] = []
+    if isinstance(stale_extensions_raw, list):
+        for entry in stale_extensions_raw:
+            if not isinstance(entry, dict):
+                continue
+            fact_id = entry.get("id")
+            if not isinstance(fact_id, str) or not fact_id:
+                continue
+            # extend_by_days: accept int/float (reject bool), coerce to int, keep > 0.
+            # A fractional value in (0,1) coerces to 0 and is dropped here so the apply
+            # path never silently writes a zero-delta extension.
+            raw_extend = entry.get("extend_by_days")
+            if isinstance(raw_extend, (int, float)) and not isinstance(raw_extend, bool):
+                extend_by = int(raw_extend)
+                if extend_by > 0:
+                    reason = entry.get("reason", "")
+                    normalized_stale_extensions.append(
+                        {
+                            "id": fact_id,
+                            "extend_by_days": extend_by,
+                            "reason": reason if isinstance(reason, str) else "",
+                        }
+                    )
+
     return {
         "user": user if isinstance(user, dict) else {},
         "history": history if isinstance(history, dict) else {},
         "newFacts": normalized_new_facts,
         "factsToRemove": normalized_facts_to_remove,
         "staleFactsToRemove": normalized_stale_removals,
+        "staleFactsToExtend": normalized_stale_extensions,
     }
 
 
@@ -415,9 +452,31 @@ def _parse_fact_datetime(raw: str) -> datetime | None:
         return None
 
 
-def _select_stale_candidates(current_memory: dict[str, Any], config: Any) -> list[dict[str, Any]]:
-    """Return facts older than ``staleness_age_days`` and not in a protected category."""
-    cutoff = datetime.now(UTC) - timedelta(days=config.staleness_age_days)
+def _effective_fact_staleness_age(fact: dict[str, Any], config: Any) -> int:
+    """Return the effective staleness review age in days for *fact* (upstream #4143).
+
+    Returns the stored expected_valid_days when present/valid. The creation-time cap
+    (staleness_max_lifetime_multiplier) is applied once at write time, not here, so
+    staleFactsToExtend can advance the window beyond that initial cap. Falls back to
+    the global staleness_age_days for facts that pre-date this feature.
+    """
+    raw = fact.get("expected_valid_days")
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool) and raw > 0:
+        return int(raw)
+    return config.staleness_age_days
+
+
+def _select_stale_candidates(
+    current_memory: dict[str, Any],
+    config: Any,
+) -> list[dict[str, Any]]:
+    """Return facts that have exceeded their individual review window (upstream #4143).
+
+    Each fact's effective review age is _effective_fact_staleness_age: facts with an
+    LLM-assigned expected_valid_days use that; others fall back to staleness_age_days.
+    Protected categories (default: correction) are excluded.
+    """
+    now = datetime.now(UTC)
     protected = frozenset(config.staleness_protected_categories)
     candidates: list[dict[str, Any]] = []
     for fact in current_memory.get("facts", []):
@@ -427,28 +486,37 @@ def _select_stale_candidates(current_memory: dict[str, Any], config: Any) -> lis
         if isinstance(category, str) and category in protected:
             continue
         created_at = _parse_fact_datetime(fact.get("createdAt", ""))
-        if created_at is not None and created_at < cutoff:
+        if created_at is None:
+            continue
+        effective_age = _effective_fact_staleness_age(fact, config)
+        if created_at < now - timedelta(days=effective_age):
             candidates.append(fact)
     return candidates
 
 
-def _build_staleness_section(stale_candidates: list[dict[str, Any]], age_days: int) -> str:
-    """Format the staleness review prompt section from candidate facts."""
+def _build_staleness_section(
+    stale_candidates: list[dict[str, Any]],
+    config: Any,
+) -> str:
+    """Format the staleness review prompt section from candidate facts (upstream #4143).
+
+    Each fact line includes a ``valid:Nd`` annotation (the effective review window) so the
+    LLM can calibrate conservatism. html.escape quote=False: content is in element-text
+    position inside <stale_facts>, never an attribute value.
+    """
     if not stale_candidates:
         return ""
     lines: list[str] = []
     for fact in stale_candidates:
         fid = fact.get("id", "?")
-        cat = str(fact.get("category", "context")).strip() or "context"
+        cat = html.escape(str(fact.get("category", "context")).strip() or "context", quote=False)
         conf = fact.get("confidence", 0.0)
         created_raw = fact.get("createdAt", "")
         created_short = created_raw[:10] if isinstance(created_raw, str) and len(created_raw) >= 10 else created_raw
-        content = str(fact.get("content", ""))
-        lines.append(f'- [{fid} | {cat} | {conf:.2f} | {created_short}] "{content}"')
-    return STALENESS_REVIEW_PROMPT.format(
-        stale_facts="\n".join(lines),
-        age_days=age_days,
-    )
+        content = html.escape(str(fact.get("content", "")), quote=False)
+        effective_age = _effective_fact_staleness_age(fact, config)
+        lines.append(f'- [{fid} | {cat} | {conf:.2f} | {created_short} | valid:{effective_age}d] "{content}"')
+    return STALENESS_REVIEW_PROMPT.format(stale_facts="\n".join(lines))
 
 
 class MemoryUpdater:
@@ -521,10 +589,7 @@ class MemoryUpdater:
         if config.staleness_review_enabled:
             stale_candidates = _select_stale_candidates(current_memory, config)
             if len(stale_candidates) >= config.staleness_min_candidates:
-                staleness_section = _build_staleness_section(
-                    stale_candidates,
-                    config.staleness_age_days,
-                )
+                staleness_section = _build_staleness_section(stale_candidates, config)
 
         prompt = MEMORY_UPDATE_PROMPT.format(
             current_memory=json.dumps(current_memory, indent=2, ensure_ascii=False),
@@ -727,38 +792,84 @@ class MemoryUpdater:
         if facts_to_remove:
             current_memory["facts"] = [f for f in current_memory.get("facts", []) if f.get("id") not in facts_to_remove]
 
-        # ── Staleness review removals (upstream #3860) ──
+        # ── Staleness review: removals + lifetime extensions (upstream #3860/#4143) ──
+        # Both share one candidate guardrail pass + candidate_ids set. proposed_remove_ids
+        # is hoisted out of the removals sub-block so it covers ALL LLM-proposed removals,
+        # not just the ones the per-cycle cap deleted: a fact the LLM wanted to remove must
+        # never be silently extended even when the cap spares it.
         stale_removals = update_data.get("staleFactsToRemove", [])
-        if isinstance(stale_removals, list) and stale_removals:
-            stale_ids_to_remove = {entry["id"] for entry in stale_removals if isinstance(entry, dict) and "id" in entry}
+        stale_extensions = update_data.get("staleFactsToExtend", [])
+        has_staleness_ops = (isinstance(stale_removals, list) and stale_removals) or (isinstance(stale_extensions, list) and stale_extensions)
+        if has_staleness_ops:
+            # Deterministic guardrail: intersect with actual staleness candidates so an LLM
+            # slip emitting a protected-category or non-aged fact id is silently rejected.
+            # Runs unconditionally (independent of model behavior AND staleness_review_enabled).
+            # Guard against legacy id-less facts (upstream #3993).
+            candidate_ids = {f["id"] for f in _select_stale_candidates(current_memory, config) if f.get("id") is not None}
 
-            # Deterministic guardrail: intersect with actual staleness candidates so an
-            # LLM slip emitting a protected-category or non-aged fact id is silently
-            # rejected. Runs unconditionally so apply-layer protection is independent of
-            # both model behavior and the staleness_review_enabled flag.
-            candidate_ids = {f["id"] for f in _select_stale_candidates(current_memory, config)}
-            stale_ids_to_remove &= candidate_ids
+            # ── Removals ──
+            proposed_remove_ids: set[str] = set()
+            if isinstance(stale_removals, list) and stale_removals:
+                proposed_remove_ids = {entry["id"] for entry in stale_removals if isinstance(entry, dict) and "id" in entry}
+                stale_ids_to_remove = proposed_remove_ids & candidate_ids
 
-            if not stale_ids_to_remove:
-                stale_removals = []
-            else:
-                # Safety cap: when the LLM returns more than the cap, keep only the
-                # lowest-confidence entries up to the limit (most questionable first).
-                max_stale = config.staleness_max_removals_per_cycle
-                if len(stale_ids_to_remove) > max_stale:
-                    stale_facts = [f for f in current_memory.get("facts", []) if f.get("id") in stale_ids_to_remove]
-                    stale_facts.sort(key=lambda f: f.get("confidence", 0))
-                    stale_ids_to_remove = {f["id"] for f in stale_facts[:max_stale]}
-                current_memory["facts"] = [f for f in current_memory.get("facts", []) if f.get("id") not in stale_ids_to_remove]
+                if not stale_ids_to_remove:
+                    stale_removals = []
+                else:
+                    # Safety cap: when the LLM returns more than the cap, keep only the
+                    # lowest-confidence entries up to the limit (most questionable first).
+                    max_stale = config.staleness_max_removals_per_cycle
+                    if len(stale_ids_to_remove) > max_stale:
+                        stale_facts = [f for f in current_memory.get("facts", []) if f.get("id") in stale_ids_to_remove]
+                        stale_facts.sort(key=lambda f: f.get("confidence", 0))
+                        stale_ids_to_remove = {f["id"] for f in stale_facts[:max_stale]}
+                    current_memory["facts"] = [f for f in current_memory.get("facts", []) if f.get("id") not in stale_ids_to_remove]
 
-            # Log removals for observability
-            for entry in stale_removals:
-                if isinstance(entry, dict) and entry.get("id") in stale_ids_to_remove:
-                    logger.info(
-                        "Staleness review removed fact %s: %s",
-                        entry["id"],
-                        entry.get("reason", "no reason provided"),
-                    )
+                # Log removals for observability
+                for entry in stale_removals:
+                    if isinstance(entry, dict) and entry.get("id") in stale_ids_to_remove:
+                        logger.info(
+                            "Staleness review removed fact %s: %s",
+                            entry["id"],
+                            entry.get("reason", "no reason provided"),
+                        )
+
+            # ── Lifetime extensions ──
+            # Recalibrate expected_valid_days for stale candidates the LLM kept (not proposed
+            # for removal, including cap survivors). new_evd = min(days_since + extend_by,
+            # staleness_max_extension_days). Absolute ceiling (not the creation multiplier):
+            # extensions are deliberate and must be able to advance beyond the creation cap.
+            if isinstance(stale_extensions, list) and stale_extensions:
+                extendable_ids = candidate_ids - proposed_remove_ids
+                ext_by_id = {e["id"]: e for e in stale_extensions if isinstance(e, dict) and isinstance(e.get("id"), str) and e["id"] in extendable_ids}
+                if ext_by_id:
+                    now_utc = datetime.now(UTC)
+                    max_ext = config.staleness_max_extension_days
+                    updated_facts: list[dict[str, Any]] = []
+                    for fact in current_memory.get("facts", []):
+                        fid = fact.get("id")
+                        ext = ext_by_id.get(fid) if fid else None
+                        if ext is not None:
+                            extend_by = ext.get("extend_by_days")
+                            if isinstance(extend_by, (int, float)) and not isinstance(extend_by, bool):
+                                extend_by_int = int(extend_by)  # coerce before guard
+                                if extend_by_int > 0:
+                                    created = _parse_fact_datetime(fact.get("createdAt", ""))
+                                    if created is None:
+                                        updated_facts.append(fact)
+                                        continue
+                                    days_since = int((now_utc - created).total_seconds() // 86400)
+                                    new_evd = min(days_since + extend_by_int, max_ext)
+                                    fact = {**fact, "expected_valid_days": new_evd}
+                                    logger.info(
+                                        "Staleness review extended fact %s by %d days (new expected_valid_days: %d): %s",
+                                        fid,
+                                        extend_by_int,
+                                        new_evd,
+                                        ext.get("reason", "no reason provided"),
+                                    )
+                        updated_facts.append(fact)
+                    current_memory["facts"] = updated_facts
 
         # Add new facts
         existing_fact_keys = {fact_key for fact_key in (_fact_content_key(fact.get("content")) for fact in current_memory.get("facts", [])) if fact_key is not None}
@@ -792,6 +903,12 @@ class MemoryUpdater:
                     normalized_source_error = source_error.strip()
                     if normalized_source_error:
                         fact_entry["sourceError"] = normalized_source_error
+                # Creation-time lifetime cap (upstream #4143): clamp LLM-assigned
+                # expected_valid_days to staleness_age_days * staleness_max_lifetime_multiplier.
+                evd = fact.get("expected_valid_days")
+                if isinstance(evd, int) and evd > 0:
+                    creation_cap = int(config.staleness_age_days * config.staleness_max_lifetime_multiplier)
+                    fact_entry["expected_valid_days"] = min(evd, creation_cap)
                 current_memory["facts"].append(fact_entry)
                 if fact_key is not None:
                     existing_fact_keys.add(fact_key)

@@ -151,10 +151,11 @@ MEMORY_UPDATE_PROMPT = """你是一个记忆管理系统。你的任务是分析
 	    "longTermBackground": {{ "summary": "...", "shouldUpdate": true/false }}
 	  }},
 	  "newFacts": [
-	    {{ "content": "...", "category": "preference|knowledge|context|behavior|goal|correction", "confidence": 0.0-1.0 }}
+	    {{ "content": "...", "category": "preference|knowledge|context|behavior|goal|correction", "confidence": 0.0-1.0, "expected_valid_days": 90 }}
 	  ],
 	  "factsToRemove": ["fact_id_1", "fact_id_2"],
-	  "staleFactsToRemove": [{{ "id": "fact_id", "reason": "brief explanation" }}]
+	  "staleFactsToRemove": [{{ "id": "fact_id", "reason": "brief explanation" }}],
+	  "staleFactsToExtend": [{{ "id": "fact_id", "extend_by_days": 365, "reason": "brief explanation" }}]
 	}}
 
 	重要规则:
@@ -183,27 +184,37 @@ MEMORY_UPDATE_PROMPT = """你是一个记忆管理系统。你的任务是分析
 # contradiction from the current conversation.
 STALENESS_REVIEW_PROMPT = """## Staleness Review
 
-The following facts were created more than {age_days} days ago and may no longer
-accurately reflect the user's current situation. Review each one against the full
-conversation context and your understanding of the user.
+The following facts have reached their individual review window and may no longer
+accurately reflect the user's current situation. Each entry shows a ``valid:Nd``
+annotation - the number of days this fact was expected to remain valid before
+re-evaluation. Use it to calibrate conservatism: a ``valid:30d`` fact was
+considered volatile at creation; a ``valid:365d`` fact was considered stable.
 
 <stale_facts>
 {stale_facts}
 </stale_facts>
 
-For each fact, decide KEEP or REMOVE:
-- KEEP: Still likely valid — even if not mentioned in this conversation.
+For each fact, decide KEEP, REMOVE, or EXTEND:
+- KEEP: Still likely valid - even if not mentioned in this conversation.
   Stable attributes (native language, core expertise, personality traits) often
   remain true indefinitely.
 - REMOVE: Outdated, contradicted by recent context, or no longer relevant.
   Examples: tech-stack migrations, job changes, relocated offices, abandoned projects.
+- EXTEND: Keep but recalibrate the review window (see below).
 
 Add REMOVE decisions to "staleFactsToRemove" in your output JSON.
 Each entry must be {{"id": "fact_id", "reason": "brief explanation"}}.
 The reason should cite what signal in the conversation (or absence thereof)
 supports the removal.
 
-Be conservative — when in doubt, KEEP. Removing a valid fact is worse than
+Optionally, for facts you KEEP and wish to recalibrate, add them to
+"staleFactsToExtend" with the number of days from now before the next review:
+{{"id": "fact_id", "extend_by_days": 365, "reason": "brief explanation"}}
+Use this when the current window seems miscalibrated - e.g. a core skill marked
+``valid:30d`` that is clearly stable. Omit facts whose current window already
+seems appropriate. Values above the server ceiling are silently reduced.
+
+Be conservative - when in doubt, KEEP. Removing a valid fact is worse than
 keeping a slightly stale one, because the next review cycle will re-evaluate it."""
 
 

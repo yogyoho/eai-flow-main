@@ -98,6 +98,23 @@ class MemoryConfig(BaseModel):
         default_factory=lambda: ["correction"],
         description="Fact categories exempt from staleness review (e.g. correction = explicit user feedback, not auto-pruned by age).",
     )
+    staleness_max_lifetime_multiplier: float = Field(
+        default=20.0,
+        ge=1.0,
+        le=100.0,
+        description="Creation-time cap multiplier for a fact's LLM-assigned expected_valid_days: clamped to "
+        "staleness_age_days * staleness_max_lifetime_multiplier so the model cannot set an initial lifetime so long "
+        "the fact is never re-evaluated. Default 20.0 (90x20=1800d ~= 5y) lets the 'very stable' tier work out of the box. "
+        "Extensions (staleFactsToExtend) use staleness_max_extension_days instead (upstream #4143).",
+    )
+    staleness_max_extension_days: int = Field(
+        default=3650,
+        ge=90,
+        le=36500,
+        description="Absolute ceiling on expected_valid_days after a lifetime extension (staleFactsToExtend): "
+        "new_evd = min(days_since + extend_by, staleness_max_extension_days). Separate from the creation multiplier "
+        "(extensions are deliberate recalibration). Prevents LLM misfire / timedelta overflow (upstream #4143).",
+    )
 
 
 # Global configuration instance
