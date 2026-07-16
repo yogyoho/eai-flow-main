@@ -51,9 +51,19 @@ def read_active_secrets(context: Any) -> dict[str, str]:
     return _string_pairs(context.get(ACTIVE_SECRETS_CONTEXT_KEY))
 
 
+# Identity of the latest slash activation that has already fired in this run, so
+# the reminder injection, skill disk read, and activate audit event happen once
+# per user slash command rather than on every model call of the tool loop. The
+# reminder is injected into the per-call model request only and never written to
+# graph state, so scanning request.messages cannot detect a prior activation on
+# the 2nd..Nth model call - the run context is the only durable signal (#4103).
+# Holds a message id / content digest, never a secret value; redacted below to
+# keep the guard complete.
+_SLASH_SKILL_ACTIVATION_RUN_KEY = "__slash_skill_activation_run"
+
 # Run-context keys whose values are request-scoped secrets and must be stripped
 # before a context mapping is serialized anywhere observable (traces, logs).
-REDACTED_CONTEXT_KEYS = frozenset({SECRETS_CONTEXT_KEY, ACTIVE_SECRETS_CONTEXT_KEY})
+REDACTED_CONTEXT_KEYS = frozenset({SECRETS_CONTEXT_KEY, ACTIVE_SECRETS_CONTEXT_KEY, _SLASH_SKILL_ACTIVATION_RUN_KEY})
 
 
 def redact_secret_context_keys(context: Any) -> Any:
