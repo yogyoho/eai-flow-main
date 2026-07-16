@@ -145,7 +145,7 @@ host 环境 `cd backend && PYTHONPATH=. uv run pytest` 有**多处预存失败**
 
 - **#4122 评估结论**:memory core 是 vanilla 的(grep `eai/docmgr/contract` 零命中),冲突风险中低,是几个大件里**最可落地**的。但 56 文件/+4327/−2815、全部 memory 测试重写、config schema 变;pluggability 对我们**无即时需求**(无 fork 特性需换 backend)。**采纳 ROI 一般 → 建议暂不**,等真需要 fact 过期(#4143)或多 backend 时再做(独立分支整体迁移,~1-2 人日)。
 - ✅ **#4181 数据安全收益已拿(方案 C,不走 #4122)**:在老 `MemoryUpdateQueue` 上直接加 `flush_sync(timeout)`(join 在途 worker → idle 短路 → daemon 线程 `Event.wait` 硬超时排空)+ `_processing_thread` 跟踪 + `skip_inter_item_delay`;gateway lifespan 在 channel 停后调用;新 `MemoryConfig.shutdown_flush_timeout_seconds`(默认 30)。commit `d7cd8bf0`。11 queue 测试 + flush smoke 过。
-- ⏭️ **#4143(per-fact 过期)** 仍需 #4122(难绕过,依赖新 DeerMemConfig/结构)——保留 defer。
+- ⏭️ ~~**#4143(per-fact 过期)** 仍需 #4122~~ → **✅ 已交付,绕开 #4122**(2026-07-16 PM3):发现 staleness review 基础特性 **#3860** 在 pre-#4122 结构(= 我们结构),于是走 #3860(base)+ #3993(id-less guard)+ #4143(per-fact 逻辑重映射到 #3860 结构)三段式,**完全不碰 #4122 的 56 文件 restructure**。LLM 给每个新 fact 赋 `expected_valid_days`(5 档,写入封顶 90×20=1800d),每个 fact 按自身窗口复审(非全局阈值);复审可 REMOVE 或 EXTEND(`new_evd=min(days_since+extend_by,3650d)`)。commits `72f10dc8`(#3860)+ `f3c3f775`(#4143+#3993)。88 memory 测试 + per-fact smoke 过。**这推翻了本节早先"#4143 绕不过 #4122"的判断**——关键是找到 #3860 在我们结构的基座。
 
 ---
 
