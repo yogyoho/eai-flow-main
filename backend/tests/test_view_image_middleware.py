@@ -17,6 +17,7 @@ Covered behavior:
 - `before_model` and `abefore_model` expose the same behavior sync/async.
 """
 
+import base64
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -162,15 +163,19 @@ class TestCreateImageDetailsMessage:
         blocks = mw._create_image_details_message({})
         assert blocks == [{"type": "text", "text": "No images have been viewed."}]
 
-    def test_builds_blocks_for_single_image(self):
+    def test_builds_blocks_for_single_image(self, tmp_path):
         mw = ViewImageMiddleware()
+        img = tmp_path / "cat.png"
+        data = b"fake-png-bytes"
+        img.write_bytes(data)
         state = {
             "viewed_images": {
-                "/path/to/cat.png": {"base64": "BASE64DATA", "mime_type": "image/png"},
+                "/path/to/cat.png": {"mime_type": "image/png", "size": len(data), "actual_path": str(img)},
             }
         }
         blocks = mw._create_image_details_message(state)
 
+        expected_url = f"data:image/png;base64,{base64.b64encode(data).decode()}"
         # header text + per-image description text + per-image image_url block
         assert len(blocks) == 3
         assert blocks[0] == {"type": "text", "text": "Here are the images you've viewed:"}
@@ -179,15 +184,21 @@ class TestCreateImageDetailsMessage:
         assert "image/png" in blocks[1]["text"]
         assert blocks[2] == {
             "type": "image_url",
-            "image_url": {"url": "data:image/png;base64,BASE64DATA"},
+            "image_url": {"url": expected_url},
         }
 
-    def test_builds_blocks_for_multiple_images(self):
+    def test_builds_blocks_for_multiple_images(self, tmp_path):
         mw = ViewImageMiddleware()
+        img_a = tmp_path / "a.png"
+        data_a = b"png-aaa"
+        img_a.write_bytes(data_a)
+        img_b = tmp_path / "b.jpg"
+        data_b = b"jpg-bbb"
+        img_b.write_bytes(data_b)
         state = {
             "viewed_images": {
-                "/a.png": {"base64": "AAA", "mime_type": "image/png"},
-                "/b.jpg": {"base64": "BBB", "mime_type": "image/jpeg"},
+                "/a.png": {"mime_type": "image/png", "size": len(data_a), "actual_path": str(img_a)},
+                "/b.jpg": {"mime_type": "image/jpeg", "size": len(data_b), "actual_path": str(img_b)},
             }
         }
         blocks = mw._create_image_details_message(state)
@@ -197,8 +208,8 @@ class TestCreateImageDetailsMessage:
         image_url_blocks = [b for b in blocks if isinstance(b, dict) and b.get("type") == "image_url"]
         assert len(image_url_blocks) == 2
         urls = {b["image_url"]["url"] for b in image_url_blocks}
-        assert "data:image/png;base64,AAA" in urls
-        assert "data:image/jpeg;base64,BBB" in urls
+        assert f"data:image/png;base64,{base64.b64encode(data_a).decode()}" in urls
+        assert f"data:image/jpeg;base64,{base64.b64encode(data_b).decode()}" in urls
 
     def test_omits_image_url_block_when_base64_missing(self):
         mw = ViewImageMiddleware()
@@ -336,13 +347,16 @@ class TestInjectImageMessage:
         state = {"messages": []}
         assert mw._inject_image_message(state) is None
 
-    def test_returns_state_update_with_human_message(self):
+    def test_returns_state_update_with_human_message(self, tmp_path):
         mw = ViewImageMiddleware()
+        img = tmp_path / "img.png"
+        data = b"png-bytes"
+        img.write_bytes(data)
         assistant = AIMessage(content="", tool_calls=[_view_image_call("c1")])
         state = {
             "messages": [assistant, ToolMessage(content="ok", tool_call_id="c1")],
             "viewed_images": {
-                "/img.png": {"base64": "AAA", "mime_type": "image/png"},
+                "/img.png": {"mime_type": "image/png", "size": len(data), "actual_path": str(img)},
             },
         }
 
