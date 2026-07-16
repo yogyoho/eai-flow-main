@@ -23,7 +23,7 @@ from deerflow.subagents.status_contract import SUBAGENT_STATUS_KEY, extract_suba
 logger = logging.getLogger(__name__)
 
 
-def extract_delegations(messages: list) -> list[DelegationEntry]:
+def extract_delegations(messages: list, *, run_id: str | None = None) -> list[DelegationEntry]:
     """Derive delegation entries from the visible message list, in dispatch order.
 
     A ``task`` tool-call is a dispatch (status "in_progress"); its matching
@@ -37,16 +37,19 @@ def extract_delegations(messages: list) -> list[DelegationEntry]:
             for call in message.tool_calls or []:
                 if call.get("name") != "task":
                     continue
-                task_id = call.get("id")
-                if not task_id or task_id in by_id:
+                eid = call.get("id")
+                if not eid or eid in by_id:
                     continue
                 args = call.get("args") or {}
-                by_id[task_id] = {
-                    "task_id": task_id,
+                entry: dict = {
+                    "id": eid,
                     "description": args.get("description") or "",
                     "subagent_type": args.get("subagent_type") or "",
                     "status": "in_progress",
                 }
+                if run_id is not None:
+                    entry["run_id"] = run_id
+                by_id[eid] = entry
         elif isinstance(message, ToolMessage):
             entry = by_id.get(message.tool_call_id or "")
             if entry is None:
@@ -81,15 +84,20 @@ def format_delegation_block(entries: list[DelegationEntry]) -> str | None:
 class DelegationLedgerMiddleware(AgentMiddleware):
     """Maintain (after_model) and inject (wrap_model_call) the delegation ledger."""
 
-    def _derive_update(self, state: Any) -> dict | None:
-        entries = extract_delegations(list(state.get("messages", [])))
+    def _derive_update(self, state: Any, runtime: Runtime | None = None) -> dict | None:
+        run_id = None
+        if runtime is not None and runtime.context is not None:
+            ctx_run_id = runtime.context.get("run_id")
+            if isinstance(ctx_run_id, str):
+                run_id = ctx_run_id
+        entries = extract_delegations(list(state.get("messages", [])), run_id=run_id)
         return {"delegations": entries} if entries else None
 
     def after_model(self, state: Any, runtime: Runtime | None = None) -> dict | None:
-        return self._derive_update(state)
+        return self._derive_update(state, runtime=runtime)
 
     async def aafter_model(self, state: Any, runtime: Runtime | None = None) -> dict | None:
-        return self._derive_update(state)
+        return self._derive_update(state, runtime=runtime)
 
     def _inject(self, request: ModelRequest) -> ModelRequest:
         entries = list(request.state.get("delegations") or [])

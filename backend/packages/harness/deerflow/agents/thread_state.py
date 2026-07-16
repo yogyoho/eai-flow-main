@@ -127,7 +127,8 @@ TERMINAL_STATUSES: frozenset[str] = frozenset(SUBAGENT_STATUS_VALUES)
 
 
 class DelegationEntry(TypedDict):
-    task_id: str
+    id: str  # renamed from task_id to match upstream (#4115 / #3875)
+    run_id: NotRequired[str]  # per-run scoping for the delegation cap (#4115)
     description: str
     subagent_type: str
     status: str  # "in_progress" or one of TERMINAL_STATUSES
@@ -137,7 +138,7 @@ def merge_delegations(
     existing: list[DelegationEntry] | None,
     new: list[DelegationEntry] | None,
 ) -> list[DelegationEntry]:
-    """Reducer for the delegation ledger: upsert by task_id, preserve dispatch order.
+    """Reducer for the delegation ledger: upsert by id, preserve dispatch order.
 
     A terminal status is never overwritten by a non-terminal one, so a later
     re-derivation from a partially-summarized message list cannot regress a
@@ -145,11 +146,11 @@ def merge_delegations(
     """
     merged: dict[str, DelegationEntry] = {}
     for entry in list(existing or []) + list(new or []):
-        task_id = entry["task_id"]
-        prev = merged.get(task_id)
+        eid = entry["id"]
+        prev = merged.get(eid)
         if prev is not None and prev["status"] in TERMINAL_STATUSES and entry["status"] not in TERMINAL_STATUSES:
             continue
-        merged[task_id] = {**prev, **entry} if prev else dict(entry)
+        merged[eid] = {**prev, **entry} if prev else dict(entry)
     return list(merged.values())
 
 

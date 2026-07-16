@@ -16,12 +16,12 @@ from deerflow.agents.thread_state import TERMINAL_STATUSES, merge_delegations
 from deerflow.subagents.status_contract import SUBAGENT_STATUS_VALUES
 
 
-def _entry(task_id, status, description="d", subagent_type="general-purpose"):
-    return {"task_id": task_id, "description": description, "subagent_type": subagent_type, "status": status}
+def _entry(eid, status, description="d", subagent_type="general-purpose"):
+    return {"id": eid, "description": description, "subagent_type": subagent_type, "status": status}
 
 
-def _task_call(task_id, description, subagent_type="general-purpose"):
-    return {"name": "task", "args": {"description": description, "subagent_type": subagent_type}, "id": task_id, "type": "tool_call"}
+def _task_call(eid, description, subagent_type="general-purpose"):
+    return {"name": "task", "args": {"description": description, "subagent_type": subagent_type}, "id": eid, "type": "tool_call"}
 
 
 def test_terminal_statuses_derived_from_status_contract():
@@ -37,14 +37,14 @@ def test_terminal_statuses_derived_from_status_contract():
     assert "in_progress" not in TERMINAL_STATUSES
 
 
-def test_merge_upserts_by_task_id_preserving_order():
+def test_merge_upserts_by_eid_preserving_order():
     existing = [_entry("a", "in_progress"), _entry("b", "in_progress")]
     new = [_entry("b", "completed"), _entry("c", "in_progress")]
 
     merged = merge_delegations(existing, new)
 
-    assert [e["task_id"] for e in merged] == ["a", "b", "c"]
-    assert next(e for e in merged if e["task_id"] == "b")["status"] == "completed"
+    assert [e["id"] for e in merged] == ["a", "b", "c"]
+    assert next(e for e in merged if e["id"] == "b")["status"] == "completed"
 
 
 def test_merge_does_not_downgrade_terminal_status():
@@ -58,8 +58,8 @@ def test_merge_does_not_downgrade_terminal_status():
 
 def test_merge_handles_none_inputs():
     assert merge_delegations(None, None) == []
-    assert merge_delegations(None, [_entry("a", "in_progress")])[0]["task_id"] == "a"
-    assert merge_delegations([_entry("a", "in_progress")], None)[0]["task_id"] == "a"
+    assert merge_delegations(None, [_entry("a", "in_progress")])[0]["id"] == "a"
+    assert merge_delegations([_entry("a", "in_progress")], None)[0]["id"] == "a"
 
 
 def test_extract_records_dispatch_as_in_progress():
@@ -67,7 +67,7 @@ def test_extract_records_dispatch_as_in_progress():
 
     entries = extract_delegations(msgs)
 
-    assert entries == [{"task_id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "in_progress"}]
+    assert entries == [{"id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "in_progress"}]
 
 
 def test_extract_updates_status_from_tool_message_kwarg():
@@ -104,7 +104,7 @@ def test_extract_preserves_dispatch_order_across_batches():
         AIMessage(content="", tool_calls=[_task_call("call_3", "C")]),
     ]
 
-    assert [e["task_id"] for e in extract_delegations(msgs)] == ["call_1", "call_2", "call_3"]
+    assert [e["id"] for e in extract_delegations(msgs)] == ["call_1", "call_2", "call_3"]
 
 
 def test_format_block_lists_entries_and_returns_none_when_empty():
@@ -112,8 +112,8 @@ def test_format_block_lists_entries_and_returns_none_when_empty():
 
     block = format_delegation_block(
         [
-            {"task_id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "completed"},
-            {"task_id": "call_2", "description": "Research B", "subagent_type": "general-purpose", "status": "in_progress"},
+            {"id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "completed"},
+            {"id": "call_2", "description": "Research B", "subagent_type": "general-purpose", "status": "in_progress"},
         ]
     )
 
@@ -131,7 +131,7 @@ def test_after_model_returns_derived_delegations():
 
     update = mw.after_model(state, runtime=None)
 
-    assert update == {"delegations": [{"task_id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "in_progress"}]}
+    assert update == {"delegations": [{"id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "in_progress"}]}
 
 
 def test_after_model_returns_none_when_no_delegations():
@@ -166,7 +166,7 @@ def test_wrap_model_call_injects_ledger_block():
         captured["messages"] = req.messages
         return "RESPONSE"
 
-    state = {"delegations": [{"task_id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "completed"}]}
+    state = {"delegations": [{"id": "call_1", "description": "Research A", "subagent_type": "general-purpose", "status": "completed"}]}
     req = _FakeRequest(state, [AIMessage(content="prev")])
 
     result = mw.wrap_model_call(req, handler)
