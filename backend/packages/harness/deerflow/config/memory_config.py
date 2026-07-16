@@ -1,5 +1,7 @@
 """Configuration for memory mechanism."""
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -114,6 +116,17 @@ class MemoryConfig(BaseModel):
         description="Absolute ceiling on expected_valid_days after a lifetime extension (staleFactsToExtend): "
         "new_evd = min(days_since + extend_by, staleness_max_extension_days). Separate from the creation multiplier "
         "(extensions are deliberate recalibration). Prevents LLM misfire / timedelta overflow (upstream #4143).",
+    )
+    # ── Pluggable backend (#4122) ───────────────────────────────────────
+    manager_class: str = Field(
+        default="deermem",
+        description="Memory backend to activate. Resolves to a MANAGER_CLASS in agents/memory/backends/<name>/. "
+        "Default 'deermem' = the file-based DeerMem backend. Swap = drop a backends/<name>/ folder + set this (upstream #4122).",
+    )
+    backend_config: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Backend-private config passed to the MemoryManager constructor (upstream #4122). DeerMem-private "
+        "fields (e.g. staleness overrides, consolidation) live here when using the deermem backend.",
     )
 
 
