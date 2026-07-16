@@ -141,6 +141,12 @@ host 环境 `cd backend && PYTHONPATH=. uv run pytest` 有**多处预存失败**
 
 **本轮净 port：1（#4219）。** 进一步印证第六节判断——剩余上游项以"特性采纳/epic 整体引入"为主，干净定点修复稀缺。
 
+### 2026-07-16（PM2，#4122 评估 + #4181 适配）
+
+- **#4122 评估结论**:memory core 是 vanilla 的(grep `eai/docmgr/contract` 零命中),冲突风险中低,是几个大件里**最可落地**的。但 56 文件/+4327/−2815、全部 memory 测试重写、config schema 变;pluggability 对我们**无即时需求**(无 fork 特性需换 backend)。**采纳 ROI 一般 → 建议暂不**,等真需要 fact 过期(#4143)或多 backend 时再做(独立分支整体迁移,~1-2 人日)。
+- ✅ **#4181 数据安全收益已拿(方案 C,不走 #4122)**:在老 `MemoryUpdateQueue` 上直接加 `flush_sync(timeout)`(join 在途 worker → idle 短路 → daemon 线程 `Event.wait` 硬超时排空)+ `_processing_thread` 跟踪 + `skip_inter_item_delay`;gateway lifespan 在 channel 停后调用;新 `MemoryConfig.shutdown_flush_timeout_seconds`(默认 30)。commit `d7cd8bf0`。11 queue 测试 + flush smoke 过。
+- ⏭️ **#4143(per-fact 过期)** 仍需 #4122(难绕过,依赖新 DeerMemConfig/结构)——保留 defer。
+
 ---
 
 *维护者：本 session 由 AI 辅助 port。续 port 时以本文件 + `.wolf/cerebrum.md`(上游历史重写条目) + auto-memory `upstream-fix-port-2026-07` 为准；代码事实请当场复检。*
