@@ -142,9 +142,27 @@ def load_agent_soul(agent_name: str | None, *, user_id: str | None = None) -> st
     """
     if agent_name:
         agent_dir = resolve_agent_dir(agent_name, user_id=user_id)
+        soul_path = agent_dir / SOUL_FILENAME
+        # Fallback: resolve_agent_dir requires config.yaml to be present (see #3390), but
+        # SOUL.md loading does not depend on config.yaml. If the resolved dir lacks both
+        # SOUL.md and config.yaml (the resolver returned its default path because no agent
+        # dir qualified), check the per-user and legacy directories directly so an agent
+        # configured externally (agent dir has SOUL.md but no config.yaml) can still load
+        # its soul (upstream #4136). The config.yaml guard ensures this only fires for dirs
+        # the resolver couldn't resolve, preserving the per-user-shadows-legacy invariant.
+        if not soul_path.exists() and not (agent_dir / "config.yaml").exists():
+            paths = get_paths()
+            effective_user = user_id or get_effective_user_id()
+            for candidate in (
+                paths.user_agent_dir(effective_user, agent_name),
+                paths.agent_dir(agent_name),
+            ):
+                if (candidate / SOUL_FILENAME).exists():
+                    soul_path = candidate / SOUL_FILENAME
+                    break
     else:
         agent_dir = get_paths().base_dir
-    soul_path = agent_dir / SOUL_FILENAME
+        soul_path = agent_dir / SOUL_FILENAME
     if not soul_path.exists():
         return None
     content = soul_path.read_text(encoding="utf-8").strip()

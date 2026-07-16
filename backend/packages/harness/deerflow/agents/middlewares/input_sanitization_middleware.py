@@ -78,6 +78,7 @@ _BLOCKED_TAG_NAMES: frozenset[str] = frozenset(
         "guidelines",
         "output_format",
         "working_directory",
+        "tool_restrictions",
         # Common prompt-injection tag patterns
         "system",
         "instruction",
