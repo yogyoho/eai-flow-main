@@ -378,7 +378,15 @@ class TestBuildPatchedMessagesPatching:
             _ai_with_invalid_tool_calls([_invalid_tc()]),
             _tool_msg("write_file:36", "write_file"),
         ]
-        assert mw._build_patched_messages(msgs) is None
+        # The invalid tool call's empty name is sanitized to _UNKNOWN_TOOL_NAME
+        # even when a matching ToolMessage already exists (the response doesn't
+        # fix the name — the provider would still reject an empty-name tool_call).
+        # So the patched output is non-None (the AI message was sanitized) and
+        # the sanitized name is still present.
+        patched = mw._build_patched_messages(msgs)
+        assert patched is not None
+        sanitized_tc_names = [tc.get("name") for msg in patched if getattr(msg, "type", None) == "ai" for tc in (getattr(msg, "tool_calls", None) or []) if isinstance(tc, dict)]
+        assert all(n != "" for n in sanitized_tc_names)
 
 
 class TestWrapModelCall:

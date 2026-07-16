@@ -30,6 +30,41 @@ logger = logging.getLogger(__name__)
 # payloads in invalid tool-call args. Keep recovery error details short so the
 # synthetic ToolMessage does not echo large or malformed content back to the model.
 _MAX_RECOVERY_ERROR_DETAIL_LEN = 500
+_UNKNOWN_TOOL_NAME = "unknown_tool"
+_EMPTY_TOOL_NAME_ERROR = "Tool call could not be executed because its name was missing or empty."
+
+
+def _valid_tool_name(name: object) -> bool:
+    return isinstance(name, str) and bool(name.strip())
+
+
+def _normalize_tool_name(name: object) -> str:
+    return name.strip() if _valid_tool_name(name) else _UNKNOWN_TOOL_NAME
+
+
+def _has_invalid_tool_name(name: object) -> bool:
+    return not _valid_tool_name(name)
+
+
+def _parse_json_object(value: object) -> dict | None:
+    """Parse a JSON-object string, returning None for other inputs."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = json.loads(value)
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _normalize_tool_arguments(arguments: object) -> str:
+    """Return a JSON-object string safe for OpenAI-compatible replay."""
+    if isinstance(arguments, dict):
+        try:
+            return json.dumps(arguments, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError):
+            return "{}"
+    return arguments if _parse_json_object(arguments) is not None else "{}"
 
 
 class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
@@ -125,6 +160,102 @@ class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
             return "[Tool call could not be executed because its arguments were invalid.]"
         return "[Tool call was interrupted and did not return a result.]"
 
+    @staticmethod
+    def _sanitize_ai_message_tool_calls(msg):
+        """Return an AIMessage with model-bound tool calls safe to serialize.
+
+        Sanitizes structured tool_calls, invalid_tool_calls, and raw additional_kwargs
+        tool_calls so a malformed name/arguments field does not trip the provider at
+        serialization time (upstream #4193). Only copies the message when a field
+        actually changed.
+        """
+        if getattr(msg, "type", None) != "ai":
+            return msg
+
+        changed = False
+        update: dict = {}
+
+        # ── Structured tool_calls ──
+        tool_calls = getattr(msg, "tool_calls", None)
+        if tool_calls:
+            structured_changed = False
+            sanitized_tool_calls = []
+            for tool_call in tool_calls:
+                if not isinstance(tool_call, dict):
+                    sanitized_tool_calls.append(tool_call)
+                    continue
+                sanitized = dict(tool_call)
+                normalized_name = _normalize_tool_name(sanitized.get("name"))
+                if sanitized.get("name") != normalized_name:
+                    sanitized["name"] = normalized_name
+                    structured_changed = True
+                sanitized_tool_calls.append(sanitized)
+            if structured_changed:
+                update["tool_calls"] = sanitized_tool_calls
+                changed = True
+
+        # ── invalid_tool_calls ──
+        invalid_tool_calls = getattr(msg, "invalid_tool_calls", None)
+        if invalid_tool_calls:
+            invalid_changed = False
+            sanitized_invalid_tool_calls = []
+            for invalid_tool_call in invalid_tool_calls:
+                if not isinstance(invalid_tool_call, dict):
+                    sanitized_invalid_tool_calls.append(invalid_tool_call)
+                    continue
+                sanitized = dict(invalid_tool_call)
+                normalized_name = _normalize_tool_name(sanitized.get("name"))
+                normalized_arguments = _normalize_tool_arguments(sanitized.get("args"))
+                if sanitized.get("name") != normalized_name:
+                    sanitized["name"] = normalized_name
+                    invalid_changed = True
+                if sanitized.get("args") != normalized_arguments:
+                    sanitized["args"] = normalized_arguments
+                    invalid_changed = True
+                sanitized_invalid_tool_calls.append(sanitized)
+            if invalid_changed:
+                update["invalid_tool_calls"] = sanitized_invalid_tool_calls
+                changed = True
+
+        # ── additional_kwargs raw tool_calls ──
+        additional_kwargs = dict(getattr(msg, "additional_kwargs", {}) or {})
+        raw_tool_calls = additional_kwargs.get("tool_calls")
+        if isinstance(raw_tool_calls, list):
+            raw_changed = False
+            sanitized_raw_tool_calls = []
+            for raw_tool_call in raw_tool_calls:
+                if not isinstance(raw_tool_call, dict):
+                    sanitized_raw_tool_calls.append(raw_tool_call)
+                    continue
+                sanitized_raw = dict(raw_tool_call)
+                function = sanitized_raw.get("function")
+                if isinstance(function, dict):
+                    sanitized_function = dict(function)
+                    normalized_name = _normalize_tool_name(sanitized_function.get("name"))
+                    normalized_arguments = _normalize_tool_arguments(sanitized_function.get("arguments"))
+                    if sanitized_function.get("name") != normalized_name:
+                        sanitized_function["name"] = normalized_name
+                        raw_changed = True
+                    if sanitized_function.get("arguments") != normalized_arguments:
+                        sanitized_function["arguments"] = normalized_arguments
+                        raw_changed = True
+                    if sanitized_function != function:
+                        sanitized_raw["function"] = sanitized_function
+                else:
+                    normalized_name = _normalize_tool_name(sanitized_raw.get("name"))
+                    if sanitized_raw.get("name") != normalized_name:
+                        sanitized_raw["name"] = normalized_name
+                        raw_changed = True
+                sanitized_raw_tool_calls.append(sanitized_raw)
+            if raw_changed:
+                additional_kwargs["tool_calls"] = sanitized_raw_tool_calls
+                update["additional_kwargs"] = additional_kwargs
+                changed = True
+
+        if not changed:
+            return msg
+        return msg.model_copy(update=update)
+
     def _build_patched_messages(self, messages: list) -> list | None:
         """Return messages with tool results grouped after their tool-call AIMessage.
 
@@ -159,7 +290,8 @@ class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
                 drop_count += 1
                 continue
 
-            patched.append(msg)
+            sanitized_msg = self._sanitize_ai_message_tool_calls(msg)
+            patched.append(sanitized_msg)
             if getattr(msg, "type", None) != "ai":
                 continue
 
