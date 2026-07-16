@@ -508,7 +508,11 @@ class SubagentExecutor:
             collector_caller = f"subagent:{self.config.name}"
             collector = SubagentTokenCollector(caller=collector_caller)
 
-            # Build config with thread_id for sandbox access and recursion limit
+            # Do not put checkpoint coordinates (thread_id/checkpoint_ns/etc.) in
+            # the child config. LangGraph inherits those coordinates from the
+            # ambient parent run so this execution keeps its subgraph namespace
+            # (upstream #4215). Business consumers receive thread_id via
+            # ``context`` below instead.
             run_config: RunnableConfig = {
                 "recursion_limit": self.config.max_turns,
                 "callbacks": [collector],
@@ -516,7 +520,6 @@ class SubagentExecutor:
             }
             context: dict[str, Any] = {}
             if self.thread_id:
-                run_config["configurable"] = {"thread_id": self.thread_id}
                 context["thread_id"] = self.thread_id
             if self.app_config is not None:
                 context["app_config"] = self.app_config
