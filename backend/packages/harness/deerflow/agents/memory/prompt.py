@@ -285,6 +285,20 @@ def _coerce_confidence(value: Any, default: float = 0.0) -> float:
     return max(0.0, min(1.0, confidence))
 
 
+def _escape_summary(value: Any) -> str:
+    """Escape a user-editable context summary for the ``<memory>`` block (upstream #4119).
+
+    Context summaries (workContext/personalContext/topOfMind and the history sections) are
+    user-editable via /api/memory import and render into the same <memory> block as facts, so
+    an unescaped ``</memory>`` value can close the block and relocate the text after it out of
+    the user-managed trust zone the lead-agent prompt declares. str(...) preserves the prior
+    f-string coercion for a rare non-string summary an import can plant; quote=False because
+    summaries land in element-text position (never attribute values), so only <, >, & can break
+    out.
+    """
+    return html.escape(str(value), quote=False)
+
+
 def format_memory_for_injection(memory_data: dict[str, Any], max_tokens: int = 2000) -> str:
     """Format memory data for injection into system prompt.
 
@@ -307,15 +321,15 @@ def format_memory_for_injection(memory_data: dict[str, Any], max_tokens: int = 2
 
         work_ctx = user_data.get("workContext", {})
         if work_ctx.get("summary"):
-            user_sections.append(f"工作: {work_ctx['summary']}")
+            user_sections.append(f"工作: {_escape_summary(work_ctx['summary'])}")
 
         personal_ctx = user_data.get("personalContext", {})
         if personal_ctx.get("summary"):
-            user_sections.append(f"个人: {personal_ctx['summary']}")
+            user_sections.append(f"个人: {_escape_summary(personal_ctx['summary'])}")
 
         top_of_mind = user_data.get("topOfMind", {})
         if top_of_mind.get("summary"):
-            user_sections.append(f"当前焦点: {top_of_mind['summary']}")
+            user_sections.append(f"当前焦点: {_escape_summary(top_of_mind['summary'])}")
 
         if user_sections:
             sections.append("用户上下文:\n" + "\n".join(f"- {s}" for s in user_sections))
@@ -327,15 +341,15 @@ def format_memory_for_injection(memory_data: dict[str, Any], max_tokens: int = 2
 
         recent = history_data.get("recentMonths", {})
         if recent.get("summary"):
-            history_sections.append(f"近期: {recent['summary']}")
+            history_sections.append(f"近期: {_escape_summary(recent['summary'])}")
 
         earlier = history_data.get("earlierContext", {})
         if earlier.get("summary"):
-            history_sections.append(f"早期: {earlier['summary']}")
+            history_sections.append(f"早期: {_escape_summary(earlier['summary'])}")
 
         background = history_data.get("longTermBackground", {})
         if background.get("summary"):
-            history_sections.append(f"背景: {background['summary']}")
+            history_sections.append(f"背景: {_escape_summary(background['summary'])}")
 
         if history_sections:
             sections.append("历史记录:\n" + "\n".join(f"- {s}" for s in history_sections))
