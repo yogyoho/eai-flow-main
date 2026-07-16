@@ -25,6 +25,16 @@ from deerflow.tools.types import Runtime
 
 logger = logging.getLogger(__name__)
 
+# MCP tool names arrive verbatim from external (potentially hostile/compromised)
+# servers. A tool name is only ever a function identifier: the provider validates
+# it against this charset at bind time. But deferred (tool_search) MCP tools are
+# withheld from binding, so that check never runs on their names — they only live
+# in the system-prompt string, where a crafted name could forge framework prompt
+# structure. Canonicalizing at the load boundary constrains both bound and
+# deferred names to the same safe charset, mirroring skill-name validation
+# (skills/storage/skill_storage.py). Upstream #4154.
+_VALID_MCP_TOOL_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
+
 # Subdirectory under the thread's workspace used as the temp dir for stdio MCP
 # subprocesses. Pinning the process temp dir here (alongside its cwd) makes
 # tools that write to ``os.tmpdir()`` / ``tempfile.gettempdir()`` land inside
@@ -618,6 +628,17 @@ async def get_mcp_tools() -> list[BaseTool]:
         # pooling them causes RuntimeError on cleanup (see #3203).
         wrapped_tools: list[BaseTool] = []
         for tool in tools:
+            # Drop tools whose name is not a valid identifier before they enter the
+            # catalog or the deferred-tools prompt. A name outside this charset cannot
+            # be bound as a function tool and could forge prompt structure when listed
+            # as a deferred tool (upstream #4154).
+            if not _VALID_MCP_TOOL_NAME.fullmatch(tool.name or ""):
+                logger.warning(
+                    "Dropping MCP tool with invalid name %r: tool names must match %s",
+                    tool.name,
+                    _VALID_MCP_TOOL_NAME.pattern,
+                )
+                continue
             tool_server: str | None = None
             for name in servers_config:
                 if tool.name.startswith(f"{name}_"):

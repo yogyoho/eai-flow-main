@@ -738,7 +738,9 @@ def get_deferred_tools_prompt_section(*, deferred_names: frozenset[str] = frozen
     """
     if not deferred_names:
         return ""
-    names = "\n".join(sorted(deferred_names))
+    # Names come verbatim from external MCP servers; escape so a crafted tool name
+    # cannot close this block and forge a framework tag (upstream #4154).
+    names = "\n".join(html.escape(name, quote=False) for name in sorted(deferred_names))
     return f"<available-deferred-tools>\n{names}\n</available-deferred-tools>"
 
 
