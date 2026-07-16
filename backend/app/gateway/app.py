@@ -210,13 +210,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # never blocks on the BPE data download (hits an OpenAI/Azure URL that may
     # be unreachable in restricted networks — issue #3402). (Upstream #3411.)
     try:
-        from deerflow.agents.memory.prompt import warm_tiktoken_cache
+        from deerflow.agents.memory import get_memory_manager
 
-        warmed = await asyncio.wait_for(asyncio.to_thread(warm_tiktoken_cache), timeout=5)
-        if warmed:
-            logger.info("tiktoken encoding cache warmed successfully")
-        else:
-            logger.warning("tiktoken encoding cache warm-up failed; token counting will use character-based fallback")
+        manager = get_memory_manager()
+        if hasattr(manager, "warm"):
+            warmed = await asyncio.wait_for(asyncio.to_thread(manager.warm), timeout=5)
+            if warmed:
+                logger.info("tiktoken encoding cache warmed successfully")
+            else:
+                logger.warning("tiktoken encoding cache warm-up failed; token counting will use character-based fallback")
     except TimeoutError:
         logger.warning("tiktoken encoding cache warm-up timed out; token counting will use character-based fallback")
     except Exception:
@@ -322,10 +324,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             try:
                 app_cfg = get_app_config()
                 if app_cfg.memory.enabled:
-                    from deerflow.agents.memory.queue import get_memory_queue
+                    from deerflow.agents.memory import get_memory_manager
 
                     flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
-                    completed = await asyncio.to_thread(get_memory_queue().flush_sync, flush_timeout)
+                    completed = await asyncio.to_thread(get_memory_manager().shutdown_flush, flush_timeout)
                     if completed:
                         logger.info("Memory queue flush completed within %.1fs", flush_timeout)
                     else:
