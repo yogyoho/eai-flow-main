@@ -69,6 +69,35 @@ class MemoryConfig(BaseModel):
         "are not lost on restart / rolling deploy / SIGTERM (upstream #4181). Must fit inside "
         "the pod termination grace period when deployed under Kubernetes.",
     )
+    # ── Staleness review (upstream #3860) ───────────────────────────────
+    staleness_review_enabled: bool = Field(
+        default=True,
+        description="Enable staleness review for aged facts. Facts older than staleness_age_days are surfaced in the "
+        "memory-update prompt so the LLM can semantically judge whether each is still valid or should be removed. "
+        "Solves 'silent staleness' where outdated facts persist because no future conversation explicitly contradicts them.",
+    )
+    staleness_age_days: int = Field(
+        default=90,
+        ge=30,
+        le=365,
+        description="Facts older than this many days become staleness-review candidates. 90 (~one quarter) balances catching genuine changes vs noise on stable facts.",
+    )
+    staleness_min_candidates: int = Field(
+        default=3,
+        ge=1,
+        le=50,
+        description="Minimum stale facts required to trigger a review cycle (below this the prompt overhead is not justified).",
+    )
+    staleness_max_removals_per_cycle: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum facts the staleness review can remove in one update cycle. Prevents over-pruning a large backlog.",
+    )
+    staleness_protected_categories: list[str] = Field(
+        default_factory=lambda: ["correction"],
+        description="Fact categories exempt from staleness review (e.g. correction = explicit user feedback, not auto-pruned by age).",
+    )
 
 
 # Global configuration instance

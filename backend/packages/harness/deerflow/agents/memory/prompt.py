@@ -153,7 +153,8 @@ MEMORY_UPDATE_PROMPT = """你是一个记忆管理系统。你的任务是分析
 	  "newFacts": [
 	    {{ "content": "...", "category": "preference|knowledge|context|behavior|goal|correction", "confidence": 0.0-1.0 }}
 	  ],
-	  "factsToRemove": ["fact_id_1", "fact_id_2"]
+	  "factsToRemove": ["fact_id_1", "fact_id_2"],
+	  "staleFactsToRemove": [{{ "id": "fact_id", "reason": "brief explanation" }}]
 	}}
 
 	重要规则:
@@ -172,7 +173,38 @@ MEMORY_UPDATE_PROMPT = """你是一个记忆管理系统。你的任务是分析
 	- 重要: 不要在记忆中记录文件上传事件。上传的文件是会话特定的临时文件——
 	  在后续会话中无法访问。记录上传事件会导致后续对话混乱。
 
+{staleness_review_section}
+
 	只返回有效的 JSON，不要解释或 markdown。"""
+
+
+# Staleness review section injected into MEMORY_UPDATE_PROMPT when triggered (upstream #3860).
+# Surfaces aged facts so the LLM semantically judges each, rather than relying on passive
+# contradiction from the current conversation.
+STALENESS_REVIEW_PROMPT = """## Staleness Review
+
+The following facts were created more than {age_days} days ago and may no longer
+accurately reflect the user's current situation. Review each one against the full
+conversation context and your understanding of the user.
+
+<stale_facts>
+{stale_facts}
+</stale_facts>
+
+For each fact, decide KEEP or REMOVE:
+- KEEP: Still likely valid — even if not mentioned in this conversation.
+  Stable attributes (native language, core expertise, personality traits) often
+  remain true indefinitely.
+- REMOVE: Outdated, contradicted by recent context, or no longer relevant.
+  Examples: tech-stack migrations, job changes, relocated offices, abandoned projects.
+
+Add REMOVE decisions to "staleFactsToRemove" in your output JSON.
+Each entry must be {{"id": "fact_id", "reason": "brief explanation"}}.
+The reason should cite what signal in the conversation (or absence thereof)
+supports the removal.
+
+Be conservative — when in doubt, KEEP. Removing a valid fact is worse than
+keeping a slightly stale one, because the next review cycle will re-evaluate it."""
 
 
 # Prompt template for extracting facts from a single message
