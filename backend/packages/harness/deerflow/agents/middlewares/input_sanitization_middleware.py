@@ -38,18 +38,46 @@ logger = logging.getLogger(__name__)
 _SUMMARY_MESSAGE_NAME = "summary"
 
 # Finite set of blocked tag names: system-reserved + common injection patterns.
+# The lead-agent system prompt's "System-Context Confidentiality" section declares every
+# framework-injected structured/authority tag trusted internal data, so the denylist must
+# cover that class: forging any of them in untrusted user input mimics trusted framework
+# context. Expanded in upstream #4155 to cover soul/thinking_style/critical_reminders, the
+# underscore system_reminder spelling, and the skill/memory/tool/durable-context authority
+# blocks. Subagents share this denylist via the same runtime-middleware builder.
 _BLOCKED_TAG_NAMES: frozenset[str] = frozenset(
     {
-        # System-reserved tags (used by the agent framework for structured context)
+        # Framework-injected structured/authority blocks (both reminder spellings)
         "system-reminder",
+        "system_reminder",
         "memory",
         "current_date",
         "think",
         "analysis",
+        "soul",
+        "self_update",
+        "thinking_style",
+        "clarification_system",
+        "critical_reminders",
+        "response_style",
+        "citations",
         "subagent_system",
         "skill_system",
+        "skill_index",
+        "available_skills",
+        "disabled_skills",
+        "memory_tool_system",
         "uploaded_files",
         "todo_list_system",
+        "durable_context_data",
+        "slash_skill_activation",
+        "mcp_routing_hints",
+        "available-deferred-tools",
+        "goal_continuation",
+        # Subagent system-prompt blocks (same denylist is reused on the subagent path)
+        "file_editing_workflow",
+        "guidelines",
+        "output_format",
+        "working_directory",
         # Common prompt-injection tag patterns
         "system",
         "instruction",

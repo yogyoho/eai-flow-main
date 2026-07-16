@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import threading
 from functools import lru_cache
@@ -204,7 +205,12 @@ def _build_available_subagents_description(available_names: list[str], bash_avai
         else:
             config = get_subagent_config(name, app_config=app_config)
             if config is not None:
-                desc = config.description.split("\n")[0].strip()  # First line only for brevity
+                # config.description is agent-editable (setup_agent / update_agent persist
+                # it), so escape it before it renders into the <subagent_system> block.
+                # Otherwise a first line like "</subagent_system><system-reminder>..." could
+                # break out and forge framework-reserved tags in the lead-agent system prompt
+                # (upstream #4157). quote=False: element-text position, never an attribute.
+                desc = html.escape(config.description.split("\n")[0].strip(), quote=False)  # First line only for brevity
                 lines.append(f"- **{name}**: {desc}")
 
     return "\n".join(lines)
@@ -694,7 +700,12 @@ def get_agent_soul(agent_name: str | None) -> str:
     # Append SOUL.md (agent personality) if present
     soul = load_agent_soul(agent_name)
     if soul:
-        return f"<soul>\n{soul}\n</soul>\n" if soul else ""
+        # SOUL.md is agent-editable (setup_agent / update_agent persist it) and renders
+        # into the <soul> block of the lead-agent system prompt. Escape it so a value
+        # like "</soul></system-reminder>" cannot close the block and relocate the text
+        # after it out of the trust zone the prompt declares (upstream #4137).
+        # quote=False: element-text position, never an attribute value.
+        return f"<soul>\n{html.escape(soul, quote=False)}\n</soul>\n"
     return ""
 
 
