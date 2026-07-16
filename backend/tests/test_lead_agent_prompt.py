@@ -198,31 +198,24 @@ def test_get_memory_context_uses_explicit_app_config_without_global_config(monke
     def fail_get_memory_config():
         raise AssertionError("ambient get_memory_config() must not be used when app_config is explicit")
 
-    def fake_get_memory_data(agent_name=None, *, user_id=None):
-        captured["agent_name"] = agent_name
-        captured["user_id"] = user_id
-        return {"facts": []}
+    def fake_get_memory_manager():
+        class _FakeManager:
+            def get_context(self, *, user_id, agent_name):
+                captured["user_id"] = user_id
+                captured["agent_name"] = agent_name
+                return "remember this"
 
-    def fake_format_memory_for_injection(memory_data, *, max_tokens):
-        captured["memory_data"] = memory_data
-        captured["max_tokens"] = max_tokens
-        return "remember this"
+        return _FakeManager()
 
     monkeypatch.setattr("deerflow.config.memory_config.get_memory_config", fail_get_memory_config)
     monkeypatch.setattr("deerflow.runtime.user_context.get_effective_user_id", lambda: "user-1")
-    monkeypatch.setattr("deerflow.agents.memory.get_memory_data", fake_get_memory_data)
-    monkeypatch.setattr("deerflow.agents.memory.format_memory_for_injection", fake_format_memory_for_injection)
+    monkeypatch.setattr("deerflow.agents.memory.get_memory_manager", fake_get_memory_manager)
 
     context = prompt_module._get_memory_context("agent-a", app_config=explicit_config)
 
     assert "<memory>" in context
     assert "remember this" in context
-    assert captured == {
-        "agent_name": "agent-a",
-        "user_id": "user-1",
-        "memory_data": {"facts": []},
-        "max_tokens": 1234,
-    }
+    assert captured == {"user_id": "user-1", "agent_name": "agent-a"}
 
 
 def test_refresh_skills_system_prompt_cache_async_reloads_immediately(monkeypatch, tmp_path):

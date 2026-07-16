@@ -31,6 +31,14 @@ from deerflow.agents.memory.updater import (
     reload_memory_data,
     update_memory_from_conversation,
 )
+# Pluggable backend (#4122). Coexists with the legacy re-exports above during the
+# incremental call-site rewiring; the legacy re-exports are removed once every call
+# site routes through get_memory_manager().
+from deerflow.agents.memory.manager import (  # noqa: E402
+    MemoryManager,
+    get_memory_manager,
+    reset_memory_manager,
+)
 
 __all__ = [
     # Prompt utilities
@@ -54,4 +62,8 @@ __all__ = [
     "get_memory_data",
     "reload_memory_data",
     "update_memory_from_conversation",
+    # Pluggable backend (#4122)
+    "MemoryManager",
+    "get_memory_manager",
+    "reset_memory_manager",
 ]
