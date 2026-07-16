@@ -266,8 +266,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # When agent calls present_files to show outputs, auto-create
         # AIDocument records so files appear in 文档空间.
         try:
-            from deerflow.tools.callbacks import register_present_files_callback
             from app.extensions.docmgr.service import AIDocumentService
+            from deerflow.tools.callbacks import register_present_files_callback
 
             async def _sync_to_docmgr(user_id, thread_id, virtual_paths):
                 await AIDocumentService.sync_outputs_to_docmgr(
@@ -313,6 +313,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 )
             except Exception:
                 logger.exception("Failed to stop channel service")
+
+            # Drain the memory update queue's pending buffer before exit (best-effort,
+            # bounded). IM channels are already stopped above, so no new IM updates
+            # arrive during the drain. Without this, anything enqueued since the last
+            # debounce Timer fire is lost on restart / SIGTERM — the queue is pure
+            # in-memory and the Timer is a daemon thread. Upstream #4181.
+            try:
+                app_cfg = get_app_config()
+                if app_cfg.memory.enabled:
+                    from deerflow.agents.memory.queue import get_memory_queue
+
+                    flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
+                    completed = await asyncio.to_thread(get_memory_queue().flush_sync, flush_timeout)
+                    if completed:
+                        logger.info("Memory queue flush completed within %.1fs", flush_timeout)
+                    else:
+                        logger.warning(
+                            "Memory queue flush did not finish within %.1fs; remaining updates may be lost",
+                            flush_timeout,
+                        )
+            except Exception:
+                logger.exception("Failed to flush memory queue on shutdown")
 
     logger.info("Shutting down API Gateway")
 

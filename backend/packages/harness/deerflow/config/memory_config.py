@@ -60,6 +60,15 @@ class MemoryConfig(BaseModel):
         le=8000,
         description="Maximum tokens to use for memory injection",
     )
+    shutdown_flush_timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        description="Bounded graceful-shutdown drain of the in-memory update queue (seconds). "
+        "On shutdown the gateway drains pending memory updates within this budget so they "
+        "are not lost on restart / rolling deploy / SIGTERM (upstream #4181). Must fit inside "
+        "the pod termination grace period when deployed under Kubernetes.",
+    )
 
 
 # Global configuration instance
