@@ -53,7 +53,7 @@
 | **#4122** | 可插拔 memory 抽象层（DeerMem backend） | 大 | 引入 `MemoryManager` ABC + `DeerMem` backend，我们 fork 的 memory 模块仍是老 file-based `storage.py`，无此基座。#3556 / #4143 / #4181 / #4217 全部 on top of #4122。需先整体评估是否引入抽象层。 |
 | **#4127** | 可插拔 AuthorizationProvider（Phase 0） | +1375 行/10 文件 | Phase 0 脚手架（540 测试 + 528 RFC 文档），无实际鉴权落地；与我们 `app/gateway/authz.py`（`Permissions`/`AuthContext`/`require_permission`）平行冲突。等 Phase 1+ 有功能价值再评估。 |
 | **#4179** | 四类 HTTP 身份源分类 | 纯文档 | API.md / AUTH_DESIGN.md +157 行；我们 auth 模型不同，文档需重写非直移。低优先。 |
-| **#4064** | cancel→lease 接管（多 worker） | ~500 行/7+ 文件 | `cancel` 返回 `bool`→`CancelOutcome`，引入 lease/grace/`owner_worker_id`/`update_lease` 语义，深改 `RunManager` + run store + `thread_runs.py`。我们 run 系统定制多，需逐文件对照专门设计。 |
+| **#4064** | cancel→lease 接管（多 worker） | ~500 行/7+ 文件 | **整个 multi-worker ownership epic 基建在我们 fork 缺失**：`owner_worker_id`/`lease_expires_at`/`update_lease`/`_renew_leases`/`heartbeat`/`RunOwnershipConfig`/`grace_seconds`/`CancelOutcome` 全部 grep 零命中。#4064 是该 epic 的 work item 4；item 1-3（lease/heartbeat/worker-id 基建）都没有。要 port 必须先整体采纳 ownership epic（含 SQL schema 加 lease 列、heartbeat 后台任务、worker 标识）——重大特性引入决策，非 cherry-port。 |
 | **#4118** | checkpoint 持久化 run 时长 | 786 行 | 深改 `worker.py`(+190) / `threads.py`(+150)，运行生命周期特性，定制多。 |
 | **#4115** | subagent 单 run 总委派上限 | 290 行/9 文件 | 计数依赖 delegation 条目的 `id`+`run_id` 字段，我们 `DelegationEntry` 还是老的 `{task_id,description,subagent_type,status}`——直移永远计 0（死代码）。需先 port delegation-ledger 的 run_id 打标基建。 |
 | **#4193** | 清洗非法 tool-call 参数 | 中 | 依赖 #4119 的工具名清洗基础设施（`_sanitize_ai_message_tool_calls` / `_normalize_tool_name` / `_valid_tool_name`），我们 fork 缺。需先 port #4119。 |
@@ -126,6 +126,20 @@ host 环境 `cd backend && PYTHONPATH=. uv run pytest` 有**多处预存失败**
 **已 defer（7）**：#4122 #4127 #4179 #4064 #4118 #4115 #4193
 
 **N/A（8+）**：#4104 #4131 #4218（github）· #4153（skillscan）· #4146 #4102（factory）· #4090（db bootstrap）· #4182（summarizer）· #4160（skills warm-cache）
+
+---
+
+## 八、持续同步日志
+
+### 2026-07-16（PM 续 fetch，上游 `94a34f38` → `69350787`，+7 commit）
+
+- ✅ **#4219**（refuse empty SOUL.md in update_agent，+7 行）— 已 port（commit `44236b85`），16 测试过。
+- ⏭️ **#4064** 复核：grep 确认**整个 multi-worker ownership epic 基建在我们 fork 缺失**（见第三节 #4064 行）——非"大"，而是"无基座"，需整体采纳 epic。
+- ⏭️ **#4098**（allowed-tools 仅作用于 active skill）= **+2008 行/25 文件**，新 `SkillToolPolicyMiddleware`(+364)。这是我们 cerebrum bug-186 的"正解"，但是新 tool-policy 子系统的特性采纳，非 cherry-port。
+- ⏭️ **#3377**（oversized tool output synopsis）= **+889 行**，新 `tool_output_synopsis.py`(+635) 中间件，特性采纳。
+- N/A：#4245/#4209（frontend）、#4190（helm）、#4222（channels @mention——我们 fork 无 `extract_connect_code`，/connect 在 `manager.py` 内联解析，可改适配但非直移）。
+
+**本轮净 port：1（#4219）。** 进一步印证第六节判断——剩余上游项以"特性采纳/epic 整体引入"为主，干净定点修复稀缺。
 
 ---
 
