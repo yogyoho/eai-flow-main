@@ -43,9 +43,19 @@ def is_valid_internal_auth_token(token: str | None) -> bool:
 
 
 def get_internal_user(*, owner_user_id: str | None = None):
-    """Return the synthetic user used for trusted internal channel calls.
+    """Return the synthetic user used for trusted internal channel calls."""
+    return SimpleNamespace(id=owner_user_id or DEFAULT_USER_ID, system_role=INTERNAL_SYSTEM_ROLE)
 
-    With ``owner_user_id``, the synthetic internal user impersonates that owner
-    so channel-originated runs are scoped to the owner's memory/sandbox.
-    """
-    return SimpleNamespace(id=owner_user_id or DEFAULT_USER_ID, system_role="internal")
+
+# ── upstream compat aliases ──
+
+INTERNAL_SYSTEM_ROLE = "internal"
+INTERNAL_OWNER_USER_ID_HEADER_NAME = "X-DeerFlow-Owner-User-Id"
+
+
+def get_trusted_internal_owner_user_id(request) -> str | None:
+    """Return the trusted owner user id from an internally-authenticated request."""
+    auth_source = getattr(getattr(request, "state", None), "auth_source", None)
+    if auth_source != AUTH_SOURCE_INTERNAL:  # noqa: F821 — defined in auth_disabled
+        return None
+    return request.headers.get(INTERNAL_OWNER_USER_ID_HEADER_NAME)
