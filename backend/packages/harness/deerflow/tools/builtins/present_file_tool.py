@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -9,10 +8,7 @@ from langgraph.types import Command
 
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.runtime.user_context import get_effective_user_id
-from deerflow.tools.callbacks import fire_present_files_callbacks
 from deerflow.tools.types import Runtime
-
-logger = logging.getLogger(__name__)
 
 OUTPUTS_VIRTUAL_PREFIX = f"{VIRTUAL_PATH_PREFIX}/outputs"
 
@@ -84,33 +80,8 @@ def _normalize_presented_filepath(
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
 
 
-async def _try_fire_sync_callback(runtime: Runtime, virtual_paths: list[str]) -> None:
-    """Trigger the present_files → docmgr sync callback (creates AIDocument rows).
-
-    present_file_tool is async, so this runs on the agent's main event loop and
-    can await the registered async callbacks (sync_outputs_to_docmgr) directly.
-    A sync @tool would instead execute in a run_in_executor worker thread with
-    NO running loop, silently breaking the sync — that is why the tool is async.
-    No-op on missing thread_id/paths; per-callback errors are swallowed inside
-    fire(). Never raises — sync is best-effort and must not break the tool.
-    """
-    if not virtual_paths:
-        return
-    thread_id = _get_thread_id(runtime)
-    if not thread_id:
-        return
-    try:
-        user_id = get_effective_user_id()
-    except Exception:
-        return
-    try:
-        await fire_present_files_callbacks(user_id, thread_id, virtual_paths)
-    except Exception:
-        logger.exception("present_files → docmgr sync failed")
-
-
 @tool("present_files", parse_docstring=True)
-async def present_file_tool(
+def present_file_tool(
     runtime: Runtime,
     filepaths: list[str],
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -140,10 +111,6 @@ async def present_file_tool(
         return Command(
             update={"messages": [ToolMessage(f"Error: {exc}", tool_call_id=tool_call_id)]},
         )
-
-    # Trigger app-layer docmgr sync (creates AIDocument rows so files appear in 文档空间).
-    # Async tool runs on the main loop → safe to await the async sync callback.
-    await _try_fire_sync_callback(runtime, normalized_paths)
 
     # The merge_artifacts reducer will handle merging and deduplication
     return Command(

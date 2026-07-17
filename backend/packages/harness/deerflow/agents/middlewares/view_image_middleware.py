@@ -14,9 +14,9 @@ from deerflow.agents.thread_state import ThreadState
 
 logger = logging.getLogger(__name__)
 
-# Mirror the tool-side size cap as a defense-in-depth check. The tool enforces
-# this at write time; the middleware re-checks at read time in case the file
-# grew on disk between view and injection.
+# Mirror the tool-side size cap as a defense-in-depth check. The tool
+# enforces this at write time; the middleware re-checks at read time in
+# case the file grew on disk between view and injection.
 _MAX_IMAGE_BYTES = 20 * 1024 * 1024
 
 
@@ -103,11 +103,12 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
     def _read_image_as_data_url(actual_path: str, mime_type: str, expected_size: int) -> str | None:
         """Read image file and return a `data:` URL, or None on failure.
 
-        ``actual_path`` is set by ``view_image_tool`` (server-side, validated
-        against the allowed virtual roots at write time) and held in
-        LangGraph-controlled state; client input cannot reach it, so the read
-        scope is trusted. Size is re-checked at read time to defend against
-        TOCTOU growth and files exceeding ``_MAX_IMAGE_BYTES`` are skipped.
+        Trust assumption: ``actual_path`` is set by ``view_image_tool``
+        (server-side, validated against the allowed virtual roots at write
+        time) and held in LangGraph-controlled state. Client input cannot
+        reach this field, so the read scope is trusted. We still re-check
+        size at read time to defend against TOCTOU growth and skip files
+        exceeding ``_MAX_IMAGE_BYTES``.
         """
         try:
             file_path = Path(actual_path)
@@ -115,7 +116,8 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
                 return None
             current_size = file_path.stat().st_size
             if current_size != expected_size:
-                return None  # File changed between view and inject - skip.
+                # File changed between view and inject - skip.
+                return None
             if current_size > _MAX_IMAGE_BYTES:
                 return None
             with open(file_path, "rb") as f:
@@ -128,10 +130,11 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
     def _create_image_details_message(self, state: ViewImageMiddlewareState) -> list[str | dict]:
         """Create a formatted message with all viewed image details.
 
-        Reads image files from disk on-demand and encodes them as base64 for the
-        model. The base64 data is NOT persisted in state -- only lightweight
-        metadata (path, mime_type, size) is stored in ``viewed_images``, avoiding
-        large duplicate payloads across every checkpoint (#4138/#4140).
+        Reads image files from disk on-demand and encodes them as base64
+        for the model. The base64 data is NOT persisted in state -- only
+        lightweight metadata (path, mime_type, size) is stored in
+        ``viewed_images``, avoiding large duplicate payloads across every
+        checkpoint (see #4138).
 
         Args:
             state: Current state containing viewed_images
@@ -223,10 +226,9 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
         # Create the image details message with text and image content
         image_content = self._create_image_details_message(state)
 
-        # Create a new human message with mixed content (text + images).
-        # hide_from_ui marks it as system-injected so input-sanitization/memory
-        # middlewares treat it as non-user input (consistent with our other
-        # injection middlewares + upstream #4140).
+        # Create a new human message with mixed content (text + images). This is
+        # internal context for the model only, so hide it from the chat UI and IM
+        # channels (matches the other middleware-injected context messages).
         human_msg = HumanMessage(content=image_content, additional_kwargs={"hide_from_ui": True})
 
         logger.debug("Injecting image details message with images before LLM call")
@@ -268,8 +270,8 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
         """
         if not self._should_inject_image_message(state):
             return None
-        # Image reads + base64 encoding can be slow (up to 20MB), so offload the
-        # blocking work to a thread rather than stalling the event loop (#4140).
+        # Image reads + base64 encoding can be slow (up to 20MB), so offload
+        # the blocking work to a thread rather than stalling the event loop.
         image_content = await asyncio.to_thread(self._create_image_details_message, state)
         human_msg = HumanMessage(content=image_content, additional_kwargs={"hide_from_ui": True})
         logger.debug("Injecting image details message with images before LLM call")
