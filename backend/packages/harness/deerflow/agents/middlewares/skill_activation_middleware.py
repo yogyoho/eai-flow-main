@@ -73,12 +73,18 @@ class SkillActivationMiddleware(AgentMiddleware):
         *,
         available_skills: set[str] | None = None,
         app_config: AppConfig | None = None,
+        user_id: str | None = None,
+        slash_source_owner_token: str = "",
     ) -> None:
         super().__init__()
         self._available_skills = set(available_skills) if available_skills is not None else None
         self._app_config = app_config
+        self._user_id = user_id
+        self._slash_source_owner_token = slash_source_owner_token
 
     def _storage(self) -> SkillStorage:
+        if self._user_id is not None:
+            return get_or_new_user_skill_storage(self._user_id, app_config=self._app_config)
         if self._app_config is not None:
             return get_or_new_skill_storage(app_config=self._app_config)
         return get_or_new_skill_storage()
