@@ -1,3 +1,4 @@
+import { throwGatewayApiError } from "@/core/api/errors";
 import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 
@@ -9,29 +10,16 @@ import type {
   ChannelProvider,
   ChannelProvidersResponse,
   ChannelRuntimeConfigValues,
-  WechatBindCodeResponse,
-  WechatBotBindStatus,
-  WechatShareQrcodeResponse,
 } from "./types";
 
 function channelsUrl(path: string): string {
   return `${getBackendBaseURL()}/api/channels${path}`;
 }
 
-async function throwChannelApiError(
-  response: Response,
-  fallback: string,
-): Promise<never> {
-  const body = (await response.json().catch(() => ({}))) as {
-    detail?: unknown;
-  };
-  throw new Error(typeof body.detail === "string" ? body.detail : fallback);
-}
-
 export async function listChannelProviders(): Promise<ChannelProvidersResponse> {
   const response = await fetch(channelsUrl("/providers"));
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to load channel providers: ${response.statusText}`,
     );
@@ -42,7 +30,7 @@ export async function listChannelProviders(): Promise<ChannelProvidersResponse> 
 export async function listChannelConnections(): Promise<ChannelConnection[]> {
   const response = await fetch(channelsUrl("/connections"));
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to load channel connections: ${response.statusText}`,
     );
@@ -59,7 +47,7 @@ export async function connectChannelProvider(
     { method: "POST" },
   );
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to connect ${provider}: ${response.statusText}`,
     );
@@ -80,7 +68,7 @@ export async function configureChannelProvider(
     },
   );
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to configure ${provider}: ${response.statusText}`,
     );
@@ -96,7 +84,7 @@ export async function disconnectChannelConnection(
     { method: "DELETE" },
   );
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to disconnect channel: ${response.statusText}`,
     );
@@ -111,62 +99,10 @@ export async function disconnectChannelProvider(
     { method: "DELETE" },
   );
   if (!response.ok) {
-    await throwChannelApiError(
+    await throwGatewayApiError(
       response,
       `Failed to disconnect ${provider}: ${response.statusText}`,
     );
   }
   return response.json() as Promise<ChannelProvider>;
-}
-
-// -- WeChat iLink system bot (admin bind + user binding-code) ---------------
-
-function wechatBotUrl(path: string): string {
-  return `${getBackendBaseURL()}/api/channels/wechat-bot${path}`;
-}
-
-export async function startWechatBotBind(): Promise<{ status: string }> {
-  const response = await fetch(wechatBotUrl("/bind"), { method: "POST" });
-  if (!response.ok) {
-    await throwChannelApiError(
-      response,
-      `Failed to start WeChat bind: ${response.statusText}`,
-    );
-  }
-  return response.json() as Promise<{ status: string }>;
-}
-
-export async function getWechatBotBindStatus(): Promise<WechatBotBindStatus> {
-  const response = await fetch(wechatBotUrl("/bind/status"));
-  if (!response.ok) {
-    await throwChannelApiError(
-      response,
-      `Failed to read WeChat bind status: ${response.statusText}`,
-    );
-  }
-  return response.json() as Promise<WechatBotBindStatus>;
-}
-
-export async function createWechatBindCode(): Promise<WechatBindCodeResponse> {
-  const response = await fetch(wechatBotUrl("/bind-code"), { method: "POST" });
-  if (!response.ok) {
-    await throwChannelApiError(
-      response,
-      `Failed to create WeChat binding code: ${response.statusText}`,
-    );
-  }
-  return response.json() as Promise<WechatBindCodeResponse>;
-}
-
-export async function refreshWechatShareQrcode(): Promise<WechatShareQrcodeResponse> {
-  const response = await fetch(wechatBotUrl("/share-qrcode/refresh"), {
-    method: "POST",
-  });
-  if (!response.ok) {
-    await throwChannelApiError(
-      response,
-      `Failed to refresh WeChat share QR: ${response.statusText}`,
-    );
-  }
-  return response.json() as Promise<WechatShareQrcodeResponse>;
 }

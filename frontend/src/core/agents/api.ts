@@ -5,22 +5,6 @@ import type { Agent, CreateAgentRequest, UpdateAgentRequest } from "./types";
 
 const BACKEND_UNAVAILABLE_STATUSES = new Set([502, 503, 504]);
 
-function getUserId(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("user_id");
-  }
-  return null;
-}
-
-function buildUrlWithUserId(url: string): string {
-  const userId = getUserId();
-  if (userId) {
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}user_id=${encodeURIComponent(userId)}`;
-  }
-  return url;
-}
-
 export class AgentNameCheckError extends Error {
   constructor(
     message: string,
@@ -52,23 +36,20 @@ function isAgentsApiDisabledDetail(detail: string | undefined): boolean {
 }
 
 export async function listAgents(): Promise<Agent[]> {
-  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/agents`);
-  const res = await fetch(url);
+  const res = await fetch(`${getBackendBaseURL()}/api/agents`);
   if (!res.ok) throw new Error(`Failed to load agents: ${res.statusText}`);
   const data = (await res.json()) as { agents: Agent[] };
   return data.agents;
 }
 
 export async function getAgent(name: string): Promise<Agent> {
-  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/agents/${name}`);
-  const res = await fetch(url);
+  const res = await fetch(`${getBackendBaseURL()}/api/agents/${name}`);
   if (!res.ok) throw new Error(`Agent '${name}' not found`);
   return res.json() as Promise<Agent>;
 }
 
 export async function createAgent(request: CreateAgentRequest): Promise<Agent> {
-  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/agents`);
-  const res = await fetch(url, {
+  const res = await fetch(`${getBackendBaseURL()}/api/agents`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -87,8 +68,7 @@ export async function updateAgent(
   name: string,
   request: UpdateAgentRequest,
 ): Promise<Agent> {
-  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/agents/${name}`);
-  const res = await fetch(url, {
+  const res = await fetch(`${getBackendBaseURL()}/api/agents/${name}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -101,22 +81,33 @@ export async function updateAgent(
 }
 
 export async function deleteAgent(name: string): Promise<void> {
-  const url = buildUrlWithUserId(`${getBackendBaseURL()}/api/agents/${name}`);
-  const res = await fetch(url, {
+  const res = await fetch(`${getBackendBaseURL()}/api/agents/${name}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`Failed to delete agent: ${res.statusText}`);
+}
+
+interface FeaturesResponse {
+  agents_api: { enabled: boolean };
+}
+
+export async function fetchAgentsApiEnabled(): Promise<boolean> {
+  const res = await fetch(`${getBackendBaseURL()}/api/features`);
+  if (!res.ok) {
+    throw new Error(`Failed to load features: ${res.statusText}`);
+  }
+  const data = (await res.json()) as FeaturesResponse;
+  return data.agents_api.enabled;
 }
 
 export async function checkAgentName(
   name: string,
 ): Promise<{ available: boolean; name: string }> {
   let res: Response;
-  const url = buildUrlWithUserId(
-    `${getBackendBaseURL()}/api/agents/check?name=${encodeURIComponent(name)}`,
-  );
   try {
-    res = await fetch(url);
+    res = await fetch(
+      `${getBackendBaseURL()}/api/agents/check?name=${encodeURIComponent(name)}`,
+    );
   } catch {
     throw new AgentNameCheckError(
       "Could not reach the DeerFlow backend.",

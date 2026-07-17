@@ -4,11 +4,8 @@ function getBaseOrigin() {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  // Fallback for SSR — prefer env-configured Gateway URL, then sensible default
-  if (process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL) {
-    return process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL;
-  }
-  return "http://127.0.0.1:8001";
+  // Fallback for SSR
+  return "http://localhost:2026";
 }
 
 export function getBackendBaseURL() {
@@ -35,16 +32,13 @@ export function getLangGraphBaseURL(isMock?: boolean) {
     if (typeof window !== "undefined") {
       return `${window.location.origin}/mock/api`;
     }
-    return "http://localhost:4000/mock/api";
+    return "http://localhost:3000/mock/api";
   } else {
     // LangGraph SDK requires a full URL, construct it from current origin
     if (typeof window !== "undefined") {
       return `${window.location.origin}/api/langgraph`;
     }
     // Fallback for SSR
-    if (process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL) {
-      return `${process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL}/api`;
-    }
-    return "http://127.0.0.1:8001/api";
+    return "http://localhost:2026/api/langgraph";
   }
 }

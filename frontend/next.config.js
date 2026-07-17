@@ -16,7 +16,6 @@ const withNextra = nextra({});
 
 /** @type {import("next").NextConfig} */
 const config = {
-  transpilePackages: [],
   output:
     process.env.NEXT_CONFIG_BUILD_OUTPUT === "standalone"
       ? "standalone"
@@ -26,61 +25,62 @@ const config = {
     defaultLocale: "en",
   },
   devIndicators: false,
-  // allowedDevOrigins: 在生产离线部署中由 deploy/offline/frontend-start.sh
-  // 启动时根据 .env 的 INTRANET_HOSTS 自动注入,此处不硬编码服务器 IP。
   async rewrites() {
-    const afterFiles = [];
-    const fallback = [];
+    const rewrites = [];
     const gatewayURL = getInternalServiceURL(
       "DEER_FLOW_INTERNAL_GATEWAY_BASE_URL",
       "http://127.0.0.1:8001",
     );
 
     if (!process.env.NEXT_PUBLIC_LANGGRAPH_BASE_URL) {
-      afterFiles.push({
+      rewrites.push({
         source: "/api/langgraph",
         destination: `${gatewayURL}/api`,
       });
-      afterFiles.push({
+      rewrites.push({
         source: "/api/langgraph/:path*",
         destination: `${gatewayURL}/api/:path*`,
       });
     }
 
     if (!process.env.NEXT_PUBLIC_BACKEND_BASE_URL) {
-      afterFiles.push({
+      rewrites.push({
         source: "/api/agents",
         destination: `${gatewayURL}/api/agents`,
       });
-      afterFiles.push({
+      rewrites.push({
         source: "/api/agents/:path*",
         destination: `${gatewayURL}/api/agents/:path*`,
       });
-      afterFiles.push({
+      rewrites.push({
         source: "/api/skills",
         destination: `${gatewayURL}/api/skills`,
       });
-      afterFiles.push({
+      rewrites.push({
         source: "/api/skills/:path*",
         destination: `${gatewayURL}/api/skills/:path*`,
       });
 
-      // Catch-all for remaining gateway API routes goes into fallback
-      // so that local Next.js API routes (e.g. /api/collab/ai-chat)
-      // take priority over the proxy.
-      fallback.push({
+      // Catch-all for remaining gateway API routes (models, threads, memory,
+      // mcp, artifacts, uploads, suggestions, runs, etc.) that don't have
+      // their own NEXT_PUBLIC_* env var toggle.
+      //
+      // NOTE: this must come AFTER the /api/langgraph rewrite above so that
+      // LangGraph-compatible routes keep their public prefix while Gateway
+      // receives its native /api/* paths.
+      rewrites.push({
         source: "/api/:path*",
         destination: `${gatewayURL}/api/:path*`,
       });
     }
 
     // 代理采购服务前端
-    afterFiles.push({
+    rewrites.push({
       source: "/proxy/procurement/:path*",
       destination: "http://127.0.0.1:5173/:path*",
     });
 
-    return { afterFiles, fallback };
+    return rewrites;
   },
 };
 
