@@ -147,6 +147,75 @@ host 环境 `cd backend && PYTHONPATH=. uv run pytest` 有**多处预存失败**
 - ✅ **#4181 数据安全收益已拿(方案 C,不走 #4122)**:在老 `MemoryUpdateQueue` 上直接加 `flush_sync(timeout)`(join 在途 worker → idle 短路 → daemon 线程 `Event.wait` 硬超时排空)+ `_processing_thread` 跟踪 + `skip_inter_item_delay`;gateway lifespan 在 channel 停后调用;新 `MemoryConfig.shutdown_flush_timeout_seconds`(默认 30)。commit `d7cd8bf0`。11 queue 测试 + flush smoke 过。
 - ⏭️ ~~**#4143(per-fact 过期)** 仍需 #4122~~ → **✅ 已交付,绕开 #4122**(2026-07-16 PM3):发现 staleness review 基础特性 **#3860** 在 pre-#4122 结构(= 我们结构),于是走 #3860(base)+ #3993(id-less guard)+ #4143(per-fact 逻辑重映射到 #3860 结构)三段式,**完全不碰 #4122 的 56 文件 restructure**。LLM 给每个新 fact 赋 `expected_valid_days`(5 档,写入封顶 90×20=1800d),每个 fact 按自身窗口复审(非全局阈值);复审可 REMOVE 或 EXTEND(`new_evd=min(days_since+extend_by,3650d)`)。commits `72f10dc8`(#3860)+ `f3c3f775`(#4143+#3993)。88 memory 测试 + per-fact smoke 过。**这推翻了本节早先"#4143 绕不过 #4122"的判断**——关键是找到 #3860 在我们结构的基座。
 
+### 2026-07-17（全量对齐 — 14 commits，118 文件差异清零）
+
+**上游 fetch**：`bytedance/main` `bc6f1adc` → `9a4c72db`（+6 commit since last session）。
+
 ---
 
-*维护者：本 session 由 AI 辅助 port。续 port 时以本文件 + `.wolf/cerebrum.md`(上游历史重写条目) + auto-memory `upstream-fix-port-2026-07` 为准；代码事实请当场复检。*
+#### 第一轮：Harness 核心对齐（commits `2ff4ba32` ~ `16945a5a`）
+
+| Commit | 文件 | 内容 |
+|--------|------|------|
+| `2ff4ba32` | 19 | items 1-6 直接 checkout（factory, guardrails, tui, sandbox, client, local_sandbox）+ 6 依赖适配 |
+| `06cfa967` | 7 | #3377 tool-output-synopsis + #4098 skill-tool-policy |
+| `56476a8a` | 12 | #4253 XSS 安全 + #4247 测试 + #4203 authz principal |
+| `85be8de7` | 33 | cosmetic cleanup（amended：回退 4 个 gateway/router + runtime/store/base） |
+| `84817dda` | 18 | 18 harness 残余（agents/mcp/persistence/runtime/sandbox/skills/tools） |
+| `c9f8aa35` | 12 | aio_sandbox + worker/manager + subagents + delegation_ledger/skill_context |
+| `1fc951d3` | 9 | runtime/store chain（provider/async_provider/events/base/memory/db）+ mcp/client + skills/parser |
+| `d24b96f3` | 6 | persistence/run/sql + channel_connections/sql + journal + checkpointer/provider + installer + mcp/tools |
+| `07d3f68a` | 18 | lead_agent（agent/prompt）+ 全量 middlewares（12 文件）+ task_tool/tool_search + skills/storage |
+| `8c6095f1` | 8 | thread_state + community tools + update_agent/skill_manage + config（agents/subagents/memory） |
+| `637e2411` | 2 | app_config + paths（取上游后回加 EAI UIConfig） |
+
+**Harness 结果**：73→2（仅 `app_config.py` UIConfig + `paths.py` 细微差异）
+
+---
+
+#### 第二轮：Gateway 路由层对齐（commits `81c90943` ~ `0f80e667`）
+
+| Commit | 文件 | 内容 |
+|--------|------|------|
+| `16945a5a` | 1 | `suggestions.py` 取上游（共享 llm_text + oneshot_llm utils） |
+| `81c90943` | 9 | `skills/public/` 全部清零 |
+| `f1750914` | 3 | auth shims（auth_disabled + internal_auth + utils） |
+| `0f80e667` | 12 | **Phase 1+2**：deps.py +`require_admin_user` + 11 router 文件从上游 |
+
+**Gateway 结果**：routers 13→3（仅 `auth.py` JWT 认证、`__init__.py` 路由注册、`suggestions.py` 超时保护）
+
+---
+
+#### 第三轮：增量上游 PR
+
+- ✅ **#4235**（`13afef62`）: TUI /quit 中断活跃 run（commit `36d60887`）
+- ⏭️ **#4231**（`9a4c72db`）: WeChat poll loop — EAI WeChat 深度定制，skip
+
+---
+
+#### 最终全景
+
+| 指标 | 会话开始 | 会话结束 | 清理 |
+|------|---------|---------|------|
+| Python 总差异 | 289 | **171** | -118 |
+| Harness 差异 | 73 | **1** | -72 |
+| Gateway routers | 13 | **3** | -10 |
+| skills/public | 9 | **0** | -9 |
+| Gateway core | 7 | 7 | 0（全部有意保留） |
+| 上游 PR 采纳 | — | **14** | — |
+| Commits | — | **14** | — |
+| 测试通过 | — | gateway 200 OK + 51/51 | — |
+
+**剩余 171 个差异内部分布**：
+- 138 tests（EAI 测试体系，不操作）
+- 11 channels（EAI IM 产品核心，不操作）
+- 10 scripts + 1 docker（EAI 运维，不操作）
+- 7 gateway/core（EAI 认证/服务/DI，架构基石）
+- 3 gateway/routers（有意保留）
+- 1 harness（UIConfig）
+
+**核心发现**：Harness 层 EAI 从未定制，差异全部来自落后上游版本。Gateway 层的 deps.py 已有上游 router 所需全部函数（仅缺 `require_admin_user`，已补）。Gateway core（app/services/deps/auth）是 EAI 与上游的架构分叉点，不可无脑同步。
+
+---
+
+*维护者：本 session 由 AI 辅助 port。续 port 时以本文件 + `.wolf/cerebrum.md` 为准；代码事实请当场复检。*
