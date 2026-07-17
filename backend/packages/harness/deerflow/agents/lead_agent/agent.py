@@ -40,6 +40,7 @@ from deerflow.agents.middlewares.view_image_middleware import ViewImageMiddlewar
 from deerflow.agents.thread_state import ThreadState
 from deerflow.config.agents_config import load_agent_config, validate_agent_name
 from deerflow.config.app_config import AppConfig, get_app_config
+from deerflow.config.subagents_config import DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN
 from deerflow.models import create_chat_model
 from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
 from deerflow.skills.types import Skill
@@ -353,7 +354,8 @@ def _build_middlewares(
     subagent_enabled = cfg.get("subagent_enabled", False)
     if subagent_enabled:
         max_concurrent_subagents = cfg.get("max_concurrent_subagents", 3)
-        middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
+        max_total_subagents = cfg.get("max_total_subagents", getattr(getattr(resolved_app_config, "subagents", None), "max_total_per_run", DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN))
+        middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents, max_total=max_total_subagents))
 
     # LoopDetectionMiddleware — detect and break repetitive tool call loops
     loop_detection_config = resolved_app_config.loop_detection
