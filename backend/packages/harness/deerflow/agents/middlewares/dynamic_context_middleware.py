@@ -1,15 +1,13 @@
-"""Middleware to inject dynamic context (memory, current date, project context) as a system-reminder.
+"""Middleware to inject dynamic context (memory, current date) as a system-reminder.
 
 The system prompt is kept fully static for maximum prefix-cache reuse across users
 and sessions.  The current date is always injected.  Per-user memory is also injected
-when ``memory.injection_enabled`` is True in the app config.  Project context is
-injected when a ``project-context.json`` file exists in the thread directory (written
-by the app layer when a user enters a report project).  All are delivered once
-per conversation as a dedicated <system-reminder> HumanMessage inserted before the
+when ``memory.injection_enabled`` is True in the app config.  Both are delivered once
+per conversation as a dedicated <system-reminder> SystemMessage inserted before the
 first user message (frozen-snapshot pattern).
 
 When a conversation spans midnight the middleware detects the date change and injects
-a lightweight date-update reminder as a separate HumanMessage before the current turn.
+a lightweight date-update reminder as a separate SystemMessage before the current turn.
 This correction is persisted so subsequent turns on the new day see a consistent history
 and do not re-inject.
 
@@ -17,8 +15,6 @@ Reminder format:
 
     <system-reminder>
     <memory>...</memory>
-
-    <project_context>...</project_context>
 
     <current_date>2026-05-08, Friday</current_date>
     </system-reminder>
@@ -33,6 +29,7 @@ Date-update format:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import re
 import uuid
@@ -40,16 +37,28 @@ from datetime import datetime
 from typing import TYPE_CHECKING, override
 
 from langchain.agents.middleware import AgentMiddleware
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
+
+from deerflow.runtime.context_keys import CURRENT_RUN_PRE_EXISTING_MESSAGE_IDS_KEY
 
 if TYPE_CHECKING:
     from deerflow.config.app_config import AppConfig
 
 logger = logging.getLogger(__name__)
 
+# Upper bound (seconds) for a single _inject() offload.  If the warm-up at
+# gateway startup failed silently, the first request may still hit a cold
+# tiktoken BPE download that blocks until the OS TCP timeout (~26 min).
+# This cap ensures the request degrades gracefully instead of hanging.
+_INJECT_TIMEOUT_SECONDS = 5.0
+
 _DATE_RE = re.compile(r"<current_date>([^<]+)</current_date>")
 _DYNAMIC_CONTEXT_REMINDER_KEY = "dynamic_context_reminder"
+# Authoritative injected date, carried in additional_kwargs of the date
+# SystemMessage. Detection reads this instead of regex-parsing message content,
+# so it is never exposed to user-influenceable memory content.
+_REMINDER_DATE_KEY = "reminder_date"
 _SUMMARY_MESSAGE_NAME = "summary"
 
 
@@ -61,7 +70,10 @@ def _extract_date(content: str) -> str | None:
 
 def is_dynamic_context_reminder(message: object) -> bool:
     """Return whether *message* is a hidden dynamic-context reminder."""
-    return isinstance(message, HumanMessage) and bool(message.additional_kwargs.get(_DYNAMIC_CONTEXT_REMINDER_KEY))
+    # DEPRECATED: HumanMessage reminders only exist in pre-PR checkpoints.
+    # Once all active checkpoints are migrated, the HumanMessage branch can be
+    # removed and this function can check SystemMessage exclusively.
+    return isinstance(message, (HumanMessage, SystemMessage)) and bool(message.additional_kwargs.get(_DYNAMIC_CONTEXT_REMINDER_KEY))
 
 
 def _last_injected_date(messages: list) -> str | None:
@@ -70,11 +82,27 @@ def _last_injected_date(messages: list) -> str | None:
     Detection uses the ``dynamic_context_reminder`` additional_kwargs flag rather
     than content substring matching, so user messages containing ``<system-reminder>``
     are not mistakenly treated as injected reminders.
+
+    The authoritative date is the ``reminder_date`` value in additional_kwargs of
+    the date SystemMessage. Reminders without it (the separate ``<memory>``
+    HumanMessage, or any future dateless reminder) carry no date and are skipped,
+    so they cannot shadow the real date reminder.
     """
     for msg in reversed(messages):
-        if is_dynamic_context_reminder(msg):
+        if not is_dynamic_context_reminder(msg):
+            continue
+        structured = msg.additional_kwargs.get(_REMINDER_DATE_KEY)
+        if isinstance(structured, str) and structured:
+            return structured
+        # Backward-compat for checkpoints written before reminder_date existed:
+        # the date lived in content. Scope the regex to SystemMessage so it never
+        # runs on the user-influenceable memory HumanMessage (preserves the OWASP
+        # role separation from #3630 and closes the memory date-spoofing hole).
+        if isinstance(msg, SystemMessage):
             content_str = msg.content if isinstance(msg.content, str) else str(msg.content)
-            return _extract_date(content_str)
+            date = _extract_date(content_str)
+            if date is not None:
+                return date
     return None
 
 
@@ -98,7 +126,7 @@ def _is_user_injection_target(message: object) -> bool:
 
 
 class DynamicContextMiddleware(AgentMiddleware):
-    """Inject memory and current date into HumanMessages as a <system-reminder>.
+    """Inject memory and current date as a SystemMessage <system-reminder>.
 
     First turn
     ----------
@@ -120,26 +148,31 @@ class DynamicContextMiddleware(AgentMiddleware):
         self._agent_name = agent_name
         self._app_config = app_config
 
-    def _build_full_reminder(self, *, thread_id: str | None = None, runtime: object | None = None) -> str:
+    def _build_full_reminder(self) -> tuple[str, str | None]:
+        """Return (date_reminder, memory_block | None).
+
+        Framework-owned data (date) is separated from user-owned data (memory)
+        so the downstream SystemMessage carries only framework authority and
+        memory stays at role:user — preventing untrusted content from gaining
+        system privilege (OWASP LLM01).
+        """
         from deerflow.agents.lead_agent.prompt import _get_memory_context
 
-        # Memory injection is gated by injection_enabled; date is always included.
         injection_enabled = self._app_config.memory.injection_enabled if self._app_config else True
         memory_context = _get_memory_context(self._agent_name, app_config=self._app_config) if injection_enabled else ""
         current_date = datetime.now().strftime("%Y-%m-%d, %A")
 
-        lines: list[str] = ["<system-reminder>"]
-        if memory_context:
-            lines.append(memory_context.strip())
-            lines.append("")  # blank line separating memory from date
-        project_context = self._get_project_context(thread_id, runtime) if thread_id else ""
-        if project_context:
-            lines.append(project_context.strip())
-            lines.append("")
-        lines.append(f"<current_date>{current_date}</current_date>")
-        lines.append("</system-reminder>")
+        date_reminder = "\n".join(
+            [
+                "<system-reminder>",
+                f"<current_date>{current_date}</current_date>",
+                "</system-reminder>",
+            ]
+        )
 
-        return "\n".join(lines)
+        memory_block = memory_context.strip() if memory_context else None
+
+        return date_reminder, memory_block
 
     def _build_date_update_reminder(self) -> str:
         current_date = datetime.now().strftime("%Y-%m-%d, %A")
@@ -151,90 +184,62 @@ class DynamicContextMiddleware(AgentMiddleware):
             ]
         )
 
-    def _get_project_context(self, thread_id: str, runtime: object | None = None) -> str:
-        """Read project context from thread directory if it exists.
-
-        ``runtime`` carries the authenticated ``user_id`` (set by the gateway's
-        ``inject_authenticated_user_context``) via ``runtime.context``. The user_id
-        is resolved from there — NOT from the ``get_effective_user_id()`` contextvar,
-        which is unset in the gateway run path and would fall back to ``"default"``,
-        causing the file (written by the app layer under the extensions user_id) to
-        be missed. See cerebrum Do-Not-Repeat [2026-06-09].
-        """
-        import json
-
-        from deerflow.config.paths import get_paths
-        from deerflow.runtime.user_context import resolve_runtime_user_id
-
-        user_id = resolve_runtime_user_id(runtime)
-        paths = get_paths()
-        context_file = paths.thread_dir(thread_id, user_id=user_id) / "project-context.json"
-        if not context_file.exists():
-            return ""
-
-        try:
-            ctx = json.loads(context_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            logger.exception("Failed to read project context for thread %s", thread_id)
-            return ""
-
-        parts = ["<project_context>"]
-        parts.append("You are working on a collaborative report writing project.")
-        if ctx.get("project_name"):
-            parts.append(f"Project name: {ctx['project_name']}")
-        if ctx.get("report_type"):
-            parts.append(f"Report type: {ctx['report_type']}")
-        tmpl = ctx.get("template")
-        if tmpl:
-            if tmpl.get("template_name"):
-                parts.append(f"Template: {tmpl['template_name']}")
-            if tmpl.get("domain"):
-                parts.append(f"Domain: {tmpl['domain']}")
-            sections = tmpl.get("sections")
-            if isinstance(sections, dict):
-                section_list = sections.get("sections", [])
-            elif isinstance(sections, list):
-                section_list = sections
-            else:
-                section_list = []
-            if section_list:
-                parts.append("Report structure:")
-                for s in section_list:
-                    title = s.get("title", "Untitled") if isinstance(s, dict) else str(s)
-                    parts.append(f"  - {title}")
-        parts.append(
-            "Follow the template structure when generating report content. "
-            "Use the project context to guide your writing and ensure compliance with the report requirements."
-        )
-        parts.append("</project_context>")
-        return "\n".join(parts)
-
     @staticmethod
-    def _make_reminder_and_user_messages(original: HumanMessage, reminder_content: str) -> tuple[HumanMessage, HumanMessage]:
-        """Return (reminder_msg, user_msg) using the ID-swap technique.
+    def _make_reminder_and_user_messages(
+        original: HumanMessage,
+        reminder_content: str,
+        memory_content: str | None = None,
+        *,
+        reminder_date: str | None = None,
+    ) -> list[SystemMessage | HumanMessage]:
+        """Return messages using the ID-swap technique.
 
-        reminder_msg takes the original message's ID so that add_messages replaces it
-        in-place (preserving position).  user_msg carries the original content with a
-        derived ``{id}__user`` ID and is appended immediately after by add_messages.
+        SystemMessage carries framework-owned data (date, metadata) — takes
+        the original ID so add_messages replaces it in-place.  *reminder_date*
+        is recorded in its additional_kwargs as the authoritative injected date
+        (``_last_injected_date`` reads it instead of parsing content).  Optional
+        HumanMessage carries user-owned memory content with ``{id}__memory``.
+        The actual user message gets ``{id}__user``.
 
-        If the original message has no ID a stable UUID is generated so the derived
-        ``{id}__user`` ID never collapses to the ambiguous ``None__user`` string.
+        SystemMessage is used — system context must not masquerade as user
+        input (#3630).  Memory is deliberately kept as HumanMessage so
+        user-influenceable content does not gain system authority (OWASP LLM01)
+        — and it deliberately never carries ``reminder_date``.
         """
         stable_id = original.id or str(uuid.uuid4())
-        reminder_msg = HumanMessage(
-            content=reminder_content,
-            id=stable_id,
-            additional_kwargs={"hide_from_ui": True, _DYNAMIC_CONTEXT_REMINDER_KEY: True},
-        )
-        user_msg = HumanMessage(
-            content=original.content,
-            id=f"{stable_id}__user",
-            name=original.name,
-            additional_kwargs=original.additional_kwargs,
-        )
-        return reminder_msg, user_msg
+        messages: list[SystemMessage | HumanMessage] = []
 
-    def _inject(self, state, *, thread_id: str | None = None, runtime: object | None = None) -> dict | None:
+        reminder_kwargs = {"hide_from_ui": True, _DYNAMIC_CONTEXT_REMINDER_KEY: True}
+        if reminder_date is not None:
+            reminder_kwargs[_REMINDER_DATE_KEY] = reminder_date
+        messages.append(
+            SystemMessage(
+                content=reminder_content,
+                id=stable_id,
+                additional_kwargs=reminder_kwargs,
+            )
+        )
+
+        if memory_content:
+            messages.append(
+                HumanMessage(
+                    content=memory_content,
+                    id=f"{stable_id}__memory",
+                    additional_kwargs={"hide_from_ui": True, _DYNAMIC_CONTEXT_REMINDER_KEY: True},
+                )
+            )
+
+        messages.append(
+            HumanMessage(
+                content=original.content,
+                id=f"{stable_id}__user",
+                name=original.name,
+                additional_kwargs=original.additional_kwargs,
+            )
+        )
+        return messages
+
+    def _inject(self, state) -> dict | None:
         messages = list(state.get("messages", []))
         if not messages:
             return None
@@ -249,70 +254,112 @@ class DynamicContextMiddleware(AgentMiddleware):
         )
 
         if last_date is None:
-            # ── First turn: inject full reminder as a separate HumanMessage ─────
+            # ── First turn: inject full reminder as a SystemMessage ─────
             first_idx = next((i for i, m in enumerate(messages) if _is_user_injection_target(m)), None)
             if first_idx is None:
                 return None
-            full_reminder = self._build_full_reminder(thread_id=thread_id, runtime=runtime)
+            date_reminder, memory_block = self._build_full_reminder()
             logger.info(
-                "DynamicContextMiddleware: injecting full reminder (len=%d, has_memory=%s) into first HumanMessage id=%r",
-                len(full_reminder),
-                "<memory>" in full_reminder,
+                "DynamicContextMiddleware: injecting full reminder (has_memory=%s) into first HumanMessage id=%r",
+                memory_block is not None,
                 messages[first_idx].id,
             )
-            reminder_msg, user_msg = self._make_reminder_and_user_messages(messages[first_idx], full_reminder)
-            return {"messages": [reminder_msg, user_msg]}
+            result_msgs = self._make_reminder_and_user_messages(messages[first_idx], date_reminder, memory_block, reminder_date=current_date)
+            return {"messages": result_msgs}
 
         if last_date == current_date:
             # ── Same day: nothing to do ──────────────────────────────────────────
             return None
 
-        # ── Midnight crossed: inject date-update reminder as a separate HumanMessage ──
+        # ── Midnight crossed: inject date-update reminder as a SystemMessage ──
         last_human_idx = next((i for i in reversed(range(len(messages))) if _is_user_injection_target(messages[i])), None)
         if last_human_idx is None:
             return None
 
-        reminder_msg, user_msg = self._make_reminder_and_user_messages(messages[last_human_idx], self._build_date_update_reminder())
+        result_msgs = self._make_reminder_and_user_messages(messages[last_human_idx], self._build_date_update_reminder(), reminder_date=current_date)
         logger.info("DynamicContextMiddleware: midnight crossing detected — injected date update before current turn")
-        return {"messages": [reminder_msg, user_msg]}
-
-    @staticmethod
-    def _resolve_thread_id(runtime: object | None) -> str | None:
-        """Resolve thread_id from runtime.context, falling back to config.configurable.
-
-        The gateway sets thread_id in ``config["configurable"]["thread_id"]`` (the
-        LangGraph standard); ``runtime.context["thread_id"]`` is only populated when a
-        caller forwards it explicitly. Without the fallback, thread_id is None and
-        ``_get_project_context`` is silently skipped (its ``if thread_id`` guard),
-        so project context never reaches the agent. Mirrors
-        ``ThreadDataMiddleware.before_agent``.
-        """
-        context = getattr(runtime, "context", None)
-        tid = context.get("thread_id") if isinstance(context, dict) else None
-        if tid is None:
-            try:
-                from langgraph.config import get_config
-
-                tid = get_config().get("configurable", {}).get("thread_id")
-            except Exception:
-                tid = None
-        return tid
+        return {"messages": result_msgs}
 
     @override
     def before_agent(self, state, runtime: Runtime) -> dict | None:
-        return self._inject(state, thread_id=self._resolve_thread_id(runtime), runtime=runtime)
+        result = self._inject(state)
+        self._record_effective_memory(state, result, runtime)
+        return result
 
     @override
     async def abefore_agent(self, state, runtime: Runtime) -> dict | None:
-        # Resolve thread_id on the event loop (get_config reads a contextvar that
-        # may not survive the to_thread boundary) before offloading file I/O.
-        thread_id = self._resolve_thread_id(runtime)
-        # Offload injection (file I/O + tiktoken token counting) off the event
-        # loop so a cold tiktoken BPE download can't block all concurrent
-        # handlers. Bounded to 5s so a failed startup warm-up degrades
-        # gracefully (no memory/date context for this turn) instead of hanging.
-        # (Upstream #3411.)
+        # _inject() performs synchronous file I/O (memory JSON loading) and
+        # potentially blocking network calls (tiktoken encoding download on
+        # first use).  Offload to a thread so the event loop is never blocked
+        # — a blocking call here starves all concurrent HTTP handlers (auth,
+        # SSE heartbeats, etc.).  See issue #3402.
+        #
+        # Bounded timeout: if startup warm-up failed silently (e.g. network
+        # blip during deploy), the first request's cold tiktoken download can
+        # block for tens of minutes (OS TCP timeout).  Time-box injection so
+        # the request degrades gracefully (no new dynamic-context update)
+        # rather than hanging. Frozen context already in state remains active.
         try:
-            return await asyncio.wait_for(asyncio.to_thread(self._inject, state, thread_id=thread_id, runtime=runtime), timeout=5)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(self._inject, state),
+                timeout=_INJECT_TIMEOUT_SECONDS,
+            )
         except TimeoutError:
+            logger.warning(
+                "DynamicContextMiddleware: injection timed out (%.1fs); skipping new memory/date injection for this turn",
+                _INJECT_TIMEOUT_SECONDS,
+            )
+            self._record_effective_memory(state, None, runtime)
             return None
+        self._record_effective_memory(state, result, runtime)
+        return result
+
+    @staticmethod
+    def _effective_memory_message(state, update: dict | None, runtime: Runtime) -> HumanMessage | None:
+        """Find server-created memory that is effective for this run.
+
+        A first-run block must come from this middleware's update. A reused
+        block must have existed in the checkpoint before the run; the Gateway
+        strips the reminder marker from untrusted input so a caller cannot
+        replace a known checkpoint ID with forged provenance.
+        """
+        if isinstance(update, dict):
+            update_messages = update.get("messages")
+            if isinstance(update_messages, list):
+                for message in update_messages:
+                    if not isinstance(message, HumanMessage):
+                        continue
+                    message_id = str(message.id or "")
+                    if message_id.endswith("__memory") and is_dynamic_context_reminder(message) and isinstance(message.content, str):
+                        return message
+
+        context = getattr(runtime, "context", None)
+        raw_pre_existing_ids = context.get(CURRENT_RUN_PRE_EXISTING_MESSAGE_IDS_KEY) if isinstance(context, dict) else None
+        if not isinstance(raw_pre_existing_ids, (frozenset, set, list, tuple)):
+            return None
+        pre_existing_ids = {str(message_id) for message_id in raw_pre_existing_ids if message_id}
+        for message in state.get("messages", []):
+            if not isinstance(message, HumanMessage):
+                continue
+            message_id = str(message.id or "")
+            if message_id in pre_existing_ids and message_id.endswith("__memory") and is_dynamic_context_reminder(message) and isinstance(message.content, str):
+                return message
+        return None
+
+    def _record_effective_memory(self, state, update: dict | None, runtime: Runtime) -> None:
+        """Attach the effective hidden memory block to the current run ledger."""
+        context = getattr(runtime, "context", None)
+        journal = context.get("__run_journal") if isinstance(context, dict) else None
+        if journal is None:
+            return
+
+        message = self._effective_memory_message(state, update, runtime)
+        if message is None:
+            return
+
+        try:
+            journal.record_memory_context(
+                content_sha256=hashlib.sha256(message.content.encode("utf-8")).hexdigest(),
+            )
+        except Exception:
+            logger.debug("Failed to record effective memory context", exc_info=True)
