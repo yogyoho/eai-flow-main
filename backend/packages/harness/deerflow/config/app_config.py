@@ -523,6 +523,13 @@ def reload_app_config(config_path: str | None = None) -> AppConfig:
     return _load_and_cache_app_config(config_path)
 
 
+def is_trace_correlation_enabled(config: Any) -> bool:
+    """Return ``True`` when ``logging.enhance.enabled`` is set on *config*."""
+    logging_config = getattr(config, "logging", None)
+    enhance = getattr(logging_config, "enhance", None)
+    return bool(getattr(enhance, "enabled", False))
+
+
 def reset_app_config() -> None:
     """Reset the cached config instance.
 

@@ -10,10 +10,13 @@ class SkillCategory(StrEnum):
 
     - ``PUBLIC``: built-in skill bundled with the platform, read-only.
     - ``CUSTOM``: user-authored skill that can be edited or deleted.
+    - ``LEGACY``: skill from global ``skills/custom/`` visible when the user
+      has no per-user custom skills yet (read-only, migration aid).
     """
 
     PUBLIC = "public"
     CUSTOM = "custom"
+    LEGACY = "legacy"
 
 
 @dataclass(frozen=True)

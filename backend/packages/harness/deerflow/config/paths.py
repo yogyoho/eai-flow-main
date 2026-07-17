@@ -184,6 +184,14 @@ class Paths:
         """Per-user agents directory: `{base_dir}/users/{user_id}/agents/`."""
         return self.user_dir(user_id) / "agents"
 
+    def user_skills_dir(self, user_id: str) -> Path:
+        """Per-user skills root: `{base_dir}/users/{user_id}/skills/`."""
+        return self.user_dir(user_id) / "skills"
+
+    def user_custom_skills_dir(self, user_id: str) -> Path:
+        """Per-user custom skills: `{base_dir}/users/{user_id}/skills/custom/`."""
+        return self.user_skills_dir(user_id) / "custom"
+
     def user_memory_file(self, user_id: str) -> Path:
         """Per-user memory file: `{base_dir}/users/{user_id}/memory.json`."""
         return self.user_dir(user_id) / "memory.json"

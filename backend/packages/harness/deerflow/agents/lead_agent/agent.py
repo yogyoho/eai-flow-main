@@ -387,6 +387,10 @@ def _build_middlewares(
     return middlewares
 
 
+# ponytail: public alias for upstream compat (client.py + tests import this name)
+build_middlewares = _build_middlewares
+
+
 def _assemble_deferred(filtered_tools, *, enabled: bool):
     """Build the final tool list + deferred setup from a policy-filtered list.
 

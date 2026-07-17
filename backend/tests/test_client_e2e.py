@@ -151,7 +151,7 @@ def e2e_env(tmp_path, monkeypatch):
         mws = _original_build_middlewares(*args, **kwargs)
         return [m for m in mws if not isinstance(m, TitleMiddleware)]
 
-    monkeypatch.setattr("deerflow.client._build_middlewares", _sync_safe_build_middlewares)
+    monkeypatch.setattr("deerflow.client.build_middlewares", _sync_safe_build_middlewares)
 
     return {"tmp_path": tmp_path}
 

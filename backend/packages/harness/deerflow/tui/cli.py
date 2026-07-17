@@ -30,18 +30,15 @@ class LaunchPlan:
     thread_id: str | None = None
     continue_recent: bool = False
     forced_tui: bool = False
-    gateway_url: str | None = None
     reason: str = ""
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="deerflow",
-        description="DeerFlow terminal workbench. Default uses the embedded harness; pass --gateway-url to connect to a remote server.",
+        description="DeerFlow terminal workbench — a TUI over the embedded DeerFlow harness.",
         add_help=True,
     )
-    parser.add_argument("--gateway-url", default=None, metavar="URL",
-        help="Remote gateway URL (e.g. http://192.168.1.100:8001). When set, TUI connects to a remote server instead of using the embedded harness.")
     parser.add_argument("message", nargs="*", help="initial prompt for the TUI, or message in --cli mode")
     parser.add_argument(
         "--print",
@@ -124,7 +121,6 @@ def plan_launch(
             thread_id=resume,
             continue_recent=continue_recent,
             forced_tui=forced_tui,
-            gateway_url=args.gateway_url,
         )
 
     return LaunchPlan(

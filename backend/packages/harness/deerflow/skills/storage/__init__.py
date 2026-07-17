@@ -87,9 +87,43 @@ def reset_skill_storage() -> None:
         _default_skill_storage_config = None
 
 
+# ponytail: upstream compat — returns a user-scoped storage or falls back to singleton
+def get_or_new_user_skill_storage(user_id: str, **kwargs) -> SkillStorage:
+    """Return a SkillStorage for *user_id*, falling back to the process singleton."""
+    from deerflow.config.paths import make_safe_user_id
+    from deerflow.skills.storage.user_scoped_skill_storage import UserScopedSkillStorage
+
+    app_config = kwargs.pop("app_config", None)
+    safe_id = make_safe_user_id(user_id)
+
+    if app_config is not None:
+        return UserScopedSkillStorage(safe_id, app_config=app_config, **kwargs)
+
+    # Fall back to the shared singleton (backward compat)
+    return get_or_new_skill_storage(**kwargs)
+
+def user_should_see_legacy_skills(user_id: str, **kwargs) -> bool:
+    """Return whether discovery exposes any LEGACY skills for this user."""
+    from deerflow.skills.storage.user_scoped_skill_storage import UserScopedSkillStorage
+    from deerflow.skills.types import SkillCategory
+
+    if kwargs:
+        from deerflow.config.paths import make_safe_user_id
+
+        storage = UserScopedSkillStorage(make_safe_user_id(user_id), **kwargs)
+    else:
+        storage = get_or_new_user_skill_storage(user_id)
+    return any(
+        (skill.category.value if hasattr(skill.category, "value") else skill.category) == SkillCategory.LEGACY.value
+        for skill in storage.load_skills(enabled_only=False)
+    )
+
+
 __all__ = [
     "LocalSkillStorage",
     "SkillStorage",
     "get_or_new_skill_storage",
+    "get_or_new_user_skill_storage",
     "reset_skill_storage",
+    "user_should_see_legacy_skills",
 ]

@@ -15,12 +15,14 @@ when it carries the ``deerflow_mcp`` metadata tag.
 """
 
 import hashlib
+import html
 import json
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Annotated
+from typing import Annotated, Any
 
 from langchain.tools import BaseTool
 from langchain_core.messages import ToolMessage
@@ -103,6 +105,10 @@ def _is_mcp_tool(t: BaseTool) -> bool:
     return (getattr(t, "metadata", None) or {}).get("deerflow_mcp") is True
 
 
+# ponytail: public alias for upstream compat
+is_mcp_tool = _is_mcp_tool
+
+
 def build_tool_search_tool(catalog: DeferredToolCatalog) -> BaseTool:
     catalog_hash = catalog.hash
 
@@ -149,3 +155,120 @@ def build_deferred_tool_setup(filtered_tools: list[BaseTool], *, enabled: bool) 
         return DeferredToolSetup(None, frozenset(), None)
     catalog = DeferredToolCatalog(tuple(deferred))
     return DeferredToolSetup(build_tool_search_tool(catalog), catalog.names, catalog.hash)
+
+
+# ── Deferred-tool assembly (shared by lead / embedded / subagent) ──
+
+
+def assemble_deferred_tools(candidate_tools: list[BaseTool], *, enabled: bool) -> tuple[list[BaseTool], DeferredToolSetup]:
+    """Build the final tool list and deferred setup from candidate tools.
+
+    Fail closed on deferral assembly itself: if tool_search is enabled and MCP
+    candidates exist but no deferred set was recovered, raise rather than silently
+    binding their full schemas to the model.
+    """
+    deferred_setup = build_deferred_tool_setup(candidate_tools, enabled=enabled)
+    if enabled and not deferred_setup.deferred_names and any(is_mcp_tool(t) for t in candidate_tools):
+        raise RuntimeError("tool_search enabled and MCP candidates exist, but no deferred set was recovered - refusing to bind MCP schemas (fail-closed).")
+    final_tools = list(candidate_tools)
+    if deferred_setup.tool_search_tool:
+        final_tools.append(deferred_setup.tool_search_tool)
+    return final_tools, deferred_setup
+
+
+# ── MCP routing middleware builder ──
+
+
+def _routing_priority(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _routing_keywords(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [keyword for keyword in (str(item).strip() for item in value) if keyword]
+
+
+def build_mcp_routing_middleware(
+    tools: Iterable[BaseTool],
+    deferred_setup: DeferredToolSetup,
+    *,
+    top_k: int,
+) -> "AgentMiddleware | None":
+    """Build PR2 auto-promotion middleware from the caller's deferred tools."""
+    if deferred_setup.catalog_hash is None or not deferred_setup.deferred_names:
+        return None
+
+    from deerflow.tools.mcp_metadata import get_mcp_routing
+
+    routing_index: dict[str, dict[str, Any]] = {}
+    for candidate in tools:
+        tool_name = getattr(candidate, "name", "")
+        if tool_name not in deferred_setup.deferred_names:
+            continue
+        routing = get_mcp_routing(candidate)
+        if routing is None or routing.get("mode") != "prefer":
+            continue
+        keywords = _routing_keywords(routing.get("keywords"))
+        if not keywords:
+            continue
+        routing_index[str(tool_name)] = {
+            "priority": _routing_priority(routing.get("priority", 0)),
+            "keywords": keywords,
+        }
+
+    if not routing_index:
+        return None
+
+    from deerflow.agents.middlewares.mcp_routing_middleware import McpRoutingMiddleware
+
+    return McpRoutingMiddleware(routing_index, deferred_setup.catalog_hash, top_k)
+
+
+# ── Prompt rendering ──
+
+
+def get_deferred_tools_prompt_section(*, deferred_names: frozenset[str] = frozenset()) -> str:
+    """Generate <available-deferred-tools> from an explicit deferred-name set."""
+    if not deferred_names:
+        return ""
+    names = "\n".join(html.escape(name, quote=False) for name in sorted(deferred_names))
+    return f"<available-deferred-tools>\n{names}\n</available-deferred-tools>"
+
+
+def _format_keyword_list(keywords: list[str]) -> str:
+    if len(keywords) == 1:
+        return keywords[0]
+    return f"{', '.join(keywords[:-1])}, or {keywords[-1]}"
+
+
+def get_mcp_routing_hints_prompt_section(tools: Iterable[BaseTool], *, deferred_names: frozenset[str] = frozenset()) -> str:
+    """Render <mcp_routing_hints> from MCP tools carrying routing metadata."""
+    from deerflow.tools.mcp_metadata import get_mcp_routing
+
+    hints: list[tuple[int, str, list[str]]] = []
+    for candidate in tools:
+        routing = get_mcp_routing(candidate)
+        if routing is None or routing.get("mode") != "prefer":
+            continue
+        keywords = routing.get("keywords") or []
+        if not keywords:
+            continue
+        hints.append((int(routing.get("priority", 0)), candidate.name, [html.escape(str(keyword), quote=False) for keyword in keywords]))
+
+    if not hints:
+        return ""
+
+    lines = ["<mcp_routing_hints>"]
+    for priority, tool_name, keywords in sorted(hints, key=lambda item: (-item[0], item[1])):
+        esc_name = html.escape(tool_name, quote=False)
+        lines.append(f"When the user's request involves {_format_keyword_list(keywords)}:")
+        if tool_name in deferred_names:
+            lines.append(f"  use `tool_search` to fetch `{esc_name}`, then prefer that MCP tool.")
+        else:
+            lines.append(f"  prefer the `{esc_name}` tool.")
+    lines.append("</mcp_routing_hints>")
+    return "\n".join(lines)

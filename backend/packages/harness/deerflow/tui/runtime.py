@@ -89,63 +89,6 @@ def _translate_message(data: Any) -> list[Action]:
     return actions
 
 
-# ── remote gateway support ────────────────────────────────────────────────
-
-class GatewayClient:
-    """Thin wrapper around langgraph-sdk so TUI can talk to a remote gateway."""
-
-    def __init__(self, gateway_url: str):
-        self._url = gateway_url.rstrip("/")
-        self._client = None
-        self._thread_id = None
-
-    def stream(self, message: str, *, thread_id: str | None = None, **kwargs: Any):
-        import queue, threading
-        from dataclasses import dataclass
-
-        @dataclass
-        class _Evt:
-            type: str
-            data: dict
-
-        c = self._c()
-        q = queue.Queue()
-        tid = thread_id or self._thread_id
-
-        def _run():
-            try:
-                if tid:
-                    for ev in c.runs.stream(tid, assistant_id="lead_agent",
-                        input={"messages": [{"role": "user", "content": message}]},
-                        stream_mode=["messages-tuple","values","custom"]):
-                        q.put(_Evt(type=ev.event, data=ev.data if isinstance(ev.data, dict) else {}))
-                else:
-                    th = c.threads.create()
-                    self._thread_id = th["thread_id"]
-                    for ev in c.runs.stream(self._thread_id, assistant_id="lead_agent",
-                        input={"messages": [{"role": "user", "content": message}]},
-                        stream_mode=["messages-tuple","values","custom"]):
-                        q.put(_Evt(type=ev.event, data=ev.data if isinstance(ev.data, dict) else {}))
-                if hasattr(ev, "data") and isinstance(ev.data, dict):
-                    q.put(_Evt(type="end", data=ev.data.get("usage") or {}))
-            except Exception as exc:
-                q.put(_Evt(type="error", data={"message": str(exc)}))
-
-        threading.Thread(target=_run, daemon=True).start()
-        while True:
-            item = q.get()
-            if item.type == "end":
-                yield _Evt(type="end", data=item.data)
-                break
-            yield item
-
-    def _c(self):
-        if self._client is None:
-            from langgraph_sdk import get_sync_client
-            self._client = get_sync_client(url=self._url)
-        return self._client
-
-
 def _as_str(value: Any) -> str:
     # Provider stream chunks can carry an explicit ``None`` id/name (the key is
     # present, so ``.get(k, "")`` would return None, and ``str(None) == "None"``

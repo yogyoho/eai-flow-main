@@ -676,11 +676,10 @@ class DeerFlowTUI(App):
 
 
 def run_tui(plan) -> int:
-    """Construct the embedded or gateway session and run the app."""
+    """Construct the embedded session and run the app. Returns a process exit code."""
     from .session import open_session
 
-    gateway_url = getattr(plan, "gateway_url", None)
-    session = open_session(gateway_url=gateway_url)
+    session = open_session()
     app = DeerFlowTUI(session, plan)
     try:
         app.run()
