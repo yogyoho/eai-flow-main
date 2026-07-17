@@ -3,6 +3,7 @@ from typing import Annotated, NotRequired, TypedDict
 
 from langchain.agents import AgentState
 
+from deerflow.agents.goal_state import GoalState
 from deerflow.subagents.status_contract import SUBAGENT_STATUS_VALUES
 
 
@@ -19,9 +20,10 @@ class ThreadDataState(TypedDict):
 class ViewedImageData(TypedDict):
     """Metadata for a viewed image file.
 
-    Only lightweight metadata is persisted in checkpoint state; the actual image
-    bytes are read on-demand from disk when the model needs them. This avoids
-    duplicating large base64 payloads across every checkpoint (#4138/#4140).
+    Only lightweight metadata is persisted in checkpoint state; the actual
+    image bytes are read on-demand from disk when the model needs them.
+    This avoids duplicating large base64 payloads across every checkpoint
+    (see #4138).
     """
 
     mime_type: str
@@ -51,6 +53,8 @@ def merge_sandbox(existing: SandboxState | None, new: SandboxState | None) -> Sa
 
 
 SandboxStateField = Annotated[NotRequired[SandboxState | None], merge_sandbox]
+
+
 def merge_artifacts(existing: list[str] | None, new: list[str] | None) -> list[str]:
     """Reducer for artifacts list - merges and deduplicates artifacts."""
     if existing is None:
@@ -91,6 +95,13 @@ def merge_todos(existing: list | None, new: list | None) -> list | None:
     return new
 
 
+def merge_goal(existing: GoalState | None, new: GoalState | None) -> GoalState | None:
+    """Reducer for goal state - preserves existing when a node does not touch it."""
+    if new is None:
+        return existing
+    return new
+
+
 class PromotedTools(TypedDict):
     catalog_hash: str
     names: list[str]
@@ -117,44 +128,57 @@ def merge_promoted(existing: PromotedTools | None, new: PromotedTools | None) ->
     }
 
 
-# Terminal subagent statuses. Derived from the single source of truth
-# (SUBAGENT_STATUS_VALUES) so the set can never drift from the status contract:
-# every value the contract enumerates is terminal, and the only non-terminal
-# status, "in_progress", is intentionally absent from the contract. merge_delegations
-# uses this to guard against status downgrades. test_delegation_ledger pins the
-# derivation so a future contract edit cannot silently desync this set.
 TERMINAL_STATUSES: frozenset[str] = frozenset(SUBAGENT_STATUS_VALUES)
+_DELEGATION_LEDGER_MAX_ENTRIES = 50
 
 
 class DelegationEntry(TypedDict):
-    id: str  # renamed from task_id to match upstream (#4115 / #3875)
-    run_id: NotRequired[str]  # per-run scoping for the delegation cap (#4115)
+    id: str
+    run_id: NotRequired[str]
     description: str
     subagent_type: str
-    status: str  # "in_progress" or one of TERMINAL_STATUSES
+    status: str
+    result_brief: NotRequired[str]
+    result_sha256: NotRequired[str]
+    result_ref: NotRequired[str]
+    # Why a guardrail cap ended the run early (#3875 Phase 2): token_capped /
+    # turn_capped / loop_capped. The status stays completed/failed; this field
+    # is the additive signal that distinguishes a capped run from a clean one.
+    stop_reason: NotRequired[str]
+    created_at: str
 
 
-def merge_delegations(
-    existing: list[DelegationEntry] | None,
-    new: list[DelegationEntry] | None,
-) -> list[DelegationEntry]:
-    """Reducer for the delegation ledger: upsert by id, preserve dispatch order.
+def merge_delegations(existing: list[DelegationEntry] | None, new: list[DelegationEntry] | None) -> list[DelegationEntry]:
+    """Reducer for the delegation ledger.
 
-    A terminal status is never overwritten by a non-terminal one, so a later
-    re-derivation from a partially-summarized message list cannot regress a
-    finished subtask back to "in_progress".
+    - new None/empty -> preserve existing.
+    - append entries, replacing same id with the latest version while preserving
+      first-seen order.
+    - terminal status is never overwritten by a non-terminal status.
     """
-    merged: dict[str, DelegationEntry] = {}
-    for entry in list(existing or []) + list(new or []):
-        eid = entry["id"]
-        prev = merged.get(eid)
-        if prev is not None and prev["status"] in TERMINAL_STATUSES and entry["status"] not in TERMINAL_STATUSES:
+    if not new:
+        return existing or []
+
+    by_id: dict[str, DelegationEntry] = {}
+    order: list[str] = []
+    for entry in [*(existing or []), *new]:
+        entry_id = entry["id"]
+        previous = by_id.get(entry_id)
+        if previous is not None and previous["status"] in TERMINAL_STATUSES and entry["status"] not in TERMINAL_STATUSES:
             continue
-        merged[eid] = {**prev, **entry} if prev else dict(entry)
-    return list(merged.values())
+        if entry_id not in by_id:
+            order.append(entry_id)
+        elif previous.get("created_at"):
+            entry = {**entry, "created_at": previous["created_at"]}
+            if previous.get("run_id") and not entry.get("run_id"):
+                entry["run_id"] = previous["run_id"]
+        by_id[entry_id] = entry
+    merged = [by_id[entry_id] for entry_id in order]
+    if len(merged) > _DELEGATION_LEDGER_MAX_ENTRIES:
+        merged = merged[-_DELEGATION_LEDGER_MAX_ENTRIES:]
+    return merged
 
 
-_DELEGATION_LEDGER_MAX_ENTRIES = 50
 _SKILL_CONTEXT_MAX_ENTRIES = 8
 _SKILL_DESCRIPTION_MAX_CHARS = 500
 
@@ -167,6 +191,7 @@ class SkillEntry(TypedDict):
 
 
 def _normalize_skill_entry(entry: Mapping[str, object]) -> SkillEntry:
+    """Drop legacy payload keys before storing skill_context back to state."""
     description = entry.get("description")
     loaded_at = entry.get("loaded_at")
     return {
@@ -178,11 +203,34 @@ def _normalize_skill_entry(entry: Mapping[str, object]) -> SkillEntry:
 
 
 def merge_skill_context(existing: list[SkillEntry] | None, new: list[SkillEntry] | None) -> list[SkillEntry]:
+    """Reducer for the skill-context channel.
+
+    - new None/empty -> preserve existing.
+    - legacy entries are normalized to references; verbatim body keys are dropped.
+    - dedup by ``path``; later reads refresh recency and replace the reference.
+    - cap by keeping the most recently read entries. ``loaded_at`` is
+      observational only because message indices reset after compaction.
+    """
+    normalized_existing = [_normalize_skill_entry(entry) for entry in existing or []]
+    if not new:
+        return normalized_existing
+
     by_path: dict[str, SkillEntry] = {}
-    for entry in [*(existing or []), *(new or [])]:
-        normalized = _normalize_skill_entry(entry)
-        by_path[normalized["path"]] = normalized
-    merged = sorted(by_path.values(), key=lambda e: e["loaded_at"])
+    order: list[str] = []
+    for entry in normalized_existing:
+        path = entry["path"]
+        if path not in by_path:
+            order.append(path)
+        by_path[path] = entry
+
+    for entry in (_normalize_skill_entry(entry) for entry in new):
+        path = entry["path"]
+        if path in by_path:
+            order.remove(path)
+        order.append(path)
+        by_path[path] = entry
+
+    merged = [by_path[path] for path in order]
     if len(merged) > _SKILL_CONTEXT_MAX_ENTRIES:
         merged = merged[-_SKILL_CONTEXT_MAX_ENTRIES:]
     return merged
@@ -194,7 +242,10 @@ class ThreadState(AgentState):
     title: NotRequired[str | None]
     artifacts: Annotated[list[str], merge_artifacts]
     todos: Annotated[list | None, merge_todos]
+    goal: Annotated[GoalState | None, merge_goal]
     uploaded_files: NotRequired[list[dict] | None]
     viewed_images: Annotated[dict[str, ViewedImageData], merge_viewed_images]  # image_path -> metadata (no base64)
     promoted: Annotated[PromotedTools | None, merge_promoted]
     delegations: Annotated[list[DelegationEntry], merge_delegations]
+    skill_context: Annotated[list[SkillEntry], merge_skill_context]
+    summary_text: NotRequired[str | None]
