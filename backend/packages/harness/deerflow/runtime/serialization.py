@@ -82,7 +82,7 @@ def strip_data_url_image_blocks(messages: list[dict[str, Any]]) -> list[dict[str
     Only content blocks of type ``image_url`` whose URL starts with ``data:``
     are stripped.  Text blocks, ``https://`` image URLs, and non-hidden
     messages are left untouched so that message ordering and count are
-    preserved.  (Upstream port, Tier 2 C.)
+    preserved.
     """
     result: list[dict[str, Any]] = []
     for msg in messages:
