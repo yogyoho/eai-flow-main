@@ -1,133 +1,87 @@
-"""Configuration for memory mechanism."""
+"""Configuration for the memory mechanism (host-shared fields only).
 
-from typing import Any
+DeerMem-private fields live in ``backends/deermem/config.py`` (``DeerMemConfig``),
+reached via ``backend_config`` (a dict the factory passes to the backend's
+``__init__``). This module holds ONLY the host-shared fields every backend /
+call site / factory reads. Keeping the shared schema slim is what makes backends
+swappable and portable. Upstream #4122.
+"""
+
+import logging
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
+
+# Host-shared MemoryConfig fields (read by every backend / call site / factory).
+_SHARED_FIELDS = frozenset({"enabled", "mode", "injection_enabled", "shutdown_flush_timeout_seconds", "manager_class", "backend_config"})
+
+# DeerMem-private fields that used to live at the top level of ``memory:`` in
+# config.yaml (pre-abstraction). On load they are auto-migrated into
+# ``backend_config`` so an upgrade does NOT silently revert customized settings
+# to defaults.
+_LEGACY_DEERMEM_FIELDS = frozenset(
+    {
+        "storage_path",
+        "storage_class",
+        "debounce_seconds",
+        "max_facts",
+        "fact_confidence_threshold",
+        "max_injection_tokens",
+        "token_counting",
+        "guaranteed_categories",
+        "guaranteed_token_budget",
+        "staleness_review_enabled",
+        "staleness_age_days",
+        "staleness_min_candidates",
+        "staleness_max_removals_per_cycle",
+        "staleness_protected_categories",
+        "staleness_max_lifetime_multiplier",
+        "staleness_max_extension_days",
+        "consolidation_enabled",
+        "consolidation_min_facts",
+        "consolidation_max_groups_per_cycle",
+        "consolidation_max_sources",
+        "model_name",
+    }
+)
+
 
 class MemoryConfig(BaseModel):
-    """Configuration for global memory mechanism."""
+    """Host-shared memory configuration (backend-agnostic). Upstream #4122."""
 
     enabled: bool = Field(
         default=True,
-        description="Whether to enable memory mechanism",
+        description="Whether to enable the memory mechanism (call-site gate).",
     )
-    storage_path: str = Field(
-        default="",
-        description=(
-            "Path to store memory data. "
-            "If empty, defaults to per-user memory at `{base_dir}/users/{user_id}/memory.json`. "
-            "Absolute paths are used as-is and opt out of per-user isolation "
-            "(all users share the same file). "
-            "Relative paths are resolved against `Paths.base_dir` "
-            "(not the backend working directory). "
-            "Note: if you previously set this to `.deer-flow/memory.json`, "
-            "the file will now be resolved as `{base_dir}/.deer-flow/memory.json`; "
-            "migrate existing data or use an absolute path to preserve the old location."
-        ),
-    )
-    storage_class: str = Field(
-        default="deerflow.agents.memory.storage.FileMemoryStorage",
-        description="The class path for memory storage provider",
-    )
-    debounce_seconds: int = Field(
-        default=30,
-        ge=1,
-        le=300,
-        description="Seconds to wait before processing queued updates (debounce)",
-    )
-    model_name: str | None = Field(
-        default=None,
-        description="Model name to use for memory updates (None = use default model)",
-    )
-    max_facts: int = Field(
-        default=100,
-        ge=10,
-        le=500,
-        description="Maximum number of facts to store",
-    )
-    fact_confidence_threshold: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=1.0,
-        description="Minimum confidence threshold for storing facts",
+    mode: Literal["middleware", "tool"] = Field(
+        default="middleware",
+        description="Memory operation mode: 'middleware' = passive LLM summarization after each turn; 'tool' = model calls memory tools directly. Mutually exclusive.",
     )
     injection_enabled: bool = Field(
         default=True,
-        description="Whether to inject memory into system prompt",
+        description="Whether to inject memory into the system prompt (call-site gate).",
     )
-    max_injection_tokens: int = Field(
-        default=2000,
-        ge=100,
-        le=8000,
-        description="Maximum tokens to use for memory injection",
-    )
-    shutdown_flush_timeout_seconds: int = Field(
-        default=30,
-        ge=1,
-        le=300,
-        description="Bounded graceful-shutdown drain of the in-memory update queue (seconds). "
-        "On shutdown the gateway drains pending memory updates within this budget so they "
-        "are not lost on restart / rolling deploy / SIGTERM (upstream #4181). Must fit inside "
-        "the pod termination grace period when deployed under Kubernetes.",
-    )
-    # ── Staleness review (upstream #3860) ───────────────────────────────
-    staleness_review_enabled: bool = Field(
-        default=True,
-        description="Enable staleness review for aged facts. Facts older than staleness_age_days are surfaced in the "
-        "memory-update prompt so the LLM can semantically judge whether each is still valid or should be removed. "
-        "Solves 'silent staleness' where outdated facts persist because no future conversation explicitly contradicts them.",
-    )
-    staleness_age_days: int = Field(
-        default=90,
-        ge=30,
-        le=365,
-        description="Facts older than this many days become staleness-review candidates. 90 (~one quarter) balances catching genuine changes vs noise on stable facts.",
-    )
-    staleness_min_candidates: int = Field(
-        default=3,
-        ge=1,
-        le=50,
-        description="Minimum stale facts required to trigger a review cycle (below this the prompt overhead is not justified).",
-    )
-    staleness_max_removals_per_cycle: int = Field(
-        default=10,
-        ge=1,
-        le=50,
-        description="Maximum facts the staleness review can remove in one update cycle. Prevents over-pruning a large backlog.",
-    )
-    staleness_protected_categories: list[str] = Field(
-        default_factory=lambda: ["correction"],
-        description="Fact categories exempt from staleness review (e.g. correction = explicit user feedback, not auto-pruned by age).",
-    )
-    staleness_max_lifetime_multiplier: float = Field(
-        default=20.0,
+    shutdown_flush_timeout_seconds: float = Field(
+        default=30.0,
         ge=1.0,
-        le=100.0,
-        description="Creation-time cap multiplier for a fact's LLM-assigned expected_valid_days: clamped to "
-        "staleness_age_days * staleness_max_lifetime_multiplier so the model cannot set an initial lifetime so long "
-        "the fact is never re-evaluated. Default 20.0 (90x20=1800d ~= 5y) lets the 'very stable' tier work out of the box. "
-        "Extensions (staleFactsToExtend) use staleness_max_extension_days instead (upstream #4143).",
+        le=300.0,
+        description="Hard time budget (seconds) for draining the memory backend's pending-update buffer during Gateway graceful shutdown (upstream #4181).",
     )
-    staleness_max_extension_days: int = Field(
-        default=3650,
-        ge=90,
-        le=36500,
-        description="Absolute ceiling on expected_valid_days after a lifetime extension (staleFactsToExtend): "
-        "new_evd = min(days_since + extend_by, staleness_max_extension_days). Separate from the creation multiplier "
-        "(extensions are deliberate recalibration). Prevents LLM misfire / timedelta overflow (upstream #4143).",
-    )
-    # ── Pluggable backend (#4122) ───────────────────────────────────────
     manager_class: str = Field(
         default="deermem",
-        description="Memory backend to activate. Resolves to a MANAGER_CLASS in agents/memory/backends/<name>/. "
-        "Default 'deermem' = the file-based DeerMem backend. Swap = drop a backends/<name>/ folder + set this (upstream #4122).",
+        description="Memory backend selector. Resolves to a MANAGER_CLASS in agents/memory/backends/<name>/. Default 'deermem' = the file-based DeerMem backend. Swap = backends/<name>/ folder + set this (upstream #4122).",
     )
     backend_config: dict[str, Any] = Field(
         default_factory=dict,
-        description="Backend-private config passed to the MemoryManager constructor (upstream #4122). DeerMem-private "
-        "fields (e.g. staleness overrides, consolidation) live here when using the deermem backend.",
+        description="Backend-private config, passed verbatim to the backend's __init__(backend_config=...). DeerMem-private fields (e.g. staleness overrides) live here (upstream #4122).",
     )
+
+
+def should_use_memory_tools(config: MemoryConfig) -> bool:
+    """Return True when memory should use model-directed tools."""
+    return config.enabled and config.mode == "tool"
 
 
 # Global configuration instance
@@ -146,6 +100,50 @@ def set_memory_config(config: MemoryConfig) -> None:
 
 
 def load_memory_config_from_dict(config_dict: dict) -> None:
-    """Load memory configuration from a dictionary."""
+    """Load memory configuration from a dictionary.
+
+    Auto-migrates legacy top-level DeerMem-private fields (pre-#4122) into
+    ``backend_config`` so upgrades from pre-abstraction configs don't silently
+    revert customized settings.
+    """
     global _memory_config
+    config_dict = dict(config_dict or {})
+    backend_config = dict(config_dict.get("backend_config") or {})
+    migrated: list[str] = []
+    for key in list(config_dict.keys()):
+        if key in _SHARED_FIELDS:
+            continue
+        if key in _LEGACY_DEERMEM_FIELDS:
+            value = config_dict.pop(key)
+            if value is None or value == "":
+                continue
+            if key == "model_name":
+                model_cfg = dict(backend_config.get("model") or {})
+                if "model" not in model_cfg:
+                    model_cfg["model"] = value
+                    backend_config["model"] = model_cfg
+                    migrated.append(f"{key} -> backend_config.model.model")
+            elif key == "storage_path" and str(value).endswith(".json"):
+                logger.warning(
+                    "Legacy memory.storage_path=%r looks like a file path; DeerMem now "
+                    "treats storage_path as a root DIRECTORY. Dropped — memory now under "
+                    "the default root (runtime_home). Set memory.backend_config.storage_path "
+                    "to override.",
+                    value,
+                )
+            elif key not in backend_config:
+                backend_config[key] = value
+                migrated.append(f"{key} -> backend_config.{key}")
+        else:
+            logger.warning(
+                "Unknown memory config key %r at top level (not a shared field %s nor a known legacy DeerMem field); ignored.",
+                key,
+                sorted(_SHARED_FIELDS),
+            )
+    if migrated:
+        logger.warning(
+            "Migrated legacy top-level memory fields into backend_config; move them under memory.backend_config in config.yaml to silence this: %s",
+            ", ".join(migrated),
+        )
+    config_dict["backend_config"] = backend_config
     _memory_config = MemoryConfig(**config_dict)
