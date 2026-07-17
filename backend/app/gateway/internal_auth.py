@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+
+from app.gateway.auth_disabled import AUTH_SOURCE_INTERNAL
 import secrets
 from types import SimpleNamespace
 
@@ -56,6 +58,6 @@ INTERNAL_OWNER_USER_ID_HEADER_NAME = "X-DeerFlow-Owner-User-Id"
 def get_trusted_internal_owner_user_id(request) -> str | None:
     """Return the trusted owner user id from an internally-authenticated request."""
     auth_source = getattr(getattr(request, "state", None), "auth_source", None)
-    if auth_source != AUTH_SOURCE_INTERNAL:  # noqa: F821 — defined in auth_disabled
+    if auth_source != AUTH_SOURCE_INTERNAL:
         return None
     return request.headers.get(INTERNAL_OWNER_USER_ID_HEADER_NAME)
