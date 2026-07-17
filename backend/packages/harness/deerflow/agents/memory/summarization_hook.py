@@ -9,11 +9,12 @@ from deerflow.runtime.user_context import resolve_runtime_user_id
 
 
 def memory_flush_hook(event: SummarizationEvent) -> None:
-    """Flush messages about to be summarized into the memory backend (immediate).
+    """Flush messages about to be summarized into the memory queue.
 
-    Thin, backend-agnostic entry: only the ``enabled`` + ``thread_id`` gate and
-    ``user_id`` resolution live here. The backend (via ``manager.add_nowait``)
-    does the filtering, human/AI validation, and correction/reinforcement detection.
+    Thin, backend-agnostic entry: only the ``enabled`` + ``thread_id`` gate
+    and ``user_id`` resolution live here. The backend (via
+    ``manager.add_nowait``) does the filtering, human/AI validation, and
+    correction/reinforcement detection.
     """
     if not get_memory_config().enabled or not event.thread_id:
         return

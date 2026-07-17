@@ -464,15 +464,9 @@ def get_memory_manager() -> MemoryManager:
         # thread (Timer / executor): bind trace_id into the request-trace
         # ContextVar. A None trace_id is left unbound by the updater's guard.
         if "trace_context_manager" not in backend_config:
-            try:
-                from deerflow.trace_context import request_trace_context
+            from deerflow.trace_context import request_trace_context
 
-                backend_config["trace_context_manager"] = request_trace_context
-            except ImportError:
-                # Our fork has not adopted deerflow.trace_context (upstream tracing
-                # infra). The DeerMem backend runs without it — only structured-log
-                # trace correlation on the memory-update worker thread is lost.
-                pass
+            backend_config["trace_context_manager"] = request_trace_context
         _memory_manager = cls(backend_config=backend_config)
         logger.info("Memory manager resolved: %s (manager_class=%r)", cls.__name__, manager_class)
         return _memory_manager

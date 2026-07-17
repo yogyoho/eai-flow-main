@@ -141,7 +141,7 @@ def view_image_tool(
         )
 
     if len(image_data) != image_size:
-        # File changed between stat() and read() - reject for safety (TOCTOU).
+        # File changed between stat() and read() - reject for safety.
         return Command(
             update={"messages": [ToolMessage("Error: Image file changed during read", tool_call_id=tool_call_id)]},
         )
@@ -157,9 +157,9 @@ def view_image_tool(
         )
     mime_type = detected_mime_type
 
-    # Store only lightweight metadata in state (not base64) to avoid duplicating
-    # large payloads across every checkpoint (#4138/#4140). The middleware reads
-    # the file on-demand when the model needs it.
+    # Store only lightweight metadata in state (not base64) to avoid
+    # duplicating large payloads across every checkpoint (see #4138).
+    # The middleware reads the file on-demand when the model needs it.
     new_viewed_images = {
         image_path: {
             "mime_type": mime_type,

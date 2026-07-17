@@ -154,7 +154,9 @@ class SubagentLimitMiddleware(AgentMiddleware[AgentState]):
             prior_delegation_count,
         )
 
-        # Stamp stop_reason when the total per-run cap is exhausted.
+        # Stamp stop_reason when the total per-run cap is exhausted so the
+        # worker surfaces this capped completion alongside loop_capped /
+        # token_capped / safety_capped (#4176).
         if remaining_total == 0 and isinstance(getattr(runtime, "context", None), dict):
             runtime.context["stop_reason"] = "subagent_limit_capped"
 

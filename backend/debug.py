@@ -28,7 +28,7 @@ try:
 except ImportError:
     _HAS_PROMPT_TOOLKIT = False
 
-load_dotenv(override=True)
+load_dotenv()
 
 _LOG_FMT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 _LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"

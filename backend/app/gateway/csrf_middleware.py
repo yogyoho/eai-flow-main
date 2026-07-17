@@ -41,9 +41,16 @@ def should_check_csrf(request: Request) -> bool:
     if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
         return False
 
+    if is_auth_disabled():
+        return False
+
     path = request.url.path.rstrip("/")
     # Exempt /api/v1/auth/me endpoint
     if path == "/api/v1/auth/me":
+        return False
+    # Inbound webhooks authenticate themselves via provider-specific signatures
+    # (e.g. GitHub's X-Hub-Signature-256), not the CSRF double-submit cookie.
+    if request.url.path.startswith("/api/webhooks/"):
         return False
     return True
 
@@ -55,21 +62,6 @@ _AUTH_EXEMPT_PATHS: frozenset[str] = frozenset(
         "/api/v1/auth/register",
         "/api/v1/auth/initialize",
     }
-)
-
-# POST endpoints that don't modify server state (proxies, searches, etc.)
-# and are safe to exempt from CSRF double-submit cookie check.
-_CSRF_EXEMPT_PATHS: frozenset[str] = frozenset(
-    {
-        "/api/collab/ai-chat",
-    }
-)
-
-# Prefix-based CSRF exemption for dynamic paths where exact matching is
-# insufficient. Only exempt sub-trees that are session-authenticated and
-# where FormData uploads cause browser-specific CSRF header issues.
-_CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
-    "/api/extensions/knowledge-bases/",
 )
 
 
@@ -197,7 +189,6 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         _is_auth = is_auth_endpoint(request)
-        _is_csrf_exempt = request.url.path.rstrip("/") in _CSRF_EXEMPT_PATHS
 
         if should_check_csrf(request) and _is_auth and not is_allowed_auth_origin(request):
             return JSONResponse(
@@ -205,10 +196,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Cross-site auth request denied."},
             )
 
-        _path = request.url.path.rstrip("/")
-        _is_prefix_exempt = _path.startswith(_CSRF_EXEMPT_PREFIXES)
-
-        if should_check_csrf(request) and not _is_auth and not _is_csrf_exempt and not _is_prefix_exempt:
+        if should_check_csrf(request) and not _is_auth:
             cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
             header_token = request.headers.get(CSRF_HEADER_NAME)
 

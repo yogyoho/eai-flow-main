@@ -11,6 +11,7 @@ from langgraph.runtime import Runtime
 from deerflow.agents.memory import get_memory_manager
 from deerflow.config.memory_config import get_memory_config
 from deerflow.runtime.user_context import get_effective_user_id
+from deerflow.trace_context import DEERFLOW_TRACE_METADATA_KEY, get_current_trace_id, normalize_trace_id
 
 if TYPE_CHECKING:
     from deerflow.config.memory_config import MemoryConfig
@@ -79,17 +80,29 @@ class MemoryMiddleware(AgentMiddleware[MemoryMiddlewareState]):
             return None
 
         # Capture user_id at enqueue time while the request context is still alive.
-        # The memory-update worker fires on a different thread where ContextVar values
-        # are not propagated, so store user_id explicitly.
+        # threading.Timer fires on a different thread where ContextVar values are not
+        # propagated, so we must store user_id explicitly in ConversationContext.
         user_id = get_effective_user_id()
+        runtime_context = runtime.context if isinstance(runtime.context, dict) else {}
+        trace_id = normalize_trace_id(runtime_context.get(DEERFLOW_TRACE_METADATA_KEY))
+        if trace_id is None:
+            try:
+                config_data = get_config()
+            except RuntimeError:
+                config_data = {}
+            config_metadata = config_data.get("metadata", {}) if isinstance(config_data.get("metadata"), dict) else {}
+            trace_id = normalize_trace_id(config_metadata.get(DEERFLOW_TRACE_METADATA_KEY))
+        if trace_id is None:
+            trace_id = get_current_trace_id()
 
-        # Hand raw messages to the manager; the DeerMem backend filters to user +
-        # final-AI turns, detects correction/reinforcement, and enqueues (upstream #4122).
+        # Hand raw messages to the manager; the backend filters to user + final-AI
+        # turns, validates, detects correction/reinforcement, and enqueues.
         get_memory_manager().add(
             thread_id,
             messages,
             agent_name=self._agent_name,
             user_id=user_id,
+            trace_id=trace_id,
         )
 
         return None

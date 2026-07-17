@@ -18,7 +18,6 @@ from deerflow.utils.time import coerce_iso, now_iso
 THREADS_NS: tuple[str, ...] = ("threads",)
 
 
-
 class MemoryThreadMetaStore(ThreadMetaStore):
     def __init__(self, store: BaseStore) -> None:
         self._store = store
@@ -62,18 +61,10 @@ class MemoryThreadMetaStore(ThreadMetaStore):
             "updated_at": now,
         }
         await self._store.aput(THREADS_NS, thread_id, record)
-        result = dict(record)
-        result["created_at"] = coerce_iso(now)
-        result["updated_at"] = coerce_iso(now)
-        return result
+        return record
 
     async def get(self, thread_id: str, *, user_id: str | None | _AutoSentinel = AUTO) -> dict | None:
-        record = await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.get")
-        if record is None:
-            return None
-        record["created_at"] = coerce_iso(record.get("created_at"))
-        record["updated_at"] = coerce_iso(record.get("updated_at"))
-        return record
+        return await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.get")
 
     async def search(
         self,
@@ -133,6 +124,14 @@ class MemoryThreadMetaStore(ThreadMetaStore):
         merged = dict(record.get("metadata") or {})
         merged.update(metadata)
         record["metadata"] = merged
+        record["updated_at"] = now_iso()
+        await self._store.aput(THREADS_NS, thread_id, record)
+
+    async def update_owner(self, thread_id: str, owner_user_id: str, *, user_id: str | None | _AutoSentinel = AUTO) -> None:
+        record = await self._get_owned_record(thread_id, user_id, "MemoryThreadMetaStore.update_owner")
+        if record is None:
+            return
+        record["user_id"] = owner_user_id
         record["updated_at"] = now_iso()
         await self._store.aput(THREADS_NS, thread_id, record)
 

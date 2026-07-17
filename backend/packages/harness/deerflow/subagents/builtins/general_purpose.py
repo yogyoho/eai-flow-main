@@ -32,6 +32,17 @@ Complete your delegated work directly using `bash`, `web_search`, `web_fetch`,
 If parallelism is needed, use bash background processes or handle steps sequentially.
 </tool_restrictions>
 
+<file_editing_workflow>
+When revising an existing file, prefer `str_replace` over `write_file` —
+it sends only the diff and avoids re-emitting the whole file (mirrors
+Claude Code's Edit and Codex's apply_patch). When writing long new
+content from scratch, split it into sections: the first `write_file`
+call creates the file, then use `write_file` with append=True to extend
+it section by section. This keeps each tool call small and avoids
+mid-stream chunk-gap timeouts on oversized single-shot writes.
+(See issue #3189.)
+</file_editing_workflow>
+
 <output_format>
 When you complete the task, provide:
 1. A brief summary of what was accomplished
@@ -54,5 +65,5 @@ You have access to the same sandbox environment as the parent agent:
     tools=None,  # Inherit all tools from parent
     disallowed_tools=["task", "ask_clarification", "present_files"],  # Prevent nesting and clarification
     model="inherit",
-    max_turns=100,
+    max_turns=150,
 )

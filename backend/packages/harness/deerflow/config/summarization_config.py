@@ -56,22 +56,6 @@ class SummarizationConfig(BaseModel):
         default_factory=lambda: list(DEFAULT_SKILL_FILE_READ_TOOL_NAMES),
         description="Tool names treated as skill-file reads when capturing loaded skills into the durable skill_context channel.",
     )
-    # ── EAI: skill preservation during summarization ──
-    preserve_recent_skill_count: int = Field(
-        default=5,
-        ge=0,
-        description="Number of most-recently-loaded skill files to exclude from summarization. Set to 0 to disable skill preservation.",
-    )
-    preserve_recent_skill_tokens: int = Field(
-        default=25000,
-        ge=0,
-        description="Total token budget reserved for recently-loaded skill files that must be preserved across summarization.",
-    )
-    preserve_recent_skill_tokens_per_skill: int = Field(
-        default=5000,
-        ge=0,
-        description="Per-skill token cap when preserving skill files across summarization. Skill reads above this size are not rescued.",
-    )
 
 
 # Global configuration instance
