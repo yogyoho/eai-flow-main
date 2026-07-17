@@ -1,13 +1,12 @@
 from .config import GatewayConfig, get_gateway_config
 
-
-def _get_app():
-    """Lazy-import ``app`` and ``create_app`` so that importing from
-    ``app.gateway`` does not trigger the full FastAPI application import
-    chain (which pulls in every extension router)."""
-    from .app import app, create_app  # noqa: PLC0415
-
-    return app, create_app
+__all__ = ["app", "create_app", "GatewayConfig", "get_gateway_config"]
 
 
-__all__ = ["GatewayConfig", "get_gateway_config"]
+def __getattr__(name: str):
+    """Lazily expose the FastAPI app without initializing it on package import."""
+    if name in {"app", "create_app"}:
+        from .app import app, create_app
+
+        return app if name == "app" else create_app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
