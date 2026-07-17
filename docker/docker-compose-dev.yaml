@@ -93,7 +93,7 @@ services:
         PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
         NPM_REGISTRY: ${NPM_REGISTRY:-}
     container_name: deer-flow-frontend
-    command: sh -c "cd frontend && pnpm run dev > /app/logs/frontend.log 2>&1 & sleep 8 && wget -q -O /dev/null http://localhost:3000/workspace/chats/new 2>/dev/null; wait"
+    command: sh -c "cd frontend && TURBOPACK=0 pnpm run dev > /app/logs/frontend.log 2>&1 & sleep 8 && wget -q -O /dev/null http://localhost:3000/workspace/chats/new 2>/dev/null; wait"
     volumes:
       - ../frontend/src:/app/frontend/src
       - ../frontend/public:/app/frontend/public
