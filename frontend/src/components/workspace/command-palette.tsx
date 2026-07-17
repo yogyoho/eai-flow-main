@@ -35,9 +35,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsDefaultSection, setSettingsDefaultSection] = useState<"account" | "memory" | "tools" | "skills" | "notification">("skills");
   const [isMac, setIsMac] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   const handleNewChat = useCallback(() => {
     router.push("/workspace/chats/new");
@@ -46,7 +44,6 @@ export function CommandPalette() {
 
   const handleOpenSettings = useCallback(() => {
     setOpen(false);
-    setSettingsDefaultSection("skills");
     setSettingsOpen(true);
   }, []);
 
@@ -69,19 +66,13 @@ export function CommandPalette() {
 
   useEffect(() => {
     setIsMac(navigator.userAgent.includes("Mac"));
-    setIsMounted(true);
   }, []);
   const metaKey = isMac ? "⌘" : "Ctrl+";
   const shiftKey = isMac ? "⇧" : "Shift+";
 
-  // Prevent hydration mismatch by only rendering dialogs after mount
-  if (!isMounted) {
-    return null;
-  }
-
   return (
     <>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} defaultSection={settingsDefaultSection} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder={t.shortcuts.searchActions} />
         <CommandList>

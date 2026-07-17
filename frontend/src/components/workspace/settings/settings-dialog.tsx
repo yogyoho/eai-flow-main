@@ -2,9 +2,10 @@
 
 import {
   BellIcon,
+  CableIcon,
+  InfoIcon,
   BrainIcon,
-  MessageCircleIcon,
-  QrCodeIcon,
+  PaletteIcon,
   SparklesIcon,
   UserIcon,
   WrenchIcon,
@@ -18,31 +19,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AboutSettingsPage } from "@/components/workspace/settings/about-settings-page";
 import { AccountSettingsPage } from "@/components/workspace/settings/account-settings-page";
+import { AppearanceSettingsPage } from "@/components/workspace/settings/appearance-settings-page";
 import { ChannelsSettingsPage } from "@/components/workspace/settings/channels-settings-page";
 import { MemorySettingsPage } from "@/components/workspace/settings/memory-settings-page";
 import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
 import { SkillSettingsPage } from "@/components/workspace/settings/skill-settings-page";
 import { ToolSettingsPage } from "@/components/workspace/settings/tool-settings-page";
-import { WechatSettingsPage } from "@/components/workspace/settings/wechat-settings-page";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 type SettingsSection =
   | "account"
+  | "appearance"
+  | "channels"
   | "memory"
   | "tools"
   | "skills"
   | "notification"
-  | "channels"
-  | "wechat";
+  | "about";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
   defaultSection?: SettingsSection;
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
-  const { defaultSection = "skills", ...dialogProps } = props;
+  const { defaultSection = "appearance", ...dialogProps } = props;
   const { t } = useI18n();
   const [activeSection, setActiveSection] =
     useState<SettingsSection>(defaultSection);
@@ -63,9 +66,19 @@ export function SettingsDialog(props: SettingsDialogProps) {
         icon: UserIcon,
       },
       {
+        id: "appearance",
+        label: t.settings.sections.appearance,
+        icon: PaletteIcon,
+      },
+      {
         id: "notification",
         label: t.settings.sections.notification,
         icon: BellIcon,
+      },
+      {
+        id: "channels",
+        label: t.settings.sections.channels,
+        icon: CableIcon,
       },
       {
         id: "memory",
@@ -74,25 +87,17 @@ export function SettingsDialog(props: SettingsDialogProps) {
       },
       { id: "tools", label: t.settings.sections.tools, icon: WrenchIcon },
       { id: "skills", label: t.settings.sections.skills, icon: SparklesIcon },
-      {
-        id: "channels",
-        label: t.settings.sections.channels,
-        icon: MessageCircleIcon,
-      },
-      {
-        id: "wechat",
-        label: t.settings.sections.wechat,
-        icon: QrCodeIcon,
-      },
+      { id: "about", label: t.settings.sections.about, icon: InfoIcon },
     ],
     [
       t.settings.sections.account,
+      t.settings.sections.appearance,
+      t.settings.sections.channels,
       t.settings.sections.memory,
       t.settings.sections.tools,
       t.settings.sections.skills,
       t.settings.sections.notification,
-      t.settings.sections.channels,
-      t.settings.sections.wechat,
+      t.settings.sections.about,
     ],
   );
   return (
@@ -138,6 +143,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
               {activeSection === "account" && <AccountSettingsPage />}
+              {activeSection === "appearance" && <AppearanceSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
               {activeSection === "tools" && <ToolSettingsPage />}
               {activeSection === "skills" && (
@@ -147,7 +153,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               )}
               {activeSection === "notification" && <NotificationSettingsPage />}
               {activeSection === "channels" && <ChannelsSettingsPage />}
-              {activeSection === "wechat" && <WechatSettingsPage />}
+              {activeSection === "about" && <AboutSettingsPage />}
             </div>
           </ScrollArea>
         </div>

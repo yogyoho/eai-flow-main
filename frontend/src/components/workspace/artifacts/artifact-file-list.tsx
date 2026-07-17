@@ -11,8 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { urlOfArtifact } from "@/core/artifacts/utils";
+import { useAuth } from "@/core/auth/AuthProvider";
 import { useI18n } from "@/core/i18n/hooks";
-import { installSkill } from "@/core/skills/api";
+import { installSkill, SkillRequestError } from "@/core/skills/api";
 import {
   getFileExtensionDisplayName,
   getFileIcon,
@@ -21,7 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useArtifacts } from "./context";
-import { SaveArtifactToDocButton, isSavableToDoc } from "./save-artifact-to-doc-button";
 
 export function ArtifactFileList({
   className,
@@ -33,6 +33,8 @@ export function ArtifactFileList({
   threadId: string;
 }) {
   const { t } = useI18n();
+  const { user } = useAuth();
+  const isAdmin = user?.system_role === "admin";
   const { select: selectArtifact, setOpen } = useArtifacts();
   const [installingFile, setInstallingFile] = useState<string | null>(null);
 
@@ -64,12 +66,16 @@ export function ArtifactFileList({
         }
       } catch (error) {
         console.error("Failed to install skill:", error);
-        toast.error("Failed to install skill");
+        if (error instanceof SkillRequestError && error.isAdminRequired) {
+          toast.error(t.settings.skills.installAdminRequired);
+        } else {
+          toast.error("Failed to install skill");
+        }
       } finally {
         setInstallingFile(null);
       }
     },
-    [threadId, installingFile],
+    [threadId, installingFile, t],
   );
 
   return (
@@ -91,7 +97,7 @@ export function ArtifactFileList({
               {getFileExtensionDisplayName(file)} file
             </CardDescription>
             <CardAction className="row-span-1 self-center">
-              {file.endsWith(".skill") && (
+              {file.endsWith(".skill") && isAdmin && (
                 <Button
                   variant="ghost"
                   disabled={installingFile === file}
@@ -104,13 +110,6 @@ export function ArtifactFileList({
                   )}
                   {t.common.install}
                 </Button>
-              )}
-              {isSavableToDoc(file) && (
-                <SaveArtifactToDocButton
-                  filepath={file}
-                  threadId={threadId}
-                  variant="button"
-                />
               )}
               <Button variant="ghost" asChild>
                 <a
