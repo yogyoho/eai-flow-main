@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from deerflow.config.paths import get_paths
 from deerflow.runtime.user_context import get_effective_user_id
@@ -216,3 +216,41 @@ def list_custom_agents(*, user_id: str | None = None) -> list[AgentConfig]:
 
     agents.sort(key=lambda a: a.name)
     return agents
+
+
+def _blank_to_none(value: str | None) -> str | None:
+    """Normalize a whitespace-only string to None (used by GitHub agent config)."""
+    return value if (value is not None and value.strip()) else None
+
+
+class GitHubTriggerConfig(BaseModel):
+    """Per-event trigger filter inside a GitHubBinding (upstream #4218)."""
+
+    actions: list[str] | None = None
+    require_mention: bool = False
+    allow_authors: list[str] = Field(default_factory=list)
+    mention_login: str | None = None
+
+    @field_validator("mention_login")
+    @classmethod
+    def _normalize_mention_login(cls, value: str | None) -> str | None:
+        return _blank_to_none(value)
+
+
+class GitHubBinding(BaseModel):
+    """One (agent, repo) binding with per-event trigger overrides."""
+
+    repo: str
+    triggers: dict[str, GitHubTriggerConfig] = Field(default_factory=dict)
+
+
+class GitHubAgentConfig(BaseModel):
+    """Top-level github: block on a custom agent's config.yaml (upstream #4218)."""
+
+    installation_id: int | None = None
+    bot_login: str | None = None
+
+    @field_validator("bot_login")
+    @classmethod
+    def _normalize_bot_login(cls, value: str | None) -> str | None:
+        return _blank_to_none(value)
