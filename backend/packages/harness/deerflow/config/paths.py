@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -13,6 +14,8 @@ _SAFE_THREAD_ID_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 _SAFE_USER_ID_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 _UNSAFE_USER_ID_CHAR_RE = re.compile(r"[^A-Za-z0-9_\-]")
 _SAFE_USER_ID_DIGEST_HEX_LEN = 16
+
+logger = logging.getLogger(__name__)
 
 
 def _default_local_base_dir() -> Path:
@@ -37,7 +40,7 @@ def _validate_user_id(user_id: str) -> str:
 def make_safe_user_id(raw: str) -> str:
     """Normalize an external identity into the user-id charset (``[A-Za-z0-9_-]``).
 
-    IM channel ids (WeChat/Feishu/Slack/Telegram) may contain characters that
+    IM channel ids (Feishu/Slack/Telegram) may contain characters that
     :func:`_validate_user_id` rejects. Already-safe ids pass through unchanged;
     lossy ones get a short digest suffix so two distinct inputs never share a
     storage bucket.
@@ -48,6 +51,12 @@ def make_safe_user_id(raw: str) -> str:
     if sanitized == raw:
         return raw
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:_SAFE_USER_ID_DIGEST_HEX_LEN]
+    return f"{sanitized}-{digest}"
+
+
+def _legacy_safe_user_id(raw: str, sanitized: str) -> str:
+    """Bucket name produced by the previous (SHA-1) digest revision for ``raw``."""
+    digest = hashlib.sha1(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:_SAFE_USER_ID_DIGEST_HEX_LEN]
     return f"{sanitized}-{digest}"
 
 
@@ -152,53 +161,80 @@ class Paths:
 
     @property
     def agents_dir(self) -> Path:
-        """Root directory for all custom agents: `{base_dir}/agents/`."""
+        """Legacy root for shared (pre user-isolation) custom agents: `{base_dir}/agents/`.
+
+        New code should use :meth:`user_agents_dir` instead. This property remains
+        only as a read-side fallback for installations that have not yet run the
+        ``migrate_user_isolation.py`` script.
+        """
         return self.base_dir / "agents"
 
-    def agent_dir(self, name: str, user_id: str | None = None) -> Path:
-        """Directory for a specific agent.
-
-        If user_id is provided, agents are stored under per-user subdirectories:
-        `{base_dir}/agents/{user_id}/{name}/`
-
-        If user_id is None, agents are stored in the global location (backward compatible):
-        `{base_dir}/agents/{name}/`
-        """
-        if user_id:
-            return self.agents_dir / user_id / name.lower()
+    def agent_dir(self, name: str) -> Path:
+        """Legacy per-agent directory (no user isolation): `{base_dir}/agents/{name}/`."""
         return self.agents_dir / name.lower()
 
-    def agent_memory_file(self, name: str, user_id: str | None = None) -> Path:
-        """Per-agent memory file.
-
-        With user_id: `{base_dir}/agents/{user_id}/{name}/memory.json`
-        Without user_id: `{base_dir}/agents/{name}/memory.json`
-        """
-        return self.agent_dir(name, user_id) / "memory.json"
+    def agent_memory_file(self, name: str) -> Path:
+        """Legacy per-agent memory file: `{base_dir}/agents/{name}/memory.json`."""
+        return self.agent_dir(name) / "memory.json"
 
     def user_dir(self, user_id: str) -> Path:
         """Directory for a specific user: `{base_dir}/users/{user_id}/`."""
         return self.base_dir / "users" / _validate_user_id(user_id)
 
-    def user_agents_dir(self, user_id: str) -> Path:
-        """Per-user agents directory: `{base_dir}/users/{user_id}/agents/`."""
-        return self.user_dir(user_id) / "agents"
+    def prepare_user_dir_for_raw_id(self, raw_user_id: str) -> str:
+        """Return the safe user ID and migrate this ID's legacy unsafe-id bucket.
 
-    def user_skills_dir(self, user_id: str) -> Path:
-        """Per-user skills root: `{base_dir}/users/{user_id}/skills/`."""
-        return self.user_dir(user_id) / "skills"
+        A previous branch revision used SHA-1 for unsafe external user IDs.
+        New IDs use SHA-256; the legacy bucket name is recomputed from the same
+        raw ID, so only this user's own old bucket can ever be moved — a
+        different raw ID sharing the sanitized prefix produces a different
+        legacy digest and is never touched.
+        """
+        safe_user_id = make_safe_user_id(raw_user_id)
+        sanitized = _UNSAFE_USER_ID_CHAR_RE.sub("-", raw_user_id)
+        if safe_user_id == raw_user_id:
+            return safe_user_id
 
-    def user_custom_skills_dir(self, user_id: str) -> Path:
-        """Per-user custom skills: `{base_dir}/users/{user_id}/skills/custom/`."""
-        return self.user_skills_dir(user_id) / "custom"
+        users_dir = self.base_dir / "users"
+        target_dir = users_dir / safe_user_id
+        legacy_dir = users_dir / _legacy_safe_user_id(raw_user_id, sanitized)
+        try:
+            if target_dir.exists() or not legacy_dir.is_dir():
+                return safe_user_id
+            legacy_dir.rename(target_dir)
+            logger.info("Migrated legacy unsafe-id user directory to the current digest format")
+        except OSError:
+            logger.exception("Failed to migrate legacy unsafe-id user directory")
+        return safe_user_id
 
     def user_memory_file(self, user_id: str) -> Path:
         """Per-user memory file: `{base_dir}/users/{user_id}/memory.json`."""
         return self.user_dir(user_id) / "memory.json"
 
+    def user_agents_dir(self, user_id: str) -> Path:
+        """Per-user root for that user's custom agents: `{base_dir}/users/{user_id}/agents/`."""
+        return self.user_dir(user_id) / "agents"
+
+    def user_agent_dir(self, user_id: str, agent_name: str) -> Path:
+        """Per-user per-agent directory: `{base_dir}/users/{user_id}/agents/{name}/`."""
+        return self.user_agents_dir(user_id) / agent_name.lower()
+
     def user_agent_memory_file(self, user_id: str, agent_name: str) -> Path:
         """Per-user per-agent memory: `{base_dir}/users/{user_id}/agents/{name}/memory.json`."""
-        return self.user_dir(user_id) / "agents" / agent_name.lower() / "memory.json"
+        return self.user_agent_dir(user_id, agent_name) / "memory.json"
+
+    def user_skills_dir(self, user_id: str) -> Path:
+        """Per-user root for that user's custom skills: `{base_dir}/users/{user_id}/skills/`."""
+        return self.user_dir(user_id) / "skills"
+
+    def user_custom_skills_dir(self, user_id: str) -> Path:
+        """Per-user custom skills directory: `{base_dir}/users/{user_id}/skills/custom/`.
+
+        This is the user-scoped replacement for the global ``{base_dir}/skills/custom/``
+        directory. Custom skills are written here; public skills remain under the
+        global ``{base_dir}/skills/public/`` (read-only).
+        """
+        return self.user_skills_dir(user_id) / "custom"
 
     def thread_dir(self, thread_id: str, *, user_id: str | None = None) -> Path:
         """
