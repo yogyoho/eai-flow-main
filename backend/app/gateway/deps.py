@@ -206,6 +206,16 @@ get_feedback_repo: Callable[[Request], FeedbackRepository] = _require("feedback_
 get_run_store: Callable[[Request], RunStore] = _require("run_store", "Run store")
 
 
+async def require_admin_user(request: Request) -> None:
+    """Require the authenticated caller to be an admin user (HTTP 403 otherwise)."""
+    user = getattr(request.state, "user", None)
+    if user is None:
+        user = await get_current_user_from_request(request)
+    role = getattr(user, "system_role", None) or getattr(user, "role", None)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+
 def get_store(request: Request):
     """Return the global store (may be ``None`` if not configured)."""
     return getattr(request.app.state, "store", None)

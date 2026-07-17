@@ -16,6 +16,7 @@ from app.channels.runtime_config_store import (
     apply_runtime_connection_config,
     merge_runtime_channel_configs,
 )
+from app.gateway.deps import require_admin_user
 from deerflow.config.channel_connections_config import ChannelConnectionsConfig
 from deerflow.persistence.channel_connections import ChannelConnectionRepository
 from deerflow.persistence.engine import get_session_factory
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/api/channels", tags=["channel-connections"])
 logger = logging.getLogger(__name__)
 
 _STATE_TTL_SECONDS = 600
+_MAX_PENDING_CONNECT_CODES_PER_PROVIDER = 5
 _MASKED_CREDENTIAL_VALUE = "********"
+_ADMIN_REQUIRED_DETAIL = "Admin privileges required to manage channel runtime credentials."
 
 
 class ChannelCredentialFieldResponse(BaseModel):
@@ -134,24 +137,6 @@ def _get_user_id(request: Request) -> str:
     return str(user.id)
 
 
-async def _require_admin_user(request: Request) -> None:
-    """Require an admin caller for instance-wide channel runtime mutations.
-
-    Runtime credentials and the channel workers they start/stop are shared by
-    every user of the deployment, so only admins may change them (same model
-    as the MCP config API). Auth-disabled local mode uses a synthetic admin
-    user and is unaffected.
-    """
-    user = getattr(request.state, "user", None)
-    if user is None:
-        from app.gateway.deps import get_current_user_from_request
-
-        user = await get_current_user_from_request(request)
-
-    if getattr(user, "system_role", None) != "admin":
-        raise HTTPException(status_code=403, detail="Admin privileges required to manage channel runtime credentials.")
-
-
 def _get_app_config():
     from deerflow.config.app_config import get_app_config
 
@@ -216,6 +201,13 @@ def _get_repository(request: Request, config: ChannelConnectionsConfig) -> Chann
 
 
 def _provider_config(config: ChannelConnectionsConfig, provider: str):
+    # Resolve provider configs only for known providers. An unrestricted
+    # getattr would let a request-supplied name that happens to match another
+    # config attribute (e.g. the "enabled" / "require_bound_identity" bool
+    # fields) slip past the 404 and return a non-provider value, which callers
+    # then dereference as a provider config (AttributeError -> HTTP 500).
+    if provider not in _PROVIDER_META:
+        raise HTTPException(status_code=404, detail="Unknown channel provider")
     provider_config = getattr(config, provider, None)
     if provider_config is None:
         raise HTTPException(status_code=404, detail="Unknown channel provider")
@@ -332,13 +324,23 @@ async def _create_state(
     owner_user_id: str,
     provider: str,
 ) -> str:
+    now = datetime.now(UTC)
     state = _new_binding_code()
-    await repo.create_oauth_state(
+    # Atomic delete-expired + count + insert so concurrent connect POSTs from one
+    # owner cannot each see count < cap and all insert past the cap.
+    inserted = await repo.create_oauth_state_within_cap(
         owner_user_id=owner_user_id,
         provider=provider,
         state=state,
-        expires_at=datetime.now(UTC) + timedelta(seconds=_STATE_TTL_SECONDS),
+        expires_at=now + timedelta(seconds=_STATE_TTL_SECONDS),
+        max_pending=_MAX_PENDING_CONNECT_CODES_PER_PROVIDER,
+        now=now,
     )
+    if not inserted:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many pending channel connection codes. Wait for existing codes to expire or use one of them.",
+        )
     return state
 
 
@@ -561,7 +563,7 @@ async def disconnect_channel_connection(connection_id: str, request: Request) ->
 
 @router.delete("/{provider}/runtime-config", response_model=ChannelProviderResponse)
 async def disconnect_channel_provider_runtime(provider: str, request: Request) -> ChannelProviderResponse:
-    await _require_admin_user(request)
+    await require_admin_user(request, detail=_ADMIN_REQUIRED_DETAIL)
     config = await _get_channel_connections_config(request)
     if not config.enabled:
         raise HTTPException(status_code=400, detail="Channel connections are disabled")
@@ -647,7 +649,7 @@ async def configure_channel_provider_runtime(
     body: ChannelRuntimeConfigRequest,
     request: Request,
 ) -> ChannelProviderResponse:
-    await _require_admin_user(request)
+    await require_admin_user(request, detail=_ADMIN_REQUIRED_DETAIL)
     config = await _get_channel_connections_config(request)
     if not config.enabled:
         raise HTTPException(status_code=400, detail="Channel connections are disabled")
