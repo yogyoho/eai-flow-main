@@ -10,6 +10,7 @@ from langchain.tools import InjectedToolCallId, tool
 from langchain_core.callbacks import BaseCallbackManager
 from langgraph.config import get_stream_writer
 
+from deerflow.authz.principal import normalize_authz_attributes
 from deerflow.config import get_app_config
 from deerflow.sandbox.security import LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE, is_host_bash_allowed
 from deerflow.subagents import SubagentExecutor, get_available_subagent_names, get_subagent_config
@@ -285,6 +286,8 @@ async def task_tool(
     oauth_provider = parent_context.get("oauth_provider")
     oauth_id = parent_context.get("oauth_id")
     run_id = parent_context.get("run_id")
+    is_internal = parent_context.get("is_internal") is True
+    authz_attributes = normalize_authz_attributes(parent_context.get("authz_attributes"))
 
     parent_available_skills = metadata.get("available_skills")
     if parent_available_skills is not None:
@@ -328,6 +331,8 @@ async def task_tool(
         "oauth_provider": oauth_provider,
         "oauth_id": oauth_id,
         "run_id": run_id,
+        "is_internal": is_internal,
+        "authz_attributes": authz_attributes,
     }
     if resolved_app_config is not None:
         executor_kwargs["app_config"] = resolved_app_config

@@ -5,7 +5,7 @@ import atexit
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from contextvars import Context, copy_context
@@ -20,6 +20,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from deerflow.agents.thread_state import SandboxState, ThreadDataState, ThreadState
+from deerflow.authz.principal import normalize_authz_attributes
 from deerflow.config import get_app_config
 from deerflow.config.app_config import AppConfig
 from deerflow.models import create_chat_model
@@ -284,6 +285,8 @@ class SubagentExecutor:
         oauth_provider: str | None = None,
         oauth_id: str | None = None,
         run_id: str | None = None,
+        is_internal: bool = False,
+        authz_attributes: Mapping[str, Any] | None = None,
     ):
         """Initialize the executor.
 
@@ -306,6 +309,8 @@ class SubagentExecutor:
             oauth_id: Subject id at the external identity provider.
             run_id: Parent run id, so delegated guardrail decisions attribute to
                 the same run as the lead agent.
+            is_internal: Whether the parent run was internally authenticated.
+            authz_attributes: Authorization attributes propagated from parent.
         """
         self.config = config
         self.app_config = app_config
@@ -328,6 +333,8 @@ class SubagentExecutor:
         self.oauth_provider = oauth_provider
         self.oauth_id = oauth_id
         self.run_id = run_id
+        self.is_internal = is_internal
+        self.authz_attributes = normalize_authz_attributes(authz_attributes)
 
         self._base_tools = _filter_tools(
             tools,
@@ -532,6 +539,8 @@ class SubagentExecutor:
             context["oauth_provider"] = self.oauth_provider
             context["oauth_id"] = self.oauth_id
             context["run_id"] = self.run_id
+            context["is_internal"] = self.is_internal
+            context["authz_attributes"] = dict(self.authz_attributes)
             context["is_subagent"] = True
 
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} starting async execution with max_turns={self.config.max_turns}")
