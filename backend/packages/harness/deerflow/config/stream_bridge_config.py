@@ -22,6 +22,15 @@ class StreamBridgeConfig(BaseModel):
         default=256,
         description="Maximum number of events buffered per run in the memory bridge.",
     )
+    max_connections: int | None = Field(
+        default=None,
+        description="Max Redis connections in the pool for the redis stream bridge (upstream #4190). Leave unset for redis-py's default.",
+    )
+    stream_ttl_seconds: int = Field(
+        default=86400,
+        ge=60,
+        description="Stream TTL in seconds before idle run event streams are removed (redis bridge only).",
+    )
 
 
 # Global configuration instance — None means no stream bridge is configured

@@ -101,4 +101,11 @@ class SandboxConfig(BaseModel):
         ),
     )
 
+    # Upstream #4190: BoxLite reclaim skip window.
+    health_check_skip_seconds: float | None = Field(
+        default=None,
+        ge=0,
+        description="BoxLite-only reclaim skip window in seconds for boxes recently released by this provider instance. Set to 0 to always validate before warm reuse.",
+    )
+
     model_config = ConfigDict(extra="allow")
