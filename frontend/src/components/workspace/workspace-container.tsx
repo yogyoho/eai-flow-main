@@ -12,8 +12,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
+
+import { GithubIcon } from "./github-icon";
+import { Tooltip } from "./tooltip";
 
 export function WorkspaceContainer({
   className,
@@ -48,7 +52,8 @@ export function WorkspaceHeader({
       )}
       {...props}
     >
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex min-w-0 items-center gap-2 px-2 sm:px-4">
+        <SidebarTrigger className="md:hidden" />
         <Breadcrumb>
           <BreadcrumbList>
             {segments?.[0] && (
@@ -86,6 +91,18 @@ export function WorkspaceHeader({
             )}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="pr-4">
+        <Tooltip content={t.workspace.githubTooltip}>
+          <a
+            href="https://github.com/bytedance/deer-flow"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-75 transition hover:opacity-100"
+          >
+            <GithubIcon className="size-6" />
+          </a>
+        </Tooltip>
       </div>
     </header>
   );
