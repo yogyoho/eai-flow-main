@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
 
 import {
   Artifact,
@@ -38,13 +39,11 @@ import {
   HTML_PREVIEW_SCROLL_MESSAGE_SOURCE,
 } from "@/core/artifacts/preview";
 import { urlOfArtifact } from "@/core/artifacts/utils";
-import { useAuth } from "@/core/auth/AuthProvider";
-import { extractCitationSources } from "@/core/citations/sources";
 import { writeTextToClipboard } from "@/core/clipboard";
 import { useI18n } from "@/core/i18n/hooks";
 import { findToolCallResult } from "@/core/messages/utils";
-import { installSkill, SkillRequestError } from "@/core/skills/api";
-import { SafeStreamdown } from "@/core/streamdown/components";
+import { installSkill } from "@/core/skills/api";
+import { streamdownPlugins } from "@/core/streamdown";
 import {
   canBrowserPreviewFile,
   checkCodeFile,
@@ -56,12 +55,11 @@ import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
 import { ArtifactLink } from "../citations/artifact-link";
-import { CitationSourcesPanel } from "../citations/citation-sources-panel";
 import { useThread } from "../messages/context";
 import { Tooltip } from "../tooltip";
 
 import { useArtifacts } from "./context";
-import { artifactMarkdownPlugins } from "./markdown-preview-plugins";
+import { SaveArtifactToDocButton, SyncToDocSpaceButton, isSavableToDoc } from "./save-artifact-to-doc-button";
 
 const WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS = 3000;
 
@@ -75,8 +73,6 @@ export function ArtifactFileDetail({
   threadId: string;
 }) {
   const { t } = useI18n();
-  const { user } = useAuth();
-  const isAdmin = user?.system_role === "admin";
   const { artifacts, setOpen, select } = useArtifacts();
   const { thread, isMock } = useThread();
   const isWriteFile = useMemo(() => {
@@ -89,41 +85,13 @@ export function ArtifactFileDetail({
     }
     return filepathFromProps;
   }, [filepathFromProps, isWriteFile]);
-  // Keep these local because ChatBox replaces context artifacts with thread state.
-  const [openedPresentedFilepaths, setOpenedPresentedFilepaths] = useState<
-    string[]
-  >(() => {
-    if (isWriteFile || artifacts.includes(filepath)) {
-      return [];
-    }
-    return [filepath];
-  });
-  useEffect(() => {
-    if (isWriteFile || artifacts.includes(filepath)) {
-      return;
-    }
-    setOpenedPresentedFilepaths((current) => {
-      if (current.includes(filepath)) {
-        return current;
-      }
-      return [...current, filepath];
-    });
-  }, [artifacts, filepath, isWriteFile]);
   const artifactOptions = useMemo(() => {
-    if (isWriteFile) {
-      return artifacts;
+    const list = artifacts ?? [];
+    if (list.includes(filepath)) {
+      return list;
     }
-    const currentIsPresented = !artifacts.includes(filepath);
-    const presentedFilepaths =
-      currentIsPresented && !openedPresentedFilepaths.includes(filepath)
-        ? [...openedPresentedFilepaths, filepath]
-        : openedPresentedFilepaths;
-    const presentedSet = new Set(presentedFilepaths);
-    return [
-      ...presentedFilepaths,
-      ...artifacts.filter((artifact) => !presentedSet.has(artifact)),
-    ];
-  }, [artifacts, filepath, isWriteFile, openedPresentedFilepaths]);
+    return [filepath, ...list];
+  }, [artifacts, filepath]);
   const isSkillFile = useMemo(() => {
     return filepath.endsWith(".skill");
   }, [filepath]);
@@ -199,15 +167,11 @@ export function ArtifactFileDetail({
       }
     } catch (error) {
       console.error("Failed to install skill:", error);
-      if (error instanceof SkillRequestError && error.isAdminRequired) {
-        toast.error(t.settings.skills.installAdminRequired);
-      } else {
-        toast.error("Failed to install skill");
-      }
+      toast.error("Failed to install skill");
     } finally {
       setIsInstalling(false);
     }
-  }, [threadId, filepath, isInstalling, t]);
+  }, [threadId, filepath, isInstalling]);
   return (
     <Artifact className={cn(className)}>
       <ArtifactHeader className="px-2">
@@ -258,7 +222,7 @@ export function ArtifactFileDetail({
         </div>
         <div className="flex items-center gap-2">
           <ArtifactActions>
-            {!isWriteFile && filepath.endsWith(".skill") && isAdmin && (
+            {!isWriteFile && filepath.endsWith(".skill") && (
               <Tooltip content={t.toolCalls.skillInstallTooltip}>
                 <ArtifactAction
                   icon={isInstalling ? LoaderIcon : PackageIcon}
@@ -330,6 +294,14 @@ export function ArtifactFileDetail({
                 }}
               />
             )}
+            {isSavableToDoc(filepath) && (
+              <SaveArtifactToDocButton
+                filepath={filepath}
+                threadId={threadId}
+                variant="icon"
+              />
+            )}
+            <SyncToDocSpaceButton threadId={threadId} />
             <ArtifactAction
               icon={XIcon}
               label={t.common.close}
@@ -438,11 +410,6 @@ export function ArtifactFilePreview({
     [scrollKey],
   );
   const [htmlPreviewUrl, setHtmlPreviewUrl] = useState<string>();
-  const citationSources = useMemo(
-    () =>
-      language === "markdown" ? extractCitationSources(content ?? "") : [],
-    [content, language],
-  );
 
   useEffect(() => {
     scrollPositionRef.current = { x: 0, y: 0 };
@@ -510,15 +477,14 @@ export function ArtifactFilePreview({
 
   if (language === "markdown") {
     return (
-      <div className="size-full overflow-auto px-4 py-3">
-        <SafeStreamdown
-          className="min-w-0"
-          {...artifactMarkdownPlugins}
+      <div className="size-full px-4">
+        <ClipboardSafeStreamdown
+          className="size-full"
+          {...streamdownPlugins}
           components={{ a: ArtifactLink }}
         >
           {content ?? ""}
-        </SafeStreamdown>
-        <CitationSourcesPanel sources={citationSources} className="mb-4" />
+        </ClipboardSafeStreamdown>
       </div>
     );
   }
