@@ -43,3 +43,14 @@ export const streamdownPluginsWithoutRawHtml = {
 // Plugins for reasoning/thinking content — derived from streamdownPlugins but without rehypeRaw,
 // to prevent LLM-hallucinated HTML tags (e.g. <simd>) from being rendered as DOM elements.
 export const reasoningPlugins = streamdownPluginsWithoutRawHtml;
+
+// [EAI] Human message plugins — for processing user input with GFM and math support.
+export const humanMessagePlugins = {
+  remarkPlugins: [
+    remarkGfm,
+    [remarkMath, { singleDollarTextMath: true }],
+  ] as StreamdownProps["remarkPlugins"],
+  rehypePlugins: [
+    [rehypeKatex, { output: "html" }],
+  ] as StreamdownProps["rehypePlugins"],
+};
