@@ -2495,14 +2495,15 @@ function SuggestionList({
   );
   return (
     <Suggestions className="min-h-16 w-full max-w-full justify-center px-4 sm:w-fit sm:px-0">
-      <ConfettiButton
+      {/* [EAI] "小惊喜" hidden — same as upstream but we keep it off */}
+      {/* <ConfettiButton
         className="text-muted-foreground cursor-pointer rounded-full px-4 text-xs font-normal"
         variant="outline"
         size="sm"
         onClick={() => handleSuggestionClick(t.inputBox.surpriseMePrompt)}
       >
         <SparklesIcon className="size-4" /> {t.inputBox.surpriseMe}
-      </ConfettiButton>
+      </ConfettiButton> */}
       {t.inputBox.suggestions.map((suggestion) => (
         <Suggestion
           key={suggestion.suggestion}
