@@ -133,6 +133,7 @@ export const ReasoningTrigger = memo(
     className,
     children,
     getThinkingMessage = defaultGetThinkingMessage,
+    hasContent: _hasContent,
     ...props
   }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
