@@ -50,6 +50,8 @@ export const Reasoning = memo(
     defaultOpen = true,
     onOpenChange,
     duration: durationProp,
+    startTimeProp: _startTimeProp,
+    onTurnDurationChange: _onTurnDurationChange,
     children,
     ...props
   }: ReasoningProps) => {
@@ -134,6 +136,8 @@ export const ReasoningTrigger = memo(
     children,
     getThinkingMessage = defaultGetThinkingMessage,
     hasContent: _hasContent,
+    startTimeProp: _startTimeProp,
+    onTurnDurationChange: _onTurnDurationChange,
     ...props
   }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();

@@ -39,7 +39,9 @@ export interface Translations {
     exportAsMarkdown: string;
     exportAsJSON: string;
     exportSuccess: string;
-    logout: string;
+    regenerate: string;
+    branch: string;
+    showArtifacts: string;
   };
 
   home: {
@@ -63,11 +65,57 @@ export interface Translations {
     linkCopied: string;
   };
 
+  // Citations
+  citations: {
+    sourcesSummary: (count: number) => string;
+    citeCount: (count: number) => string;
+    copyReference: (title: string) => string;
+    copiedReference: (title: string) => string;
+  };
+
+  // Workspace Changes
+  workspaceChanges: {
+    title: string;
+    editedTitle: (count: number) => string;
+    badge: (count: number, additions: number, deletions: number) => string;
+    viewChanges: string;
+    created: string;
+    modified: string;
+    deleted: string;
+    openFile: string;
+    loading: string;
+    noChanges: string;
+    diffUnavailable: string;
+    binaryUnavailable: string;
+    largeUnavailable: string;
+    sensitiveUnavailable: string;
+    truncatedUnavailable: string;
+    truncatedSummary: string;
+  };
+
   // Input Box
   inputBox: {
     placeholder: string;
     createSkillPrompt: string;
     addAttachments: string;
+    inputPolish: string;
+    inputPolishing: string;
+    inputPolishNoChanges: string;
+    inputPolishFailed: string;
+    inputPolishUndo: string;
+    inputPolishCancel: string;
+    voiceInputStartLabel: string;
+    voiceInputStopLabel: string;
+    voiceInputStart: string;
+    voiceInputStop: string;
+    voiceInputListening: string;
+    voiceInputUnsupported: string;
+    voiceInputPermissionDenied: string;
+    voiceInputMicrophoneUnavailable: string;
+    voiceInputUnsupportedLanguage: string;
+    voiceInputNetworkError: string;
+    voiceInputNoSpeech: string;
+    voiceInputFailed: string;
     mode: string;
     flashMode: string;
     flashModeDescription: string;
@@ -94,6 +142,20 @@ export interface Translations {
     followupConfirmDescription: string;
     followupConfirmAppend: string;
     followupConfirmReplace: string;
+    suggestionPlaceholderRequired: string;
+    goalCommandDescription: string;
+    compactCommandDescription: string;
+    goalLabel: string;
+    goalContinuing: string;
+    goalContinuationTooltip: string;
+    goalSet: string;
+    goalCleared: string;
+    goalNone: string;
+    goalActive: string;
+    goalFailed: string;
+    compactSuccess: string;
+    compactSkipped: string;
+    compactFailed: string;
     suggestions: {
       suggestion: string;
       prompt: string;
@@ -109,20 +171,137 @@ export interface Translations {
           type: "separator";
         }
     )[];
+    pleaseWaitStreaming: string;
   };
 
   // Sidebar
   sidebar: {
-    goHome: string;
     recentChats: string;
     newChat: string;
     chats: string;
     demoChats: string;
     agents: string;
-    knowledge: string;
-    documentSpace: string;
-    knowledgeFactory: string;
+    scheduledTasks: string;
+    agentsDisabledTooltip: string;
     channels: string;
+  };
+
+  // Scheduled tasks
+  scheduledTasks: {
+    scheduleType: { cron: string; once: string };
+    preset: {
+      label: string;
+      hourly: string;
+      daily: string;
+      weekly: string;
+      monthly: string;
+      custom: string;
+    };
+    fields: {
+      minute: string;
+      time: string;
+      weekday: string;
+      dayOfMonth: string;
+      cron: string;
+      cronPlaceholder: string;
+      runAt: string;
+      timezone: string;
+    };
+    weekdays: {
+      mon: string;
+      tue: string;
+      wed: string;
+      thu: string;
+      fri: string;
+      sat: string;
+      sun: string;
+    };
+    preview: string;
+    cronHelp: string;
+    create: {
+      title: string;
+      taskTitle: string;
+      prompt: string;
+      submit: string;
+      fillRequired: string;
+    };
+    context: {
+      fresh: string;
+      reuse: string;
+      threadIdPlaceholder: string;
+    };
+    filters: {
+      allStatuses: string;
+      enabled: string;
+      paused: string;
+      completed: string;
+      failed: string;
+      allTypes: string;
+      cron: string;
+      once: string;
+    };
+    detail: {
+      contextMode: string;
+      thread: string;
+      lastThread: string;
+      schedule: string;
+      nextRun: string;
+      lastRun: string;
+      lastRunId: string;
+      lastError: string;
+      runsCount: string;
+      runsCountOne: string;
+      noRuns: string;
+      noSelection: string;
+      filteredByThread: string;
+      loadFailed: string;
+    };
+    actions: {
+      edit: string;
+      cancelEdit: string;
+      pause: string;
+      resume: string;
+      trigger: string;
+      delete: string;
+    };
+    deleteConfirm: string;
+    errors: {
+      create: string;
+      update: string;
+      pause: string;
+      resume: string;
+      trigger: string;
+      delete: string;
+    };
+    edit: {
+      titlePlaceholder: string;
+      promptPlaceholder: string;
+      submit: string;
+    };
+    status: {
+      enabled: string;
+      paused: string;
+      running: string;
+      completed: string;
+      failed: string;
+      cancelled: string;
+    };
+    runTrigger: { scheduled: string; manual: string };
+    runStatus: {
+      queued: string;
+      running: string;
+      success: string;
+      failed: string;
+      skipped: string;
+      interrupted: string;
+    };
+    recipes: {
+      label: string;
+      trending: { title: string; desc: string };
+      news: { title: string; desc: string };
+      issues: { title: string; desc: string };
+      weekly: { title: string; desc: string };
+    };
   };
 
   // Agents
@@ -132,6 +311,8 @@ export interface Translations {
     newAgent: string;
     emptyTitle: string;
     emptyDescription: string;
+    featureDisabledTitle: string;
+    featureDisabledDescription: string;
     chat: string;
     delete: string;
     deleteConfirm: string;
@@ -178,20 +359,52 @@ export interface Translations {
     contactUs: string;
     about: string;
     logout: string;
+    gatewayUnavailable: string;
+    gatewayUnavailableRetrying: string;
   };
 
   // Conversation
   conversation: {
     noMessages: string;
     startConversation: string;
+    branchCreated: string;
+    branchFailed: string;
   };
 
   // Chats
   chats: {
     searchChats: string;
+    loadMoreToSearch: string;
+    loadingMore: string;
+    loadOlderChats: string;
   };
 
-  // Channels (user-owned IM connections)
+  // Sidecar
+  sidecar: {
+    title: string;
+    open: string;
+    close: string;
+    delete: string;
+    deleteConfirm: string;
+    deleteSuccess: string;
+    deleteFailed: string;
+    addToConversation: string;
+    askInSideChat: string;
+    reference: string;
+    selectedTextFragment: string;
+    selectedTextFragments: string;
+    clearReferences: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    placeholder: string;
+    send: string;
+    sendFailed: string;
+    noContext: string;
+    continuing: string;
+    selectionCrossesMessages: string;
+  };
+
+  // Channels
   channels: {
     title: string;
     connect: string;
@@ -245,10 +458,29 @@ export interface Translations {
     skillInstallTooltip: string;
   };
 
+  humanInput: {
+    answered: string;
+    pending: string;
+    readOnly: string;
+    otherLabel: string;
+    otherPlaceholder: string;
+    submit: string;
+    emptyError: string;
+    answeredValue: (value: string) => string;
+  };
+
   // Uploads
   uploads: {
     uploading: string;
     uploadingFiles: string;
+    limitsHint: (
+      maxFiles: number,
+      maxFileSize: string,
+      maxTotalSize: string,
+    ) => string;
+    filesTooLarge: (files: string, maxFileSize: string) => string;
+    tooManyFiles: (count: number, maxFiles: number) => string;
+    totalSizeTooLarge: (count: number, maxTotalSize: string) => string;
   };
 
   // Subtasks
@@ -267,8 +499,10 @@ export interface Translations {
     input: string;
     output: string;
     total: string;
+    view: string;
     unavailable: string;
     unavailableShort: string;
+    collecting: string;
     note: string;
     presets: {
       off: string;
@@ -285,7 +519,6 @@ export interface Translations {
     finalAnswer: string;
     stepTotal: string;
     sharedAttribution: string;
-    view: string;
     subagent: (description: string) => string;
     startTodo: (content: string) => string;
     completeTodo: (content: string) => string;
@@ -311,42 +544,12 @@ export interface Translations {
     sections: {
       account: string;
       appearance: string;
+      channels: string;
       memory: string;
       tools: string;
       skills: string;
       notification: string;
-      channels: string;
-      wechat: string;
       about: string;
-      basic: string;
-    };
-    channels: {
-      title: string;
-      description: string;
-      disabled: string;
-    };
-    wechat: {
-      title: string;
-      description: string;
-      linkTitle: string;
-      linkDescription: string;
-      getCode: string;
-      codeHint: string;
-      linkFailed: string;
-      botTitle: string;
-      botDescription: string;
-      bound: string;
-      pending: string;
-      unbound: string;
-      bind: string;
-      rebind: string;
-      bindStarted: string;
-      bindFailed: string;
-      openQr: string;
-      shareQrTitle: string;
-      shareQrDescription: string;
-      refreshShareQr: string;
-      shareQrFreshHint: string;
     };
     memory: {
       title: string;
@@ -436,6 +639,13 @@ export interface Translations {
     tools: {
       title: string;
       description: string;
+      adminRequired: string;
+      empty: string;
+    };
+    channels: {
+      title: string;
+      description: string;
+      disabled: string;
     };
     skills: {
       title: string;
@@ -444,6 +654,8 @@ export interface Translations {
       emptyTitle: string;
       emptyDescription: string;
       emptyButton: string;
+      adminRequired: string;
+      installAdminRequired: string;
     };
     notification: {
       title: string;
@@ -462,119 +674,53 @@ export interface Translations {
       role: string;
       changePasswordTitle: string;
       changePasswordDescription: string;
+      ssoProvider: string;
+      ssoPasswordDescription: string;
+      ssoPasswordMessage: string;
       currentPassword: string;
       newPassword: string;
       confirmNewPassword: string;
-      updatePassword: string;
-      updating: string;
-      passwordChangedSuccess: string;
       passwordMismatch: string;
       passwordTooShort: string;
+      passwordChangedSuccess: string;
       networkError: string;
+      updating: string;
+      updatePassword: string;
       signOut: string;
     };
     acknowledge: {
       emptyTitle: string;
       emptyDescription: string;
     };
-    docSpace: {
-      myDocuments: string;
-      myFavorites: string;
-      myShares: string;
-      aiTaskArchive: string;
-      myFolders: string;
-      syncToDocSpace: string;
-      syncSuccess: string;
-      viewInDocSpace: string;
-      moveToDocuments: string;
-      moveToFolder: string;
-      rename: string;
-      batchDelete: string;
-      share: string;
-      shareToUser: string;
-      shareViaLink: string;
-      sharePermission: string;
-      readPermission: string;
-      editPermission: string;
-      copyLink: string;
-      manageShares: string;
-      revokeShare: string;
-      linkCopied: string;
-      selectTarget: string;
-      newFolder: string;
-      fileMissing: string;
-      preview: string;
-      noFiles: string;
-      syncedCount: string;
-    };
-    basic: {
-      title: string;
-      description: string;
-      retrieval: {
-        title: string;
-        description: string;
-        defaultModel: string;
-        fastModel: string;
-        embedModel: string;
-        reranker: string;
-        placeholder: string;
-      };
-      contentGuard: {
-        title: string;
-        description: string;
-        enable: string;
-        enableHint: string;
-        enableLLM: string;
-        enableLLMHint: string;
-        model: string;
-        modelPlaceholder: string;
-      };
-      theme: {
-        title: string;
-        description: string;
-        system: string;
-        light: string;
-        dark: string;
-      };
-      language: {
-        title: string;
-        description: string;
-      };
-      services: {
-        title: string;
-        description: string;
-        docCenter: string;
-        docCenterDesc: string;
-        neo4j: string;
-        neo4jDesc: string;
-        apiDocs: string;
-        apiDocsDesc: string;
-        minio: string;
-        minioDesc: string;
-        milvus: string;
-        milvusDesc: string;
-        ragflow: string;
-        ragflowDesc: string;
-      };
-      validateModel: string;
-      validating: string;
-      validation: {
-        available: string;
-        unavailable: string;
-        error: string;
-        message: string;
-      };
-      save: string;
-      saveSuccess: string;
-      saveFailed: string;
-    };
   };
-  humanInput: {
-    answered: string;
-    pending: string;
-    readOnly: string;
-  };
-  sidecar: {
-    selectionCrossesMessages: string;
+
+  // Login / Auth
+  login: {
+    signInTitle: string;
+    createAccountTitle: string;
+    email: string;
+    emailPlaceholder: string;
+    password: string;
+    passwordPlaceholder: string;
+    pleaseWait: string;
+    signIn: string;
+    createAccount: string;
+    createAdminAccount: string;
+    adminSetupRequiredTitle: string;
+    adminSetupRequiredDescription: string;
+    orContinueWith: string;
+    ssoHint: string;
+    continueWith: (provider: string) => string;
+    noAccountSignUp: string;
+    haveAccountSignIn: string;
+    backToHome: string;
+    networkError: string;
+    authFailed: string;
+    errors: {
+      sso_failed: string;
+      sso_cancelled: string;
+      sso_account_exists: string;
+      sso_not_allowed: string;
+    };
   };
 }
