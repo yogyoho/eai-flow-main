@@ -292,7 +292,7 @@ export default function ChatPage() {
                     onContextChange={(context) =>
                       setSettings("context", context)
                     }
-                    setLocalGoal={setLocalGoal}
+                    onGoalChange={setLocalGoal}
                     onSubmit={handleSubmit}
                     onStop={handleStop}
                   />
