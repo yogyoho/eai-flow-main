@@ -1,321 +1,178 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/core/auth/AuthProvider";
-import {
-  canCreateRegularAccount,
-  fetchSetupStatus,
-  type SetupStatusResponse,
-} from "@/core/auth/setup";
-import { parseAuthError } from "@/core/auth/types";
-import { useI18n } from "@/core/i18n/hooks";
-
-/**
- * Validate next parameter
- * Prevent open redirect attacks
- * Per RFC-001: Only allow relative paths starting with /
- */
-function validateNextParam(next: string | null): string | null {
-  if (!next) {
-    return null;
-  }
-
-  // Need start with / (relative path)
-  if (!next.startsWith("/")) {
-    return null;
-  }
-
-  // Disallow protocol-relative URLs
-  if (
-    next.startsWith("//") ||
-    next.startsWith("http://") ||
-    next.startsWith("https://")
-  ) {
-    return null;
-  }
-
-  // Disallow URLs with different protocols (e.g., javascript:, data:, etc)
-  if (next.includes(":") && !next.startsWith("/")) {
-    return null;
-  }
-
-  // Valid relative path
-  return next;
-}
 
 export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
-  const { theme, resolvedTheme } = useTheme();
-  const { t } = useI18n();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
-  const [ssoProviders, setSsoProviders] = useState<
-    { id: string; display_name: string; type: string }[]
-  >([]);
-  const [setupStatus, setSetupStatus] = useState<SetupStatusResponse | null>(
-    null,
-  );
-  const [setupStatusChecked, setSetupStatusChecked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Extract error from query params (e.g., ?error=sso_failed)
-  const errorParam = searchParams.get("error");
-  const [error, setError] = useState(
-    errorParam
-      ? (t.login.errors[errorParam as keyof typeof t.login.errors] ??
-          t.login.authFailed)
-      : "",
-  );
-  const [showSsoHint, setShowSsoHint] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const nextParam = searchParams.get("next");
-  const redirectPath = validateNextParam(nextParam) ?? "/workspace";
-  const regularSignupAllowed = canCreateRegularAccount({
-    checked: setupStatusChecked,
-    status: setupStatus,
-  });
-  const systemNeedsAdminSetup = setupStatus?.needs_setup === true;
-
-  // Redirect if already authenticated (client-side, post-login)
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push(redirectPath);
+    const hasRedirect =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("redirect");
+    if (!hasRedirect) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
     }
-  }, [isAuthenticated, redirectPath, router]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void fetchSetupStatus()
-      .then((data) => {
-        if (cancelled) return;
-        setSetupStatus(data);
-        if (data.needs_setup) {
-          setIsLogin(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSetupStatus(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setSetupStatusChecked(true);
-        }
-      });
-
-    void fetch("/api/v1/auth/providers")
-      .then((r) => r.json())
-      .then(
-        (data: {
-          providers: { id: string; display_name: string; type: string }[];
-        }) => {
-          if (!cancelled) {
-            setSsoProviders(data.providers ?? []);
-          }
-        },
-      )
-      .catch(() => {
-        // Ignore errors; no SSO providers shown
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setShowSsoHint(false);
-    setLoading(true);
-
-    if (!isLogin && !regularSignupAllowed) {
-      setError(t.login.adminSetupRequiredDescription);
-      setLoading(false);
-      return;
-    }
-
+    setIsLoading(true);
     try {
-      const endpoint = isLogin
-        ? "/api/v1/auth/login/local"
-        : "/api/v1/auth/register";
-      const body = isLogin
-        ? `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-        : JSON.stringify({ email, password });
+      const formData = new URLSearchParams();
+      formData.append("username", email);
+      formData.append("password", password);
 
-      const headers: HeadersInit = isLogin
-        ? { "Content-Type": "application/x-www-form-urlencoded" }
-        : { "Content-Type": "application/json" };
-
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/v1/auth/login/local", {
         method: "POST",
-        headers,
-        body,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
         credentials: "include",
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        const authError = parseAuthError(data);
-        setError(authError.message);
-        if (isLogin && ssoProviders.length > 0) {
-          setShowSsoHint(true);
-        }
+        const data = await res.json().catch(() => ({}));
+        const detail =
+          typeof data.detail === "object" && data.detail?.message
+            ? data.detail.message
+            : typeof data.detail === "string"
+              ? data.detail
+              : "Login failed";
+        setError(detail);
         return;
       }
 
-      router.push(redirectPath);
-    } catch {
-      setError(t.login.networkError);
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("redirect")
+          : null;
+      window.location.href = redirectUrl ?? "/";
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Network error"
+      );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const actualTheme = theme === "system" ? resolvedTheme : theme;
-
   return (
-    <div className="bg-background relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto">
-      <FlickeringGrid
-        className="absolute inset-0 z-0 mask-[url(/images/deer.svg)] mask-size-[100vw] mask-center mask-no-repeat md:mask-size-[72vh]"
-        squareSize={4}
-        gridGap={4}
-        color={actualTheme === "dark" ? "white" : "black"}
-        maxOpacity={0.3}
-        flickerChance={0.25}
-      />
-      <div className="border-border/20 bg-background/5 w-full max-w-md space-y-6 rounded-3xl border p-8 backdrop-blur-sm">
-        <div className="text-center">
-          <h1 className="text-foreground font-serif text-3xl">EAIFlow</h1>
-          <p className="text-muted-foreground mt-2">
-            {isLogin ? t.login.signInTitle : t.login.createAccountTitle}
+    <div className="min-h-screen flex w-full bg-background">
+      {/* Left - Background & Text */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 text-foreground relative overflow-hidden">
+        <img
+          src="/leftPanel.png?v=1"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-black/30" />
+        <div className="relative z-10 mt-32">
+          <h1 className="text-[56px] font-bold mb-8 tracking-wide text-white">
+            吉林化工工程Agent
+          </h1>
+          <h2 className="text-3xl font-medium mb-6 text-white">
+            企业智能体应用平台
+          </h2>
+          <p className="text-xl text-white/80">
+            Harness驱动的多智能体协作、多模态交互、本地知识库
           </p>
         </div>
+        <div className="relative z-10 text-sm text-white/60">
+          &copy; 吉林化工工程有限公司 2026 v0.5
+        </div>
+      </div>
 
-        {systemNeedsAdminSetup && (
-          <div className="border-l-2 border-blue-500 ps-3 text-sm">
-            <p className="font-medium">{t.login.adminSetupRequiredTitle}</p>
-            <p className="text-muted-foreground mt-1">
-              {t.login.adminSetupRequiredDescription}
-            </p>
-            <Link
-              href="/setup"
-              className="mt-2 inline-block font-medium text-blue-500 hover:underline"
-            >
-              {t.login.createAdminAccount}
-            </Link>
-          </div>
-        )}
+      {/* Right - Login Form */}
+      <div className="flex-1 flex flex-col relative">
+        <div className="absolute top-6 right-8">
+          <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground text-sm"
+          >
+            返回首页
+          </Link>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <div className="flex flex-col space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              {t.login.email}
-            </label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t.login.emailPlaceholder}
-              required
-            />
-          </div>
-          <div className="flex flex-col space-y-1">
-            <label htmlFor="password" className="text-sm font-medium">
-              {t.login.password}
-            </label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t.login.passwordPlaceholder}
-              required
-              minLength={isLogin ? 6 : 8}
-            />
-          </div>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md bg-card rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-border p-10">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                欢迎回来
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                请输入您的账号信息登录
+              </p>
+            </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  邮箱
+                </label>
+                <Input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-11"
+                />
+              </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading
-              ? t.login.pleaseWait
-              : isLogin
-                ? t.login.signIn
-                : t.login.createAccount}
-          </Button>
-        </form>
-
-        {ssoProviders.length > 0 && (
-          <div className="space-y-2">
-            {isLogin && (
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background text-muted-foreground px-2">
-                    {t.login.orContinueWith}
-                  </span>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  密码
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="请输入密码"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
-            )}
-            {showSsoHint && (
-              <p className="text-muted-foreground text-center text-sm">
-                {t.login.ssoHint}
-              </p>
-            )}
-            {ssoProviders.map((provider) => (
+
+              {error && (
+                <p className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+
               <Button
-                key={provider.id}
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={loading}
-                onClick={() => {
-                  window.location.href = `/api/v1/auth/oauth/${provider.id}?next=${encodeURIComponent(redirectPath)}`;
-                }}
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 text-base"
               >
-                {t.login.continueWith(provider.display_name)}
+                {isLoading ? "登录中..." : "登录"}
               </Button>
-            ))}
+            </form>
           </div>
-        )}
-
-        {regularSignupAllowed && (
-          <div className="text-center text-sm">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError("");
-                setShowSsoHint(false);
-              }}
-              className="text-blue-500 hover:underline"
-            >
-              {isLogin ? t.login.noAccountSignUp : t.login.haveAccountSignIn}
-            </button>
-          </div>
-        )}
-
-        <div className="text-muted-foreground text-center text-xs">
-          <Link href="/" className="hover:underline">
-            {t.login.backToHome}
-          </Link>
         </div>
       </div>
     </div>

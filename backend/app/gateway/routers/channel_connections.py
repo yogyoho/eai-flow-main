@@ -693,3 +693,74 @@ async def configure_channel_provider_runtime(
     request.app.state.channels_config = live_channels_config
 
     return _provider_response(config, live_channels_config, provider, _PROVIDER_META[provider])
+
+
+# ── WeChat iLink bot management ────────────────────────────────────────
+
+class WechatBindStatusResponse(BaseModel):
+    status: str
+    bound: bool
+    qrcode_url: str | None = None
+
+
+class WechatBindCodeResponse(BaseModel):
+    code: str
+    instruction: str
+
+
+class WechatShareQrcodeResponse(BaseModel):
+    qrcode_img_content: str
+
+
+def _get_wechat_channel(request: Request):
+    """Return the live WeChat channel instance, or raise 404."""
+    from app.channels.wechat import WechatChannel
+
+    channel_service = getattr(request.app.state, "channel_service", None)
+    if channel_service is None:
+        raise HTTPException(status_code=503, detail="Channel service not available")
+    wechat = channel_service.get_channel("wechat")
+    if wechat is None or not isinstance(wechat, WechatChannel):
+        raise HTTPException(status_code=404, detail="WeChat channel not configured or not running")
+    return wechat
+
+
+@router.post("/wechat/bind", response_model=dict)
+async def start_wechat_bind(request: Request):
+    """Admin: start (or restart) the WeChat QR code bind flow."""
+    await require_admin_user(request, detail="Admin privileges required to manage WeChat bot binding")
+    wechat = _get_wechat_channel(request)
+    await wechat.start_bind()
+    state = wechat.get_bind_state()
+    return {"qrcode_url": state.get("qrcode_img_content")}
+
+
+@router.get("/wechat/bind-status", response_model=WechatBindStatusResponse)
+async def get_wechat_bind_status(request: Request):
+    """Get the current WeChat bot bind status."""
+    wechat = _get_wechat_channel(request)
+    state = wechat.get_bind_state()
+    return WechatBindStatusResponse(
+        status=state.get("status", "unbound"),
+        bound=state.get("status") == "confirmed",
+        qrcode_url=state.get("qrcode_img_content"),
+    )
+
+
+@router.post("/wechat/bind-code", response_model=WechatBindCodeResponse)
+async def create_wechat_bind_code(request: Request):
+    """Generate a one-time /connect <code> for WeChat user account linking."""
+    code = _new_binding_code()
+    instruction = _connect_instruction("wechat", code)
+    return WechatBindCodeResponse(code=code, instruction=instruction)
+
+
+@router.post("/wechat/share-qrcode", response_model=WechatShareQrcodeResponse)
+async def refresh_wechat_share_qrcode(request: Request):
+    """Generate a fresh WeChat share QR code for adding the bot."""
+    wechat = _get_wechat_channel(request)
+    result = await wechat.fetch_share_qrcode()
+    qrcode_img = result.get("qrcode_img_content", "")
+    if not qrcode_img:
+        raise HTTPException(status_code=500, detail="Failed to fetch WeChat share QR code")
+    return WechatShareQrcodeResponse(qrcode_img_content=qrcode_img)

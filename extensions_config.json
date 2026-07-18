@@ -171,13 +171,10 @@
     }
   },
   "skills": {
-    "fire-protection-report": {
-      "enabled": false
-    },
-    "fire-protection-report-v2": {
+    "fire-protection-extract": {
       "enabled": true
     },
-    "fire-protection-extract": {
+    "fire-protection-report-v2": {
       "enabled": true
     },
     "report-format": {
@@ -209,9 +206,6 @@
     },
     "contract-price-analysis": {
       "enabled": true
-    },
-    "geological-report": {
-      "enabled": false
     },
     "plugin-dbd709b2-f795-45a6-8ee5-d4360ca671b7": {
       "enabled": true

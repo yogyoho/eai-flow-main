@@ -362,7 +362,7 @@ export default function RuleEngine({
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">总规则数</div>
-              <div className="text-2xl font-bold text-foreground">{statistics?.total ?? "-"}</div>
+              <div className="text-2xl font-bold text-foreground font-cyber">{statistics?.total ?? "-"}</div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-gradient-to-br from-card to-success/5 p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -371,7 +371,7 @@ export default function RuleEngine({
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">已启用</div>
-              <div className="text-2xl font-bold text-success">{statistics?.enabled ?? "-"}</div>
+              <div className="text-2xl font-bold text-success font-cyber">{statistics?.enabled ?? "-"}</div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -380,7 +380,7 @@ export default function RuleEngine({
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">本月触发</div>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold text-primary font-cyber">
                 {triggerStats?.monthTriggers?.toLocaleString() ?? "-"}
               </div>
             </div>
@@ -391,7 +391,7 @@ export default function RuleEngine({
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">拦截问题</div>
-              <div className="text-2xl font-bold text-destructive">{triggerStats?.monthBlocked ?? "-"}</div>
+              <div className="text-2xl font-bold text-destructive font-cyber">{triggerStats?.monthBlocked ?? "-"}</div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-gradient-to-br from-card to-warning/5 p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -400,7 +400,7 @@ export default function RuleEngine({
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-sm text-muted-foreground">种子规则</div>
-              <div className="text-2xl font-bold text-warning">{seedStatus?.seedTotal ?? "-"}</div>
+              <div className="text-2xl font-bold text-warning font-cyber">{seedStatus?.seedTotal ?? "-"}</div>
             </div>
           </div>
         </div>

@@ -131,3 +131,44 @@ export function useDisconnectChannelProvider() {
     },
   });
 }
+
+// ── WeChat / iLink bind code ─────────────────────────────────────────
+
+export function useCreateWechatBindCode() {
+  return useMutation({
+    mutationFn: () =>
+      import("./api").then((m) => m.createWechatBindCode()),
+  });
+}
+
+export function useStartWechatBotBind() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      import("./api").then((m) => m.startWechatBotBind()),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: wechatBotBindStatusQueryKey,
+      });
+    },
+  });
+}
+
+const wechatBotBindStatusQueryKey = ["wechat-bot-bind-status"] as const;
+
+export function useWechatBotBindStatus(enabled: boolean) {
+  return useQuery({
+    queryKey: wechatBotBindStatusQueryKey,
+    queryFn: () =>
+      import("./api").then((m) => m.getWechatBotBindStatus()),
+    enabled,
+    refetchInterval: enabled ? 10_000 : false,
+  });
+}
+
+export function useRefreshWechatShareQrcode() {
+  return useMutation({
+    mutationFn: () =>
+      import("./api").then((m) => m.refreshWechatShareQrcode()),
+  });
+}

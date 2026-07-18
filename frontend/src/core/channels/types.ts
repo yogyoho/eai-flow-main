@@ -51,3 +51,18 @@ export interface ChannelConnectResponse {
   instruction: string;
   expires_in: number;
 }
+
+export interface WechatBotBindStatus {
+  status: "unbound" | "pending" | "confirmed" | "expired";
+  bound: boolean;
+  qrcode_url?: string;
+}
+
+export interface WechatBindCodeResponse {
+  code: string;
+  instruction: string;
+}
+
+export interface WechatShareQrcodeResponse {
+  qrcode_img_content: string;
+}

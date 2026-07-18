@@ -1,4 +1,4 @@
-/* Google Fonts disabled for intranet deployment — replace with @fontsource packages or system fonts */
+/* Fonts loaded via @fontsource in globals.css — no Google CDN dependency */
 
 /* ─── Reference Dashboard Design Tokens ─── */
 :root {

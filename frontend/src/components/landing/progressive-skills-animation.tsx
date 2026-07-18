@@ -461,7 +461,7 @@ export default function ProgressiveSkillsAnimation() {
           <div className="border-border dark:border-zinc-800 border-b p-4">
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-green-500" />
-              <span className="text-sm dark:text-zinc-400 text-muted-foreground">DeerFlow Agent</span>
+              <span className="text-sm dark:text-zinc-400 text-muted-foreground">EAIFlow Agent</span>
             </div>
           </div>
 
@@ -691,7 +691,7 @@ export default function ProgressiveSkillsAnimation() {
           {/* Chat Input (decorative) */}
           <div className="border-border dark:border-zinc-800 border-t p-4">
             <div className="rounded-xl dark:bg-zinc-800 bg-muted px-4 py-3 text-sm dark:text-zinc-500 text-muted-foreground">
-              Ask DeerFlow anything...
+              Ask EAIFlow anything...
             </div>
           </div>
         </div>

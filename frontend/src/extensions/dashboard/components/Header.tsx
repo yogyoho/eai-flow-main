@@ -67,8 +67,8 @@ export default function Header() {
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <span>{taskCount === 0 ? "所有任务已完成" : `待办任务: ${taskCount}`}</span>
               <span className="text-slate-300 dark:text-slate-600">|</span>
-              <span className="hidden sm:inline" suppressHydrationWarning>{time}</span>
-              <span className="font-bold hidden sm:inline font-mono-db text-blue-600 dark:text-cyan-400">.{millis} MS</span>
+              <span className="hidden sm:inline font-cyber" suppressHydrationWarning>{time}</span>
+              <span className="font-bold hidden sm:inline font-cyber text-blue-600 dark:text-cyan-400">.{millis} MS</span>
             </p>
           </div>
         </div>

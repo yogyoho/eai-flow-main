@@ -492,9 +492,9 @@ export default function SampleReports() {
                   ·
                 </span>
               )}
-              <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+              <span className="inline-flex items-baseline gap-1 whitespace-nowrap ">
                 <span className="text-muted-foreground">{s.label}</span>
-                <span className={cn("font-semibold tabular-nums", s.color)}>{s.value}</span>
+                <span className={cn("font-semibold tabular-nums font-cyber", s.color)}>{s.value}</span>
               </span>
             </Fragment>
           ))}

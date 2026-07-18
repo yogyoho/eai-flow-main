@@ -53,7 +53,7 @@ export function WhatsNewSection({ className }: { className?: string }) {
     <Section
       className={cn("", className)}
       title="Whats New in EAIFlow"
-      subtitle="DeerFlow is now evolving from a Deep Research agent into a full-stack Super Agent"
+      subtitle="EAIFlow is now evolving from a Deep Research agent into a full-stack Super Agent"
     >
       <div className="flex w-full items-center justify-center">
         <MagicBento data={features} />

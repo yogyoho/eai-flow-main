@@ -323,19 +323,19 @@ export function ComplianceRules({
                 <>
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">总计</span>
-                    <span className="text-xl font-bold text-foreground">
+                    <span className="text-xl font-bold text-foreground font-cyber">
                       {statistics.total}
                     </span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">启用</span>
-                    <span className="text-xl font-bold text-success">
+                    <span className="text-xl font-bold text-success font-cyber">
                       {statistics.enabled}
                     </span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">禁用</span>
-                    <span className="text-xl font-bold text-muted-foreground">
+                    <span className="text-xl font-bold text-muted-foreground font-cyber">
                       {statistics.disabled}
                     </span>
                   </div>

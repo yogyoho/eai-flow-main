@@ -417,7 +417,7 @@ function LawListView({
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 truncate text-sm text-muted-foreground">{cat.name}</div>
                     <div className={cn("flex flex-wrap items-baseline gap-x-1 tabular-nums", cat.color)}>
-                      <span className="text-2xl font-bold">{count}</span>
+                      <span className="text-2xl font-bold font-cyber">{count}</span>
                       <span className="text-sm font-medium text-muted-foreground">份</span>
                     </div>
                   </div>

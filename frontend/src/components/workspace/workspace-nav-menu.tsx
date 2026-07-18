@@ -1,15 +1,14 @@
 "use client";
 
 import {
-  BugIcon,
+  BookOpen,
   ChevronsUpDown,
-  GlobeIcon,
-  InfoIcon,
-  MailIcon,
-  Settings2Icon,
+  Factory,
+  LogOut,
   SettingsIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   DropdownMenu,
@@ -27,20 +26,17 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 
-import { GithubIcon } from "./github-icon";
 import { SettingsDialog } from "./settings";
 
 function NavMenuButtonContent({
   isSidebarOpen,
-  t,
 }: {
   isSidebarOpen: boolean;
-  t: ReturnType<typeof useI18n>["t"];
 }) {
   return isSidebarOpen ? (
     <div className="text-muted-foreground flex w-full items-center gap-2 text-left text-sm">
       <SettingsIcon className="size-4" />
-      <span>{t.workspace.settingsAndMore}</span>
+      <span>设置和更多</span>
       <ChevronsUpDown className="text-muted-foreground ml-auto size-4" />
     </div>
   ) : (
@@ -52,23 +48,31 @@ function NavMenuButtonContent({
 
 export function WorkspaceNavMenu() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsDefaultSection, setSettingsDefaultSection] = useState<
-    "appearance" | "memory" | "tools" | "skills" | "notification" | "about"
-  >("appearance");
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
-  const { t } = useI18n();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // best-effort
+    }
+    window.location.href = "/";
+  };
 
   return (
     <>
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        defaultSection={settingsDefaultSection}
       />
       <SidebarMenu className="w-full">
         <SidebarMenuItem>
@@ -79,7 +83,7 @@ export function WorkspaceNavMenu() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <NavMenuButtonContent isSidebarOpen={isSidebarOpen} t={t} />
+                  <NavMenuButtonContent isSidebarOpen={isSidebarOpen} />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -88,69 +92,30 @@ export function WorkspaceNavMenu() {
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSettingsDefaultSection("appearance");
-                      setSettingsOpen(true);
-                    }}
-                  >
-                    <Settings2Icon />
-                    {t.common.settings}
+                  <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                    <SettingsIcon className="size-4" />
+                    设置
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <a
-                    href="https://deerflow.tech/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <GlobeIcon />
-                      {t.workspace.officialWebsite}
-                    </DropdownMenuItem>
-                  </a>
-                  <a
-                    href="https://github.com/bytedance/deer-flow"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <GithubIcon />
-                      {t.workspace.visitGithub}
-                    </DropdownMenuItem>
-                  </a>
+                  <DropdownMenuItem onClick={() => router.push("/knowledge")}>
+                    <BookOpen className="size-4" />
+                    知识库
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
+                    <Factory className="size-4" />
+                    知识工厂
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <a
-                    href="https://github.com/bytedance/deer-flow/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <BugIcon />
-                      {t.workspace.reportIssue}
-                    </DropdownMenuItem>
-                  </a>
-                  <a href="mailto:support@deerflow.tech">
-                    <DropdownMenuItem>
-                      <MailIcon />
-                      {t.workspace.contactUs}
-                    </DropdownMenuItem>
-                  </a>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="size-4" />
+                    退出登录
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSettingsDefaultSection("about");
-                    setSettingsOpen(true);
-                  }}
-                >
-                  <InfoIcon />
-                  {t.workspace.about}
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <SidebarMenuButton size="lg" className="pointer-events-none">
-              <NavMenuButtonContent isSidebarOpen={isSidebarOpen} t={t} />
+              <NavMenuButtonContent isSidebarOpen={isSidebarOpen} />
             </SidebarMenuButton>
           )}
         </SidebarMenuItem>

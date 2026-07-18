@@ -222,14 +222,20 @@ get_feedback_repo: Callable[[Request], FeedbackRepository] = _require("feedback_
 get_run_store: Callable[[Request], RunStore] = _require("run_store", "Run store")
 
 
-async def require_admin_user(request: Request) -> None:
-    """Require the authenticated caller to be an admin user (HTTP 403 otherwise)."""
+async def require_admin_user(request: Request, *, detail: str) -> None:
+    """Require the authenticated caller to be an admin user.
+
+    ``AuthMiddleware`` normally stamps ``request.state.user`` before the request
+    reaches a router. Falling back to the strict dependency keeps the route safe
+    in tests or alternative ASGI compositions that mount a router without the
+    global middleware. ``detail`` is the route-specific 403 message.
+    """
     user = getattr(request.state, "user", None)
     if user is None:
         user = await get_current_user_from_request(request)
     role = getattr(user, "system_role", None) or getattr(user, "role", None)
     if role != "admin":
-        raise HTTPException(status_code=403, detail="Admin privileges required")
+        raise HTTPException(status_code=403, detail=detail)
 
 
 def get_store(request: Request):

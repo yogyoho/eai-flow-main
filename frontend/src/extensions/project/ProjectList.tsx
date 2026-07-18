@@ -342,7 +342,7 @@ export function ProjectList() {
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-[14px] text-muted-foreground">{stat.label}</span>
-              <span className="text-[22px] font-bold leading-tight text-foreground">{stat.count}</span>
+              <span className="text-[22px] font-bold leading-tight text-foreground font-cyber">{stat.count}</span>
             </div>
           </div>
         ))}

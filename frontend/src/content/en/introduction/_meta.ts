@@ -5,7 +5,7 @@ const meta: MetaRecord = {
     title: "Introduction",
   },
   "why-deerflow": {
-    title: "Why DeerFlow",
+    title: "Why EAIFlow",
   },
   "core-concepts": {
     title: "Core Concepts",

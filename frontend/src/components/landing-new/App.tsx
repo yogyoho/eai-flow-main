@@ -211,37 +211,42 @@ export default function LandingNew() {
           </div>
 
           {/* 右侧：数据统计卡片 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative">
-            {/* 装饰性背景 */}
-            <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full -z-10"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
+            {/* 装饰性背景 — subtle warm glow in light, cool glow in dark */}
+            <div className="absolute -inset-10 bg-primary/5 dark:bg-primary/[0.03] blur-[100px] rounded-full -z-10" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] bg-teal-400/5 dark:bg-teal-400/[0.04] blur-[80px] rounded-full -z-10" />
 
             <StatsCard
               variants={itemVariants}
-              icon={<Star className="w-6 h-6 text-primary" />}
+              icon={<Star className="w-5 h-5" />}
               number="2300+"
               title="知识量"
               desc="业务人员的参与与支持"
+              accent="amber"
             />
             <StatsCard
               variants={itemVariants}
-              icon={<CheckCircle2 className="w-6 h-6 text-primary" />}
+              icon={<CheckCircle2 className="w-5 h-5" />}
               number="200+"
               title="SKILLS数量"
               desc="持续改进和问题解决能力"
+              accent="emerald"
             />
             <StatsCard
               variants={itemVariants}
-              icon={<GitMerge className="w-6 h-6 text-primary" />}
+              icon={<GitMerge className="w-5 h-5" />}
               number="50+"
               title="MCP数量"
               desc="活跃的开发迭代和功能更新"
+              accent="violet"
             />
             <StatsCard
               variants={itemVariants}
-              icon={<ShieldCheck className="w-6 h-6 text-primary" />}
+              icon={<ShieldCheck className="w-5 h-5" />}
               number="10+"
               title="报告种类"
               desc="煤炭行业工程设计类报告生成"
+              accent="sky"
             />
           </div>
         </motion.div>
@@ -316,27 +321,46 @@ function StatsCard({
   title,
   desc,
   variants,
+  accent = "primary",
 }: {
   icon: React.ReactNode;
   number: string;
   title: string;
   desc: string;
   variants: Variants;
+  accent?: "amber" | "emerald" | "violet" | "sky" | "primary";
 }) {
+  const accentColors: Record<string, { light: string; dark: string; glow: string }> = {
+    amber:   { light: "bg-amber-50 border-amber-200 text-amber-600", dark: "dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400", glow: "dark:shadow-amber-500/10" },
+    emerald: { light: "bg-emerald-50 border-emerald-200 text-emerald-600", dark: "dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400", glow: "dark:shadow-emerald-500/10" },
+    violet:  { light: "bg-violet-50 border-violet-200 text-violet-600", dark: "dark:bg-violet-500/10 dark:border-violet-500/20 dark:text-violet-400", glow: "dark:shadow-violet-500/10" },
+    sky:     { light: "bg-sky-50 border-sky-200 text-sky-600", dark: "dark:bg-sky-500/10 dark:border-sky-500/20 dark:text-sky-400", glow: "dark:shadow-sky-500/10" },
+    primary: { light: "bg-primary/10 border-primary/20 text-primary", dark: "dark:bg-primary/10 dark:border-primary/20 dark:text-primary", glow: "dark:shadow-primary/10" },
+  };
+  const a = accentColors[accent] ?? accentColors.primary;
+
   return (
     <motion.div
       variants={variants}
-      whileHover={{ y: -4 }}
-      className="glass-card rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 cursor-pointer"
+      whileHover={{ y: -6, scale: 1.02 }}
+      className="glass-card stats-card-glow rounded-3xl p-7 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl cursor-pointer group"
     >
-      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+      {/* icon container — tinted per accent */}
+      <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center mb-5 transition-colors duration-300 ${a.light} ${a.dark}`}>
         {icon}
       </div>
+
+      {/* stat body */}
       <div>
-        <h3 className="text-4xl font-black text-foreground dark:text-white mb-2 tracking-tight">{number}</h3>
-        <p className="text-sm font-bold text-muted-foreground dark:text-muted-foreground mb-1">{title}</p>
-        <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed">{desc}</p>
+        <h3 className="text-[2.25rem] font-black text-foreground dark:text-white mb-1.5 tracking-tight tabular-nums leading-none">
+          {number}
+        </h3>
+        <p className="text-sm font-semibold text-foreground/80 dark:text-white/80 mb-1">{title}</p>
+        <p className="text-xs text-muted-foreground dark:text-white/45 leading-relaxed">{desc}</p>
       </div>
+
+      {/* subtle bottom accent bar — visible on hover */}
+      <div className={`mt-5 h-0.5 w-0 group-hover:w-full rounded-full transition-all duration-500 ease-out bg-gradient-to-r ${accent === "amber" ? "from-amber-400 to-amber-500" : accent === "emerald" ? "from-emerald-400 to-emerald-500" : accent === "violet" ? "from-violet-400 to-violet-500" : accent === "sky" ? "from-sky-400 to-sky-500" : "from-primary to-primary/60"}`} />
     </motion.div>
   );
 }

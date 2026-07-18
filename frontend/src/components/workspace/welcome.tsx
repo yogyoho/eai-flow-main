@@ -1,7 +1,8 @@
 "use client";
 
+import { Bot } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
@@ -10,63 +11,70 @@ import { AuroraText } from "../ui/aurora-text";
 
 let waved = false;
 
-function WelcomeDescription({ children }: { children: string }) {
-  return (
-    <p className="max-w-full text-wrap break-words whitespace-pre-line">
-      {children}
-    </p>
-  );
-}
-
 export function Welcome({
   className,
   mode,
+  skill,
 }: {
   className?: string;
-  mode?: "ultra" | "pro" | "thinking" | "flash";
+  mode?: string;
+  skill?: { displayName: string; description: string } | null;
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const isUltra = useMemo(() => mode === "ultra", [mode]);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const colors = useMemo(() => {
     if (isUltra) {
-      return ["#efefbb", "#e9c665", "#e3a812"];
+      return ["#fef3c7", "#fde68a", "#fcd34d"];
     }
-    return ["var(--color-foreground)"];
-  }, [isUltra]);
+    return isDark
+      ? ["#ffffff", "#ffffff", "#ffffff"]
+      : ["#151616", "#151616", "#151616"];
+  }, [isUltra, isDark]);
+
   useEffect(() => {
     waved = true;
   }, []);
+
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-full flex-col items-center justify-center gap-2 px-4 py-4 text-center sm:px-8",
+        "mx-auto flex w-full flex-col items-center justify-center gap-2 px-8 py-4 text-center",
         className,
       )}
     >
-      <div className="max-w-full text-2xl font-bold">
+      <div className="text-2xl font-bold">
         {searchParams.get("mode") === "skill" ? (
           `✨ ${t.welcome.createYourOwnSkill} ✨`
         ) : (
-          <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+          <div className="flex items-center gap-2">
             <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
-              {isUltra ? "🚀" : "👋"}
+              {isUltra ? "🚀" : <Bot className="size-7 text-primary" />}
             </div>
-            <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
+            <AuroraText className="font-normal" colors={colors}>{t.welcome.greeting}</AuroraText>
           </div>
         )}
       </div>
-      {searchParams.get("mode") === "skill" ? (
-        <div className="text-muted-foreground max-w-full text-sm">
-          <WelcomeDescription>
-            {t.welcome.createYourOwnSkillDescription}
-          </WelcomeDescription>
+      {skill ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p>{skill.description}</p>
         </div>
-      ) : (
-        <div className="text-muted-foreground max-w-full text-sm">
-          <WelcomeDescription>{t.welcome.description}</WelcomeDescription>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
