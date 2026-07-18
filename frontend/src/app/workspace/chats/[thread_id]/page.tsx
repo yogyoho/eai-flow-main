@@ -12,14 +12,17 @@ import {
   useThreadChat,
 } from "@/components/workspace/chats";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
+import { GoalStatus } from "@/components/workspace/goal-status";
 import { InputBox } from "@/components/workspace/input-box";
 import {
   MessageList,
   MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
 } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
+import { ThreadScheduledTasksLink } from "@/components/workspace/thread-scheduled-tasks-link";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
+import { useActiveGoal } from "@/components/workspace/use-active-goal";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { Welcome } from "@/components/workspace/welcome";
 import { useI18n } from "@/core/i18n/hooks";
@@ -168,6 +171,7 @@ export default function ChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
+  const { activeGoal, setLocalGoal } = useActiveGoal(thread, thread.values.goal);
 
   if (!pageReady) {
     return <PageLoadingOverlay text="加载对话中..." />;
@@ -187,6 +191,7 @@ export default function ChatPage() {
           >
             <div className="flex w-full items-center text-sm font-medium">
               <ThreadTitle threadId={threadId} thread={thread} />
+              {!isNewThread && <ThreadScheduledTasksLink threadId={threadId} />}
             </div>
             <div className="flex items-center gap-2">
               <TokenUsageIndicator
@@ -205,6 +210,7 @@ export default function ChatPage() {
             </div>
           </header>
           <main className="flex min-h-0 max-w-full grow flex-col">
+            {activeGoal && <GoalStatus goal={activeGoal} />}
             <div className="flex min-h-0 flex-1 justify-center">
               <MessageList
                 className={cn("size-full", !isWelcomeMode && "pt-10")}
@@ -286,6 +292,7 @@ export default function ChatPage() {
                     onContextChange={(context) =>
                       setSettings("context", context)
                     }
+                    setLocalGoal={setLocalGoal}
                     onSubmit={handleSubmit}
                     onStop={handleStop}
                   />
