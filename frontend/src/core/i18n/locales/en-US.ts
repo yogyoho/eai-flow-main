@@ -706,6 +706,7 @@ export const enUS: Translations = {
       noFiles: "No Files",
       syncedCount: "Synced {count} file(s)",
     },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
   },
   sidecar: {
     selectionCrossesMessages:
