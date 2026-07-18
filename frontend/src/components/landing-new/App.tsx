@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MobileNav } from "@/components/landing/mobile-nav";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
 export default function LandingNew() {
@@ -103,6 +104,13 @@ export default function LandingNew() {
           <button onClick={() => handleNavClick("/knowledge-factory?tab=reports")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</button>
           <button onClick={() => handleNavClick("/docmgr")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</button>
           <button onClick={() => handleNavClick("/settings")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">设置</button>
+        </div>
+        <MobileNav links={[
+          { href: "/workspace/chats/new", label: "工程报告" },
+          { href: "/knowledge-factory?tab=reports", label: "知识工厂" },
+          { href: "/docmgr", label: "文档空间" },
+          { href: "/settings", label: "设置" },
+        ]} />
         </div>
 
         <div className="flex items-center">
