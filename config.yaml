@@ -203,6 +203,10 @@ tools:
   use: deerflow.sandbox.tools:bash_tool
 tool_search:
   enabled: false
+input_polish:
+  enabled: true
+  max_chars: 4000
+  model_name: null   # null = use default chat model; set to fast model for lower latency
 uploads:
   auto_convert_documents: true
   pdf_converter: auto

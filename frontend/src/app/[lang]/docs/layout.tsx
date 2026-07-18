@@ -12,16 +12,21 @@ const i18n = [
   { locale: "zh", name: "中文" },
 ];
 
+// Nextra getPageMap returns app routes mixed with doc content;
+// filter out absolute routes (app pages like /projects/[id]/scifi)
+// and prefix relative content routes.
 function formatPageRoute(base: string, items: PageMapItem[]): PageMapItem[] {
-  return items.map((item) => {
-    if ("route" in item && !item.route.startsWith(base)) {
-      item.route = `${base}${item.route}`;
-    }
-    if ("children" in item && item.children) {
-      item.children = formatPageRoute(base, item.children);
-    }
-    return item;
-  });
+  return items
+    .filter((item) => !("route" in item && item.route.startsWith("/")))
+    .map((item) => {
+      if ("route" in item && !item.route.startsWith(base)) {
+        item.route = `${base}${item.route}`;
+      }
+      if ("children" in item && item.children) {
+        item.children = formatPageRoute(base, item.children);
+      }
+      return item;
+    });
 }
 
 export default async function DocLayout({ children, params }) {

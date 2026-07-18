@@ -12,8 +12,6 @@ export function ThemeProvider({
     <NextThemesProvider
       {...props}
       forcedTheme={pathname === "/" ? "dark" : undefined}
-      enableColorScheme={false}
-      disableTransitionOnChange
     >
       {children}
     </NextThemesProvider>

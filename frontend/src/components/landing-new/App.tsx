@@ -111,7 +111,6 @@ export default function LandingNew() {
           { href: "/docmgr", label: "文档空间" },
           { href: "/settings", label: "设置" },
         ]} />
-        </div>
 
         <div className="flex items-center">
           {!isLoading && (

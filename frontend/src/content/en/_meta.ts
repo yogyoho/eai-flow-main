@@ -31,9 +31,6 @@ const meta: MetaRecord = {
   login: {
     type: "page",
   },
-  setup: {
-    type: "page",
-  },
 };
 
 export default meta;

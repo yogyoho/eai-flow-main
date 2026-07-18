@@ -30,6 +30,9 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/openapi.json",
     "/api/ui/config",
     "/api/license/status",
+    # OAuth endpoints are public (redirect flow + provider callback).
+    "/api/v1/auth/oauth/",
+    "/api/v1/auth/callback/",
 )
 
 # Exact auth paths that are public (login/register/status check).
@@ -41,6 +44,7 @@ _PUBLIC_EXACT_PATHS: frozenset[str] = frozenset(
         "/api/v1/auth/logout",
         "/api/v1/auth/setup-status",
         "/api/v1/auth/initialize",
+        "/api/v1/auth/providers",
     }
 )
 
