@@ -59,6 +59,31 @@ export const zhCN: Translations = {
     blog: "博客",
   },
 
+  // Sidecar chat
+  sidecar: {
+    title: "侧边对话",
+    open: "打开侧边对话",
+    close: "关闭侧边对话",
+    delete: "删除侧边对话",
+    deleteConfirm: "确定要删除此侧边对话吗？此操作无法撤消。",
+    deleteSuccess: "侧边对话已删除",
+    deleteFailed: "删除侧边对话失败",
+    addToConversation: "添加到对话",
+    askInSideChat: "在侧边对话中提问",
+    reference: "引用",
+    selectedTextFragment: "{count} 个选中文本片段",
+    selectedTextFragments: "{count} 个选中文本片段",
+    clearReferences: "清除选中引用",
+    emptyTitle: "追问",
+    emptyDescription: "基于引用的文本进行追问。",
+    placeholder: "输入更深入的问题...",
+    send: "发送",
+    sendFailed: "发送侧边对话消息失败",
+    noContext: "未选择上下文",
+    continuing: "在此侧边对话中继续",
+    selectionCrossesMessages: "选中内容跨越了多条消息，请在单条回复中选择文本。",
+  },
+
   // Welcome
   welcome: {
     greeting: "你好，欢迎回来！",
@@ -314,6 +339,14 @@ export const zhCN: Translations = {
   uploads: {
     uploading: "上传中...",
     uploadingFiles: "文件上传中，请稍候...",
+    limitsHint: (maxFiles: number, maxFileSize: string, maxTotalSize: string) =>
+      `添加附件（最多 ${maxFiles} 个文件，每个 ${maxFileSize}，总计 ${maxTotalSize}）`,
+    filesTooLarge: (files: string, maxFileSize: string) =>
+      `超过 ${maxFileSize} 单文件限制的文件未被添加: ${files}`,
+    tooManyFiles: (count: number, maxFiles: number) =>
+      `${count} 个文件未被添加，一次最多可附加 ${maxFiles} 个文件`,
+    totalSizeTooLarge: (count: number, maxTotalSize: string) =>
+      `${count} 个文件未被添加，总大小不能超过 ${maxTotalSize}`,
   },
 
   subtasks: {
@@ -643,5 +676,9 @@ export const zhCN: Translations = {
       noFiles: "暂无文件",
       syncedCount: "已同步 {count} 个文件",
     },
+  },
+  sidecar: {
+    selectionCrossesMessages:
+      "选区跨越了多条消息，请在同一条回复内选择要引用的文本。",
   },
 };

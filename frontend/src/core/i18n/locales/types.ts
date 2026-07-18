@@ -569,4 +569,7 @@ export interface Translations {
       saveFailed: string;
     };
   };
+  sidecar: {
+    selectionCrossesMessages: string;
+  };
 }
