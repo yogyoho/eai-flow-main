@@ -46,6 +46,7 @@ from app.gateway.routers import (
     memory,
     models,
     runs,
+    scheduled_tasks,
     skills,
     suggestions,
     thread_runs,
