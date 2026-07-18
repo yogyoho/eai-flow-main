@@ -143,11 +143,18 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
 
             app.state.run_store = RunRepository(sf)
             app.state.feedback_repo = FeedbackRepository(sf)
+            from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
+            from deerflow.persistence.scheduled_task_runs import ScheduledTaskRunRepository
+
+            app.state.scheduled_task_repo = ScheduledTaskRepository(sf)
+            app.state.scheduled_task_run_repo = ScheduledTaskRunRepository(sf)
         else:
             from deerflow.runtime.runs.store.memory import MemoryRunStore
 
             app.state.run_store = MemoryRunStore()
             app.state.feedback_repo = None
+            app.state.scheduled_task_repo = None
+            app.state.scheduled_task_run_repo = None
 
         from deerflow.persistence.thread_meta import make_thread_store
 
@@ -198,6 +205,8 @@ def _require(attr: str, label: str) -> Callable[[Request], T]:
     return dep
 
 
+get_scheduled_task_repo: Callable[[Request], "ScheduledTaskRepository"] = _require("scheduled_task_repo", "Scheduled task repository")
+get_scheduled_task_run_repo: Callable[[Request], "ScheduledTaskRunRepository"] = _require("scheduled_task_run_repo", "Scheduled task run repository")
 get_stream_bridge: Callable[[Request], StreamBridge] = _require("stream_bridge", "Stream bridge")
 get_run_manager: Callable[[Request], RunManager] = _require("run_manager", "Run manager")
 get_checkpointer: Callable[[Request], Checkpointer] = _require("checkpointer", "Checkpointer")
