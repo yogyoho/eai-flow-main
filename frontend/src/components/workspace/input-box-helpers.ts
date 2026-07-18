@@ -130,8 +130,8 @@ export function getMatchingSkillSuggestions(
       return true;
     }
     return (
-      (name ?? "").toLowerCase().includes(normalizedQuery) ||
-      (description ?? "").toLowerCase().includes(normalizedQuery)
+      name.toLowerCase().includes(normalizedQuery) ||
+      description.toLowerCase().includes(normalizedQuery)
     );
   });
 
