@@ -569,6 +569,11 @@ export interface Translations {
       saveFailed: string;
     };
   };
+  humanInput: {
+    answered: string;
+    pending: string;
+    readOnly: string;
+  };
   sidecar: {
     selectionCrossesMessages: string;
   };

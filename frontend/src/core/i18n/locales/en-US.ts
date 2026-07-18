@@ -60,6 +60,11 @@ export const enUS: Translations = {
   },
 
   // Sidecar chat
+  humanInput: {
+    answered: "Answered",
+    pending: "Pending...",
+    readOnly: "Read-only",
+  },
   sidecar: {
     title: "Side chat",
     open: "Open side chat",

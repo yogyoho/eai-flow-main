@@ -60,6 +60,11 @@ export const zhCN: Translations = {
   },
 
   // Sidecar chat
+  humanInput: {
+    answered: "已回答",
+    pending: "发送中...",
+    readOnly: "只读",
+  },
   sidecar: {
     title: "侧边对话",
     open: "打开侧边对话",
