@@ -10,18 +10,21 @@ import {
   useCallback,
   useMemo,
   useState,
-  useEffect,
+  type AnchorHTMLAttributes,
   type ImgHTMLAttributes,
 } from "react";
+import rehypeKatex from "rehype-katex";
 
 import { Loader } from "@/components/ai-elements/loader";
 import {
   Message as AIElementMessage,
   MessageContent as AIElementMessageContent,
+  MessageResponse as AIElementMessageResponse,
   MessageToolbar,
 } from "@/components/ai-elements/message";
 import {
   Reasoning,
+  ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Task, TaskTrigger } from "@/components/ai-elements/task";
@@ -31,38 +34,23 @@ import {
   upsertFeedback,
   type FeedbackData,
 } from "@/core/api/feedback";
-import {
-  resolveArtifactURL,
-  resolveMessageImageURL,
-} from "@/core/artifacts/utils";
-import { extractCitationSources } from "@/core/citations/sources";
+import { resolveArtifactURL } from "@/core/artifacts/utils";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   extractContentFromMessage,
   extractReasoningContentFromMessage,
-  getMessageCopyData,
   parseUploadedFiles,
   stripUploadedFilesTag,
   type FileInMessage,
 } from "@/core/messages/utils";
 import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
-import { readReferenceMessageContexts } from "@/core/sidecar";
-import {
-  parseSlashSkillReference,
-  resolveSlashSkillDisplay,
-} from "@/core/skills";
-import { useSkills } from "@/core/skills/hooks";
-import { SafeReasoningContent } from "@/core/streamdown/components";
+import { humanMessagePlugins } from "@/core/streamdown";
 import { cn } from "@/lib/utils";
 
-import { WorkspaceChangeBadge } from "../changes";
-import { CitationSourcesPanel } from "../citations/citation-sources-panel";
 import { CopyButton } from "../copy-button";
-import { ReferenceAttachmentSummary } from "../sidecar/reference-attachments";
-import { SlashSkillChip } from "../slash-skill-chip";
+import { SaveToDocButton } from "../save-to-doc-button";
 
 import { MarkdownContent } from "./markdown-content";
-import { createMarkdownLinkComponent } from "./markdown-link";
 
 function FeedbackButtons({
   threadId,
@@ -138,19 +126,15 @@ export function MessageListItem({
   feedback,
   runId,
   threadId,
-  artifactPaths = [],
   showCopyButton = true,
-  turnStartTime,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
   threadId: string;
-  artifactPaths?: readonly string[];
   feedback?: FeedbackData | null;
   runId?: string;
   showCopyButton?: boolean;
-  turnStartTime?: number | null;
 }) {
   const isHuman = message.type === "human";
   return (
@@ -163,9 +147,6 @@ export function MessageListItem({
         message={message}
         isLoading={isLoading}
         threadId={threadId}
-        artifactPaths={artifactPaths}
-        runId={runId}
-        turnStartTime={turnStartTime}
       />
       {!isLoading && showCopyButton && (
         <MessageToolbar
@@ -177,7 +158,19 @@ export function MessageListItem({
           )}
         >
           <div className="pointer-events-auto flex gap-1">
-            <CopyButton clipboardData={getMessageCopyData(message)} />
+            {!isHuman && extractContentFromMessage(message) && (
+              <SaveToDocButton
+                content={extractContentFromMessage(message) ?? ""}
+                threadId={threadId}
+              />
+            )}
+            <CopyButton
+              clipboardData={
+                extractContentFromMessage(message) ??
+                extractReasoningContentFromMessage(message) ??
+                ""
+              }
+            />
             {feedback !== undefined && runId && threadId && (
               <FeedbackButtons
                 threadId={threadId}
@@ -199,12 +192,10 @@ function MessageImage({
   src,
   alt,
   threadId,
-  artifactPaths,
   maxWidth = "90%",
   ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & {
   threadId: string;
-  artifactPaths: readonly string[];
   maxWidth?: string;
 }) {
   if (!src) return null;
@@ -215,7 +206,7 @@ function MessageImage({
     return <img className={imgClassName} src={src} alt={alt} {...props} />;
   }
 
-  const url = resolveMessageImageURL(src, threadId, artifactPaths);
+  const url = src.startsWith("/mnt/") ? resolveArtifactURL(src, threadId) : src;
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
@@ -224,119 +215,40 @@ function MessageImage({
   );
 }
 
-const clientTurnDurations = new Map<string, number>();
-
-function HumanMessageText({ content }: { content: string }) {
-  // `parseSlashSkillReference` is a pure regex gate (no data subscription), so
-  // the overwhelmingly common plain-text human message never subscribes to the
-  // skills query. Only a message that literally looks like a `/skill …`
-  // activation mounts `HumanSlashSkillText`, which owns the `useSkills()`
-  // lookup. This keeps a skill-enabled toggle from re-rendering every human
-  // turn — only the few slash-candidate turns react to catalog changes.
-  const reference = useMemo(() => parseSlashSkillReference(content), [content]);
-
-  if (!reference) {
-    return <div className="break-words whitespace-pre-wrap">{content}</div>;
-  }
-
-  return <HumanSlashSkillText content={content} />;
-}
-
-function HumanSlashSkillText({ content }: { content: string }) {
-  const { skills } = useSkills();
-  const slashSkill = resolveSlashSkillDisplay(content, skills);
-
-  if (!slashSkill) {
-    return <div className="break-words whitespace-pre-wrap">{content}</div>;
-  }
-
-  return (
-    <div className="flex max-w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <SlashSkillChip name={slashSkill.name} />
-      {slashSkill.remainingText && (
-        <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
-          {slashSkill.remainingText}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function MessageContent_({
   className,
   message,
   isLoading = false,
   threadId,
-  artifactPaths,
-  runId,
-  turnStartTime,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
   threadId: string;
-  artifactPaths: readonly string[];
-  runId?: string;
-  turnStartTime?: number | null;
 }) {
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const isHuman = message.type === "human";
-  const rawTurnDuration = message.additional_kwargs?.turn_duration as
-    | number
-    | undefined;
-
-  const [cachedDuration, setCachedDuration] = useState<number | undefined>(
-    () =>
-      message.id
-        ? clientTurnDurations.get(`${threadId}:${message.id}`)
-        : undefined,
-  );
-  const turnDuration = rawTurnDuration ?? cachedDuration;
-
-  useEffect(() => {
-    if (rawTurnDuration !== undefined && message.id) {
-      clientTurnDurations.set(`${threadId}:${message.id}`, rawTurnDuration);
-      setCachedDuration(rawTurnDuration);
-    }
-  }, [rawTurnDuration, message.id, threadId]);
-
-  const handleDurationChange = useCallback(
-    (d: number | undefined) => {
-      if (d !== undefined && message.id) {
-        clientTurnDurations.set(`${threadId}:${message.id}`, d);
-        setCachedDuration(d);
-      }
-    },
-    [message.id, threadId],
-  );
-
-  useEffect(() => {
-    return () => {
-      for (const key of clientTurnDurations.keys()) {
-        if (key.startsWith(`${threadId}:`)) {
-          clientTurnDurations.delete(key);
-        }
-      }
-    };
-  }, [threadId]);
-
-  const [wasLoading, setWasLoading] = useState(isLoading);
-  useEffect(() => {
-    if (isLoading) setWasLoading(true);
-  }, [isLoading]);
   const components = useMemo(
     () => ({
       img: (props: ImgHTMLAttributes<HTMLImageElement>) => (
-        <MessageImage
-          {...props}
-          threadId={threadId}
-          artifactPaths={artifactPaths}
-          maxWidth="90%"
-        />
+        <MessageImage {...props} threadId={threadId} maxWidth="90%" />
       ),
-      a: createMarkdownLinkComponent(threadId),
+      a: ({ href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+        if (href?.startsWith("/mnt/")) {
+          const url = resolveArtifactURL(href, threadId);
+          return (
+            <a
+              {...props}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          );
+        }
+        return <a {...props} href={href} />;
+      },
     }),
-    [artifactPaths, threadId],
+    [threadId],
   );
 
   const rawContent = extractContentFromMessage(message);
@@ -353,27 +265,48 @@ function MessageContent_({
     }
     return files as FileInMessage[];
   }, [message.additional_kwargs?.files, rawContent]);
-  const referenceAttachments = useMemo(
-    () =>
-      readReferenceMessageContexts(message.additional_kwargs).map(
-        (context, index) => ({
-          id: index,
-          context,
-        }),
-      ),
-    [message.additional_kwargs],
-  );
 
   const contentToDisplay = useMemo(() => {
     if (isHuman) {
       return rawContent ? stripUploadedFilesTag(rawContent) : "";
     }
-    return rawContent ?? "";
+    // Clean up tool-result echoes before MarkdownContent renders them.
+    // Normal chat never carries any of these patterns.
+    let text = rawContent ?? "";
+    if (text.length > 0) {
+      // 0. strip YAML frontmatter (SKILL.md ---...--- blocks), HTML
+      //    comments, and inline paragraph markers.
+      text = text
+        .replace(/^---[\s\S]*?---\s*/g, "")
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/\n?¶\d{1,4}:\s*/g, "\n")
+        .trim();
+      if (!text) return "";
+      if (/^\s*#!\//m.test(text.slice(0, 200))) {
+        // script source → code fence
+        text = "```\n" + text + "\n```";
+      } else if (
+        /(?:^|\n)\s*\[\d+\/\d+\]/m.test(text.slice(0, 300)) ||
+        /"grounded"\s*:\s*\d+/m.test(text.slice(0, 500))
+      ) {
+        // pipeline output ([1/3]...[2/3]...[3/3]) or grounding JSON → code fence
+        text = "```\n" + text + "\n```";
+      } else {
+        // 1. demote `# headings` → **bold** paragraph
+        text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
+        // 2. ls / directory listing detection
+        const head = text.split("\n").slice(0, 3).join("\n");
+        if (
+          head.length > 60 &&
+          (head.match(/\//g) || []).length >= 4 &&
+          head.includes("/mnt/")
+        ) {
+          text = "```\n" + text + "\n```";
+        }
+      }
+    }
+    return text;
   }, [rawContent, isHuman]);
-  const citationSources = useMemo(
-    () => (isHuman ? [] : extractCitationSources(contentToDisplay)),
-    [contentToDisplay, isHuman],
-  );
 
   const filesList =
     files && files.length > 0 ? (
@@ -400,80 +333,52 @@ function MessageContent_({
   if (!isHuman && reasoningContent && !rawContent) {
     return (
       <AIElementMessageContent className={className}>
-        <Reasoning
-          isStreaming={isLoading}
-          startTimeProp={turnStartTime}
-          duration={turnDuration}
-          onTurnDurationChange={handleDurationChange}
-        >
+        <Reasoning isStreaming={isLoading}>
           <ReasoningTrigger />
-          <SafeReasoningContent>{reasoningContent}</SafeReasoningContent>
+          <ReasoningContent>{reasoningContent}</ReasoningContent>
         </Reasoning>
       </AIElementMessageContent>
     );
   }
 
   if (isHuman) {
-    // Composer input is plain text, not authored Markdown. Parsing it as
-    // Markdown mangles pasted code/logs (indented lines become code blocks,
-    // "$...$" spans become math) and lets pathological input crash the page
-    // through marked's recursive blockquote lexer, so render it verbatim.
-    return (
-      <div
-        className={cn(
-          "ml-auto flex max-w-full min-w-0 flex-col gap-2",
-          className,
-        )}
+    const messageResponse = contentToDisplay ? (
+      <AIElementMessageResponse
+        remarkPlugins={humanMessagePlugins.remarkPlugins}
+        rehypePlugins={humanMessagePlugins.rehypePlugins}
+        components={components}
+        parseIncompleteMarkdown={false}
       >
-        {referenceAttachments.length > 0 && (
-          <ReferenceAttachmentSummary
-            className="self-end shadow-none"
-            references={referenceAttachments}
-            testId="message-reference-attachment"
-          />
-        )}
+        {contentToDisplay}
+      </AIElementMessageResponse>
+    ) : null;
+    return (
+      <div className={cn("ml-auto flex flex-col gap-2", className)}>
         {filesList}
-        {contentToDisplay && (
-          <AIElementMessageContent className="w-full max-w-full">
-            <HumanMessageText content={contentToDisplay} />
+        {messageResponse && (
+          <AIElementMessageContent className="w-fit">
+            {messageResponse}
           </AIElementMessageContent>
         )}
       </div>
     );
   }
 
+  const markdownRehypePlugins = useMemo(
+    () => [...rehypePlugins, [rehypeKatex, { output: "html" }]] as any[],
+    [rehypePlugins],
+  );
+
   return (
     <AIElementMessageContent className={className}>
       {filesList}
-      {!isHuman &&
-        (!!reasoningContent || wasLoading || turnDuration !== undefined) && (
-          <Reasoning
-            isStreaming={isLoading}
-            startTimeProp={turnStartTime}
-            duration={turnDuration}
-            onTurnDurationChange={handleDurationChange}
-          >
-            <ReasoningTrigger hasContent={!!reasoningContent} />
-            {reasoningContent && (
-              <SafeReasoningContent>{reasoningContent}</SafeReasoningContent>
-            )}
-          </Reasoning>
-        )}
       <MarkdownContent
         content={contentToDisplay}
         isLoading={isLoading}
-        rehypePlugins={rehypePlugins}
+        rehypePlugins={markdownRehypePlugins}
         className="my-3"
         components={components}
       />
-      <CitationSourcesPanel sources={citationSources} />
-      {message.type === "ai" && (
-        <WorkspaceChangeBadge
-          threadId={threadId}
-          runId={runId}
-          disabled={isLoading}
-        />
-      )}
     </AIElementMessageContent>
   );
 }
