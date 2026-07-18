@@ -40,6 +40,7 @@ from app.gateway.routers import (
     auth,
     channel_connections,
     channels,
+    features,
     feedback,
     mcp,
     memory,
