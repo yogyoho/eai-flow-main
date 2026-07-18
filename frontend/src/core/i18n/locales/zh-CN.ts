@@ -687,5 +687,4 @@ export const zhCN: Translations = {
       "选区跨越了多条消息，请在同一条回复内选择要引用的文本。",
   },
   scheduledTasks: { create: { title: "创建定时任务", taskTitle: "任务标题", prompt: "提示词", submit: "创建", fillRequired: "请填写所有必填项" }, scheduleType: { cron: "重复", once: "单次" }, filters: { allStatuses: "全部状态" }, detail: { noSelection: "未选择定时任务" }, actions: { edit: "编辑", pause: "暂停", resume: "恢复", trigger: "立即触发", delete: "删除" }, status: { enabled: "已启用", paused: "已暂停" }, edit: { titlePlaceholder: "编辑标题", promptPlaceholder: "编辑提示词", submit: "保存编辑" }, errors: { create: "创建失败" }, deleteConfirm: "确定删除?", context: { fresh: "新线程", reuse: "复用线程", threadIdPlaceholder: "线程ID" }, weekdays: { mon: "周一", tue: "周二", wed: "周三", thu: "周四", fri: "周五", sat: "周六", sun: "周日" }, preview: "预览", cronHelp: "crontab.guru", fields: { time: "时间" }, runTrigger: { scheduled: "定时", manual: "手动" }, runStatus: { queued: "排队中", running: "运行中", success: "成功", failed: "失败", skipped: "跳过" }, preset: { label: "重复", hourly: "每小时", daily: "每天", weekly: "每周", monthly: "每月", custom: "自定义" } },
-  },
 };
