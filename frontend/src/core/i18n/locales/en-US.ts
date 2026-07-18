@@ -16,6 +16,7 @@ export const enUS: Translations = {
   locale: {
     localName: "English",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Common
   common: {
@@ -52,12 +53,14 @@ export const enUS: Translations = {
     exportSuccess: "Conversation exported",
     logout: "Log out",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Home
   home: {
     docs: "Docs",
     blog: "Blog",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Sidecar chat
   humanInput: {
@@ -65,6 +68,7 @@ export const enUS: Translations = {
     pending: "Pending...",
     readOnly: "Read-only",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
   sidecar: {
     title: "Side chat",
     open: "Open side chat",
@@ -88,6 +92,7 @@ export const enUS: Translations = {
     continuing: "Continue in this side chat",
     selectionCrossesMessages: "Selection spans multiple messages. Select text within a single reply to quote it.",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Welcome
   welcome: {
@@ -99,6 +104,7 @@ export const enUS: Translations = {
     createYourOwnSkillDescription:
       "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Clipboard
   clipboard: {
@@ -107,6 +113,7 @@ export const enUS: Translations = {
     failedToCopyToClipboard: "Failed to copy to clipboard",
     linkCopied: "Link copied to clipboard",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Input Box
   inputBox: {
@@ -196,6 +203,7 @@ export const enUS: Translations = {
       },
     ],
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Sidebar
   sidebar: {
@@ -210,6 +218,7 @@ export const enUS: Translations = {
     knowledgeFactory: "Knowledge Factory",
     channels: "Channels",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Agents
   agents: {
@@ -260,12 +269,14 @@ export const enUS: Translations = {
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Breadcrumb
   breadcrumb: {
     workspace: "Workspace",
     chats: "Chats",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Workspace
   workspace: {
@@ -278,17 +289,20 @@ export const enUS: Translations = {
     about: "About DeerFlow",
     logout: "Log out",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Conversation
   conversation: {
     noMessages: "No messages yet",
     startConversation: "Start a conversation to see messages here",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Chats
   chats: {
     searchChats: "Search chats",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Channels (user-owned IM connections)
   channels: {
@@ -322,6 +336,7 @@ export const enUS: Translations = {
     },
     connectedAs: (name: string) => `Connected as ${name}.`,
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Page titles (document title)
   pages: {
@@ -330,6 +345,7 @@ export const enUS: Translations = {
     newChat: "New chat",
     untitled: "Untitled",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Tool calls
   toolCalls: {
@@ -353,6 +369,7 @@ export const enUS: Translations = {
     writeTodos: "Update to-do list",
     skillInstallTooltip: "Install skill and make it available to DeerFlow",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Subtasks
   uploads: {
@@ -367,6 +384,7 @@ export const enUS: Translations = {
     totalSizeTooLarge: (count: number, maxTotalSize: string) =>
       `${count} file${count === 1 ? " was" : "s were"} not added. Attachments can total up to ${maxTotalSize}.`,
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   subtasks: {
     subtask: "Subtask",
@@ -376,6 +394,7 @@ export const enUS: Translations = {
     completed: "Subtask completed",
     failed: "Subtask failed",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Token Usage
   tokenUsage: {
@@ -411,6 +430,7 @@ export const enUS: Translations = {
     removeTodo: (content: string) => `Remove To-do: ${content}`,
     view: "View",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Shortcuts
   shortcuts: {
@@ -423,6 +443,7 @@ export const enUS: Translations = {
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 
   // Settings
   settings: {
@@ -706,10 +727,11 @@ export const enUS: Translations = {
       noFiles: "No Files",
       syncedCount: "Synced {count} file(s)",
     },
-  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
   sidecar: {
     selectionCrossesMessages:
       "Selection spans multiple messages. Select text within a single reply to quote it.",
   },
+  scheduledTasks: { create: { title: "Create scheduled task", taskTitle: "Task title", prompt: "Prompt", submit: "Create", fillRequired: "Fill required fields" }, scheduleType: { cron: "Recurring", once: "One-time" }, filters: { allStatuses: "All statuses" }, detail: { noSelection: "No task selected" }, actions: { edit: "Edit", pause: "Pause", resume: "Resume", trigger: "Trigger now", delete: "Delete" }, status: { enabled: "Enabled", paused: "Paused" }, edit: { titlePlaceholder: "Edit title", promptPlaceholder: "Edit prompt", submit: "Save" }, errors: { create: "Create failed" }, deleteConfirm: "Delete this task?", context: { fresh: "Fresh thread", reuse: "Reuse thread", threadIdPlaceholder: "Thread ID" }, weekdays: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" }, preview: "Preview", cronHelp: "crontab.guru", fields: { time: "Time" }, runTrigger: { scheduled: "scheduled", manual: "manual" }, runStatus: { queued: "Queued", running: "Running", success: "Success", failed: "Failed", skipped: "Skipped" }, preset: { label: "Repeat", hourly: "Hourly", daily: "Daily", weekly: "Weekly", monthly: "Monthly", custom: "Custom" } },
 };
