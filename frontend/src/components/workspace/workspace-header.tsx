@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -29,28 +29,20 @@ export function WorkspaceHeader({ className }: { className?: string }) {
       >
         {state === "collapsed" ? (
           <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="block pt-1 group-hover/workspace-header:hidden">
-              <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                <Bot className="w-4 h-4" />
-              </div>
+            <div className="text-primary block pt-1 font-serif group-hover/workspace-header:hidden">
+              DF
             </div>
             <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
-              <Link href="/" className="ml-2 flex items-center gap-1.5">
-                <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
+              <Link href="/" className="text-primary ml-2 font-serif">
+                DeerFlow
               </Link>
             ) : (
-              <div className="ml-2 flex cursor-default items-center gap-1.5">
-                <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
+              <div className="text-primary ml-2 cursor-default font-serif">
+                DeerFlow
               </div>
             )}
             <SidebarTrigger />

@@ -8,6 +8,7 @@ import {
   LightbulbIcon,
   ListTodoIcon,
   MessageCircleQuestionMarkIcon,
+  MessageSquareTextIcon,
   NotebookPenIcon,
   SearchIcon,
   SquareTerminalIcon,
@@ -28,12 +29,12 @@ import { useI18n } from "@/core/i18n/hooks";
 import { formatTokenCount } from "@/core/messages/usage";
 import type { TokenDebugStep } from "@/core/messages/usage-model";
 import {
+  extractContentFromMessage,
   extractReasoningContentFromMessage,
   findToolCallResult,
 } from "@/core/messages/utils";
 import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import { extractTitleFromMarkdown } from "@/core/utils/markdown";
-import { useUIConfig } from "@/core/ui/config";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +98,11 @@ export function MessageGroup({
     }
     return [];
   }, [lastToolCallStep, steps]);
+  const collapsibleAboveLastToolCallSteps = useMemo(
+    () =>
+      aboveLastToolCallSteps.filter((step) => step.type !== "assistantText"),
+    [aboveLastToolCallSteps],
+  );
   const lastReasoningStep = useMemo(() => {
     if (lastToolCallStep) {
       const index = steps.indexOf(lastToolCallStep);
@@ -221,6 +227,50 @@ export function MessageGroup({
     );
   };
 
+  const renderAssistantText = (step: CoTAssistantTextStep) => (
+    <ChainOfThoughtStep
+      key={step.id}
+      icon={MessageSquareTextIcon}
+      label={
+        <MarkdownContent
+          content={step.content}
+          isLoading={isLoading}
+          rehypePlugins={rehypePlugins}
+        />
+      }
+    ></ChainOfThoughtStep>
+  );
+
+  const renderStep = (step: CoTStep) => {
+    const stepIndex = steps.indexOf(step);
+    if (step.type === "assistantText") {
+      return [
+        renderDebugSummary(step.messageId, stepIndex),
+        renderAssistantText(step),
+      ];
+    }
+    if (step.type === "reasoning") {
+      return [
+        renderDebugSummary(step.messageId, stepIndex),
+        <ChainOfThoughtStep
+          key={step.id}
+          label={
+            <MarkdownContent
+              content={step.reasoning ?? ""}
+              isLoading={isLoading}
+              rehypePlugins={rehypePlugins}
+            />
+          }
+        ></ChainOfThoughtStep>,
+      ];
+    }
+
+    return [
+      renderDebugSummary(step.messageId, stepIndex),
+      renderToolCall(step),
+    ];
+  };
+
   const lastReasoningDebugStep =
     showTokenDebugSummaries && lastReasoningStep?.messageId
       ? debugStepByMessageId.get(lastReasoningStep.messageId)
@@ -228,13 +278,10 @@ export function MessageGroup({
 
   return (
     <ChainOfThought
-      className={cn(
-        "w-full gap-2 rounded-lg border border-border p-0.5",
-        className,
-      )}
+      className={cn("w-full gap-2 rounded-lg border p-0.5", className)}
       open={true}
     >
-      {aboveLastToolCallSteps.length > 0 && (
+      {collapsibleAboveLastToolCallSteps.length > 0 && (
         <Button
           key="above"
           className="w-full items-start justify-start text-left"
@@ -246,7 +293,9 @@ export function MessageGroup({
               <span className="opacity-60">
                 {showAbove
                   ? t.toolCalls.lessSteps
-                  : t.toolCalls.moreSteps(aboveLastToolCallSteps.length)}
+                  : t.toolCalls.moreSteps(
+                      collapsibleAboveLastToolCallSteps.length,
+                    )}
               </span>
             }
             icon={
@@ -262,30 +311,12 @@ export function MessageGroup({
       )}
       {lastToolCallStep && (
         <ChainOfThoughtContent className="px-4 pb-2">
-          {showAbove &&
-            aboveLastToolCallSteps.flatMap((step) => {
-              const stepIndex = steps.indexOf(step);
-              if (step.type === "reasoning") {
-                return [
-                  renderDebugSummary(step.messageId, stepIndex),
-                  <ChainOfThoughtStep
-                    key={step.id}
-                    label={
-                      <MarkdownContent
-                        content={step.reasoning ?? ""}
-                        isLoading={isLoading}
-                        rehypePlugins={rehypePlugins}
-                      />
-                    }
-                  ></ChainOfThoughtStep>,
-                ];
-              }
-
-              return [
-                renderDebugSummary(step.messageId, stepIndex),
-                renderToolCall(step),
-              ];
-            })}
+          {(showAbove
+            ? aboveLastToolCallSteps
+            : aboveLastToolCallSteps.filter(
+                (step) => step.type === "assistantText",
+              )
+          ).flatMap(renderStep)}
           {renderDebugSummary(
             lastToolCallStep.messageId,
             steps.indexOf(lastToolCallStep),
@@ -436,7 +467,6 @@ function ToolCall({
   const { t } = useI18n();
   const { setOpen, autoOpen, autoSelect, selectedArtifact, select } =
     useArtifacts();
-  const { data: uiConfig } = useUIConfig();
   const tokenLabel = tokenDebugStep
     ? formatDebugToken(tokenDebugStep, t)
     : null;
@@ -643,25 +673,6 @@ function ToolCall({
       );
     }
     const command: string | undefined = (args as { command: string })?.command;
-    // Bash stdout is hidden by upstream deer-flow design. When ui.show_tool_output
-    // is on (config.yaml → GET /api/ui/config), surface it so execution-style
-    // skills (e.g. fire-protection-extract) are transparent during debugging.
-    const showOutput = uiConfig?.show_tool_output === true;
-    // convertToSteps JSON-parses tool results — stdout that happens to be
-    // valid JSON (e.g. grounding_check output) becomes an object. Flatten
-    // both raw strings and JSON objects into a displayable string.
-    let output: string | null = null;
-    if (showOutput) {
-      if (typeof result === "string" && result.length > 0) {
-        output = result;
-      } else if (result && typeof result === "object") {
-        try {
-          output = JSON.stringify(result, null, 2);
-        } catch {
-          output = null;
-        }
-      }
-    }
     return (
       <ChainOfThoughtStep
         key={id}
@@ -674,14 +685,6 @@ function ToolCall({
             showLineNumbers={false}
             language="bash"
             code={command}
-          />
-        )}
-        {output && (
-          <CodeBlock
-            className="mx-0 border-none px-0 max-h-64 overflow-auto"
-            showLineNumbers={false}
-            language="text"
-            code={output}
           />
         )}
       </ChainOfThoughtStep>
@@ -731,12 +734,25 @@ interface CoTToolCallStep extends GenericCoTStep<"toolCall"> {
   result?: string;
 }
 
-type CoTStep = CoTReasoningStep | CoTToolCallStep;
+interface CoTAssistantTextStep extends GenericCoTStep<"assistantText"> {
+  content: string;
+}
+
+type CoTStep = CoTAssistantTextStep | CoTReasoningStep | CoTToolCallStep;
 
 function convertToSteps(messages: Message[]): CoTStep[] {
   const steps: CoTStep[] = [];
-  for (const message of messages) {
+  for (const [messageIndex, message] of messages.entries()) {
     if (message.type === "ai") {
+      const content = extractContentFromMessage(message);
+      if (content && message.tool_calls?.length) {
+        steps.push({
+          id: `${message.id ?? `ai-${messageIndex}`}-content`,
+          messageId: message.id,
+          type: "assistantText",
+          content,
+        });
+      }
       const reasoning = extractReasoningContentFromMessage(message);
       if (reasoning) {
         const step: CoTReasoningStep = {
