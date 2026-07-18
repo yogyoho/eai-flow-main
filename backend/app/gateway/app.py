@@ -456,6 +456,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
+    app.include_router(features.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
