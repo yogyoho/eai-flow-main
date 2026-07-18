@@ -207,6 +207,13 @@ def _require(attr: str, label: str) -> Callable[[Request], T]:
 
 get_scheduled_task_repo: Callable[[Request], "ScheduledTaskRepository"] = _require("scheduled_task_repo", "Scheduled task repository")
 get_scheduled_task_run_repo: Callable[[Request], "ScheduledTaskRunRepository"] = _require("scheduled_task_run_repo", "Scheduled task run repository")
+
+
+async def get_scheduled_task_service(request: Request):
+    """Return the scheduled task service or None if not configured."""
+    return getattr(request.app.state, "scheduled_task_service", None)
+
+
 get_stream_bridge: Callable[[Request], StreamBridge] = _require("stream_bridge", "Stream bridge")
 get_run_manager: Callable[[Request], RunManager] = _require("run_manager", "Run manager")
 get_checkpointer: Callable[[Request], Checkpointer] = _require("checkpointer", "Checkpointer")
