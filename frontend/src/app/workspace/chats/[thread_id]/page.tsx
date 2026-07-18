@@ -29,6 +29,7 @@ import { useLocalSettings, useThreadSettings } from "@/core/settings";
 import { useThreadStream, useThreadTokenUsage } from "@/core/threads/hooks";
 import { threadTokenUsageToTokenUsage } from "@/core/threads/token-usage";
 import { textOfMessage } from "@/core/threads/utils";
+import { buildHumanInputResponseText, type HumanInputRequest, type HumanInputResponse } from "@/core/messages/human-input";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +141,25 @@ export default function ChatPage() {
     },
     [sendMessage, threadId],
   );
+  const handleSubmitHumanInput = useCallback(
+    async (request: HumanInputRequest, response: HumanInputResponse) => {
+      let sent = false;
+      await sendMessage(
+        threadId,
+        { text: buildHumanInputResponseText(request, response), files: [] },
+        undefined,
+        {
+          additionalKwargs: {
+            hide_from_ui: true,
+            human_input_response: response,
+          },
+          onSent: () => { sent = true; },
+        },
+      );
+      return sent;
+    },
+    [sendMessage, threadId],
+  );
   const handleStop = useCallback(async () => {
     await thread.stop();
   }, [thread]);
@@ -195,6 +215,11 @@ export default function ChatPage() {
                 loadMoreHistory={loadMoreHistory}
                 isHistoryLoading={isHistoryLoading}
                 tokenUsageInlineMode={tokenUsageInlineMode}
+                onSubmitHumanInput={
+                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"
+                    ? undefined
+                    : handleSubmitHumanInput
+                }
               />
             </div>
             <div
