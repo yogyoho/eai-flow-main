@@ -14,9 +14,11 @@ let waved = false;
 export function Welcome({
   className,
   mode,
+  skill,
 }: {
   className?: string;
-  mode?: "ultra" | "pro" | "thinking" | "flash";
+  mode?: string;
+  skill?: { displayName: string; description: string } | null;
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
@@ -44,9 +46,11 @@ export function Welcome({
       ? ["#ffffff", "#ffffff", "#ffffff"]
       : ["#151616", "#151616", "#151616"];
   }, [isUltra, isDark]);
+
   useEffect(() => {
     waved = true;
   }, []);
+
   return (
     <div
       className={cn(
@@ -66,15 +70,9 @@ export function Welcome({
           </div>
         )}
       </div>
-      {searchParams.get("mode") === "skill" ? (
-        <div className="text-muted-foreground text-sm">
-          {t.welcome.createYourOwnSkillDescription.includes("\n") ? (
-            <pre className="font-sans whitespace-pre">
-              {t.welcome.createYourOwnSkillDescription}
-            </pre>
-          ) : (
-            <p>{t.welcome.createYourOwnSkillDescription}</p>
-          )}
+      {skill ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p>{skill.description}</p>
         </div>
       ) : null}
     </div>

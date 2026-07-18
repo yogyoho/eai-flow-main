@@ -33,10 +33,7 @@ const HIDDEN_CONTROL_MESSAGE_NAMES = new Set([
   "todo_completion_reminder",
 ]);
 
-export function getMessageGroups(
-  messages: Message[],
-  keepReasoning: boolean = false,
-): MessageGroup[] {
+export function getMessageGroups(messages: Message[]): MessageGroup[] {
   if (messages.length === 0) {
     return [];
   }
@@ -109,15 +106,15 @@ export function getMessageGroups(
     }
 
     if (message.type === "ai") {
-      // Standard bubble path: a message with answer content and no tool calls
-      // becomes its own assistant bubble. When keepReasoning is on (ui config
-      // show_tool_output toggle), intermediate AI narration with reasoning
-      // content ALSO creates an assistant bubble so the user sees the agent's
-      // full thought progression instead of only the final answer bubble.
+      // A message with answer content and no tool calls becomes its own
+      // assistant bubble below, which already renders the message's
+      // reasoning_content inside the bubble's <Reasoning> collapsible. Such a
+      // message must NOT also feed the processing group, or the ChainOfThought
+      // panel above the bubble paints the identical reasoning a second time
+      // (#3868). Intermediate reasoning (no content) and tool-calling steps
+      // still belong in the processing group.
       const becomesAssistantBubble =
         hasContent(message) && !hasToolCalls(message);
-      const keepsAsBubble =
-        keepReasoning && !becomesAssistantBubble && hasContent(message);
 
       if (hasPresentFiles(message)) {
         groups.push({
@@ -136,6 +133,7 @@ export function getMessageGroups(
         (hasReasoning(message) || hasToolCalls(message))
       ) {
         const lastGroup = groups[groups.length - 1];
+        // Accumulate consecutive intermediate AI messages into one processing group.
         if (lastGroup?.type !== "assistant:processing") {
           groups.push({
             id: message.id,
@@ -147,35 +145,50 @@ export function getMessageGroups(
         }
       }
 
-      if (becomesAssistantBubble || keepsAsBubble) {
-        let displayMessage = message;
-        // Always demote `# headings` → **bold** in assistant bubbles: normal
-        // chat never carries markdown headings, but tool-result echoes (e.g.
-        // SKILL.md content read by the agent) do — and they render as H1/H2.
-        // For the code-fence transform (shebang → ```), only activate behind
-        // the show_tool_output toggle since it could affect normal chat.
-        let text =
-          typeof message.content === "string"
-            ? message.content
-            : extractTextFromMessage(message);
-        if (text.length > 0) {
-          if (keepReasoning && /^\s*#!\//m.test(text.slice(0, 200))) {
-            text = `\`\`\`\n${text}\n\`\`\``;
-          } else {
-            text = text.replace(/^(#{1,6})\s+(.+)$/gm, "**$2**");
-          }
-          displayMessage = { ...message, content: text };
-        }
-        groups.push({
-          id: keepsAsBubble ? `${message.id}-bubble` : message.id,
-          type: "assistant",
-          messages: [displayMessage],
-        });
+      if (becomesAssistantBubble) {
+        groups.push({ id: message.id, type: "assistant", messages: [message] });
       }
     }
   }
 
   return groups;
+}
+
+export function getBranchableAssistantGroupIds(
+  groups: MessageGroup[],
+  isCurrentTurnLoading: boolean,
+): Set<string> {
+  // Hidden messages were already removed by getMessageGroups, matching the
+  // backend's branch checkpoint visibility rules. Within each visible human
+  // turn, branching is exposed only when the final AI-bearing group is a
+  // terminal assistant text group. Processing, present-files, and subagent
+  // groups do not render assistant actions.
+  const branchableGroupIds = new Set<string>();
+  let lastAIGroup: MessageGroup | null = null;
+
+  const completeTurn = () => {
+    if (lastAIGroup?.type === "assistant" && lastAIGroup.id) {
+      branchableGroupIds.add(lastAIGroup.id);
+    }
+    lastAIGroup = null;
+  };
+
+  for (const group of groups) {
+    if (group.type === "human") {
+      completeTurn();
+      continue;
+    }
+
+    if (group.messages.some((message) => message.type === "ai")) {
+      lastAIGroup = group;
+    }
+  }
+
+  if (!isCurrentTurnLoading) {
+    completeTurn();
+  }
+
+  return branchableGroupIds;
 }
 
 export function groupMessages<T>(
@@ -299,6 +312,17 @@ export function getAssistantTurnCopyData(
       })
       .find((content) => content.length > 0) ?? null
   );
+}
+
+export function getMessageCopyData(message: Message) {
+  const content = extractContentFromMessage(message);
+  if (message.type === "human") {
+    return stripUploadedFilesTag(content);
+  }
+  if (content.length > 0) {
+    return content;
+  }
+  return extractReasoningContentFromMessage(message) ?? "";
 }
 
 export function extractTextFromMessage(message: Message) {
@@ -552,8 +576,9 @@ export interface FileInMessage {
 }
 
 /**
- * Strip <uploaded_files> tag from message content.
- * Returns the content with the tag removed.
+ * Strip backend-injected human context tags from message content.
+ * Kept under its historical name because callers use it for uploaded-file
+ * display cleanup.
  */
 export function stripUploadedFilesTag(content: string): string {
   return content
@@ -568,6 +593,7 @@ export function stripUploadedFilesTag(content: string): string {
  * These markers are *not* user copy — they come from:
  *
  * - ``UploadsMiddleware`` → ``<uploaded_files>``
+ * - ``SkillActivationMiddleware`` → ``<slash_skill_activation>``
  * - ``DynamicContextMiddleware`` → ``<system-reminder>`` (carrying
  *   ``<memory>`` / ``<current_date>`` inside)
  * - ``TodoListMiddleware`` / ``LoopDetectionMiddleware`` style reminders

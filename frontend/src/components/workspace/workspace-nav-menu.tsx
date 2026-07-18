@@ -1,18 +1,14 @@
 "use client";
 
 import {
+  BugIcon,
   ChevronsUpDown,
+  GlobeIcon,
+  InfoIcon,
+  MailIcon,
   Settings2Icon,
   SettingsIcon,
-  LogOutIcon,
-  BookOpen,
-  FolderCheck,
-  Factory,
-  ShoppingCart,
-  Building2,
-  FolderKanban,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
@@ -30,8 +26,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
-import { useAuth } from "@/extensions/hooks/useAuth";
 
+import { GithubIcon } from "./github-icon";
 import { SettingsDialog } from "./settings";
 
 function NavMenuButtonContent({
@@ -42,14 +38,14 @@ function NavMenuButtonContent({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return isSidebarOpen ? (
-    <div className="flex w-full items-center gap-2 text-left text-sm text-sidebar-foreground">
-      <SettingsIcon className="text-sidebar-foreground/70 size-4" />
+    <div className="text-muted-foreground flex w-full items-center gap-2 text-left text-sm">
+      <SettingsIcon className="size-4" />
       <span>{t.workspace.settingsAndMore}</span>
-      <ChevronsUpDown className="text-sidebar-foreground/70 ml-auto size-4" />
+      <ChevronsUpDown className="text-muted-foreground ml-auto size-4" />
     </div>
   ) : (
     <div className="flex size-full items-center justify-center">
-      <SettingsIcon className="text-sidebar-foreground/70 size-4" />
+      <SettingsIcon className="text-muted-foreground size-4" />
     </div>
   );
 }
@@ -57,30 +53,15 @@ function NavMenuButtonContent({
 export function WorkspaceNavMenu() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDefaultSection, setSettingsDefaultSection] = useState<
-    "account" | "memory" | "tools" | "skills" | "notification"
-  >("skills");
+    "appearance" | "memory" | "tools" | "skills" | "notification" | "about"
+  >("appearance");
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
-  const { logout } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const navItems = [
-    {
-      href: "/knowledge",
-      label: t.sidebar.knowledge,
-      icon: BookOpen,
-    },
-    {
-      href: "/knowledge-factory",
-      label: t.sidebar.knowledgeFactory,
-      icon: Factory,
-    },
-  ];
 
   return (
     <>
@@ -107,31 +88,63 @@ export function WorkspaceNavMenu() {
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
-                  {navItems.map((item) => (
-                    <DropdownMenuItem
-                      key={item.href}
-                      onClick={() => router.push(item.href)}
-                    >
-                      <item.icon />
-                      {item.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => {
-                      setSettingsDefaultSection("skills");
+                      setSettingsDefaultSection("appearance");
                       setSettingsOpen(true);
                     }}
                   >
                     <Settings2Icon />
                     {t.common.settings}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <a
+                    href="https://deerflow.tech/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <DropdownMenuItem>
+                      <GlobeIcon />
+                      {t.workspace.officialWebsite}
+                    </DropdownMenuItem>
+                  </a>
+                  <a
+                    href="https://github.com/bytedance/deer-flow"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <DropdownMenuItem>
+                      <GithubIcon />
+                      {t.workspace.visitGithub}
+                    </DropdownMenuItem>
+                  </a>
+                  <DropdownMenuSeparator />
+                  <a
+                    href="https://github.com/bytedance/deer-flow/issues"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <DropdownMenuItem>
+                      <BugIcon />
+                      {t.workspace.reportIssue}
+                    </DropdownMenuItem>
+                  </a>
+                  <a href="mailto:support@deerflow.tech">
+                    <DropdownMenuItem>
+                      <MailIcon />
+                      {t.workspace.contactUs}
+                    </DropdownMenuItem>
+                  </a>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOutIcon />
-                  {t.common.logout}
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSettingsDefaultSection("about");
+                    setSettingsOpen(true);
+                  }}
+                >
+                  <InfoIcon />
+                  {t.workspace.about}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
