@@ -75,8 +75,7 @@ export function WorkspaceNavChatList() {
             </Tooltip>
           )}
         </SidebarMenuItem>
-{/* [EAI] scheduled-tasks backend ready, frontend needs query-client fix */}
-        {/* <SidebarMenuItem>
+        <SidebarMenuItem>
           <SidebarMenuButton
             isActive={pathname.startsWith("/workspace/scheduled-tasks")}
             asChild
@@ -89,7 +88,7 @@ export function WorkspaceNavChatList() {
               <span>{t.sidebar.scheduledTasks}</span>
             </Link>
           </SidebarMenuButton>
-        </SidebarMenuItem> */}
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   );
