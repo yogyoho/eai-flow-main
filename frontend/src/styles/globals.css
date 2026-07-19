@@ -345,22 +345,22 @@
 
   /* ====== Semantic Shadcn Variables ====== */
   --background: #ffffff;
-  --foreground: var(--gray-1000);
+  --foreground: var(--gray-1000, #f5f7f7);
   --card: #ffffff;
-  --card-foreground: var(--gray-1000);
+  --card-foreground: var(--gray-1000, #f5f7f7);
   --popover: #ffffff;
-  --popover-foreground: var(--gray-1000);
+  --popover-foreground: var(--gray-1000, #f5f7f7);
 
   /* Primary: #0746ff — UNCHANGED */
   --primary: oklch(0.54 0.26 265.5);
   --primary-foreground: #ffffff;
 
-  --secondary: var(--gray-100);
-  --secondary-foreground: var(--gray-900);
-  --muted: var(--gray-50);
-  --muted-foreground: var(--gray-600);
-  --accent: var(--gray-50);
-  --accent-foreground: var(--gray-900);
+  --secondary: var(--gray-100, #f5f7f7);
+  --secondary-foreground: var(--gray-900, #eff2f2);
+  --muted: var(--gray-50, #f9fbfb);
+  --muted-foreground: var(--gray-600, #979999);
+  --accent: var(--gray-50, #f9fbfb);
+  --accent-foreground: var(--gray-900, #eff2f2);
   --destructive: var(--error-500);
   --border: var(--gray-200, #e4e6e6);
   --input: var(--gray-300, #d7d9d9);
@@ -373,12 +373,12 @@
   --chart-5: #9581cc;
 
   --sidebar: #fbfcfc;
-  --sidebar-foreground: var(--gray-700);
+  --sidebar-foreground: var(--gray-700, #bdbfbf);
   --sidebar-primary: oklch(0.54 0.26 265.5);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--gray-100);
-  --sidebar-accent-foreground: var(--gray-600);
-  --sidebar-border: var(--gray-200);
+  --sidebar-accent: var(--gray-100, #f5f7f7);
+  --sidebar-accent-foreground: var(--gray-600, #979999);
+  --sidebar-border: var(--gray-200, #e4e6e6);
   --sidebar-ring: oklch(0.54 0.26 265.5);
 
   --success: var(--success-500);
