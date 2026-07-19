@@ -1015,7 +1015,7 @@ export function MessageList({
                 })}
               </div>
             );
-          })}
+          }}
       />
       {thread.isLoading && !hasActiveAssistantText && (
         <div className="mx-auto w-full max-w-(--container-width-md)">
