@@ -6,8 +6,11 @@ description: |
 
   当用户请求为化工/石化/工业项目生成、创建或编写消防设计专篇、消防设计报告、消防设计篇章时使用此技能。
   
-  报告结构优先取自知识工厂模板（generation_hint / compliance_rules / content_contract 等元数据驱动生成），不可用时回退内置参考文档。
-  
+  报告结构优先取自知识工厂模板。调用 kf_resolve_template 时**必须传入**：
+  {"domain_keywords": ["消防设计专篇","消防设计","消防"], "report_type": "fire_protection_design"}
+  不可传空数组或省略参数——否则会匹配到无关模板（如煤炭环评）。
+  若返回 found=true，直接使用 root_sections 的 generation_hint + content_contract 生成报告。
+
   触发场景：用户提及"消防设计专篇"、"消防设计报告"、"消防设计篇章"、"化工项目消防设计"、
   "消防设计专篇生成"、"消防设计说明书"、"消防验收报告"、"消防设计审查"、"防火设计专篇"等关键词；
   或需要在化工/石化工程项目中编写消防设计相关文档时。
