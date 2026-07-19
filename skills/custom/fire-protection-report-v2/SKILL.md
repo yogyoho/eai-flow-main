@@ -283,6 +283,13 @@ knowledge-factory_kf_resolve_template(
 2. 建筑设计防火规范（2018版） GB50016-2014
 ```
 
+**公式格式（LaTeX 数学渲染）**：前端已集成 KaTeX（`remark-math` + `rehype-katex`）。
+
+- 行内公式使用 `$...$`：`$Q = 20000\ \text{m}^3/\text{h}$`
+- 块级公式使用 `$$...$$`：`$$V = \frac{Q}{A} = \frac{20000}{3.14} = 6369.43\ \text{m}^3/\text{h}$$`
+- 变量下标：`Q_e`, `Q_{消防}`；单位：`\text{m}^3/\text{h}`, `\text{MPa}`；乘号：`\times`
+- 简单数值直接写，带计算步骤的公式用 LaTeX
+
 **使用模板时**，每章按以下元数据约束生成：
 
 | 元数据字段 | 作用 |

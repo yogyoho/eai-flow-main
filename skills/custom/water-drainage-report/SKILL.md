@@ -85,24 +85,24 @@ python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py execut
 
 **失败处理：** 如果 `formula_runner.py` 报错 → 检查 `params.json` 格式和 `formulas.json` 路径 → 修正后重试 1 次 → 仍失败则输出错误日志并告知用户具体错误原因。
 
-**展示计算结果摘要，格式如下：**
+**展示计算结果摘要，格式如下（公式使用 LaTeX 数学格式，前端 KaTeX 渲染）：**
 
 ```
 公式计算完成。12个公式，3个执行批次。
 
 水量平衡链:
-  [6.1.1] 蒸发水量 Qe = Q × KZF × Δt = 20000 × 0.001461 × 10 = 292.20 m³/h
-  [6.1.2] 风吹损失 Qw = Q × 0.1% = 20.00 m³/h
-  [6.1.3] 排污水量 Qb = Qe / (N-1) = 73.05 m³/h
-  [6.1.4] 补充水量 Qm = Qe + Qw + Qb = 385.25 m³/h
+  [6.1.1] 蒸发水量 $$Q_e = Q \times K_{ZF} \times \Delta t = 20000 \times 0.001461 \times 10 = 292.20\ \text{m}^3/\text{h}$$
+  [6.1.2] 风吹损失 $$Q_w = Q \times 0.1\% = 20.00\ \text{m}^3/\text{h}$$
+  [6.1.3] 排污水量 $$Q_b = \frac{Q_e}{N-1} = \frac{292.20}{5-1} = 73.05\ \text{m}^3/\text{h}$$
+  [6.1.4] 补充水量 $$Q_m = Q_e + Q_w + Q_b = 292.20 + 20.00 + 73.05 = 385.25\ \text{m}^3/\text{h}$$
 
 水池容积:
-  [7.1.1] 有效容积 = 1824 m³, 系统总容积 = 3923.5 m³
-  容积比 = 0.196 (⚠ 低于 GB/T 50746 要求 1/3~1/2)
+  [7.1.1] 有效容积 $V_{pool} = 1824\ \text{m}^3$, 系统总容积 $V_{system} = 3923.5\ \text{m}^3$
+  容积比 $\frac{V_{system}}{Q} = 0.196$ (⚠ 低于 GB/T 50746 要求 1/3~1/2)
 
 泵房+旁滤:
-  [8.2.1] 基础尺寸 = 5.7m
-  [9.1.1] 旁滤水量 = 1000 m³/h, 过滤器 = 25台
+  [8.2.1] 基础尺寸 $L = 5.7\ \text{m}$
+  [9.1.1] 旁滤水量 $Q_{sf} = 1000\ \text{m}^3/\text{h}$, 过滤器 $n = 25$ 台
 
 执行批次: [Qe,Qsf,Qw,V_pool,backwash_flow,pump_foundation_L] → [Qb,V_system,filter_count] → [Qm,V_ratio_check,backwash_volume]
 ```
@@ -198,13 +198,27 @@ knowledge-factory_kf_resolve_template(
 - `min_word_count` **不适用于无信息可写的章节**——宁可字数不足，不可编造填充
 - `forbidden_phrases` 中的词（"大约""可能""暂定"）表明值不确定，应改为 `[待确认]` 标注
 
-**公式计算步骤展示格式：**
+**公式计算步骤展示格式（LaTeX 数学渲染）：**
 
-公式章节（第5/6/7/8章）中，每个公式按以下格式呈现：
-```
-Qe = Q × KZF × Δt = 20000 × 0.001461 × 10 = 292.20 m³/h
-```
-包含：公式表达式 → 代入数值 → 计算结果 → 单位。
+公式章节（第5/6/7/8章）中，每个公式使用 LaTeX 数学格式呈现。前端已集成 KaTeX（`remark-math` + `rehype-katex`）：
+
+- **行内公式**：使用 `$...$` 包裹，如 `$Q = 20000\ \text{m}^3/\text{h}$`
+- **块级公式（独占一行）**：使用 `$$...$$` 包裹，如：
+  ```
+  $$Q_e = Q \times K_{ZF} \times \Delta t$$
+  ```
+- **带代入数值的完整步骤**（推荐用于关键公式）：
+  ```
+  $$Q_e = Q \times K_{ZF} \times \Delta t = 20000 \times 0.001461 \times 10 = 292.20\ \text{m}^3/\text{h}$$
+  ```
+
+**LaTeX 数学格式规范：**
+- 变量使用下标：`Q_e`, `Q_w`, `Q_b`, `Q_m`, `K_{ZF}`, `\Delta t`
+- 分数使用 `\frac{分子}{分母}`：`\frac{Q_e}{N-1}`
+- 单位使用 `\text{}`：`\text{m}^3/\text{h}`, `\text{℃}`, `\text{mm}`
+- 乘号使用 `\times`，百分号 `\%`
+- 希腊字母：`\Delta`, `\theta`, `\tau`, `\rho`, `\eta`, `\lambda`
+- 简单公式（单个变量赋值）使用行内 `$...$`，有代入步骤的完整公式使用块级 `$$...$$`
 
 ### 步骤5：一次性写入 outputs
 
