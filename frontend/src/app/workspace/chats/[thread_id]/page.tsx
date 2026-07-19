@@ -158,12 +158,18 @@ export default function ChatPage() {
     },
   });
 
-  // EAI: show loading overlay while history loads from backend
+  // EAI: show loading overlay while history loads from backend.
+  // Max 15 s fallback — if the SDK never flips isHistoryLoading to false,
+  // the overlay would block the page permanently without a timeout.
   useEffect(() => {
     if (isHistoryLoading) return;
     const timer = setTimeout(() => setPageReady(true), 300);
     return () => clearTimeout(timer);
   }, [isHistoryLoading]);
+  useEffect(() => {
+    const fallback = setTimeout(() => setPageReady(true), 15_000);
+    return () => clearTimeout(fallback);
+  }, []);
 
   const hasThreadMessages = thread.messages.length > 0;
 
