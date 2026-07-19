@@ -7,7 +7,7 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   },
   tokenUsage: {
     headerTotal: true,
-    inlineMode: "off",
+    inlineMode: "per_turn",
   },
   context: {
     model_name: undefined,
