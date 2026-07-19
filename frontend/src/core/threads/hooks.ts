@@ -16,6 +16,7 @@ import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
 import { getAPIClient } from "../api";
 import { fetch } from "../api/fetcher";
+import { CHAT_RUN_STREAM_MODES } from "../api/stream-mode";
 import { getBackendBaseURL } from "../config";
 import { useI18n } from "../i18n/hooks";
 import { isHiddenFromUIMessage } from "../messages/utils";
@@ -1522,6 +1523,7 @@ export function useThreadStream({
           },
           {
             threadId: threadId,
+            streamMode: [...CHAT_RUN_STREAM_MODES],
             streamSubgraphs: true,
             streamResumable: true,
             config: {
@@ -1628,6 +1630,7 @@ export function useThreadStream({
           threadId,
           checkpoint: prepared.checkpoint,
           metadata: prepared.metadata,
+          streamMode: [...CHAT_RUN_STREAM_MODES],
           streamSubgraphs: true,
           streamResumable: true,
           config: {
