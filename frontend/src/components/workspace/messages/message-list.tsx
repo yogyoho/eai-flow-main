@@ -296,7 +296,11 @@ export function MessageList({
       .slice(lastHumanIndex)
       .some((g) => g.type === "assistant");
   }, [groupedMessages]);
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(thread.isLoading);
+  // ponytail: word-split animation disabled — per-word <span> DOM nodes
+  // multiply by 10-20x during streaming, causing severe browser layout
+  // thrash in 600K+ token tool-execution sessions. Re-enable when
+  // message-list gains virtual scrolling.
+  const rehypePlugins = useRehypeSplitWordsIntoSpans(false);
   const updateSubtask = useUpdateSubtask();
   const lastGroupIndex = groupedMessages.length - 1;
   const turnUsageMessagesByGroupIndex =
