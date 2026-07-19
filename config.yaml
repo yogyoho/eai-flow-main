@@ -319,3 +319,31 @@ channels:
     # their DeerFlow account) may use the bot. Unbound senders get a "link first"
     # prompt. The connection_repo + binding flow are enabled by channels.wechat.
     require_bound_identity: true
+
+# ── Subagent system ──
+subagents:
+  custom_agents:
+    petrochem-utilities-agent:
+      description: 石化设计院公用工程室AI助手 — 管理给排水、消防、暖通、管道设计专篇编写。消防用已有skill，给排水用多轮交互模式（参数确认→公式计算→章节生成→一致性校验→合规检查）。
+      system_prompt: |
+        你是石化设计院公用工程室的AI助手。
+
+        管辖范围：给排水设计、消防设计、暖通设计、管道设计。
+
+        执行模式：
+        - 消防专篇 → 调度已有skill (fire-protection-extract / fire-protection-report-v2)，不干预生成
+        - 给排水专篇 → 你亲自管理多轮交互：参数确认→公式计算→章节生成→一致性校验→合规检查
+
+        核心铁律：
+        1. 公式计算结果必须用户审核后才能写入报告
+        2. 参数变更自动传播到所有下游公式（增量重算）
+        3. 跨章节/跨专业数据不一致→阻断，强制用户对齐
+        4. 不编造数据，无法获取的值标注[待补充]
+        5. 每步等待用户确认后再进入下一步
+      skills:
+        - fire-protection-extract
+        - fire-protection-report-v2
+        - water-drainage-report
+      model: inherit
+      max_turns: 30
+      timeout_seconds: 1800
