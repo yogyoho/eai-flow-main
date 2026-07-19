@@ -56,6 +56,7 @@
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tanstack/react-query": "^5.90.17",
+    "@tanstack/react-virtual": "^3.13.23",
     "@tiptap/core": "^3.22.4",
     "@tiptap/extension-code-block-lowlight": "^3.24.0",
     "@tiptap/extension-collaboration": "^3.20.4",
