@@ -19,8 +19,10 @@ import {
 import { toast } from "sonner";
 
 import {
-  VirtualChatContainer,
-} from "./virtual-conversation";
+  Conversation,
+  ConversationContent,
+  type ConversationProps,
+} from "@/components/ai-elements/conversation";
 import {
   Reasoning,
   ReasoningTrigger,
@@ -254,8 +256,8 @@ export function MessageList({
   canBranch?: boolean;
   enableSidecarActions?: boolean;
   sidecarSurface?: boolean;
-  initialScroll?: "smooth" | "instant" | false;
-  resizeScroll?: "smooth" | "instant" | false;
+  initialScroll?: ConversationProps["initial"];
+  resizeScroll?: ConversationProps["resize"];
 }) {
   const { t } = useI18n();
   const sidecar = useMaybeSidecar();
@@ -708,22 +710,19 @@ export function MessageList({
 
   return (
     <>
-      <VirtualChatContainer
+      <Conversation
         className={cn("flex size-full flex-col justify-center", className)}
-        itemCount={groupedMessages.length}
-        overscan={5}
-        header={
-          <div className="mx-auto w-full max-w-(--container-width-md) pt-8">
-            <LoadMoreHistoryIndicator
-              isLoading={isHistoryLoading}
-              hasMore={hasMoreHistory}
-              loadMore={loadMoreHistory}
-            />
-          </div>
-        }
-        renderItem={(groupIndex: number) => {
-            const group = groupedMessages[groupIndex];
-            if (!group) return null;
+        data-testid={testId}
+        initial={initialScroll}
+        resize={resizeScroll}
+      >
+        <ConversationContent className="mx-auto w-full max-w-(--container-width-md) gap-8 pt-8">
+          <LoadMoreHistoryIndicator
+            isLoading={isHistoryLoading}
+            hasMore={hasMoreHistory}
+            loadMore={loadMoreHistory}
+          />
+          {groupedMessages.map((group, groupIndex) => {
             const turnUsageMessages = turnUsageMessagesByGroupIndex[groupIndex];
             const groupIsLoading =
               thread.isLoading && groupIndex === lastGroupIndex;
@@ -737,6 +736,7 @@ export function MessageList({
                   }
                   className={cn(
                     "w-full",
+                    "cv-auto contain-layout",
                     group.type === "assistant" && "group/assistant-turn",
                   )}
                 >
@@ -1016,14 +1016,16 @@ export function MessageList({
               </div>
             );
           })}
-      />
-      {thread.isLoading && !hasActiveAssistantText && (
-        <div className="mx-auto w-full max-w-(--container-width-md)">
-          <Reasoning isStreaming={true} startTimeProp={turnStartTime}>
-            <ReasoningTrigger hasContent={false} />
-          </Reasoning>
-        </div>
-      )}
+          {thread.isLoading && !hasActiveAssistantText && (
+            <div className="w-full">
+              <Reasoning isStreaming={true} startTimeProp={turnStartTime}>
+                <ReasoningTrigger hasContent={false} />
+              </Reasoning>
+            </div>
+          )}
+          <div style={{ height: `${paddingBottom}px` }} />
+        </ConversationContent>
+      </Conversation>
       {selectionToolbar && sidecar && (
         <div
           className={cn(
