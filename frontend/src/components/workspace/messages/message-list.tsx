@@ -51,6 +51,7 @@ import {
   hasContent,
   hasPresentFiles,
   hasReasoning,
+  type MessageGroup as MessageGroupType,
   isAssistantMessageGroupStreaming,
   isHiddenFromUIMessage,
 } from "@/core/messages/utils";
@@ -90,6 +91,43 @@ import { SubtaskCard } from "./subtask-card";
 export const MESSAGE_LIST_DEFAULT_PADDING_BOTTOM = 24;
 
 const LOAD_MORE_HISTORY_THROTTLE_MS = 1200;
+
+// ── Incremental getMessageGroups ────────────────────────────────────────
+// During streaming only the tail of the messages array changes.  Cache
+// every group except the last, and only re-process the suffix.
+let _incCache: { messages: Message[]; groups: MessageGroupType[] } | null = null;
+function getMessageGroupsIncremental(messages: Message[]): MessageGroupType[] {
+  if (_incCache?.messages === messages) return _incCache.groups;
+
+  const prev = _incCache?.messages;
+  // Thread switch / history reload: full recompute
+  if (!prev || messages.length <= prev.length || messages[0] !== prev[0]) {
+    _incCache = { messages, groups: getMessageGroups(messages) };
+    return _incCache.groups;
+  }
+
+  // Streaming: messages grew. Find stable prefix.
+  let stableLen = 0;
+  while (stableLen < prev.length && prev[stableLen] === messages[stableLen]) {
+    stableLen++;
+  }
+  if (stableLen === 0) {
+    _incCache = { messages, groups: getMessageGroups(messages) };
+    return _incCache.groups;
+  }
+
+  // Re-process only the tail, keep cached prefix groups
+  const tail = getMessageGroups(messages.slice(stableLen));
+  const cached = _incCache.groups;
+  let keep = 0;
+  let n = 0;
+  for (const g of cached) {
+    n += g.messages.length;
+    if (n <= stableLen) { keep++; } else { break; }
+  }
+  _incCache = { messages, groups: [...cached.slice(0, keep), ...tail] };
+  return _incCache.groups;
+}
 
 const SELECTION_TOOLBAR_MARGIN = 8;
 // Approximate rendered height of the pill (p-1 padding + h-8 button). Used only
@@ -271,7 +309,7 @@ export function MessageList({
     prevIsLoading.current = thread.isLoading;
   }, [thread.isLoading]);
   const messages = thread.messages;
-  const groupedMessages = getMessageGroups(messages);
+  const groupedMessages = getMessageGroupsIncremental(messages);
   const [regeneratingMessageId, setRegeneratingMessageId] = useState<
     string | null
   >(null);
