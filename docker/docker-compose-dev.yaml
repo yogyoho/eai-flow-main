@@ -79,6 +79,8 @@ services:
     depends_on:
       - frontend
       - gateway
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - eai-flow-net
     restart: unless-stopped
@@ -93,7 +95,7 @@ services:
         PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
         NPM_REGISTRY: ${NPM_REGISTRY:-}
     container_name: deer-flow-frontend
-    command: sh -c "cd frontend && TURBOPACK=0 pnpm run dev > /app/logs/frontend.log 2>&1 & sleep 8 && wget -q -O /dev/null http://localhost:3000/workspace/chats/new 2>/dev/null; wait"
+    command: sh -c "cd frontend && pnpm run dev > /app/logs/frontend.log 2>&1 & sleep 8 && wget -q -O /dev/null http://localhost:3000/workspace/chats/new 2>/dev/null; wait"
     volumes:
       - ../frontend/src:/app/frontend/src
       - ../frontend/public:/app/frontend/public
@@ -287,6 +289,41 @@ services:
       - ../backend/.deer-flow:/data:rw
     ports:
       - "4178:4178"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── Knowledge Factory MCP Server (HTTP) ──────────────────────────────────
+  # Converts the knowledge-factory MCP server from stdio to a persistent HTTP
+  # process.  Stdio spawns a fresh Python subprocess per tool-discovery call;
+  # that cold-start (import heavy deps + DB connect) frequently times out
+  # under load, causing the agent to see "knowledge factory unavailable" and
+  # fall back to the built-in report skeleton.  A long-lived HTTP process
+  # eliminates the cold-start race.
+  knowledge-factory:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+      target: dev
+      args:
+        APT_MIRROR: ${APT_MIRROR:-}
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.7.20}
+        UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: eai-flow-knowledge-factory
+    command:
+      - sh
+      - -c
+      - |
+        cd /app/backend &&
+        PYTHONPATH=/app/backend MCP_HOST=0.0.0.0 MCP_PORT=8765 MCP_TRANSPORT=streamable-http \
+          /app/backend/.venv/bin/python \
+          -m app.extensions.knowledge_factory.mcp_server.http_server
+    volumes:
+      - ../backend/:/app/backend/
+      - gateway-venv:/app/backend/.venv
+    working_dir: /app/backend
+    environment:
+      - KF_DATABASE_URL=postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow
     networks:
       - eai-flow-net
     restart: unless-stopped
