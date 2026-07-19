@@ -100,7 +100,7 @@
       "enabled": true,
       "type": "http",
       "command": null,
-      "args": null,
+      "args": [],
       "env": {},
       "cwd": null,
       "url": "http://knowledge-factory:8765/mcp",
