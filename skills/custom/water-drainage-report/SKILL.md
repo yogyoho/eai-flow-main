@@ -1,0 +1,305 @@
+---
+name: water-drainage-report
+description: |
+  为石化/化工项目生成给排水设计专篇（循环水装置工艺设计计算报告）。触发词："给排水设计专篇"、"循环水装置计算"、"给排水计算书"、"循环水场设计"等。
+
+  公式驱动：设计参数 → 公式DAG计算 → 结果注入章节生成 → 一致性校验 → 合规检查。
+  即使有上游设计说明书，也只提取设计参数，不摘抄文本段落。
+---
+
+# 给排水设计专篇技能
+
+## 核心原则
+
+1. **公式驱动**: 设计参数 → 公式计算 → 计算结果 → 注入章节生成 prompt。公式是核心环节，不是辅助。
+2. **参数一致性**: 前后章数据必须一致。公式输出自动传播到下游公式，参数变更自动触发增量重算。
+3. **多轮交互**: 参数确认 → 公式审核 → 章节生成 → 一致性校验 → 合规检查。每步等待用户确认后再进入下一步。
+4. **宁可缺失不编造**: 无法确认的参数值标注 `[待确认: 参数名]`，公式暂不计算。不编造具体数值。
+
+## 工具范围
+
+本技能**仅用**以下工具：`read_file` / `bash` / `write_file` / `present_files` / `knowledge-factory_kf_resolve_template` / `ask_clarification`。
+
+**禁止**调用 `text-to-cad_*` / `cad_*` / `word-document-server_*` 等无关工具。
+
+## 执行流程
+
+### 步骤1：收集设计参数
+
+**输入:** 用户请求 + 可能上传的说明书 (.docx/.pdf)
+**工具:** `read_file`（读上传文件）、`ask_clarification`（追问缺失参数）
+**输出:** 完整的参数表（用户确认后）
+
+**若用户上传了设计说明书(.docx/.pdf)：**
+系统配置 `uploads.auto_convert_documents=true`，上传的 docx/pdf 会自动在 `uploads/` 下生成同名 `.md` 文件。用 `read_file /mnt/user-data/uploads/<文档名>.md` 读取并提取以下参数：
+- Q: 循环水设计水量 (m³/h) — 从水量统计表中取合计值
+- Δt: 冷却塔进出水温差 (℃) — 从设计参数章节取
+- N: 浓缩倍数 — 从设计参数章节取（宜≥5.0，且不应低于3.0）
+- 气象条件: 干球温度、湿球温度、大气压力
+- 各装置用水量: 从水量统计表逐行提取
+
+**若用户未上传说明书：** 用 `ask_clarification` 一次性追问所有缺失参数。
+
+**⛔ 用户确认门禁 — 在用户确认前禁止进入步骤2：**
+
+步骤1收集到的参数必须向用户展示并等待确认。展示格式如下：
+
+```
+已收集以下设计参数：
+
+| 参数 | 符号 | 值 | 单位 | 来源 |
+|------|------|-----|------|------|
+| 循环水设计水量 | Q | {值} | m³/h | {说明书/用户提供} |
+| 进出水温差 | Δt | {值} | ℃ | {来源} |
+| 浓缩倍数 | N | {值} | — | {来源} |
+| 干球温度 | θ | {值} | ℃ | {来源} |
+| ... | | | | |
+
+公式计算将使用以上参数。请确认是否正确。如需修改请说明，确认后开始计算。
+```
+
+只有在用户回复"确认"/"没问题"/"开始"或等价肯定答复后，才能进入步骤2。
+
+**⛔ 参数缺失策略：** 参数必须在用户提供或设计说明书中明确标出，两者都没有 → 标注 `[待确认: 参数名]` → 暂不进入步骤2，等用户补充。
+
+### 步骤2：运行公式计算
+
+**输入:** 步骤1确认的参数表
+**工具:** `bash` + `formula_runner.py`
+**输出:** 公式计算结果（STATE_READY）+ 公式状态文件
+
+```bash
+FORMULAS=/mnt/skills/custom/water-drainage-report/references/formulas.json
+WORK=/mnt/user-data/workspace
+
+# 构建参数JSON（将步骤1确认的参数填入）
+cat > $WORK/params.json << 'PARAMS'
+{"Q": 20000, "delta_t": 10, "N": 5, "pool_area": 912, "V_suction": 2099.5, "pump_motor_spacing": 5.2, "filter_unit_capacity": 40, "filter_area": 1.13, "concurrent_backwash": 5, "total_filters": 25}
+PARAMS
+
+python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py execute \
+  --formulas $FORMULAS \
+  --params "$(cat $WORK/params.json)" \
+  --output $WORK/formula_state.json
+```
+
+**失败处理：** 如果 `formula_runner.py` 报错 → 检查 `params.json` 格式和 `formulas.json` 路径 → 修正后重试 1 次 → 仍失败则输出错误日志并告知用户具体错误原因。
+
+**展示计算结果摘要，格式如下：**
+
+```
+公式计算完成。12个公式，3个执行批次。
+
+水量平衡链:
+  [6.1.1] 蒸发水量 Qe = Q × KZF × Δt = 20000 × 0.001461 × 10 = 292.20 m³/h
+  [6.1.2] 风吹损失 Qw = Q × 0.1% = 20.00 m³/h
+  [6.1.3] 排污水量 Qb = Qe / (N-1) = 73.05 m³/h
+  [6.1.4] 补充水量 Qm = Qe + Qw + Qb = 385.25 m³/h
+
+水池容积:
+  [7.1.1] 有效容积 = 1824 m³, 系统总容积 = 3923.5 m³
+  容积比 = 0.196 (⚠ 低于 GB/T 50746 要求 1/3~1/2)
+
+泵房+旁滤:
+  [8.2.1] 基础尺寸 = 5.7m
+  [9.1.1] 旁滤水量 = 1000 m³/h, 过滤器 = 25台
+
+执行批次: [Qe,Qsf,Qw,V_pool,backwash_flow,pump_foundation_L] → [Qb,V_system,filter_count] → [Qm,V_ratio_check,backwash_volume]
+```
+
+**⛔ 公式审核门禁 — 在用户确认前禁止进入步骤3：**
+
+展示计算结果后，等待用户审核。用户可：
+- 要求修改参数："Q改成25000" → 重新运行 update 命令
+- 确认无误："没问题，继续"、"确认" → 进入步骤3
+
+**参数修改（增量重算）：**
+```bash
+python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py update \
+  --formulas $FORMULAS \
+  --state $WORK/formula_state.json \
+  --param <参数名> --value <新值> \
+  --output $WORK/formula_state.json
+```
+
+修改后重新展示变更摘要："Q 20000→25000, Qe: 292.2→365.2, Qm: 385.3→481.6, filter_count: 25→32"。再次等待用户确认。
+
+### 步骤3：获取报告模板
+
+**输入:** 步骤2确认的公式计算结果
+**工具:** `knowledge-factory_kf_resolve_template`
+**输出:** 模板元数据（generation_hint, compliance_rules, content_contract）或 fallback 标记
+
+调用 `knowledge-factory_kf_resolve_template`：
+
+```
+knowledge-factory_kf_resolve_template(
+    domain_keywords=["给排水设计专篇", "循环水装置计算", "给排水计算书"],
+    industry="化工",
+    min_completeness_score=60
+)
+```
+
+**拿到 `found=true` 时：**
+- 使用返回的 `sections` / `root_sections` 作为报告章节结构
+- 每个章节独立拥有 `generation_hint`、`compliance_rules`、`content_contract`、`example_snippet`
+- 输出提示：`✅ 已从知识工厂获取模板：{name} v{version}（完整度: {completeness_score}/100）`
+
+**拿到 `found=false` 时：**
+- 输出提示：`⚠️ 知识工厂返回 found=false，使用内置参考结构`
+- 使用以下 fallback 章节结构（10章）：
+  1. 设计依据及采用的标准
+  2. 设计范围与设计规模
+  3. 设计参数
+  4. 设计中采用的主要标准及规范
+  5. 循环水装置工艺计算 ← 公式计算结果注入此章
+  6. 塔底水池、吸水池、滤网及滤网井
+  7. 吸水池及循环水泵房工艺计算
+  8. 旁滤设备
+  9. 设备一览表
+  10. 图纸清单
+- 使用全局 GB 标准列表替代逐章 compliance_rules
+
+### 步骤4：生成报告（内存完整生成，一次性写出）
+
+**输入:** 步骤1确认的参数 + 步骤2的公式结果 + 步骤3的模板元数据（或 fallback 结构）
+**生成:** 按模板章节结构逐章生成（模板有多少章就生成多少章，不限于 10 章）
+**输出:** 内存中的完整 Markdown 报告（下一步落盘）
+
+此步骤在内存中**完整生成全部章节**（含封面、附录），不分章节、不写中间文件、不边写边 `append`。
+
+**每章生成时注入公式结果：**
+
+| 章节 | 注入的公式结果 |
+|------|-------------|
+| 第3章 设计参数 | 全部用户输入参数（Q, Δt, N, 气象条件） |
+| 第5章 工艺计算 | Qe, Qw, Qb, Qm 的完整计算步骤（含代入值和结果） |
+| 第6章 水池 | V_pool, V_system, V_ratio_check（含规范校核） |
+| 第7章 泵房 | pump_foundation_L + 管径选择 + 流速验证 |
+| 第8章 旁滤 | Qsf, filter_count, backwash_flow, backwash_volume |
+
+**使用模板时，每章按以下元数据约束生成：**
+
+| 元数据字段 | 作用 |
+|-----------|------|
+| `generation_hint` | 该章的 LLM 生成提示词 |
+| `content_contract.key_elements` | 必须覆盖的要素清单，逐项检查 |
+| `content_contract.min_word_count` | 字数下限约束 |
+| `content_contract.forbidden_phrases` | 禁止出现的用语（如"大约""可能""暂定"） |
+| `content_contract.structure_type` | 输出格式：`narrative_text` / `table` / `mixed` |
+| `compliance_rules` | 该章必须遵循的具体 GB/HG 规范条款 |
+| `example_snippet` | 样例内容片段 |
+
+**⛔ 信息缺失策略（防止编造）：**
+
+对于 `content_contract.key_elements` 中的每个要素：
+- 有信息来源（用户参数、公式结果、规范条款）→ 准确写入
+- 无信息来源 → 标注 `[待补充: 要素名]`
+- `min_word_count` **不适用于无信息可写的章节**——宁可字数不足，不可编造填充
+- `forbidden_phrases` 中的词（"大约""可能""暂定"）表明值不确定，应改为 `[待确认]` 标注
+
+**公式计算步骤展示格式：**
+
+公式章节（第5/6/7/8章）中，每个公式按以下格式呈现：
+```
+Qe = Q × KZF × Δt = 20000 × 0.001461 × 10 = 292.20 m³/h
+```
+包含：公式表达式 → 代入数值 → 计算结果 → 单位。
+
+### 步骤5：一次性写入 outputs
+
+**输入:** 步骤4在内存中完整生成的 Markdown 报告
+**操作:** 一次 `write_file`（`append=false`）→ 立即 `present_files`
+**输出:** 同步到文档空间的 AIDocument
+
+```
+write_file(
+    path="/mnt/user-data/outputs/{项目名称}给排水设计专篇.md",
+    content=<步骤4 完整生成的全部 Markdown>,
+    append=false
+)
+```
+
+**立即调 present_files（⚠️ 不可跳过）：**
+```
+present_files(filepaths=["/mnt/user-data/outputs/{项目名称}给排水设计专篇.md"])
+```
+
+**⛔ 写盘铁律（防止死循环）：**
+- ✅ 一次 `write_file` 写入完整内容，`append=false`；有误则在内存整体重生成后再整体覆盖
+- ❌ 禁止分多次 `append` 拼章节（会制造重复段落）
+- ❌ 禁止写完再用 `str_replace` 修改落盘文件（会误删相邻内容）
+- ❌ 禁止"先写 workspace 再 `cp`/`mv` 复制到 outputs"——直接写到 `outputs/`
+- 文件落盘全流程只允许上面这一次 `write_file`
+- 工具失败不盲目重试——最多修正一次（如纠正路径）再试，连续失败 2 次必须停止并如实告诉用户
+
+### 步骤6：一致性校验
+
+**输入:** 步骤5落盘的报告
+**工具:** `bash` + `formula_runner.py check` + `consistency_contracts.json`
+**输出:** 校验结果（CHECK_READY）
+
+```bash
+FORMULAS=/mnt/skills/custom/water-drainage-report/references/formulas.json
+CONTRACTS=/mnt/skills/custom/water-drainage-report/references/consistency_contracts.json
+WORK=/mnt/user-data/workspace
+
+# 公式规范性校验（容积比、浓缩倍数等）
+python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py check \
+  --formulas $FORMULAS \
+  --params "$(cat $WORK/params.json)" \
+  --output $WORK/consistency_check.json
+```
+
+展示校验结果：
+```
+一致性校验结果:
+
+✅ 浓缩倍数 N=5 满足要求 (≥5.0)
+⚠ 系统容积比 0.196 低于 1/3 (GB/T 50746 §6.1.9)
+ℹ 旁滤比例 5% 在 1%~5% 范围内
+
+1项警告 — 建议增大水池容积或减少循环水量。
+```
+
+### 步骤7：合规检查
+
+**输入:** 步骤5落盘的报告
+**输出:** 合规检查结果
+
+运行给排水相关 GB/HG 规范的合规检查。检查项包括：
+- GB/T 50746-2012 石油化工循环水场设计规范（水池有效水深、容积比、连通管流速）
+- GB 50648-2011 化学工业循环冷却水系统设计规范（浓缩倍数 ≥3.0，宜≥5.0）
+- GB 50050-2007 工业循环冷却水处理设计规范（旁滤比例 1%~5%）
+- HG/T 20690-2000 化工企业循环冷却水处理设计技术规定（拦污滤网、格栅）
+
+**检查结果处理：**
+- 全部 PASS → 合规检查通过，向用户展示合规摘要
+- 有 WARN/FAIL → 回到步骤4，在内存中修正报告内容，整体重写落盘，然后重新运行检查。**最多修正 2 轮**。
+- **超过 2 轮仍有 FAIL**：生成合规报告并展示 `以下项目需人工修正`（列出每项 FAIL 的具体条款和当前状态）。报告仍可导出（文档空间自动同步），提示用户："以下合规项未能自动修正，建议在提交审批前由专业工程师复核。"
+
+**步骤5+6+7 串联：** 步骤5写盘后，立即执行步骤6一致性校验 → 步骤7合规检查。如果两轮修正后仍有 FAIL，告知用户"报告已生成但含未修复合规项"。用户可决定是否继续修正或直接导出。
+
+---
+
+## 参考文件
+
+- `references/formulas.json` — 12 个给排水计算公式定义（含表达式、参数来源、输出单位）
+- `references/consistency_contracts.json` — 11 条一致性校验合约（跨章节+跨专业+规范约束）
+- `references/gb_standards.md` — 给排水相关 GB/HG 标准摘要（待补充）
+- `scripts/formula_runner.py` — 公式计算 CLI（execute / update / check 三命令）
+- 知识工厂模板（优先使用） > 内置 fallback 结构
+
+---
+
+## 多轮交互模式
+
+本技能的交互循环已内嵌到步骤门禁中：
+
+| 交互 | 对应步骤 | 门禁条件 |
+|------|---------|---------|
+| 参数确认 | 步骤1→2 | 用户确认参数表后才能进入公式计算 |
+| 公式审核 | 步骤2→3 | 用户确认公式结果后才能进入模板获取 |
+| 报告审阅 | 步骤4→5 | 步骤4生成后，用户可在步骤5写盘前审阅 |
+| 修正重算 | 步骤2内 | 用户调参数 → `formula_runner.py update` → 增量重算 → 重新确认 |
+| 最终定稿 | 步骤7 | 合规检查通过（或用户接受未修复项）→ `present_files` 定稿 |
