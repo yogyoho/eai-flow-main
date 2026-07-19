@@ -401,10 +401,27 @@ class FormulaGraph:
         resolved = node.resolve_inputs(self._global_params)
 
         # 受限命名空间：仅包含数学函数，无 builtins（防注入）
+        # 覆盖工程设计常用计算：代数、对数/指数、三角/双曲、取整/绝对值
         namespace: dict[str, Any] = {
+            # ── math 模块整体（可调用 math.sin(), math.log() 等）──
             "math": math,
+            # ── 基本函数 ──
             "abs": abs, "round": round, "min": min, "max": max,
+            # ── 幂与根 ──
             "sqrt": math.sqrt, "pow": pow,
+            # ── 对数与指数 ──
+            "log": math.log, "log10": math.log10, "log2": math.log2,
+            "exp": math.exp,
+            # ── 三角函数（弧度制）──
+            "sin": math.sin, "cos": math.cos, "tan": math.tan,
+            "asin": math.asin, "acos": math.acos, "atan": math.atan,
+            "atan2": math.atan2,
+            # ── 双曲函数（工程传热/流体力学常用）──
+            "sinh": math.sinh, "cosh": math.cosh, "tanh": math.tanh,
+            # ── 角度转换（工程中常需度数↔弧度互换）──
+            "radians": math.radians, "degrees": math.degrees,
+            # ── 常数 ──
+            "pi": math.pi, "e": math.e,
         }
         namespace.update(resolved)
 

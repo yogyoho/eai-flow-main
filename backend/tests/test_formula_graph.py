@@ -8,6 +8,8 @@ Validates:
   5. Change summary for audit trail
 """
 
+import math
+
 import pytest
 from app.extensions.formula_engine import (
     FormulaGraph,
@@ -287,6 +289,57 @@ class TestEdgeCases:
         graph.add_formula(node)
         graph.build()
         assert graph.execute()["lk"]["y"] == pytest.approx(0.01461)
+
+    def test_namespace_log_exp(self):
+        """对数指数函数：log, log10, exp"""
+        node = FormulaNode("test", "test", expression="log(E) + log10(100) + exp(0)",
+                           inputs={"E": ParamSource.user(math.e)},
+                           outputs={"r": ""})
+        graph = FormulaGraph()
+        graph.add_formula(node)
+        graph.build()
+        # log(e)=1, log10(100)=2, exp(0)=1 → 1+2+1=4
+        assert graph.execute()["test"]["r"] == pytest.approx(4.0)
+
+    def test_namespace_trig(self):
+        """三角函数 sin/cos/tan"""
+        node = FormulaNode("test", "test", expression="sin(pi/6) + cos(0)",
+                           outputs={"r": ""})
+        graph = FormulaGraph()
+        graph.add_formula(node)
+        graph.build()
+        # sin(π/6)=0.5, cos(0)=1 → 1.5
+        assert graph.execute()["test"]["r"] == pytest.approx(1.5)
+
+    def test_namespace_degrees_radians(self):
+        """角度弧度转换：radians + sin 配合使用"""
+        node = FormulaNode("test", "test", expression="sin(radians(30))",
+                           outputs={"r": ""})
+        graph = FormulaGraph()
+        graph.add_formula(node)
+        graph.build()
+        # sin(30°) = 0.5
+        assert graph.execute()["test"]["r"] == pytest.approx(0.5)
+
+    def test_namespace_hyperbolic(self):
+        """双曲函数 sinh/cosh"""
+        node = FormulaNode("test", "test", expression="sinh(0) + cosh(0)",
+                           outputs={"r": ""})
+        graph = FormulaGraph()
+        graph.add_formula(node)
+        graph.build()
+        # sinh(0)=0, cosh(0)=1 → 1
+        assert graph.execute()["test"]["r"] == pytest.approx(1.0)
+
+    def test_namespace_atan2(self):
+        """atan2 四象限反正切（工程坐标转换常用）"""
+        node = FormulaNode("test", "test", expression="degrees(atan2(1, 1))",
+                           outputs={"r": ""})
+        graph = FormulaGraph()
+        graph.add_formula(node)
+        graph.build()
+        # atan2(1,1)=π/4=45°
+        assert graph.execute()["test"]["r"] == pytest.approx(45.0)
 
 
 # ── Cross-formula group test (verifies independent groups run in parallel) ──
