@@ -362,8 +362,8 @@
   --accent: var(--gray-50);
   --accent-foreground: var(--gray-900);
   --destructive: var(--error-500);
-  --border: var(--gray-200);
-  --input: var(--gray-300);
+  --border: var(--gray-200, #e4e6e6);
+  --input: var(--gray-300, #d7d9d9);
   --ring: oklch(0.54 0.26 265.5);
 
   --chart-1: oklch(0.54 0.26 265.5);
