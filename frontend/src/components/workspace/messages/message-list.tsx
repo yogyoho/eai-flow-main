@@ -736,6 +736,7 @@ export function MessageList({
                   }
                   className={cn(
                     "w-full",
+                    "cv-auto contain-layout",
                     group.type === "assistant" && "group/assistant-turn",
                   )}
                 >
@@ -819,7 +820,7 @@ export function MessageList({
                   humanInputRequest.request_id,
                 );
                 return (
-                  <div key={group.id} className="w-full">
+                  <div key={group.id} className="w-full cv-auto contain-layout">
                     <HumanInputCard
                       answeredResponse={answeredResponse}
                       disabled={
@@ -852,7 +853,7 @@ export function MessageList({
 
               if (hasContent(message)) {
                 return (
-                  <div key={group.id} className="w-full">
+                  <div key={group.id} className="w-full cv-auto contain-layout">
                     <MarkdownContent
                       content={extractContentFromMessage(message)}
                       isLoading={thread.isLoading}
@@ -875,7 +876,7 @@ export function MessageList({
                 }
               }
               return (
-                <div className="w-full" key={group.id}>
+                <div className="w-full cv-auto contain-layout" key={group.id}>
                   {group.messages[0] && hasContent(group.messages[0]) && (
                     <MarkdownContent
                       content={extractContentFromMessage(group.messages[0])}
@@ -994,7 +995,7 @@ export function MessageList({
               );
             }
             return (
-              <div key={"group-" + group.id} className="w-full">
+              <div key={"group-" + group.id} className="w-full cv-auto contain-layout">
                 <MessageGroup
                   messages={group.messages}
                   isLoading={thread.isLoading}

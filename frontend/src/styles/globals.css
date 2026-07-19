@@ -483,6 +483,19 @@
   font-weight: 300;
 }
 
+/* ── Message list performance: content-visibility + contain ──
+   Off-screen message groups skip paint/layout, browser auto-manages.
+   contain-intrinsic-size is a size hint; browser corrects it on first render.
+   StickToBottom scroll- anchoring is preserved because the element's box
+   dimensions stay in the layout tree (only the *content* skips rendering). */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+.contain-layout {
+  contain: layout style paint;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
