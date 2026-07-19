@@ -45,6 +45,16 @@ description: |
 ### 关于模板获取（最高优先级 — 强制）
 
 4. **调用 `knowledge-factory_kf_resolve_template` 是本技能的第一个工具动作，强制执行，不可跳过。** 该工具属于 knowledge-factory MCP 服务，已绑定可用，**不要假设它不可见或不可用**。
+
+   **必须传入以下参数，一字不改**——漏传 domain_keywords 或传空数组会匹配到无关模板（如煤炭环评）：
+   ```json
+   {
+     "domain_keywords": ["消防设计专篇", "消防设计", "消防"],
+     "report_type": "fire_protection_design"
+   }
+   ```
+   若返回 `found=true`，模板即为 `公用工程_消防设计专篇_模板`（8 章，score≥80），直接使用其 root_sections 的 generation_hint + content_contract 生成报告。
+   若返回 `found=false`，按规则 7 回退。
 5. **禁止在调用 `knowledge-factory_kf_resolve_template` 之前用 `read_file` 读取 `references/` 下任何文件**（`report_structure.md` / `terminology.md` / `content_guidelines.md` 一律先不读）。先调 MCP 拿到返回值，再读补充知识。
 6. **禁止凭猜测跳过调用**——不得以"工具可能不可见 / 可能不可用 / 先读参考文件再说"为由不调用。唯一允许回退到 markdown 的情况是：你已**真正发起过这一次工具调用**，且返回结果明确为 `found=false`，或调用确实抛出了错误。
 7. 仅当第 6 条的回退条件成立时，才读取 `references/report_structure.md` 作为 8 章结构来源。
