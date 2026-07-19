@@ -41,6 +41,19 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
     report_type = arguments.get("report_type")
     min_completeness_score = arguments.get("min_completeness_score", 0)
 
+    # Guard: empty or missing domain_keywords cannot produce a meaningful match.
+    # Without keywords the loose fallback returns the highest-scored published
+    # template in the entire DB (currently a coal EIA report), which is never
+    # what the caller wants.
+    if not domain_keywords or (
+        isinstance(domain_keywords, list) and len(domain_keywords) == 0
+    ):
+        return _json_response({
+            "found": False,
+            "reason": "missing_keywords",
+            "suggestion": "请提供 domain_keywords 参数，例如 ['消防设计专篇', '消防']。空关键词会匹配到无关模板。",
+        })
+
     async def _query(db):
         # Step 1: Find matching domains
         result = await db.execute(select(ExtractionDomain).order_by(ExtractionDomain.id))
