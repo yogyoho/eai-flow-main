@@ -28,10 +28,12 @@ import { cn } from "@/lib/utils";
 
 import EditorDragHandle from "./components/EditorDragHandle";
 import SlashMenu from "./components/SlashMenu";
+import { MathBlock, MathInline } from "./extensions/Math";
 import { SlashCommand, SlashCommandPluginKey, type SlashCommandPluginState } from "./extensions/SlashCommand";
 import { useScrollSpy } from "./hooks/useScrollSpy";
 import { extractHeadings } from "./utils/headingIdManager";
 import { getMarkdownPasteParseMode, shouldHandleMarkdownPaste } from "./utils/markdownPaste";
+import { decodeMath, encodeMath } from "./utils/mathMarkdown";
 import { highlightSection } from "./utils/sectionHighlighter";
 
 export interface TiptapEditorRef {
@@ -264,6 +266,8 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           // @ts-expect-error tiptap-markdown accepts markdown-it plugins at runtime.
           markdownItPlugins: [], // 使用默认的 markdown-it 表格支持
         }),
+        MathInline,
+        MathBlock,
         SlashCommand.configure({
           onActivate: (state: SlashCommandPluginState) => {
             const editorInstance = editorInstanceRef.current;
@@ -285,7 +289,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           },
         }),
       ],
-      content: initialContent,
+      content: encodeMath(initialContent),
       editorProps: {
         attributes: {
           class: "prose prose-foreground max-w-none focus:outline-none min-h-full pb-32 text-[15px] leading-7",
@@ -317,7 +321,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       onUpdate: ({ editor: e }) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const md = (e.storage as any).markdown.getMarkdown() as string;
-        onChange(md);
+        onChange(decodeMath(md));
         rebuildHeadings(e);
       },
       immediatelyRender: false,
@@ -400,7 +404,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       getMarkdown: () => {
         if (!editor) return "";
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (editor.storage as any).markdown.getMarkdown() as string;
+        return decodeMath((editor.storage as any).markdown.getMarkdown() as string);
       },
       getSelectedText: () => {
         if (!editor) return "";
