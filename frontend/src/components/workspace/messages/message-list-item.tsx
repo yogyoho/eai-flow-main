@@ -279,7 +279,8 @@ function MessageContent_({
   runId?: string;
   turnStartTime?: number | null;
 }) {
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
+  // 层1修复(bug-174): 流式期禁用 word-split(避免逐词 span 爆 DOM), 非流式保留动画。
+  const rehypePlugins = useRehypeSplitWordsIntoSpans(!isLoading);
   const isHuman = message.type === "human";
   const rawTurnDuration = message.additional_kwargs?.turn_duration as
     | number

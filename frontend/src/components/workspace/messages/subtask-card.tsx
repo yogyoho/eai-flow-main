@@ -53,7 +53,8 @@ export function SubtaskCard({
 }) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(true);
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
+  // 层1修复(bug-174): 流式期禁用 word-split(避免逐词 span 爆 DOM), 非流式保留动画。
+  const rehypePlugins = useRehypeSplitWordsIntoSpans(!isLoading);
   const task = useSubtask(taskId)!;
   const { models, tokenUsageEnabled } = useModels();
   const updateSubtask = useUpdateSubtask();
