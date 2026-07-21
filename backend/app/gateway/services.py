@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 from collections.abc import Mapping
 from types import SimpleNamespace
@@ -70,20 +69,6 @@ _SERVER_OWNED_DYNAMIC_CONTEXT_KEYS = frozenset(
 # ---------------------------------------------------------------------------
 # SSE formatting
 # ---------------------------------------------------------------------------
-
-
-# 层0性能修复(bug-174): 丢弃 SSE values 全量快照 events。
-# useStream 的 trackStreamMode 会把 values 加回 streamMode 请求, 后端 worker.py
-# 也主动 publish values, 导致每个 SSE event 重发整条消息历史(长报告场景 payload
-# 爆炸 + 前端 mergeMessages 全量处理 + 渲染全量 re-parse)。前端消息流走
-# messages-tuple 增量不受影响; thread.values 的非消息字段(goal/todos/title)
-# 由 run 结束后 fetchStateHistory 刷新。回滚: GATEWAY_SSE_DROP_VALUES=false。
-_SSE_DROP_VALUES = os.environ.get("GATEWAY_SSE_DROP_VALUES", "true").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-    "on",
-)
 
 
 def format_sse(event: str, data: Any, *, event_id: str | None = None) -> str:
@@ -857,11 +842,6 @@ async def sse_consumer(
         yield format_sse("end", None)
         return
 
-    # 层0修复(bug-174): 缓冲 values 全量快照, 只保留最后一个, end 前补发,
-    # 避免流式期间逐 event 重发整条消息历史(payload 爆炸+前端 mergeMessages
-    # 全量处理), 同时保留 run 最终 state 让前端 thread.values 一致。
-    pending_values_entry = None
-
     try:
         async for entry in bridge.subscribe(record.run_id, last_event_id=last_event_id):
             if await request.is_disconnected():
@@ -875,23 +855,8 @@ async def sse_consumer(
                 continue
 
             if entry is END_SENTINEL:
-                # 层0修复(bug-174): end 前补发最终 values, 让前端 thread.values
-                # (goal/todos/title 等)最终一致。流式期间的中间 values 已被缓冲丢弃。
-                if pending_values_entry is not None:
-                    yield format_sse(
-                        pending_values_entry.event,
-                        pending_values_entry.data,
-                        event_id=pending_values_entry.id or None,
-                    )
                 yield format_sse("end", None, event_id=entry.id or None)
                 return
-
-            # 层0性能修复(bug-174): 缓冲 values 全量快照(只留最后一个), 不在流式
-            # 期间逐个转发, 避免每 event 重发整条消息历史。消息流走 messages-tuple
-            # 增量, end/heartbeat/updates/custom 等其他事件不受影响。end 前补发最终值。
-            if _SSE_DROP_VALUES and entry.event == "values":
-                pending_values_entry = entry
-                continue
 
             yield format_sse(entry.event, entry.data, event_id=entry.id or None)
 
