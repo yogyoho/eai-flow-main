@@ -56,7 +56,7 @@ import {
   isAssistantMessageGroupStreaming,
   isHiddenFromUIMessage,
 } from "@/core/messages/utils";
-import { useRehypeFadeInBlocks } from "@/core/rehype";
+import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import {
   buildMessageSidecarContext,
   type SidecarContext,
@@ -299,7 +299,7 @@ export function MessageList({
   // 层1修复(bug-174): 流式期(thread.isLoading)禁用 word-split, 避免对非 CJK
   // 文本逐词包 <span class="animate-fade-in">(DOM 节点增 10-20x + 千级 CSS 动画
   // 压满合成线程)。非流式时保留淡入动画。比 c830f857(永久禁用)不丢动画。
-  const rehypePlugins = useRehypeFadeInBlocks(!thread.isLoading);
+  const rehypePlugins = useRehypeSplitWordsIntoSpans(!thread.isLoading);
   const updateSubtask = useUpdateSubtask();
   const lastGroupIndex = groupedMessages.length - 1;
   const turnUsageMessagesByGroupIndex =
