@@ -6,6 +6,7 @@ import {
   isValidElement,
   type ReactNode,
   useContext,
+  memo,
   useMemo,
 } from "react";
 
@@ -93,7 +94,7 @@ function StreamingCode({
 }
 
 /** Renders markdown content. */
-export function MarkdownContent({
+function MarkdownContent_({
   content,
   isLoading,
   rehypePlugins,
@@ -139,3 +140,11 @@ export function MarkdownContent({
     </SafeMessageResponse>
   );
 }
+
+// Memoized so that re-renders of the enclosing MessageContent (or further up
+// the tree) don't re-enter the Streamdown setup path — setting up the
+// Markdown/KaTeX/rehype pipeline is expensive on long responses. Relies on the
+// caller passing stable references for rehypePlugins/remarkPlugins/components
+// (see MessageContent's useRehypeFadeInBlocks useMemo + the internal useMemo
+// here). port PR#2411(bug-174 渲染层).
+export const MarkdownContent = memo(MarkdownContent_);

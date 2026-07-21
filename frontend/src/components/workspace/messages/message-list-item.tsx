@@ -45,7 +45,7 @@ import {
   stripUploadedFilesTag,
   type FileInMessage,
 } from "@/core/messages/utils";
-import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
+import { useRehypeFadeInBlocks } from "@/core/rehype";
 import { readReferenceMessageContexts } from "@/core/sidecar";
 import {
   parseSlashSkillReference,
@@ -131,7 +131,7 @@ function FeedbackButtons({
   );
 }
 
-export function MessageListItem({
+function MessageListItem_({
   className,
   message,
   isLoading,
@@ -191,6 +191,14 @@ export function MessageListItem({
     </AIElementMessage>
   );
 }
+
+// Memoized to prevent re-renders from the post-stream event cascade (title
+// delta, query invalidation, suggestion fetch) from propagating through every
+// already-finalized message in the thread. Default shallow equality is
+// sufficient because all props are either primitives or come by reference from
+// thread state (the `message` object changes identity only on the single
+// currently-streaming message, which is the correct behaviour). port PR#2411.
+export const MessageListItem = memo(MessageListItem_);
 
 /**
  * Custom image component that handles artifact URLs
@@ -280,7 +288,7 @@ function MessageContent_({
   turnStartTime?: number | null;
 }) {
   // 层1修复(bug-174): 流式期禁用 word-split(避免逐词 span 爆 DOM), 非流式保留动画。
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(!isLoading);
+  const rehypePlugins = useRehypeFadeInBlocks(!isLoading);
   const isHuman = message.type === "human";
   const rawTurnDuration = message.additional_kwargs?.turn_duration as
     | number

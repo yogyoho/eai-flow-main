@@ -20,7 +20,7 @@ import { ShineBorder } from "@/components/ui/shine-border";
 import { useI18n } from "@/core/i18n/hooks";
 import { hasToolCalls } from "@/core/messages/utils";
 import { useModels } from "@/core/models/hooks";
-import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
+import { useRehypeFadeInBlocks } from "@/core/rehype";
 import { streamdownPluginsWithWordAnimation } from "@/core/streamdown";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import { fetchSubtaskSteps } from "@/core/tasks/api";
@@ -54,7 +54,7 @@ export function SubtaskCard({
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(true);
   // 层1修复(bug-174): 流式期禁用 word-split(避免逐词 span 爆 DOM), 非流式保留动画。
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(!isLoading);
+  const rehypePlugins = useRehypeFadeInBlocks(!isLoading);
   const task = useSubtask(taskId)!;
   const { models, tokenUsageEnabled } = useModels();
   const updateSubtask = useUpdateSubtask();

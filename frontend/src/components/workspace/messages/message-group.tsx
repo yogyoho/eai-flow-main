@@ -33,7 +33,7 @@ import {
   extractReasoningContentFromMessage,
   findToolCallResult,
 } from "@/core/messages/utils";
-import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
+import { useRehypeFadeInBlocks } from "@/core/rehype";
 import { extractTitleFromMarkdown } from "@/core/utils/markdown";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
@@ -113,7 +113,7 @@ export function MessageGroup({
     }
   }, [lastToolCallStep, steps]);
   // 层1修复(bug-174): 流式期禁用 word-split(避免逐词 span 爆 DOM), 非流式保留动画。
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(!isLoading);
+  const rehypePlugins = useRehypeFadeInBlocks(!isLoading);
   const firstEligibleDebugSummaryStepIndexByMessageId = useMemo(() => {
     const firstIndices = new Map<string, number>();
 
