@@ -463,7 +463,7 @@ export const docmgrApi = {
       body: JSON.stringify(data),
     }),
 
-  aiEditStream: (
+  aiEditStream: async (
     data: {
       text: string;
       operation: "polish" | "expand" | "condense" | "brainstorm";
@@ -471,55 +471,65 @@ export const docmgrApi = {
     },
     onToken: (token: string) => void,
     signal?: AbortSignal,
-  ): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const fullUrl = `${API_BASE}/docmgr/documents/ai-edit/stream`;
-      fetch(fullUrl, {
+  ): Promise<string> => {
+    const response = await fetch(
+      `${API_BASE}/docmgr/documents/ai-edit/stream`,
+      {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
         body: JSON.stringify(data),
         signal,
         credentials: "include",
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            const err = await response.text().catch(() => "Unknown error");
-            reject(new Error(`AI stream failed: ${response.status} ${err}`));
-            return;
-          }
-          const reader = response.body?.getReader();
-          if (!reader) { reject(new Error("No response body")); return; }
-          const decoder = new TextDecoder();
-          let buffer = "";
-          let fullText = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith("data: ")) continue;
-              const data = trimmed.slice(6);
-              if (data === "[DONE]") continue;
+      },
+    );
+
+    if (!response.ok) {
+      const err = await response.text().catch(() => "Unknown error");
+      throw new ApiError(response.status, `AI stream failed: ${response.status} ${err}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new ApiError(500, "No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.token != null) {
+              fullText += parsed.token;
               try {
-                const parsed = JSON.parse(data);
-                if (parsed.token) {
-                  fullText += parsed.token;
-                  onToken(parsed.token);
-                }
-                if (parsed.error) {
-                  reject(new Error(parsed.error));
-                  return;
-                }
-              } catch { /* skip malformed lines */ }
+                onToken(parsed.token);
+              } catch { /* swallow callback errors to keep reader alive */ }
             }
+            if (parsed.error) {
+              throw new ApiError(500, parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof ApiError) throw e;
+            /* skip malformed lines */
           }
-          resolve(fullText);
-        })
-        .catch(reject);
-    }),
+        }
+      }
+    } finally {
+      reader.cancel();
+    }
+
+    return fullText;
+  },
 
   syncThreadFiles: async (threadId: string): Promise<{ synced: number; skipped: number }> => {
     return request("/docmgr/sync-thread-files", {
