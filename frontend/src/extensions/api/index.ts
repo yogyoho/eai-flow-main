@@ -463,6 +463,64 @@ export const docmgrApi = {
       body: JSON.stringify(data),
     }),
 
+  aiEditStream: (
+    data: {
+      text: string;
+      operation: "polish" | "expand" | "condense" | "brainstorm";
+      model_name?: string;
+    },
+    onToken: (token: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const fullUrl = `${API_BASE}/docmgr/documents/ai-edit/stream`;
+      fetch(fullUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        signal,
+        credentials: "include",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const err = await response.text().catch(() => "Unknown error");
+            reject(new Error(`AI stream failed: ${response.status} ${err}`));
+            return;
+          }
+          const reader = response.body?.getReader();
+          if (!reader) { reject(new Error("No response body")); return; }
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let fullText = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data: ")) continue;
+              const data = trimmed.slice(6);
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.token) {
+                  fullText += parsed.token;
+                  onToken(parsed.token);
+                }
+                if (parsed.error) {
+                  reject(new Error(parsed.error));
+                  return;
+                }
+              } catch { /* skip malformed lines */ }
+            }
+          }
+          resolve(fullText);
+        })
+        .catch(reject);
+    }),
+
   syncThreadFiles: async (threadId: string): Promise<{ synced: number; skipped: number }> => {
     return request("/docmgr/sync-thread-files", {
       method: "POST",
