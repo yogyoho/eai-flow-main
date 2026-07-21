@@ -4,8 +4,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { StreamdownProps } from "streamdown";
 
-import { rehypeFadeInBlocks } from "../rehype";
-import { rehypeNormalizeMath } from "./latexNormalize";
+import { rehypeSplitWordsIntoSpans } from "../rehype";
 
 const katexOptions = {
   output: "html",
@@ -22,7 +21,6 @@ export const streamdownPlugins = {
   remarkPlugins: sharedRemarkPlugins,
   rehypePlugins: [
     rehypeRaw,
-    rehypeNormalizeMath,
     [rehypeKatex, katexOptions],
   ] as StreamdownProps["rehypePlugins"],
 };
@@ -30,9 +28,8 @@ export const streamdownPlugins = {
 export const streamdownPluginsWithWordAnimation = {
   remarkPlugins: sharedRemarkPlugins,
   rehypePlugins: [
-    rehypeNormalizeMath,
     [rehypeKatex, katexOptions],
-    rehypeFadeInBlocks,
+    rehypeSplitWordsIntoSpans,
   ] as StreamdownProps["rehypePlugins"],
 };
 
@@ -54,7 +51,6 @@ export const humanMessagePlugins = {
     [remarkMath, { singleDollarTextMath: true }],
   ] as StreamdownProps["remarkPlugins"],
   rehypePlugins: [
-    rehypeNormalizeMath,
     [rehypeKatex, { output: "html" }],
   ] as StreamdownProps["rehypePlugins"],
 };
