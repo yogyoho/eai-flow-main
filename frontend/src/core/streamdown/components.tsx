@@ -31,9 +31,10 @@ export function SafeStreamdown({
 
 export function SafeMessageResponse({
   children,
+  safeEnabled = true,
   ...props
-}: MessageResponseProps) {
-  const safeChildren = useSafeStreamdownChildren(children);
+}: MessageResponseProps & { safeEnabled?: boolean }) {
+  const safeChildren = useSafeStreamdownChildren(children, safeEnabled);
 
   return <MessageResponse {...props}>{safeChildren}</MessageResponse>;
 }

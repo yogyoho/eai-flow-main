@@ -141,6 +141,7 @@ function MarkdownContent_({
       rehypePlugins={effectiveRehypePlugins}
       components={components}
       parseIncompleteMarkdown={isLoading}
+      safeEnabled={!isLoading}
     >
       {normalizedContent}
     </SafeMessageResponse>
