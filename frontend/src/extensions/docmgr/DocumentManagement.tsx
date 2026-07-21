@@ -1444,6 +1444,11 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const selectedModelLabel = modelName
     ? models.find((m) => m.name === modelName)?.display_name ?? modelName
@@ -1484,6 +1489,7 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
   }, [getSelectedText]);
 
   const sendMessage = async (text: string, operation?: AIOperation, displayContent?: string) => {
+    const capturedDocKey = docKey;
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: displayContent ?? text, operation };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
@@ -1495,17 +1501,23 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
     const assistantMsg: ChatMessage = { id: assistantId, role: "assistant", content: "" };
     setMessages((prev) => [...prev, assistantMsg]);
 
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
     try {
       await docmgrApi.aiEditStream(
         { text, operation: operation ?? activeOp, model_name: modelName ?? undefined },
         (token) => {
+          if (capturedDocKey !== docKey) return;
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + token } : m)),
           );
           scrollToBottom();
         },
+        abortController.signal,
       );
     } catch (e) {
+      if (capturedDocKey !== docKey) return;
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
@@ -1514,6 +1526,7 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
         ),
       );
     } finally {
+      if (abortRef.current === abortController) abortRef.current = null;
       setRunning(false);
       scrollToBottom();
     }
@@ -1528,18 +1541,22 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
   };
 
   const handleQuickAction = (op: AIOperation) => {
+    if (running) return;
     setActiveOp(op);
     const selected = getSelectedText();
     if (selected.trim()) {
       void sendMessage(selected, op);
     } else {
       // 无选中时：润色/扩写/缩写作用于光标所在段落；头脑风暴作用于全文
+      let actionText: string;
       if (op === "brainstorm") {
-        void sendMessage(getFullText(), op);
+        actionText = getFullText();
       } else {
         const paragraph = getCursorParagraph();
-        void sendMessage(paragraph || getFullText(), op);
+        actionText = paragraph || getFullText();
       }
+      if (!actionText.trim()) return;
+      void sendMessage(actionText, op);
     }
   };
 
