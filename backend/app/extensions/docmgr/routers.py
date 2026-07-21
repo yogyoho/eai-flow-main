@@ -1,12 +1,14 @@
 """AI Document routers for extensions module."""
 
 import asyncio
+import json
 import logging
 import re
 from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -444,6 +446,55 @@ OPERATION_PROMPTS: dict[str, str] = {
 
 # Timeout for AI edit operations (seconds)
 AI_EDIT_TIMEOUT_SECONDS = 120
+
+
+class AIEditStreamRequest(BaseModel):
+    """AI edit stream request schema."""
+
+    text: str = Field(..., min_length=1, description="The text to process")
+    operation: str = Field(..., description="polish | expand | condense | brainstorm")
+    model_name: str | None = Field(None, description="Optional model override")
+
+
+@router.post("/documents/ai-edit/stream")
+async def ai_edit_text_stream(
+    request: AIEditStreamRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Stream AI operation result as SSE text/event-stream."""
+    prompt_template = OPERATION_PROMPTS.get(request.operation)
+    if not prompt_template:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown operation: {request.operation}. Must be one of: {list(OPERATION_PROMPTS.keys())}",
+        )
+
+    prompt = prompt_template.format(text=request.text)
+
+    from deerflow.models import create_chat_model
+
+    model = create_chat_model(name=request.model_name, thinking_enabled=False)
+
+    async def generate():
+        try:
+            async for chunk in model.astream(prompt):
+                text = _extract_ai_response_text(chunk.content).strip()
+                if text:
+                    yield f"data: {json.dumps({'token': text})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            logger.exception("AI edit stream failed: operation=%s err=%s", request.operation, exc)
+            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 def _extract_ai_response_text(content: object) -> str:
