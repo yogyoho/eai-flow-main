@@ -448,17 +448,9 @@ OPERATION_PROMPTS: dict[str, str] = {
 AI_EDIT_TIMEOUT_SECONDS = 120
 
 
-class AIEditStreamRequest(BaseModel):
-    """AI edit stream request schema."""
-
-    text: str = Field(..., min_length=1, description="The text to process")
-    operation: str = Field(..., description="polish | expand | condense | brainstorm")
-    model_name: str | None = Field(None, description="Optional model override")
-
-
 @router.post("/documents/ai-edit/stream")
 async def ai_edit_text_stream(
-    request: AIEditStreamRequest,
+    request: AIEditRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Stream AI operation result as SSE text/event-stream."""
@@ -477,14 +469,20 @@ async def ai_edit_text_stream(
 
     async def generate():
         try:
-            async for chunk in model.astream(prompt):
-                text = _extract_ai_response_text(chunk.content).strip()
-                if text:
-                    yield f"data: {json.dumps({'token': text})}\n\n"
+            async with asyncio.timeout(AI_EDIT_TIMEOUT_SECONDS):
+                async for chunk in model.astream(prompt):
+                    text = _extract_ai_response_text(chunk.content).strip()
+                    if text:
+                        yield f"data: {json.dumps({'token': text})}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as exc:
-            logger.exception("AI edit stream failed: operation=%s err=%s", request.operation, exc)
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        except TimeoutError:
+            logger.warning("AI edit stream timed out: operation=%s", request.operation)
+            yield f"data: {json.dumps({'error': 'AI processing timed out, please try a shorter text or select a faster model'})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception:
+            logger.exception("AI edit stream failed: operation=%s", request.operation)
+            yield f"data: {json.dumps({'error': 'AI processing failed, please try again'})}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         generate(),
