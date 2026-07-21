@@ -6,6 +6,7 @@ import {
   isValidElement,
   type ReactNode,
   useContext,
+  useDeferredValue,
   memo,
   useMemo,
 } from "react";
@@ -102,9 +103,14 @@ function MarkdownContent_({
   remarkPlugins = streamdownPluginsWithoutRawHtml.remarkPlugins,
   components: componentsFromProps,
 }: MarkdownContentProps) {
+  // 流式时 content 每 token 变, streamdown 1.4.0 无节流会每 token 全量 tokenize
+  // 整条 markdown(长报告 O(content) 开销压满主线程)。useDeferredValue 把 content
+  // 更新降为 non-urgent, React 空闲时才推进, 显著降 tokenize 频率(memo chain 之外
+  // 的活跃条瓶颈)。tradeoff: 显示内容稍滞后 LLM 输出, 但更流畅。bug-174 流式卡顿。
+  const deferredContent = useDeferredValue(content);
   const normalizedContent = useMemo(
-    () => preprocessStreamdownMarkdown(content),
-    [content],
+    () => preprocessStreamdownMarkdown(deferredContent),
+    [deferredContent],
   );
   const effectiveRehypePlugins = useMemo(() => {
     const base = streamdownPluginsWithoutRawHtml.rehypePlugins ?? [];
