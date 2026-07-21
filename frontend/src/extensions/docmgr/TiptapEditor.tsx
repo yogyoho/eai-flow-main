@@ -40,6 +40,8 @@ export interface TiptapEditorRef {
   getMarkdown: () => string;
   getSelectedText: () => string;
   replaceSelection: (text: string) => void;
+  insertAtCursor: (text: string) => void;
+  getCursorParagraph: () => string;
   focus: () => void;
   getEditor: () => Editor | null;
   scrollToSection: (sectionId: string) => boolean;
@@ -413,7 +415,23 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       },
       replaceSelection: (text: string) => {
         if (!editor) return;
-        editor.chain().focus().insertContent(text).run();
+        editor.chain().focus().deleteSelection().insertContent(text).run();
+      },
+      insertAtCursor: (text: string) => {
+        if (!editor) return;
+        const { from } = editor.state.selection;
+        editor.chain().focus().setTextSelection(from).insertContent(text).run();
+      },
+      getCursorParagraph: () => {
+        if (!editor) return "";
+        const { $from } = editor.state.selection;
+        for (let depth = $from.depth; depth > 0; depth--) {
+          const node = $from.node(depth);
+          if (node.isTextblock) {
+            return node.textContent;
+          }
+        }
+        return "";
       },
       focus: () => { editor?.commands.focus(); },
       getEditor: () => editor,
