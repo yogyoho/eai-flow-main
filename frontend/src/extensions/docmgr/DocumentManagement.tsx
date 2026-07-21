@@ -1370,10 +1370,15 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 360 }}
               exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }}
               className="border-l border-border overflow-hidden shrink-0">
-              <AIEditPanel onClose={() => setShowAI(false)}
+              <AIEditPanel
+                docKey={docId ?? personalFile?.rel_path ?? "personal"}
+                onClose={() => setShowAI(false)}
                 getSelectedText={() => editorRef.current?.getSelectedText() ?? ""}
                 getFullText={() => editorRef.current?.getMarkdown() ?? ""}
-                onResult={(text) => editorRef.current?.replaceSelection(text)} />
+                getCursorParagraph={() => editorRef.current?.getCursorParagraph() ?? ""}
+                onResult={(text) => editorRef.current?.replaceSelection(text)}
+                onInsert={(text) => editorRef.current?.insertAtCursor(text)}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1404,13 +1409,31 @@ const SUGGESTED_PROMPTS = [
   "帮我优化文档结构",
 ];
 
-function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
+function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorParagraph, onResult, onInsert }: {
+  docKey: string;
   onClose: () => void;
   getSelectedText: () => string;
   getFullText: () => string;
+  getCursorParagraph: () => string;
   onResult: (text: string) => void;
+  onInsert: (text: string) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // 对话持久化缓存：按 docKey 缓存最近 50 条消息
+  const chatCache = useRef<Map<string, ChatMessage[]>>(new Map());
+  const prevDocKey = useRef<string>(docKey);
+
+  // 切换文档时保存/恢复对话
+  if (prevDocKey.current !== docKey) {
+    // 保存当前对话
+    if (messages.length > 0) {
+      chatCache.current.set(prevDocKey.current, messages.slice(-50));
+    }
+    // 恢复目标文档对话（或空数组）
+    setMessages(chatCache.current.get(docKey) ?? []);
+    prevDocKey.current = docKey;
+  }
+
   const [input, setInput] = useState("");
   const [activeOp, setActiveOp] = useState<AIOperation>("polish");
   const [modelName, setModelName] = useState<string | null>(null);
@@ -1421,6 +1444,11 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const selectedModelLabel = modelName
     ? models.find((m) => m.name === modelName)?.display_name ?? modelName
@@ -1461,6 +1489,7 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
   }, [getSelectedText]);
 
   const sendMessage = async (text: string, operation?: AIOperation, displayContent?: string) => {
+    const capturedDocKey = docKey;
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: displayContent ?? text, operation };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
@@ -1468,17 +1497,36 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
     setRunning(true);
     scrollToBottom();
 
+    const assistantId = crypto.randomUUID();
+    const assistantMsg: ChatMessage = { id: assistantId, role: "assistant", content: "" };
+    setMessages((prev) => [...prev, assistantMsg]);
+
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
     try {
-      const res = await docmgrApi.aiEdit({ text, operation: operation ?? activeOp, model_name: modelName ?? undefined });
-      const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", content: res.result };
-      setMessages((prev) => [...prev, assistantMsg]);
+      await docmgrApi.aiEditStream(
+        { text, operation: operation ?? activeOp, model_name: modelName ?? undefined },
+        (token) => {
+          if (capturedDocKey !== docKey) return;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + token } : m)),
+          );
+          scrollToBottom();
+        },
+        abortController.signal,
+      );
     } catch (e) {
-      const errorMsg: ChatMessage = {
-        id: crypto.randomUUID(), role: "assistant",
-        content: `⚠️ ${e instanceof Error ? e.message : "AI 处理失败"}`,
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      if (capturedDocKey !== docKey) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: `⚠️ ${e instanceof Error ? e.message : "AI 处理失败"}` }
+            : m,
+        ),
+      );
     } finally {
+      if (abortRef.current === abortController) abortRef.current = null;
       setRunning(false);
       scrollToBottom();
     }
@@ -1493,21 +1541,32 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
   };
 
   const handleQuickAction = (op: AIOperation) => {
-    if (!hasSelection) return;
+    if (running) return;
     setActiveOp(op);
     const selected = getSelectedText();
     if (selected.trim()) {
       void sendMessage(selected, op);
     } else {
-      inputRef.current?.focus();
+      // 无选中时：润色/扩写/缩写作用于光标所在段落；头脑风暴作用于全文
+      let actionText: string;
+      if (op === "brainstorm") {
+        actionText = getFullText();
+      } else {
+        const paragraph = getCursorParagraph();
+        actionText = paragraph || getFullText();
+      }
+      if (!actionText.trim()) return;
+      void sendMessage(actionText, op);
     }
   };
 
   const handleSuggestedPrompt = (prompt: string) => {
-    const fullText = getFullText();
     const selected = getSelectedText();
-    const apiText = `${prompt}\n\n${selected.trim() ? `【选中文字】：\n${selected}` : `【文档全文】：\n${fullText}`}`;
-    void sendMessage(apiText, activeOp, prompt);
+    const fullText = getFullText();
+    const apiText = selected.trim()
+      ? `${prompt}\n\n【选中文字】：\n${selected}`
+      : `${prompt}\n\n【文档全文】：\n${fullText}`;
+    void sendMessage(apiText, undefined, prompt);
   };
 
   const handleCopy = async (content: string) => {
@@ -1549,28 +1608,27 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
       </div>
 
       {/* Quick action pills */}
-      <div className="px-4 py-2 border-b border-border/60 flex gap-1.5 flex-wrap shrink-0">
-        {AI_OPS.map(({ key, label, icon }) => {
-          const disabled = !hasSelection;
-          return (
+      <div className="px-4 py-2 border-b border-border/60 shrink-0">
+        <div className="flex gap-1.5 flex-wrap">
+          {AI_OPS.map(({ key, label, icon }) => (
             <button
               key={key}
               type="button"
-              disabled={disabled}
               onClick={() => handleQuickAction(key)}
               className={cn(
-                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all",
-                disabled
-                  ? "opacity-40 cursor-not-allowed border border-border text-muted-foreground"
-                  : activeOp === key
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all border",
+                activeOp === key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               {icon}{label}
             </button>
-          );
-        })}
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1.5">
+          {hasSelection ? "将对选中文字执行操作" : "将对全文执行操作（可选中文字后精确操作）"}
+        </p>
       </div>
 
       {/* Message area */}
@@ -1627,6 +1685,13 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
                       </button>
                       <button
                         type="button"
+                        onClick={() => onInsert(msg.content)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-muted-foreground text-[11px] hover:bg-muted transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />插入
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleCopy(msg.content)}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-muted-foreground text-[11px] hover:bg-muted transition-colors"
                       >
@@ -1640,7 +1705,8 @@ function AIEditPanel({ onClose, getSelectedText, getFullText, onResult }: {
             {running && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>思考中...</span>
+                <span>生成中</span>
+                <span className="inline-block w-0.5 h-3.5 bg-primary animate-pulse rounded-full" />
               </div>
             )}
           </div>

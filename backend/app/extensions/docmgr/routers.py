@@ -1,12 +1,14 @@
 """AI Document routers for extensions module."""
 
 import asyncio
+import json
 import logging
 import re
 from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -444,6 +446,53 @@ OPERATION_PROMPTS: dict[str, str] = {
 
 # Timeout for AI edit operations (seconds)
 AI_EDIT_TIMEOUT_SECONDS = 120
+
+
+@router.post("/documents/ai-edit/stream")
+async def ai_edit_text_stream(
+    request: AIEditRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Stream AI operation result as SSE text/event-stream."""
+    prompt_template = OPERATION_PROMPTS.get(request.operation)
+    if not prompt_template:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown operation: {request.operation}. Must be one of: {list(OPERATION_PROMPTS.keys())}",
+        )
+
+    prompt = prompt_template.format(text=request.text)
+
+    from deerflow.models import create_chat_model
+
+    model = create_chat_model(name=request.model_name, thinking_enabled=False)
+
+    async def generate():
+        try:
+            async with asyncio.timeout(AI_EDIT_TIMEOUT_SECONDS):
+                async for chunk in model.astream(prompt):
+                    text = _extract_ai_response_text(chunk.content).strip()
+                    if text:
+                        yield f"data: {json.dumps({'token': text})}\n\n"
+            yield "data: [DONE]\n\n"
+        except TimeoutError:
+            logger.warning("AI edit stream timed out: operation=%s", request.operation)
+            yield f"data: {json.dumps({'error': 'AI processing timed out, please try a shorter text or select a faster model'})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception:
+            logger.exception("AI edit stream failed: operation=%s", request.operation)
+            yield f"data: {json.dumps({'error': 'AI processing failed, please try again'})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 def _extract_ai_response_text(content: object) -> str:
