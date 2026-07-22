@@ -136,6 +136,7 @@ async def init_engine(
             echo=echo,
             pool_size=pool_size,
             pool_pre_ping=True,
+            pool_recycle=300,
             json_serializer=_json_serializer,
         )
     else:
@@ -162,7 +163,7 @@ async def init_engine(
             await _auto_create_postgres_db(url)
             # Rebuild engine against the now-existing database
             await _engine.dispose()
-            _engine = create_async_engine(url, echo=echo, pool_size=pool_size, pool_pre_ping=True, json_serializer=_json_serializer)
+            _engine = create_async_engine(url, echo=echo, pool_size=pool_size, pool_pre_ping=True, pool_recycle=300, json_serializer=_json_serializer)
             _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
             await bootstrap_schema(_engine, backend=backend)
         else:
