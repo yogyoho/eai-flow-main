@@ -248,11 +248,15 @@ function TableOfContents({
             onClick={() => onSectionClick(h.id)}
             title={h.text}
             className={cn(
-              "w-full text-left leading-snug py-1 pl-3 pr-2 rounded-r transition-colors text-[13px]",
+              "w-full text-left leading-snug py-1 pr-2 rounded-r transition-colors text-[13px]",
+              h.level === 1 && "pl-3 font-medium",
               h.level === 2 && "pl-5",
               h.level === 3 && "pl-7",
+              h.level === 4 && "pl-9",
+              h.level === 5 && "pl-11",
+              h.level >= 6 && "pl-13",
               activeId === h.id
-                ? "text-primary font-medium bg-primary/10"
+                ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
           >

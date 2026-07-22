@@ -7,6 +7,7 @@ import {
   Download,
   FileUp,
   LayoutTemplate,
+  List,
   Loader2,
   RotateCcw,
   Sparkles,
@@ -141,6 +142,7 @@ const SECTIONS: SectionDef[] = [
   { id: "figure", label: "图表样式", icon: <span className="text-[10px] font-bold">▣</span> },
   { id: "headerFooter", label: "页眉页脚", icon: <span className="text-[10px] font-bold">☰</span> },
   { id: "watermark", label: "水印设置", icon: <Sparkles className="w-3.5 h-3.5" /> },
+  { id: "toc", label: "目录设置", icon: <List className="w-3.5 h-3.5" /> },
 ];
 
 // ---------------------------------------------------------------------------
@@ -266,13 +268,17 @@ const colorCls =
 // ---------------------------------------------------------------------------
 
 interface ExportDocxDialogProps {
-  docId: string;
+  docId: string | null;
   docTitle: string;
+  // ponytail: content-mode fallback — personal/thread files have a synthetic id
+  // ({thread_id}/{rel_path}, not a UUID), so they can't hit /documents/{id}/export.
+  // When docId is null but content is provided, POST to /export-content instead.
+  content?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: ExportDocxDialogProps) {
+export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange }: ExportDocxDialogProps) {
   // ── State ──
   const [activeSection, setActiveSection] = useState("template");
   const [templates, setTemplates] = useState<LayoutTemplate[]>([]);
@@ -287,6 +293,8 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
   const [figureStyles, setFigureStyles] = useState<FigureStyles>({ ...DEFAULT_FIGURE_STYLES });
   const [headerFooter, setHeaderFooter] = useState<HeaderFooter>({ ...DEFAULT_HEADER_FOOTER });
   const [watermark, setWatermark] = useState<WatermarkType | "none">("none");
+  const [withToc, setWithToc] = useState(false);
+  const [tocDepth, setTocDepth] = useState(3);
 
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -445,18 +453,36 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
         header_footer: headerFooter,
       };
 
-      const res = await fetch(`/api/extensions/docmgr/documents/${docId}/export`, {
+      // Personal/thread files (docId null) → content-based endpoint; else by document id.
+      const useContent = !docId && content !== undefined;
+      const exportUrl = useContent
+        ? `/api/extensions/docmgr/export-content`
+        : `/api/extensions/docmgr/documents/${docId}/export`;
+      const payload = useContent
+        ? {
+            content: content ?? "",
+            format: "docx",
+            layout_template: layoutTemplate,
+            watermark: watermark === "none" ? null : watermark,
+            filename: docTitle,
+            with_toc: withToc,
+            toc_depth: tocDepth,
+          }
+        : {
+            format: "docx",
+            layout_template: layoutTemplate,
+            watermark: watermark === "none" ? null : watermark,
+            with_toc: withToc,
+            toc_depth: tocDepth,
+          };
+      const res = await fetch(exportUrl, {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": document.cookie.split(";").map(c => c.trim()).find(c => c.startsWith("csrf_token="))?.split("=")[1] ?? "",
         },
-        body: JSON.stringify({
-          format: "docx",
-          layout_template: layoutTemplate,
-          watermark: watermark === "none" ? null : watermark,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -478,7 +504,7 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
     } finally {
       setExporting(false);
     }
-  }, [docId, docTitle, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, onOpenChange]);
+  }, [docId, docTitle, content, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, withToc, tocDepth, onOpenChange]);
 
   // ── Heading helpers ──
   const updateHeading = (index: number, field: keyof HeadingStyle, value: string | number) => {
@@ -839,6 +865,38 @@ export function ExportDocxDialog({ docId, docTitle, open, onOpenChange }: Export
                       />
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Section: Table of Contents */}
+              <div data-section="toc" ref={(el) => { sectionRefs.current.toc = el; }}>
+                <SectionTitle icon={<List className="w-4 h-4" />}>目录设置</SectionTitle>
+                <div className="mt-3 flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <StyledCheckbox checked={withToc} onChange={setWithToc} />
+                    包含目录
+                  </label>
+                  <label
+                    className={cn(
+                      "flex items-center gap-1.5 text-sm transition-opacity",
+                      !withToc && "opacity-40 pointer-events-none",
+                    )}
+                  >
+                    收录到
+                    <select
+                      value={tocDepth}
+                      disabled={!withToc}
+                      onChange={(e) => setTocDepth(Number(e.target.value))}
+                      className={cn(inputCls, "w-16 h-7 text-xs")}
+                    >
+                      {[1, 2, 3, 4].map((n) => (
+                        <option key={n} value={n}>
+                          {n} 级
+                        </option>
+                      ))}
+                    </select>
+                    级标题
+                  </label>
                 </div>
               </div>
 

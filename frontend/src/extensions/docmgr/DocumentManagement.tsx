@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
-  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Lightbulb, Loader2, MoreHorizontal, PenLine, Plus,
+  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Loader2, MoreHorizontal, PenLine, Plus,
   RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, Archive,
   Trash2, Wand2, X,
 } from "lucide-react";
@@ -38,7 +38,7 @@ import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
 
-type AIOperation = "polish" | "expand" | "condense" | "brainstorm";
+type AIOperation = "polish" | "expand" | "condense" | "chat";
 type View = "list" | "editor";
 
 /** Windows 风格黄色文件夹图标（资源管理器样式） */
@@ -1194,6 +1194,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportContent, setExportContent] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<TiptapEditorRef | CollabEditorRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -1272,6 +1273,9 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
 
   const handleExport = async (fmt: "md" | "docx") => {
     if (fmt === "docx") {
+      // ponytail: capture live editor markdown so personal/thread files (docId=null)
+      // can export via the content-based endpoint.
+      setExportContent(editorRef.current?.getMarkdown() ?? doc?.content ?? "");
       setShowExportDialog(true);
       return;
     }
@@ -1376,14 +1380,16 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
                 getSelectedText={() => editorRef.current?.getSelectedText() ?? ""}
                 getFullText={() => editorRef.current?.getMarkdown() ?? ""}
                 getCursorParagraph={() => editorRef.current?.getCursorParagraph() ?? ""}
-                onResult={(text) => editorRef.current?.replaceSelection(text)}
-                onInsert={(text) => editorRef.current?.insertAtCursor(text)}
+                onResult={(text) => { editorRef.current?.replaceSelection(text); editorRef.current?.clearHighlight(); }}
+                onInsert={(text) => { editorRef.current?.insertAtCursor(text); editorRef.current?.clearHighlight(); }}
+                onHighlightSelection={() => editorRef.current?.highlightSelection()}
+                onClearHighlight={() => editorRef.current?.clearHighlight()}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <ExportDocxDialog docId={docId} docTitle={title} open={showExportDialog} onOpenChange={setShowExportDialog} />
+      <ExportDocxDialog docId={docId} docTitle={title} content={exportContent} open={showExportDialog} onOpenChange={setShowExportDialog} />
     </div>
   );
 }
@@ -1394,7 +1400,6 @@ const AI_OPS: { key: AIOperation; label: string; icon: React.ReactNode }[] = [
   { key: "polish",     label: "润色",    icon: <Wand2 className="w-3 h-3" /> },
   { key: "expand",     label: "扩写",    icon: <BookOpen className="w-3 h-3" /> },
   { key: "condense",   label: "缩写",    icon: <Scissors className="w-3 h-3" /> },
-  { key: "brainstorm", label: "头脑风暴", icon: <Lightbulb className="w-3 h-3" /> },
 ];
 
 interface ChatMessage {
@@ -1409,7 +1414,7 @@ const SUGGESTED_PROMPTS = [
   "帮我优化文档结构",
 ];
 
-function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorParagraph, onResult, onInsert }: {
+function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorParagraph, onResult, onInsert, onHighlightSelection, onClearHighlight }: {
   docKey: string;
   onClose: () => void;
   getSelectedText: () => string;
@@ -1417,6 +1422,8 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
   getCursorParagraph: () => string;
   onResult: (text: string) => void;
   onInsert: (text: string) => void;
+  onHighlightSelection: () => void;
+  onClearHighlight: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // 对话持久化缓存：按 docKey 缓存最近 50 条消息
@@ -1536,8 +1543,9 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
     const trimmed = input.trim();
     if (!trimmed || running) return;
     const selected = getSelectedText();
+    if (selected.trim()) onHighlightSelection(); else onClearHighlight();
     const text = selected.trim() ? `${trimmed}\n\n【选中文字】：\n${selected}` : trimmed;
-    void sendMessage(text, activeOp);
+    void sendMessage(text, "chat");
   };
 
   const handleQuickAction = (op: AIOperation) => {
@@ -1545,16 +1553,12 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
     setActiveOp(op);
     const selected = getSelectedText();
     if (selected.trim()) {
+      onHighlightSelection();
       void sendMessage(selected, op);
     } else {
-      // 无选中时：润色/扩写/缩写作用于光标所在段落；头脑风暴作用于全文
-      let actionText: string;
-      if (op === "brainstorm") {
-        actionText = getFullText();
-      } else {
-        const paragraph = getCursorParagraph();
-        actionText = paragraph || getFullText();
-      }
+      onClearHighlight();
+      // 无选中时：作用于光标所在段落（无则退回全文）
+      const actionText = getCursorParagraph() || getFullText();
       if (!actionText.trim()) return;
       void sendMessage(actionText, op);
     }
@@ -1562,11 +1566,12 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
 
   const handleSuggestedPrompt = (prompt: string) => {
     const selected = getSelectedText();
+    if (selected.trim()) onHighlightSelection(); else onClearHighlight();
     const fullText = getFullText();
     const apiText = selected.trim()
       ? `${prompt}\n\n【选中文字】：\n${selected}`
       : `${prompt}\n\n【文档全文】：\n${fullText}`;
-    void sendMessage(apiText, undefined, prompt);
+    void sendMessage(apiText, "chat", prompt);
   };
 
   const handleCopy = async (content: string) => {
@@ -1661,8 +1666,8 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
               msg.role === "user" ? (
                 /* User message */
                 <div key={msg.id} className="flex justify-end">
-                  <div className="bg-primary text-primary-foreground px-3 py-2 rounded-2xl rounded-br-sm max-w-[85%] text-xs leading-relaxed">
-                    {msg.operation && (
+                  <div className="bg-blue-50 border border-blue-200 text-slate-800 px-3 py-2 rounded-2xl rounded-br-sm max-w-[85%] text-xs leading-relaxed">
+                    {msg.operation && msg.operation !== "chat" && (
                       <div className="text-[10px] opacity-70 mb-1">{AI_OPS.find((o) => o.key === msg.operation)?.label}</div>
                     )}
                     {msg.content}
@@ -1672,9 +1677,15 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
                 /* Assistant message */
                 <div key={msg.id}>
                   <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2.5 text-xs leading-relaxed text-foreground prose prose-xs prose-neutral max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_strong]:text-foreground [&_code]:text-primary [&_pre]:bg-background [&_pre]:rounded-lg [&_pre]:p-2 [&_blockquote]:border-primary [&_blockquote]:pl-2.5">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    {msg.content ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 italic">
+                        <Loader2 className="w-3 h-3 animate-spin" />正在思考...
+                      </span>
+                    )}
                   </div>
-                  {!msg.content.startsWith("⚠️") && (
+                  {msg.content.trim() && !msg.content.startsWith("⚠️") && (
                     <div className="mt-1.5 flex gap-1.5">
                       <button
                         type="button"
@@ -1702,13 +1713,6 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
                 </div>
               )
             ))}
-            {running && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>生成中</span>
-                <span className="inline-block w-0.5 h-3.5 bg-primary animate-pulse rounded-full" />
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1720,6 +1724,7 @@ function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorP
             ref={inputRef}
             value={input}
             onChange={(e) => { setInput(e.target.value); autoResizeInput(); }}
+            onFocus={() => { if (getSelectedText().trim()) onHighlightSelection(); else onClearHighlight(); }}
             onKeyDown={handleKeyDown}
             placeholder="输入指令或直接发送..."
             rows={1}

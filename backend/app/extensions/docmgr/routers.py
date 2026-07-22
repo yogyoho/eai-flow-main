@@ -278,6 +278,8 @@ class ExportRequest(BaseModel):
     format: str = "docx"
     layout_template: dict | None = None
     watermark: str | None = None
+    with_toc: bool = False
+    toc_depth: int = 3
 
 
 @router.post("/documents/{doc_id}/export")
@@ -319,7 +321,61 @@ async def export_document_with_layout(
     from app.extensions.output.generator import generate_docx_simple
 
     buf = BytesIO()
-    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark)
+    toc_settings = {"maxDepth": max(1, min(4, request.toc_depth))} if request.with_toc else None
+    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )
+
+
+class ExportContentRequest(BaseModel):
+    """Export raw markdown content (no AIDocument row) — used for personal/thread files."""
+
+    content: str = ""
+    format: str = "docx"
+    layout_template: dict | None = None
+    watermark: str | None = None
+    filename: str | None = None
+    with_toc: bool = False
+    toc_depth: int = 3
+
+
+@router.post("/export-content")
+async def export_content(
+    request: ExportContentRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Export raw markdown content as Word (.docx) with layout template + watermark.
+
+    For personal/thread-synced files whose editor-side id is synthetic
+    (``{thread_id}/{rel_path}``, not a UUID) and therefore cannot hit
+    ``/documents/{doc_id}/export``.
+    """
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    content = request.content or ""
+    safe_name = re.sub(r'[\\/:*?"<>|]', "_", (request.filename or "document").split("/")[-1])
+    ext = "docx" if request.format == "docx" else "md"
+    encoded_filename = quote(f"{safe_name}.{ext}")
+
+    if request.format == "md":
+        return Response(
+            content=content.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+        )
+
+    from io import BytesIO
+
+    from app.extensions.output.generator import generate_docx_simple
+
+    buf = BytesIO()
+    toc_settings = {"maxDepth": max(1, min(4, request.toc_depth))} if request.with_toc else None
+    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings)
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -441,7 +497,7 @@ OPERATION_PROMPTS: dict[str, str] = {
     "polish": ("你是一位专业的文字编辑。请对以下文本进行润色，使其更加流畅、专业，保持原意不变。只输出润色后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
     "expand": ("你是一位专业的写作助手。请对以下文本进行扩写，增加更多细节、论据或说明，使内容更加丰富详实。只输出扩写后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
     "condense": ("你是一位专业的文字编辑。请对以下文本进行精简，去除冗余内容，保留核心信息，使表达更加简洁有力。只输出精简后的文本，不要添加任何解释或前缀。\n\n文本：\n{text}"),
-    "brainstorm": ("你是一位创意写作助手。请基于以下文本进行头脑风暴，提供3-5个相关的扩展思路或角度，每条思路用「- 」开头。只输出思路列表，不要添加任何解释或前缀。\n\n文本：\n{text}"),
+    "chat": ("你是一位嵌入在文档编辑器中的AI写作助手。请根据用户的指令处理提供的文本，直接输出处理结果。不要添加任何解释或前缀。如果用户要求总结、翻译、改写、分析等，按指令输出。始终使用与用户输入相同的语言回复。\n\n{text}"),
 }
 
 # Timeout for AI edit operations (seconds)
@@ -471,7 +527,9 @@ async def ai_edit_text_stream(
         try:
             async with asyncio.timeout(AI_EDIT_TIMEOUT_SECONDS):
                 async for chunk in model.astream(prompt):
-                    text = _extract_ai_response_text(chunk.content).strip()
+                    # 不对每个 chunk strip：流式 token 边界常落在空格/换行处，
+                    # strip 会吞掉它们导致英文单词粘连（如 "Total plant" → "Totalplant"）
+                    text = _extract_ai_response_text(chunk.content)
                     if text:
                         yield f"data: {json.dumps({'token': text})}\n\n"
             yield "data: [DONE]\n\n"

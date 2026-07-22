@@ -334,12 +334,358 @@ def parse_markdown(md: str) -> list[Block]:
 
 
 # ---------------------------------------------------------------------------
-# Inline formatting helper — handles **bold**, *italic*, `code`
+# Math: LaTeX → OMML (Word-native equations). lxml only, no new deps.
+# Handles the common engineering subset (frac, sqrt, ^_, Greek, operators,
+# sum/int). Unhandled LaTeX falls back to verbatim text so export never
+# crashes. Mirrors frontend mathMarkdown.ts decode step.
+# ---------------------------------------------------------------------------
+
+from lxml import etree as _etree  # noqa: E402
+
+_MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+_WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
+_etree.register_namespace("m", _MATH_NS)
+_etree.register_namespace("w", _WORD_NS)
+
+
+def _m(tag: str) -> str:
+    return f"{{{_MATH_NS}}}{tag}"
+
+
+def _decode_math_placeholders(text: str) -> str:
+    """Decode editor math placeholders back to ``$``/``$$`` (mirrors frontend decodeMath)."""
+    from html import unescape
+
+    def _norm(s: str) -> str:
+        # collapse over-escaped backslashes from editor markdown round-trip (\\frac → \frac)
+        s = unescape(s)
+        return re.sub(r"\\{2,}([a-zA-Z])", r"\\\1", s)
+
+    def blk(mo): return "$$" + _norm(mo.group(1)) + "$$"
+
+    def inl(mo): return "$" + _norm(mo.group(1)) + "$"
+
+    # tolerate data-math-x and data-math-x="", both attribute orders, and inner whitespace/newlines
+    text = re.sub(r'<div\b[^>]*?\bdata-math-block\b[^>]*?\bdata-latex="([^"]*)"[^>]*>[\s\S]*?</div>', blk, text)
+    text = re.sub(r'<div\b[^>]*?\bdata-latex="([^"]*)"[^>]*?\bdata-math-block\b[^>]*>[\s\S]*?</div>', blk, text)
+    text = re.sub(r'<span\b[^>]*?\bdata-math-inline\b[^>]*?\bdata-latex="([^"]*)"[^>]*>[\s\S]*?</span>', inl, text)
+    text = re.sub(r'<span\b[^>]*?\bdata-latex="([^"]*)"[^>]*?\bdata-math-inline\b[^>]*>[\s\S]*?</span>', inl, text)
+    return text
+
+
+_LATEX_SYMBOLS = {
+    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε", "varepsilon": "ε",
+    "zeta": "ζ", "eta": "η", "theta": "θ", "vartheta": "ϑ", "iota": "ι", "kappa": "κ",
+    "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ", "varrho": "ϱ",
+    "sigma": "σ", "varsigma": "ς", "tau": "τ", "upsilon": "υ", "phi": "φ", "varphi": "φ",
+    "chi": "χ", "psi": "ψ", "omega": "ω", "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ",
+    "Lambda": "Λ", "Xi": "Ξ", "Pi": "Π", "Sigma": "Σ", "Upsilon": "Υ", "Phi": "Φ",
+    "Psi": "Ψ", "Omega": "Ω", "times": "×", "cdot": "·", "div": "÷", "pm": "±", "mp": "∓",
+    "ast": "∗", "star": "⋆", "leq": "≤", "le": "≤", "geq": "≥", "ge": "≥", "neq": "≠",
+    "ne": "≠", "approx": "≈", "equiv": "≡", "sim": "∼", "propto": "∝", "infty": "∞",
+    "partial": "∂", "nabla": "∇", "sum": "∑", "int": "∫", "oint": "∮", "prod": "∏",
+    "bigcup": "∪", "bigcap": "∩", "forall": "∀", "exists": "∃", "in": "∈", "notin": "∉",
+    "subset": "⊂", "supset": "⊃", "cup": "∪", "cap": "∩", "emptyset": "∅", "rightarrow": "→",
+    "to": "→", "Rightarrow": "⇒", "rightarrow": "→", "leftarrow": "←", "Leftarrow": "⇐",
+    "leftrightarrow": "↔", "mapsto": "↦", "angle": "∠", "perp": "⊥", "parallel": "∥",
+    "circ": "∘", "bullet": "•", "prime": "′", "dagger": "†", "cdots": "⋯", "ldots": "…",
+    "dots": "…", "vdots": "⋮", "ddots": "⋱", "degree": "°", "hbar": "ℏ", "ell": "ℓ",
+    "quad": " ", "qquad": "  ",
+}
+
+_LATEX_TEXTY = frozenset({
+    "mathrm", "mathbf", "mathit", "mathcal", "mathbb", "mathfrak", "text",
+    "textrm", "textbf", "textit", "operatorname", "rm", "bf", "it", "boldsymbol", "vec", "hat", "bar", "tilde", "dot", "ddot",
+})
+
+_LATEX_IGNORE = frozenset({
+    "left", "right", "big", "Big", "bigg", "Bigg", "displaystyle", "textstyle",
+    "scriptstyle", "limits", "nolimits", "operatorname", "ensuremath",
+})
+
+
+class _LatexToOmml:
+    """Recursive-descent LaTeX → OMML element list for a paragraph."""
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+        self.i = 0
+        self.n = len(s)
+
+    def _peek(self) -> str:
+        return self.s[self.i] if self.i < self.n else ""
+
+    def _next(self) -> str:
+        c = self.s[self.i]
+        self.i += 1
+        return c
+
+    def _skip_ws(self) -> None:
+        while self.i < self.n and self._peek() in " \t\r\n":
+            self.i += 1
+
+    def _run(self, text: str):
+        r = _etree.Element(_m("r"))
+        rpr = _etree.SubElement(r, f"{{{_WORD_NS}}}rPr")
+        fonts = _etree.SubElement(rpr, f"{{{_WORD_NS}}}rFonts")
+        fonts.set(f"{{{_WORD_NS}}}ascii", "Cambria Math")
+        fonts.set(f"{{{_WORD_NS}}}hAnsi", "Cambria Math")
+        t = _etree.SubElement(r, _m("t"))
+        t.set(_XML_SPACE, "preserve")
+        t.text = text
+        return r
+
+    def _read_atom(self):
+        """Read one atom ( {...} group, \\command, or single char ) → element list."""
+        self._skip_ws()
+        c = self._peek()
+        if c == "{":
+            self._next()
+            nodes = self._parse(stop="}")
+            if self._peek() == "}":
+                self._next()
+            return nodes
+        if c == "\\":
+            return [self._command()]
+        if c:
+            self._next()
+            return [self._run(c)]
+        return []
+
+    def _wrap(self, base, sup_nodes=None, sub_nodes=None):
+        if sup_nodes is not None and sub_nodes is not None:
+            s = _etree.Element(_m("sSubSup"))
+            _append_children(_etree.SubElement(s, _m("e")), [base])
+            _append_children(_etree.SubElement(s, _m("sub")), sub_nodes)
+            _append_children(_etree.SubElement(s, _m("sup")), sup_nodes)
+            return s
+        if sup_nodes is not None:
+            s = _etree.Element(_m("sSup"))
+            _append_children(_etree.SubElement(s, _m("e")), [base])
+            _append_children(_etree.SubElement(s, _m("sup")), sup_nodes)
+            return s
+        s = _etree.Element(_m("sSub"))
+        _append_children(_etree.SubElement(s, _m("e")), [base])
+        _append_children(_etree.SubElement(s, _m("sub")), sub_nodes)
+        return s
+
+    def _command(self):
+        self._next()  # consume '\'
+        name = ""
+        while self.i < self.n and self._peek().isalpha():
+            name += self._next()
+        if not name:  # single non-letter command like \\ \, \{ \%
+            c = self._next() if self.i < self.n else ""
+            mp = {"\\": "\n", ",": " ", ";": "  ", ":": " ", "%": "%", "{": "{", "}": "}", "|": "|", "!": "", " ": " "}
+            return self._run(mp.get(c, c))
+
+        if name in {"frac", "dfrac", "tfrac", "cfrac"}:
+            num = self._read_atom()
+            den = self._read_atom()
+            f = _etree.Element(_m("f"))
+            _append_children(_etree.SubElement(f, _m("num")), num)
+            _append_children(_etree.SubElement(f, _m("den")), den)
+            return f
+        if name == "sqrt":
+            deg_nodes = None
+            self._skip_ws()
+            if self._peek() == "[":
+                self._next()
+                deg_src = ""
+                depth = 1
+                while self.i < self.n and depth > 0:
+                    ch = self._next()
+                    if ch == "[":
+                        depth += 1
+                    elif ch == "]":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    deg_src += ch
+                deg_nodes = _LatexToOmml(deg_src)._parse()
+            base = self._read_atom()
+            rad = _etree.Element(_m("rad"))
+            deg_el = _etree.SubElement(rad, _m("deg"))
+            if deg_nodes:
+                _append_children(deg_el, deg_nodes)
+            _append_children(_etree.SubElement(rad, _m("e")), base)
+            return rad
+        if name in {"binom", "dbinom", "tbinom"}:
+            a = self._read_atom()
+            b = self._read_atom()
+            f = _etree.Element(_m("f"))
+            fpr = _etree.SubElement(f, _m("fPr"))
+            _etree.SubElement(fpr, _m("type")).set(_m("val"), "lin")
+            _append_children(_etree.SubElement(f, _m("num")), a)
+            _append_children(_etree.SubElement(f, _m("den")), b)
+            return f
+        if name in {"overline", "bar", "vec", "hat", "tilde", "dot", "ddot"}:
+            # accent/overbar: use <m:groupChr> with the combining accent glyph over the base.
+            accents = {"overline": "̄", "bar": "̄", "vec": "⃗", "hat": "̂", "tilde": "̃", "dot": "̇", "ddot": "̈"}
+            base = self._read_atom()
+            el = _etree.Element(_m("groupChr"))
+            pr = _etree.SubElement(el, _m("groupChrPr"))
+            _etree.SubElement(pr, _m("chr")).set(_m("val"), accents[name])
+            _etree.SubElement(pr, _m("pos")).set(_m("val"), "top")
+            _append_children(_etree.SubElement(el, _m("e")), base)
+            return el
+        if name in {"underline"}:
+            base = self._read_atom()
+            el = _etree.Element(_m("bar"))
+            _etree.SubElement(_etree.SubElement(el, _m("barPr")), _m("pos")).set(_m("val"), "bot")
+            _append_children(_etree.SubElement(el, _m("e")), base)
+            return el
+        if name == "boxed":
+            return self._box_around(self._read_atom())
+        if name in _LATEX_TEXTY:
+            # text-style: render contained atoms upright (plain math style)
+            return self._plain_group(self._read_atom())
+        if name in _LATEX_IGNORE:
+            return self._passthrough_arg()
+        if name in {"begin", "end"}:
+            self._read_atom()  # consume {env} — ponytail: matrix/cases bodies render inline via subsequent parse
+            return self._run("")
+        if name in _LATEX_SYMBOLS:
+            return self._run(_LATEX_SYMBOLS[name])
+        # Unknown command: render its name verbatim (readable, no crash)
+        return self._run("\\" + name)
+
+    def _passthrough_arg(self):
+        self._skip_ws()
+        if self._peek() == "{":
+            self._next()
+            nodes = self._parse(stop="}")
+            if self._peek() == "}":
+                self._next()
+            return self._group(nodes)  # wrapped so ^_ bind to the whole group
+        return self._run("")
+
+    def _plain_group(self, nodes):
+        # force upright (plain) style on each math run, then wrap in a group
+        for r in [nd for nd in nodes if nd.tag == _m("r")]:
+            self._force_plain(r)
+        return self._group(nodes)
+
+    @staticmethod
+    def _force_plain(r_el):
+        # m:rPr (math props) must precede w:rPr inside m:r
+        rpr = _etree.Element(_m("rPr"))
+        _etree.SubElement(rpr, _m("sty")).set(_m("val"), "p")
+        r_el.insert(0, rpr)
+
+    def _group(self, nodes):
+        g = _etree.Element(_m("e"))
+        _append_children(g, nodes)
+        return g
+
+    def _box_around(self, nodes):
+        b = _etree.Element(_m("borderBox"))
+        _append_children(_etree.SubElement(b, _m("e")), nodes)
+        return b
+
+    def _parse(self, stop=None):
+        nodes = []
+        while self.i < self.n:
+            c = self._peek()
+            if stop and c == stop:
+                break
+            if c == "\\":
+                nodes.append(self._command())
+            elif c == "{":
+                self._next()
+                nodes.extend(self._parse(stop="}"))
+                if self._peek() == "}":
+                    self._next()
+            elif c == "^":
+                self._next()
+                sup = self._read_atom()
+                if nodes:
+                    nodes.append(self._wrap(nodes.pop(), sup_nodes=sup))
+            elif c == "_":
+                self._next()
+                sub = self._read_atom()
+                if nodes:
+                    nodes.append(self._wrap(nodes.pop(), sub_nodes=sub))
+            elif c in " \t\r\n":
+                self.i += 1
+            elif c == "~":
+                self.i += 1
+                nodes.append(self._run(" "))
+            elif c == "&":
+                self.i += 1
+                nodes.append(self._run(" "))
+            else:
+                self.i += 1
+                nodes.append(self._run(c))
+        return nodes
+
+
+def _append_children(parent, nodes):
+    for x in nodes:
+        if x.tag == _m("e"):
+            # Stray grouping wrapper from \left/\mathrm/\text passthrough — splice its children
+            # directly. (Container <m:e> of sSup/sSub/rad/bar/borderBox are built via SubElement
+            # and never pass through here, so this only flattens the passthrough wrappers.)
+            for child in list(x):
+                _append_children(parent, [child])
+        else:
+            parent.append(x)
+
+
+def _build_omath(latex: str, display: bool = False):
+    """Build an <m:oMath> (inline) or <m:oMathPara> (display) element from LaTeX."""
+    latex = re.sub(r"\\{2,}([a-zA-Z])", r"\\\1", latex.strip())  # editor over-escape: \\frac → \frac
+    try:
+        nodes = _LatexToOmml(latex)._parse()
+    except Exception:
+        # ponytail: never let a math parse error crash the export — fall back to literal text.
+        nodes = []
+        for ch in latex:
+            nodes.append(_LatexToOmml("")._run(ch))
+    omath = _etree.Element(_m("oMath"))
+    _append_children(omath, nodes)
+    if not display:
+        return omath
+    para = _etree.Element(_m("oMathPara"))
+    pr = _etree.SubElement(para, _m("oMathParaPr"))
+    _etree.SubElement(pr, _m("jc")).set(_m("val"), "center")
+    para.append(omath)
+    return para
+
+
+def _append_math(paragraph, latex: str, display: bool = False) -> None:
+    """Append a Word-native equation to a python-docx paragraph."""
+    paragraph._p.append(_build_omath(latex, display=display))
+
+
+# ---------------------------------------------------------------------------
+# Inline formatting helper — handles **bold**, *italic*, `code`, and $math$
 # ---------------------------------------------------------------------------
 
 
+_MATH_DELIM_RE = re.compile(r"(\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$)")
+
+
 def _add_inline_text(paragraph, text: str) -> None:
-    """Add text with inline **bold**, *italic*, `code` formatting."""
+    """Add text with inline **bold**, *italic*, `code`, and ``$math$`` formatting."""
+    # First split out math segments ($$...$$ display, $...$ inline) → Word-native equations.
+    if "$" in text:
+        for part in _MATH_DELIM_RE.split(text):
+            if not part:
+                continue
+            if part.startswith("$$") and part.endswith("$$") and len(part) >= 4:
+                _append_math(paragraph, part[2:-2], display=False)
+            elif part.startswith("$") and part.endswith("$") and len(part) >= 2:
+                _append_math(paragraph, part[1:-1], display=False)
+            else:
+                _add_inline_text_plain(paragraph, part)
+        return
+    _add_inline_text_plain(paragraph, text)
+
+
+def _add_inline_text_plain(paragraph, text: str) -> None:
+    """Add text with inline **bold**, *italic*, `code` formatting (no math)."""
     # Tokenize: split on bold/italic/code patterns while keeping delimiters
     parts = re.split(r"(\*\*.+?\*\*|\*.+?\*|`.+?`)", text)
     for part in parts:
@@ -357,6 +703,7 @@ def _add_inline_text(paragraph, text: str) -> None:
             run.font.size = Pt(9)
         else:
             paragraph.add_run(part)
+
 
 
 # ---------------------------------------------------------------------------
@@ -658,6 +1005,7 @@ def generate_docx_simple(
     buf,
     template_data: dict | None = None,
     watermark: str | None = None,
+    toc_settings: dict | None = None,
 ) -> None:
     """Generate a DOCX from markdown into a writable buffer.
 
@@ -668,8 +1016,17 @@ def generate_docx_simple(
             page_settings, body_styles, heading_styles, table_styles,
             header_footer. When None, sensible defaults are used.
         watermark: Optional watermark type — "draft", "review", or "final".
+        toc_settings: Optional dict ``{"maxDepth": int}``. When present with
+            maxDepth > 0, a native Word TOC field is rendered before the body
+            (Word/WPS auto-updates page numbers on open).
     """
     td = template_data or {}
+    # ponytail: lxml rejects C0 control chars (form-feed \x0c, vtab \x0b, bell, …) → 500.
+    # Math source like "\frac" can arrive as a literal form-feed after JSON/transport
+    # escaping; strip the XML-incompatible range (keep \t \n \r) so export never crashes.
+    markdown_content = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", markdown_content)
+    # Decode editor math placeholders (<div data-math-block>/<span data-math-inline>) → $/$$
+    markdown_content = _decode_math_placeholders(markdown_content)
     blocks = parse_markdown(markdown_content)
     doc = Document()
 
@@ -700,6 +1057,11 @@ def generate_docx_simple(
 
     ol_counters: dict[int, int] = {}
 
+    # --- Optional Table of Contents (built from markdown headings) ---
+    has_toc = _render_toc(doc, toc_settings)
+    if has_toc:
+        doc.add_page_break()
+
     for block in blocks:
         if block.kind == "heading":
             level = min(block.level, 4)
@@ -716,16 +1078,23 @@ def generate_docx_simple(
                     run.font.color.rgb = RGBColor.from_string(str(c).replace("#", ""))
 
         elif block.kind == "paragraph":
-            para = doc.add_paragraph()
-            pf = para.paragraph_format
-            pf.line_spacing = body_line_spacing
-            pf.space_after = Pt(body_paragraph_spacing)
-            if body_first_indent:
-                pf.first_line_indent = Cm(body_first_indent * body_size.pt / 28.35 * 0.5)
-            _add_inline_text(para, block.text)
-            for run in para.runs:
-                _set_run_font(run, body_font)
-                run.font.size = body_size
+            m_disp = re.fullmatch(r"\$\$([\s\S]+)\$\$", block.text.strip())
+            if m_disp:
+                # Display equation on its own paragraph: centered Word-native equation.
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                _append_math(para, m_disp.group(1), display=True)
+            else:
+                para = doc.add_paragraph()
+                pf = para.paragraph_format
+                pf.line_spacing = body_line_spacing
+                pf.space_after = Pt(body_paragraph_spacing)
+                if body_first_indent:
+                    pf.first_line_indent = Cm(body_first_indent * body_size.pt / 28.35 * 0.5)
+                _add_inline_text(para, block.text)
+                for run in para.runs:
+                    _set_run_font(run, body_font)
+                    run.font.size = body_size
 
         elif block.kind == "ul_item":
             para = doc.add_paragraph()
@@ -836,5 +1205,9 @@ def generate_docx_simple(
         for run in section.header.paragraphs[0].runs:
             run.font.size = Pt(9)
             run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    # --- Auto-update the TOC field when the document opens in Word/WPS ---
+    if has_toc:
+        _set_update_fields(doc)
 
     doc.save(buf)
