@@ -1,0 +1,141 @@
+{
+  "description": "循环水装置给排水设计计算 — 公式定义集",
+  "source": "GB/T 50746-2012 石油化工循环水场设计规范",
+  "formulas": [
+    {
+      "id": "Qe",
+      "name": "蒸发水量",
+      "section": "6.1.1",
+      "expression": "Q * KZF * delta_t",
+      "inputs": {
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "description": "循环水设计水量"},
+        "KZF": {"type": "lookup_table", "value": 0.001461, "unit": "1/℃", "description": "蒸发损失系数，GB/T 50746 表3.3.3内插"},
+        "delta_t": {"type": "user_input", "value": null, "unit": "℃", "description": "冷却塔进出水温差"}
+      },
+      "outputs": {"Qe": "m3/h"}
+    },
+    {
+      "id": "Qw",
+      "name": "风吹损失水量",
+      "section": "6.1.2",
+      "expression": "Q * 0.001",
+      "inputs": {
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h"}
+      },
+      "outputs": {"Qw": "m3/h"}
+    },
+    {
+      "id": "Qb",
+      "name": "排污水量",
+      "section": "6.1.3",
+      "expression": "Qe / (N - 1)",
+      "inputs": {
+        "Qe": {"type": "formula_output", "source_formula_id": "Qe", "source_param_name": "Qe"},
+        "N": {"type": "user_input", "value": null, "description": "浓缩倍数，宜≥5.0且不应低于3.0"}
+      },
+      "outputs": {"Qb": "m3/h"}
+    },
+    {
+      "id": "Qm",
+      "name": "补充水量",
+      "section": "6.1.4",
+      "expression": "Qe + Qw + Qb",
+      "inputs": {
+        "Qe": {"type": "formula_output", "source_formula_id": "Qe", "source_param_name": "Qe"},
+        "Qw": {"type": "formula_output", "source_formula_id": "Qw", "source_param_name": "Qw"},
+        "Qb": {"type": "formula_output", "source_formula_id": "Qb", "source_param_name": "Qb"}
+      },
+      "outputs": {"Qm": "m3/h"}
+    },
+    {
+      "id": "V_pool",
+      "name": "塔底水池有效容积",
+      "section": "7.1.1",
+      "expression": "pool_area * effective_depth",
+      "inputs": {
+        "pool_area": {"type": "user_input", "value": null, "unit": "m2", "description": "水池平面面积"},
+        "effective_depth": {"type": "code_requirement", "value": 2.0, "unit": "m", "description": "有效水深，GB/T 50746 §4.3.13：1.0~1.5m为有效水深，本项目取2.0m"}
+      },
+      "outputs": {"V_pool": "m3"}
+    },
+    {
+      "id": "V_system",
+      "name": "系统总容积",
+      "section": "7.1.1",
+      "expression": "V_pool + V_suction",
+      "inputs": {
+        "V_pool": {"type": "formula_output", "source_formula_id": "V_pool", "source_param_name": "V_pool"},
+        "V_suction": {"type": "user_input", "value": null, "unit": "m3", "description": "吸水池容积"}
+      },
+      "outputs": {"V_system": "m3"}
+    },
+    {
+      "id": "V_ratio_check",
+      "name": "系统容积比校验",
+      "section": "7.1.1",
+      "expression": "V_system / Q",
+      "inputs": {
+        "V_system": {"type": "formula_output", "source_formula_id": "V_system", "source_param_name": "V_system"},
+        "Q": {"type": "user_input", "value": null}
+      },
+      "outputs": {"V_ratio_check": ""},
+      "_note": "GB/T 50746 §6.1.9: 容积应控制在循环水小时流量的1/3~1/2"
+    },
+    {
+      "id": "pump_foundation_L",
+      "name": "水泵基础长度",
+      "section": "8.2.1",
+      "expression": "pump_motor_spacing + 0.5",
+      "inputs": {
+        "pump_motor_spacing": {"type": "user_input", "value": null, "unit": "m", "description": "水泵和电机最外端螺孔间距"}
+      },
+      "outputs": {"pump_foundation_L": "m"}
+    },
+    {
+      "id": "Qsf",
+      "name": "旁滤处理水量",
+      "section": "9.1.1",
+      "expression": "Q * sf_ratio",
+      "inputs": {
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h"},
+        "sf_ratio": {"type": "code_requirement", "value": 0.05, "description": "GB50050 §4.0.4: 旁滤水量为循环水量的1%~5%，本项目取5%"}
+      },
+      "outputs": {"Qsf": "m3/h"}
+    },
+    {
+      "id": "filter_count",
+      "name": "过滤器台数",
+      "section": "9.1.2",
+      "expression": "math.ceil(Qsf / filter_unit_capacity)",
+      "inputs": {
+        "Qsf": {"type": "formula_output", "source_formula_id": "Qsf", "source_param_name": "Qsf"},
+        "filter_unit_capacity": {"type": "user_input", "value": null, "unit": "m3/h", "description": "单台过滤器处理能力"}
+      },
+      "outputs": {"filter_count": "台"}
+    },
+    {
+      "id": "backwash_flow",
+      "name": "反洗瞬时流量",
+      "section": "9.1.3",
+      "expression": "filter_area * backwash_intensity * concurrent_backwash",
+      "inputs": {
+        "filter_area": {"type": "user_input", "value": null, "unit": "m2", "description": "单罐过滤面积"},
+        "backwash_intensity": {"type": "user_input", "value": 15.0, "unit": "L/s·m2", "description": "设计反洗强度"},
+        "concurrent_backwash": {"type": "user_input", "value": null, "description": "同时反洗罐数"}
+      },
+      "outputs": {"backwash_flow": "L/s"}
+    },
+    {
+      "id": "backwash_volume",
+      "name": "单次反洗总水量",
+      "section": "9.1.3",
+      "expression": "backwash_flow * backwash_duration * 60 * total_filters / 1000",
+      "inputs": {
+        "backwash_flow": {"type": "formula_output", "source_formula_id": "backwash_flow", "source_param_name": "backwash_flow"},
+        "backwash_duration": {"type": "user_input", "value": 2.0, "unit": "min", "description": "单罐反洗一次时间"},
+        "total_filters": {"type": "formula_output", "source_formula_id": "filter_count", "source_param_name": "filter_count"}
+      },
+      "outputs": {"backwash_volume": "m3"}
+    }
+  ]
+}

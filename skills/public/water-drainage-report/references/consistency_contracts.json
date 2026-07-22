@@ -1,0 +1,117 @@
+{
+  "description": "给排水设计专篇 — 跨章节+跨专业一致性合约",
+  "contracts": [
+    {
+      "id": "Q-cross-section",
+      "type": "cross_section",
+      "param_name": "Q",
+      "rule": "exact_match",
+      "severity": "fail",
+      "description": "循环水量Q在设计规模和工艺计算章节间必须一致",
+      "sources": [
+        {"section": "3.1"},
+        {"section": "6.1.1"},
+        {"section": "6.1.2"}
+      ]
+    },
+    {
+      "id": "delta-t-cross-section",
+      "type": "cross_section",
+      "param_name": "delta_t",
+      "rule": "exact_match",
+      "severity": "fail",
+      "description": "进出水温差Δt在参数章和计算章必须一致",
+      "sources": [
+        {"section": "4"},
+        {"section": "6.1.1"}
+      ]
+    },
+    {
+      "id": "N-cross-section",
+      "type": "cross_section",
+      "param_name": "N",
+      "rule": "exact_match",
+      "severity": "warn",
+      "description": "浓缩倍数N在设计参数和计算中必须一致",
+      "sources": [
+        {"section": "4"},
+        {"section": "6.1.3"}
+      ]
+    },
+    {
+      "id": "Qe-formula-chain",
+      "type": "formula_chain",
+      "rule": "exact_match",
+      "severity": "fail",
+      "description": "蒸发水量Qe的计算结果必须等于下游的输入值",
+      "upstream_param": "Qe.Qe",
+      "downstream_param": "Qe.Qe"
+    },
+    {
+      "id": "Qm-formula-chain",
+      "type": "formula_chain",
+      "rule": "tolerance",
+      "tolerance": 0.5,
+      "severity": "fail",
+      "description": "补充水量Qm = Qe + Qw + Qb，各分量之和必须等于总量",
+      "upstream_param": "Qm.Qm",
+      "downstream_param": "Qm.Qm"
+    },
+    {
+      "id": "volume-ratio-code",
+      "type": "code_constraint",
+      "expression": "V_system_V_system / Q",
+      "expected_min": 0.333,
+      "expected_max": 0.5,
+      "severity": "fail",
+      "description": "系统容积比应在1/3~1/2之间 (GB/T 50746 §6.1.9)"
+    },
+    {
+      "id": "N-code-min",
+      "type": "code_constraint",
+      "expression": "N",
+      "expected_min": 3.0,
+      "severity": "fail",
+      "description": "浓缩倍数不应低于3.0 (GB 50648 §4.1.1)"
+    },
+    {
+      "id": "N-code-recommend",
+      "type": "code_constraint",
+      "expression": "N",
+      "expected_min": 5.0,
+      "severity": "warn",
+      "description": "浓缩倍数宜≥5.0 (GB 50648 §4.1.1)"
+    },
+    {
+      "id": "fire-water-cross-discipline",
+      "type": "cross_discipline",
+      "param_name": "消防水量",
+      "rule": "tolerance",
+      "tolerance": 1.0,
+      "severity": "fail",
+      "description": "给排水计算的消防水量必须与消防专篇引用值一致",
+      "sources": [
+        {"discipline": "water_drainage", "section": "5.1", "value": null},
+        {"discipline": "fire_protection", "section": "5.1", "value": null}
+      ]
+    },
+    {
+      "id": "sf-ratio-code",
+      "type": "code_constraint",
+      "expression": "sf_ratio * 100",
+      "expected_min": 1.0,
+      "expected_max": 5.0,
+      "severity": "warn",
+      "description": "旁滤比例应在1%~5%范围内 (GB 50050 §4.0.4)"
+    },
+    {
+      "id": "pump-suction-velocity",
+      "type": "code_constraint",
+      "expression": "10000 / (3.14159 * pow(0.9, 2) / 4) / 3600",
+      "expected_min": 1.2,
+      "expected_max": 1.6,
+      "severity": "warn",
+      "description": "吸水管流速应在1.2~1.6 m/s (DN250~1000mm)"
+    }
+  ]
+}
