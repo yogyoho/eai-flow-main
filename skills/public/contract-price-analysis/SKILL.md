@@ -52,7 +52,7 @@ description: |
 ### 步骤4(仅诊断用):若 MCP 工具不可用
 若工具未注册/报错,可在 gateway 容器内用 CLI 诊断数据是否就绪(**仅诊断,非对话常规路径**):
 ```bash
-cd /app/backend && PYTHONPATH=/app/skills/custom/contract-price-analysis uv run python -m scripts.query --goods <名称>
+cd /app/backend && PYTHONPATH=/app/skills/public/contract-price-analysis uv run python -m scripts.query --goods <名称>
 ```
 不要在对话里向用户暴露此命令;数据就绪后告知用户"工具已恢复"。
 

@@ -92,7 +92,7 @@ description: |
 **输出:** 公式计算结果（STATE_READY）+ 公式状态文件
 
 ```bash
-FORMULAS=/mnt/skills/custom/water-drainage-report/references/formulas.json
+FORMULAS=/mnt/skills/public/water-drainage-report/references/formulas.json
 WORK=/mnt/user-data/workspace
 
 # 构建参数JSON（将步骤1确认的参数填入）
@@ -100,7 +100,7 @@ cat > $WORK/params.json << 'PARAMS'
 {"Q": 20000, "delta_t": 10, "N": 5, "pool_area": 912, "V_suction": 2099.5, "pump_motor_spacing": 5.2, "filter_unit_capacity": 40, "filter_area": 1.13, "concurrent_backwash": 5, "total_filters": 25}
 PARAMS
 
-python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py execute \
+python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py execute \
   --formulas $FORMULAS \
   --params "$(cat $WORK/params.json)" \
   --output $WORK/formula_state.json
@@ -138,7 +138,7 @@ python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py execut
 
 **参数修改（增量重算）：**
 ```bash
-python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py update \
+python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py update \
   --formulas $FORMULAS \
   --state $WORK/formula_state.json \
   --param <参数名> --value <新值> \
@@ -279,12 +279,12 @@ present_files(filepaths=["/mnt/user-data/outputs/{项目名称}给排水设计�
 **输出:** 校验结果（CHECK_READY）
 
 ```bash
-FORMULAS=/mnt/skills/custom/water-drainage-report/references/formulas.json
-CONTRACTS=/mnt/skills/custom/water-drainage-report/references/consistency_contracts.json
+FORMULAS=/mnt/skills/public/water-drainage-report/references/formulas.json
+CONTRACTS=/mnt/skills/public/water-drainage-report/references/consistency_contracts.json
 WORK=/mnt/user-data/workspace
 
 # 公式规范性校验（容积比、浓缩倍数等）
-python /mnt/skills/custom/water-drainage-report/scripts/formula_runner.py check \
+python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py check \
   --formulas $FORMULAS \
   --params "$(cat $WORK/params.json)" \
   --output $WORK/consistency_check.json

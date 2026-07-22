@@ -7,7 +7,7 @@
 优先用 python-docx（结构更好），装不上就回退到标准库 zipfile+xml（永远可用）。
 
 用法（在 sandbox bash 里，用虚拟路径）：
-    python /mnt/skills/custom/fire-protection-report-v2/references/docx_to_md.py \
+    python /mnt/skills/public/fire-protection-report-v2/references/docx_to_md.py \
         "/mnt/user-data/uploads/xxx.docx" \
         "/mnt/user-data/workspace/xxx.md"
 

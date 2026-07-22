@@ -13,7 +13,7 @@ docker compose -p eai-docker -f docker/docker-compose-dev.yaml up -d --build ocr
 # 2. 上传合同到 MinIO(管理页面「合同清单」上传,或投放 cpa-contracts bucket)
 
 # 3. 触发分析
-cd skills/custom/contract-price-analysis
+cd skills/public/contract-price-analysis
 PYTHONPATH=. python -m scripts.cli --trigger manual
 ```
 
@@ -68,7 +68,7 @@ Excel 输出到 `CPA_OUTPUT_DIR`(默认 `/mnt/user-data/outputs/contract-price/`
 ## 测试
 
 ```bash
-cd skills/custom/contract-price-analysis
+cd skills/public/contract-price-analysis
 PYTHONPATH=. python -m pytest tests/ -v
 ```
 

@@ -39,7 +39,7 @@ fire-regulatory-compliance-check/
 ### 3. 使用命令行
 
 ```bash
-python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py \
+python /mnt/skills/public/fire-regulatory-compliance-check/scripts/compliance_checker.py \
   --report /mnt/user-data/workspace/fire_protection_report.docx \
   --output /mnt/user-data/workspace/compliance_report.md
 ```

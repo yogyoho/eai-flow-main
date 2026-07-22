@@ -41,7 +41,7 @@ description: |
 ### 第 1 步：跑流水线
 ```bash
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
-  bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
+  bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
   "/mnt/user-data/uploads/<设计说明书.docx>" \
   "<项目名>"
 ```
@@ -139,7 +139,7 @@ write_file(<WORK_DIR>/<项目名>_mapping.json, <生成的JSON>)
 
 # 2. 保存到契约库
 cat <WORK_DIR>/<项目名>_mapping.json | \
-  python /mnt/skills/custom/fire-protection-extract/scripts/contract_store.py \
+  python /mnt/skills/public/fire-protection-extract/scripts/contract_store.py \
   save "<项目名>" <STRUCT_PATH>
 
 # 3. ⛔ 必须重跑 run.sh —— 报告只有这一条生成路径
@@ -147,7 +147,7 @@ cat <WORK_DIR>/<项目名>_mapping.json | \
 #    extract.py 负责逐字摘抄 + grounding_check 负责溯源验证。
 #    你自己写的报告没有 grounding 保证——会编造出源文档不存在的数据。
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
-  bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
+  bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
   "/mnt/user-data/uploads/<设计说明书.docx>" \
   "<项目名>" \
   "<项目名>"
@@ -200,7 +200,7 @@ present_files(filepaths=[
 
 **E6 校准视图**（用户说"生成校准视图"/"校准报告"时）
 ```bash
-python /mnt/skills/custom/fire-protection-extract/scripts/calibration_view.py \
+python /mnt/skills/public/fire-protection-extract/scripts/calibration_view.py \
   <REPORT_PATH> <STRUCT_PATH> <MAPPING_PATH> \
   > /mnt/user-data/outputs/<项目名>_校准视图.html
 present_files(filepaths=["/mnt/user-data/outputs/<项目名>_校准视图.html"])
@@ -215,7 +215,7 @@ HTML 页面用颜色标记每个 section 的状态（✅ 正常 / ⚠ 需校准�
 
 **5a. 运行校准分析**
 ```bash
-python /mnt/skills/custom/fire-protection-extract/scripts/auto_calibrate.py \
+python /mnt/skills/public/fire-protection-extract/scripts/auto_calibrate.py \
   <REPORT_PATH> <STRUCT_PATH> <MAPPING_PATH>
 ```
 输出 JSON 数组，每个元素是一个校准提案：
@@ -232,7 +232,7 @@ python /mnt/skills/custom/fire-protection-extract/scripts/auto_calibrate.py \
 用 `write_file` 更新 mapping JSON 中被接受的锚，然后重跑流水线：
 ```bash
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
-  bash /mnt/skills/custom/fire-protection-extract/scripts/run.sh \
+  bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
   "/mnt/user-data/uploads/<设计说明书.docx>" \
   "<项目名>" \
   "<项目名>"
@@ -241,7 +241,7 @@ WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
 **5d. 保存更新后的契约**
 ```bash
 cat <WORK_DIR>/<项目名>_mapping.json | \
-  python /mnt/skills/custom/fire-protection-extract/scripts/contract_store.py \
+  python /mnt/skills/public/fire-protection-extract/scripts/contract_store.py \
   save "<项目名>" <STRUCT_PATH>
 ```
 

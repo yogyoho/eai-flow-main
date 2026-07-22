@@ -22,7 +22,7 @@ read_file(<报告路径>)
 
 ### 第 2 步:运行格式化
 ```bash
-python /mnt/skills/custom/report-format/scripts/format.py \
+python /mnt/skills/public/report-format/scripts/format.py \
   <输入报告.md> \
   <输出报告_格式化.md> \
   /mnt/user-data/outputs/<项目名>_passport.json

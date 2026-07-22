@@ -52,7 +52,7 @@ cat /mnt/user-data/uploads/filename.md
 使用转换脚本将 Markdown 转换为 Word：
 
 ```bash
-python /mnt/skills/custom/markdown-to-docx/scripts/convert.py \
+python /mnt/skills/public/markdown-to-docx/scripts/convert.py \
   --markdown "/mnt/user-data/uploads/input.md" \
   --output "/mnt/user-data/outputs/report.docx" \
   --title "文档标题" \
@@ -62,7 +62,7 @@ python /mnt/skills/custom/markdown-to-docx/scripts/convert.py \
 或使用内联 Markdown 内容：
 
 ```bash
-python /mnt/skills/custom/markdown-to-docx/scripts/convert.py \
+python /mnt/skills/public/markdown-to-docx/scripts/convert.py \
   --content "# 你好世界\n\n这是一个段落。" \
   --output "/mnt/user-data/outputs/document.docx" \
   --title "我的文档"

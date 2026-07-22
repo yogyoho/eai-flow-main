@@ -52,8 +52,8 @@ fi
 WORK_DIR="${WORK:-/mnt/user-data/workspace}"
 OUT_DIR="${OUT:-/mnt/user-data/outputs}"
 for _try in "/app/skills" "/mnt/skills" "$(dirname "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")")"; do
-  if [ -f "${_try}/custom/fire-protection-extract/scripts/parse_spec.py" ]; then
-    SKILL_DIR="${_try}/custom/fire-protection-extract"
+  if [ -f "${_try}/public/fire-protection-extract/scripts/parse_spec.py" ]; then
+    SKILL_DIR="${_try}/public/fire-protection-extract"
     break
   fi
   # Also try: _try itself IS the skill dir

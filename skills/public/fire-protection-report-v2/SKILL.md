@@ -104,7 +104,7 @@ description: |
 
 17. 若 `.md` 未自动生成（极端情况，如超大文件转换超时），回退用技能自带转换脚本（按第 5 条规则，先调 kf_resolve_template 再读 reference）：
     ```
-    bash: /app/backend/.venv/bin/python /mnt/skills/custom/fire-protection-report-v2/references/docx_to_md.py \
+    bash: /app/backend/.venv/bin/python /mnt/skills/public/fire-protection-report-v2/references/docx_to_md.py \
               "/mnt/user-data/uploads/<文件名>.docx" \
               "/mnt/user-data/workspace/<文件名>.md"
     ```
@@ -376,7 +376,7 @@ present_files(filepaths=["/mnt/user-data/outputs/{项目名称}消防设计专�
 报告写入后，调用 `fire-regulatory-compliance-check` 技能的自动化检查脚本进行 10 项合规验证：
 
 ```bash
-python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py \
+python /mnt/skills/public/fire-regulatory-compliance-check/scripts/compliance_checker.py \
   --report "/mnt/user-data/outputs/{项目名称}消防设计专篇.md" \
   --output "/mnt/user-data/outputs/{项目名称}消防设计合规检查报告.md"
 ```

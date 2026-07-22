@@ -60,5 +60,5 @@
 
 ## 复用件
 - 解析：本技能 `scripts/parse_spec.py`（替代 v2 的 docx_to_md.py 用于结构化抽取；纯文本场景仍可用 v2 的）。
-- 合规校验：`skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py`（10 项 GB 检查）。
+- 合规校验：`skills/public/fire-regulatory-compliance-check/scripts/compliance_checker.py`（10 项 GB 检查）。
 - 输出：write_file 到 outputs/ + present_files（沿用 v2 写盘铁律，一次写完）。

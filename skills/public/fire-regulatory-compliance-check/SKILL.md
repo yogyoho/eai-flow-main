@@ -85,7 +85,7 @@ description: 当用户请求消防设计合规校验时使用此技能。提供�
 ### 步骤1：加载合规参考文档
 
 读取相关标准参考文件：
-- `/mnt/skills/custom/fire-regulatory-compliance-check/references/compliance_checklist.md`
+- `/mnt/skills/public/fire-regulatory-compliance-check/references/compliance_checklist.md`
 - 各GB标准摘要文件（按需）：
   - `references/gb50160_2008_2018.md`
   - `references/gb50016_2014_2018.md`
@@ -111,7 +111,7 @@ description: 当用户请求消防设计合规校验时使用此技能。提供�
 使用合规检查脚本：
 
 ```bash
-python /mnt/skills/custom/fire-regulatory-compliance-check/scripts/compliance_checker.py \
+python /mnt/skills/public/fire-regulatory-compliance-check/scripts/compliance_checker.py \
   --report /mnt/user-data/workspace/fire_protection_report.docx \
   --output /mnt/user-data/workspace/compliance_report.md
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Contract library: persist successful mapping contracts and find the best match for a new document.
 
-Store: skills/custom/fire-protection-extract/contracts/
+Store: skills/public/fire-protection-extract/contracts/
   contracts/{name}.json          — per-project mapping
   contracts/_index.json          — fingerprint index for similarity search
 
