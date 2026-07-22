@@ -409,6 +409,15 @@ class DingTalkChannel(Channel):
             # chat_id uses conversation_id for groups, sender_staff_id for P2P
             chat_id = conversation_id if conversation_type == _CONVERSATION_TYPE_GROUP else sender_staff_id
 
+            # An empty chat_id does not identify a conversation (#4316).
+            if not chat_id:
+                logger.warning(
+                    "[DingTalk] ignoring message with no conversation identity: conv_type=%s, msg_id=%s",
+                    conversation_type,
+                    msg_id,
+                )
+                return
+
             inbound = self._make_inbound(
                 chat_id=chat_id,
                 user_id=sender_staff_id,

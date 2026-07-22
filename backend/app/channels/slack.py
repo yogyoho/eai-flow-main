@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
+import re
 from typing import Any
 
 from markdown_to_mrkdwn import SlackMarkdownConverter
@@ -14,6 +16,25 @@ from app.channels.message_bus import InboundMessageType, MessageBus, OutboundMes
 logger = logging.getLogger(__name__)
 
 _slack_md_converter = SlackMarkdownConverter()
+
+
+def _escape_slack_text(text: str) -> str:
+    """Escape Slack reserved characters (&, <, >) except blockquote > at line start (#4197)."""
+    # Escape & first to avoid double-escaping introduced entities.
+    text = text.replace("&", "&amp;")
+    # Escape < and > but preserve > at start of a line (blockquote marker).
+    text = re.sub(r"<", "&lt;", text)
+    text = re.sub(r"(?<!^)\n(?!>)", lambda m: m.group(0), text)  # no-op; just clarity
+    lines = text.split("\n")
+    escaped_lines = []
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("&gt;") and (i == 0 or not lines[i - 1].endswith("&gt;")):
+            # Restore blockquote > at line start
+            line = line.replace("&gt;", ">", 1)
+        else:
+            line = line.replace(">", "&gt;")
+        escaped_lines.append(line)
+    return "\n".join(escaped_lines)
 
 
 def _normalize_allowed_users(allowed_users: Any) -> set[str]:
@@ -101,7 +122,7 @@ class SlackChannel(Channel):
 
         kwargs: dict[str, Any] = {
             "channel": msg.chat_id,
-            "text": _slack_md_converter.convert(msg.text),
+            "text": _slack_md_converter.convert(_escape_slack_text(msg.text)),
         }
         if msg.thread_ts:
             kwargs["thread_ts"] = msg.thread_ts
