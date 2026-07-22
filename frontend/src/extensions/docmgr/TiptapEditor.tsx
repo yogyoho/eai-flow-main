@@ -1,5 +1,6 @@
 "use client";
 
+import { Extension } from "@tiptap/core";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -11,11 +12,13 @@ import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
-  Heading1, Heading2, Heading3,
+  Heading1, Heading2, Heading3, Pilcrow,
   List, ListOrdered, ListChecks,
   AlignLeft, AlignCenter, AlignRight,
   Quote, Code, Minus, Undo2, Redo2,
@@ -33,8 +36,39 @@ import { SlashCommand, SlashCommandPluginKey, type SlashCommandPluginState } fro
 import { useScrollSpy } from "./hooks/useScrollSpy";
 import { extractHeadings } from "./utils/headingIdManager";
 import { getMarkdownPasteParseMode, shouldHandleMarkdownPaste } from "./utils/markdownPaste";
-import { decodeMath, encodeMath } from "./utils/mathMarkdown";
 import { highlightSection } from "./utils/sectionHighlighter";
+
+const aiHighlightKey = new PluginKey<DecorationSet>("aiHighlight");
+
+/** 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） */
+const AiHighlight = Extension.create({
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<DecorationSet>({
+        key: aiHighlightKey,
+        state: {
+          init: () => DecorationSet.empty,
+          apply(tr, old) {
+            const meta = tr.getMeta(aiHighlightKey);
+            if (meta === "clear") return DecorationSet.empty;
+            if (meta) {
+              return DecorationSet.create(tr.doc, [
+                Decoration.inline(meta.from, meta.to, {
+                  style: "background-color: #fef9c3; border-radius: 2px;",
+                }),
+              ]);
+            }
+            if (tr.docChanged) return old.map(tr.mapping, tr.doc);
+            return old;
+          },
+        },
+        props: {
+          decorations: (state) => aiHighlightKey.getState(state),
+        },
+      }),
+    ];
+  },
+});
 
 export interface TiptapEditorRef {
   getMarkdown: () => string;
@@ -42,6 +76,8 @@ export interface TiptapEditorRef {
   replaceSelection: (text: string) => void;
   insertAtCursor: (text: string) => void;
   getCursorParagraph: () => string;
+  highlightSelection: () => void;
+  clearHighlight: () => void;
   focus: () => void;
   getEditor: () => Editor | null;
   scrollToSection: (sectionId: string) => boolean;
@@ -115,6 +151,9 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
         <Redo2 className="w-3.5 h-3.5" />
       </TBtn>
       <TDivider />
+      <TBtn title="正文" active={editor.isActive("paragraph")} onClick={() => editor.chain().focus().setParagraph().run()}>
+        <Pilcrow className="w-3.5 h-3.5" />
+      </TBtn>
       <TBtn title="标题 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
         <Heading1 className="w-3.5 h-3.5" />
       </TBtn>
@@ -265,8 +304,6 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           html: true,
           transformPastedText: true,
           transformCopiedText: false,
-          // @ts-expect-error tiptap-markdown accepts markdown-it plugins at runtime.
-          markdownItPlugins: [], // 使用默认的 markdown-it 表格支持
         }),
         MathInline,
         MathBlock,
@@ -290,8 +327,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
             }
           },
         }),
+        AiHighlight,
       ],
-      content: encodeMath(initialContent),
+      content: initialContent,
       editorProps: {
         attributes: {
           class: "prose prose-foreground max-w-none focus:outline-none min-h-full pb-32 text-[15px] leading-7",
@@ -323,7 +361,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       onUpdate: ({ editor: e }) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const md = (e.storage as any).markdown.getMarkdown() as string;
-        onChange(decodeMath(md));
+        onChange(md);
         rebuildHeadings(e);
       },
       immediatelyRender: false,
@@ -406,7 +444,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       getMarkdown: () => {
         if (!editor) return "";
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return decodeMath((editor.storage as any).markdown.getMarkdown() as string);
+        return (editor.storage as any).markdown.getMarkdown() as string;
       },
       getSelectedText: () => {
         if (!editor) return "";
@@ -432,6 +470,16 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           }
         }
         return "";
+      },
+      highlightSelection: () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        if (from === to) return;
+        editor.view.dispatch(editor.state.tr.setMeta(aiHighlightKey, { from, to }));
+      },
+      clearHighlight: () => {
+        if (!editor) return;
+        editor.view.dispatch(editor.state.tr.setMeta(aiHighlightKey, "clear"));
       },
       focus: () => { editor?.commands.focus(); },
       getEditor: () => editor,
