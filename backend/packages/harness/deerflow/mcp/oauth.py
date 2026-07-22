@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -28,7 +29,7 @@ class OAuthTokenManager:
     def __init__(self, oauth_by_server: dict[str, McpOAuthConfig]):
         self._oauth_by_server = oauth_by_server
         self._tokens: dict[str, _OAuthToken] = {}
-        self._locks: dict[str, asyncio.Lock] = {name: asyncio.Lock() for name in oauth_by_server}
+        self._locks: dict[str, threading.Lock] = {name: threading.Lock() for name in oauth_by_server}
 
     @classmethod
     def from_extensions_config(cls, extensions_config: ExtensionsConfig) -> OAuthTokenManager:
@@ -54,7 +55,22 @@ class OAuthTokenManager:
             return f"{token.token_type} {token.access_token}"
 
         lock = self._locks[server_name]
-        async with lock:
+        # threading.Lock: safe across event loops/threads (upstream #4240).
+        # Acquire off-thread so blocking wait never stalls this event loop.
+        acquire_task = asyncio.create_task(asyncio.to_thread(lock.acquire))
+        try:
+            await asyncio.shield(acquire_task)
+        except asyncio.CancelledError:
+            while not acquire_task.done():
+                try:
+                    await asyncio.shield(acquire_task)
+                    break
+                except asyncio.CancelledError:
+                    continue
+            if acquire_task.done() and not acquire_task.cancelled():
+                lock.release()
+            raise
+        try:
             token = self._tokens.get(server_name)
             if token and not self._is_expiring(token, oauth):
                 return f"{token.token_type} {token.access_token}"
@@ -63,6 +79,8 @@ class OAuthTokenManager:
             self._tokens[server_name] = fresh
             logger.info(f"Refreshed OAuth access token for MCP server: {server_name}")
             return f"{fresh.token_type} {fresh.access_token}"
+        finally:
+            lock.release()
 
     @staticmethod
     def _is_expiring(token: _OAuthToken, oauth: McpOAuthConfig) -> bool:
