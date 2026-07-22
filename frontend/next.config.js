@@ -25,6 +25,8 @@ const config = {
     defaultLocale: "en",
   },
   devIndicators: false,
+  // 允许局域网其他设备 + ngrok 隧道访问 dev server（HMR/WebSocket 跨域）
+  allowedDevOrigins: ["192.168.2.35", "*.ngrok-free.dev"],
   async rewrites() {
     const rewrites = [];
     const gatewayURL = getInternalServiceURL(

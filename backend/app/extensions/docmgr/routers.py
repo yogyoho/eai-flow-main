@@ -274,12 +274,22 @@ async def export_document(
     )
 
 
+@router.get("/cover-presets")
+async def list_cover_presets(current_user: CurrentUser = Depends(get_current_user)):
+    """List built-in cover page presets (id/label/fields; layout elements omitted)."""
+    from app.extensions.output.cover_presets import public_cover_presets
+
+    return {"items": public_cover_presets()}
+
+
 class ExportRequest(BaseModel):
     format: str = "docx"
     layout_template: dict | None = None
     watermark: str | None = None
     with_toc: bool = False
     toc_depth: int = 3
+    cover_preset_id: str | None = None
+    cover_values: dict | None = None
 
 
 @router.post("/documents/{doc_id}/export")
@@ -322,7 +332,14 @@ async def export_document_with_layout(
 
     buf = BytesIO()
     toc_settings = {"maxDepth": max(1, min(4, request.toc_depth))} if request.with_toc else None
-    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings)
+    cover_preset = None
+    if request.cover_preset_id:
+        from app.extensions.output.cover_presets import get_cover_preset
+
+        cover_preset = get_cover_preset(request.cover_preset_id)
+        if cover_preset is None:
+            raise HTTPException(status_code=400, detail=f"Unknown cover preset: {request.cover_preset_id}")
+    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings, cover_preset=cover_preset, cover_values=request.cover_values)
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -340,6 +357,8 @@ class ExportContentRequest(BaseModel):
     filename: str | None = None
     with_toc: bool = False
     toc_depth: int = 3
+    cover_preset_id: str | None = None
+    cover_values: dict | None = None
 
 
 @router.post("/export-content")
@@ -375,7 +394,14 @@ async def export_content(
 
     buf = BytesIO()
     toc_settings = {"maxDepth": max(1, min(4, request.toc_depth))} if request.with_toc else None
-    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings)
+    cover_preset = None
+    if request.cover_preset_id:
+        from app.extensions.output.cover_presets import get_cover_preset
+
+        cover_preset = get_cover_preset(request.cover_preset_id)
+        if cover_preset is None:
+            raise HTTPException(status_code=400, detail=f"Unknown cover preset: {request.cover_preset_id}")
+    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings, cover_preset=cover_preset, cover_values=request.cover_values)
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

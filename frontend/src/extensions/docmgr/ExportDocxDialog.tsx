@@ -143,6 +143,7 @@ const SECTIONS: SectionDef[] = [
   { id: "headerFooter", label: "页眉页脚", icon: <span className="text-[10px] font-bold">☰</span> },
   { id: "watermark", label: "水印设置", icon: <Sparkles className="w-3.5 h-3.5" /> },
   { id: "toc", label: "目录设置", icon: <List className="w-3.5 h-3.5" /> },
+  { id: "cover", label: "封面", icon: <span className="text-[10px]">📄</span> },
 ];
 
 // ---------------------------------------------------------------------------
@@ -295,6 +296,13 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
   const [watermark, setWatermark] = useState<WatermarkType | "none">("none");
   const [withToc, setWithToc] = useState(false);
   const [tocDepth, setTocDepth] = useState(3);
+  const [coverPresetId, setCoverPresetId] = useState<string | null>(null);
+  const [coverValues, setCoverValues] = useState<Record<string, string>>({});
+  const [coverPresets, setCoverPresets] = useState<
+    { id: string; label: string; fields: { name: string; label?: string; default_from?: string }[] }[]
+  >([]);
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const activeCoverPreset = coverPresets.find((p) => p.id === coverPresetId);
 
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -315,6 +323,15 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
         .catch(() => setTemplates([]))
         .finally(() => setLoadingTemplates(false));
     });
+  }, [open]);
+
+  // ── Load cover presets ──
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/extensions/docmgr/cover-presets", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setCoverPresets(d.items ?? []))
+      .catch(() => setCoverPresets([]));
   }, [open]);
 
   // ── Apply template ──
@@ -467,6 +484,8 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
             filename: docTitle,
             with_toc: withToc,
             toc_depth: tocDepth,
+            cover_preset_id: coverPresetId,
+            cover_values: coverValues,
           }
         : {
             format: "docx",
@@ -474,6 +493,8 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
             watermark: watermark === "none" ? null : watermark,
             with_toc: withToc,
             toc_depth: tocDepth,
+            cover_preset_id: coverPresetId,
+            cover_values: coverValues,
           };
       const res = await fetch(exportUrl, {
         method: "POST",
@@ -504,7 +525,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
     } finally {
       setExporting(false);
     }
-  }, [docId, docTitle, content, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, withToc, tocDepth, onOpenChange]);
+  }, [docId, docTitle, content, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, withToc, tocDepth, coverPresetId, coverValues, onOpenChange]);
 
   // ── Heading helpers ──
   const updateHeading = (index: number, field: keyof HeadingStyle, value: string | number) => {
@@ -865,6 +886,65 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
                       />
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Section: Cover */}
+              <div data-section="cover" ref={(el) => { sectionRefs.current.cover = el; }}>
+                <SectionTitle icon={<span className="text-[10px]">📄</span>}>封面</SectionTitle>
+                <div className="space-y-3 mt-3">
+                  <div>
+                    <FieldLabel>报告类型 / 封面</FieldLabel>
+                    <Select
+                      value={coverPresetId ?? "__none__"}
+                      onValueChange={(v) => {
+                        if (v === "__none__") {
+                          setCoverPresetId(null);
+                          setCoverValues({});
+                          return;
+                        }
+                        setCoverPresetId(v);
+                        const preset = coverPresets.find((p) => p.id === v);
+                        const init: Record<string, string> = {};
+                        preset?.fields.forEach((f) => {
+                          init[f.name] =
+                            f.default_from === "doc_title"
+                              ? docTitle ?? ""
+                              : f.default_from === "today"
+                                ? todayISO
+                                : "";
+                        });
+                        setCoverValues(init);
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-9 rounded-lg border border-border bg-muted/60 text-sm">
+                        <SelectValue placeholder="无封面" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[9999]">
+                        <SelectItem value="__none__">无封面</SelectItem>
+                        {coverPresets.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {activeCoverPreset && (
+                    <div className="space-y-2">
+                      {activeCoverPreset.fields.map((f) => (
+                        <div key={f.name}>
+                          <FieldLabel>{f.label ?? f.name}</FieldLabel>
+                          <input
+                            type="text"
+                            value={coverValues[f.name] ?? ""}
+                            onChange={(e) => setCoverValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
+                            className={cn(inputCls, "w-full h-8 text-sm")}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

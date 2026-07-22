@@ -340,12 +340,7 @@ tools/license/
 python license_generator.py license_request.json --days 30
 
 # 生成永久全模块许可证
-python license_generator.py license_request.json \
-  --permanent \
-  --customer "XX科技" \
-  --max-users 50 \
-  --modules project,docmgr,knowledge \
-  --output license.lic
+python license_generator.py license_request.json  --permanent --customer "吉林化工工程"  --max-users 200  --modules flatform --output license.lic
 ```
 
 ## 文件结构

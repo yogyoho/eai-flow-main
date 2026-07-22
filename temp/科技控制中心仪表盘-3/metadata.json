@@ -1,0 +1,6 @@
+{
+  "name": "科技控制中心仪表盘",
+  "description": "具有科幻极客美学与全功能交互的科技感仪表盘系统，包含待办管理、项目跟踪、快捷入口、通知日志及双语AI决策核心。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

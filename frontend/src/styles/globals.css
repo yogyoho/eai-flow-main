@@ -485,7 +485,15 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    /* ponytail: fallback so border-color never collapses to currentColor
+       (≈ the near-black text color) when --border is briefly unresolved
+       during the CSS-variable load race (FOUC / pre-hydration / a late
+       CSS chunk for streamed or lazy-mounted content). Without it,
+       var(--border) is invalid-at-computed-time → border-color falls back
+       to its initial value currentColor → black borders. The faint gray
+       reads fine on any theme while --border is unresolved. */
+    border-color: var(--border, rgba(130, 130, 130, 0.25));
+    @apply outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
@@ -608,22 +616,22 @@
 [data-slot="resizable-panel-group"],
 [data-slot="resizable-panel"],
 [data-slot="resizable-handle"] {
-  border-color: var(--border) !important;
+  border-color: var(--border, rgba(130, 130, 130, 0.25)) !important;
 }
 
 /* react-resizable-panels 默认边框覆盖 */
 [data-panel-group],
 [data-panel] {
-  border-color: var(--border) !important;
+  border-color: var(--border, rgba(130, 130, 130, 0.25)) !important;
 }
 
 /* XYFlow Panel 组件边框覆盖 */
 .react-flow__panel {
-  border-color: var(--border) !important;
+  border-color: var(--border, rgba(130, 130, 130, 0.25)) !important;
 }
 
 .react-flow__panel > div {
-  border-color: var(--border) !important;
+  border-color: var(--border, rgba(130, 130, 130, 0.25)) !important;
 }
 
 /* ── Workflow Progress View Animations ── */
@@ -670,7 +678,7 @@
 
 .ProseMirror table td,
 .ProseMirror table th {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border, rgba(130, 130, 130, 0.25));
   padding: 0.5rem 0.75rem;
   vertical-align: top;
   position: relative;
@@ -926,7 +934,7 @@
 /* Horizontal Rule */
 .ProseMirror hr {
   border: none !important;
-  border-top: 1px solid var(--border) !important;
+  border-top: 1px solid var(--border, rgba(130, 130, 130, 0.25)) !important;
   margin: 1.5rem 0 !important;
 }
 

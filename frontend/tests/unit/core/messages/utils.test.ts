@@ -675,4 +675,25 @@ describe("orphan tool messages", () => {
     expect(t1b).toBeDefined();
     expect(t1b?.type).toBe("tool");
   });
+
+  test("tool message as the first visible message opens a processing group, no error", () => {
+    // Preceding human/ai messages can be hide_from_ui control messages, so the
+    // first message getMessageGroups actually processes is a tool result and
+    // `groups` is still empty. Previously this hit console.error (surfaced by
+    // Next.js as a render-time error overlay during report-generation runs).
+    const messages = [
+      {
+        id: "t-1",
+        type: "tool",
+        name: "bash",
+        tool_call_id: "call-1",
+        content: "output-1",
+      },
+    ] as Message[];
+
+    const groups = getMessageGroups(messages);
+
+    expect(groups.map((g) => g.type)).toEqual(["assistant:processing"]);
+    expect(groups[0]?.messages[0]?.id).toBe("t-1");
+  });
 });

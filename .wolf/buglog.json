@@ -4024,6 +4024,386 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-22T00:00:00Z"
+    },
+    {
+      "id": "bug-245",
+      "timestamp": "2026-07-22T03:07:37.108Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/TiptapEditor.tsx",
+      "root_cause": "Had \"./utils/mathMarkdown\"",
+      "fix": "Changed to \"./utils/sectionHighlighter\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T03:07:37.108Z"
+    },
+    {
+      "id": "bug-246",
+      "timestamp": "2026-07-22T03:07:48.176Z",
+      "error_message": "Wrong reference: encodeMath should be initialContent",
+      "file": "frontend/src/extensions/docmgr/TiptapEditor.tsx",
+      "root_cause": "Used \"encodeMath\" instead of \"initialContent\"",
+      "fix": "Changed encodeMath → initialContent",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-22T03:07:59.482Z"
+    },
+    {
+      "id": "bug-247",
+      "timestamp": "2026-07-22T03:08:37.295Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/TiptapEditor.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 14→6 lines (6 removed) | Also: // @ts-expect-error tiptap-markdown accepts markdo; markdownItPlugins: [], // 使用默认的 markdown-it 表格支持",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-22T03:08:54.227Z"
+    },
+    {
+      "id": "bug-248",
+      "timestamp": "2026-07-22T05:01:25.804Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T05:01:25.804Z"
+    },
+    {
+      "id": "bug-249",
+      "timestamp": "2026-07-22T05:01:32.352Z",
+      "error_message": "Wrong reference: onOpenChange should be withToc",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Used \"onOpenChange\" instead of \"withToc\"",
+      "fix": "Changed onOpenChange → withToc",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T05:01:32.352Z"
+    },
+    {
+      "id": "bug-250",
+      "timestamp": "2026-07-22T05:19:27.536Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "id: \"watermark\", label: \"水印设置\", icon: <Sparkles className=\"w-3.5 h-3.5\" /> → \"toc\", label: \"目录设置\", icon: <List className=\"w-3.5 h-3.5\" />",
+      "fix": "Changed id: \"watermark\", label: \"水印设置\", icon: <Sparkles className=\"w-3.5 h-3.5\" /> → \"toc\", label: \"目录设置\", icon: <List className=\"w-3.5 h-3.5\" />",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T05:19:27.536Z"
+    },
+    {
+      "id": "bug-docmgr-toc-nav-missing",
+      "timestamp": "2026-07-22T05:24:14Z",
+      "error_message": "文档空间「导出 Word」对话框里没有显示「包含目录」勾选框 + 深度下拉",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "TOC 内容区块(<div data-section=\"toc\">)虽已渲染在右侧滚动区(水印设置之后),但左侧 SECTIONS 导航数组(驱动 sidebar 按钮 + scrollToSection 跳转)缺少 toc 条目 → 区块在水印下方折叠处,无按钮可到达,用户看不到。",
+      "fix": "SECTIONS 数组末尾(watermark 之后)加 { id: \"toc\", label: \"目录设置\", icon: <List className=\"w-3.5 h-3.5\" /> }。重启 frontend(next dev --turbo,日志在 /app/logs/frontend.log)。",
+      "tags": [
+        "docmgr",
+        "export",
+        "toc",
+        "ui",
+        "nav",
+        "frontend"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T05:24:14Z"
+    },
+    {
+      "id": "bug-252",
+      "timestamp": "2026-07-22T05:46:03.162Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/TiptapEditor.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→12 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T05:46:03.162Z"
+    },
+    {
+      "id": "bug-253",
+      "timestamp": "2026-07-22T06:29:36.833Z",
+      "error_message": "Wrong reference: $scheme should be $client_scheme",
+      "file": "docker/nginx/nginx.conf",
+      "root_cause": "Used \"$scheme\" instead of \"$client_scheme\"",
+      "fix": "Changed $scheme → $client_scheme",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "conf"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T06:29:36.833Z"
+    },
+    {
+      "id": "bug-254",
+      "timestamp": "2026-07-22T07:58:15.475Z",
+      "error_message": "Wrong reference: $client_scheme should be $scheme",
+      "file": "docker/nginx/nginx.conf",
+      "root_cause": "Used \"$client_scheme\" instead of \"$scheme\"",
+      "fix": "Changed $client_scheme → $scheme",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "conf"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T07:58:15.475Z"
+    },
+    {
+      "id": "bug-255",
+      "timestamp": "2026-07-22T08:20:23.466Z",
+      "error_message": "Wrong reference: $scheme should be $client_scheme",
+      "file": "docker/nginx/nginx.conf",
+      "root_cause": "Used \"$scheme\" instead of \"$client_scheme\"",
+      "fix": "Changed $scheme → $client_scheme",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "conf"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T08:20:23.466Z"
+    },
+    {
+      "id": "bug-256",
+      "timestamp": "2026-07-22T11:02:46.655Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:02:46.655Z"
+    },
+    {
+      "id": "bug-257",
+      "timestamp": "2026-07-22T11:03:54.893Z",
+      "error_message": "Wrong reference: important should be rgba",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "Used \"important\" instead of \"rgba\"",
+      "fix": "Changed important → rgba",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-22T11:04:26.147Z"
+    },
+    {
+      "id": "bug-258",
+      "timestamp": "2026-07-22T11:04:02.698Z",
+      "error_message": "CSS fix: border",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "border: 1px solid var(--border) → 1px solid var(--border, rgba(130, 130, 130, 0.25))",
+      "fix": "Changed border: 1px solid var(--border) → 1px solid var(--border, rgba(130, 130, 130, 0.25))",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:04:02.698Z"
+    },
+    {
+      "id": "bug-259",
+      "timestamp": "2026-07-22T11:05:32.745Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:05:32.745Z"
+    },
+    {
+      "id": "bug-260",
+      "timestamp": "2026-07-22T11:05:37.474Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:05:37.474Z"
+    },
+    {
+      "id": "bug-261",
+      "timestamp": "2026-07-22T11:05:42.122Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "id: \"toc\", label: \"目录设置\", icon: <List className=\"w-3.5 h-3.5\" /> → \"cover\", label: \"封面\", icon: <span className=\"text-[10px]\">📄</span>",
+      "fix": "Changed id: \"toc\", label: \"目录设置\", icon: <List className=\"w-3.5 h-3.5\" /> → \"cover\", label: \"封面\", icon: <span className=\"text-[10px]\">📄</span>",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:05:42.122Z"
+    },
+    {
+      "id": "bug-262",
+      "timestamp": "2026-07-22T11:06:37.070Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:06:37.070Z"
+    },
+    {
+      "id": "bug-263",
+      "timestamp": "2026-07-22T11:06:46.062Z",
+      "error_message": "Wrong reference: onOpenChange should be coverPresetId",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Used \"onOpenChange\" instead of \"coverPresetId\"",
+      "fix": "Changed onOpenChange → coverPresetId",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T11:06:46.062Z"
+    },
+    {
+      "id": "bug-264",
+      "timestamp": "2026-07-22T16:50:00.000Z",
+      "error_message": "对话页初始化 / AI 任务流式过程中，按钮、任务过程 panel、右侧工件等偶尔出现黑边框（样式渲染不全）；其他页面也有，是全局性问题，用户判断与样式加载/渲染时序有关。",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "Tailwind v4 `@layer base { * { border-color: var(--border) } }` 及多处 `var(--border)` 用法**无 fallback**。当 `--border` 在 CSS 变量加载竞态期（FOUC / next-themes 预水合 / 流式或懒加载组件的 CSS chunk 未到）短暂未解析时，`var(--border)` 为 invalid-at-computed-time → border-color 回退到初始值 `currentColor`（≈前景文字色≈近黑），任何带 border-width 的元素即显黑边框。`:root` 与 `.dark` 都定义了 --border，但 globals.css 整体未到的那一瞬所有变量都未定义。此前 react-resizable-panels / react-flow 已用 `border-color: var(--border) !important` 逐个补丁（globals.css:607-627）= whack-a-mole，新组件继续复现，证明是系统性根因而非单组件问题。",
+      "fix": "给所有 `var(--border)` 用法加 fallback `rgba(130,130,130,0.25)`（淡中性灰，明暗主题都柔和，绝不再回退到 currentColor/黑）：① base `*` 规则由 `@apply border-border outline-ring/50` 改为裸 `border-color: var(--border, rgba(130,130,130,0.25))` + `@apply outline-ring/50`（必须从 @apply 移除 border-border，否则其生成的无 fallback 声明会按源序覆盖 fallback）；② 4 处 panel `!important` 覆盖（resizable-panel / react-resizable-panels / react-flow__panel）；③ `.ProseMirror table td,th` 与 `hr`（AI 流式 markdown 表格/分割线，正是'任务执行中'黑边的来源）。`docker compose -p eai-docker restart frontend` 生效。",
+      "tags": [
+        "frontend",
+        "css",
+        "tailwind-v4",
+        "fouc",
+        "border",
+        "black-border",
+        "css-variable",
+        "fallback",
+        "global",
+        "rendering-race",
+        "whack-a-mole",
+        "next-themes"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T16:50:00.000Z"
+    },
+    {
+      "id": "bug-265",
+      "timestamp": "2026-07-22T12:15:09.077Z",
+      "error_message": "Wrong reference: _tool_freq_warned should be _tool_name_counter",
+      "file": "backend/packages/harness/deerflow/agents/middlewares/loop_detection_middleware.py",
+      "root_cause": "Used \"_tool_freq_warned\" instead of \"_tool_name_counter\"",
+      "fix": "Changed _tool_freq_warned → _tool_name_counter",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-22T12:15:56.192Z"
+    },
+    {
+      "id": "bug-266",
+      "timestamp": "2026-07-22T12:28:34.248Z",
+      "error_message": "Wrong reference: keys should be or",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "Used \"keys\" instead of \"or\"",
+      "fix": "Changed keys → or",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T12:28:34.248Z"
+    },
+    {
+      "id": "bug-267",
+      "timestamp": "2026-07-22T12:42:38.782Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/subagents/executor.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T12:42:38.782Z"
     }
   ]
 }

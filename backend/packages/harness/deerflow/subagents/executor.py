@@ -27,6 +27,7 @@ from deerflow.authz.principal import normalize_authz_attributes
 from deerflow.config import get_app_config
 from deerflow.config.app_config import AppConfig
 from deerflow.models import create_chat_model
+from deerflow.runtime.user_context import DEFAULT_USER_ID
 from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
 from deerflow.skills.types import Skill
 from deerflow.subagents.config import SubagentConfig, resolve_subagent_model_name
@@ -566,7 +567,6 @@ class SubagentExecutor:
             return []
 
         try:
-            from deerflow.runtime.user_context import DEFAULT_USER_ID
             from deerflow.skills.storage import get_or_new_user_skill_storage
 
             storage_kwargs = {"app_config": self.app_config} if self.app_config is not None else {}

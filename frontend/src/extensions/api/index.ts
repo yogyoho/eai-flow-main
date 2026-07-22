@@ -455,7 +455,7 @@ export const docmgrApi = {
 
   aiEdit: (data: {
     text: string;
-    operation: "polish" | "expand" | "condense" | "brainstorm";
+    operation: "polish" | "expand" | "condense" | "chat";
     model_name?: string;
   }) =>
     request<{ result: string }>("/docmgr/documents/ai-edit", {
@@ -466,7 +466,7 @@ export const docmgrApi = {
   aiEditStream: async (
     data: {
       text: string;
-      operation: "polish" | "expand" | "condense" | "brainstorm";
+      operation: "polish" | "expand" | "condense" | "chat";
       model_name?: string;
     },
     onToken: (token: string) => void,

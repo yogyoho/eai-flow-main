@@ -92,13 +92,19 @@ export function getMessageGroups(messages: Message[]): MessageGroup[] {
           if (lastGroup) {
             lastGroup.messages.push(message);
           } else {
-            // groups is empty (shouldn't happen — the outer for loop is guarded
-            // by `messages.length === 0 -> return []`), but keep the diagnostic
-            // just in case.
-            console.error(
-              "Unexpected tool message with no preceding group",
-              message,
-            );
+            // No group exists yet — the tool message is the first *visible*
+            // message. This happens when the preceding human/ai messages were
+            // hide_from_ui control messages (filtered above before any group
+            // was pushed), e.g. a report-generation run whose first emitted
+            // visible event is the tool result. Previously this hit
+            // console.error, which Next.js surfaces as a render-time error
+            // overlay. Open a processing group so the result stays visible
+            // instead of crashing the page.
+            groups.push({
+              id: message.id,
+              type: "assistant:processing",
+              messages: [message],
+            });
           }
         }
       }

@@ -156,6 +156,43 @@ def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:
         _info_line("日期", cover_fields.get("date"))
 
 
+def _render_cover_preset(doc, preset: dict | None, values: dict | None) -> bool:
+    """Render a data-driven cover page from a preset layout.
+
+    ``preset["elements"]`` is a list of:
+      - ``{"type": "spacer", "lines": N}`` — N blank paragraphs (always rendered)
+      - ``{"type": "text",  "field": X, ...}`` — a standalone value (e.g. the title)
+      - ``{"type": "info",  "label": L, "field": X, ...}`` — renders ``"L：value"``
+    A text/info element whose field value is missing is skipped entirely
+    (no empty label line). Unknown element types are skipped. Returns False
+    (no-op) when ``preset`` is falsy; True otherwise. Never raises on a bad preset.
+    """
+    if not preset:
+        return False
+    vals = values or {}
+    align_map = {"left": WD_ALIGN_PARAGRAPH.LEFT, "right": WD_ALIGN_PARAGRAPH.RIGHT}
+    for el in preset.get("elements", []):
+        etype = el.get("type")
+        if etype == "spacer":
+            for _ in range(int(el.get("lines", 1))):
+                doc.add_paragraph()
+            continue
+        if etype not in ("text", "info"):
+            continue  # ponytail: unknown element type → skip, never crash
+        value = vals.get(el.get("field"))
+        if value is None or str(value).strip() == "":
+            continue  # missing value → skip entire line
+        p = doc.add_paragraph()
+        p.alignment = align_map.get(el.get("align", "center"), WD_ALIGN_PARAGRAPH.CENTER)
+        text = str(value) if etype == "text" else f"{el.get('label', '')}：{value}"
+        run = p.add_run(text)
+        _set_run_font(run, _resolve_font(el.get("font", "宋体")))
+        run.font.size = Pt(el.get("size", 16 if etype == "text" else 14))
+        if el.get("bold"):
+            run.bold = True
+    return True
+
+
 def _add_toc_field(paragraph, max_depth: int) -> None:
     """Inject a native Word TOC field (TOC \\o "1-N" \\h \\z \\u) into paragraph XML."""
     from docx.oxml import OxmlElement
@@ -1006,6 +1043,8 @@ def generate_docx_simple(
     template_data: dict | None = None,
     watermark: str | None = None,
     toc_settings: dict | None = None,
+    cover_preset: dict | None = None,
+    cover_values: dict | None = None,
 ) -> None:
     """Generate a DOCX from markdown into a writable buffer.
 
@@ -1019,6 +1058,12 @@ def generate_docx_simple(
         toc_settings: Optional dict ``{"maxDepth": int}``. When present with
             maxDepth > 0, a native Word TOC field is rendered before the body
             (Word/WPS auto-updates page numbers on open).
+        cover_preset: Optional cover preset dict (see cover_presets.py). When
+            present, a cover page renders in its own section with no page
+            number; the body section restarts page numbering at 1.
+        cover_values: Optional dict of field values for the cover preset
+            (e.g. {"title": ..., "client": ...}); a line whose value is
+            missing is skipped.
     """
     td = template_data or {}
     # ponytail: lxml rejects C0 control chars (form-feed \x0c, vtab \x0b, bell, …) → 500.
@@ -1056,6 +1101,16 @@ def generate_docx_simple(
         hs_map[hs.get("level", 0)] = hs
 
     ol_counters: dict[int, int] = {}
+
+    # --- Optional cover page (own section, no page number) ---
+    has_cover = False
+    if cover_preset:
+        try:
+            has_cover = _render_cover_preset(doc, cover_preset, cover_values)
+        except Exception:  # cover must never abort generation
+            has_cover = False
+        if has_cover:
+            doc.add_section(WD_SECTION.NEW_PAGE)
 
     # --- Optional Table of Contents (built from markdown headings) ---
     has_toc = _render_toc(doc, toc_settings)
@@ -1166,6 +1221,17 @@ def generate_docx_simple(
                             },
                         )
                         shading.append(shading_elem)
+
+    # Chrome (header/footer/watermark/page-number) targets the BODY section
+    # (sections[-1]). When a cover was added, unlink it from the cover section
+    # and restart page numbering at 1; the cover section (sections[0]) gets no
+    # chrome → no page number. No cover → sections[-1] is the same single
+    # section already bound, so this rebind is a no-op there (byte-identical).
+    section = doc.sections[-1]
+    if has_cover:
+        section.footer.is_linked_to_previous = False
+        section.header.is_linked_to_previous = False
+        _set_section_pagenum(section, fmt="decimal", start=1)
 
     # --- Header / Footer ---
     hf = td.get("header_footer")
