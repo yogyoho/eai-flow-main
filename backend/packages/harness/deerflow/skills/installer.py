@@ -62,7 +62,21 @@ class SkillSecurityScanError(ValueError):
 
 
 def is_unsafe_zip_member(info: zipfile.ZipInfo) -> bool:
-    """Return True if the zip member path is absolute, attempts directory traversal, or contains a colon."""
+    """Return True if the zip member path is absolute, attempts directory
+    traversal, or contains a colon.
+
+    A colon has no legitimate use in a relative archive member path — zip
+    entries always use ``/`` separators, and a real Windows drive prefix
+    (``C:\\...``) is already rejected above as absolute. But on Windows/NTFS,
+    a colon anywhere else in a path (e.g. ``scripts/run.sh:hidden.txt``)
+    addresses an Alternate Data Stream on the preceding path component
+    instead of creating a new file: it silently attaches extra content to
+    ``scripts/run.sh`` rather than creating a sibling file. That stream is
+    invisible to ``Path.rglob()`` / ``os.walk()``-based listing, so it would
+    let an archive smuggle content past directory-based security scanning
+    while the content still lands on disk. Reject outright rather than
+    trying to allow-list "safe" colon positions.
+    """
     name = info.filename
     if not name:
         return False
@@ -76,9 +90,7 @@ def is_unsafe_zip_member(info: zipfile.ZipInfo) -> bool:
         return True
     if ".." in path.parts:
         return True
-    # NTFS ADS smuggling: a colon in a relative zip path addresses an Alternate
-    # Data Stream on Windows, invisible to rglob/walk. Reject outright (#4236).
-    if ":" in normalized:
+    if ":" in name:
         return True
     return False
 

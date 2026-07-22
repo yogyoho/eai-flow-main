@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-22T13:01:32.535Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-22T14:04:55.024Z
 > Files: 1577 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -1397,7 +1397,7 @@
 
 ## backend/packages/harness/deerflow/persistence/
 
-- `engine.py` — Async SQLAlchemy engine lifecycle management. (~2320 tok)
+- `engine.py` — Async SQLAlchemy engine lifecycle management. (~2368 tok)
 
 ## backend/packages/harness/deerflow/persistence/channel_connections/
 
