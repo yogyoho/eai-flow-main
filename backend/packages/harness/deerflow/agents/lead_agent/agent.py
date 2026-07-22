@@ -81,6 +81,15 @@ def _append_memory_tools_without_name_conflicts(tools: list) -> None:
         existing_names.add(memory_tool.name)
 
 
+def _resolve_runtime_option(cfg: dict, key: str, agent_value, default):
+    """Resolve a runtime option with request > agent config > default precedence (#4347)."""
+    if key in cfg:
+        return cfg[key]
+    if agent_value is not None:
+        return agent_value
+    return default
+
+
 def _get_runtime_config(config: RunnableConfig) -> dict:
     """Merge legacy configurable options with LangGraph runtime context."""
     cfg = dict(config.get("configurable", {}) or {})
@@ -480,6 +489,16 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
 
+    # Per-agent model/reasoning overrides (#4347): request > agent config > default
+    agent_thinking = getattr(agent_config, "thinking_enabled", None) if agent_config else None
+    agent_reasoning = getattr(agent_config, "reasoning_effort", None) if agent_config else None
+    thinking_enabled = bool(_resolve_runtime_option(cfg, "thinking_enabled", agent_thinking, True))
+    reasoning_effort = _resolve_runtime_option(cfg, "reasoning_effort", agent_reasoning, None)
+
+    # Per-agent sampling overrides (temperature / max_tokens) (#4347)
+    agent_model_settings = getattr(agent_config, "model_settings", None) if agent_config else None
+    agent_model_overrides = agent_model_settings.model_dump(exclude_none=True) if agent_model_settings else None
+
     # Final model name resolution: request → agent config → global default, with fallback for unknown names
     model_name = _resolve_model_name(requested_model_name or agent_model_name, app_config=resolved_app_config)
 
@@ -567,7 +586,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
         if should_use_memory_tools(resolved_app_config.memory):
             _append_memory_tools_without_name_conflicts(final_tools)
         return create_agent(
-            model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, app_config=resolved_app_config, attach_tracing=False),
+            model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, app_config=resolved_app_config, attach_tracing=False, model_overrides=agent_model_overrides),
             tools=final_tools,
             middleware=build_middlewares(
                 config,
@@ -634,7 +653,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     if should_use_memory_tools(resolved_app_config.memory):
         _append_memory_tools_without_name_conflicts(final_tools)
     return create_agent(
-        model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False),
+        model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort, app_config=resolved_app_config, attach_tracing=False, model_overrides=agent_model_overrides),
         tools=final_tools,
         middleware=build_middlewares(
             config,
