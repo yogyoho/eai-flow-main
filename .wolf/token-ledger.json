@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 97102935,
-    "total_reads": 34658,
-    "total_writes": 41424,
+    "total_tokens_estimated": 97185980,
+    "total_reads": 34673,
+    "total_writes": 41448,
     "total_sessions": 439,
-    "anatomy_hits": 17767,
-    "anatomy_misses": 15681,
-    "repeated_reads_blocked": 27185,
-    "estimated_savings_vs_bare_cli": 158146799
+    "anatomy_hits": 17773,
+    "anatomy_misses": 15690,
+    "repeated_reads_blocked": 27194,
+    "estimated_savings_vs_bare_cli": 158190648
   },
   "sessions": [
     {
@@ -442553,6 +442553,233 @@
         "writes_count": 22,
         "repeated_reads_blocked": 7,
         "anatomy_lookups": 5
+      }
+    },
+    {
+      "id": "session-2026-07-22-2008",
+      "started": "2026-07-22T12:08:12.869Z",
+      "ended": "2026-07-22T14:11:23.586Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/agents/middlewares/loop_detection_middleware.py",
+          "tokens_estimated": 9885,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/community/serper/tools.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/skills/installer.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/sandbox/tools.py",
+          "tokens_estimated": 27835,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/gateway/services.py",
+          "tokens_estimated": 11977,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/mcp/oauth.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/tools/builtins/invoke_acp_agent_tool.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/skills/security_scanner.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/database_config.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/subagents/executor.py",
+          "tokens_estimated": 11296,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/feishu.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/slack.py",
+          "tokens_estimated": 3088,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/dingtalk.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/manager.py",
+          "tokens_estimated": 13990,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/persistence/engine.py",
+          "tokens_estimated": 2363,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/agents/middlewares/loop_detection_middleware.py",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/agents/middlewares/loop_detection_middleware.py",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/community/serper/tools.py",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/skills/installer.py",
+          "tokens_estimated": 212,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/sandbox/tools.py",
+          "tokens_estimated": 91,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/gateway/services.py",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/gateway/services.py",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/mcp/oauth.py",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/mcp/oauth.py",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/mcp/oauth.py",
+          "tokens_estimated": 340,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/tools/builtins/invoke_acp_agent_tool.py",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/tools/builtins/invoke_acp_agent_tool.py",
+          "tokens_estimated": 307,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/skills/security_scanner.py",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/skills/security_scanner.py",
+          "tokens_estimated": 242,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/config/database_config.py",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/subagents/executor.py",
+          "tokens_estimated": 130,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/feishu.py",
+          "tokens_estimated": 168,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/feishu.py",
+          "tokens_estimated": 90,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/slack.py",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/slack.py",
+          "tokens_estimated": 277,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/slack.py",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/app/channels/dingtalk.py",
+          "tokens_estimated": 143,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/persistence/engine.py",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/backend/packages/harness/deerflow/persistence/engine.py",
+          "tokens_estimated": 43,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 80434,
+        "output_tokens_estimated": 2611,
+        "reads_count": 15,
+        "writes_count": 24,
+        "repeated_reads_blocked": 9,
+        "anatomy_lookups": 6
       }
     }
   ],
