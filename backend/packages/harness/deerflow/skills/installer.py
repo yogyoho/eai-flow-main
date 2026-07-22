@@ -62,7 +62,7 @@ class SkillSecurityScanError(ValueError):
 
 
 def is_unsafe_zip_member(info: zipfile.ZipInfo) -> bool:
-    """Return True if the zip member path is absolute or attempts directory traversal."""
+    """Return True if the zip member path is absolute, attempts directory traversal, or contains a colon."""
     name = info.filename
     if not name:
         return False
@@ -75,6 +75,10 @@ def is_unsafe_zip_member(info: zipfile.ZipInfo) -> bool:
     if PureWindowsPath(name).is_absolute():
         return True
     if ".." in path.parts:
+        return True
+    # NTFS ADS smuggling: a colon in a relative zip path addresses an Alternate
+    # Data Stream on Windows, invisible to rglob/walk. Reject outright (#4236).
+    if ":" in normalized:
         return True
     return False
 
