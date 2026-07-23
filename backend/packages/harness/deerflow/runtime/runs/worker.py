@@ -138,6 +138,7 @@ class RunContext:
     run_events_config: Any | None = field(default=None)
     thread_store: Any | None = field(default=None)
     app_config: AppConfig | None = field(default=None)
+    checkpoint_channel_mode: str = "full"
     on_run_completed: Any | None = field(default=None)
 
 

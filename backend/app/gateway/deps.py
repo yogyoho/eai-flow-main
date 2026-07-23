@@ -268,6 +268,7 @@ def get_run_context(request: Request) -> RunContext:
         run_events_config=getattr(request.app.state, "run_events_config", None),
         thread_store=get_thread_store(request),
         app_config=get_config(),
+        checkpoint_channel_mode=getattr(request.app.state, "checkpoint_channel_mode", "full"),
     )
 
 

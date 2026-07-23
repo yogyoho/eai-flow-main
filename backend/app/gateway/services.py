@@ -43,6 +43,8 @@ from deerflow.runtime import (
     UnsupportedStrategyError,
     run_agent,
 )
+from deerflow.runtime.checkpoint_mode import inject_checkpoint_mode
+from deerflow.runtime.checkpoint_state import CheckpointStateAccessor
 from deerflow.runtime.goal import goal_thread_lock
 from deerflow.runtime.runs.naming import resolve_root_run_name
 from deerflow.runtime.secret_context import redact_config_secrets
@@ -375,6 +377,102 @@ def inject_authenticated_user_context(
         runtime_context["user_role"] = getattr(user, "system_role", None)
         runtime_context["oauth_provider"] = getattr(user, "oauth_provider", None)
         runtime_context["oauth_id"] = getattr(user, "oauth_id", None)
+
+
+_STATE_ACCESSOR_GRAPH_CACHE_MAX = 8
+_state_accessor_graph_cache: dict[tuple[str | None, str], tuple[Any, Any, Any]] = {}
+
+
+def _state_accessor_graph(agent_factory: Any, assistant_id: str | None, mode: str, config: dict[str, Any]) -> Any:
+    app_config = (config.get("context") or {}).get("app_config")
+    key = (assistant_id, mode)
+    cached = _state_accessor_graph_cache.get(key)
+    if cached is not None and cached[0] is agent_factory and cached[1] is app_config:
+        return cached[2]
+    if len(_state_accessor_graph_cache) >= _STATE_ACCESSOR_GRAPH_CACHE_MAX:
+        _state_accessor_graph_cache.clear()
+    graph = agent_factory(config=config)
+    _state_accessor_graph_cache[key] = (agent_factory, app_config, graph)
+    return graph
+
+
+class _RawCheckpointSnapshot:
+    """StateSnapshot-shaped view over a raw checkpoint tuple (full mode only)."""
+
+    __slots__ = ("config", "values", "metadata", "parent_config", "created_at", "tasks", "tasks_known", "next")
+
+    def __init__(self, config: dict[str, Any], tup: Any | None) -> None:
+        self.config = getattr(tup, "config", None) or config
+        checkpoint = getattr(tup, "checkpoint", None) or {}
+        self.values = dict(checkpoint.get("channel_values") or {})
+        self.metadata = dict(getattr(tup, "metadata", None) or {})
+        self.parent_config = getattr(tup, "parent_config", None)
+        self.created_at = checkpoint.get("ts") or self.metadata.get("created_at", "")
+        self.tasks: tuple = ()
+        self.tasks_known = False
+        self.next: tuple = ()
+
+
+class _RawCheckpointReadAccessor:
+    """Degraded full-mode read accessor for when the agent factory is down."""
+
+    def __init__(self, checkpointer: Any, mode: str) -> None:
+        self.checkpointer = checkpointer
+        self.mode = mode
+
+    async def aget(self, config: dict[str, Any]) -> _RawCheckpointSnapshot:
+        tup = await self.checkpointer.aget_tuple(config)
+        return _RawCheckpointSnapshot(config, tup)
+
+    async def ahistory(self, config: dict[str, Any], *, limit: int | None = None) -> list[_RawCheckpointSnapshot]:
+        if limit is not None and limit <= 0:
+            return []
+        result: list[_RawCheckpointSnapshot] = []
+        async for tup in self.checkpointer.alist(config, limit=limit):
+            result.append(_RawCheckpointSnapshot(config, tup))
+            if limit is not None and len(result) >= limit:
+                break
+        return result
+
+
+def build_checkpoint_state_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    assistant_id: str | None = None,
+    checkpoint_id: str | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Build the mode-selected lead graph used for materialized checkpoint state (#4292)."""
+    ctx = get_run_context(request)
+    config = build_run_config(thread_id, None, None, assistant_id=assistant_id)
+    configurable = config.setdefault("configurable", {})
+    configurable["checkpoint_ns"] = ""
+    if checkpoint_id is not None:
+        configurable["checkpoint_id"] = checkpoint_id
+
+    if ctx.app_config is not None:
+        config.setdefault("context", {})["app_config"] = ctx.app_config
+    inject_checkpoint_mode(config, ctx.checkpoint_channel_mode)
+
+    agent_factory = resolve_agent_factory(assistant_id)
+    try:
+        graph = _state_accessor_graph(agent_factory, assistant_id, ctx.checkpoint_channel_mode, config)
+    except Exception:
+        if ctx.checkpoint_channel_mode != "full":
+            raise
+        logger.warning(
+            "Agent factory unavailable for thread %s; falling back to raw checkpointer reads",
+            thread_id,
+            exc_info=True,
+        )
+        return _RawCheckpointReadAccessor(ctx.checkpointer, ctx.checkpoint_channel_mode), config
+    accessor = CheckpointStateAccessor.bind(
+        graph,
+        ctx.checkpointer,
+        store=ctx.store,
+        mode=ctx.checkpoint_channel_mode,
+    )
+    return accessor, config
 
 
 def resolve_agent_factory(assistant_id: str | None):
