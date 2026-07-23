@@ -53,6 +53,8 @@ export const zhCN: Translations = {
     regenerate: "重新生成",
     branch: "分叉",
     showArtifacts: "查看此对话的文件",
+    browser: "浏览器",
+    showBrowser: "打开浏览器面板",
   },
 
   // Home
@@ -65,11 +67,11 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 🦌 EAIFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nEAIFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 🦌 DeerFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
-      "创建你的 Agent Skill 来释放 EAIFlow 的潜力。通过自定义技能，EAIFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+      "创建你的 Agent Skill 来释放 DeerFlow 的潜力。通过自定义技能，DeerFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
   },
 
   // Clipboard
@@ -106,6 +108,7 @@ export const zhCN: Translations = {
     largeUnavailable: "文件过大，已省略 diff。",
     sensitiveUnavailable: "敏感路径，已隐藏内容。",
     truncatedUnavailable: "变更集过大，已省略 diff。",
+    symlinkUnavailable: "符号链接变更，无法展示 diff。",
     truncatedSummary: "部分变更已被截断。",
   },
 
@@ -125,7 +128,7 @@ export const zhCN: Translations = {
     voiceInputStartLabel: "语音输入",
     voiceInputStopLabel: "停止语音输入",
     voiceInputStart:
-      "语音输入。EAIFlow 只接收转写文本，音频由浏览器或系统语音服务处理。",
+      "语音输入。DeerFlow 只接收转写文本，音频由浏览器或系统语音服务处理。",
     voiceInputStop: "停止语音输入",
     voiceInputListening: "正在聆听... 点击停止语音输入。",
     voiceInputUnsupported:
@@ -410,17 +413,35 @@ export const zhCN: Translations = {
     save: "保存智能体",
     saving: "正在保存智能体...",
     saveRequested:
-      "已提交保存请求，EAIFlow 正在根据当前对话生成并保存初版智能体。",
+      "已提交保存请求，DeerFlow 正在根据当前对话生成并保存初版智能体。",
     saveHint:
       "你可以在右上角的菜单里随时保存这个智能体，就算目前还只是初稿也可以。",
     saveCommandMessage:
       "请现在根据我们目前已经讨论的全部内容保存这个自定义智能体。这就是我明确的保存确认。如果仍有少量细节缺失，请根据上下文做出合理假设，生成一份简洁的英文初始 SOUL.md，并直接调用 setup_agent，不要再向我索要额外确认。",
     agentCreatedPendingRefresh:
-      "智能体已创建，但 EAIFlow 暂时还无法读取到它。请稍后刷新当前页面。",
+      "智能体已创建，但 DeerFlow 暂时还无法读取到它。请稍后刷新当前页面。",
     more: "更多操作",
     agentCreated: "智能体已创建！",
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
+    settings: "模型设置",
+    settingsTitle: "模型设置",
+    settingsDescription:
+      "为该智能体选择默认模型和生成参数，修改在下一条消息生效。",
+    settingsModel: "默认模型",
+    settingsModelDefault: "使用全局默认",
+    settingsTemperature: "温度",
+    settingsTemperatureHint: "0 = 确定性输出，越高越发散（0–2）。",
+    settingsMaxTokens: "最大输出 token",
+    settingsMaxTokensPlaceholder: "继承模型配置",
+    settingsThinking: "思考模式",
+    settingsThinkingOn: "开启",
+    settingsThinkingOff: "关闭",
+    settingsReasoningEffort: "推理强度",
+    settingsInherit: "继承",
+    settingsSaved: "模型设置已保存",
+    settingsInvalidTemperature: "温度必须在 0 到 2 之间",
+    settingsInvalidMaxTokens: "最大输出 token 必须为不超过 200,000 的正整数",
   },
 
   // Breadcrumb
@@ -431,13 +452,13 @@ export const zhCN: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "访问 EAIFlow 官方网站",
-    githubTooltip: "访问 EAIFlow 的 GitHub 仓库",
+    officialWebsite: "访问 DeerFlow 官方网站",
+    githubTooltip: "访问 DeerFlow 的 GitHub 仓库",
     settingsAndMore: "设置和更多",
-    visitGithub: "在 GitHub 上查看 EAIFlow",
+    visitGithub: "在 GitHub 上查看 DeerFlow",
     reportIssue: "报告问题",
     contactUs: "联系我们",
-    about: "关于 EAIFlow",
+    about: "关于 DeerFlow",
     logout: "退出登录",
     gatewayUnavailable: "网关暂时不可用。",
     gatewayUnavailableRetrying: "正在后台重试…",
@@ -508,20 +529,20 @@ export const zhCN: Translations = {
     saveAndConnect: "保存并连接",
     saveChanges: "保存修改",
     descriptions: {
-      telegram: "通过 EAIFlow Bot 接收 Telegram 私聊消息。",
+      telegram: "通过 DeerFlow Bot 接收 Telegram 私聊消息。",
       slack: "接收 Slack 工作区消息和提及。",
-      discord: "通过 EAIFlow Bot 接收 Discord 服务器消息。",
-      feishu: "通过 EAIFlow 应用接收飞书和 Lark 消息。",
-      dingtalk: "通过 EAIFlow Bot 接收钉钉 Stream Push 消息。",
-      wechat: "通过 EAIFlow Bot 接收微信 iLink 消息。",
-      wecom: "通过 EAIFlow AI Bot 接收企业微信消息。",
+      discord: "通过 DeerFlow Bot 接收 Discord 服务器消息。",
+      feishu: "通过 DeerFlow 应用接收飞书和 Lark 消息。",
+      dingtalk: "通过 DeerFlow Bot 接收钉钉 Stream Push 消息。",
+      wechat: "通过 DeerFlow Bot 接收微信 iLink 消息。",
+      wecom: "通过 DeerFlow AI Bot 接收企业微信消息。",
     },
     connectedAs: (name: string) => `已连接为 ${name}。`,
   },
 
   // Page titles (document title)
   pages: {
-    appName: "EAIFlow",
+    appName: "DeerFlow",
     chats: "对话",
     newChat: "新对话",
     untitled: "未命名",
@@ -546,7 +567,16 @@ export const zhCN: Translations = {
     writeFile: "写入文件",
     clickToViewContent: "点击查看文件内容",
     writeTodos: "更新 To-do 列表",
-    skillInstallTooltip: "安装技能并使其可在 EAIFlow 中使用",
+    skillInstallTooltip: "安装技能并使其可在 DeerFlow 中使用",
+    browserNavigate: (url: string) => `在浏览器中打开 ${url}`,
+    browserNavigateGeneric: "在浏览器中打开页面",
+    browserClick: "在浏览器中点击元素",
+    browserType: "在浏览器中输入内容",
+    browserSnapshot: "在浏览器中读取页面",
+    browserGetText: "在浏览器中读取页面文本",
+    browserBack: "在浏览器中返回上一页",
+    browserScreenshot: "浏览器截图",
+    browserClose: "关闭浏览器",
   },
 
   humanInput: {
@@ -623,7 +653,7 @@ export const zhCN: Translations = {
     noResults: "未找到结果。",
     actions: "操作",
     keyboardShortcuts: "键盘快捷键",
-    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 EAIFlow。",
+    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 DeerFlow。",
     openCommandPalette: "打开命令面板",
     toggleSidebar: "切换侧边栏",
   },
@@ -631,9 +661,8 @@ export const zhCN: Translations = {
   // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整 EAIFlow 的界面和行为。",
+    description: "根据你的偏好调整 DeerFlow 的界面和行为。",
     sections: {
-      basic: "基本设置",
       account: "账号",
       appearance: "外观",
       channels: "渠道",
@@ -643,56 +672,10 @@ export const zhCN: Translations = {
       notification: "通知",
       about: "关于",
     },
-    basic: {
-      title: "基本设置",
-      save: "保存",
-      saveSuccess: "保存成功",
-      saveFailed: "保存失败",
-      theme: {
-        system: "跟随系统",
-        light: "浅色",
-        dark: "深色",
-      },
-      language: { title: "语言", description: "选择界面显示语言" },
-      retrieval: {
-        title: "检索配置",
-        description: "配置 RAG 检索使用的模型",
-        defaultModel: "默认模型",
-        fastModel: "高速模型",
-        embedModel: "嵌入模型",
-        reranker: "重排序模型",
-        placeholder: "请输入模型名称",
-      },
-      contentGuard: {
-        title: "内容审核",
-        description: "配置内容安全审核策略",
-        enable: "启用审核",
-        enableHint: "开启后将对输入输出进行安全审核",
-        enableLLM: "启用 LLM 审核",
-        enableLLMHint: "使用大模型进行内容安全审核",
-        model: "审核模型",
-        modelPlaceholder: "输入模型名称",
-      },
-      services: {
-        title: "服务配置",
-        description: "管理外部服务连接",
-        ragflow: "RAGFlow",
-        ragflowDesc: "知识库检索服务",
-        milvus: "Milvus",
-        milvusDesc: "向量数据库",
-        minio: "MinIO",
-        minioDesc: "对象存储",
-        neo: "Neo4j",
-        apiDocs: "API 文档",
-        apiDocsDesc: "查看 API 接口文档",
-        docCenter: "文档中心",
-        docCenterDesc: "查看使用文档和指南",
-      },
-    },
     memory: {
       title: "记忆",
       description:
-        "EAIFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 EAIFlow 更好地理解你，并提供更个性化的体验。",
+        "DeerFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       exportButton: "导出记忆",
@@ -786,32 +769,9 @@ export const zhCN: Translations = {
     },
     channels: {
       title: "渠道",
-      description: "连接可在浏览器外向 EAIFlow 发送消息的即时通讯账号。",
+      description: "连接可在浏览器外向 DeerFlow 发送消息的即时通讯账号。",
       disabled:
         "当前服务器未启用渠道连接。请联系管理员开启 channel_connections。",
-    },
-    wechat: {
-      title: "微信",
-      description: "管理微信 iLink 机器人绑定和用户连接。",
-      linkTitle: "关联微信账号",
-      linkDescription: "生成绑定码，在微信中发送给机器人即可关联你的 EAIFlow 账号。",
-      getCode: "获取绑定码",
-      codeHint: "在微信中向 EAIFlow 机器人发送以上绑定码即可完成关联。",
-      linkFailed: "获取绑定码失败，请稍后重试",
-      botTitle: "机器人绑定",
-      botDescription: "管理员可通过扫码将微信 iLink 机器人与系统绑定，绑定后用户即可通过微信与 Agent 对话。",
-      bound: "已绑定",
-      unbound: "未绑定",
-      pending: "等待扫码",
-      bind: "绑定机器人",
-      rebind: "重新绑定",
-      bindStarted: "二维码已生成，请在 Gateway 日志中查看或点击下方链接扫码",
-      bindFailed: "绑定启动失败，请稍后重试",
-      openQr: "打开二维码",
-      shareQrTitle: "分享二维码",
-      shareQrDescription: "生成微信分享二维码，可让微信用户直接扫码添加机器人。",
-      refreshShareQr: "生成二维码",
-      shareQrFreshHint: "二维码有效期约 7 天，过期后需重新生成。",
     },
     skills: {
       title: "技能",
@@ -819,7 +779,7 @@ export const zhCN: Translations = {
       createSkill: "新建技能",
       emptyTitle: "还没有技能",
       emptyDescription:
-        "将你的 Agent Skill 文件夹放在 EAIFlow 根目录下的 `/skills/custom` 文件夹中。",
+        "将你的 Agent Skill 文件夹放在 DeerFlow 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
       adminRequired: "需要管理员权限才能管理 Agent Skill。",
       installAdminRequired: "需要管理员权限才能安装 Agent Skill。",
@@ -827,12 +787,12 @@ export const zhCN: Translations = {
     notification: {
       title: "通知",
       description:
-        "EAIFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+        "DeerFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
       requestPermission: "请求通知权限",
       deniedHint:
         "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
       testButton: "发送测试通知",
-      testTitle: "EAIFlow",
+      testTitle: "DeerFlow",
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",
@@ -846,7 +806,7 @@ export const zhCN: Translations = {
       changePasswordDescription: "更新你的账号密码。",
       ssoPasswordDescription: "密码由你的 SSO 提供商管理。",
       ssoPasswordMessage:
-        "此账号通过 {provider} 登录，EAIFlow 无法在此管理或修改密码。请前往你的 SSO 提供商账号设置中进行操作。",
+        "此账号通过 {provider} 登录，DeerFlow 无法在此管理或修改密码。请前往你的 SSO 提供商账号设置中进行操作。",
       currentPassword: "当前密码",
       newPassword: "新密码",
       confirmNewPassword: "确认新密码",
@@ -870,13 +830,16 @@ export const zhCN: Translations = {
     emailPlaceholder: "you@example.com",
     password: "密码",
     passwordPlaceholder: "•••••••",
+    rememberMe: "保持登录",
+    rememberMeDescription:
+      "下次打开 DeerFlow 时尽量保持当前会话，仅保存邮箱，不保存密码。",
     pleaseWait: "请稍候...",
     signIn: "登录",
     createAccount: "创建账号",
     createAdminAccount: "创建管理员账号",
     adminSetupRequiredTitle: "需要先完成管理员初始化",
     adminSetupRequiredDescription:
-      "EAIFlow 需要先创建管理员账号，然后才能创建新的普通账号。",
+      "DeerFlow 需要先创建管理员账号，然后才能创建新的普通账号。",
     orContinueWith: "或使用以下方式登录",
     ssoHint: "如果你的账号使用单点登录（SSO），请改用下方的选项登录。",
     continueWith: (provider: string) => `使用 ${provider} 登录`,
