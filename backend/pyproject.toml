@@ -3,7 +3,7 @@ name = "deer-flow"
 version = "0.1.0"
 description = "LangGraph-based AI agent system with sandbox execution capabilities"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "deerflow-harness",
     "fastapi>=0.115.0",
