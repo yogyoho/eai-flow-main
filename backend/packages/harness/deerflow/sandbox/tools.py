@@ -324,18 +324,8 @@ def _resolve_skills_path(path: str) -> str:
         user_custom_dir = paths.user_custom_skills_dir(user_id)
         custom_relative = relative[len("custom") :].lstrip("/")
         if custom_relative:
-            # 先查 per-user 目录（动态创建/安装的技能）
-            per_user_candidate = user_custom_dir / custom_relative
-            if per_user_candidate.exists():
-                return str(per_user_candidate)
-            # fallback: 仓库级 skills/custom/（git committed 技能如
-            # water-drainage-report, 不在 per-user 目录）。
-            # bug-175: read_file 之前只查 per-user 导致仓库级技能文件 not found。
-            return _join_path_preserving_style(skills_host, relative)
-        # /mnt/skills/custom（目录本身）
-        if user_custom_dir.exists():
-            return str(user_custom_dir)
-        return _join_path_preserving_style(skills_host, relative)
+            return str(user_custom_dir / custom_relative)
+        return str(user_custom_dir)
 
     return _join_path_preserving_style(skills_host, relative)
 
@@ -2291,7 +2281,7 @@ def str_replace_tool(
             content = sandbox.read_file(path)
             if not old_str:
                 # A no-op edit. str.replace("", new_str) would insert new_str at
-                # every character boundary, so this cannot fall through (#4256).
+                # every character boundary, so this cannot fall through.
                 return "OK"
             if not content or old_str not in content:
                 return f"Error: String to replace not found in file: {requested_path}"
