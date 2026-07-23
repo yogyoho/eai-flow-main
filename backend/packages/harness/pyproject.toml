@@ -16,7 +16,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.2.2",
     "langchain-openai>=1.2.1",
     "langfuse>=3.4.1",
-    "langgraph>=1.2.9,<1.3",
+    "langgraph>=1.1.9",
     "langgraph-api>=0.8.1",
     "langgraph-cli>=0.4.24",
     "langgraph-runtime-inmem>=0.28.0",
@@ -31,7 +31,7 @@ dependencies = [
     "ddgs>=9.10.0",
     "duckdb>=1.4.4",
     "langchain-google-genai>=4.2.1",
-    "langgraph-checkpoint-sqlite>=3.1.0,<3.2",
+    "langgraph-checkpoint-sqlite>=3.0.3",
     "langgraph-sdk>=0.1.51",
     "sqlalchemy[asyncio]>=2.0,<3.0",
     "aiosqlite>=0.19",
@@ -42,7 +42,7 @@ dependencies = [
 ollama = ["langchain-ollama>=0.3.0"]
 postgres = [
     "asyncpg>=0.29",
-    "langgraph-checkpoint-postgres>=3.1.0,<3.2",
+    "langgraph-checkpoint-postgres>=3.0.5",
     "psycopg[binary]>=3.3.3",
     "psycopg-pool>=3.3.0",
 ]
