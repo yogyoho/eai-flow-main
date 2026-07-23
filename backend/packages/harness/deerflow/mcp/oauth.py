@@ -29,6 +29,16 @@ class OAuthTokenManager:
     def __init__(self, oauth_by_server: dict[str, McpOAuthConfig]):
         self._oauth_by_server = oauth_by_server
         self._tokens: dict[str, _OAuthToken] = {}
+        # A plain threading.Lock, not asyncio.Lock: the embedded/TUI sync tool-call
+        # path (DeerFlowClient.stream() -> LangGraph ToolNode._func -> a
+        # ThreadPoolExecutor -> deerflow.tools.sync.make_sync_tool_wrapper's
+        # per-call asyncio.run()) invokes get_authorization_header from a fresh
+        # event loop on a fresh OS thread for every concurrent tool call. An
+        # asyncio.Lock binds to whichever loop first contends on it; a second
+        # caller's release/wake-up crossing loops without call_soon_threadsafe
+        # either deadlocks silently or raises "bound to a different event loop".
+        # threading.Lock has no loop affinity, so it is safe to share across
+        # however many event loops/threads call into the same server's lock.
         self._locks: dict[str, threading.Lock] = {name: threading.Lock() for name in oauth_by_server}
 
     @classmethod
@@ -55,20 +65,38 @@ class OAuthTokenManager:
             return f"{token.token_type} {token.access_token}"
 
         lock = self._locks[server_name]
-        # threading.Lock: safe across event loops/threads (upstream #4240).
-        # Acquire off-thread so blocking wait never stalls this event loop.
-        acquire_task = asyncio.create_task(asyncio.to_thread(lock.acquire))
+        # Acquire the OS-level lock off-thread so a blocking wait never blocks this
+        # event loop, then release it synchronously (release() never blocks). This
+        # keeps the de-duplication behavior of the old `async with lock:` (only one
+        # concurrent caller per server actually fetches a token) while remaining
+        # safe when callers are on different event loops/threads.
+        #
+        # The acquisition itself runs as an explicit Task, shielded from this
+        # coroutine's own cancellation. A bare `await asyncio.to_thread(lock.acquire)`
+        # cannot be safely cancelled: once the executor thread has started running
+        # lock.acquire(), Python has no way to stop it, so a cancellation delivered
+        # at that await would still let the thread go on to acquire the lock later
+        # (whenever the current holder releases it) with this coroutine already
+        # gone and nobody left to call release() -- the lock would stay locked
+        # forever and every later call for this server would block permanently at
+        # this same line. Shielding the acquisition task means a cancelled caller
+        # can instead wait for that (unstoppable) acquisition to actually land and
+        # release the lock immediately, rather than leaking ownership of it.
+        acquire_task = asyncio.create_task(asyncio.to_thread(lock.acquire), name=f"oauth-lock-acquire:{server_name}")
         try:
             await asyncio.shield(acquire_task)
         except asyncio.CancelledError:
+            # Keep waiting -- shielded on every retry -- until the acquisition
+            # actually finishes, even if this coroutine is cancelled again while
+            # cleaning up: the underlying thread cannot be interrupted, so this is
+            # the only way to learn when the lock becomes ours and release it
+            # right away instead of leaving it locked forever.
             while not acquire_task.done():
                 try:
                     await asyncio.shield(acquire_task)
-                    break
                 except asyncio.CancelledError:
                     continue
-            if acquire_task.done() and not acquire_task.cancelled():
-                lock.release()
+            lock.release()
             raise
         try:
             token = self._tokens.get(server_name)

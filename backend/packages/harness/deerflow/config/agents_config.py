@@ -158,7 +158,20 @@ def validate_agent_name(name: str | None) -> str | None:
 
 
 class AgentModelSettings(BaseModel):
-    """Per-agent LLM sampling overrides layered on top of the model profile (#4347)."""
+    """Per-agent LLM sampling overrides layered on top of the model profile.
+
+    These are provider sampling knobs (not DeerFlow runtime switches like
+    ``thinking_enabled``). They let two agents that reference the *same*
+    ``models:`` profile still run with different temperature / output length —
+    the core ask of issue #4336, where "different agents have different
+    capabilities, so a shared temperature is a poor fit".
+
+    ``extra="forbid"``: the sampling surface is an explicit allowlist so a
+    stray key never reaches the provider request body and fails at request
+    time with an opaque error. Widen it by adding a declared field (e.g.
+    ``top_p``) rather than relaxing the model config. Every field is optional;
+    ``None`` means "do not override the profile value".
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -190,7 +203,7 @@ class AgentConfig(BaseModel):
     # - ["skill1", "skill2"]: load only the specified skills
     skills: list[str] | None = None
     # Per-agent LLM sampling overrides (temperature / max_tokens) layered on top
-    # of the referenced model profile. None = no overrides (#4347).
+    # of the referenced model profile. None = no overrides (issue #4336).
     model_settings: AgentModelSettings | None = None
     # Per-agent thinking-mode default. None = do not override the runtime
     # default (a request-supplied thinking flag still wins over this).
@@ -204,15 +217,27 @@ class AgentConfig(BaseModel):
     github: GitHubAgentConfig | None = None
 
 
-# Fields explicitly managed by the agent-update surfaces (the
-# ``update_agent`` harness tool and the HTTP ``PATCH /api/agents/{name}``
-# route). Anything else declared on :class:`AgentConfig` — currently
-# ``github``, and any future field — is preserved verbatim by
-# :func:`preserve_non_managed_fields` so neither surface can silently
-# drop hand-authored configuration. ``name`` is included because the
-# updaters always re-emit it from the directory name (it must never come
-# from the request body).
-MANAGED_AGENT_CONFIG_FIELDS: frozenset[str] = frozenset({"name", "description", "model", "tool_groups", "skills"})
+# Fields explicitly managed by agent-update surfaces. Anything else declared
+# on :class:`AgentConfig` — currently ``github``, and any future field — is
+# preserved verbatim by :func:`preserve_non_managed_fields` so update surfaces
+# do not silently drop hand-authored configuration. Some surfaces expose only a
+# subset of these managed fields (for example, the harness ``update_agent``
+# tool does not accept model-behavior arguments), so they must carry their
+# unsupported managed fields forward explicitly when rewriting config.yaml.
+# ``name`` is included because updaters always re-emit it from the directory
+# name (it must never come from the request body).
+MANAGED_AGENT_CONFIG_FIELDS: frozenset[str] = frozenset(
+    {
+        "name",
+        "description",
+        "model",
+        "tool_groups",
+        "skills",
+        "model_settings",
+        "thinking_enabled",
+        "reasoning_effort",
+    }
+)
 
 
 def preserve_non_managed_fields(existing_cfg: AgentConfig) -> dict[str, object]:
