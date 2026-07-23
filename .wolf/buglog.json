@@ -4404,6 +4404,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-22T12:42:38.782Z"
+    },
+    {
+      "id": "bug-268",
+      "timestamp": "2026-07-22T14:31:29.057Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/agents/memory/__init__.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 17→11 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-22T14:31:29.057Z"
+    },
+    {
+      "id": "bug-269",
+      "timestamp": "2026-07-22T15:35:49.429Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/packages/harness/pyproject.toml",
+      "root_cause": "Had \"langchain>=1.2.15\"",
+      "fix": "Changed to \"langchain>=1.3\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "toml"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-22T15:36:53.213Z"
+    },
+    {
+      "id": "bug-270",
+      "timestamp": "2026-07-22T16:17:02.275Z",
+      "error_message": "Wrong reference: Annotated should be Runtime",
+      "file": "backend/packages/harness/deerflow/tools/builtins/list_uploaded_files_tool.py",
+      "root_cause": "Used \"Annotated\" instead of \"Runtime\"",
+      "fix": "Changed Annotated → Runtime",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-22T16:17:09.699Z"
     }
   ]
 }

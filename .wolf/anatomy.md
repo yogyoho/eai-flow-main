@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-22T14:04:55.024Z
-> Files: 1577 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-22T16:32:04.985Z
+> Files: 1580 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1328,6 +1328,10 @@
 - `persistence.test.ts` — Mock pg — Pool must be a constructable function (~1488 tok)
 - `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 4 more (~1462 tok)
 
+## backend/packages/harness/
+
+- `pyproject.toml` — DeerFlow agent harness framework (~420 tok)
+
 ## backend/packages/harness/deerflow/
 
 - `client.py` — DeerFlowClient — Embedded Python client for DeerFlow agent system. (~16156 tok)
@@ -1338,7 +1342,7 @@
 
 ## backend/packages/harness/deerflow/agents/lead_agent/
 
-- `agent.py` — Lead agent factory. (~8003 tok)
+- `agent.py` — Lead agent factory. (~9696 tok)
 - `prompt.py` — prime_enabled_skills_cache, warm_enabled_skills_cache, get_cached_enabled_skills, get_enabled_skills (~11647 tok)
 
 ## backend/packages/harness/deerflow/agents/memory/
@@ -1369,7 +1373,7 @@
 
 ## backend/packages/harness/deerflow/config/
 
-- `agents_config.py` — Configuration and loaders for custom agents. (~2666 tok)
+- `agents_config.py` — Configuration and loaders for custom agents. (~5206 tok)
 - `app_config.py` — Pydantic: CircuitBreakerConfig (~8980 tok)
 - `database_config.py` — Unified database backend configuration. (~1149 tok)
 - `extensions_config.py` — Unified extensions configuration for MCP servers and skills. (~4225 tok)
@@ -1393,6 +1397,7 @@
 
 ## backend/packages/harness/deerflow/models/
 
+- `factory.py` — from: create_chat_model (~4914 tok)
 - `mindie_provider.py` — Declares flattens (~3091 tok)
 
 ## backend/packages/harness/deerflow/persistence/
@@ -1409,7 +1414,7 @@
 
 ## backend/packages/harness/deerflow/runtime/
 
-- `__init__.py` — LangGraph-compatible runtime — runs, streaming, and lifecycle management. (~461 tok)
+- `__init__.py` — LangGraph-compatible runtime — runs, streaming, and lifecycle management. (~632 tok)
 - `context_keys.py` — Private runtime context keys shared across DeerFlow runtime components. (~56 tok)
 - `secret_context.py` — Request-scoped secret carrier in the run context (issue #3861). (~1825 tok)
 - `serialization.py` — Canonical serialization for LangChain / LangGraph objects. (~1418 tok)
@@ -1454,6 +1459,7 @@
 - `__init__.py` — review_skill_package is in the upstream module tree but depends on (~176 tok)
 - `callbacks.py` — Callback registry for cross-layer hooks (present_files→docmgr sync) (~740 tok)
 - `invoke_acp_agent_tool.py` — Built-in tool for invoking external ACP-compatible agents. (~3557 tok)
+- `list_uploaded_files_tool.py` — Tool for discovering historical uploaded files in the current thread. (~2458 tok)
 - `present_file_tool.py` — present_file_tool (~1286 tok)
 - `task_tool.py` — Task tool for delegating work to subagents. (~6147 tok)
 - `tool_search.py` — Tool search — deferred tool discovery at runtime. (~3014 tok)
