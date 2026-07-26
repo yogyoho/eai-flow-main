@@ -66,7 +66,7 @@ ${params.docContent}
 {"op":"prepend","content":"文档开头插入"}
 {"op":"append","content":"文档末尾追加"}
 
-**anchor 定位**：从下方锚点索引用最近似文本（取标题或段落前20字）。
+**anchor 定位**：从下方锚点列表中选择与目标最匹配的文本，直接复制使用。每行一个可用锚点。
 
 **示例1 — 内容修改**：
 \`\`\`
@@ -451,10 +451,8 @@ export default function DocAIAgentPanel({
       try {
         const docContent = (await editorRef.current?.getMarkdown()) ?? "";
         const anchors = (editorRef.current?.getBlockAnchors() ?? [])
-          .map((a) => {
-            const prefix = a.blockType === "heading" ? `H${a.headingLevel ?? 1}` : "P";
-            return `[${a.blockIndex}] ${prefix} "${a.text}"`;
-          })
+          .filter((a) => a.text)
+          .map((a) => `"${a.text}"`)
           .join("\n");
 
         const prompt = buildPrompt({ mode: modeRef.current, docContent, anchors, userMessage: message });
@@ -569,10 +567,13 @@ export default function DocAIAgentPanel({
                   );
                 }
                 const { text, ops, error } = parseAIMessage(item.msg.content);
+                const isTruncated = text.length < 30 && !text.startsWith("OK") && !ops;
                 return (
                   <div key={item.msg.id}>
                     <div className="text-sm leading-relaxed break-words text-foreground">
-                      {text ? (
+                      {isTruncated ? (
+                        <span className="text-muted-foreground italic">响应可能不完整，请重试</span>
+                      ) : text ? (
                         <SafeStreamdown>{text}</SafeStreamdown>
                       ) : (
                         <span className="flex items-center gap-2 text-muted-foreground">
