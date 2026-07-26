@@ -7918,6 +7918,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T13:26:59.372Z"
+    },
+    {
+      "id": "bug-486",
+      "timestamp": "2026-07-26T13:53:27.900Z",
+      "error_message": "Wrong reference: ref should be hideSideMenu",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Used \"ref\" instead of \"hideSideMenu\"",
+      "fix": "Changed ref → hideSideMenu",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T13:53:27.900Z"
+    },
+    {
+      "id": "bug-487",
+      "timestamp": "2026-07-26T13:53:48.865Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T13:53:48.865Z"
     }
   ]
 }

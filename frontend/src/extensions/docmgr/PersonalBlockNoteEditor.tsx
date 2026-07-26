@@ -194,10 +194,11 @@ interface PersonalBlockNoteEditorProps {
   initialContent: string;
   onChange: (markdown: string) => void;
   className?: string;
+  hideSideMenu?: boolean;
 }
 
 const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalBlockNoteEditorProps>(
-  ({ initialContent, onChange, className }, ref) => {
+  ({ initialContent, onChange, className, hideSideMenu }, ref) => {
     const [seeded, setSeeded] = useState(false);
     const [headings, setHeadings] = useState<Array<{ id: string; level: number; text: string }>>([]);
 
@@ -739,7 +740,7 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
           <div style={{ maxWidth: 780, margin: "0 auto", padding: "40px 32px 128px" }}>
             <BlockNoteView
               editor={editor}
-              sideMenu
+              sideMenu={!hideSideMenu}
               slashMenu={false}
               formattingToolbar={false}
               linkToolbar

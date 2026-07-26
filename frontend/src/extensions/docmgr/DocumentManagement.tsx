@@ -1373,6 +1373,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
                 className="flex-1"
+                hideSideMenu={!!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")}
               />
             )
           )}
