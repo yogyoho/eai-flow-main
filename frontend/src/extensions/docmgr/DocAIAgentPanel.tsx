@@ -329,7 +329,7 @@ export default function DocAIAgentPanel({
 
     try {
       // Sync current editor content to backend
-      const rawMarkdown = editorRef.current?.getMarkdown() ?? "";
+      const rawMarkdown = (await editorRef.current?.getMarkdown()) ?? "";
       const cleanContent = rawMarkdown.replace(/<span[^>]*data-ai-\w+[^>]*>/g, "").replace(/<\/span>/g, "");
       const token = typeof document !== "undefined" ? document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)?.[1] : null;
       await fetch(`/api/extensions/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`, {
