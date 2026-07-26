@@ -168,10 +168,16 @@
       "action": "edit",
       "tokens": 164,
       "at": "2026-07-26T09:02:21.797Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "action": "edit",
+      "tokens": 15,
+      "at": "2026-07-26T09:02:57.159Z"
     }
   ],
   "edit_counts": {
-    "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx": 21,
+    "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx": 22,
     "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx": 2,
     "frontend/src/extensions/docmgr/DocumentManagement.tsx": 2
   },

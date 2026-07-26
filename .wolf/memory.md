@@ -9967,3 +9967,4 @@
 | 17:02 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 3→4 lines | ~21 |
 | 17:02 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | setChatKey() → onClearHistory() | ~37 |
 | 17:02 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 11→13 lines | ~164 |
+| 17:02 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 2→1 lines | ~15 |

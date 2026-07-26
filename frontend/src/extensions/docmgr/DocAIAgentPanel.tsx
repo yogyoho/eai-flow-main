@@ -350,7 +350,6 @@ export default function DocAIAgentPanel({
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [mode, setMode] = useState<AIMode>("ask");
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
-  const [chatKey, setChatKey] = useState(0);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
