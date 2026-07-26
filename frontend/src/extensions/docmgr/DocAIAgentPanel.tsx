@@ -101,13 +101,29 @@ export function parseOperations(text: string): { analysis: string; operations: D
   if (idx === -1) return { analysis: text, operations: null, parseError: null };
 
   const analysis = text.slice(0, idx).trim();
-  const opsPart = text.slice(idx + "---OPERATIONS---".length).trim();
+  let opsPart = text.slice(idx + "---OPERATIONS---".length).trim();
 
   if (!opsPart) return { analysis, operations: [], parseError: null };
+
+  // ponytail: normalize common AI JSON formatting errors.
+  // 1. Wrap bare object in array: {"op":...} → [{"op":...}]
+  if (opsPart.startsWith("{") && !opsPart.startsWith("[")) {
+    opsPart = "[" + opsPart + "]";
+  }
+  // 2. Single quotes → double quotes (only outside string values)
+  if (opsPart.includes("'") && !opsPart.includes('"')) {
+    opsPart = opsPart.replace(/'/g, '"');
+  }
+  // 3. Strip trailing comma before ] or }
+  opsPart = opsPart.replace(/,(\s*[}\]])/g, "$1");
 
   try {
     const ops = JSON.parse(opsPart);
     if (!Array.isArray(ops)) return { analysis, operations: null, parseError: "操作指令不是数组格式" };
+    // Validate each operation has required fields
+    for (const op of ops) {
+      if (!op.op) return { analysis, operations: null, parseError: "操作缺少 op 字段" };
+    }
     return { analysis, operations: ops as DocOperation[], parseError: null };
   } catch {
     return { analysis, operations: null, parseError: "操作指令 JSON 解析失败" };
@@ -567,13 +583,10 @@ export default function DocAIAgentPanel({
                   );
                 }
                 const { text, ops, error } = parseAIMessage(item.msg.content);
-                const isTruncated = text.length < 30 && !text.startsWith("OK") && !ops;
                 return (
                   <div key={item.msg.id}>
                     <div className="text-sm leading-relaxed break-words text-foreground">
-                      {isTruncated ? (
-                        <span className="text-muted-foreground italic">响应可能不完整，请重试</span>
-                      ) : text ? (
+                      {text ? (
                         <SafeStreamdown>{text}</SafeStreamdown>
                       ) : (
                         <span className="flex items-center gap-2 text-muted-foreground">

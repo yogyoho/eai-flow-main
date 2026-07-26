@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T09:20:03.334Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T09:25:35.845Z
 > Files: 1619 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -2168,7 +2168,7 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~7776 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~7899 tok)
 - `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~25004 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13007 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
@@ -2441,7 +2441,7 @@
 
 ## frontend/tests/unit/docmgr/
 
-- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~2485 tok)
+- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~2593 tok)
 - `mathMarkdown.test.ts` — Declares samples (~656 tok)
 - `mathMarkdownIt.test.ts` — ponytail: markdown-it 是 tiptap-markdown 的传递依赖，pnpm 下可直接 import (~486 tok)
 

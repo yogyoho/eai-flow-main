@@ -7484,8 +7484,40 @@
         "tsx"
       ],
       "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T09:24:19.452Z"
+    },
+    {
+      "id": "bug-459",
+      "timestamp": "2026-07-26T09:24:29.047Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
       "occurrences": 1,
-      "last_seen": "2026-07-26T09:19:33.075Z"
+      "last_seen": "2026-07-26T09:24:29.047Z"
+    },
+    {
+      "id": "bug-460",
+      "timestamp": "2026-07-26T09:25:35.866Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/docmgr/ai-panel.test.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→15 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T09:25:35.866Z"
     }
   ]
 }

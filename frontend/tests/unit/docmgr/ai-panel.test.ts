@@ -185,12 +185,20 @@ describe("parseOperations", () => {
     expect(result.parseError).toBe("操作指令 JSON 解析失败");
   });
 
-  test("non-array JSON → parseError", () => {
-    const input = '---OPERATIONS---\n{"op":"replace"}';
+  test("bare object auto-wrapped in array", () => {
+    const input = '---OPERATIONS---\n{"op":"replace","anchor":"test","content":"## new"}';
     const result = parseOperations(input);
-    expect(result.analysis).toBe("");
-    expect(result.operations).toBeNull();
-    expect(result.parseError).toBe("操作指令不是数组格式");
+    expect(result.parseError).toBeNull();
+    expect(result.operations).not.toBeNull();
+    expect(result.operations!.length).toBe(1);
+    expect(result.operations![0].op).toBe("replace");
+  });
+
+  test("single quotes normalized to double quotes", () => {
+    const input = "---OPERATIONS---\n[{'op':'delete','anchor':'test'}]";
+    const result = parseOperations(input);
+    expect(result.parseError).toBeNull();
+    expect(result.operations![0].op).toBe("delete");
   });
 
   test("multiple operations", () => {
