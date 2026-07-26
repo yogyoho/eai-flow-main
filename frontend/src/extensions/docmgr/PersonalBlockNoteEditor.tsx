@@ -99,20 +99,38 @@ export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string
   }
   if (containsMatch) return containsMatch;
 
-  // 4. Fuzzy (Levenshtein < 30%)
+  // 4. Fuzzy (Levenshtein < 30%) with substring sliding window
+  // ponytail: agent anchors are short (e.g. "设计依据及彩用") but block text
+  // is long ("第一章 设计依据及采用的标准"). Full-text distance is inflated by
+  // the prefix/suffix. Slide the anchor across the block text, find the best
+  // matching substring window.
   if (trimmed.length < 5) return null;
   let best: { blockId: string; blockIndex: number; dist: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
     const b = doc[i];
     if (!Array.isArray(b.content)) continue;
     let fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
-    // ponytail: strip markdown heading prefix for fuzzy comparison
-    // so "## 设计参数分析" matches "设计参数分折" (typo in agent anchor)
-    fullText = fullText.replace(/^#{1,6}\s+/, "");
-    if (!fullText) continue;
-    const dist = levenshteinDistance(trimmed, fullText.slice(0, 80));
-    if (dist / trimmed.length < 0.3 && (!best || dist < best.dist)) {
-      best = { blockId: b.id, blockIndex: i, dist };
+    // Strip markdown heading prefix
+    fullText = fullText.replace(/^#{1,6}\s+/, "").trim();
+    if (!fullText || fullText.length < 3) continue;
+
+    // Full text comparison (for short blocks where anchor ≈ fullText)
+    const fullDist = levenshteinDistance(trimmed, fullText.slice(0, 80));
+    if (fullDist / trimmed.length < 0.3 && (!best || fullDist < best.dist)) {
+      best = { blockId: b.id, blockIndex: i, dist: fullDist };
+    }
+
+    // Sliding window: for long blocks, check best-matching substring
+    if (fullText.length > trimmed.length + 5) {
+      const windowLen = Math.max(trimmed.length, Math.min(trimmed.length * 2, fullText.length));
+      for (let start = 0; start <= fullText.length - trimmed.length; start++) {
+        const window = fullText.slice(start, start + windowLen);
+        const dist = levenshteinDistance(trimmed, window);
+        if (dist / trimmed.length < 0.3 && (!best || dist < best.dist)) {
+          best = { blockId: b.id, blockIndex: i, dist };
+          if (dist === 0) break; // exact substring match
+        }
+      }
     }
   }
   return best ? { blockId: best.blockId, blockIndex: best.blockIndex } : null;

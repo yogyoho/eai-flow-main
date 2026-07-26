@@ -246,14 +246,17 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("autoApply");
   });
 
-  test("includes few-shot example", () => {
+  test("includes few-shot examples", () => {
     const prompt = buildPrompt({
       docContent: "doc",
       anchors: "",
       userMessage: "test",
     });
+    // New prompt has 3 examples with concrete operations
     expect(prompt).toContain("设计参数分析");
-    expect(prompt).toContain("实际参数");
-    expect(prompt).toContain("中英文之间应加空格");
+    expect(prompt).toContain("GB/T 50746-2012");
+    expect(prompt).toContain("示例1");
+    expect(prompt).toContain("示例2");
+    expect(prompt).toContain("示例3");
   });
 });
