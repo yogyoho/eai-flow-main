@@ -1411,7 +1411,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             </div>
             <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: panelWidth }}
               exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }}
-              className="border-l border-border overflow-hidden shrink-0"
+              className="border-l border-border overflow-hidden shrink-0">
               <DocAIAgentPanel
                 docTitle={aiDocTitle}
                 docRelPath={aiRelPath}
