@@ -1195,6 +1195,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const [saved, setSaved] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
+  const [aiPanelKey, setAiPanelKey] = useState(0);
   const [panelWidth, setPanelWidth] = useState(420);
   const resizingRef = useRef(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -1413,6 +1414,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
               exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }}
               className="border-l border-border overflow-hidden shrink-0">
               <DocAIAgentPanel
+                key={aiPanelKey}
                 docTitle={aiDocTitle}
                 docRelPath={aiRelPath}
                 threadId={aiThreadId}
@@ -1422,6 +1424,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
                 ensureThread={ensureThread}
                 isCreating={isCreating}
                 resetThread={resetThread}
+                onClearHistory={() => setAiPanelKey((k) => k + 1)}
               />
             </motion.div>
             </>

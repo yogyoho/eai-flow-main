@@ -330,6 +330,7 @@ interface DocAIAgentPanelProps {
   ensureThread: () => Promise<string>;
   isCreating: boolean;
   resetThread: () => void;
+  onClearHistory: () => void;
 }
 
 export default function DocAIAgentPanel({
@@ -342,6 +343,7 @@ export default function DocAIAgentPanel({
   ensureThread,
   isCreating,
   resetThread,
+  onClearHistory,
 }: DocAIAgentPanelProps) {
   const { models } = useModels();
   const [modelName, setModelName] = useState<string | null>(null);
@@ -471,7 +473,7 @@ export default function DocAIAgentPanel({
     streamState?.stop?.();
     resetThread();
     setUserMessages([]);
-    setChatKey((k) => k + 1);
+    onClearHistory();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -514,7 +516,7 @@ export default function DocAIAgentPanel({
   }, []);
 
   return (
-    <div key={chatKey} className="w-full h-full flex flex-col bg-background">
+    <div className="w-full h-full flex flex-col bg-background">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">

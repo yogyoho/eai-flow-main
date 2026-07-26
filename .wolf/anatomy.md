@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T08:55:11.788Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T09:02:21.782Z
 > Files: 1619 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -2168,8 +2168,8 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~7618 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~24961 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~7625 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~25004 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13007 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
