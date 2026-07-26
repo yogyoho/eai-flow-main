@@ -1,0 +1,564 @@
+"use client";
+
+import {
+  RefreshCw,
+  Sparkles,
+  X,
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { getAPIClient } from "@/core/api";
+import { useModels } from "@/core/models/hooks";
+import { useStream } from "@langchain/langgraph-sdk/react";
+
+import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
+
+// ─── helpers ────────────────────────────────────────────────────────────
+
+/** Build the unified system prompt with anchor index + operations format (spec §5). */
+function buildPrompt(params: {
+  docContent: string;
+  anchors: string;
+  userMessage: string;
+}): string {
+  return `你是一个文档助手。当用户提出请求时，按以下规则输出：
+
+**输出格式**：你的回复由两部分组成，用分隔符 \`---OPERATIONS---\` 隔开：
+
+[你的分析/建议/回答文本，Markdown 格式]
+
+---OPERATIONS---
+[可选的 JSON 操作数组，如不需要操作则省略此行及之后所有内容]
+
+**操作类型**：
+• replace:   替换匹配文本所在的 block
+• insert_after: 在匹配文本后插入新 block
+• delete:    删除匹配的 block(s)
+• prepend:   在文档开头插入
+• append:    在文档末尾追加
+
+**操作定位**：使用 \`anchor\` 字段匹配文本（标题文字或段落开头前20字），不要用 block ID。
+
+**格式修正类操作**：如果修改纯属格式规范化（中英文空格、标点统一、标题层级、列表缩进），设置 \`autoApply: true\`。涉及内容增删改的，设置 \`autoApply: false\`。
+
+**审查/分析类请求**：输出分析文本即可，不需要 operations 块。
+
+示例输出：
+\`\`\`
+发现以下问题：
+
+1. 第3节标题"实际参数"不够准确，建议改为"设计参数分析"
+2. 中英文之间应加空格
+
+---OPERATIONS---
+[{"op":"replace","anchor":"实际参数","content":"## 设计参数分析","autoApply":false},{"op":"replace","anchor":"## 设计参数分析","content":"## 设计参数分析\\n\\n根据GB/T 50746-2012...","autoApply":true}]
+\`\`\`
+
+**文档锚点索引**（定位用，不要输出这些内容）：
+${params.anchors}
+
+**当前文档全文**：
+\`\`\`markdown
+${params.docContent}
+\`\`\`
+
+**用户指令**：${params.userMessage}`;
+}
+
+/** Parse operations from agent output (spec §9). */
+function parseOperations(text: string): { analysis: string; operations: DocOperation[] | null; parseError: string | null } {
+  const idx = text.indexOf("---OPERATIONS---");
+  if (idx === -1) return { analysis: text, operations: null, parseError: null };
+
+  const analysis = text.slice(0, idx).trim();
+  const opsPart = text.slice(idx + "---OPERATIONS---".length).trim();
+
+  if (!opsPart) return { analysis, operations: [], parseError: null };
+
+  try {
+    const ops = JSON.parse(opsPart);
+    if (!Array.isArray(ops)) return { analysis, operations: null, parseError: "操作指令不是数组格式" };
+    return { analysis, operations: ops as DocOperation[], parseError: null };
+  } catch {
+    return { analysis, operations: null, parseError: "操作指令 JSON 解析失败" };
+  }
+}
+
+// ─── sub-components ─────────────────────────────────────────────────────
+
+function WelcomePage() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+      <div className="text-4xl mb-4">🤖</div>
+      <div className="text-base font-semibold text-foreground mb-6">文档 AI 助手</div>
+
+      <div className="w-full text-left space-y-4 text-sm text-muted-foreground">
+        <div>
+          <div className="font-medium text-foreground mb-1.5">📝 内容协作</div>
+          <ul className="space-y-1 text-xs">
+            <li>"给第3节加一段安全措施"</li>
+            <li>"把设计参数表格改成文字描述"</li>
+            <li>"在文档末尾补充结论"</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-medium text-foreground mb-1.5">🔍 文档审查</div>
+          <ul className="space-y-1 text-xs">
+            <li>"检查公式编号是否连续"</li>
+            <li>"这段计算逻辑有没有问题"</li>
+            <li>"全文的术语使用是否统一"</li>
+          </ul>
+        </div>
+        <div>
+          <div className="font-medium text-foreground mb-1.5">✨ 格式修正（自动应用）</div>
+          <ul className="space-y-1 text-xs">
+            <li>"统一中英文之间的空格"</li>
+            <li>"修正标题层级"</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-6 text-xs text-muted-foreground/70 leading-relaxed">
+        操作有预览，你可以逐条确认或拒绝。<br />
+        格式修正类操作会自动应用，可一键撤销。
+      </div>
+    </div>
+  );
+}
+
+/** Merged notification card for auto-applied operations (spec §8). */
+function AutoApplyCard({ operations, onUndo }: { operations: DocOperation[]; onUndo: () => void }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">🔧</span>
+        <span className="font-medium text-foreground">已自动应用 {operations.length} 项格式修正</span>
+      </div>
+      <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-0.5">
+        {operations.map((op, i) => (
+          <li key={i}>{op.content?.slice(0, 80) || op.op}</li>
+        ))}
+      </ol>
+      <button onClick={() => { onUndo(); setDismissed(true); }} className="text-xs text-primary hover:underline mt-2">
+        撤销此次自动修正
+      </button>
+    </div>
+  );
+}
+
+/** Per-operation confirm card (spec §8). */
+function ConfirmCard({
+  operation,
+  onApply,
+  onPreview,
+  onSkip,
+}: {
+  operation: DocOperation;
+  onApply: () => void;
+  onPreview: () => void;
+  onSkip: () => void;
+}) {
+  const [status, setStatus] = useState<"pending" | "applied" | "skipped" | "failed">("pending");
+
+  const handleApply = () => {
+    try {
+      onApply();
+      setStatus("applied");
+    } catch {
+      setStatus("failed");
+    }
+  };
+
+  if (status === "skipped") return null;
+
+  const opLabel =
+    operation.op === "delete" ? "删除"
+    : operation.op === "insert_after" ? "插入"
+    : operation.op === "prepend" ? "开头插入"
+    : operation.op === "append" ? "末尾追加"
+    : "替换";
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="text-sm">✏️</span>
+        <span className="font-medium text-foreground">
+          {opLabel}: "{operation.anchor?.slice(0, 30) || "文档开头/末尾"}"
+        </span>
+        {status === "applied" && <span className="text-xs text-green-600 ml-auto">✅ 已应用</span>}
+        {status === "failed" && <span className="text-xs text-red-500 ml-auto">❌ 失败</span>}
+      </div>
+
+      {operation.op !== "delete" && operation.content && (
+        <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mb-2 max-h-20 overflow-y-auto">
+          <pre className="whitespace-pre-wrap font-mono">{operation.content.slice(0, 200)}</pre>
+        </div>
+      )}
+
+      {status === "pending" && (
+        <div className="flex gap-1.5">
+          <button onClick={onPreview} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80">预览定位📍</button>
+          <button onClick={handleApply} className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90">✅ 应用</button>
+          <button onClick={() => { onSkip(); setStatus("skipped"); }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80">✕ 跳过</button>
+        </div>
+      )}
+      {status === "applied" && (
+        <button onClick={() => { /* ponytail: undo within 2min, skip for now */ }} className="text-xs text-primary hover:underline">撤销</button>
+      )}
+      {status === "failed" && (
+        <button onClick={handleApply} className="text-xs text-primary hover:underline">重试</button>
+      )}
+    </div>
+  );
+}
+
+/** Render parsed operations: autoApply merged card + per-operation confirm cards. */
+function OperationCards({
+  operations,
+  editorRef,
+}: {
+  operations: DocOperation[];
+  editorRef: React.RefObject<PersonalBlockNoteEditorRef | null>;
+}) {
+  const autoOps = operations.filter((o) => o.autoApply);
+  const manualOps = operations.filter((o) => !o.autoApply);
+
+  // Auto-apply autoApply operations on mount
+  useEffect(() => {
+    if (autoOps.length > 0) {
+      editorRef.current?.applyOperations(autoOps);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="space-y-2 mt-3">
+      {autoOps.length > 0 && (
+        <AutoApplyCard operations={autoOps} onUndo={() => { /* TBD: reverse operations */ }} />
+      )}
+      {manualOps.map((op, i) => (
+        <ConfirmCard
+          key={i}
+          operation={op}
+          onApply={() => editorRef.current?.applyOperations([op])}
+          onPreview={() => editorRef.current?.scrollToAnchor(op.anchor ?? "")}
+          onSkip={() => {}}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── main component ─────────────────────────────────────────────────────
+
+interface DocAIAgentPanelProps {
+  docTitle: string;
+  docRelPath: string;
+  threadId: string;
+  editorRef: React.RefObject<PersonalBlockNoteEditorRef | null>;
+  onClose: () => void;
+  subThreadId: string | null;
+  ensureThread: () => Promise<string>;
+  isCreating: boolean;
+  resetThread: () => void;
+}
+
+export default function DocAIAgentPanel({
+  docTitle,
+  docRelPath,
+  threadId,
+  editorRef,
+  onClose,
+  subThreadId,
+  ensureThread,
+  isCreating,
+  resetThread,
+}: DocAIAgentPanelProps) {
+  const { models } = useModels();
+  const [modelName, setModelName] = useState<string | null>(null);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [chatKey, setChatKey] = useState(0);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const client = useMemo(() => getAPIClient(), []);
+
+  // ── LangGraph stream ──────────────────────────────────────────────
+  const streamConfig = useMemo(() => {
+    if (!subThreadId) return { client };
+    return { client, assistantId: "lead_agent", threadId: subThreadId, fetchStateHistory: true, reconnectOnMount: true };
+  }, [client, subThreadId]);
+  const streamState = useStream(streamConfig);
+
+  const pendingRef = useRef<{ message: string; modelName: string | null } | null>(null);
+  const [submitTick, setSubmitTick] = useState(0);
+
+  // ── model selector ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!modelMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node))
+        setModelMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [modelMenuOpen]);
+
+  const selectedModelLabel = modelName
+    ? models.find((m) => m.name === modelName)?.display_name ?? modelName
+    : "默认模型";
+
+  // ── submit ────────────────────────────────────────────────────────
+  const handleSubmit = useCallback(async () => {
+    const el = inputRef.current;
+    if (!el) return;
+    const trimmed = el.value.trim();
+    if (!trimmed || isCreating) return;
+
+    el.value = "";
+    el.style.height = "auto";
+
+    try {
+      // Sync current editor content to backend
+      const rawMarkdown = editorRef.current?.getMarkdown() ?? "";
+      const cleanContent = rawMarkdown.replace(/<span[^>]*data-ai-\w+[^>]*>/g, "").replace(/<\/span>/g, "");
+      const token = typeof document !== "undefined" ? document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)?.[1] : null;
+      await fetch(`/api/extensions/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(token ? { "X-CSRF-Token": token } : {}) },
+        credentials: "include",
+        body: JSON.stringify({ rel_path: docRelPath, content: cleanContent }),
+      });
+
+      await ensureThread();
+      pendingRef.current = { message: trimmed, modelName };
+      setSubmitTick((v) => v + 1);
+    } catch {
+      // error surfaced via stream state
+    }
+  }, [isCreating, ensureThread, modelName, editorRef, threadId, docRelPath]);
+
+  // ── send queued message when stream is ready ──────────────────────
+  const streamReady = !!subThreadId && !!streamState && !streamState.isLoading;
+  useEffect(() => {
+    if (!streamReady || !pendingRef.current) return;
+
+    const { message, modelName: mn } = pendingRef.current;
+    pendingRef.current = null;
+
+    const fn = async () => {
+      const docContent = (await editorRef.current?.getMarkdown()) ?? "";
+      const anchors = (editorRef.current?.getBlockAnchors() ?? [])
+        .map((a) => {
+          const prefix = a.blockType === "heading" ? `H${a.headingLevel ?? 1}` : "P";
+          return `[${a.blockIndex}] ${prefix} "${a.text}"`;
+        })
+        .join("\n");
+
+      const prompt = buildPrompt({ docContent, anchors, userMessage: message });
+
+      streamState.submit(
+        { messages: [{ type: "human", content: prompt }] },
+        { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 },
+      );
+    };
+    fn();
+  }, [streamReady, submitTick, editorRef, streamState, subThreadId]);
+
+  // ── new chat ──────────────────────────────────────────────────────
+  const handleNewChat = () => {
+    streamState?.stop?.();
+    resetThread();
+    setChatKey((k) => k + 1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void handleSubmit();
+    }
+  };
+
+  const autoResize = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  };
+
+  // ── derived message state ─────────────────────────────────────────
+  const allMessages = useMemo(() => {
+    return streamState?.messages ?? [];
+  }, [streamState?.messages]);
+
+  // Find the last AI message text for operation parsing
+  const lastAIMessage = useMemo(() => {
+    const msgs = allMessages;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].type === "ai") {
+        const content = typeof msgs[i].content === "string"
+          ? msgs[i].content
+          : Array.isArray(msgs[i].content)
+            ? msgs[i].content.map((b: any) => b.text || "").join("")
+            : "";
+        if (content) return content;
+      }
+    }
+    return "";
+  }, [allMessages]);
+
+  // Parse operations from the last AI message
+  const opsResult = useMemo(() => {
+    if (!lastAIMessage) return null;
+    return parseOperations(lastAIMessage);
+  }, [lastAIMessage]);
+
+  // Extract analysis text (without operations) for display
+  const analysisText = opsResult?.analysis ?? lastAIMessage;
+
+  return (
+    <div className="w-[420px] h-full flex flex-col bg-background">
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-border flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">AI 助手</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="新对话">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto">
+        {subThreadId ? (
+          <div className="p-4 space-y-4">
+            {allMessages.filter((m: any) => {
+              if (m.additional_kwargs?.hide_from_ui) return false;
+              return m.type === "human" || m.type === "ai";
+            }).map((m: any) => (
+              <div key={m.id}>
+                {m.type === "human" ? (
+                  <div className="flex justify-end">
+                    <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
+                      {m.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-foreground">
+                      {analysisText || (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                          思考中...
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Operation cards — rendered after the AI message text */}
+                    {opsResult?.operations && opsResult.operations.length > 0 && (
+                      <OperationCards operations={opsResult.operations} editorRef={editorRef} />
+                    )}
+                    {opsResult?.parseError && (
+                      <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                        ⚠️ {opsResult.parseError}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {streamState?.isLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm px-1">
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                生成中...
+              </div>
+            )}
+          </div>
+        ) : (
+          <WelcomePage />
+        )}
+      </div>
+
+      {/* Input area */}
+      <div className="p-3 border-t border-border shrink-0">
+        <div className="bg-muted/30 border border-border rounded-2xl px-3 py-2">
+          <textarea
+            ref={inputRef}
+            onInput={autoResize}
+            onKeyDown={handleKeyDown}
+            placeholder="输入指令..."
+            rows={1}
+            disabled={isCreating}
+            className="w-full border-none outline-none bg-transparent text-[13px] text-foreground min-w-0 placeholder:text-muted-foreground resize-none leading-relaxed max-h-[120px]"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <div ref={modelMenuRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setModelMenuOpen((v) => !v)}
+                className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors rounded-md px-1.5 py-0.5 hover:bg-muted"
+              >
+                <span className="max-w-[72px] truncate">{selectedModelLabel}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2.5 3.5L5 6L7.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {modelMenuOpen && (
+                <div className="absolute bottom-full right-0 mb-2 w-40 bg-background rounded-xl shadow-lg border border-border py-1 z-50 max-h-48 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => { setModelName(null); setModelMenuOpen(false); }}
+                    className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted", !modelName && "bg-primary/5 text-primary")}
+                  >
+                    默认模型
+                  </button>
+                  {models.map((m) => (
+                    <button
+                      key={m.name}
+                      type="button"
+                      onClick={() => { setModelName(m.name); setModelMenuOpen(false); }}
+                      className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted", modelName === m.name && "bg-primary/5 text-primary")}
+                    >
+                      {m.display_name ?? m.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={isCreating}
+              className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                !streamState?.isLoading && !isCreating
+                  ? "bg-primary text-primary-foreground hover:opacity-90"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {streamState?.isLoading || isCreating ? (
+                <span className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 7L12 2L7 12L5.5 7.5L2 7Z" fill="currentColor" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
