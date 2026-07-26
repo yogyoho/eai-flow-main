@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
-import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
+
+import { ClipboardSafeStreamdown } from "./streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -302,7 +303,9 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof ClipboardSafeStreamdown>;
+export type MessageResponseProps = ComponentProps<
+  typeof ClipboardSafeStreamdown
+>;
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (

@@ -916,19 +916,6 @@ export const PromptInputTextarea = ({
 
       form?.requestSubmit();
     }
-
-    // Remove last attachment when Backspace is pressed and textarea is empty
-    if (
-      e.key === "Backspace" &&
-      e.currentTarget.value === "" &&
-      attachments.files.length > 0
-    ) {
-      e.preventDefault();
-      const lastAttachment = attachments.files.at(-1);
-      if (lastAttachment) {
-        attachments.remove(lastAttachment.id);
-      }
-    }
   };
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
@@ -1103,11 +1090,6 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   let Icon = <ArrowUpIcon className="size-4" />;
 
-  const resolvedVariant =
-    status === "streaming" || status === "error"
-      ? "destructive"
-      : variant;
-
   if (status === "submitted") {
     Icon = <Loader2Icon className="size-4 animate-spin" />;
   } else if (status === "streaming") {
@@ -1122,7 +1104,7 @@ export const PromptInputSubmit = ({
       className={cn(className)}
       size={size}
       type="submit"
-      variant={resolvedVariant}
+      variant={variant}
       {...props}
     >
       {children ?? Icon}
