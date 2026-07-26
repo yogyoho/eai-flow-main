@@ -299,8 +299,8 @@ function ConfirmCard({
 
       {/* Content preview */}
       {operation.op !== "delete" && operation.content && (
-        <div className="px-3 py-2 text-xs text-muted-foreground max-h-20 overflow-y-auto">
-          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{operation.content.slice(0, 200)}</pre>
+        <div className="text-xs text-muted-foreground max-h-20 overflow-y-auto">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed px-3 py-1.5">{operation.content.slice(0, 200)}</pre>
         </div>
       )}
 

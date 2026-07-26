@@ -7582,6 +7582,342 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T11:20:31.061Z"
+    },
+    {
+      "id": "bug-465",
+      "timestamp": "2026-07-26T11:21:55.076Z",
+      "error_message": "Missing error handling in highlightCodeBlocks",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:21:55.076Z"
+    },
+    {
+      "id": "bug-466",
+      "timestamp": "2026-07-26T11:22:14.013Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: // ponytail: refresh syntax highlighting on code blocks afte; const editorEl = (editor as any).domElement as HTMLElement |",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T11:22:36.393Z"
+    },
+    {
+      "id": "bug-467",
+      "timestamp": "2026-07-26T11:24:09.754Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:24:09.754Z"
+    },
+    {
+      "id": "bug-468",
+      "timestamp": "2026-07-26T11:37:11.580Z",
+      "error_message": "CSS fix: ponytail",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "ponytail: post-process BlockNote code blocks with highlight.js. → lazy singleton shared across editor instances. JS engine avoids WASM.",
+      "fix": "Changed ponytail: post-process BlockNote code blocks with highlight.js. → lazy singleton shared across editor instances. JS engine avoids WASM.",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T11:37:49.226Z"
+    },
+    {
+      "id": "bug-469",
+      "timestamp": "2026-07-26T11:38:18.527Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (5 removed) | Also: // ponytail: refresh syntax highlighting on code b; highlightCodeBlocks(editorContainerRef.current);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T11:38:25.043Z"
+    },
+    {
+      "id": "bug-470",
+      "timestamp": "2026-07-26T11:49:47.949Z",
+      "error_message": "Function not marked async",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:49:47.949Z"
+    },
+    {
+      "id": "bug-471",
+      "timestamp": "2026-07-26T11:53:47.050Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Had \"shiki\"",
+      "fix": "Changed to \"shiki/bundle/web\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:53:47.050Z"
+    },
+    {
+      "id": "bug-472",
+      "timestamp": "2026-07-26T12:01:38.159Z",
+      "error_message": "Missing error handling in highlightCodeBlocks",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:01:38.159Z"
+    },
+    {
+      "id": "bug-473",
+      "timestamp": "2026-07-26T12:01:50.397Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→6 lines (2 removed) | Also: // ponytail: refresh code highlighting after edits; highlightCodeBlocks(editorContainerRef.current);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T12:05:55.017Z"
+    },
+    {
+      "id": "bug-474",
+      "timestamp": "2026-07-26T12:04:20.043Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Had \"highlight.js/lib/common\"",
+      "fix": "Changed to \"highlight.js\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:04:20.043Z"
+    },
+    {
+      "id": "bug-475",
+      "timestamp": "2026-07-26T12:05:34.919Z",
+      "error_message": "CSS fix: ponytail, blockSpecs",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "ponytail: highlight.js DOM post-processing. Default BlockNote code block → pre-load at module level so the highlighter is ready before; blockSpecs: { ...defaultBlockSpecs, ...mathBlockSpecs → {",
+      "fix": "Changed ponytail: highlight.js DOM post-processing. Default BlockNote code block → pre-load at module level so the highlighter is ready before; blockSpecs: { ...defaultBlockSpecs, ...mathBlockSpecs → {",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:05:34.919Z"
+    },
+    {
+      "id": "bug-476",
+      "timestamp": "2026-07-26T12:23:19.986Z",
+      "error_message": "Function not marked async",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:23:19.986Z"
+    },
+    {
+      "id": "bug-477",
+      "timestamp": "2026-07-26T12:23:40.486Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "No early return/throw for edge case: !highlightReady",
+      "fix": "Added guard clause: if (!highlightReady)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:23:40.486Z"
+    },
+    {
+      "id": "bug-478",
+      "timestamp": "2026-07-26T12:25:51.544Z",
+      "error_message": "CSS fix: ponytail",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "ponytail: schema is created only after Shiki highlighter resolves. → pre-resolve Shiki highlighter before rendering editor.",
+      "fix": "Changed ponytail: schema is created only after Shiki highlighter resolves. → pre-resolve Shiki highlighter before rendering editor.",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-07-26T12:34:26.323Z"
+    },
+    {
+      "id": "bug-479",
+      "timestamp": "2026-07-26T12:26:04.104Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Was returning: (",
+      "fix": "Now returns: <div className=\"flex items-center justify-center h",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:26:04.104Z"
+    },
+    {
+      "id": "bug-480",
+      "timestamp": "2026-07-26T12:30:18.990Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:30:18.990Z"
+    },
+    {
+      "id": "bug-481",
+      "timestamp": "2026-07-26T12:30:58.449Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Had \"@shikijs/types\"",
+      "fix": "Changed to \"shiki/bundle/web\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T12:30:58.449Z"
+    },
+    {
+      "id": "bug-482",
+      "timestamp": "2026-07-26T13:11:29.353Z",
+      "error_message": "CSS fix: ponytail",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "ponytail: start loading at module level, but create schema only after → lowlight (highlight.js AST API) is synchronous — no async,",
+      "fix": "Changed ponytail: start loading at module level, but create schema only after → lowlight (highlight.js AST API) is synchronous — no async,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T13:11:53.882Z"
+    },
+    {
+      "id": "bug-483",
+      "timestamp": "2026-07-26T13:23:03.554Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Had \"highlight.js/styles/github-dark.css\"",
+      "fix": "Changed to \"highlight.js/styles/github.css\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T13:23:03.554Z"
+    },
+    {
+      "id": "bug-484",
+      "timestamp": "2026-07-26T13:25:04.287Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: <style dangerouslySetInnerHTML={{ __html: codeBlockLightStyl",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T13:25:29.528Z"
+    },
+    {
+      "id": "bug-485",
+      "timestamp": "2026-07-26T13:26:59.372Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T13:26:59.372Z"
     }
   ]
 }

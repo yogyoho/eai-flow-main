@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 116555346,
-    "total_reads": 38730,
-    "total_writes": 49633,
-    "total_sessions": 461,
-    "anatomy_hits": 20463,
-    "anatomy_misses": 17057,
-    "repeated_reads_blocked": 31999,
-    "estimated_savings_vs_bare_cli": 196478994
+    "total_tokens_estimated": 116997866,
+    "total_reads": 38849,
+    "total_writes": 49981,
+    "total_sessions": 462,
+    "anatomy_hits": 20496,
+    "anatomy_misses": 17143,
+    "repeated_reads_blocked": 32233,
+    "estimated_savings_vs_bare_cli": 198791684
   },
   "sessions": [
     {
@@ -512259,6 +512259,2613 @@
         "writes_count": 0,
         "repeated_reads_blocked": 5,
         "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T11:21:06.424Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 8960,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 42401,
+        "output_tokens_estimated": 405,
+        "reads_count": 3,
+        "writes_count": 3,
+        "repeated_reads_blocked": 6,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T11:26:30.907Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9325,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 42766,
+        "output_tokens_estimated": 1653,
+        "reads_count": 3,
+        "writes_count": 12,
+        "repeated_reads_blocked": 14,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T11:47:01.351Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9245,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 42686,
+        "output_tokens_estimated": 2440,
+        "reads_count": 13,
+        "writes_count": 21,
+        "repeated_reads_blocked": 17,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T12:10:56.319Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9174,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44193,
+        "output_tokens_estimated": 4191,
+        "reads_count": 15,
+        "writes_count": 37,
+        "repeated_reads_blocked": 21,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T12:36:56.165Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9883,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/block.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 9,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 604,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 534,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44902,
+        "output_tokens_estimated": 7149,
+        "reads_count": 17,
+        "writes_count": 51,
+        "repeated_reads_blocked": 32,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T13:00:32.616Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9883,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/block.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 9,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 604,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 534,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44902,
+        "output_tokens_estimated": 7149,
+        "reads_count": 17,
+        "writes_count": 51,
+        "repeated_reads_blocked": 32,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T13:14:38.007Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9598,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/block.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 9,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 604,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 534,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 552,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44617,
+        "output_tokens_estimated": 7870,
+        "reads_count": 17,
+        "writes_count": 55,
+        "repeated_reads_blocked": 36,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T13:23:40.481Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9598,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/block.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 9,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 604,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 534,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 552,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44617,
+        "output_tokens_estimated": 7882,
+        "reads_count": 17,
+        "writes_count": 56,
+        "repeated_reads_blocked": 36,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-26-1902",
+      "started": "2026-07-26T11:02:24.414Z",
+      "ended": "2026-07-26T13:28:55.195Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 9295,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 25004,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/TiptapEditor.tsx",
+          "tokens_estimated": 8437,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.d.mts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/bundle-web.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/engine-javascript.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/core-unwasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/wasm.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/shiki/dist/index.mjs",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/shiki.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/node_modules/@blocknote/core/src/blocks/Code/block.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 206,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 147,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 52,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 234,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 117,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 105,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 270,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 245,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 107,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tmp_test_shiki.mjs",
+          "tokens_estimated": 114,
+          "action": "create"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 216,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 650,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/package.json",
+          "tokens_estimated": 9,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/.npmrc",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 300,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 604,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 534,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 4,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 552,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 139,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 64,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 233,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 43,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 44314,
+        "output_tokens_estimated": 8383,
+        "reads_count": 17,
+        "writes_count": 62,
+        "repeated_reads_blocked": 40,
+        "anatomy_lookups": 4
       }
     }
   ],

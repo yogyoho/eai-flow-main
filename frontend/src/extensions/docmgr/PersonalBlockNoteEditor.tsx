@@ -4,7 +4,7 @@
 // Pattern matches BlockNoteEditor.tsx for toolbar/TOC/AI menu setup.
 
 import type { BlockSchema, InlineContentSchema } from "@blocknote/core";
-import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from "@blocknote/core";
+import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, createExtension } from "@blocknote/core";
 import { en as coreEn } from "@blocknote/core/locales";
 import { zh as coreZh } from "@blocknote/core/locales";
 import { useCreateBlockNote, FormattingToolbar, FormattingToolbarController, getFormattingToolbarItems, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
@@ -19,14 +19,25 @@ import "@defensestation/blocknote-math/styles.css";
 import "@blocknote/react/style.css";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/xl-ai/style.css";
+import { all, createLowlight } from "lowlight";
+import { createHighlightPlugin } from "prosemirror-highlight";
+import { createParser } from "prosemirror-highlight/lowlight";
+import "highlight.js/styles/github.css";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 
-// Schema with math blocks
-const schema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, ...mathBlockSpecs },
-  inlineContentSpecs: { ...defaultInlineContentSpecs, ...latexInlineContentSpecs },
+// ── Synchronous code block highlighting via lowlight ────────────────────
+// ponytail: lowlight (highlight.js AST API) is synchronous — no async,
+// no WASM, no "mismatched transaction". all grammars are pre-registered.
+const lowlight = createLowlight(all);
+const lowlightParser = createParser(lowlight);
+const highlightExtension = createExtension({
+  key: "personal-code-highlight",
+  prosemirrorPlugins: [
+    createHighlightPlugin({ parser: lowlightParser, nodeTypes: ["codeBlock"] }),
+  ],
 });
+
 
 // ── Agent operation types ────────────────────────────────────────────
 /** Anchor for agent operation targeting — text→block mapping. */
@@ -189,6 +200,18 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
   ({ initialContent, onChange, className }, ref) => {
     const [seeded, setSeeded] = useState(false);
     const [headings, setHeadings] = useState<Array<{ id: string; level: number; text: string }>>([]);
+
+    // ponytail: inject light-theme override for BlockNote code block wrapper
+    useEffect(() => {
+      const id = "personal-code-block-light";
+      if (document.getElementById(id)) return;
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = `[data-content-type="codeBlock"] { background: #f6f8fa !important; border: 1px solid #d0d7de; border-radius: 6px; } [data-content-type="codeBlock"] pre { background: transparent !important; margin: 0; }`;
+      document.head.appendChild(style);
+      return () => { style.remove(); };
+    }, []);
+
     const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
     const convertingRef = useRef(false);
     const onChangeRef = useRef(onChange);
@@ -207,10 +230,15 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
       [],
     );
 
+    const schema = useMemo(() => BlockNoteSchema.create({
+      blockSpecs: { ...defaultBlockSpecs, ...mathBlockSpecs },
+      inlineContentSpecs: { ...defaultInlineContentSpecs, ...latexInlineContentSpecs },
+    }), []);
+
     const editor = useCreateBlockNote({
       schema,
       dictionary,
-      extensions: [AIExtension({ transport: aiTransport })],
+      extensions: [AIExtension({ transport: aiTransport }), highlightExtension],
     });
 
     // Block types that carry inline content (text nodes that may contain $...$).

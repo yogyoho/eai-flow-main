@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T11:20:43.184Z
-> Files: 1619 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T13:35:03.939Z
+> Files: 1622 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -79,6 +79,7 @@
 - `test-upload.md` — 测试报告 (~45 tok)
 - `tmp_analyze_pdf.py` (~357 tok)
 - `tmp_analyze2.py` (~504 tok)
+- `tmp_test_shiki.mjs` — Declares h (~106 tok)
 - `TODOS.md` — TODOS — 报告模板提取 (~500 tok)
 
 ## .agent/skills/smoke-test/
@@ -1708,11 +1709,13 @@
 
 ## frontend/
 
+- `.npmrc` (~31 tok)
 - `CLAUDE.md` — CLAUDE.md (~1303 tok)
 - `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~722 tok)
 - `package.json` — Node.js package manifest (~1578 tok)
 - `test_debug_login.py` — Login via form submission (handles CSRF automatically) then test plugin tabs. (~2055 tok)
 - `test_plugin_tabs.py` — Test plugin sub-tabs stay within settings page. (~1262 tok)
+- `tmp_test_shiki.mjs` — Declares h (~106 tok)
 
 ## frontend/node_modules/.pnpm/prosemirror-model@1.25.6/node_modules/prosemirror-model/dist/
 
@@ -2174,7 +2177,7 @@
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
-- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8960 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~9346 tok)
 - `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4915 tok)
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
