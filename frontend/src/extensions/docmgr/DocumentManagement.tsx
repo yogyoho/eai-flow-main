@@ -33,7 +33,9 @@ import FolderPickerDialog from "./FolderPickerDialog";
 import { ProjectFolderTree } from "./ProjectFolderTree";
 import ShareDialog from "./ShareDialog";
 // ShareDialog retained for potential future use; share UI entry points removed below.
-import TiptapEditor, { type TiptapEditorRef } from "./TiptapEditor";
+import DocAIAgentPanel from "./DocAIAgentPanel";
+import PersonalBlockNoteEditor, { type PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
+import { useDocAIThread } from "./useDocAIThread";
 import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
@@ -1193,13 +1195,19 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const [saved, setSaved] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(420);
+  const resizingRef = useRef(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportContent, setExportContent] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
-  const editorRef = useRef<TiptapEditorRef | CollabEditorRef>(null);
+  const editorRef = useRef<PersonalBlockNoteEditorRef | CollabEditorRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const titleRef = useRef(title);
   titleRef.current = title;
+
+  // AI sub-thread persisted at editor level — survives panel close/reopen
+  const aiThreadId = personalFile?.thread_id ?? docId ?? "default";
+  const { subThreadId, ensureThread, isCreating, resetThread } = useDocAIThread(aiThreadId);
 
   useEffect(() => {
     setLoading(true);
@@ -1264,7 +1272,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
     if (!docId) return;
     setSaving(true);
     try {
-      const content = editorRef.current?.getMarkdown() ?? doc.content ?? "";
+      const content = (await editorRef.current?.getMarkdown()) ?? doc.content ?? "";
       await docmgrApi.update(docId, { title, content });
       setSaved(true);
       setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
@@ -1275,7 +1283,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
     if (fmt === "docx") {
       // ponytail: capture live editor markdown so personal/thread files (docId=null)
       // can export via the content-based endpoint.
-      setExportContent(editorRef.current?.getMarkdown() ?? doc?.content ?? "");
+      setExportContent((await editorRef.current?.getMarkdown()) ?? doc?.content ?? "");
       setShowExportDialog(true);
       return;
     }
@@ -1337,7 +1345,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => { const md = editorRef.current?.getMarkdown() ?? ""; navigator.clipboard.writeText(md); }}
+              onClick={async () => { const md = (await editorRef.current?.getMarkdown()) ?? ""; navigator.clipboard.writeText(md); }}
               title="复制内容"
             >
               <Copy className="w-4 h-4" />
@@ -1359,34 +1367,66 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
                 className="flex-1"
               />
             ) : (
-              <TiptapEditor
-                ref={editorRef as React.Ref<TiptapEditorRef>}
+              <PersonalBlockNoteEditor
+                ref={editorRef as React.Ref<PersonalBlockNoteEditorRef>}
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
-                placeholder="开始输入内容..."
                 className="flex-1"
               />
             )
           )}
         </div>
         <AnimatePresence>
-          {showAI && (
-            <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 360 }}
+          {showAI && (() => {
+            const aiDocTitle = personalFile?.title ?? title ?? "untitled";
+            const aiRelPath = personalFile?.rel_path ?? `${aiDocTitle}.md`;
+            return (
+            <>
+            {/* Resize handle */}
+            <div
+              className="w-1.5 hover:w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors shrink-0 relative group"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                resizingRef.current = true;
+                const startX = e.clientX;
+                const startWidth = panelWidth;
+                const onMove = (ev: MouseEvent) => {
+                  const delta = startX - ev.clientX;
+                  setPanelWidth(Math.max(280, Math.min(800, startWidth + delta)));
+                };
+                const onUp = () => {
+                  resizingRef.current = false;
+                  document.removeEventListener("mousemove", onMove);
+                  document.removeEventListener("mouseup", onUp);
+                  document.body.style.cursor = "";
+                  document.body.style.userSelect = "";
+                };
+                document.body.style.cursor = "col-resize";
+                document.body.style.userSelect = "none";
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+              }}
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1" />
+            </div>
+            <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: panelWidth }}
               exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }}
-              className="border-l border-border overflow-hidden shrink-0">
-              <AIEditPanel
-                docKey={docId ?? personalFile?.rel_path ?? "personal"}
+              className="border-l border-border overflow-hidden shrink-0"
+              <DocAIAgentPanel
+                docTitle={aiDocTitle}
+                docRelPath={aiRelPath}
+                threadId={aiThreadId}
+                editorRef={editorRef as React.RefObject<PersonalBlockNoteEditorRef | null>}
                 onClose={() => setShowAI(false)}
-                getSelectedText={() => editorRef.current?.getSelectedText() ?? ""}
-                getFullText={() => editorRef.current?.getMarkdown() ?? ""}
-                getCursorParagraph={() => editorRef.current?.getCursorParagraph() ?? ""}
-                onResult={(text) => { editorRef.current?.replaceSelection(text); editorRef.current?.clearHighlight(); }}
-                onInsert={(text) => { editorRef.current?.insertAtCursor(text); editorRef.current?.clearHighlight(); }}
-                onHighlightSelection={() => editorRef.current?.highlightSelection()}
-                onClearHighlight={() => editorRef.current?.clearHighlight()}
+                subThreadId={subThreadId}
+                ensureThread={ensureThread}
+                isCreating={isCreating}
+                resetThread={resetThread}
               />
             </motion.div>
-          )}
+            </>
+            );
+          })()}
         </AnimatePresence>
       </div>
       <ExportDocxDialog docId={docId} docTitle={title} content={exportContent} open={showExportDialog} onOpenChange={setShowExportDialog} />
