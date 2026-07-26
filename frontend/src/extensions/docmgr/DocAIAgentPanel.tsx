@@ -362,7 +362,7 @@ export default function DocAIAgentPanel({
   // Force remount by keying on subThreadId so the hook always starts fresh.
   const streamConfig = useMemo(() => {
     if (!subThreadId) return { client, assistantId: "lead_agent" };
-    return { client, assistantId: "lead_agent", threadId: subThreadId, reconnectOnMount: true };
+    return { client, assistantId: "lead_agent", threadId: subThreadId };
   }, [client, subThreadId]);
   const streamState = useStream(streamConfig);
 

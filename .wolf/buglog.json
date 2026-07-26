@@ -7406,6 +7406,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T08:43:57.589Z"
+    },
+    {
+      "id": "bug-454",
+      "timestamp": "2026-07-26T08:55:11.810Z",
+      "error_message": "CSS fix: assistantId",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "assistantId: \"lead_agent\", threadId: subThreadId, reconnectOnMount: true → \"lead_agent\", threadId: subThreadId",
+      "fix": "Changed assistantId: \"lead_agent\", threadId: subThreadId, reconnectOnMount: true → \"lead_agent\", threadId: subThreadId",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T08:55:11.810Z"
     }
   ]
 }
