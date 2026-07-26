@@ -63,6 +63,31 @@ export function levenshteinDistance(a: string, b: string): number {
   return dp[n];
 }
 
+// ponytail: extract all text from any block type (paragraph, heading, list item,
+// table cell, etc.) into a single string for anchor matching.
+function getBlockText(block: any): string {
+  if (!block) return "";
+  // Table: collect text from all cells
+  if (block.type === "table" && block.content?.type === "tableContent" && Array.isArray(block.content.rows)) {
+    const parts: string[] = [];
+    for (const row of block.content.rows) {
+      for (const cell of row.cells ?? []) {
+        if (Array.isArray(cell.content)) {
+          for (const node of cell.content) {
+            if (node.type === "text") parts.push(node.text || "");
+          }
+        }
+      }
+    }
+    return parts.join(" ");
+  }
+  // Standard inline-content blocks (paragraph, heading, list item, etc.)
+  if (Array.isArray(block.content)) {
+    return block.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
+  }
+  return "";
+}
+
 // ponytail: shared anchor→blockId lookup used by matchAnchor / applyOperations / scrollToAnchor.
 // 5-level matching per spec §7: exact → prefix → contains → fuzzy → null.
 export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; blockIndex: number } | null {
@@ -72,63 +97,53 @@ export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string
 
   // 1. Exact match
   for (let i = 0; i < doc.length; i++) {
-    const b = doc[i];
-    if (!Array.isArray(b.content)) continue;
-    const fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
-    if (fullText.trim() === trimmed) return { blockId: b.id, blockIndex: i };
+    const fullText = getBlockText(doc[i]);
+    if (!fullText) continue;
+    if (fullText.trim() === trimmed) return { blockId: doc[i].id, blockIndex: i };
   }
 
   // 2. Prefix match
   for (let i = 0; i < doc.length; i++) {
-    const b = doc[i];
-    if (!Array.isArray(b.content)) continue;
-    const fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
-    if (fullText.trim().startsWith(trimmed)) return { blockId: b.id, blockIndex: i };
+    const fullText = getBlockText(doc[i]);
+    if (!fullText) continue;
+    if (fullText.trim().startsWith(trimmed)) return { blockId: doc[i].id, blockIndex: i };
   }
 
   // 3. Contains match (exactly one)
   let containsMatch: { blockId: string; blockIndex: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
-    const b = doc[i];
-    if (!Array.isArray(b.content)) continue;
-    const fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
+    const fullText = getBlockText(doc[i]);
+    if (!fullText) continue;
     if (fullText.includes(trimmed)) {
       if (containsMatch) return null; // ambiguous
-      containsMatch = { blockId: b.id, blockIndex: i };
+      containsMatch = { blockId: doc[i].id, blockIndex: i };
     }
   }
   if (containsMatch) return containsMatch;
 
   // 4. Fuzzy (Levenshtein < 30%) with substring sliding window
-  // ponytail: agent anchors are short (e.g. "设计依据及彩用") but block text
-  // is long ("第一章 设计依据及采用的标准"). Full-text distance is inflated by
-  // the prefix/suffix. Slide the anchor across the block text, find the best
-  // matching substring window.
   if (trimmed.length < 5) return null;
   let best: { blockId: string; blockIndex: number; dist: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
-    const b = doc[i];
-    if (!Array.isArray(b.content)) continue;
-    let fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
+    let fullText = getBlockText(doc[i]);
+    if (!fullText) continue;
     // Strip markdown heading prefix
     fullText = fullText.replace(/^#{1,6}\s+/, "").trim();
     if (!fullText || fullText.length < 3) continue;
 
-    // Full text comparison (for short blocks where anchor ≈ fullText)
     const fullDist = levenshteinDistance(trimmed, fullText.slice(0, 80));
     if (fullDist / trimmed.length < 0.3 && (!best || fullDist < best.dist)) {
-      best = { blockId: b.id, blockIndex: i, dist: fullDist };
+      best = { blockId: doc[i].id, blockIndex: i, dist: fullDist };
     }
 
-    // Sliding window: for long blocks, check best-matching substring
     if (fullText.length > trimmed.length + 5) {
       const windowLen = Math.max(trimmed.length, Math.min(trimmed.length * 2, fullText.length));
       for (let start = 0; start <= fullText.length - trimmed.length; start++) {
         const window = fullText.slice(start, start + windowLen);
         const dist = levenshteinDistance(trimmed, window);
         if (dist / trimmed.length < 0.3 && (!best || dist < best.dist)) {
-          best = { blockId: b.id, blockIndex: i, dist };
-          if (dist === 0) break; // exact substring match
+          best = { blockId: doc[i].id, blockIndex: i, dist };
+          if (dist === 0) break;
         }
       }
     }
@@ -526,13 +541,7 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
 
       getBlockAnchors: () => {
         return editor.document.map((b, i) => {
-          let text = "";
-          if (Array.isArray(b.content)) {
-            text = b.content
-              .filter((c: any) => c.type === "text")
-              .map((c: any) => c.text || "")
-              .join("");
-          }
+          const text = getBlockText(b);
           const anchor: DocAnchor = { text: text.slice(0, 60), blockIndex: i, blockType: b.type };
           if (b.type === "heading" && (b.props as any)?.level) {
             anchor.headingLevel = (b.props as any).level as number;
@@ -546,38 +555,33 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
       applyOperations: (ops: DocOperation[]) => {
         for (const op of ops) {
           const parsed = editor.tryParseMarkdownToBlocks(op.content ?? "");
-          if (parsed.length === 0 && op.op !== "delete") continue;
+          if (parsed.length === 0 && op.op !== "delete") {
+            console.warn("[applyOperations] skip: empty parsed content for op", op.op);
+            continue;
+          }
 
           switch (op.op) {
-            case "replace": {
-              if (!op.anchor) continue;
-              const match = findBlockByAnchor(editor.document, op.anchor);
-              if (!match) continue;
-              editor.replaceBlocks([match.blockId], parsed);
-              break;
-            }
-            case "insert_after": {
-              if (!op.anchor) continue;
-              const match = findBlockByAnchor(editor.document, op.anchor);
-              if (!match) continue;
-              editor.insertBlocks(parsed, match.blockId, "after");
-              break;
-            }
+            case "replace":
+            case "insert_after":
             case "delete": {
-              if (!op.anchor) continue;
+              if (!op.anchor) throw new Error(`操作缺少 anchor: ${op.op}`);
               const match = findBlockByAnchor(editor.document, op.anchor);
-              if (!match) continue;
-              editor.removeBlocks([match.blockId]);
+              if (!match) throw new Error(`找不到匹配的文本: "${op.anchor}"`);
+              if (op.op === "replace") editor.replaceBlocks([match.blockId], parsed);
+              else if (op.op === "insert_after") editor.insertBlocks(parsed, match.blockId, "after");
+              else editor.removeBlocks([match.blockId]);
               break;
             }
             case "prepend": {
               const firstId = editor.document[0]?.id;
-              if (firstId) editor.insertBlocks(parsed, firstId, "before");
+              if (!firstId) throw new Error("文档为空，无法在开头插入");
+              editor.insertBlocks(parsed, firstId, "before");
               break;
             }
             case "append": {
               const last = editor.document[editor.document.length - 1];
-              if (last) editor.insertBlocks(parsed, last.id, "after");
+              if (!last) throw new Error("文档为空，无法在末尾追加");
+              editor.insertBlocks(parsed, last.id, "after");
               break;
             }
           }
