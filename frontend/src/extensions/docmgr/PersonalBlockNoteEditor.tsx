@@ -89,29 +89,35 @@ function getBlockText(block: any): string {
 
 // ponytail: shared anchor→blockId lookup used by matchAnchor / applyOperations / scrollToAnchor.
 // 5-level matching per spec §7: exact → prefix → contains → fuzzy → null.
+// ponytail: normalize anchor text for matching. Agent may output markdown-style
+// table anchors like "| 4 | 循环水场 |" — strip pipes and collapse whitespace.
+function normalizeAnchorText(s: string): string {
+  return s.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; blockIndex: number } | null {
   if (!anchor) return null;
-  const trimmed = anchor.trim();
+  const trimmed = normalizeAnchorText(anchor);
   if (!trimmed) return null;
 
-  // 1. Exact match
+  // 1. Exact match (normalized both sides)
   for (let i = 0; i < doc.length; i++) {
-    const fullText = getBlockText(doc[i]);
+    const fullText = normalizeAnchorText(getBlockText(doc[i]));
     if (!fullText) continue;
-    if (fullText.trim() === trimmed) return { blockId: doc[i].id, blockIndex: i };
+    if (fullText === trimmed) return { blockId: doc[i].id, blockIndex: i };
   }
 
-  // 2. Prefix match
+  // 2. Prefix match (normalized)
   for (let i = 0; i < doc.length; i++) {
-    const fullText = getBlockText(doc[i]);
+    const fullText = normalizeAnchorText(getBlockText(doc[i]));
     if (!fullText) continue;
-    if (fullText.trim().startsWith(trimmed)) return { blockId: doc[i].id, blockIndex: i };
+    if (fullText.startsWith(trimmed)) return { blockId: doc[i].id, blockIndex: i };
   }
 
-  // 3. Contains match (exactly one)
+  // 3. Contains match (exactly one, normalized)
   let containsMatch: { blockId: string; blockIndex: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
-    const fullText = getBlockText(doc[i]);
+    const fullText = normalizeAnchorText(getBlockText(doc[i]));
     if (!fullText) continue;
     if (fullText.includes(trimmed)) {
       if (containsMatch) return null; // ambiguous
@@ -124,7 +130,7 @@ export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string
   if (trimmed.length < 5) return null;
   let best: { blockId: string; blockIndex: number; dist: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
-    let fullText = getBlockText(doc[i]);
+    let fullText = normalizeAnchorText(getBlockText(doc[i]));
     if (!fullText) continue;
     // Strip markdown heading prefix
     fullText = fullText.replace(/^#{1,6}\s+/, "").trim();
