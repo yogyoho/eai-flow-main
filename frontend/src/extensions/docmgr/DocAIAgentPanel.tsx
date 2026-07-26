@@ -598,7 +598,7 @@ export default function DocAIAgentPanel({
                   </svg>
                 </button>
                 {modeMenuOpen && (
-                  <div className="absolute bottom-full right-0 mb-2 w-28 bg-background rounded-xl shadow-lg border border-border py-1 z-50">
+                  <div className="absolute bottom-full left-0 mb-2 w-28 bg-background rounded-xl shadow-lg border border-border py-1 z-50">
                     {MODE_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
