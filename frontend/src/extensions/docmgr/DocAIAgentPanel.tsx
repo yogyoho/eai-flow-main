@@ -360,23 +360,27 @@ export default function DocAIAgentPanel({
     const { message, modelName: mn } = pendingRef.current;
     pendingRef.current = null;
 
-    const fn = async () => {
-      const docContent = (await editorRef.current?.getMarkdown()) ?? "";
-      const anchors = (editorRef.current?.getBlockAnchors() ?? [])
-        .map((a) => {
-          const prefix = a.blockType === "heading" ? `H${a.headingLevel ?? 1}` : "P";
-          return `[${a.blockIndex}] ${prefix} "${a.text}"`;
-        })
-        .join("\n");
+    (async () => {
+      try {
+        const docContent = (await editorRef.current?.getMarkdown()) ?? "";
+        const anchors = (editorRef.current?.getBlockAnchors() ?? [])
+          .map((a) => {
+            const prefix = a.blockType === "heading" ? `H${a.headingLevel ?? 1}` : "P";
+            return `[${a.blockIndex}] ${prefix} "${a.text}"`;
+          })
+          .join("\n");
 
-      const prompt = buildPrompt({ docContent, anchors, userMessage: message });
+        const prompt = buildPrompt({ docContent, anchors, userMessage: message });
 
-      streamState.submit(
-        { messages: [{ type: "human", content: prompt }] },
-        { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 },
-      );
-    };
-    fn();
+        streamState.submit(
+          { messages: [{ type: "human", content: prompt }] },
+          { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 },
+        );
+      } catch (e: any) {
+        console.warn("[DocAI] submit effect failed:", e?.message);
+        setError("发送失败: " + (e?.message || "未知错误"));
+      }
+    })();
   }, [streamReady, submitTick, editorRef, streamState, subThreadId]);
 
   // ── new chat ──────────────────────────────────────────────────────
