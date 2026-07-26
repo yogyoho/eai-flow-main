@@ -12,10 +12,7 @@ import {
 import type { AgentThreadState } from "../threads/types";
 
 import { isStateChangingMethod, readCsrfCookie } from "./fetcher";
-import {
-  forceChatRunStreamOptions,
-  sanitizeRunStreamOptions,
-} from "./stream-mode";
+import { sanitizeRunStreamOptions } from "./stream-mode";
 
 /**
  * SDK ``onRequest`` hook that mints the ``X-CSRF-Token`` header from the
@@ -50,7 +47,7 @@ function injectCsrfHeader(_url: URL, init: RequestInit): RequestInit {
 // first message after a reload never sends. The ``joinStream`` wrapper below
 // short-circuits these *before* joining.
 //
-// ``interrupted`` is included because in EAIFlow it is only ever written by
+// ``interrupted`` is included because in DeerFlow it is only ever written by
 // ``RunManager.cancel()`` (a user-initiated stop); the resumable human-in-the-
 // loop path uses ``Command(goto=END)`` (``ClarificationMiddleware``), which
 // ends the run as ``success``, not ``interrupted``. So an interrupted run has
@@ -176,7 +173,6 @@ function createCompatibleClient(isMock?: boolean): LangGraphClient {
   }
 
   const apiUrl = getLangGraphBaseURL(isMock);
-  console.log(`Creating API client with base URL: ${apiUrl}`);
   const client = new LangGraphClient({
     apiUrl,
     onRequest: injectCsrfHeader,
@@ -187,7 +183,7 @@ function createCompatibleClient(isMock?: boolean): LangGraphClient {
     originalRunStream(
       threadId,
       assistantId,
-      forceChatRunStreamOptions(payload),
+      sanitizeRunStreamOptions(payload),
     )) as typeof client.runs.stream;
 
   const originalCancel = client.runs.cancel.bind(client.runs);
