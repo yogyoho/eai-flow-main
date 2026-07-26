@@ -1,10 +1,10 @@
-import { code } from "@streamdown/code";
-import { mermaid } from "@streamdown/mermaid";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { StreamdownProps } from "streamdown";
+
+import { rehypeSplitWordsIntoSpans } from "../rehype";
 
 const katexOptions = {
   output: "html",
@@ -17,13 +17,7 @@ const sharedRemarkPlugins = [
   [remarkMath, { singleDollarTextMath: true }],
 ] as StreamdownProps["remarkPlugins"];
 
-export const streamdownRenderingPlugins = {
-  code,
-  mermaid,
-} satisfies NonNullable<StreamdownProps["plugins"]>;
-
 export const streamdownPlugins = {
-  plugins: streamdownRenderingPlugins,
   remarkPlugins: sharedRemarkPlugins,
   rehypePlugins: [
     rehypeRaw,
@@ -31,14 +25,15 @@ export const streamdownPlugins = {
   ] as StreamdownProps["rehypePlugins"],
 };
 
-export const streamdownWordAnimation = {
-  animation: "fadeIn",
-  duration: 200,
-  sep: "word",
-} as const satisfies Exclude<StreamdownProps["animated"], boolean | undefined>;
+export const streamdownPluginsWithWordAnimation = {
+  remarkPlugins: sharedRemarkPlugins,
+  rehypePlugins: [
+    [rehypeKatex, katexOptions],
+    rehypeSplitWordsIntoSpans,
+  ] as StreamdownProps["rehypePlugins"],
+};
 
 export const streamdownPluginsWithoutRawHtml = {
-  plugins: streamdownPlugins.plugins,
   remarkPlugins: streamdownPlugins.remarkPlugins,
   rehypePlugins: streamdownPlugins.rehypePlugins?.filter(
     (p) => p !== rehypeRaw,
@@ -48,3 +43,14 @@ export const streamdownPluginsWithoutRawHtml = {
 // Plugins for reasoning/thinking content — derived from streamdownPlugins but without rehypeRaw,
 // to prevent LLM-hallucinated HTML tags (e.g. <simd>) from being rendered as DOM elements.
 export const reasoningPlugins = streamdownPluginsWithoutRawHtml;
+
+// [EAI] Human message plugins — for processing user input with GFM and math support.
+export const humanMessagePlugins = {
+  remarkPlugins: [
+    remarkGfm,
+    [remarkMath, { singleDollarTextMath: true }],
+  ] as StreamdownProps["remarkPlugins"],
+  rehypePlugins: [
+    [rehypeKatex, { output: "html" }],
+  ] as StreamdownProps["rehypePlugins"],
+};

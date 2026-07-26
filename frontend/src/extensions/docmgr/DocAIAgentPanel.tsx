@@ -165,10 +165,10 @@ function WelcomePage() {
       </div>
       <div className="text-base font-semibold text-foreground mb-6">文档 AI 助手</div>
 
-      <div className="w-full text-center space-y-4 text-sm text-muted-foreground">
+      <div className="w-full text-left space-y-4 text-sm text-muted-foreground">
         <div>
           <div className="font-medium text-foreground mb-1.5">内容协作</div>
-          <ul className="space-y-1 text-xs list-none p-0">
+          <ul className="space-y-1 text-xs">
             <li>"给第3节加一段安全措施"</li>
             <li>"把设计参数表格改成文字描述"</li>
             <li>"在文档末尾补充结论"</li>
@@ -176,7 +176,7 @@ function WelcomePage() {
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">文档审查</div>
-          <ul className="space-y-1 text-xs list-none p-0">
+          <ul className="space-y-1 text-xs">
             <li>"检查公式编号是否连续"</li>
             <li>"这段计算逻辑有没有问题"</li>
             <li>"全文的术语使用是否统一"</li>
@@ -184,7 +184,7 @@ function WelcomePage() {
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">格式修正（自动应用）</div>
-          <ul className="space-y-1 text-xs list-none p-0">
+          <ul className="space-y-1 text-xs">
             <li>"统一中英文之间的空格"</li>
             <li>"修正标题层级"</li>
           </ul>

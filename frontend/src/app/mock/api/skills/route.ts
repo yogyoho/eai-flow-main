@@ -20,7 +20,7 @@ export function GET() {
       {
         name: "github-deep-research",
         description:
-          "Conduct multi-round deep research on any GitHub Repo. Use when users request comprehensive analysis, timeline reconstruction, competitive analysis, or in-depth investigation of GitHub. Produces structured markdown reports with executive summaries, chronological timelines, metrics analysis, and Mermaid diagrams. Triggers on Github repository URL or open source projects.",
+          "Conduct multi-round deep research on any GitHub Repo. Use when users request comprehensive analysis, timeline reconstruction, competitive analysis, or in-depth investigation of GitHub. Produces structured markdown reports with executive summaries, chronological timelines, metrics analysis, and Mermaid diagrams. Triggers on Github repository URL or projects.",
         license: null,
         category: "public",
         enabled: true,
@@ -29,14 +29,6 @@ export function GET() {
         name: "image-generation",
         description:
           "Use this skill when the user requests to generate, create, imagine, or visualize images including characters, scenes, products, or any visual content. Supports structured prompts and reference images for guided generation.",
-        license: null,
-        category: "public",
-        enabled: true,
-      },
-      {
-        name: "music-generation",
-        description:
-          "Use this skill when the user requests to generate, create, compose, or produce music or songs — background music, theme songs, jingles, or instrumental tracks. Generates a song from a style/mood prompt and optional lyrics via the MiniMax music API.",
         license: null,
         category: "public",
         enabled: true,

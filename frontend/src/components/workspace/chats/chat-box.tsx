@@ -1,15 +1,9 @@
 import { FilesIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePanelRef } from "react-resizable-panels";
 
 import { ConversationEmptyState } from "@/components/ai-elements/conversation";
 import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import {
   Sheet,
   SheetContent,
@@ -26,20 +20,17 @@ import {
   ArtifactFileList,
   useArtifacts,
 } from "../artifacts";
-import { BrowserViewPanel, useMaybeBrowserView } from "../browser-view";
 import { useThread } from "../messages/context";
 import { SidecarPanel, useMaybeSidecar } from "../sidecar";
 
 const RIGHT_PANEL_ANIMATION_MS = 280;
-const RIGHT_PANEL_DEFAULT_SIZE = "40%";
 
-type RightPanelKind = "sidecar" | "artifacts" | "browser";
+type RightPanelKind = "sidecar" | "artifacts";
 
-const ChatBox: React.FC<{
-  children: React.ReactNode;
-  threadId: string;
-  browserEnabled?: boolean;
-}> = ({ children, threadId, browserEnabled = true }) => {
+const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
+  children,
+  threadId,
+}) => {
   const { thread } = useThread();
   const isMobile = useIsMobile();
   const pathname = usePathname();
@@ -56,8 +47,6 @@ const ChatBox: React.FC<{
   } = useArtifacts();
   const sidecar = useMaybeSidecar();
   const sidecarOpen = sidecar?.open ?? false;
-  const browserView = useMaybeBrowserView();
-  const browserViewOpen = browserEnabled && (browserView?.open ?? false);
 
   const [autoSelectFirstArtifact, setAutoSelectFirstArtifact] = useState(true);
   useEffect(() => {
@@ -115,11 +104,9 @@ const ChatBox: React.FC<{
 
   const activeRightPanel: RightPanelKind | null = sidecarOpen
     ? "sidecar"
-    : browserViewOpen
-      ? "browser"
-      : artifactPanelOpen
-        ? "artifacts"
-        : null;
+    : artifactPanelOpen
+      ? "artifacts"
+      : null;
   const rightPanelOpen = activeRightPanel !== null;
   const [renderedRightPanel, setRenderedRightPanel] =
     useState<RightPanelKind | null>(activeRightPanel);
@@ -127,67 +114,6 @@ const ChatBox: React.FC<{
   const resizableIdBase = useMemo(() => {
     return pathname.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
   }, [pathname]);
-
-  const sidePanelRef = usePanelRef();
-  // Width the panel reopens at: the last size the user dragged it to.
-  const openSizeRef = useRef(RIGHT_PANEL_DEFAULT_SIZE);
-  // While the panel width animates, the content is held at its final width and
-  // clipped instead of reflowing every frame — a reflowing message list keeps
-  // re-running its scroll-to-bottom (pinned by the sidecar scroll regression
-  // test), and re-wrapping text mid-animation looks unsettled. Expressed in
-  // `cqw` against the group so it tracks the final width even if the group
-  // itself resizes during the animation.
-  const [pinnedContentWidth, setPinnedContentWidth] = useState<string | null>(
-    null,
-  );
-  // Size transitions belong to open/close only: leaving them on during a drag
-  // would interpolate every pointer frame and make the handle feel laggy.
-  const [animatingRightPanel, setAnimatingRightPanel] = useState(false);
-  const rightPanelOpenRef = useRef(rightPanelOpen);
-  // Read once: `defaultSize` only applies on mount, the effect below owns every
-  // later open/close.
-  const [initialRightPanelSize] = useState(() =>
-    rightPanelOpen ? RIGHT_PANEL_DEFAULT_SIZE : "0%",
-  );
-
-  useEffect(() => {
-    if (rightPanelOpenRef.current === rightPanelOpen) {
-      return;
-    }
-    rightPanelOpenRef.current = rightPanelOpen;
-
-    setAnimatingRightPanel(true);
-    if (!rightPanelOpen) {
-      // Remember the width now: the closing animation reports shrinking sizes,
-      // so sampling those would reopen the panel a few pixels wide.
-      const size = sidePanelRef.current?.getSize().asPercentage ?? 0;
-      if (size > 0) {
-        openSizeRef.current = `${size}%`;
-      }
-    }
-
-    const openPercentage = Number.parseFloat(openSizeRef.current);
-    setPinnedContentWidth(
-      Number.isFinite(openPercentage) ? `${openPercentage}cqw` : null,
-    );
-
-    // resize() rather than expand(): the library expands to `minSize` until it
-    // has recorded a size of its own, which would reopen narrower than before.
-    if (rightPanelOpen) {
-      sidePanelRef.current?.resize(openSizeRef.current);
-    } else {
-      sidePanelRef.current?.collapse();
-    }
-
-    const timeout = window.setTimeout(() => {
-      setAnimatingRightPanel(false);
-      setPinnedContentWidth(null);
-    }, RIGHT_PANEL_ANIMATION_MS);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [rightPanelOpen, sidePanelRef]);
 
   useEffect(() => {
     if (activeRightPanel) {
@@ -210,16 +136,7 @@ const ChatBox: React.FC<{
     }
   }, [artifactsOpen, setArtifactsOpen, sidecarOpen]);
 
-  useEffect(() => {
-    if (!browserEnabled && browserView?.open) {
-      browserView.close();
-    }
-  }, [browserEnabled, browserView]);
-
   const rightPanelContent = useMemo(() => {
-    if (renderedRightPanel === "browser") {
-      return <BrowserViewPanel threadId={threadId} className="size-full" />;
-    }
     if (renderedRightPanel === "sidecar") {
       return <SidecarPanel />;
     }
@@ -291,9 +208,6 @@ const ChatBox: React.FC<{
             if (sidecarOpen) {
               sidecar?.close();
             }
-            if (browserViewOpen) {
-              browserView?.close();
-            }
             if (artifactsOpen) {
               setArtifactsOpen(false);
             }
@@ -305,11 +219,7 @@ const ChatBox: React.FC<{
           >
             <SheetHeader className="sr-only">
               <SheetTitle>
-                {renderedRightPanel === "sidecar"
-                  ? "Sidecar"
-                  : renderedRightPanel === "browser"
-                    ? "Browser"
-                    : "Artifacts"}
+                {renderedRightPanel === "sidecar" ? "Sidecar" : "Artifacts"}
               </SheetTitle>
               <SheetDescription>
                 Browse the side panel for this conversation.
@@ -323,69 +233,45 @@ const ChatBox: React.FC<{
   }
 
   return (
-    <ResizablePanelGroup
-      id={`${resizableIdBase}-group`}
-      orientation="horizontal"
+    <div
+      id={`${resizableIdBase}-panels`}
       className={cn(
-        "[container-type:inline-size] size-full min-h-0",
-        // The sized flex item is the library's own `[data-panel]` element, not
-        // the child `className` lands on, so the open/close transition has to be
-        // addressed from here.
-        animatingRightPanel &&
-          "[&>[data-panel]]:transition-[flex-grow] [&>[data-panel]]:duration-[280ms] [&>[data-panel]]:ease-out motion-reduce:[&>[data-panel]]:transition-none",
+        "[container-type:inline-size] grid size-full min-h-0 transition-[grid-template-columns] duration-[280ms] ease-out motion-reduce:transition-none",
+        rightPanelOpen
+          ? "grid-cols-[minmax(0,1fr)_1px_minmax(0,40%)]"
+          : "grid-cols-[minmax(0,1fr)_0px_0px]",
       )}
     >
-      <ResizablePanel
-        id={`${resizableIdBase}-chat`}
-        minSize="30%"
-        className="relative min-h-0 min-w-0"
-      >
-        <div className="relative size-full min-h-0 min-w-0" id="chat">
-          {children}
-        </div>
-      </ResizablePanel>
-      <ResizableHandle
+      <div className="relative min-h-0 min-w-0" id="chat">
+        {children}
+      </div>
+      <div
         id={`${resizableIdBase}-separator`}
-        withHandle
-        disabled={!rightPanelOpen}
+        aria-hidden="true"
         className={cn(
-          "opacity-33 transition-opacity duration-200 ease-out hover:opacity-100 motion-reduce:transition-none",
+          "bg-border opacity-33 transition-opacity duration-200 ease-out motion-reduce:transition-none",
           !rightPanelOpen && "pointer-events-none opacity-0",
         )}
       />
-      <ResizablePanel
-        id={`${resizableIdBase}-side`}
-        panelRef={sidePanelRef}
-        collapsible
-        collapsedSize="0%"
-        defaultSize={initialRightPanelSize}
-        minSize="20%"
-        className="min-h-0 min-w-0"
+      <aside
+        aria-hidden={!rightPanelOpen}
+        className={cn(
+          "min-h-0 min-w-0 overflow-hidden transition-opacity duration-[280ms] ease-out motion-reduce:transition-none",
+          !rightPanelOpen && "pointer-events-none opacity-0",
+        )}
+        id="artifacts"
       >
-        <aside
-          aria-hidden={!rightPanelOpen}
+        <div
           className={cn(
-            "size-full min-h-0 min-w-0 overflow-hidden transition-opacity duration-[280ms] ease-out motion-reduce:transition-none",
-            rightPanelOpen ? "opacity-100" : "pointer-events-none opacity-0",
+            "ml-auto h-full w-[40cqw] transition-opacity duration-[280ms] ease-out motion-reduce:transition-none",
+            renderedRightPanel === "sidecar" ? "p-0" : "p-4",
+            rightPanelOpen ? "opacity-100" : "opacity-0",
           )}
-          id="artifacts"
         >
-          <div
-            className={cn(
-              "ml-auto h-full",
-              renderedRightPanel === "artifacts" ? "p-4" : "p-0",
-            )}
-            style={
-              pinnedContentWidth === null
-                ? undefined
-                : { width: pinnedContentWidth }
-            }
-          >
-            {rightPanelContent}
-          </div>
-        </aside>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+          {rightPanelContent}
+        </div>
+      </aside>
+    </div>
   );
 };
 
