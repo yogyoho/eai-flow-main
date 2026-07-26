@@ -322,6 +322,7 @@ export default function DocAIAgentPanel({
     if (!trimmed || isCreating || submitting) return;
 
     const message = trimmed;
+    userMessagesRef.current.push(message);
     el.value = "";
     el.style.height = "auto";
     setError(null);
@@ -382,6 +383,7 @@ export default function DocAIAgentPanel({
   const handleNewChat = () => {
     streamState?.stop?.();
     resetThread();
+    userMessagesRef.current = [];
     setChatKey((k) => k + 1);
   };
 
@@ -400,34 +402,10 @@ export default function DocAIAgentPanel({
   };
 
   // ── derived message state ─────────────────────────────────────────
-  // ponytail: store original user messages so we display them in bubbles
-  // instead of the full system prompt that was sent to the agent.
-  const userMessageMap = useRef<Map<string, string>>(new Map());
-  const lastUserMsgRef = useRef<string>("");
-
-  // Capture original user message before submitting the system prompt
-  useEffect(() => {
-    if (pendingRef.current) {
-      lastUserMsgRef.current = pendingRef.current.message;
-    }
-  }, [submitTick]);
-
-  // After submit, associate the next human message with the stored text
-  const prevMsgCountRef = useRef(0);
-  useEffect(() => {
-    const msgs = streamState?.messages ?? [];
-    if (msgs.length > prevMsgCountRef.current && lastUserMsgRef.current) {
-      // Find new human messages and store their original text
-      for (let i = prevMsgCountRef.current; i < msgs.length; i++) {
-        const m = msgs[i];
-        if (m.type === "human" && !userMessageMap.current.has(m.id ?? "")) {
-          userMessageMap.current.set(m.id ?? "", lastUserMsgRef.current);
-          lastUserMsgRef.current = "";
-        }
-      }
-    }
-    prevMsgCountRef.current = msgs.length;
-  }, [streamState?.messages]);
+  // ponytail: store original user messages in a ref array, pushed on submit.
+  // Each human message bubble reads from this array by index (not by message ID)
+  // since the actual human message content is the full system prompt.
+  const userMessagesRef = useRef<string[]>([]);
 
   const allMessages = useMemo(() => {
     return (streamState?.messages ?? []).filter((m: any) => {
@@ -470,10 +448,11 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           <div className="p-4 space-y-4">
-            {allMessages.map((m: any) => {
+            {allMessages.map((m: any, idx: number) => {
               if (m.type === "human") {
-                // Show the original user input, not the system prompt
-                const userText = userMessageMap.current.get(m.id ?? "") ?? "";
+                // Show original user input by submission order
+                const humanIdx = allMessages.slice(0, idx + 1).filter((x: any) => x.type === "human").length - 1;
+                const userText = userMessagesRef.current[humanIdx] ?? "";
                 return (
                   <div key={m.id} className="flex justify-end">
                     <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
