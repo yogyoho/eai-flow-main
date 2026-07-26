@@ -583,9 +583,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-browser = [
-    { name = "deerflow-harness", extra = ["browser"] },
-]
 discord = [
     { name = "discord-py" },
 ]
@@ -610,7 +607,6 @@ requires-dist = [
     { name = "bcrypt", specifier = ">=4.2.0" },
     { name = "cryptography", specifier = ">=43.0.0" },
     { name = "deerflow-harness", editable = "packages/harness" },
-    { name = "deerflow-harness", extras = ["browser"], marker = "extra == 'browser'", editable = "packages/harness" },
     { name = "deerflow-harness", extras = ["postgres"], marker = "extra == 'postgres'", editable = "packages/harness" },
     { name = "dingtalk-stream", specifier = ">=0.24.3" },
     { name = "discord-py", marker = "extra == 'discord'", specifier = ">=2.7.0" },
@@ -634,7 +630,7 @@ requires-dist = [
     { name = "wecom-aibot-python-sdk", specifier = ">=0.1.6" },
     { name = "xlsxwriter", specifier = ">=3.2.0" },
 ]
-provides-extras = ["postgres", "discord", "browser"]
+provides-extras = ["postgres", "discord"]
 
 [package.metadata.requires-dev]
 dev = [

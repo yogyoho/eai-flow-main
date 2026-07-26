@@ -7950,6 +7950,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T13:53:48.865Z"
+    },
+    {
+      "id": "bug-488",
+      "timestamp": "2026-07-26T15:13:28.840Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Had \"w-full text-left space-y-4 text-sm text-muted-for",
+      "fix": "Changed to \"w-full text-center space-y-4 text-sm text-muted-f",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T15:13:28.840Z"
     }
   ]
 }
