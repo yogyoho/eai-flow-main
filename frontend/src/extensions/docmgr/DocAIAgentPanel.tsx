@@ -515,11 +515,9 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           <div className="p-4 space-y-4">
-            {allMessages.map((m: any, idx: number) => {
+            {(() => { let hi = 0; return allMessages.map((m: any) => {
               if (m.type === "human") {
-                // Show original user input by submission order
-                const humanIdx = allMessages.slice(0, idx + 1).filter((x: any) => x.type === "human").length - 1;
-                const userText = userMessagesRef.current[humanIdx] ?? "";
+                const userText = userMessagesRef.current[hi++] ?? "";
                 return (
                   <div key={m.id} className="flex justify-end">
                     <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
@@ -553,7 +551,7 @@ export default function DocAIAgentPanel({
                   )}
                 </div>
               );
-            })}
+            }); })()}
 
             {streamState?.isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm px-1">
