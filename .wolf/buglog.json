@@ -7390,6 +7390,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T08:38:19.669Z"
+    },
+    {
+      "id": "bug-453",
+      "timestamp": "2026-07-26T08:43:57.589Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Had \"新对话\"",
+      "fix": "Changed to \"清除对话\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T08:43:57.589Z"
     }
   ]
 }

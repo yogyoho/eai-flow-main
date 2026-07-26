@@ -514,7 +514,7 @@ export default function DocAIAgentPanel({
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col bg-background">
+    <div key={chatKey} className="w-full h-full flex flex-col bg-background">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
