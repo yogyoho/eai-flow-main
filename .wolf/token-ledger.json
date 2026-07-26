@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 116293695,
-    "total_reads": 38713,
-    "total_writes": 49431,
+    "total_tokens_estimated": 116338583,
+    "total_reads": 38716,
+    "total_writes": 49468,
     "total_sessions": 460,
-    "anatomy_hits": 20446,
+    "anatomy_hits": 20449,
     "anatomy_misses": 17057,
-    "repeated_reads_blocked": 31951,
-    "estimated_savings_vs_bare_cli": 195973063
+    "repeated_reads_blocked": 31958,
+    "estimated_savings_vs_bare_cli": 196045066
   },
   "sessions": [
     {
@@ -511044,6 +511044,226 @@
         "output_tokens_estimated": 2735,
         "reads_count": 3,
         "writes_count": 33,
+        "repeated_reads_blocked": 7,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-26-1610",
+      "started": "2026-07-26T08:10:58.220Z",
+      "ended": "2026-07-26T09:26:19.021Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 8783,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 7738,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 24975,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 14,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 113,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 459,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 65,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 641,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 95,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 22,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 40,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 43,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocumentManagement.tsx",
+          "tokens_estimated": 164,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 87,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 177,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 54,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 46,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 152,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 403,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/tests/unit/docmgr/ai-panel.test.ts",
+          "tokens_estimated": 188,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 41496,
+        "output_tokens_estimated": 3392,
+        "reads_count": 3,
+        "writes_count": 37,
         "repeated_reads_blocked": 7,
         "anatomy_lookups": 3
       }

@@ -7518,6 +7518,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T09:25:35.866Z"
+    },
+    {
+      "id": "bug-461",
+      "timestamp": "2026-07-26T09:29:24.488Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Was returning: s.replace(/\\|/g, \" \").replace(/\\s+/g, \" \").trim();",
+      "fix": "Now returns: s",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T09:29:24.488Z"
     }
   ]
 }

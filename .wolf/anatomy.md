@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T09:25:35.845Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T09:29:24.459Z
 > Files: 1619 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -2174,7 +2174,7 @@
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
-- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8782 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8854 tok)
 - `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4915 tok)
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)

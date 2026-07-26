@@ -89,10 +89,16 @@ function getBlockText(block: any): string {
 
 // ponytail: shared anchor→blockId lookup used by matchAnchor / applyOperations / scrollToAnchor.
 // 5-level matching per spec §7: exact → prefix → contains → fuzzy → null.
-// ponytail: normalize anchor text for matching. Agent may output markdown-style
-// table anchors like "| 4 | 循环水场 |" — strip pipes and collapse whitespace.
+// ponytail: normalize anchor text for matching. Agent may output markdown formatting
+// (### headings, **bold**, |table| pipes) that don't exist in the actual block text.
 function normalizeAnchorText(s: string): string {
-  return s.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
+  return s
+    .replace(/^#{1,6}\s+/, "")       // ### heading prefix
+    .replace(/\*\*(.+?)\*\*/g, "$1")  // **bold**
+    .replace(/\*(.+?)\*/g, "$1")      // *italic*
+    .replace(/\|/g, " ")              // table pipes
+    .replace(/\s+/g, " ")             // collapse whitespace
+    .trim();
 }
 
 export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; blockIndex: number } | null {
