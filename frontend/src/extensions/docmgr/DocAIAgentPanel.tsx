@@ -168,25 +168,26 @@ function WelcomePage() {
       <div className="w-full text-center space-y-4 text-sm text-muted-foreground">
         <div>
           <div className="font-medium text-foreground mb-1.5">内容协作</div>
-          <ul className="space-y-1 text-xs list-none p-0">
-            <li>"给第3节加一段安全措施"</li>
-            <li>"把设计参数表格改成文字描述"</li>
-            <li>"在文档末尾补充结论"</li>
+          <ul className="space-y-1.5 text-xs list-none p-0">
+            {["给第3节加一段安全措施", "把设计参数表格改成文字描述", "在文档末尾补充结论"].map(s =>
+              <li key={s} className="bg-muted/50 rounded-lg px-3 py-1.5 text-muted-foreground">{s}</li>
+            )}
           </ul>
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">文档审查</div>
-          <ul className="space-y-1 text-xs list-none p-0">
-            <li>"检查公式编号是否连续"</li>
-            <li>"这段计算逻辑有没有问题"</li>
-            <li>"全文的术语使用是否统一"</li>
+          <ul className="space-y-1.5 text-xs list-none p-0">
+            {["检查公式编号是否连续", "这段计算逻辑有没有问题", "全文的术语使用是否统一"].map(s =>
+              <li key={s} className="bg-muted/50 rounded-lg px-3 py-1.5 text-muted-foreground">{s}</li>
+            )}
           </ul>
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">格式修正（自动应用）</div>
-          <ul className="space-y-1 text-xs list-none p-0">
-            <li>"统一中英文之间的空格"</li>
-            <li>"修正标题层级"</li>
+          <ul className="space-y-1.5 text-xs list-none p-0">
+            {["统一中英文之间的空格", "修正标题层级"].map(s =>
+              <li key={s} className="bg-muted/50 rounded-lg px-3 py-1.5 text-muted-foreground">{s}</li>
+            )}
           </ul>
         </div>
       </div>

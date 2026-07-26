@@ -7966,6 +7966,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T15:13:28.840Z"
+    },
+    {
+      "id": "bug-489",
+      "timestamp": "2026-07-26T15:16:23.805Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 20→21 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T15:16:23.805Z"
     }
   ]
 }
