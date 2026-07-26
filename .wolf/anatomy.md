@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T13:53:48.788Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T13:56:04.200Z
 > Files: 1622 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
@@ -2422,7 +2422,7 @@
 
 ## frontend/src/styles/
 
-- `eai-overrides.css` — Styles: 6 rules (~722 tok)
+- `eai-overrides.css` — Styles: 8 rules (~823 tok)
 - `globals.css` — Styles: 67 rules, 156 vars (~10383 tok)
 
 ## frontend/tests/e2e/

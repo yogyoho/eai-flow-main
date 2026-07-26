@@ -53,3 +53,12 @@
 .ProseMirror hr {
   border-top: 1px solid var(--border, rgba(130, 130, 130, 0.25)) !important;
 }
+
+/* ── BlockNote code block pre margin override ────────────────────────────── */
+/* ponytail: browser default pre margin causes extra whitespace above/below
+   code blocks in JSON and other non-markdown files. */
+.bn-block-content[data-content-type="codeBlock"] pre,
+.bn-block-content pre {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}

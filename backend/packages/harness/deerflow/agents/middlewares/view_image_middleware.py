@@ -268,16 +268,6 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
         return {"messages": [human_msg]}
 
     @override
-    def after_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
-        """Remove model-only image data before subsequent checkpoints (sync version)."""
-        return self._remove_image_context_messages(state)
-
-    @override
-    def aafter_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
-        """Remove model-only image data before subsequent checkpoints (async version)."""
-        return self._remove_image_context_messages(state)
-
-    @override
     def before_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
         """Inject image details message before LLM call if view_image tools have completed (sync version).
 
@@ -317,3 +307,13 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
         human_msg = self._create_image_context_message(image_content)
         logger.debug("Injecting image details message with images before LLM call")
         return {"messages": [human_msg]}
+
+    @override
+    def after_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
+        """Remove model-only image data before subsequent checkpoints (sync version)."""
+        return self._remove_image_context_messages(state)
+
+    @override
+    async def aafter_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
+        """Remove model-only image data before subsequent checkpoints (async version)."""
+        return self._remove_image_context_messages(state)

@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import os
 from collections.abc import Mapping
@@ -19,6 +18,8 @@ from deerflow.config.channel_connections_config import ChannelConnectionsConfig
 from deerflow.config.checkpointer_config import CheckpointerConfig, load_checkpointer_config_from_dict
 from deerflow.config.database_config import DatabaseConfig
 from deerflow.config.extensions_config import ExtensionsConfig
+from deerflow.config.file_signature import ConfigSignature as _ConfigSignature
+from deerflow.config.file_signature import get_config_signature as _get_config_signature
 from deerflow.config.guardrails_config import GuardrailsConfig, load_guardrails_config_from_dict
 from deerflow.config.input_polish_config import InputPolishConfig
 from deerflow.config.loop_detection_config import LoopDetectionConfig
@@ -122,16 +123,6 @@ class LlmCallConfig(BaseModel):
     )
 
 
-class UIConfig(BaseModel):
-    """Frontend UI behavior toggles surfaced via Gateway config endpoint."""
-
-    show_tool_output: bool = Field(
-        default=False,
-        description="Show tool (bash) stdout in the chat UI. Default off; flip to true for debugging.",
-    )
-
-
-
 class LoggingEnhanceConfig(BaseModel):
     """Request trace logging enhancement settings."""
 
@@ -232,7 +223,6 @@ class AppConfig(BaseModel):
     tool_output: ToolOutputConfig = Field(default_factory=ToolOutputConfig, description="Tool output budget protection configuration")
     tool_search: ToolSearchConfig = Field(default_factory=ToolSearchConfig, description="Tool search / deferred loading configuration")
     title: TitleConfig = Field(default_factory=TitleConfig, description="Automatic title generation configuration")
-    ui: UIConfig = Field(default_factory=UIConfig, description="Frontend UI behavior toggles")
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig, description="Conversation summarization configuration")
     memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Memory subsystem configuration")
     agents_api: AgentsApiConfig = Field(default_factory=AgentsApiConfig, description="Custom-agent management API configuration")
@@ -396,9 +386,17 @@ class AppConfig(BaseModel):
         if "circuit_breaker" in config_data:
             config_data["circuit_breaker"] = config_data["circuit_breaker"]
 
-        # Load extensions config separately (it's in a different file)
+        # Load extensions config separately (it's in a different file), while
+        # preserving any config.yaml-backed extension fields. config.yaml wins
+        # when it explicitly declares a field because those values are part of
+        # the main AppConfig hot-reload contract.
+        yaml_extensions = config_data.get("extensions")
         extensions_config = ExtensionsConfig.from_file()
-        config_data["extensions"] = extensions_config.model_dump()
+        extensions_data = extensions_config.model_dump(by_alias=True)
+        if isinstance(yaml_extensions, Mapping):
+            yaml_extensions_config = ExtensionsConfig.model_validate(yaml_extensions)
+            extensions_data.update(yaml_extensions_config.model_dump(by_alias=True, exclude_unset=True))
+        config_data["extensions"] = extensions_data
 
         result = cls.model_validate(config_data)
         if not result.models:
@@ -593,7 +591,6 @@ class AppConfig(BaseModel):
 _app_config: AppConfig | None = None
 _app_config_path: Path | None = None
 _app_config_mtime: float | None = None
-_ConfigSignature = tuple[float | None, int | None, str | None]
 _app_config_signature: _ConfigSignature | None = None
 _app_config_is_custom = False
 _current_app_config: ContextVar[AppConfig | None] = ContextVar("deerflow_current_app_config", default=None)
@@ -606,24 +603,6 @@ def _get_config_mtime(config_path: Path) -> float | None:
         return config_path.stat().st_mtime
     except OSError:
         return None
-
-
-def _get_config_signature(config_path: Path) -> _ConfigSignature | None:
-    """Get cache metadata for a config file, including a content digest."""
-    try:
-        stat_result = config_path.stat()
-    except OSError:
-        return None
-
-    digest = hashlib.sha256()
-    try:
-        with config_path.open("rb") as f:
-            for chunk in iter(lambda: f.read(1024 * 1024), b""):
-                digest.update(chunk)
-    except OSError:
-        return (stat_result.st_mtime, stat_result.st_size, None)
-
-    return (stat_result.st_mtime, stat_result.st_size, digest.hexdigest())
 
 
 def _load_and_cache_app_config(config_path: str | None = None) -> AppConfig:
