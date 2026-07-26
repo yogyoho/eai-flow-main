@@ -14,7 +14,7 @@ import {
   SquareTerminalIcon,
   WrenchIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   ChainOfThought,
@@ -38,7 +38,6 @@ import { extractTitleFromMarkdown } from "@/core/utils/markdown";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
-import { buildWriteFileArtifactURL } from "@/core/artifacts/utils";
 import { useArtifacts } from "../artifacts";
 import { FlipDisplay } from "../flip-display";
 import { Tooltip } from "../tooltip";
@@ -625,57 +624,38 @@ function ToolCall({
     if (!description) {
       description = t.toolCalls.writeFile;
     }
-    const writeFilePath =
-      typeof (args as { path: unknown }).path === "string"
-        ? (args as { path: string }).path
-        : undefined;
-    const writeFileArtifactUrl = writeFilePath
-      ? buildWriteFileArtifactURL({
-          filepath: writeFilePath,
-          messageId,
-          toolCallId: id,
-        })
-      : null;
-    const autoOpenArtifactUrl =
-      isLoading &&
-      isLast &&
-      autoOpen &&
-      autoSelect &&
-      writeFileArtifactUrl &&
-      !result
-        ? writeFileArtifactUrl
-        : null;
-
-    useEffect(() => {
-      if (!autoOpenArtifactUrl || selectedArtifact === autoOpenArtifactUrl) {
-        return;
-      }
-
-      const timeout = window.setTimeout(() => {
-        select(autoOpenArtifactUrl, true);
+    const path: string | undefined = (args as { path: string })?.path;
+    if (isLoading && isLast && autoOpen && autoSelect && path && !result) {
+      setTimeout(() => {
+        const url = new URL(
+          `write-file:${path}?message_id=${messageId}&tool_call_id=${id}`,
+        ).toString();
+        if (selectedArtifact === url) {
+          return;
+        }
+        select(url, true);
         setOpen(true);
       }, 100);
-
-      return () => window.clearTimeout(timeout);
-    }, [autoOpenArtifactUrl, select, selectedArtifact, setOpen]);
+    }
 
     return (
       <ChainOfThoughtStep
         key={id}
-        className={writeFileArtifactUrl ? "cursor-pointer" : undefined}
+        className="cursor-pointer"
         label={resolveLabel(description)}
         icon={NotebookPenIcon}
         onClick={() => {
-          if (!writeFileArtifactUrl) {
-            return;
-          }
-          select(writeFileArtifactUrl);
+          select(
+            new URL(
+              `write-file:${path}?message_id=${messageId}&tool_call_id=${id}`,
+            ).toString(),
+          );
           setOpen(true);
         }}
       >
-        {writeFilePath && (
+        {path && (
           <ChainOfThoughtSearchResult className="cursor-pointer">
-            {writeFilePath}
+            {path}
           </ChainOfThoughtSearchResult>
         )}
       </ChainOfThoughtStep>

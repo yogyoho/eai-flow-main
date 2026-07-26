@@ -128,15 +128,12 @@ import {
   createGoalRequestState,
   findSuggestionTemplatePlaceholder,
   finishGoalRequest,
-  getGoalObjectiveCounter,
   getInputSubmitAction,
   getLeadingSlashSkillQuery,
   getMatchingSkillSuggestions,
   type GoalCommand,
   isAbortError,
   isCurrentGoalRequest,
-  isGoalObjectiveTooLong,
-  MAX_GOAL_OBJECTIVE_CHARS,
   readGoalResponseError,
   type SlashSuggestion,
 } from "./input-box-helpers";
@@ -948,19 +945,6 @@ export function InputBox({
         status,
       });
       if (submitAction.kind === "goal") {
-        if (
-          submitAction.command.kind === "set" &&
-          isGoalObjectiveTooLong(submitAction.command.objective)
-        ) {
-          toast.error(
-            t.inputBox.goalTooLong.replace("{max}", () =>
-              String(MAX_GOAL_OBJECTIVE_CHARS),
-            ),
-          );
-          // Reject so the composer keeps the user's text for editing instead of
-          // clearing it (PromptInput only preserves input on a rejected submit).
-          return Promise.reject(new Error("goal-too-long"));
-        }
         promptHistoryIndexRef.current = null;
         promptHistoryDraftRef.current = "";
         setFollowups([]);
@@ -1000,7 +984,6 @@ export function InputBox({
       selectedSlashSkill,
       status,
       submitThreadMessage,
-      t.inputBox.goalTooLong,
       t.inputBox.pleaseWaitStreaming,
     ],
   );
@@ -1058,10 +1041,6 @@ export function InputBox({
 
   const slashSkillQuery = useMemo(
     () => getLeadingSlashSkillQuery(textInput.value ?? ""),
-    [textInput.value],
-  );
-  const goalObjectiveCounter = useMemo(
-    () => getGoalObjectiveCounter(textInput.value ?? ""),
     [textInput.value],
   );
   const skillSuggestions = useMemo(
@@ -2252,8 +2231,7 @@ export function InputBox({
                       " " + t.inputBox.reasoningEffortMinimal}
                     {context.reasoning_effort === "low" &&
                       " " + t.inputBox.reasoningEffortLow}
-                    {(context.reasoning_effort === "medium" ||
-                      !context.reasoning_effort) &&
+                    {context.reasoning_effort === "medium" &&
                       " " + t.inputBox.reasoningEffortMedium}
                     {context.reasoning_effort === "high" &&
                       " " + t.inputBox.reasoningEffortHigh}
@@ -2362,24 +2340,6 @@ export function InputBox({
             )}
           </PromptInputTools>
           <PromptInputTools className="min-w-0 justify-end">
-            {goalObjectiveCounter && (
-              <span
-                aria-label={t.inputBox.goalLengthCounter
-                  .replace("{length}", () =>
-                    String(goalObjectiveCounter.length),
-                  )
-                  .replace("{max}", () => String(goalObjectiveCounter.max))}
-                className={cn(
-                  "shrink-0 text-xs tabular-nums",
-                  goalObjectiveCounter.overLimit
-                    ? "text-destructive font-medium"
-                    : "text-muted-foreground",
-                )}
-                data-testid="goal-length-counter"
-              >
-                {goalObjectiveCounter.length}/{goalObjectiveCounter.max}
-              </span>
-            )}
             <ModelSelector
               open={modelDialogOpen}
               onOpenChange={setModelDialogOpen}
@@ -2448,15 +2408,6 @@ export function InputBox({
             <SuggestionList onSelectPlaceholder={onSelectPlaceholder} />
           </div>
         )}
-
-      <p
-        className={cn(
-          "text-muted-foreground/67 z-10 px-4 text-center text-xs leading-4",
-          !isWelcomeMode && "absolute top-full right-0 left-0",
-        )}
-      >
-        {t.inputBox.disclaimer}
-      </p>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

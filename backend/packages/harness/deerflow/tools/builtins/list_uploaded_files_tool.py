@@ -12,7 +12,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Annotated, Any
 
-from langchain.tools import tool
+from langchain.tools import InjectedToolArg, tool
 from langgraph.config import get_config
 
 from deerflow.agents.middlewares.input_sanitization_middleware import neutralize_untrusted_tags
@@ -187,7 +187,6 @@ def _list_uploaded_files_impl(
 
 @tool
 def list_uploaded_files(
-    runtime: Runtime,
     include_outline: Annotated[
         bool | list[str],
         "Control which files get their document outline (headings/preview) returned. "
@@ -199,6 +198,7 @@ def list_uploaded_files(
         int,
         "Maximum number of files to return (default 20, max 100).",
     ] = _DEFAULT_MAX_RESULTS,
+    runtime: Annotated[Runtime, InjectedToolArg] | None = None,
 ) -> dict:
     """Discover historical uploaded files available in this thread.
 

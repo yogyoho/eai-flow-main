@@ -96,7 +96,6 @@ export interface Translations {
   // Input Box
   inputBox: {
     placeholder: string;
-    disclaimer: string;
     createSkillPrompt: string;
     addAttachments: string;
     inputPolish: string;
@@ -154,8 +153,6 @@ export interface Translations {
     goalNone: string;
     goalActive: string;
     goalFailed: string;
-    goalTooLong: string;
-    goalLengthCounter: string;
     compactSuccess: string;
     compactSkipped: string;
     compactFailed: string;

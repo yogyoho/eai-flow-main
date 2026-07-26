@@ -129,13 +129,7 @@ export function ArtifactFileDetail({
   }, [filepath]);
   const { isCodeFile, language } = useMemo(() => {
     if (isWriteFile) {
-      const codeResult = checkCodeFile(filepath);
-      // Non-code browser-previewable files (PDF, images, audio, video)
-      // should render in the sandboxed iframe, not the code editor.
-      if (!codeResult.isCodeFile && canBrowserPreviewFile(filepath)) {
-        return codeResult;
-      }
-      let language = codeResult.language;
+      let language = checkCodeFile(filepath).language;
       language ??= "text";
       return { isCodeFile: true, language };
     }
@@ -366,7 +360,6 @@ export function ArtifactFileDetail({
         {!isCodeFile && canPreviewInBrowser && (
           <iframe
             className="size-full"
-            sandbox=""
             src={urlOfArtifact({ filepath, threadId, isMock })}
           />
         )}
@@ -535,11 +528,6 @@ export function ArtifactFilePreview({
         ref={iframeRef}
         className="size-full"
         title="Artifact preview"
-        // allow-scripts is needed for the scroll-restoration injected
-        // script (appendHtmlPreviewScrollRestoration) which communicates
-        // via postMessage. allow-same-origin is deliberately omitted: the
-        // opaque origin prevents access to parent.document and cookies,
-        // and postMessage(..., "*") works fine from it.
         sandbox="allow-scripts allow-forms"
         src={htmlPreviewUrl}
       />
