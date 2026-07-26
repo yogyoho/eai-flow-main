@@ -276,13 +276,3 @@ class ViewImageMiddleware(AgentMiddleware[ViewImageMiddlewareState]):
         human_msg = HumanMessage(content=image_content, additional_kwargs={"hide_from_ui": True})
         logger.debug("Injecting image details message with images before LLM call")
         return {"messages": [human_msg]}
-
-    @override
-    def after_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
-        """Remove model-only image data before subsequent checkpoints (sync version)."""
-        return self._remove_image_context_messages(state)
-
-    @override
-    async def aafter_model(self, state: ViewImageMiddlewareState, runtime: Runtime) -> dict | None:
-        """Remove model-only image data before subsequent checkpoints (async version)."""
-        return self._remove_image_context_messages(state)

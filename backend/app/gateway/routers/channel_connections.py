@@ -696,11 +696,6 @@ async def configure_channel_provider_runtime(
 
 
 # ── WeChat iLink bot management ────────────────────────────────────────
-# EAI-CUSTOM: entire section — admin bind + user bind-code + share QR
-# endpoints for the WeChat iLink system bot. These live on the
-# channel_connections router (not wechat_bot) so the frontend settings
-# page can reach them at /api/channels/wechat/*.
-# Restore this block after every upstream sync of channel_connections.py.
 
 class WechatBindStatusResponse(BaseModel):
     status: str
@@ -735,10 +730,9 @@ async def start_wechat_bind(request: Request):
     """Admin: start (or restart) the WeChat QR code bind flow."""
     await require_admin_user(request, detail="Admin privileges required to manage WeChat bot binding")
     wechat = _get_wechat_channel(request)
-    # EAI-CUSTOM: start_bind fetches the QR synchronously and returns its URL
-    # so the frontend gets it in the HTTP response without a polling round-trip.
-    qrcode_url = await wechat.start_bind()
-    return {"qrcode_url": qrcode_url}
+    await wechat.start_bind()
+    state = wechat.get_bind_state()
+    return {"qrcode_url": state.get("qrcode_img_content")}
 
 
 @router.get("/wechat/bind-status", response_model=WechatBindStatusResponse)

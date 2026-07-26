@@ -8,9 +8,6 @@ Dedicated router for the system WeChat bot's production onboarding:
 
 Reuses the channel_connections persistence primitives (provider="wechat") but is
 independent of the channel_connections feature flag — that feature's 渠道 UI stays off.
-
-# EAI-CUSTOM: entire file — WeChat iLink system bot router, independent from
-# upstream channel_connections feature flag (E-续 ③). Keep during syncs.
 """
 
 from __future__ import annotations
@@ -42,7 +39,6 @@ class WechatBindCodeResponse(BaseModel):
 
 
 class WechatShareQrcodeResponse(BaseModel):
-    # EAI-CUSTOM: share QR for end users to scan and add ClawBot to WeChat
     qrcode: str
     qrcode_img_content: str | None = None
 
@@ -94,9 +90,8 @@ async def bind_wechat_bot(request: Request) -> dict[str, str]:
     channel = _get_wechat_channel()
     if channel is None:
         raise HTTPException(status_code=409, detail="WeChat bot is not running.")
-    # EAI-CUSTOM: start_bind now returns the QR URL directly
-    qrcode_url = await channel.start_bind()
-    return {"status": "pending", "qrcode_url": qrcode_url or ""}
+    await channel.start_bind()
+    return {"status": "pending"}
 
 
 @router.get("/bind/status", response_model=WechatBotBindStatus)
@@ -140,8 +135,6 @@ async def refresh_wechat_share_qrcode(request: Request) -> WechatShareQrcodeResp
 
     Does NOT poll get_qrcode_status, so it does not rotate the bot_token or clobber
     the in-flight admin bind state. The QR is time-limited by iLink; re-fetch if expired.
-
-    # EAI-CUSTOM: share QR refresh — the only way a regular user can add ClawBot.
     """
     await _require_admin(request)
     channel = _get_wechat_channel()

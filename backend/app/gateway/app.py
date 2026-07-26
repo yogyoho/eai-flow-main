@@ -6,9 +6,30 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.gateway.auth_disabled import warn_if_auth_disabled_enabled
+from app.extensions.app_center import router as app_center_router
+from app.extensions.approval import router as approval_router
+from app.extensions.auth.routers import router as auth_router
+from app.extensions.contract_price import router as contract_price_router
+from app.extensions.dashboard.routers import router as dashboard_router
+from app.extensions.data_source.routers import router as data_source_router
+from app.extensions.dept.routers import router as dept_router
+from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
+from app.extensions.docmgr.collab_routers import router as collab_router
+from app.extensions.docmgr.routers import router as docmgr_router
+from app.extensions.knowledge import kb_router as knowledge_router
+from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
+from app.extensions.law import router as law_router
+from app.extensions.license.routers import router as license_router
+from app.extensions.output.routers import router as output_router
+from app.extensions.plugin.routers import router as plugin_router
+from app.extensions.project import router as project_router
+from app.extensions.role.routers import router as role_router
+from app.extensions.settings.routers import router as settings_router
+from app.extensions.user.routers import router as user_router
+from app.extensions.web_scraper import web_scraper_router
+from app.extensions.workflow import router as workflow_router
+from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.gateway.auth_middleware import AuthMiddleware
-from app.gateway.browser_capability import ensure_browser_runtime_available
 from app.gateway.config import get_gateway_config
 from app.gateway.csrf_middleware import CSRFMiddleware, get_configured_cors_origins
 from app.gateway.deps import langgraph_runtime
@@ -17,15 +38,11 @@ from app.gateway.routers import (
     artifacts,
     assistants_compat,
     auth,
-    browser,
     channel_connections,
     channels,
-    console,
     features,
     feedback,
-    github_webhooks,
     input_polish,
-    integrations,
     mcp,
     memory,
     models,
@@ -35,12 +52,12 @@ from app.gateway.routers import (
     suggestions,
     thread_runs,
     threads,
+    ui,
     uploads,
+    wechat_bot,
 )
-from app.gateway.trace_middleware import TraceMiddleware, resolve_trace_enabled
 from deerflow.config import app_config as deerflow_app_config
-from deerflow.logging_config import DEFAULT_LOG_DATE_FORMAT, DEFAULT_LOG_FORMAT, configure_logging
-from deerflow.tracing.monocle import setup_monocle_tracing_if_enabled
+from deerflow.config.app_config import apply_logging_level
 from deerflow.uploads.manager import cleanup_stale_upload_staging_files
 
 AppConfig = deerflow_app_config.AppConfig
@@ -49,8 +66,8 @@ get_app_config = deerflow_app_config.get_app_config
 # Default logging; lifespan overrides from config.yaml log_level.
 logging.basicConfig(
     level=logging.INFO,
-    format=DEFAULT_LOG_FORMAT,
-    datefmt=DEFAULT_LOG_DATE_FORMAT,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 logger = logging.getLogger(__name__)
@@ -183,10 +200,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # snapshot on `app.state` to keep that contract enforceable.
     try:
         startup_config = get_app_config()
-        configure_logging(startup_config)
-        ensure_browser_runtime_available(startup_config)
+        apply_logging_level(startup_config.log_level)
         logger.info("Configuration loaded successfully")
-        warn_if_auth_disabled_enabled()
     except Exception as e:
         error_msg = f"Failed to load configuration during gateway startup: {e}"
         logger.exception(error_msg)
@@ -194,43 +209,52 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
 
-    # Agent observability (Monocle). Off by default; enabled with
-    # MONOCLE_TRACING. Initialized here at startup — not at import time — so a
-    # plain `import deerflow.agents` never installs a process-global tracer.
-    # Unlike LangSmith/Langfuse, whose validation failures abort the agent run,
-    # a bad Monocle config only logs: the Gateway keeps serving without tracing.
-    try:
-        setup_monocle_tracing_if_enabled()
-    except Exception:  # observability must never break startup
-        logger.exception("Monocle tracing setup failed; continuing without it")
-
     # Pre-warm tiktoken encoding cache so the first memory-injection request
-    # never blocks on the BPE data download (which hits an OpenAI/Azure URL
-    # that may be unreachable in restricted networks — see issue #3402).
-    # Warm-up runs via the manager's `warm()` tier-3 hook. DeerMem.warm re-checks
-    # token_counting=="char" and returns early, so char-mode backends never touch
-    # tiktoken (avoids even the 5s probe in network-restricted deployments - see
-    # issue #3429). A backend with nothing to warm (e.g. noop) returns None from
-    # the base default -- log "skipping" instead of the misleading "warmed
-    # successfully" so the log reflects what actually happened.
+    # never blocks on the BPE data download (hits an OpenAI/Azure URL that may
+    # be unreachable in restricted networks — issue #3402). (Upstream #3411.)
     try:
         from deerflow.agents.memory import get_memory_manager
 
         manager = get_memory_manager()
-        warmed = await asyncio.wait_for(
-            asyncio.to_thread(manager.warm),
-            timeout=5,
-        )
-        if warmed is None:
-            logger.info("Memory backend %s has nothing to warm; skipping tiktoken warm-up", type(manager).__name__)
-        elif warmed:
-            logger.info("tiktoken encoding cache warmed successfully")
-        else:
-            logger.warning("tiktoken encoding cache warm-up failed; token counting will use character-based fallback until tiktoken loads successfully")
+        if hasattr(manager, "warm"):
+            warmed = await asyncio.wait_for(asyncio.to_thread(manager.warm), timeout=5)
+            if warmed:
+                logger.info("tiktoken encoding cache warmed successfully")
+            else:
+                logger.warning("tiktoken encoding cache warm-up failed; token counting will use character-based fallback")
     except TimeoutError:
-        logger.warning("tiktoken encoding cache warm-up timed out; token counting will use character-based fallback until tiktoken loads successfully")
+        logger.warning("tiktoken encoding cache warm-up timed out; token counting will use character-based fallback")
     except Exception:
         logger.warning("tiktoken warm-up skipped", exc_info=True)
+
+    # Initialize extensions database eagerly when possible, but clear any failed
+    # startup state so request-time lazy init starts from a clean engine/session.
+    extensions_db_ready = False
+    try:
+        from app.extensions.database import init_engine
+
+        await init_engine()
+        logger.info("Database engine initialized successfully")
+        extensions_db_ready = True
+    except Exception as e:
+        logger.warning("Database engine init failed (will retry on first request): %s", e)
+        from app.extensions.database import close_db
+
+        await close_db()
+
+    if extensions_db_ready:
+        try:
+            from app.extensions.database import init_db, migrate_db, seed_db
+
+            await init_db()
+            await migrate_db()
+            await seed_db()
+            logger.info("Extensions database initialized successfully")
+        except Exception as e:
+            logger.warning("Extensions database init failed (may already exist): %s", e)
+            from app.extensions.database import close_db
+
+            await close_db()
 
     try:
         removed_upload_staging_files = await asyncio.to_thread(cleanup_stale_upload_staging_files)
@@ -243,133 +267,80 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with langgraph_runtime(app, startup_config):
         logger.info("LangGraph runtime initialised")
 
+        # Register present_files → docmgr sync callback.
+        # When agent calls present_files to show outputs, auto-create
+        # AIDocument records so files appear in 文档空间.
+        try:
+            from app.extensions.docmgr.service import AIDocumentService
+            from deerflow.tools.callbacks import register_present_files_callback
+
+            async def _sync_to_docmgr(user_id, thread_id, virtual_paths):
+                await AIDocumentService.sync_outputs_to_docmgr(
+                    user_id, thread_id, virtual_paths,
+                )
+
+            register_present_files_callback(_sync_to_docmgr)
+            logger.info("Registered present_files → docmgr sync callback")
+        except Exception as e:
+            logger.warning("Failed to register present_files callback: %s", e)
+
         # Check admin bootstrap state and migrate orphan threads after admin exists.
         # Must run AFTER langgraph_runtime so app.state.store is available for thread migration
         await _ensure_admin_user(app)
 
-        # Start IM channel service if any channels are configured
-        try:
-            from app.channels.service import start_channel_service
+        # Start Temporal client + embedded worker (non-blocking if Temporal is unavailable)
+        from app.extensions.workflow.temporal.client import temporal_lifespan
 
-            # Closure over `app` (mirrors ScheduledTaskService's `launch_run`
-            # below) rather than resolving `app.state.stream_bridge` here
-            # directly: `stream_bridge` is a STARTUP_ONLY_FIELDS singleton set
-            # once, above, by `langgraph_runtime(app, startup_config)`, so
-            # either shape is safe by construction — the closure is just the
-            # more defensive/consistent-with-precedent form, and it is what
-            # ChannelManager's follow-up-drain watcher (issue #4121 Slice 2)
-            # uses to reach the same StreamBridge every other run consumer
-            # goes through `get_stream_bridge(request)` for.
-            channel_service = await start_channel_service(
-                startup_config,
-                get_stream_bridge=lambda: getattr(app.state, "stream_bridge", None),
-            )
-            logger.info("Channel service started: %s", channel_service.get_status())
-        except Exception:
-            logger.exception("No IM channels configured or channel service failed to start")
-
-        try:
-            from app.gateway.services import launch_scheduled_thread_run
-            from app.scheduler import ScheduledTaskService
-
-            if getattr(app.state, "scheduled_task_repo", None) is not None and getattr(app.state, "scheduled_task_run_repo", None) is not None:
-                scheduled_task_service = ScheduledTaskService(
-                    task_repo=app.state.scheduled_task_repo,
-                    task_run_repo=app.state.scheduled_task_run_repo,
-                    launch_run=lambda **kwargs: launch_scheduled_thread_run(app=app, **kwargs),
-                    poll_interval_seconds=startup_config.scheduler.poll_interval_seconds,
-                    lease_seconds=startup_config.scheduler.lease_seconds,
-                    max_concurrent_runs=startup_config.scheduler.max_concurrent_runs,
-                )
-                app.state.scheduled_task_service = scheduled_task_service
-                if startup_config.scheduler.enabled:
-                    await scheduled_task_service.start()
-        except Exception:
-            logger.exception("Failed to initialize scheduled task service")
-
-        yield
-
-        try:
-            await auth.close_oidc_service()
-        except Exception:
-            logger.exception("Failed to close OIDC service")
-
-        # Stop channel service on shutdown (bounded to prevent worker hang)
-        try:
-            from app.channels.service import stop_channel_service
-
-            await asyncio.wait_for(
-                stop_channel_service(),
-                timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except TimeoutError:
-            logger.warning(
-                "Channel service shutdown exceeded %.1fs; proceeding with worker exit.",
-                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except Exception:
-            logger.exception("Failed to stop channel service")
-
-        if getattr(app.state, "scheduled_task_service", None) is not None:
+        async with temporal_lifespan(app):
+            # Start IM channel service if any channels are configured
             try:
-                await app.state.scheduled_task_service.stop()
+                from app.channels.service import start_channel_service
+
+                channel_service = await start_channel_service(startup_config)
+                app.state.channel_service = channel_service
+                logger.info("Channel service started: %s", channel_service.get_status())
             except Exception:
-                logger.exception("Failed to stop scheduled task service")
+                logger.exception("No IM channels configured or channel service failed to start")
 
-        try:
-            from deerflow.community.browser_automation import get_browser_session_manager
+            yield
 
-            closed = await asyncio.wait_for(
-                get_browser_session_manager().close_all_sessions(),
-                timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-            if closed:
-                logger.info("Closed %d browser session(s)", closed)
-        except TimeoutError:
-            logger.warning(
-                "Browser session shutdown exceeded %.1fs; proceeding with worker exit.",
-                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except Exception:
-            logger.exception("Failed to close browser sessions")
+            # Stop channel service on shutdown (bounded to prevent worker hang)
+            try:
+                from app.channels.service import stop_channel_service
 
-        # Drain the memory backend's pending-update buffer before the worker
-        # exits (best-effort, bounded). IM channels and the scheduler are
-        # already stopped above, so no new IM/scheduler updates arrive during
-        # the drain; the LangGraph runtime / in-flight HTTP requests can still
-        # complete memory enqueues in a narrow window, but anything added after
-        # the drain copies the buffer only resets the debounce Timer
-        # (best-effort, same as today).
-        #
-        # No host-level pending/processing guard: ``shutdown_flush``
-        # short-circuits on a truly idle buffer (returns True immediately), so
-        # calling it unconditionally is cheap and keeps the in-flight-worker
-        # race entirely inside the backend (where the buffer lives) -- the host
-        # cannot "forget" that case the way a ``pending_count > 0``-only guard
-        # would (review #6 on the original PR).
-        #
-        # K8s caveat: ``shutdown_flush_timeout_seconds`` must fit inside the
-        # pod's ``terminationGracePeriodSeconds`` (channel stop + browser
-        # session close + this drain + buffer), set on the gateway Helm
-        # deployment -- or K8s SIGKILLs the drain mid-flight and the loss this
-        # is fixing is silently re-introduced.
-        try:
-            app_cfg = get_app_config()
-            if app_cfg.memory.enabled:
-                from deerflow.agents.memory import get_memory_manager
+                await asyncio.wait_for(
+                    stop_channel_service(),
+                    timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "Channel service shutdown exceeded %.1fs; proceeding with worker exit.",
+                    _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.exception("Failed to stop channel service")
 
-                manager = get_memory_manager()
-                flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
-                completed = await asyncio.to_thread(manager.shutdown_flush, flush_timeout)
-                if completed:
-                    logger.info("Memory queue flush completed within %.1fs", flush_timeout)
-                else:
-                    logger.warning(
-                        "Memory queue flush did not finish within %.1fs; remaining updates may be lost",
-                        flush_timeout,
-                    )
-        except Exception:
-            logger.exception("Failed to flush memory queue on shutdown")
+            # Drain the memory update queue's pending buffer before exit (best-effort,
+            # bounded). IM channels are already stopped above, so no new IM updates
+            # arrive during the drain. Without this, anything enqueued since the last
+            # debounce Timer fire is lost on restart / SIGTERM — the queue is pure
+            # in-memory and the Timer is a daemon thread. Upstream #4181.
+            try:
+                app_cfg = get_app_config()
+                if app_cfg.memory.enabled:
+                    from deerflow.agents.memory import get_memory_manager
+
+                    flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
+                    completed = await asyncio.to_thread(get_memory_manager().shutdown_flush, flush_timeout)
+                    if completed:
+                        logger.info("Memory queue flush completed within %.1fs", flush_timeout)
+                    else:
+                        logger.warning(
+                            "Memory queue flush did not finish within %.1fs; remaining updates may be lost",
+                            flush_timeout,
+                        )
+            except Exception:
+                logger.exception("Failed to flush memory queue on shutdown")
 
     logger.info("Shutting down API Gateway")
 
@@ -449,10 +420,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
                 "description": "Generate follow-up question suggestions for conversations",
             },
             {
-                "name": "input-polish",
-                "description": "Polish composer draft input before sending",
-            },
-            {
                 "name": "channels",
                 "description": "Manage IM channel integrations (Feishu, Slack, Telegram)",
             },
@@ -490,23 +457,11 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             allow_headers=["*"],
         )
 
-    # Request trace correlation: when logging.enhance.enabled=true, bind one
-    # trace id per Gateway HTTP request and write it to response start headers.
-    # `logging` is registered as restart-required (see reload_boundary.py) so we
-    # snapshot the flag from the startup AppConfig instead of reading live; a
-    # runtime toggle would otherwise leave the log formatter (installed once by
-    # configure_logging() at lifespan startup) out of sync with the middleware.
-    app.add_middleware(TraceMiddleware, enabled=_resolve_trace_enabled_for_app_construction())
-
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
-
-    # Features API is mounted at /api/features
     app.include_router(features.router)
-
-    # Console API (cross-thread observability) is mounted at /api/console
-    app.include_router(console.router)
+    app.include_router(scheduled_tasks.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
@@ -517,14 +472,8 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Skills API is mounted at /api/skills
     app.include_router(skills.router)
 
-    # First-party integrations API is mounted at /api/integrations
-    app.include_router(integrations.router)
-
     # Artifacts API is mounted at /api/threads/{thread_id}/artifacts
     app.include_router(artifacts.router)
-
-    # Browser API is mounted at /api/threads/{thread_id}/browser
-    app.include_router(browser.router)
 
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)
@@ -532,29 +481,28 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Thread cleanup API is mounted at /api/threads/{thread_id}
     app.include_router(threads.router)
 
-    # Scheduled tasks API is mounted at /api/scheduled-tasks
-    app.include_router(scheduled_tasks.router)
-
     # Agents API is mounted at /api/agents
     app.include_router(agents.router)
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)
 
-    # Input polishing API is mounted at /api/input-polish
-    app.include_router(input_polish.router)
-
-    # User-facing IM channel connection API is mounted at /api/channels
-    app.include_router(channel_connections.router)
+    # UI config API is mounted at /api/ui/config (frontend UI behavior toggles)
+    app.include_router(ui.router)
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
+    app.include_router(channel_connections.router)
+    app.include_router(wechat_bot.router)
 
     # Assistants compatibility API (LangGraph Platform stub)
     app.include_router(assistants_compat.router)
 
     # Auth API is mounted at /api/v1/auth
     app.include_router(auth.router)
+
+    # Input polish API is mounted at /api/input-polish
+    app.include_router(input_polish.router)
 
     # Feedback API is mounted at /api/threads/{thread_id}/runs/{run_id}/feedback
     app.include_router(feedback.router)
@@ -565,23 +513,73 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
 
-    # GitHub webhooks API is mounted at /api/webhooks/github
-    # Exempt from auth and CSRF middleware (see auth_middleware._PUBLIC_PATH_PREFIXES
-    # and csrf_middleware.should_check_csrf); authenticity is enforced via the
-    # X-Hub-Signature-256 HMAC against GITHUB_WEBHOOK_SECRET.
-    # Including this router transitively imports app.gateway.github, which
-    # registers the GitHub channel's ChannelRunPolicy as an import side-effect.
-    #
-    # Fail-closed: only mount the route when a webhook secret is configured
-    # (or when the explicit DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS=1
-    # dev opt-in is set). A misconfigured deployment without a secret cannot
-    # serve forged deliveries because the URL responds 404 — there is no
-    # handler to reach.
-    if github_webhooks.is_route_enabled():
-        app.include_router(github_webhooks.router)
-        logger.info("GitHub webhooks route mounted at /api/webhooks/github")
-    else:
-        logger.warning("GitHub webhooks route NOT mounted: GITHUB_WEBHOOK_SECRET unset and DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS not set. /api/webhooks/github will respond 404. Configure either env var to enable the route.")
+    # Extension APIs
+    # Authentication API is mounted at /api/extensions/auth
+    app.include_router(auth_router)
+
+    # Users API is mounted at /api/extensions/users
+    app.include_router(user_router)
+
+    # Roles API is mounted at /api/extensions/roles
+    app.include_router(role_router)
+
+    # Departments API is mounted at /api/extensions/departments
+    app.include_router(dept_router)
+
+    # Doc Mgr API is mounted at /api/extensions/docmgr
+    app.include_router(docmgr_router)
+
+    # Collab API (comments + versions) is mounted at /api/extensions/docmgr
+    app.include_router(collab_router)
+
+    # Collab AI Chat — proxied through nginx, uses default_model from Settings
+    app.include_router(collab_ai_chat_router)
+
+    # Knowledge Bases API is mounted at /knowledge
+    app.include_router(knowledge_router)
+
+    # Web Scraper API is mounted at /scraper
+    app.include_router(web_scraper_router)
+
+    # Law API is mounted at /api/kf/laws (router has prefix="/kf/laws")
+    app.include_router(law_router)
+
+    # Knowledge Factory API is mounted at /api/kf (router has prefix="/kf")
+    app.include_router(knowledge_factory_router)
+
+    # Contract price analysis management API (/api/extensions/contract-price/*)
+    app.include_router(contract_price_router)
+
+    # Settings API is mounted at /api/extensions
+    app.include_router(settings_router)
+
+    # Project management API is mounted at /api/extensions/project
+    app.include_router(project_router)
+
+    # Approval workflow API is mounted at /api/extensions/approval
+    app.include_router(approval_router)
+
+    # Data source management API (stub)
+    app.include_router(data_source_router)
+    app.include_router(plugin_router)
+
+    # App-center API is mounted at /api/extensions/app-center
+    app.include_router(app_center_router)
+
+    # Workflow definition API is mounted at /api/extensions/workflow
+    app.include_router(workflow_router)
+
+    # Project timeline API is mounted at /api/extensions/workflow/projects/{project_id}/timeline
+    app.include_router(timeline_router)
+
+    # Dashboard (task console, stats, calendar, notifications)
+    app.include_router(dashboard_router)
+
+    # Layout template management for report output
+    app.include_router(output_router)
+
+    # License management API is mounted at /api/license
+    app.include_router(license_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
@@ -593,16 +591,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
         return {"status": "healthy", "service": "deer-flow-gateway"}
 
     return app
-
-
-def _resolve_trace_enabled_for_app_construction() -> bool:
-    """Resolve the trace middleware flag without making imports require config.yaml."""
-    try:
-        return resolve_trace_enabled(get_app_config())
-    except FileNotFoundError:
-        # Startup lifespan still performs strict config loading before serving.
-        logger.debug("config.yaml not found while constructing Gateway app; TraceMiddleware disabled for this app instance")
-        return False
 
 
 # Create app instance for uvicorn

@@ -14,7 +14,6 @@ from langgraph.types import Command
 
 from deerflow.authz.principal import normalize_authz_attributes
 from deerflow.guardrails.provider import GuardrailDecision, GuardrailProvider, GuardrailReason, GuardrailRequest
-from deerflow.runtime.events.catalog import MIDDLEWARE_GUARDRAIL_TAG
 
 logger = logging.getLogger(__name__)
 
@@ -113,14 +112,14 @@ class GuardrailMiddleware(AgentMiddleware[AgentState]):
 
         try:
             journal.record_middleware(
-                tag=MIDDLEWARE_GUARDRAIL_TAG,
+                tag="guardrail",
                 name=type(self).__name__,
                 hook="wrap_tool_call",
                 action=action,
                 changes=changes,
             )
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to record middleware:guardrail event", exc_info=True)
+            logger.debug("Failed to record middleware:guardrail event", exc_info=True)
 
     @override
     def wrap_tool_call(

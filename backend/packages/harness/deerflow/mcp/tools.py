@@ -70,10 +70,7 @@ def _local_path_from_uri(uri: str, *, base_dir: Path | None = None) -> Path | No
     """
     if not uri:
         return None
-    try:
-        parsed = urlparse(uri)
-    except ValueError:
-        return None
+    parsed = urlparse(uri)
     if parsed.scheme == "file":
         raw = unquote(parsed.path)
     elif parsed.scheme == "":

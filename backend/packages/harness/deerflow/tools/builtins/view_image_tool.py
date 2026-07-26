@@ -22,7 +22,6 @@ _EXTENSION_TO_MIME = {
     ".jpeg": "image/jpeg",
     ".png": "image/png",
     ".webp": "image/webp",
-    ".gif": "image/gif",
 }
 
 
@@ -37,8 +36,6 @@ def _detect_image_mime(image_data: bytes) -> str | None:
         return "image/png"
     if len(image_data) >= 12 and image_data.startswith(b"RIFF") and image_data[8:12] == b"WEBP":
         return "image/webp"
-    if image_data.startswith((b"GIF87a", b"GIF89a")):
-        return "image/gif"
     return None
 
 
@@ -66,7 +63,7 @@ def view_image_tool(
     - For multiple files at once (use present_files instead)
 
     Args:
-        image_path: Absolute /mnt/user-data virtual path to the image file. Common formats supported: jpg, jpeg, png, webp, gif.
+        image_path: Absolute /mnt/user-data virtual path to the image file. Common formats supported: jpg, jpeg, png, webp.
     """
     from deerflow.sandbox.exceptions import SandboxRuntimeError
     from deerflow.sandbox.tools import (

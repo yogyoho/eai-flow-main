@@ -327,20 +327,10 @@ async def get_custom_skill_history(skill_name: str, request: Request, config: Ap
     await require_admin_user(request, detail=_ADMIN_REQUIRED_DETAIL)
     try:
         skill_name = skill_name.replace("\r\n", "").replace("\n", "")
-
-        def _read_history() -> list[dict] | None:
-            # Worker thread: storage construction, the existence probes, and the
-            # history-file read are blocking filesystem IO that must stay off the
-            # event loop. None signals 404 to the caller.
-            storage = _get_user_skill_storage(config)
-            if not storage.custom_skill_exists(skill_name) and not storage.get_skill_history_file(skill_name).exists():
-                return None
-            return storage.read_history(skill_name)
-
-        history = await asyncio.to_thread(_read_history)
-        if history is None:
+        storage = _get_user_skill_storage(config)
+        if not storage.custom_skill_exists(skill_name) and not storage.get_skill_history_file(skill_name).exists():
             raise HTTPException(status_code=404, detail=f"Custom skill '{skill_name}' not found")
-        return CustomSkillHistoryResponse(history=history)
+        return CustomSkillHistoryResponse(history=storage.read_history(skill_name))
     except HTTPException:
         raise
     except Exception as e:
