@@ -114,6 +114,28 @@ describe("findBlockByAnchor", () => {
     expect(result!.blockId).toBe("li1");
   });
 
+  test("table anchor with pipe chars → normalized match", () => {
+    const tableDoc = [
+      block("table", "t1", ""), // table blocks have special content structure
+    ];
+    // Simulate a table block with cell-style content
+    const tableBlock = {
+      type: "table", id: "t1",
+      content: { type: "tableContent", rows: [
+        { cells: [
+          { content: [{ type: "text", text: "4", styles: {} }] },
+          { content: [{ type: "text", text: "循环水场占地", styles: {} }] },
+          { content: [{ type: "text", text: "m²", styles: {} }] },
+        ]}
+      ]},
+      children: [], props: {},
+    };
+    // Agent anchor from markdown table format
+    const result = findBlockByAnchor([tableBlock], "| 4 | 循环水场占地 | m² |");
+    expect(result).not.toBeNull();
+    expect(result!.blockId).toBe("t1");
+  });
+
   test("empty document → null", () => {
     expect(findBlockByAnchor([], "anything")).toBeNull();
   });
