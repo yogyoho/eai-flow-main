@@ -288,9 +288,11 @@ export default function DocAIAgentPanel({
   const client = useMemo(() => getAPIClient(), []);
 
   // ── LangGraph stream ──────────────────────────────────────────────
+  // ponytail: useStream struggles with null→threadId transitions.
+  // Force remount by keying on subThreadId so the hook always starts fresh.
   const streamConfig = useMemo(() => {
-    if (!subThreadId) return { client };
-    return { client, assistantId: "lead_agent", threadId: subThreadId, fetchStateHistory: true, reconnectOnMount: true };
+    if (!subThreadId) return { client, assistantId: "lead_agent" };
+    return { client, assistantId: "lead_agent", threadId: subThreadId, reconnectOnMount: true };
   }, [client, subThreadId]);
   const streamState = useStream(streamConfig);
 
@@ -353,9 +355,10 @@ export default function DocAIAgentPanel({
   }, [isCreating, submitting, ensureThread, modelName, editorRef, threadId, docRelPath]);
 
   // ── send queued message when stream is ready ──────────────────────
-  const streamReady = !!subThreadId && !!streamState && !streamState.isLoading;
+  // Watch streamState.isLoading directly so the effect fires when loading completes.
+  const streamLoading = !!(streamState && streamState.isLoading);
   useEffect(() => {
-    if (!streamReady || !pendingRef.current) return;
+    if (!subThreadId || streamLoading || !pendingRef.current) return;
 
     const { message, modelName: mn } = pendingRef.current;
     pendingRef.current = null;
@@ -381,7 +384,7 @@ export default function DocAIAgentPanel({
         setError("发送失败: " + (e?.message || "未知错误"));
       }
     })();
-  }, [streamReady, submitTick, editorRef, streamState, subThreadId]);
+  }, [subThreadId, streamLoading, submitTick, editorRef, streamState]);
 
   // ── new chat ──────────────────────────────────────────────────────
   const handleNewChat = () => {
