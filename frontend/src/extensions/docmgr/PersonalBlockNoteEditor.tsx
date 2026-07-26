@@ -173,6 +173,10 @@ export interface PersonalBlockNoteEditorRef {
   applyOperations: (ops: DocOperation[]) => void;
   /** Scroll to and highlight the block matching the anchor text. */
   scrollToAnchor: (text: string) => boolean;
+  /** Save a snapshot of current blocks for undo. */
+  snapshotBlocks: () => any[];
+  /** Restore blocks from a saved snapshot. */
+  restoreBlocks: (blocks: any[]) => void;
 }
 
 interface PersonalBlockNoteEditorProps {
@@ -608,6 +612,12 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
         el.classList.add("ring-2", "ring-primary", "ring-offset-2");
         setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
         return true;
+      },
+
+      snapshotBlocks: () => JSON.parse(JSON.stringify(editor.document)),
+
+      restoreBlocks: (blocks: any[]) => {
+        editor.replaceBlocks(editor.document.map((b) => b.id), blocks);
       },
     }));
 

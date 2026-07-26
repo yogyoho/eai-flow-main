@@ -235,6 +235,7 @@ function ConfirmCard({
   onApply: () => void;
   onPreview: () => void;
   onSkip: () => void;
+  onUndo?: () => void;
 }) {
   const [status, setStatus] = useState<"pending" | "applied" | "skipped" | "failed">("pending");
   const [errorMsg, setErrorMsg] = useState("");
@@ -247,6 +248,11 @@ function ConfirmCard({
       setStatus("failed");
       setErrorMsg(e?.message || "操作失败");
     }
+  };
+
+  const handleUndo = () => {
+    onUndo?.();
+    setStatus("pending");
   };
 
   if (status === "skipped") return null;
@@ -298,7 +304,7 @@ function ConfirmCard({
       )}
       {status === "applied" && (
         <div className="px-3 py-1.5 border-t border-border/60 bg-muted/20">
-          <button onClick={() => {}} className="text-xs text-muted-foreground hover:text-foreground transition-colors">撤销</button>
+          <button onClick={handleUndo} className="text-xs text-muted-foreground hover:text-foreground transition-colors">撤销</button>
         </div>
       )}
       {status === "failed" && (
@@ -336,15 +342,30 @@ function OperationCards({
   }
 
   // Ask mode: confirm cards
+  // ponytail: save document snapshot before first apply for undo.
+  const snapshotRef = useRef<any[] | null>(null);
+  const takeSnapshot = () => {
+    if (!snapshotRef.current) {
+      snapshotRef.current = editorRef.current?.snapshotBlocks() ?? null;
+    }
+  };
+  const handleUndo = () => {
+    if (snapshotRef.current && editorRef.current) {
+      editorRef.current.restoreBlocks(snapshotRef.current);
+      snapshotRef.current = null;
+    }
+  };
+
   return (
     <div className="space-y-2 mt-3">
       {operations.map((op, i) => (
         <ConfirmCard
           key={i}
           operation={op}
-          onApply={() => editorRef.current?.applyOperations([op])}
+          onApply={() => { takeSnapshot(); editorRef.current?.applyOperations([op]); }}
           onPreview={() => editorRef.current?.scrollToAnchor(op.anchor ?? "")}
           onSkip={() => {}}
+          onUndo={handleUndo}
         />
       ))}
     </div>
