@@ -496,7 +496,7 @@ export default function DocAIAgentPanel({
   const allMessages = useMemo(() => {
     return (streamState?.messages ?? []).filter((m: any) => {
       if (m.additional_kwargs?.hide_from_ui) return false;
-      return m.type === "human" || m.type === "ai";
+      return m.type === "ai";
     });
   }, [streamState?.messages]);
 
@@ -534,19 +534,16 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           <div className="p-4 space-y-4">
-            {(() => { let hi = 0; return allMessages.map((m: any) => {
-              if (m.type === "human") {
-                const userText = userMessages[hi++] ?? "";
-                return (
-                  <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words">
-                      {userText || "..."}
-                    </div>
-                  </div>
-                );
-              }
-
-              // AI message: parse content per-message for operations
+            {/* User messages from local state */}
+            {userMessages.map((msg, i) => (
+              <div key={`user-${i}`} className="flex justify-end">
+                <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                  {msg}
+                </div>
+              </div>
+            ))}
+            {/* AI messages from stream */}
+            {allMessages.filter((m: any) => m.type === "ai").map((m: any) => {
               const { text, ops, error } = parseAIMessage(m.content);
               return (
                 <div key={m.id}>
@@ -570,7 +567,7 @@ export default function DocAIAgentPanel({
                   )}
                 </div>
               );
-            }); })()}
+            })}
 
             {streamState?.isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm px-1">
