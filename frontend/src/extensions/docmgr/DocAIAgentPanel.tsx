@@ -17,8 +17,24 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
 
-// ponytail: module-level cache for user messages — survives panel unmount/remount.
-const userMessageCache = new Map<string, string[]>();
+// ponytail: persist user messages in localStorage so they survive page refresh.
+// AI responses persist via LangGraph thread; user messages would be lost otherwise.
+const USER_MSG_PREFIX = "docmgr-ai-usermessages:";
+
+function loadUserMessages(threadId: string): string[] {
+  try {
+    const raw = localStorage.getItem(USER_MSG_PREFIX + threadId);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveUserMessages(threadId: string, msgs: string[]) {
+  try { localStorage.setItem(USER_MSG_PREFIX + threadId, JSON.stringify(msgs)); } catch { /* ignore */ }
+}
+
+function clearUserMessages(threadId: string) {
+  try { localStorage.removeItem(USER_MSG_PREFIX + threadId); } catch { /* ignore */ }
+}
 
 // ─── types ────────────────────────────────────────────────────────────────
 type AIMode = "ask" | "auto" | "plan";
@@ -522,7 +538,7 @@ export default function DocAIAgentPanel({
   // ── new chat ──────────────────────────────────────────────────────
   const handleNewChat = () => {
     streamState?.stop?.();
-    if (subThreadId) userMessageCache.delete(subThreadId);
+    if (subThreadId) clearUserMessages(subThreadId);
     resetThread();
     setUserMessages([]);
     onClearHistory();
@@ -543,17 +559,16 @@ export default function DocAIAgentPanel({
   };
 
   // ── derived message state ─────────────────────────────────────────
-  // ponytail: persist user messages in module-level cache so they survive
-  // panel close/reopen. Stream AI messages persist via useStream reconnect;
-  // user messages would otherwise be lost on unmount.
+  // ponytail: persist user messages in localStorage so they survive
+  // page refresh and panel close/reopen.
   const [userMessages, setUserMessages] = useState<string[]>(() => {
-    return subThreadId ? (userMessageCache.get(subThreadId) ?? []) : [];
+    return subThreadId ? loadUserMessages(subThreadId) : [];
   });
 
-  // Sync state → cache
+  // Sync state → localStorage
   useEffect(() => {
     if (subThreadId && userMessages.length > 0) {
-      userMessageCache.set(subThreadId, userMessages);
+      saveUserMessages(subThreadId, userMessages);
     }
   }, [subThreadId, userMessages]);
 

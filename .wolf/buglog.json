@@ -7550,6 +7550,38 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T09:36:42.229Z"
+    },
+    {
+      "id": "bug-463",
+      "timestamp": "2026-07-26T11:18:33.845Z",
+      "error_message": "Missing error handling in loadUserMessages",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:18:33.845Z"
+    },
+    {
+      "id": "bug-464",
+      "timestamp": "2026-07-26T11:20:31.061Z",
+      "error_message": "CSS fix: ponytail",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "ponytail: persist user messages in module-level cache so they survive → persist user messages in localStorage so they survive",
+      "fix": "Changed ponytail: persist user messages in module-level cache so they survive → persist user messages in localStorage so they survive",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T11:20:31.061Z"
     }
   ]
 }
