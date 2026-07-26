@@ -13,6 +13,7 @@ import { getAPIClient } from "@/core/api";
 import { useModels } from "@/core/models/hooks";
 import { useStream } from "@langchain/langgraph-sdk/react";
 
+import { SafeStreamdown } from "@/core/streamdown/components";
 import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
 
 // ─── helpers ────────────────────────────────────────────────────────────
@@ -473,8 +474,10 @@ export default function DocAIAgentPanel({
               const { text, ops, error } = parseAIMessage(m.content);
               return (
                 <div key={m.id}>
-                  <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-foreground">
-                    {text || (
+                  <div className="text-[13px] leading-relaxed break-words text-foreground">
+                    {text ? (
+                      <SafeStreamdown>{text}</SafeStreamdown>
+                    ) : (
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                         思考中...
