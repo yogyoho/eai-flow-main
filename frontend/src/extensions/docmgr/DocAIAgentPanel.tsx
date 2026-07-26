@@ -17,6 +17,9 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
 
+// ponytail: module-level cache for user messages — survives panel unmount/remount.
+const userMessageCache = new Map<string, string[]>();
+
 // ─── types ────────────────────────────────────────────────────────────────
 type AIMode = "ask" | "auto" | "plan";
 const MODE_OPTIONS: { value: AIMode; label: string }[] = [
@@ -470,6 +473,7 @@ export default function DocAIAgentPanel({
   // ── new chat ──────────────────────────────────────────────────────
   const handleNewChat = () => {
     streamState?.stop?.();
+    if (subThreadId) userMessageCache.delete(subThreadId);
     resetThread();
     setUserMessages([]);
     onClearHistory();
@@ -490,10 +494,19 @@ export default function DocAIAgentPanel({
   };
 
   // ── derived message state ─────────────────────────────────────────
-  // ponytail: track user messages in state so they survive re-renders.
-  // Stream human messages contain the full system prompt — we display
-  // the original user input from this list instead, matched by position.
-  const [userMessages, setUserMessages] = useState<string[]>([]);
+  // ponytail: persist user messages in module-level cache so they survive
+  // panel close/reopen. Stream AI messages persist via useStream reconnect;
+  // user messages would otherwise be lost on unmount.
+  const [userMessages, setUserMessages] = useState<string[]>(() => {
+    return subThreadId ? (userMessageCache.get(subThreadId) ?? []) : [];
+  });
+
+  // Sync state → cache
+  useEffect(() => {
+    if (subThreadId && userMessages.length > 0) {
+      userMessageCache.set(subThreadId, userMessages);
+    }
+  }, [subThreadId, userMessages]);
 
   const allMessages = useMemo(() => {
     return (streamState?.messages ?? []).filter((m: any) => {
