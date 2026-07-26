@@ -45,7 +45,7 @@ export interface DocOperation {
 }
 
 // ponytail: simple Levenshtein for fuzzy anchor matching (spec §7 level 4).
-function levenshteinDistance(a: string, b: string): number {
+export function levenshteinDistance(a: string, b: string): number {
   const m = a.length, n = b.length;
   if (m === 0) return n;
   if (n === 0) return m;
@@ -65,7 +65,7 @@ function levenshteinDistance(a: string, b: string): number {
 
 // ponytail: shared anchor→blockId lookup used by matchAnchor / applyOperations / scrollToAnchor.
 // 5-level matching per spec §7: exact → prefix → contains → fuzzy → null.
-function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; blockIndex: number } | null {
+export function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; blockIndex: number } | null {
   if (!anchor) return null;
   const trimmed = anchor.trim();
   if (!trimmed) return null;
@@ -105,8 +105,12 @@ function findBlockByAnchor(doc: any[], anchor: string): { blockId: string; block
   for (let i = 0; i < doc.length; i++) {
     const b = doc[i];
     if (!Array.isArray(b.content)) continue;
-    const fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("").slice(0, 80);
-    const dist = levenshteinDistance(trimmed, fullText);
+    let fullText = b.content.filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("");
+    // ponytail: strip markdown heading prefix for fuzzy comparison
+    // so "## 设计参数分析" matches "设计参数分折" (typo in agent anchor)
+    fullText = fullText.replace(/^#{1,6}\s+/, "");
+    if (!fullText) continue;
+    const dist = levenshteinDistance(trimmed, fullText.slice(0, 80));
     if (dist / trimmed.length < 0.3 && (!best || dist < best.dist)) {
       best = { blockId: b.id, blockIndex: i, dist };
     }

@@ -18,7 +18,7 @@ import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./Pers
 // ─── helpers ────────────────────────────────────────────────────────────
 
 /** Build the unified system prompt with anchor index + operations format (spec §5). */
-function buildPrompt(params: {
+export function buildPrompt(params: {
   docContent: string;
   anchors: string;
   userMessage: string;
@@ -68,7 +68,7 @@ ${params.docContent}
 }
 
 /** Parse operations from agent output (spec §9). */
-function parseOperations(text: string): { analysis: string; operations: DocOperation[] | null; parseError: string | null } {
+export function parseOperations(text: string): { analysis: string; operations: DocOperation[] | null; parseError: string | null } {
   const idx = text.indexOf("---OPERATIONS---");
   if (idx === -1) return { analysis: text, operations: null, parseError: null };
 
