@@ -228,13 +228,15 @@ function ConfirmCard({
   onSkip: () => void;
 }) {
   const [status, setStatus] = useState<"pending" | "applied" | "skipped" | "failed">("pending");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleApply = () => {
     try {
       onApply();
       setStatus("applied");
-    } catch {
+    } catch (e: any) {
       setStatus("failed");
+      setErrorMsg(e?.message || "操作失败");
     }
   };
 
@@ -260,6 +262,9 @@ function ConfirmCard({
         {status === "applied" && <span className="text-[11px] font-medium text-green-600">已应用</span>}
         {status === "failed" && <span className="text-[11px] font-medium text-red-500">失败</span>}
       </div>
+      {status === "failed" && errorMsg && (
+        <div className="px-3 py-1.5 text-[11px] text-red-600 bg-red-50/30 dark:bg-red-950/10 border-t border-red-100 dark:border-red-900/20">{errorMsg}</div>
+      )}
 
       {/* Content preview */}
       {operation.op !== "delete" && operation.content && (
