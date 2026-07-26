@@ -91,8 +91,8 @@ export function parseOperations(text: string): { analysis: string; operations: D
 function WelcomePage() {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-      <div className="text-4xl mb-4">🤖</div>
-      <div className="text-base font-semibold text-foreground mb-6">文档 AI 助手</div>
+      <div className="text-3xl mb-3 opacity-40">💬</div>
+      <div className="text-sm font-medium text-foreground mb-1">AI 协作文档助手</div>
 
       <div className="w-full text-left space-y-4 text-sm text-muted-foreground">
         <div>
@@ -400,34 +400,53 @@ export default function DocAIAgentPanel({
   };
 
   // ── derived message state ─────────────────────────────────────────
-  const allMessages = useMemo(() => {
-    return streamState?.messages ?? [];
-  }, [streamState?.messages]);
+  // ponytail: store original user messages so we display them in bubbles
+  // instead of the full system prompt that was sent to the agent.
+  const userMessageMap = useRef<Map<string, string>>(new Map());
+  const lastUserMsgRef = useRef<string>("");
 
-  // Find the last AI message text for operation parsing
-  const lastAIMessage = useMemo(() => {
-    const msgs = allMessages;
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].type === "ai") {
-        const content = typeof msgs[i].content === "string"
-          ? msgs[i].content
-          : Array.isArray(msgs[i].content)
-            ? msgs[i].content.map((b: any) => b.text || "").join("")
-            : "";
-        if (content) return content;
+  // Capture original user message before submitting the system prompt
+  useEffect(() => {
+    if (pendingRef.current) {
+      lastUserMsgRef.current = pendingRef.current.message;
+    }
+  }, [submitTick]);
+
+  // After submit, associate the next human message with the stored text
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    const msgs = streamState?.messages ?? [];
+    if (msgs.length > prevMsgCountRef.current && lastUserMsgRef.current) {
+      // Find new human messages and store their original text
+      for (let i = prevMsgCountRef.current; i < msgs.length; i++) {
+        const m = msgs[i];
+        if (m.type === "human" && !userMessageMap.current.has(m.id ?? "")) {
+          userMessageMap.current.set(m.id ?? "", lastUserMsgRef.current);
+          lastUserMsgRef.current = "";
+        }
       }
     }
-    return "";
-  }, [allMessages]);
+    prevMsgCountRef.current = msgs.length;
+  }, [streamState?.messages]);
 
-  // Parse operations from the last AI message
-  const opsResult = useMemo(() => {
-    if (!lastAIMessage) return null;
-    return parseOperations(lastAIMessage);
-  }, [lastAIMessage]);
+  const allMessages = useMemo(() => {
+    return (streamState?.messages ?? []).filter((m: any) => {
+      if (m.additional_kwargs?.hide_from_ui) return false;
+      return m.type === "human" || m.type === "ai";
+    });
+  }, [streamState?.messages]);
 
-  // Extract analysis text (without operations) for display
-  const analysisText = opsResult?.analysis ?? lastAIMessage;
+  /** Parse a single AI message for operations. */
+  const parseAIMessage = useCallback((content: unknown): { text: string; ops: DocOperation[] | null; error: string | null } => {
+    const raw = typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.map((b: any) => b.text || "").join("")
+        : "";
+    if (!raw) return { text: "", ops: null, error: null };
+    const parsed = parseOperations(raw);
+    return { text: parsed.analysis, ops: parsed.operations, error: parsed.parseError };
+  }, []);
 
   return (
     <div className="w-[420px] h-full flex flex-col bg-background">
@@ -451,41 +470,42 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           <div className="p-4 space-y-4">
-            {allMessages.filter((m: any) => {
-              if (m.additional_kwargs?.hide_from_ui) return false;
-              return m.type === "human" || m.type === "ai";
-            }).map((m: any) => (
-              <div key={m.id}>
-                {m.type === "human" ? (
-                  <div className="flex justify-end">
+            {allMessages.map((m: any) => {
+              if (m.type === "human") {
+                // Show the original user input, not the system prompt
+                const userText = userMessageMap.current.get(m.id ?? "") ?? "";
+                return (
+                  <div key={m.id} className="flex justify-end">
                     <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
-                      {m.content}
+                      {userText || "..."}
                     </div>
                   </div>
-                ) : (
-                  <div>
-                    <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-foreground">
-                      {analysisText || (
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                          思考中...
-                        </span>
-                      )}
-                    </div>
+                );
+              }
 
-                    {/* Operation cards — rendered after the AI message text */}
-                    {opsResult?.operations && opsResult.operations.length > 0 && (
-                      <OperationCards operations={opsResult.operations} editorRef={editorRef} />
-                    )}
-                    {opsResult?.parseError && (
-                      <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                        ⚠️ {opsResult.parseError}
-                      </div>
+              // AI message: parse content per-message for operations
+              const { text, ops, error } = parseAIMessage(m.content);
+              return (
+                <div key={m.id}>
+                  <div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-foreground">
+                    {text || (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                        思考中...
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-            ))}
+                  {ops && ops.length > 0 && (
+                    <OperationCards operations={ops} editorRef={editorRef} />
+                  )}
+                  {error && (
+                    <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                      ⚠️ {error}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {streamState?.isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm px-1">
