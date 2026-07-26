@@ -219,6 +219,9 @@
     },
     "water-drainage-report": {
       "enabled": true
+    },
+    "coal-mine-report-review": {
+      "enabled": true
     }
   }
 }

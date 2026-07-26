@@ -5,7 +5,7 @@ import {
   LoaderCircleIcon,
   QrCodeIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ export function WechatSettingsPage() {
   const createCode = useCreateWechatBindCode();
   const refreshShareQr = useRefreshWechatShareQrcode();
   const [code, setCode] = useState<WechatBindCodeResponse | null>(null);
+  const [bindQrUrl, setBindQrUrl] = useState<string | null>(null);
   const [shareQr, setShareQr] = useState<WechatShareQrcodeResponse | null>(
     null,
   );
@@ -43,6 +44,13 @@ export function WechatSettingsPage() {
   const status = bindStatus?.status;
   const isPending = status === "pending";
   const isBound = bindStatus?.bound === true;
+
+  // EAI-CUSTOM: clear cached bind QR URL when status moves past pending
+  useEffect(() => {
+    if (!isPending) {
+      setBindQrUrl(null);
+    }
+  }, [isPending]);
 
   return (
     <SettingsSection
@@ -135,7 +143,15 @@ export function WechatSettingsPage() {
               onClick={() => {
                 void startBind
                   .mutateAsync()
-                  .then(() => toast.success(t.settings.wechat.bindStarted))
+                  .then((res) => {
+                    // EAI-CUSTOM: use the QR URL from the bind response directly
+                    // so the QR appears immediately without waiting for the polling
+                    // endpoint to catch up (cross-worker disk sync latency).
+                    if (res.qrcode_url) {
+                      setBindQrUrl(res.qrcode_url);
+                    }
+                    toast.success(t.settings.wechat.bindStarted);
+                  })
                   .catch((error) => {
                     toast.error(
                       error instanceof Error
@@ -153,9 +169,10 @@ export function WechatSettingsPage() {
               {isBound ? t.settings.wechat.rebind : t.settings.wechat.bind}
             </Button>
           </div>
-          {isPending && bindStatus?.qrcode_url ? (
+          {/* EAI-CUSTOM: show QR from bind response (bindQrUrl) or polling endpoint */}
+          {isPending && (bindStatus?.qrcode_url || bindQrUrl) ? (
             <a
-              href={bindStatus.qrcode_url}
+              href={bindStatus?.qrcode_url || bindQrUrl || "#"}
               target="_blank"
               rel="noreferrer"
               className="text-primary inline-flex items-center gap-1 text-sm underline"

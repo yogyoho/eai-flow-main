@@ -67,11 +67,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome to 🦌 EAIFlow, an open source super agent. With built-in and custom skills, EAIFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Create your own skill to release the power of EAIFlow. With customized skills,\nEAIFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
   },
 
   // Clipboard
@@ -129,7 +129,7 @@ export const enUS: Translations = {
     voiceInputStartLabel: "Dictate with voice",
     voiceInputStopLabel: "Stop voice input",
     voiceInputStart:
-      "Dictate with voice. DeerFlow receives only transcribed text; audio is handled by your browser or system speech service.",
+      "Dictate with voice. EAIFlow receives only transcribed text; audio is handled by your browser or system speech service.",
     voiceInputStop: "Stop voice input",
     voiceInputListening: "Listening... Click to stop voice input.",
     voiceInputUnsupported:
@@ -434,13 +434,13 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. DeerFlow is generating and saving an initial version now.",
+      "Save requested. EAIFlow is generating and saving an initial version now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but DeerFlow could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but EAIFlow could not load it yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
@@ -474,13 +474,13 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "DeerFlow's official website",
-    githubTooltip: "DeerFlow on GitHub",
+    officialWebsite: "EAIFlow's official website",
+    githubTooltip: "EAIFlow on GitHub",
     settingsAndMore: "Settings and more",
-    visitGithub: "DeerFlow on GitHub",
+    visitGithub: "EAIFlow on GitHub",
     reportIssue: "Report an issue",
     contactUs: "Contact us",
-    about: "About DeerFlow",
+    about: "About EAIFlow",
     logout: "Log out",
     gatewayUnavailable: "Gateway is temporarily unavailable.",
     gatewayUnavailableRetrying: "Retrying in the background…",
@@ -551,20 +551,20 @@ export const enUS: Translations = {
     saveAndConnect: "Save and connect",
     saveChanges: "Save changes",
     descriptions: {
-      telegram: "Telegram direct messages through your DeerFlow bot.",
+      telegram: "Telegram direct messages through your EAIFlow bot.",
       slack: "Slack workspace messages and mentions.",
-      discord: "Discord server messages through your DeerFlow bot.",
-      feishu: "Feishu and Lark messages through your DeerFlow app.",
-      dingtalk: "DingTalk Stream Push messages through your DeerFlow bot.",
-      wechat: "WeChat iLink messages through your DeerFlow bot.",
-      wecom: "WeCom messages through your DeerFlow AI bot.",
+      discord: "Discord server messages through your EAIFlow bot.",
+      feishu: "Feishu and Lark messages through your EAIFlow app.",
+      dingtalk: "DingTalk Stream Push messages through your EAIFlow bot.",
+      wechat: "WeChat iLink messages through your EAIFlow bot.",
+      wecom: "WeCom messages through your EAIFlow AI bot.",
     },
     connectedAs: (name: string) => `Connected as ${name}.`,
   },
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "EAIFlow",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -590,7 +590,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to DeerFlow",
+    skillInstallTooltip: "Install skill and make it available to EAIFlow",
     browserNavigate: (url: string) => `Open ${url} in browser`,
     browserNavigateGeneric: "Open page in browser",
     browserClick: "Click element in browser",
@@ -679,7 +679,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate DeerFlow faster with keyboard shortcuts.",
+      "Navigate EAIFlow faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -687,8 +687,9 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how DeerFlow looks and behaves for you.",
+    description: "Adjust how EAIFlow looks and behaves for you.",
     sections: {
+      basic: "Basic",
       account: "Account",
       appearance: "Appearance",
       channels: "Channels",
@@ -698,10 +699,136 @@ export const enUS: Translations = {
       notification: "Notification",
       about: "About",
     },
+    basic: {
+      title: "Basic Settings",
+      description: "Manage your account information and preferences.",
+      language: {
+        title: "Language",
+        description: "Switch the interface display language.",
+      },
+      theme: {
+        system: "System",
+        light: "Light",
+        dark: "Dark",
+      },
+      retrieval: {
+        title: "Retrieval Settings",
+        description: "Configure models for the RAG retrieval pipeline.",
+        defaultModel: "Default Model",
+        fastModel: "Fast Model",
+        embedModel: "Embedding Model",
+        reranker: "Reranker",
+        placeholder: "Select model...",
+      },
+      contentGuard: {
+        title: "Content Safety",
+        description: "Input/output content safety audit to block harmful content.",
+        enable: "Enable Content Safety Audit",
+        enableHint: "When enabled, user input and model output will be checked for safety.",
+        enableLLM: "Enable LLM Audit",
+        enableLLMHint: "Use an LLM for more intelligent content safety review.",
+        model: "Audit Model",
+        modelPlaceholder: "Select audit model...",
+      },
+      services: {
+        title: "Service Configuration",
+        description: "Manage external services and internal modules used by EAIFlow.",
+        docCenter: "Document Center",
+        docCenterDesc: "Manage uploaded documents and knowledge base files.",
+        neo4j: "Neo4j Graph Database",
+        neo4jDesc: "Connect to Neo4j for knowledge graph storage and queries.",
+        apiDocs: "API Documentation",
+        apiDocsDesc: "Manage API documentation and interface specifications.",
+        minio: "MinIO Object Storage",
+        minioDesc: "Manage MinIO for file and data storage.",
+        milvus: "Milvus Vector Database",
+        milvusDesc: "Manage Milvus for vector search and retrieval.",
+        ragflow: "RAGFlow Knowledge Base",
+        ragflowDesc: "Manage RAGFlow for document parsing and retrieval-augmented generation.",
+      },
+      save: "Save",
+      saveSuccess: "Settings saved",
+      saveFailed: "Save failed, please try again",
+    },
+    account: {
+      title: "Account",
+      description: "Manage your account information and security settings.",
+      profileTitle: "Profile",
+      email: "Email",
+      role: "Role",
+      ssoProvider: "SSO",
+      signOut: "Sign Out",
+    },
+    appearance: {
+      themeTitle: "Theme",
+      themeDescription: "Follow system preference or choose a fixed mode.",
+      system: "System",
+      light: "Light",
+      dark: "Dark",
+      systemDescription: "Automatically follow system theme.",
+      lightDescription: "Brighter color scheme for daytime use.",
+      darkDescription: "Darker color scheme to reduce glare and help focus.",
+      languageTitle: "Language",
+      languageDescription: "Switch between different languages.",
+    },
+    channels: {
+      title: "Channels",
+      description: "Connect IM platforms to send messages to EAIFlow from outside the browser.",
+      disabled: "Channel connections are not enabled on this server. Contact the administrator.",
+    },
+    notification: {
+      title: "Notification",
+      description: "EAIFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks.",
+      requestPermission: "Request Notification Permission",
+      deniedHint: "Notification permission was denied. You can re-enable it in your browser's site settings.",
+      testButton: "Send Test Notification",
+      testTitle: "EAIFlow",
+      testBody: "This is a test notification.",
+      notSupported: "Notifications are not supported in this browser.",
+    },
+    skills: {
+      title: "Skills",
+      description: "Manage custom skills to extend EAIFlow's capabilities.",
+      createSkill: "Create Skill",
+      emptyTitle: "No skills yet",
+      emptyDescription: "Place your agent skill folders under the `/skills/custom` folder in EAIFlow's root directory.",
+      emptyButton: "Create your first skill",
+      adminRequired: "Admin privileges required to manage Agent Skills.",
+      installAdminRequired: "Admin privileges required to install Agent Skills.",
+    },
+    wechat: {
+      title: "WeChat",
+      description: "Link your WeChat account to interact with EAIFlow.",
+      linkTitle: "Link Account",
+      linkDescription: "Get a bind code and send it in WeChat to link your account.",
+      getCode: "Get Code",
+      codeHint: "Send the command above to the EAIFlow Bot in WeChat to complete linking.",
+      linkFailed: "Failed to get bind code. Please try again.",
+      botTitle: "Bot Binding",
+      botDescription: "Admin can bind the EAIFlow Bot to a WeChat Official Account to receive user messages.",
+      bound: "Bound",
+      pending: "Awaiting Scan",
+      unbound: "Unbound",
+      bind: "Bind",
+      rebind: "Rebind",
+      bindStarted: "Binding started. Please scan the QR code to complete.",
+      bindFailed: "Binding failed. Please try again.",
+      openQr: "Open QR Code",
+      shareQrTitle: "Share QR Code",
+      shareQrDescription: "Generate an Official Account share QR code for users to scan and chat.",
+      refreshShareQr: "Refresh QR Code",
+      shareQrFreshHint: "QR codes expire after a period. Refresh if expired.",
+    },
+    tools: {
+      title: "Tools",
+      description: "Manage MCP tools and external service connections.",
+      adminRequired: "Admin privileges required to manage MCP tools.",
+      empty: "No MCP tools available.",
+    },
     memory: {
       title: "Memory",
       description:
-        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
+        "EAIFlow automatically learns from your conversations in the background. These memories help EAIFlow understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -799,7 +926,7 @@ export const enUS: Translations = {
     channels: {
       title: "Channels",
       description:
-        "Connect IM accounts that can send messages to DeerFlow from outside the browser.",
+        "Connect IM accounts that can send messages to EAIFlow from outside the browser.",
       disabled:
         "Channel connections are not enabled on this server. Ask an administrator to enable channel_connections.",
     },
@@ -810,7 +937,7 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of EAIFlow.",
       emptyButton: "Create Your First Skill",
       adminRequired: "Admin privileges are required to manage agent skills.",
       installAdminRequired:
@@ -819,12 +946,12 @@ export const enUS: Translations = {
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "EAIFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "EAIFlow",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",
@@ -838,7 +965,7 @@ export const enUS: Translations = {
       changePasswordDescription: "Update your account password.",
       ssoPasswordDescription: "Password is managed by your SSO provider.",
       ssoPasswordMessage:
-        "This account signs in with {provider}, so DeerFlow cannot manage or change its password here. Use your SSO provider's account settings instead.",
+        "This account signs in with {provider}, so EAIFlow cannot manage or change its password here. Use your SSO provider's account settings instead.",
       currentPassword: "Current password",
       newPassword: "New password",
       confirmNewPassword: "Confirm new password",
@@ -864,14 +991,14 @@ export const enUS: Translations = {
     passwordPlaceholder: "•••••••",
     rememberMe: "Keep me signed in",
     rememberMeDescription:
-      "Keep this browser session when possible. DeerFlow stores only your email, never your password.",
+      "Keep this browser session when possible. EAIFlow stores only your email, never your password.",
     pleaseWait: "Please wait...",
     signIn: "Sign In",
     createAccount: "Create Account",
     createAdminAccount: "Create admin account",
     adminSetupRequiredTitle: "Administrator setup is required",
     adminSetupRequiredDescription:
-      "DeerFlow needs an administrator account before new regular accounts can be created.",
+      "EAIFlow needs an administrator account before new regular accounts can be created.",
     orContinueWith: "Or continue with",
     ssoHint:
       "If your account uses single sign-on, sign in with the option below instead.",

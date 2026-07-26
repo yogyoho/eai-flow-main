@@ -1,0 +1,38 @@
+uid=62_0 RootWebArea "EAIFlow" url="http://localhost:2026/docmgr"
+  uid=62_1 alert atomic live="assertive" relevant="additions text"
+  uid=62_2 link "Logo" url="http://localhost:2026/"
+    uid=62_3 image "Logo" url="http://localhost:2026/favicon.svg"
+  uid=62_4 navigation
+    uid=62_5 link url="http://localhost:2026/dashboard"
+    uid=62_6 link url="http://localhost:2026/writing"
+    uid=62_7 link url="http://localhost:2026/projects"
+    uid=62_8 link url="http://localhost:2026/docmgr"
+    uid=62_9 link url="http://localhost:2026/knowledge-factory"
+    uid=62_10 link url="http://localhost:2026/knowledge"
+    uid=62_11 link url="http://localhost:2026/app-center"
+    uid=62_12 link url="http://localhost:2026/admin"
+    uid=62_13 link url="http://localhost:2026/settings"
+  uid=62_14 navigation
+  uid=62_15 button expandable haspopup="menu"
+  uid=62_16 main
+    uid=62_17 StaticText "文档空间"
+    uid=62_18 navigation
+      uid=62_19 button "我的文档 共 4 个"
+      uid=62_20 button "编写吉林石化新装置给排水计算书 1 个文件"
+      uid=62_21 button "主运大巷断面图 2 个文件"
+      uid=62_22 button "项目文件夹"
+    uid=62_23 generic description="拖动调整宽度"
+    uid=62_24 button "新建文档"
+    uid=62_25 button "全部"
+    uid=62_26 button "收藏"
+    uid=62_27 textbox "搜索文档..."
+    uid=62_28 button "图标网格"
+    uid=62_29 button "列表"
+    uid=62_30 StaticText "共 "
+    uid=62_31 StaticText "1"
+    uid=62_32 StaticText " 篇文档"
+    uid=62_33 StaticText "MD"
+    uid=62_34 heading "test" level="3"
+    uid=62_35 StaticText "2026/07/24 14:54"
+    uid=62_36 button
+    uid=62_37 button

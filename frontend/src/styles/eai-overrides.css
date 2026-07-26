@@ -1,0 +1,55 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EAI-CUSTOM: CSS variable border-color fallback hardening.
+
+   CONTEXT: Tailwind v4 shadcn convention sets `border-color: var(--border)` on
+   every element via `@layer base { * { border-color: var(--color-border) } }`.
+   The variable is defined in `:root` / `.dark` inside globals.css, but globals
+   is upstream-maintained and periodically sync-reverted.  During any window
+   where the variable is unresolved — FOUC, next-themes class not-yet-attached,
+   CSS chunk for a lazy/streamed component still loading — the missing fallback
+   makes `var(--border)` invalid-at-computed-time, and `border-color` COLLAPSES
+   TO `currentColor` (≈ the foreground text color ≈ near-black) on any element
+   that has a border-width.  Result: random black borders on buttons, panels,
+   artifacts, editor tables — especially visible during chat init and streaming
+   AI output.
+
+   Every `var(--border)` in this file carries a translucent-gray fallback so
+   borders are never currentColor / black, even when the theme token chain is
+   momentarily broken.  The faint gray reads fine on both light and dark
+   backgrounds.
+
+   WHY A SEPARATE FILE: globals.css is upstream-maintained and gets reset by
+   periodic sync commits (8626bbba, 7467163f, …).  This file is imported AFTER
+   globals.css in the root layout, so same-specificity declarations take
+   precedence, and because it lives outside the upstream tree it is never
+   touched by sync.  Do NOT inline these rules back into globals.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base: every element ─────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--border, rgba(130, 130, 130, 0.25));
+  }
+}
+
+/* ── Resizable Panel + XYFlow (built-in dark default border → theme border) ── */
+[data-slot="resizable-panel-group"],
+[data-slot="resizable-panel"],
+[data-slot="resizable-handle"],
+[data-panel-group],
+[data-panel],
+.react-flow__panel,
+.react-flow__panel > div {
+  border-color: var(--border, rgba(130, 130, 130, 0.25)) !important;
+}
+
+/* ── ProseMirror tables (AI streamed markdown content) ───────────────────── */
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 1px solid var(--border, rgba(130, 130, 130, 0.25));
+}
+
+/* ── ProseMirror horizontal rule ─────────────────────────────────────────── */
+.ProseMirror hr {
+  border-top: 1px solid var(--border, rgba(130, 130, 130, 0.25)) !important;
+}

@@ -30,6 +30,7 @@ from app.extensions.web_scraper import web_scraper_router
 from app.extensions.workflow import router as workflow_router
 from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.gateway.auth_middleware import AuthMiddleware
+from app.gateway.browser_capability import ensure_browser_runtime_available
 from app.gateway.config import get_gateway_config
 from app.gateway.csrf_middleware import CSRFMiddleware, get_configured_cors_origins
 from app.gateway.deps import langgraph_runtime
@@ -38,6 +39,7 @@ from app.gateway.routers import (
     artifacts,
     assistants_compat,
     auth,
+    browser,
     channel_connections,
     channels,
     features,
@@ -201,6 +203,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         startup_config = get_app_config()
         apply_logging_level(startup_config.log_level)
+        ensure_browser_runtime_available(startup_config)
         logger.info("Configuration loaded successfully")
     except Exception as e:
         error_msg = f"Failed to load configuration during gateway startup: {e}"
@@ -319,6 +322,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 )
             except Exception:
                 logger.exception("Failed to stop channel service")
+
+            # Close browser sessions before draining memory so
+            # stale page references don't outlive the worker.
+            try:
+                from deerflow.community.browser_automation import get_browser_session_manager
+
+                closed = await asyncio.wait_for(
+                    get_browser_session_manager().close_all_sessions(),
+                    timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+                if closed:
+                    logger.info("Closed %d browser session(s)", closed)
+            except TimeoutError:
+                logger.warning(
+                    "Browser session shutdown exceeded %.1fs; proceeding with worker exit.",
+                    _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.exception("Failed to close browser sessions")
 
             # Drain the memory update queue's pending buffer before exit (best-effort,
             # bounded). IM channels are already stopped above, so no new IM updates
@@ -474,6 +496,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Artifacts API is mounted at /api/threads/{thread_id}/artifacts
     app.include_router(artifacts.router)
+
+    # Browser API is mounted at /api/threads/{thread_id}/browser
+    app.include_router(browser.router)
 
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)

@@ -1,0 +1,10 @@
+uid=51_0 RootWebArea "EAIFlow" url="http://localhost:3000/workspace"
+  uid=51_1 StaticText "Service temporarily unavailable."
+  uid=51_2 StaticText "The backend may be restarting. Please wait a moment and try again."
+  uid=51_3 link "Retry" url="http://localhost:3000/workspace"
+    uid=51_4 StaticText "Retry"
+  uid=51_5 form
+    uid=51_6 button "Logout & Reset"
+  uid=51_7 button "Open issues overlay"
+  uid=51_8 button "Collapse issues badge"
+  uid=51_9 alert atomic live="assertive" relevant="additions text"

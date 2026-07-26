@@ -600,7 +600,7 @@ export default function DocAIAgentPanel({
             placeholder="输入指令..."
             rows={1}
             disabled={isCreating || submitting}
-            className="w-full border-none outline-none bg-transparent text-[13px] text-foreground min-w-0 placeholder:text-muted-foreground resize-none leading-relaxed max-h-[120px]"
+            className="w-full border-none outline-none bg-transparent text-sm text-foreground min-w-0 placeholder:text-muted-foreground resize-none leading-relaxed max-h-[120px]"
           />
           <div className="flex items-center justify-between mt-1.5">
             <div className="flex items-center gap-2 shrink-0">

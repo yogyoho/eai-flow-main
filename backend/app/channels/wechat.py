@@ -245,6 +245,11 @@ class WechatChannel(Channel):
         self._ilink_bot_id = str(config.get("ilink_bot_id") or "").strip() or None
         self._auth_state: dict[str, Any] = {}
         self._server_longpoll_timeout_seconds: float | None = None
+        # EAI-CUSTOM: bumped by start_bind to invalidate stale in-flight QR polls
+        self._bind_generation = 0
+        # EAI-CUSTOM: set by start_bind to prevent the poll loop from starting
+        # a competing QR flow while admin bind is active
+        self._admin_bind_active = False
 
         self._get_updates_buf = ""
         self._context_tokens_by_chat: dict[str, str] = {}
@@ -266,6 +271,15 @@ class WechatChannel(Channel):
         self._main_loop = asyncio.get_running_loop()
         if self._state_dir:
             self._state_dir.mkdir(parents=True, exist_ok=True)
+
+        # EAI-CUSTOM: clear stale "pending" QR from persisted auth state on
+        # restart — iLink QRs expire in ~2 min so a pending QR saved to disk
+        # is certainly expired and would otherwise block re-authentication.
+        if self._auth_state.get("status") == "pending" and not self._bot_token:
+            self._auth_state.pop("qrcode", None)
+            self._auth_state.pop("qrcode_img_content", None)
+            self._auth_state["status"] = "restart"
+            self._save_auth_state(status="restart")
 
         await self._ensure_client()
         self._running = True
@@ -293,30 +307,81 @@ class WechatChannel(Channel):
 
     # -- admin bind surface (for the browser UI) ----------------------------
 
-    async def start_bind(self) -> None:
+    async def start_bind(self) -> str | None:
         """Admin-triggered (re)bind: clear any token and run the QR flow.
 
-        Non-blocking: kicks off ``_bind_via_qrcode`` as a background task on the
-        gateway loop (it polls up to ``qrcode_poll_timeout``). Poll
-        :meth:`get_bind_state` for the QR image + status. Idempotent under
-        ``_auth_lock`` so it won't race the lazy bind in ``_ensure_authenticated``.
+        Fetches a fresh QR from iLink synchronously and returns its URL so the
+        HTTP response carries it immediately.  Only the confirmation polling is
+        deferred to a background task.
+
+        Returns the QR image URL, or None if the QR fetch failed.
         """
         if self._main_loop is None:
             raise RuntimeError("WechatChannel is not running")
 
+        # Phase 1: clear token under brief lock, bump generation,
+        # mark admin bind as active so the poll loop stays out.
         async with self._auth_lock:
             self._bot_token = ""
             self._ilink_bot_id = None
-            self._save_auth_state(status="pending", bot_token="", ilink_bot_id=None, qrcode=None, qrcode_img_content=None)
-        self._main_loop.create_task(self._admin_bind_task())
+            self._bind_generation += 1
+            self._admin_bind_active = True
+            generation = self._bind_generation
+
+        # Phase 2: fetch a fresh QR synchronously so the frontend can display
+        # it immediately.  Only the confirmation polling is deferred.
+        qrcode_img: str | None = None
+        qrcode: str | None = None
+        try:
+            qrcode_data = await self._request_public_get_json(
+                "/ilink/bot/get_bot_qrcode",
+                params={"bot_type": self._qrcode_bot_type},
+            )
+            qrcode = str(qrcode_data.get("qrcode") or "").strip()
+            if not qrcode:
+                raise RuntimeError("iLink get_bot_qrcode did not return qrcode")
+            qrcode_img = str(qrcode_data.get("qrcode_img_content") or "").strip()
+
+            # Now save the pending state WITH the QR image — atomic under lock.
+            async with self._auth_lock:
+                self._save_auth_state(
+                    status="pending",
+                    qrcode=qrcode,
+                    qrcode_img_content=qrcode_img or None,
+                )
+
+            logger.warning("[WeChat] QR login required. qrcode=%s", qrcode)
+            if qrcode_img:
+                logger.warning("[WeChat] qrcode_img_content=%s", qrcode_img)
+        except Exception:
+            logger.exception("[WeChat] failed to fetch QR for admin bind, will retry in background")
+
+        # Phase 3: background task polls for confirmation (up to qrcode_poll_timeout)
+        self._main_loop.create_task(self._admin_bind_task(qrcode, qrcode_img, generation))
         logger.info("[WeChat] admin-triggered QR bind started")
 
-    async def _admin_bind_task(self) -> None:
-        async with self._auth_lock:
-            try:
+        # Return the QR URL directly so the HTTP response doesn't need to
+        # read it back from disk (which races across uvicorn workers).
+        return qrcode_img or None
+
+    async def _admin_bind_task(self, qrcode: str | None = None, qrcode_img: str | None = None, generation: int = 0) -> None:
+        """Poll a pre-fetched QR for confirmation (or fetch+ poll if none given).
+
+        Does NOT hold ``_auth_lock`` across the poll — only guards the brief
+        token/state transitions inside ``_poll_qrcode_confirmation``.
+        Clears ``_admin_bind_active`` on exit so the poll loop can resume
+        authentication if this bind fails or times out.
+        """
+        try:
+            if qrcode:
+                await self._poll_qrcode_confirmation(qrcode, qrcode_img or "", generation)
+            else:
+                # Fallback: QR wasn't pre-fetched, do the full flow
                 await self._bind_via_qrcode()
-            except Exception:
-                logger.exception("[WeChat] admin-triggered QR bind failed")
+        except Exception:
+            logger.exception("[WeChat] admin-triggered QR bind failed")
+        finally:
+            self._admin_bind_active = False
 
     def get_bind_state(self) -> dict[str, Any]:
         """Safe snapshot of the bind state for the admin UI (no secrets)."""
@@ -331,7 +396,7 @@ class WechatChannel(Channel):
         """获取新鲜的分享用 QR（admin 转发给用户扫，把 ClawBot 加进微信）。
 
         只调 get_bot_qrcode，不 poll status、不轮换 bot_token、不覆盖 auth state。
-        [EAI-ADD] 普通用户加 ClawBot 到微信的唯一可获取 QR 来源。
+        # EAI-CUSTOM: 普通用户加 ClawBot 到微信的唯一可获取 QR 来源。
         """
         return await self._request_public_get_json(
             "/ilink/bot/get_bot_qrcode",
@@ -628,9 +693,9 @@ class WechatChannel(Channel):
 
                 self._update_longpoll_timeout(data)
 
-                # Each message is isolated in its own try/except: one message that
-                # fails to process (e.g. an attachment that fails to decrypt) must
-                # not abort the whole batch and strand every message after it.
+                # EAI-CUSTOM: isolate per-message failures — one bad message
+                # (e.g. an attachment that fails to decrypt) must not abort
+                # the whole batch and strand every message after it.
                 for raw_message in data.get("msgs", []):
                     try:
                         await self._handle_update(raw_message)
@@ -643,14 +708,14 @@ class WechatChannel(Channel):
                             message_id,
                         )
 
-                # The cursor is advanced only after the whole batch has been
-                # attempted (not before the loop above), so a hard crash mid-batch
-                # leaves it unmoved -- the worst case on restart is re-fetching and
-                # re-processing this batch, not silently skipping past messages
-                # that were never actually handled.
+                # EAI-CUSTOM: cursor advanced only after the whole batch has been
+                # attempted, so a hard crash mid-batch leaves it unmoved —
+                # the worst case on restart is re-fetching this batch, not
+                # silently skipping past unhandled messages.
                 next_buf = data.get("get_updates_buf")
                 if isinstance(next_buf, str) and next_buf != self._get_updates_buf:
                     self._get_updates_buf = next_buf
+                    # EAI-CUSTOM: offload blocking filesystem IO off the event loop
                     await asyncio.to_thread(self._save_state)
             except asyncio.CancelledError:
                 raise
@@ -699,6 +764,9 @@ class WechatChannel(Channel):
         await self.bus.publish_inbound(inbound)
 
     async def _ensure_authenticated(self) -> bool:
+        # Brief lock only to check/load cached token — the QR poll inside
+        # _bind_via_qrcode can take up to qrcode_poll_timeout seconds and
+        # must not block other callers (start_bind, concurrent poll loops).
         async with self._auth_lock:
             if self._bot_token:
                 return True
@@ -710,14 +778,33 @@ class WechatChannel(Channel):
             if not self._qrcode_login_enabled:
                 return False
 
-            try:
-                auth_state = await self._bind_via_qrcode()
-            except Exception:
-                logger.exception("[WeChat] QR code binding failed")
+            # EAI-CUSTOM: skip starting a parallel QR flow when an admin-triggered
+            # bind is active.  Check both the in-memory flag (same-worker) and
+            # the persisted auth_state (cross-worker, for multi-worker deployments).
+            if self._admin_bind_active:
                 return False
-            return bool(auth_state.get("bot_token"))
+            if self._auth_state.get("status") == "pending" and self._auth_state.get("qrcode_img_content"):
+                return False
+
+        # Release the lock before the long poll so admin bind requests and
+        # concurrent auth checks don't hang.
+        try:
+            auth_state = await self._bind_via_qrcode()
+        except Exception:
+            logger.exception("[WeChat] QR code binding failed")
+            return False
+        return bool(auth_state.get("bot_token"))
 
     async def _bind_via_qrcode(self) -> dict[str, Any]:
+        """Fetch a fresh QR from iLink, then poll for confirmation.
+
+        Only called by the poll loop when no admin bind is active.
+        """
+        # EAI-CUSTOM: defense-in-depth — the poll loop should already be gated
+        # by _ensure_authenticated, but if this is reached during an active
+        # admin bind, bail out to avoid racing on _auth_state.
+        if self._admin_bind_active:
+            raise RuntimeError("Admin bind active, poll loop must not start a competing QR flow")
         qrcode_data = await self._request_public_get_json(
             "/ilink/bot/get_bot_qrcode",
             params={"bot_type": self._qrcode_bot_type},
@@ -731,28 +818,38 @@ class WechatChannel(Channel):
         if qrcode_img_content:
             logger.warning("[WeChat] qrcode_img_content=%s", qrcode_img_content)
 
-        self._save_auth_state(
-            status="pending",
-            qrcode=qrcode,
-            qrcode_img_content=qrcode_img_content or None,
-        )
+        # Brief lock: publish the QR so get_bind_state() sees it immediately.
+        async with self._auth_lock:
+            self._save_auth_state(
+                status="pending",
+                qrcode=qrcode,
+                qrcode_img_content=qrcode_img_content or None,
+            )
+            generation = getattr(self, "_bind_generation", 0)
 
+        return await self._poll_qrcode_confirmation(qrcode, qrcode_img_content or "", generation)
+
+    async def _poll_qrcode_confirmation(
+        self,
+        qrcode: str,
+        qrcode_img_content: str,
+        generation: int,
+    ) -> dict[str, Any]:
+        """Poll iLink for QR scan confirmation (no lock held during poll).
+
+        The lock is only acquired briefly around state transitions so that
+        concurrent callers (admin bind, poll loop auth) are never blocked
+        for the full ``qrcode_poll_timeout`` duration.
+        """
         deadline = time.monotonic() + max(self._qrcode_poll_timeout, 1.0)
         while time.monotonic() < deadline:
             try:
-                # get_qrcode_status is a long-poll: the server holds the
-                # connection until the status changes (or its own hold expires).
-                # The default 10s config timeout cuts that short and aborts the
-                # whole QR flow on the first iteration. Give it room to respond
-                # (bounded by the client's own polling_timeout + 5s timeout).
                 status_data = await self._request_public_get_json(
                     "/ilink/bot/get_qrcode_status",
                     params={"qrcode": qrcode},
                     timeout=max(self._polling_timeout, 30.0),
                 )
             except httpx.HTTPError:
-                # Transient transport/timeout error mid-poll — retry until the
-                # deadline instead of aborting the QR bootstrap.
                 logger.warning("[WeChat] transient error polling QR status, retrying", exc_info=True)
                 await asyncio.sleep(max(self._qrcode_poll_interval, 0.1))
                 continue
@@ -761,34 +858,69 @@ class WechatChannel(Channel):
                 token = str(status_data.get("bot_token") or "").strip()
                 if not token:
                     raise RuntimeError("iLink QR confirmation succeeded without bot_token")
-                self._bot_token = token
                 ilink_bot_id = str(status_data.get("ilink_bot_id") or "").strip() or None
-                if ilink_bot_id:
-                    self._ilink_bot_id = ilink_bot_id
 
-                return self._save_auth_state(
-                    status="confirmed",
-                    bot_token=token,
-                    ilink_bot_id=self._ilink_bot_id,
-                    qrcode=qrcode,
-                    qrcode_img_content=qrcode_img_content or None,
-                )
+                # EAI-CUSTOM: re-acquire lock only to commit the confirmed token.
+                # If start_bind() bumped _bind_generation in the meantime this
+                # confirmation is stale and must be discarded.
+                async with self._auth_lock:
+                    current_gen = getattr(self, "_bind_generation", 0)
+                    if current_gen != generation:
+                        logger.info(
+                            "[WeChat] discarding stale QR confirmation (gen %d → %d)",
+                            generation,
+                            current_gen,
+                        )
+                        raise RuntimeError("QR bind superseded by a newer admin request")
+                    self._bot_token = token
+                    if ilink_bot_id:
+                        self._ilink_bot_id = ilink_bot_id
+                    return self._save_auth_state(
+                        status="confirmed",
+                        bot_token=token,
+                        ilink_bot_id=self._ilink_bot_id,
+                        qrcode=qrcode,
+                        qrcode_img_content=qrcode_img_content or None,
+                    )
 
             if status in {"expired", "canceled", "cancelled", "invalid", "failed"}:
-                self._save_auth_state(
-                    status=status,
-                    qrcode=qrcode,
-                    qrcode_img_content=qrcode_img_content or None,
-                )
+                # EAI-CUSTOM: only save terminal status if this QR is still the
+                # active generation — otherwise a stale poll from before an admin
+                # rebind would overwrite the new QR in _auth_state.
+                async with self._auth_lock:
+                    current_gen = getattr(self, "_bind_generation", 0)
+                    if current_gen == generation:
+                        self._save_auth_state(
+                            status=status,
+                            qrcode=qrcode,
+                            qrcode_img_content=qrcode_img_content or None,
+                        )
+                    else:
+                        logger.info(
+                            "[WeChat] discarding stale QR terminal status %s (gen %d → %d)",
+                            status,
+                            generation,
+                            current_gen,
+                        )
                 raise RuntimeError(f"iLink QR code flow ended with status={status}")
 
             await asyncio.sleep(max(self._qrcode_poll_interval, 0.1))
 
-        self._save_auth_state(
-            status="timeout",
-            qrcode=qrcode,
-            qrcode_img_content=qrcode_img_content or None,
-        )
+        # EAI-CUSTOM: only save timeout if this QR is still the active generation.
+        async with self._auth_lock:
+            current_gen = getattr(self, "_bind_generation", 0)
+            if current_gen == generation:
+                self._save_auth_state(
+                    status="timeout",
+                    qrcode=qrcode,
+                    qrcode_img_content=qrcode_img_content or None,
+                )
+            else:
+                logger.info(
+                    "[WeChat] discarding stale QR timeout (gen %d → %d)",
+                    generation,
+                    current_gen,
+                )
         raise TimeoutError("Timed out waiting for WeChat QR confirmation")
 
     async def _request_json(self, path: str, payload: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
@@ -1401,14 +1533,13 @@ class WechatChannel(Channel):
         if self._auth_path:
             try:
                 self._auth_path.parent.mkdir(parents=True, exist_ok=True)
+                # EAI-CUSTOM: write directly (no temp file) to avoid cross-worker
+                # temp-file races on Docker overlay filesystems.  If the process
+                # crashes mid-write the JSON will be unparseable, but _load_auth_state
+                # tolerates JSONDecodeError and will just use stale in-memory state
+                # until the next successful write.
                 payload = json.dumps(data, ensure_ascii=False, indent=2)
-                # Atomic write (temp + os.replace) so a process reload mid-write
-                # can't leave a half-written file. A corrupt read would make
-                # _load_auth_state drop the bot_token and trigger a QR re-bind
-                # loop that overwrites the saved token — losing it for good.
-                tmp_path = self._auth_path.with_suffix(self._auth_path.suffix + ".tmp")
-                tmp_path.write_text(payload, encoding="utf-8")
-                os.replace(tmp_path, self._auth_path)
+                self._auth_path.write_text(payload, encoding="utf-8")
             except OSError:
                 logger.warning("[WeChat] failed to persist auth state to %s", self._auth_path)
         return data

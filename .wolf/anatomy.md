@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-22T16:32:04.985Z
-> Files: 1580 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T08:18:10.791Z
+> Files: 1619 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -57,14 +57,14 @@
 - `CLAUDE.md` — page login info (~3649 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
-- `config.example.yaml` — Configuration for the DeerFlow application (~14284 tok)
-- `config.yaml` (~2785 tok)
+- `config.example.yaml` — Configuration for the DeerFlow application (~27409 tok)
+- `config.yaml` (~2809 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~1659 tok)
+- `extensions_config.json` (~1734 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -150,6 +150,7 @@
 
 - `qa-report-docmgr-collab-2026-05-28.md` — QA Report: Document Collaboration Editor (~956 tok)
 - `qa-report-fire-compliance-skill-2026-06-19.md` — QA Report: fire-regulatory-compliance-check integration (~548 tok)
+- `qa-report-localhost-2026-07-24.md` — QA Report — DocAIAgentPanel AI 助手 (~460 tok)
 - `qa-report-localhost-2026-2026-06-18.md` — QA Report — 设置页 数据源 + 插件 tab 功能测试 (~653 tok)
 - `test-fire-report-minimal.md` — 消防设计专篇 (~18 tok)
 - `test-fire-report.md` — 封面信息 (~810 tok)
@@ -282,6 +283,7 @@
 
 ## C:/Users/admin/.claude/plans/
 
+- `ai-ai-agent-ai-ai-ai-ai-greedy-diffie.md` — Function Calling 替代 MCP — 实施方案 (~472 tok)
 - `breezy-knitting-kettle.md` — 边框颜色间歇性黑色 → 修复 (~255 tok)
 - `breezy-tinkering-mccarthy.md` — 工作流编辑器节点精简与增强 (~1140 tok)
 - `calm-conjuring-bubble.md` — Fix: Multi-user project management access control (~738 tok)
@@ -299,6 +301,7 @@
 - `lexical-puzzling-wreath.md` — Plan: Implement 6 Project Workspace Tabs with Polished UI (~2467 tok)
 - `lucky-stirring-tome.md` — 修复：agent 链式调用 + 消息顺序错乱 (~532 tok)
 - `magical-popping-sloth.md` — 流程看板 — 工作流执行进度可视化 (~1195 tok)
+- `majestic-greeting-thacker.md` — AI 助手模式选择器 — 设计 (~558 tok)
 - `ngrok-ctrl-c-to-quit-hidden-frost.md` — ngrok 内网穿透 — nginx 配置分析 (~882 tok)
 - `piped-dazzling-raven.md` — Plan: Drag-and-Drop Block Reordering for Tiptap Editor (~1104 tok)
 - `purrfect-stirring-tome.md` — E 续:前端四大纠缠功能移植 — 详细执行计划 (~1893 tok)
@@ -314,15 +317,18 @@
 - `velvety-waddling-hopcroft.md` — Plan: Add `cwd` support to MCP server config (方案3) (~916 tok)
 - `vivid-wishing-hippo.md` — Plan: 完善协同编辑器版本历史面板 (~179 tok)
 - `wiggly-whistling-fern.md` — Plan: Fix Collab AI Chat Endpoint (~991 tok)
+- `zazzy-hugging-pearl.md` — Plan: Add EAI-CUSTOM annotations to WeChat integration code (~414 tok)
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
 - `docker-dev-environment.md` — Docker Development Environment (~389 tok)
 - `docker-restart-vs-up.md` (~150 tok)
+- `eai-custom-annotation-convention.md` (~204 tok)
+- `eai-custom-annotation-rule.md` (~190 tok)
 - `frontend-deps-need-image-rebuild.md` (~583 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~525 tok)
+- `MEMORY.md` (~557 tok)
 - `no-core-code-changes.md` (~324 tok)
 - `upstream-fix-port-2026-07.md` — Declares absent (~1173 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
@@ -492,7 +498,7 @@
 - `langgraph.json` (~112 tok)
 - `launch_gateway.py` — Simple gateway launcher. (~170 tok)
 - `Makefile` — Make build targets (~93 tok)
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~790 tok)
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~678 tok)
 - `README.md` — Project documentation (~3906 tok)
 - `reset_pwd.py` — Reset admin password in the gateway database. (~317 tok)
 - `ruff.toml` (~59 tok)
@@ -1068,11 +1074,11 @@
 - `connection_identity.py` — Helpers for attaching persisted channel connection ownership to inbound messages. (~373 tok)
 - `dingtalk.py` — DingTalk channel implementation. (~8879 tok)
 - `feishu.py` — Feishu/Lark channel — connects to Feishu via WebSocket (no public IP needed). (~11754 tok)
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~13990 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~14017 tok)
 - `message_bus.py` — MessageBus — async pub/sub hub that decouples channels from the agent dispatcher. (~1977 tok)
 - `service.py` — ChannelService — manages the lifecycle of all IM channels. (~5166 tok)
 - `slack.py` — Slack channel — connects via Socket Mode (no public IP needed). (~3094 tok)
-- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~16566 tok)
+- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~18428 tok)
 
 ## backend/app/extensions/
 
@@ -1123,15 +1129,18 @@
 
 ## backend/app/extensions/docmgr/
 
+- `__init__.py` — AI Document management module. (~105 tok)
 - `collab_ai_chat.py` — AI chat endpoint for collaborative editor. (~4110 tok)
 - `collab_models.py` — SQLAlchemy models for collaborative editing tables. (~1082 tok)
 - `collab_routers.py` — Routers for collaborative editing: comments and versions. (~2729 tok)
 - `collab_schemas.py` — Pydantic schemas for collaborative editing endpoints. (~745 tok)
 - `collab_service.py` — Services for collaborative editing: comments and versions. (~4941 tok)
+- `editor_mcp.py` — Document Editor MCP Server — editor manipulation tools for docmgr agent. (~4070 tok)
+- `editor_tools.py` — Editor tools registered via config.yaml function calling. (~3192 tok)
 - `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~1612 tok)
 - `folder_service.py` — Folder service for document space folder management. (~4444 tok)
 - `routers.py` — AI Document routers for extensions module. (~8884 tok)
-- `service.py` — AI Document service for extensions module. (~7044 tok)
+- `service.py` — AI Document service for extensions module. (~9630 tok)
 - `share_models.py` — Document share model. (~351 tok)
 - `share_schemas.py` — Document share schemas. (~176 tok)
 - `share_service.py` — Document share service. (~1295 tok)
@@ -1294,25 +1303,25 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan (~6723 tok)
+- `app.py` — lifespan (~7042 tok)
 - `auth_disabled.py` — Auth-disabled (single-user local) mode flag — EAI shim. (~148 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1780 tok)
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2573 tok)
-- `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~4604 tok)
+- `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~4632 tok)
 - `internal_auth.py` — Authentication for trusted Gateway internal callers. (~649 tok)
-- `services.py` — Run lifecycle service layer. (~11978 tok)
+- `services.py` — Run lifecycle service layer. (~13200 tok)
 
 ## backend/app/gateway/routers/
 
 - `__init__.py` (~84 tok)
 - `auth.py` — Authentication endpoints. (~5844 tok)
-- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~8696 tok)
+- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~8822 tok)
 - `mcp.py` — API: 1 endpoints (~4857 tok)
 - `memory.py` — Memory API router for retrieving and managing user memory data with per-user isolation. (~4173 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1552 tok)
 - `suggestions.py` — API: 2 endpoints (~1554 tok)
-- `threads.py` — Thread CRUD, state, and history endpoints. (~8609 tok)
-- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1579 tok)
+- `threads.py` — Thread CRUD, state, and history endpoints. (~16398 tok)
+- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1697 tok)
 
 ## backend/collab-server/
 
@@ -1330,11 +1339,11 @@
 
 ## backend/packages/harness/
 
-- `pyproject.toml` — DeerFlow agent harness framework (~420 tok)
+- `pyproject.toml` — DeerFlow agent harness framework (~768 tok)
 
 ## backend/packages/harness/deerflow/
 
-- `client.py` — DeerFlowClient — Embedded Python client for DeerFlow agent system. (~16156 tok)
+- `client.py` — DeerFlowClient — Embedded Python client for DeerFlow agent system. (~19170 tok)
 
 ## backend/packages/harness/deerflow/agents/
 
@@ -1365,7 +1374,11 @@
 - `memory_middleware.py` — Middleware for memory mechanism. (~989 tok)
 - `skill_activation_middleware.py` — Middleware for explicit slash skill activation. (~5086 tok)
 - `subagent_limit_middleware.py` — Middleware to enforce subagent tool-call limits. (~1956 tok)
-- `view_image_middleware.py` — Middleware for injecting image details into conversation before LLM call. (~3310 tok)
+- `view_image_middleware.py` — Middleware for injecting image details into conversation before LLM call. (~3894 tok)
+
+## backend/packages/harness/deerflow/community/e2b_sandbox/
+
+- `e2b_sandbox_provider.py` — ``E2BSandboxProvider`` — DeerFlow :class:`SandboxProvider` for e2b cloud. (~14672 tok)
 
 ## backend/packages/harness/deerflow/community/serper/
 
@@ -1374,8 +1387,8 @@
 ## backend/packages/harness/deerflow/config/
 
 - `agents_config.py` — Configuration and loaders for custom agents. (~5206 tok)
-- `app_config.py` — Pydantic: CircuitBreakerConfig (~8980 tok)
-- `database_config.py` — Unified database backend configuration. (~1149 tok)
+- `app_config.py` — Pydantic: CircuitBreakerConfig (~9904 tok)
+- `database_config.py` — Unified database backend configuration. (~1240 tok)
 - `extensions_config.py` — Unified extensions configuration for MCP servers and skills. (~4225 tok)
 - `memory_config.py` — Configuration for the memory mechanism (host-shared fields only). (~1722 tok)
 - `paths.py` — Virtual path prefix seen by agents inside the sandbox (~4496 tok)
@@ -1422,6 +1435,7 @@
 ## backend/packages/harness/deerflow/runtime/runs/
 
 - `__init__.py` — Run lifecycle management for LangGraph Platform API compatibility. (~122 tok)
+- `worker.py` — Background agent execution. (~22189 tok)
 
 ## backend/packages/harness/deerflow/sandbox/
 
@@ -1466,6 +1480,10 @@
 - `update_agent_tool.py` — update_agent tool — let a custom agent persist updates to its own SOUL.md / config. (~3255 tok)
 - `view_image_tool.py` — view_image_tool (~1836 tok)
 
+## backend/packages/harness/deerflow/utils/
+
+- `file_conversion.py` — File conversion utilities. (~3743 tok)
+
 ## backend/scripts/
 
 - `migrate_folders.py` — One-time migration: convert virtual folder strings to Folder entities. (~1917 tok)
@@ -1497,6 +1515,7 @@
 - `test_docmgr_export.py` — Regression tests for document-space export (Markdown + Word). (~2915 tok)
 - `test_document_space.py` — test_ai_document_model_has_new_fields, test_ai_document_create_schema_accepts_file_ref_fields, test_ (~5554 tok)
 - `test_dynamic_context_middleware.py` — Tests for DynamicContextMiddleware. (~5499 tok)
+- `test_editor_mcp_fixes.py` — Targeted unit tests for editor_mcp.py fixes — validates input schema, string parsing, and defensive (~1138 tok)
 - `test_formula_graph.py` — Test Formula DAG engine against real 给排水计算书 calculation chain. (~3931 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
@@ -1630,6 +1649,7 @@
 - `2026-07-21-docmgr-ai-assistant.md` — 文档空间（我的文档）— 右侧 AI 助手 P0 完善 实施计划 (~4070 tok)
 - `2026-07-22-docmgr-export-toc.md` — 文档空间 Word 导出目录(TOC)Implementation Plan (~3436 tok)
 - `2026-07-22-tiptap-math-mdplugin.md` — Tiptap 数学渲染重构：markdown-it 插件方案 — 实现计划 (~3577 tok)
+- `2026-07-26-docmgr-ai-panel-redesign.md` — 文档空间右侧 AI 助手重新定位 — 实施计划 (~6539 tok)
 
 ## docs/superpowers/specs/
 
@@ -1678,6 +1698,9 @@
 - `2026-07-22-docmgr-export-cover-design.md` — 文档空间 Word 导出 — 封面(cover)设计 (~1929 tok)
 - `2026-07-22-docmgr-export-toc-design.md` — 文档空间 Word 导出 — 根据 Markdown 标题生成目录(TOC) (~1095 tok)
 - `2026-07-22-tiptap-math-mdplugin-design.md` — Tiptap 数学渲染重构：markdown-it 插件方案 (~802 tok)
+- `2026-07-23-docmgr-agent-editor-design.md` — 文档空间 — AI Agent 编辑器协作设计 (~3164 tok)
+- `2026-07-25-docmgr-blocknote-ai-unification.md` — 文档空间 AI 助手重构 — BlockNote 统一方案 (~843 tok)
+- `2026-07-26-docmgr-ai-panel-redesign.md` — 文档空间 — 右侧 AI 助手重新定位设计 (~1875 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1687,7 +1710,7 @@
 
 - `CLAUDE.md` — CLAUDE.md (~1303 tok)
 - `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~722 tok)
-- `package.json` — Node.js package manifest (~1544 tok)
+- `package.json` — Node.js package manifest (~1578 tok)
 - `test_debug_login.py` — Login via form submission (handles CSRF automatically) then test plugin tabs. (~2055 tok)
 - `test_plugin_tabs.py` — Test plugin sub-tabs stay within settings page. (~1262 tok)
 
@@ -1702,7 +1725,7 @@
 
 ## frontend/src/app/
 
-- `layout.tsx` — metadata (~561 tok)
+- `layout.tsx` — metadata (~302 tok)
 
 ## frontend/src/app/(auth)/
 
@@ -1853,6 +1876,10 @@
 
 - `workspace-content.tsx` — parseSidebarOpenCookie (~332 tok)
 
+## frontend/src/app/workspace/agents/new/
+
+- `page.tsx` — NAME_RE (~3764 tok)
+
 ## frontend/src/app/workspace/chats/
 
 - `page.tsx` — ChatsPage (~977 tok)
@@ -1879,7 +1906,7 @@
 ## frontend/src/components/landing-new/
 
 - `App.tsx` — LandingNew (~4749 tok)
-- `index.css` — Styles: 2 rules (~386 tok)
+- `index.css` — Styles: 2 rules (~374 tok)
 
 ## frontend/src/components/ui/
 
@@ -1890,8 +1917,8 @@
 
 ## frontend/src/components/workspace/
 
-- `input-box-helpers.ts` — Exports MAX_SKILL_SUGGESTIONS, SlashSuggestion, GoalCommand, InputSubmitAction + 15 more (~1700 tok)
-- `input-box.tsx` — Whether to render the input in welcome layout (vertically centered, (~24311 tok)
+- `input-box-helpers.ts` — Exports MAX_SKILL_SUGGESTIONS, MAX_GOAL_OBJECTIVE_CHARS, isGoalObjectiveTooLong, GOAL_OBJECTIVE_COUN (~2157 tok)
+- `input-box.tsx` — Whether to render the input in welcome layout (vertically centered, (~24802 tok)
 - `recent-chat-list.tsx` — threadHref — renders modal (~3613 tok)
 - `save-to-doc-button.tsx` — extractTitle (~591 tok)
 - `thread-channel-source.tsx` — ThreadChannelIcon (~379 tok)
@@ -1909,7 +1936,7 @@
 
 ## frontend/src/components/workspace/artifacts/
 
-- `artifact-file-detail.tsx` — WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS (~4499 tok)
+- `artifact-file-detail.tsx` — WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS (~5593 tok)
 - `save-artifact-to-doc-button.tsx` — checkDocExists (~1482 tok)
 
 ## frontend/src/components/workspace/channels/
@@ -1920,10 +1947,15 @@
 
 - `chat-box.tsx` — Auto-sync thread files to document space when the AI finishes responding. (~2051 tok)
 
+## frontend/src/components/workspace/citations/
+
+- `artifact-link.tsx` — Link renderer for artifact markdown: citation: prefix → CitationLink, otherwise underlined text. (~570 tok)
+
 ## frontend/src/components/workspace/messages/
 
 - `markdown-content.tsx` — Renders markdown content. (~1293 tok)
-- `message-group.tsx` — MessageGroup (~6431 tok)
+- `markdown-link.tsx` — Schemes we are willing to render as a navigable ``<a href=...>``. (~1361 tok)
+- `message-group.tsx` — MessageGroup (~6576 tok)
 - `message-list-item.tsx` — Custom image component that handles artifact URLs (~5396 tok)
 - `message-list.tsx` — MESSAGE_LIST_DEFAULT_PADDING_BOTTOM (~10027 tok)
 - `subtask-card.tsx` — SubtaskCard (~2659 tok)
@@ -1931,9 +1963,10 @@
 
 ## frontend/src/components/workspace/settings/
 
+- `about.md` — 🦌 [About EAIFlow 2.0](https://github.com/bytedance/eai-flow) (~512 tok)
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1517 tok)
 - `skill-settings-page.tsx` — SkillSettingsPage (~1306 tok)
-- `wechat-settings-page.tsx` — WechatSettingsPage (~2275 tok)
+- `wechat-settings-page.tsx` — WechatSettingsPage (~2497 tok)
 
 ## frontend/src/content/en/
 
@@ -1943,10 +1976,18 @@
 
 - `_meta.ts` — Declares meta (~137 tok)
 
+## frontend/src/core/agents/
+
+- `api.ts` — Raw backend `detail` string when the failure came from a backend (~1220 tok)
+
 ## frontend/src/core/api/
 
-- `api-client.ts` — SDK ``onRequest`` hook that mints the ``X-CSRF-Token`` header from the (~3022 tok)
+- `api-client.ts` — SDK ``onRequest`` hook that mints the ``X-CSRF-Token`` header from the (~3004 tok)
 - `stream-mode.ts` — Exports CHAT_RUN_STREAM_MODES, warnUnsupportedStreamModes, sanitizeRunStreamOptions, forceChatRunStr (~604 tok)
+
+## frontend/src/core/artifacts/
+
+- `utils.ts` — Exports urlOfArtifact, extractArtifactsFromThread, buildWriteFileArtifactURL, resolveArtifactURL + 2 (~1079 tok)
 
 ## frontend/src/core/auth/
 
@@ -1954,19 +1995,19 @@
 
 ## frontend/src/core/channels/
 
-- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1302 tok)
+- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1310 tok)
 - `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1077 tok)
 - `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 7 m (~450 tok)
 
 ## frontend/src/core/config/
 
-- `index.ts` — Exports getBackendBaseURL, getLangGraphBaseURL (~420 tok)
+- `index.ts` — Exports getBackendBaseURL, getLangGraphBaseURL (~304 tok)
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~9722 tok)
-- `types.ts` — Exports Translations (~3833 tok)
-- `zh-CN.ts` — Exports zhCN (~6831 tok)
+- `en-US.ts` — Exports enUS (~11022 tok)
+- `types.ts` — Exports Translations (~4968 tok)
+- `zh-CN.ts` — Exports zhCN (~7673 tok)
 
 ## frontend/src/core/mcp/
 
@@ -1982,7 +2023,7 @@
 
 ## frontend/src/core/settings/
 
-- `local.ts` — Exports DEFAULT_LOCAL_SETTINGS, LOCAL_SETTINGS_KEY, THREAD_MODEL_KEY_PREFIX, LocalSettings + 5 more (~851 tok)
+- `local.ts` — Best-effort localStorage facade. (~1164 tok)
 
 ## frontend/src/core/streamdown/
 
@@ -1995,7 +2036,11 @@
 ## frontend/src/core/threads/
 
 - `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~20593 tok)
-- `utils.ts` — Exports ChannelThreadSource, pathOfThread, textOfMessage, titleOfThread, channelSourceOfThread (~706 tok)
+- `utils.ts` — Exports ChannelThreadSource, pathOfThread, textOfMessage, titleOfThread, channelSourceOfThread (~799 tok)
+
+## frontend/src/core/uploads/
+
+- `api.ts` — API functions for file uploads (~808 tok)
 
 ## frontend/src/extensions/
 
@@ -2003,7 +2048,7 @@
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~12316 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~11676 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -2123,15 +2168,18 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~24478 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~7472 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~24961 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13007 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8783 tok)
 - `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4915 tok)
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
-- `TiptapEditor.tsx` — 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） (~6132 tok)
+- `TiptapEditor.tsx` — 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） (~8437 tok)
+- `useDocAIThread.ts` — Read the CSRF cookie value from document.cookie. (~1020 tok)
 - `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1426 tok)
 - `useFolderTree.ts` — Exports useFolderTree (~617 tok)
 
@@ -2144,6 +2192,17 @@
 
 - `Math.ts` — Exports MathInline, MathBlock (~616 tok)
 - `mathMarkdownIt.ts` — HTML 转义 latex 内容（与 encodeMath 的 escapeAttr 一致） (~1499 tok)
+
+## frontend/src/extensions/docmgr/tiptap/
+
+- `ai-deletion.ts` — AI 标记删除文字: 红色删除线 (~200 tok)
+- `ai-deletion.ts` — AI 标记删除文字 — 红色删除线 + 变灰。 (~179 tok)
+- `ai-format.ts` — AI 格式调整: 蓝色下划线 (~200 tok)
+- `ai-format.ts` — AI 格式调整标记 — 蓝色下划线（轻微提示）。 (~181 tok)
+- `ai-insertion.ts` — AI 新增文字标记: 绿色下划线 (~200 tok)
+- `ai-insertion.ts` — AI 新增文字标记 — 绿色下划线。 (~190 tok)
+- `ai-review.ts` — AI 审核批注: 橙色波浪虚线+点击弹窗 (~300 tok)
+- `ai-review.ts` — AI 审核批注标记 — 橙色波浪虚线。 (~394 tok)
 
 ## frontend/src/extensions/docmgr/utils/
 
@@ -2360,7 +2419,8 @@
 
 ## frontend/src/styles/
 
-- `globals.css` — Styles: 65 rules, 165 vars (~10034 tok)
+- `eai-overrides.css` — Styles: 6 rules (~722 tok)
+- `globals.css` — Styles: 67 rules, 156 vars (~10383 tok)
 
 ## frontend/tests/e2e/
 
@@ -2381,6 +2441,7 @@
 
 ## frontend/tests/unit/docmgr/
 
+- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~2485 tok)
 - `mathMarkdown.test.ts` — Declares samples (~656 tok)
 - `mathMarkdownIt.test.ts` — ponytail: markdown-it 是 tiptap-markdown 的传递依赖，pnpm 下可直接 import (~486 tok)
 
@@ -2455,6 +2516,11 @@
 - `calc_noise.py` — calc_noise, max_compliant_distance, main (~1527 tok)
 - `calc_subsidence.py` — erf_approx, calc_subsidence, main (~1191 tok)
 - `calc_water_balance.py` — sum_items, calc_water_balance, main (~1383 tok)
+
+## skills/custom/coal-mine-report-review/
+
+- `SKILL.md` — 煤矿工程报告合规审查 Skill — 安全规程/技术指标/章节完整性/术语规范 (~1600 tok)
+- `SKILL.md` — 煤矿工程报告合规审查 (~399 tok)
 
 ## skills/custom/contract-price-analysis/
 

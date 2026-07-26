@@ -41,15 +41,15 @@ models:
 #   reasoning: true
 #   supports_thinking: true
 #   supports_vision: false
-# - name: gemma-4
-#   display_name: gemma-4-E4B（llama.cpp）
-#   use: langchain_openai:ChatOpenAI
-#   model: unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL
-#   api_key: not-needed
-#   base_url: http://192.168.2.38:8080/v1
-#   request_timeout: 300.0
-#   max_tokens: 8192
-#   temperature: 0.7
+- name: gemma-4
+  display_name: gemma-4-E4B（llama.cpp）
+  use: langchain_openai:ChatOpenAI
+  model: unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL
+  api_key: not-needed
+  base_url: http://192.168.2.38:8080/v1
+  request_timeout: 300.0
+  max_tokens: 8192
+  temperature: 0.7
 # - name: siliconflow-qwen
 #   display_name: Qwen3.5-9B via SiliconFlow
 #   use: langchain_openai:ChatOpenAI

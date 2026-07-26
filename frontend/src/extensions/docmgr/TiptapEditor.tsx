@@ -29,6 +29,10 @@ import { Markdown } from "tiptap-markdown";
 
 import { cn } from "@/lib/utils";
 
+import { AiDeletion } from "./tiptap/ai-deletion";
+import { AiFormat } from "./tiptap/ai-format";
+import { AiInsertion } from "./tiptap/ai-insertion";
+import { AiReview } from "./tiptap/ai-review";
 import EditorDragHandle from "./components/EditorDragHandle";
 import SlashMenu from "./components/SlashMenu";
 import { MathBlock, MathInline } from "./extensions/Math";
@@ -82,6 +86,25 @@ export interface TiptapEditorRef {
   getEditor: () => Editor | null;
   scrollToSection: (sectionId: string) => boolean;
   getHeadings: () => HeadingItem[];
+  // AI Agent 协作编辑 API
+  /** 在指定文档位置插入文字，可选择打上 AI 协作 mark */
+  insertAtPosition: (pos: number, text: string, opts?: { mark?: string; attrs?: Record<string, string> }) => void;
+  /** 为文档范围打上 AI 协作 mark（不修改内容） */
+  markRange: (from: number, to: number, markName: string, attrs?: Record<string, string>) => void;
+  /** 清除所有 AI 协作标记（不改变文字内容） */
+  clearAllAIMarks: () => void;
+  /** 接受全部 AI 变更：保留新增文字，删除标记为删除的文字 */
+  acceptAllChanges: () => void;
+  /** 拒绝全部 AI 变更：删除新增文字，恢复标记为删除的文字 */
+  rejectAllChanges: () => void;
+  /** 按 opId 接受单个变更 */
+  acceptChange: (opId: string) => void;
+  /** 按 opId 拒绝单个变更 */
+  rejectChange: (opId: string) => void;
+  /** 获取所有 AI 审核批注列表 */
+  getReviewComments: () => Array<{ opId: string; from: number; to: number; comment: string; severity: string; clauseRef: string }>;
+  /** EAI-CUSTOM: Replace entire editor content (used to sync after MCP tool writes file) */
+  setContent: (markdown: string) => void;
 }
 
 interface TiptapEditorProps {
@@ -332,6 +355,10 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           },
         }),
         AiHighlight,
+        AiInsertion,
+        AiDeletion,
+        AiReview,
+        AiFormat,
       ],
       content: initialContent,
       editorProps: {
@@ -489,6 +516,198 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       getEditor: () => editor,
       scrollToSection,
       getHeadings,
+      // ── AI Agent 协作编辑 API ──────────────────────────────────
+      insertAtPosition: (pos, text, opts) => {
+        if (!editor) return;
+        const resolvedPos = Math.min(pos, editor.state.doc.content.size);
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(resolvedPos)
+          .insertContent(text)
+          .run();
+        // 如果指定了 mark，给刚插入的文字打上标记
+        if (opts?.mark) {
+          const insertedFrom = resolvedPos;
+          const insertedTo = resolvedPos + text.length;
+          editor
+            .chain()
+            .setTextSelection({ from: insertedFrom, to: insertedTo })
+            .setMark(opts.mark, opts.attrs || {})
+            .run();
+        }
+      },
+      markRange: (from, to, markName, attrs) => {
+        if (!editor) return;
+        const docSize = editor.state.doc.content.size;
+        const safeFrom = Math.max(0, Math.min(from, docSize));
+        const safeTo = Math.max(0, Math.min(to, docSize));
+        if (safeFrom === safeTo) return;
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: safeFrom, to: safeTo })
+          .setMark(markName, attrs || {})
+          .setTextSelection(safeTo) // 取消选中
+          .run();
+      },
+      clearAllAIMarks: () => {
+        if (!editor) return;
+        const { state } = editor;
+        const { doc } = state;
+        const tr = state.tr;
+        const marksToClear = ["aiInsertion", "aiDeletion", "aiReview", "aiFormat"];
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          const hasAIMark = node.marks.some((m) => marksToClear.includes(m.type.name));
+          if (hasAIMark) {
+            for (const mark of node.marks) {
+              if (marksToClear.includes(mark.type.name)) {
+                tr.removeMark(pos, pos + node.nodeSize, mark.type);
+              }
+            }
+          }
+        });
+        editor.view.dispatch(tr);
+      },
+      acceptAllChanges: () => {
+        if (!editor) return;
+        const { state } = editor;
+        const { doc } = state;
+        const tr = state.tr;
+        // Collect deletion ranges before modifying the doc
+        const deletions: Array<{ from: number; to: number }> = [];
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (mark.type.name === "aiDeletion") {
+              deletions.push({ from: pos, to: pos + node.nodeSize });
+            }
+          }
+        });
+
+        // Clear all AI marks (accept = confirm changes), then delete marked text
+        const allAITypes = new Set(["aiInsertion", "aiDeletion", "aiReview", "aiFormat"]);
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (allAITypes.has(mark.type.name)) {
+              tr.removeMark(pos, pos + node.nodeSize, mark.type);
+            }
+          }
+        });
+
+        // 从后往前删除 deletion 文字，保持位置正确
+        for (const { from, to } of deletions.sort((a, b) => b.from - a.from)) {
+          tr.delete(from, to);
+        }
+
+        editor.view.dispatch(tr);
+      },
+      rejectAllChanges: () => {
+        if (!editor) return;
+        const { state } = editor;
+        const { doc } = state;
+        const tr = state.tr;
+
+        const insertions: Array<{ from: number; to: number }> = [];
+
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (mark.type.name === "aiInsertion") {
+              insertions.push({ from: pos, to: pos + node.nodeSize });
+            }
+          }
+        });
+
+        // 清除所有 AI marks
+        const allAITypes = new Set(["aiInsertion", "aiDeletion", "aiReview", "aiFormat"]);
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (allAITypes.has(mark.type.name)) {
+              tr.removeMark(pos, pos + node.nodeSize, mark.type);
+            }
+          }
+        });
+
+        // 从后往前删除 insertion 文字
+        for (const { from, to } of insertions.sort((a, b) => b.from - a.from)) {
+          tr.delete(from, to);
+        }
+
+        editor.view.dispatch(tr);
+      },
+      acceptChange: (opId) => {
+        if (!editor) return;
+        const { state } = editor;
+        const { doc } = state;
+        const tr = state.tr;
+
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (mark.attrs.opId === opId) {
+              if (mark.type.name === "aiDeletion") {
+                tr.delete(pos, pos + node.nodeSize);
+              } else {
+                tr.removeMark(pos, pos + node.nodeSize, mark.type);
+              }
+            }
+          }
+        });
+        editor.view.dispatch(tr);
+      },
+      rejectChange: (opId) => {
+        if (!editor) return;
+        const { state } = editor;
+        const { doc } = state;
+        const tr = state.tr;
+
+        doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (mark.attrs.opId === opId) {
+              // aiInsertion = new text added by AI → delete on reject
+              // aiFormat = existing text restyled by AI → just clear mark, keep text
+              if (mark.type.name === "aiInsertion") {
+                tr.delete(pos, pos + node.nodeSize);
+              } else {
+                tr.removeMark(pos, pos + node.nodeSize, mark.type);
+              }
+            }
+          }
+        });
+        editor.view.dispatch(tr);
+      },
+      getReviewComments: () => {
+        if (!editor) return [];
+        const comments: Array<{
+          opId: string; from: number; to: number; comment: string; severity: string; clauseRef: string;
+        }> = [];
+        editor.state.doc.descendants((node, pos) => {
+          if (!node.isInline || !node.marks.length) return;
+          for (const mark of node.marks) {
+            if (mark.type.name === "aiReview") {
+              comments.push({
+                opId: mark.attrs.opId as string,
+                from: pos,
+                to: pos + node.nodeSize,
+                comment: (mark.attrs.comment as string) || "",
+                severity: (mark.attrs.severity as string) || "info",
+                clauseRef: (mark.attrs.clauseRef as string) || "",
+              });
+            }
+          }
+        });
+        return comments;
+      },
+      // EAI-CUSTOM: Replace editor content (sync after MCP tool writes file)
+      setContent: (markdown: string) => {
+        if (!editor) return;
+        editor.commands.setContent(markdown);
+      },
     }));
 
     const handleSlashCommand = useCallback(

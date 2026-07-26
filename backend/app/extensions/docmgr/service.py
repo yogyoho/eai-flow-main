@@ -554,7 +554,7 @@ class AIDocumentService:
         if not base.is_dir():
             base = paths.base_dir / "users" / str(user_id) / "threads" / thread_id / "user-data" / "outputs"
         if not base.is_dir():
-            raise FileNotFoundError(f"outputs dir not found for thread {thread_id}")
+            base.mkdir(parents=True, exist_ok=True)  # auto-create for standalone docs
 
         target = (base / rel_path).resolve()
         # 防路径穿越：target 必须在 outputs 目录内

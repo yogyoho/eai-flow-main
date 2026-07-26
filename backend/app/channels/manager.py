@@ -1117,14 +1117,17 @@ class ChannelManager:
             # channel_connections persistence (provider = channel name).
             code = parts[1].strip() if len(parts) > 1 else ""
             if self._connection_repo is None or not code:
+                # EAI-CUSTOM: Chinese replies for WeChat user binding flow
                 reply = "绑定不可用。请在设置 → 微信中获取绑定码并发送：/connect <code>。"
             else:
                 try:
                     owner = await self._connection_repo.consume_oauth_state(provider=msg.channel_name, state=code)
                 except Exception:
+                    # EAI-CUSTOM: Chinese error message
                     logger.exception("绑定渠道失败，无法获取绑定码")
                     owner = None
                 if owner is None:
+                    # EAI-CUSTOM: Chinese reply
                     reply = "无效或过期的绑定码。请在设置 → 微信中获取新的绑定码。"
                 else:
                     await self._connection_repo.upsert_connection(
@@ -1133,6 +1136,7 @@ class ChannelManager:
                         owner_user_id=owner["owner_user_id"],
                         status="connected",
                     )
+                    # EAI-CUSTOM: Chinese reply
                     reply = "已连接到您的企业AI智能体账户。发送消息即可开始聊天。"
         elif command == "new":
             # Create a new thread on the LangGraph Server
@@ -1140,6 +1144,7 @@ class ChannelManager:
             thread = await client.threads.create()
             new_thread_id = thread["thread_id"]
             await self._store_thread_id(msg, new_thread_id)
+            # EAI-CUSTOM: Chinese reply
             reply = "欢迎开始新的对话。"
         elif command == "status":
             thread_id = await self._lookup_thread_id(msg)

@@ -1,0 +1,4656 @@
+uid=40_0 RootWebArea "EAIFlow" url="http://localhost:3000/docmgr"
+  uid=40_1 alert atomic live="assertive" relevant="additions text"
+    uid=40_2 StaticText "EAIFlow"
+  uid=40_3 link "Logo" url="http://localhost:3000/"
+    uid=40_4 image "Logo" url="http://localhost:3000/favicon.svg"
+  uid=40_5 navigation
+    uid=40_6 link url="http://localhost:3000/dashboard"
+    uid=40_7 link url="http://localhost:3000/writing"
+    uid=40_8 link url="http://localhost:3000/projects"
+    uid=40_9 link url="http://localhost:3000/docmgr"
+    uid=40_10 link url="http://localhost:3000/knowledge-factory"
+    uid=40_11 link url="http://localhost:3000/knowledge"
+    uid=40_12 link url="http://localhost:3000/app-center"
+    uid=40_13 link url="http://localhost:3000/admin"
+    uid=40_14 link url="http://localhost:3000/settings"
+  uid=40_15 navigation
+  uid=40_16 button expandable haspopup="menu"
+  uid=40_17 main
+    uid=40_18 button
+    uid=40_19 textbox "无标题文档" value="jilin_chemical_water_drainage_report.md"
+    uid=40_20 StaticText "已保存于 "
+    uid=40_21 StaticText "20:16:10"
+    uid=40_22 button "AI 助手" focusable focused
+    uid=40_23 button "复制内容"
+    uid=40_24 button "导出"
+    uid=40_25 StaticText "目录"
+    uid=40_26 navigation
+      uid=40_27 button "吉林石化新装置给排水设计专篇"
+      uid=40_28 button "第1章 总则"
+      uid=40_29 button "1.1 编制目的"
+      uid=40_30 button "1.2 编制依据"
+      uid=40_31 button "1.2.1 主要法规、规范及标准"
+      uid=40_32 button "1.2.2 其他依据"
+      uid=40_33 button "1.3 设计范围"
+      uid=40_34 button "1.4 设计原则"
+      uid=40_35 button "第2章 设计基础资料"
+      uid=40_36 button "2.1 项目概况"
+      uid=40_37 button "2.2 气象条件"
+      uid=40_38 button "2.3 水源条件"
+      uid=40_39 button "2.3.1 给水水源"
+      uid=40_40 button "2.3.2 排水去向"
+      uid=40_41 button "2.4 设计用水量"
+      uid=40_42 button "2.5 设计参数汇总"
+      uid=40_43 button "第3章 循环冷却水系统设计"
+      uid=40_44 button "3.1 设计概述"
+      uid=40_45 button "3.2 水量平衡计算"
+      uid=40_46 button "3.2.1 蒸发水量计算"
+      uid=40_47 button "3.2.2 风吹损失水量计算"
+      uid=40_48 button "3.2.3 排污水量计算"
+      uid=40_49 button "3.2.4 补充水量计算"
+      uid=40_50 button "3.2.5 水量平衡汇总表"
+      uid=40_51 button "3.3 冷却塔选型"
+      uid=40_52 button "3.3.1 冷却塔类型选择"
+      uid=40_53 button "3.3.2 冷却塔技术参数"
+      uid=40_54 button "3.4 循环水泵设计"
+      uid=40_55 button "3.4.1 水泵选型"
+      uid=40_56 button "3.4.2 水泵基础设计"
+      uid=40_57 button "3.5 循环水系统水压核算"
+      uid=40_58 button "3.5.1 系统阻力组成"
+      uid=40_59 button "3.5.2 水泵扬程确定"
+      uid=40_60 button "第4章 系统容积设计"
+      uid=40_61 button "4.1 冷却塔水池容积"
+      uid=40_62 button "4.1.1 有效水深确定"
+      uid=40_63 button "4.1.2 水池有效容积计算"
+      uid=40_64 button "4.2 系统总容积及容积比校验"
+      uid=40_65 button "4.2.1 系统总容积"
+      uid=40_66 button "4.2.2 系统容积比校验"
+      uid=40_67 button "第5章 旁滤系统设计"
+      uid=40_68 button "5.1 设计概述"
+      uid=40_69 button "5.2 旁滤处理水量"
+      uid=40_70 button "5.3 过滤器选型"
+      uid=40_71 button "5.3.1 过滤器台数计算"
+      uid=40_72 button "5.3.2 过滤器技术参数"
+      uid=40_73 button "5.4 反洗系统设计"
+      uid=40_74 button "5.4.1 反洗瞬时流量计算"
+      uid=40_75 button "5.4.2 单次反洗总水量计算"
+      uid=40_76 button "5.4.3 反洗水池容积"
+      uid=40_77 button "第6章 化学水处理系统"
+      uid=40_78 button "6.1 加药系统设计"
+      uid=40_79 button "6.1.1 缓蚀阻垢剂"
+      uid=40_80 button "6.1.2 杀菌灭藻剂"
+      uid=40_81 button "6.1.3 pH调节剂"
+      uid=40_82 button "6.2 水质控制指标"
+      uid=40_83 button "第7章 给水系统设计"
+      uid=40_84 button "7.1 生产给水系统"
+      uid=40_85 button "7.1.1 水源及水质"
+      uid=40_86 button "7.1.2 用水量"
+      uid=40_87 button "7.1.3 给水管道"
+      uid=40_88 button "7.2 消防给水系统"
+      uid=40_89 button "7.2.1 消防用水量"
+      uid=40_90 button "7.2.2 消防水池"
+      uid=40_91 button "7.2.3 消防泵房"
+      uid=40_92 button "第8章 排水系统设计"
+      uid=40_93 button "8.1 生产废水系统"
+      uid=40_94 button "8.1.1 废水来源及性质"
+      uid=40_95 button "8.1.2 排水制度"
+      uid=40_96 button "8.2 生活污水系统"
+      uid=40_97 button "8.2.1 污水来源"
+      uid=40_98 button "8.2.2 处理方式"
+      uid=40_99 button "8.3 雨水系统"
+      uid=40_100 button "8.3.1 设计降雨强度"
+      uid=40_101 button "8.3.2 雨水排放"
+      uid=40_102 button "第9章 节水与环保措施"
+      uid=40_103 button "9.1 节水措施"
+      uid=40_104 button "9.2 环保措施"
+      uid=40_105 button "第10章 结论与建议"
+      uid=40_106 button "10.1 设计结论"
+      uid=40_107 button "10.2 建议"
+      uid=40_108 button "附录 计算公式汇总"
+    uid=40_109 generic value="吉林石化新装置给排水设计专篇
+第1章 总则
+1.1 编制目的
+
+本设计专篇旨在为吉林石化新装置提供完整、系统的给排水设计方案，确保项目满足生产运行、消防安全及环保要求。本专篇涵盖循环冷却水系统、给水系统、排水系统及污水处理等核心内容，遵循国家现行规范标准，结合项目实际情况进行优化设计。
+
+1.2 编制依据
+1.2.1 主要法规、规范及标准
+
+序号
+
+	
+
+名称
+
+	
+
+编号
+
+
+
+
+1
+
+	
+
+《石油化工循环水场设计规范》
+
+	
+
+GB/T 50746-2012
+
+
+
+
+2
+
+	
+
+《工业循环冷却水处理设计规范》
+
+	
+
+GB 50050-2017
+
+
+
+
+3
+
+	
+
+《室外给水设计标准》
+
+	
+
+GB 50013-2018
+
+
+
+
+4
+
+	
+
+《室外排水设计标准》
+
+	
+
+GB 50014-2021
+
+
+
+
+5
+
+	
+
+《消防给水及消火栓系统技术规范》
+
+	
+
+GB 50974-2014
+
+
+
+
+6
+
+	
+
+《石油化工企业设计防火标准》
+
+	
+
+GB 50160-2008 (2018年版)
+
+
+
+
+7
+
+	
+
+《建筑设计防火规范》
+
+	
+
+GB 50016-2014 (2018年版)
+
+
+
+
+8
+
+	
+
+《工业建筑供暖通风与空气调节设计规范》
+
+	
+
+GB 50019-2015
+
+
+
+
+9
+
+	
+
+《节水型企业评价导则》
+
+	
+
+GB/T 7119-2018
+
+
+
+
+10
+
+	
+
+《污水综合排放标准》
+
+	
+
+GB 8978-1996
+
+1.2.2 其他依据
+
+项目可行性研究报告及批复文件
+
+建设单位提供的基础资料及设计要求
+
+项目所在地气象、水文、地质等资料
+
+1.3 设计范围
+
+本设计专篇的设计范围为吉林石化新装置的给排水系统，包括但不限于以下内容：
+
+循环冷却水系统：包括冷却塔、循环水泵、旁滤系统、水处理加药系统等
+
+生产给水系统：包括新鲜水补给、工艺给水等
+
+排水系统：包括生活污水、生产废水、雨水排放等
+
+消防给水系统：包括消防水池、消防泵房、消防管网等
+
+污水处理系统：包括废水收集、预处理及排放
+
+1.4 设计原则
+
+严格执行国家现行规范标准，确保设计安全可靠
+
+坚持"节约用水、保护环境"的原则，提高水的重复利用率
+
+采用先进、成熟的技术和工艺，确保系统运行稳定
+
+注重节能降耗，降低运行成本
+
+考虑装置运行的灵活性，便于操作维护
+
+第2章 设计基础资料
+2.1 项目概况
+
+本项目为吉林石化新装置，位于吉林省吉林市吉林石化公司厂区内。项目主要承担石油化工产品生产任务，需要完善的给排水系统保障生产运行。
+
+2.2 气象条件
+
+参数
+
+	
+
+数值
+
+	
+
+单位
+
+
+
+
+年平均气温
+
+	
+
+5.0
+
+	
+
+℃
+
+
+
+
+极端最高气温
+
+	
+
+38.5
+
+	
+
+℃
+
+
+
+
+极端最低气温
+
+	
+
+-33.6
+
+	
+
+℃
+
+
+
+
+年平均相对湿度
+
+	
+
+65
+
+	
+
+%
+
+
+
+
+年平均风速
+
+	
+
+3.8
+
+	
+
+m/s
+
+
+
+
+最大冻土深度
+
+	
+
+1.8
+
+	
+
+m
+
+2.3 水源条件
+2.3.1 给水水源
+
+项目给水水源来自吉林石化公司厂区市政给水管网，供水压力≥0.4MPa，水质符合《生活饮用水卫生标准》(GB 5749)要求。
+
+2.3.2 排水去向
+
+生活污水：经化粪池处理后排入厂区污水管网
+
+生产废水：经预处理后达到排放标准排入厂区污水处理场
+
+雨水：经厂区雨水系统排入附近水体
+
+2.4 设计用水量
+
+序号
+
+	
+
+用水项目
+
+	
+
+最大用水量
+
+	
+
+平均用水量
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+循环冷却水补充水
+
+	
+
+20.0
+
+	
+
+16.21
+
+	
+
+m³/h
+
+
+
+
+2
+
+	
+
+生产给水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+m³/h
+
+
+
+
+3
+
+	
+
+生活给水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+m³/h
+
+
+
+
+4
+
+	
+
+消防给水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+L/s
+
+注：上表中循环冷却水补充水量为计算值（见第3章），其他用水数据待后续详细设计阶段确定。
+
+2.5 设计参数汇总
+
+参数名称
+
+	
+
+符号
+
+	
+
+数值
+
+	
+
+单位
+
+	
+
+说明
+
+
+
+
+循环水设计水量
+
+	
+
+Q
+
+	
+
+20000
+
+	
+
+m³/h
+
+	
+
+循环冷却水系统循环水量
+
+
+
+
+冷却塔进出水温差
+
+	
+
+Δt
+
+	
+
+10
+
+	
+
+℃
+
+	
+
+设计温差
+
+
+
+
+浓缩倍数
+
+	
+
+N
+
+	
+
+5
+
+	
+
+—
+
+	
+
+宜≥5.0
+
+
+
+
+循环水系统补水率
+
+	
+
+—
+
+	
+
+0.8
+
+	
+
+%
+
+	
+
+补充水量占循环水量比例
+
+
+
+
+蒸发损失系数
+
+	
+
+KZF
+
+	
+
+0.001461
+
+	
+
+1/℃
+
+	
+
+GB/T 50746表3.3.3内插
+
+
+
+
+风吹损失率
+
+	
+
+—
+
+	
+
+0.1
+
+	
+
+%
+
+	
+
+按循环水量的0.1%计
+
+
+
+
+旁滤比例
+
+	
+
+sf_ratio
+
+	
+
+0.4
+
+	
+
+%
+
+	
+
+GB50050 §4.0.4：1%~5%
+
+
+
+
+水池平面面积
+
+	
+
+pool_area
+
+	
+
+400
+
+	
+
+m²
+
+	
+
+冷却塔集水池
+
+
+
+
+吸水池容积
+
+	
+
+V_suction
+
+	
+
+400
+
+	
+
+m³
+
+	
+
+循环水泵吸水池
+
+
+
+
+水泵电机间距
+
+	
+
+pump_motor_spacing
+
+	
+
+3.5
+
+	
+
+m
+
+	
+
+最外端螺孔间距
+
+
+
+
+单罐过滤面积
+
+	
+
+filter_area
+
+	
+
+10
+
+	
+
+m²
+
+	
+
+旁滤过滤器
+
+
+
+
+单台过滤器处理能力
+
+	
+
+filter_unit_capacity
+
+	
+
+80
+
+	
+
+m³/h
+
+	
+
+—
+
+
+
+
+同时反洗罐数
+
+	
+
+concurrent_backwash
+
+	
+
+1
+
+	
+
+台
+
+	
+
+—
+
+
+
+
+反洗强度
+
+	
+
+backwash_intensity
+
+	
+
+15.0
+
+	
+
+L/(s·m²)
+
+	
+
+设计取值
+
+
+
+
+反洗时间
+
+	
+
+backwash_duration
+
+	
+
+2.0
+
+	
+
+min
+
+	
+
+单罐反洗一次时间
+
+第3章 循环冷却水系统设计
+3.1 设计概述
+
+循环冷却水系统是石化装置的重要公用工程设施，用于为生产过程中需要冷却的工艺介质提供冷却水。本系统采用开式循环冷却水系统，通过冷却塔散热实现循环水的降温再生。
+
+3.2 水量平衡计算
+3.2.1 蒸发水量计算
+
+根据《石油化工循环水场设计规范》(GB/T 50746-2012)公式计算：
+
+Q
+e
+	​
+
+=Q×KZF×Δt
+
+其中：
+
+Q — 循环水设计水量 = 20000 m³/h
+
+KZF — 蒸发损失系数 = 0.001461 1/℃（GB/T 50746 表3.3.3内插）
+
+Δt — 冷却塔进出水温差 = 10 ℃
+
+代入计算：
+
+Q
+e
+	​
+
+=20000×0.001461×10=292.20 m
+3
+/h
+3.2.2 风吹损失水量计算
+
+风吹损失水量按循环水量的0.1%计算：
+
+Q
+w
+	​
+
+=Q×0.001
+
+代入计算：
+
+Q
+w
+	​
+
+=20000×0.001=20.00 m
+3
+/h
+3.2.3 排污水量计算
+
+排污水量由浓缩倍数控制，计算公式为：
+
+Q
+b
+	​
+
+=
+N−1
+Q
+e
+	​
+
+	​
+
+
+其中：
+
+Qe — 蒸发水量 = 292.20 m³/h
+
+N — 浓缩倍数 = 5（宜≥5.0且不应低于3.0）
+
+代入计算：
+
+Q
+b
+	​
+
+=
+5−1
+292.20
+	​
+
+=73.05 m
+3
+/h
+3.2.4 补充水量计算
+
+补充水量为蒸发水量、风吹损失水量和排污水量之和：
+
+Q
+m
+	​
+
+=Q
+e
+	​
+
++Q
+w
+	​
+
++Q
+b
+	​
+
+
+代入计算：
+
+Q
+m
+	​
+
+=292.20+20.00+73.05=385.25 m
+3
+/h
+3.2.5 水量平衡汇总表
+
+项目名称
+
+	
+
+符号
+
+	
+
+计算值
+
+	
+
+单位
+
+	
+
+占循环水量比例
+
+
+
+
+循环水量
+
+	
+
+Q
+
+	
+
+20000
+
+	
+
+m³/h
+
+	
+
+100%
+
+
+
+
+蒸发水量
+
+	
+
+Qe
+
+	
+
+292.20
+
+	
+
+m³/h
+
+	
+
+1.46%
+
+
+
+
+风吹损失
+
+	
+
+Qw
+
+	
+
+20.00
+
+	
+
+m³/h
+
+	
+
+0.10%
+
+
+
+
+排污水量
+
+	
+
+Qb
+
+	
+
+73.05
+
+	
+
+m³/h
+
+	
+
+0.37%
+
+
+
+
+补充水量
+
+	
+
+Qm
+
+	
+
+385.25
+
+	
+
+m³/h
+
+	
+
+1.93%
+
+节水分析：本项目浓缩倍数设计为 5，系统补水率约为 1.93%，符合《工业循环冷却水处理设计规范》(GB 50050-2017)要求。
+
+3.3 冷却塔选型
+3.3.1 冷却塔类型选择
+
+根据项目特点及气象条件，选用横流式机械通风冷却塔。横流式冷却塔具有以下优点：
+
+风阻小、能耗低
+
+噪声低、飘水率低
+
+维护方便、运行可靠
+
+3.3.2 冷却塔技术参数
+
+序号
+
+	
+
+参数名称
+
+	
+
+单位
+
+	
+
+数值
+
+
+
+
+1
+
+	
+
+处理水量
+
+	
+
+m³/h
+
+	
+
+20000
+
+
+
+
+2
+
+	
+
+进水温度
+
+	
+
+℃
+
+	
+
+32
+
+
+
+
+3
+
+	
+
+出水温度
+
+	
+
+℃
+
+	
+
+42
+
+
+
+
+4
+
+	
+
+湿球温度
+
+	
+
+℃
+
+	
+
+28
+
+
+
+
+5
+
+	
+
+逼近度
+
+	
+
+℃
+
+	
+
+4
+
+
+
+
+6
+
+	
+
+风机功率
+
+	
+
+kW
+
+	
+
+—
+
+
+
+
+7
+
+	
+
+塔体重量
+
+	
+
+t
+
+	
+
+—
+
+3.4 循环水泵设计
+3.4.1 水泵选型
+
+循环水泵选用大流量低扬程离心泵，具体参数如下：
+
+序号
+
+	
+
+参数名称
+
+	
+
+单位
+
+	
+
+数值
+
+
+
+
+1
+
+	
+
+流量
+
+	
+
+m³/h
+
+	
+
+20000
+
+
+
+
+2
+
+	
+
+扬程
+
+	
+
+m
+
+	
+
+—
+
+
+
+
+3
+
+	
+
+转速
+
+	
+
+r/min
+
+	
+
+—
+
+
+
+
+4
+
+	
+
+电机功率
+
+	
+
+kW
+
+	
+
+—
+
+
+
+
+5
+
+	
+
+台数
+
+	
+
+台
+
+	
+
+2（1用1备）
+
+3.4.2 水泵基础设计
+
+水泵基础长度按以下公式计算：
+
+L=L
+电机间距
+	​
+
++0.5
+
+其中：
+
+L_电机间距 — 水泵和电机最外端螺孔间距 = 3.5 m
+
+代入计算：
+
+L=3.5+0.5=4.00 m
+3.5 循环水系统水压核算
+3.5.1 系统阻力组成
+
+循环水系统总阻力包括：
+
+换热器压降
+
+冷却塔布水器压降
+
+管道沿程阻力
+
+局部阻力（阀门、弯头等）
+
+提升高度
+
+3.5.2 水泵扬程确定
+
+水泵扬程 = 系统总阻力 + 5m安全余量
+
+注：具体阻力数据需在详细设计阶段根据管道布置图精确核算。
+
+第4章 系统容积设计
+4.1 冷却塔水池容积
+4.1.1 有效水深确定
+
+根据《石油化工循环水场设计规范》(GB/T 50746-2012)第4.3.13条规定，1.0~1.5m为有效水深。本项目考虑到操作弹性及安全余量，取有效水深为 2.0m。
+
+4.1.2 水池有效容积计算
+V
+pool
+	​
+
+=A
+pool
+	​
+
+×h
+eff
+	​
+
+
+其中：
+
+A_pool — 水池平面面积 = 400 m²
+
+h_eff — 有效水深 = 2.0 m
+
+代入计算：
+
+V
+pool
+	​
+
+=400×2.0=800.00 m
+3
+4.2 系统总容积及容积比校验
+4.2.1 系统总容积
+V
+system
+	​
+
+=V
+pool
+	​
+
++V
+suction
+	​
+
+
+其中：
+
+V_pool — 塔底水池有效容积 = 800.00 m³
+
+V_suction — 吸水池容积 = 400 m³
+
+代入计算：
+
+V
+system
+	​
+
+=800.00+400=1200.00 m
+3
+4.2.2 系统容积比校验
+
+根据 GB/T 50746 第6.1.9条规定：系统总容积应控制在循环水小时流量的1/3~1/2之间。
+
+V
+ratio
+	​
+
+=
+Q
+V
+system
+	​
+
+	​
+
+=
+20000
+1200.00
+	​
+
+=0.0600
+
+校验结果： ✓ 系统容积比 0.060，满足 GB/T 50746 §6.1.9 要求（1/3~1/2）。
+
+第5章 旁滤系统设计
+5.1 设计概述
+
+为防止循环水系统中悬浮物积累影响换热效率及造成腐蚀结垢，设置旁流过滤系统对部分循环水进行连续过滤处理。
+
+5.2 旁滤处理水量
+
+根据《工业循环冷却水处理设计规范》(GB 50050-2017)第4.0.4条规定，旁滤水量为循环水量的1%~5%。本项目取 0.4%。
+
+Q
+sf
+	​
+
+=Q×R
+sf
+	​
+
+
+其中：
+
+Q — 循环水量 = 20000 m³/h
+
+R_sf — 旁滤比例 = 0.4%
+
+代入计算：
+
+Q
+sf
+	​
+
+=20000×0.004=80.00 m
+3
+/h
+5.3 过滤器选型
+5.3.1 过滤器台数计算
+n=⌈
+Q
+unit
+	​
+
+Q
+sf
+	​
+
+	​
+
+⌉
+
+其中：
+
+Q_sf — 旁滤处理水量 = 80.00 m³/h
+
+Q_unit — 单台过滤器处理能力 = 80 m³/h
+
+代入计算：
+
+n=⌈
+80
+80.00
+	​
+
+⌉=1 台
+5.3.2 过滤器技术参数
+
+序号
+
+	
+
+参数名称
+
+	
+
+单位
+
+	
+
+数值
+
+
+
+
+1
+
+	
+
+处理水量
+
+	
+
+m³/h
+
+	
+
+80.00
+
+
+
+
+2
+
+	
+
+过滤速度
+
+	
+
+m/h
+
+	
+
+—
+
+
+
+
+3
+
+	
+
+单罐过滤面积
+
+	
+
+m²
+
+	
+
+10
+
+
+
+
+4
+
+	
+
+滤料类型及层厚
+
+	
+
+—
+
+	
+
+—
+
+
+
+
+5
+
+	
+
+运行压力
+
+	
+
+MPa
+
+	
+
+—
+
+
+
+
+6
+
+	
+
+台数
+
+	
+
+台
+
+	
+
+1
+
+5.4 反洗系统设计
+5.4.1 反洗瞬时流量计算
+Q
+bw
+	​
+
+=A
+filter
+	​
+
+×q
+bw
+	​
+
+×n
+bw
+	​
+
+
+其中：
+
+A_filter — 单罐过滤面积 = 10 m²
+
+q_bw — 反洗强度 = 15.0 L/(s·m²)
+
+n_bw — 同时反洗罐数 = 1 台
+
+代入计算：
+
+Q
+bw
+	​
+
+=10×15.0×1=150.00 L/s
+5.4.2 单次反洗总水量计算
+V
+bw
+	​
+
+=Q
+bw
+	​
+
+×t
+bw
+	​
+
+×60×n
+total
+	​
+
+/1000
+
+其中：
+
+Q_bw — 反洗瞬时流量 = 150.00 L/s
+
+t_bw — 单罐反洗时间 = 2.0 min
+
+n_total — 过滤器总台数 = 1 台
+
+代入计算：
+
+V
+bw
+	​
+
+=150.00×2.0×60×1/1000=18.00 m
+3
+5.4.3 反洗水池容积
+
+反洗水池有效容积按不小于最大一台过滤器的单次反洗水量确定，即 18.00 m³。考虑安全余量，反洗水池有效容积取 21.60 m³。
+
+第6章 化学水处理系统
+6.1 加药系统设计
+6.1.1 缓蚀阻垢剂
+
+药剂名称：高效缓蚀阻垢剂
+
+投加浓度：2~5 mg/L
+
+投加点：循环水回水管
+
+加药泵选型：计量泵，2台（1用1备）
+
+6.1.2 杀菌灭藻剂
+
+药剂名称：非氧化性杀菌剂
+
+投加方式：冲击式投加
+
+投加周期：每周1~2次
+
+投加量：50~100 mg/L
+
+6.1.3 pH调节剂
+
+药剂名称：硫酸
+
+投加目的：调节循环水pH值
+
+投加点：循环水回水管
+
+6.2 水质控制指标
+
+序号
+
+	
+
+控制项目
+
+	
+
+控制指标
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+pH值
+
+	
+
+7.0~9.0
+
+	
+
+—
+
+
+
+
+2
+
+	
+
+浓缩倍数
+
+	
+
+≥5.0
+
+	
+
+—
+
+
+
+
+3
+
+	
+
+浊度
+
+	
+
+≤15
+
+	
+
+NTU
+
+
+
+
+4
+
+	
+
+总铁含量
+
+	
+
+≤0.5
+
+	
+
+mg/L
+
+
+
+
+5
+
+	
+
+总磷含量
+
+	
+
+2~5
+
+	
+
+mg/L
+
+
+
+
+6
+
+	
+
+异养菌总数
+
+	
+
+≤5×10⁵
+
+	
+
+个/mL
+
+第7章 给水系统设计
+7.1 生产给水系统
+7.1.1 水源及水质
+
+生产给水水源来自厂区市政给水管网，水质符合《生活饮用水卫生标准》(GB 5749-2022)要求。
+
+7.1.2 用水量
+
+序号
+
+	
+
+用水项目
+
+	
+
+最大用水量
+
+	
+
+平均用水量
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+循环冷却水补充水
+
+	
+
+20.0
+
+	
+
+16.21
+
+	
+
+m³/h
+
+
+
+
+2
+
+	
+
+工艺给水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+m³/h
+
+
+
+
+3
+
+	
+
+消防补水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+m³/h
+
+
+
+
+4
+
+	
+
+合计
+
+	
+
+—
+
+	
+
+—
+
+	
+
+—
+
+7.1.3 给水管道
+
+主干管管径：DN—
+
+管材：热镀锌钢管 / PE管
+
+给水压力：≥0.4 MPa
+
+7.2 消防给水系统
+7.2.1 消防用水量
+
+根据《消防给水及消火栓系统技术规范》(GB 50974-2014)，本项目消防用水量按以下标准确定：
+
+序号
+
+	
+
+项目名称
+
+	
+
+火灾次数
+
+	
+
+灭火持续时间
+
+	
+
+消防用水量
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+室外消火栓
+
+	
+
+1
+
+	
+
+3.0
+
+	
+
+—
+
+	
+
+h
+
+
+
+
+2
+
+	
+
+室内消火栓
+
+	
+
+1
+
+	
+
+3.0
+
+	
+
+—
+
+	
+
+h
+
+
+
+
+3
+
+	
+
+自动喷水灭火
+
+	
+
+1
+
+	
+
+1.0
+
+	
+
+—
+
+	
+
+h
+
+
+
+
+4
+
+	
+
+消防总用水量
+
+	
+
+—
+
+	
+
+—
+
+	
+
+—
+
+	
+
+m³
+
+注：具体消防用水量待详细设计阶段根据建筑防火分类精确核算。
+
+7.2.2 消防水池
+
+有效容积：— m³（待核算）
+
+补水时间：≤48 h
+
+设置位置：—
+
+7.2.3 消防泵房
+
+消防主泵：2台（1用1备）
+
+喷淋泵：2台（1用1备）
+
+稳压泵：2台（1用1备）
+
+第8章 排水系统设计
+8.1 生产废水系统
+8.1.1 废水来源及性质
+
+序号
+
+	
+
+废水来源
+
+	
+
+主要污染物
+
+	
+
+排放量
+
+	
+
+处理方式
+
+
+
+
+1
+
+	
+
+循环排污水
+
+	
+
+TDS、悬浮物
+
+	
+
+73.05 m³/h
+
+	
+
+排入厂区污水管网
+
+
+
+
+2
+
+	
+
+旁滤反洗废水
+
+	
+
+悬浮物
+
+	
+
+18.00 m³/次
+
+	
+
+排入厂区污水管网
+
+
+
+
+3
+
+	
+
+其他生产废水
+
+	
+
+—
+
+	
+
+—
+
+	
+
+排入厂区污水管网
+
+8.1.2 排水制度
+
+生产废水采用清污分流、雨污分流的排水体制。
+
+8.2 生活污水系统
+8.2.1 污水来源
+
+生活污水主要来自装置区办公楼、休息室等场所。
+
+8.2.2 处理方式
+
+生活污水经化粪池预处理后，排入厂区污水管网，进入厂区污水处理场集中处理。
+
+8.3 雨水系统
+8.3.1 设计降雨强度
+
+设计重现期：P = 3年
+
+降雨历时：t = 10 min
+
+径流系数：Ψ = 0.45
+
+8.3.2 雨水排放
+
+雨水经厂区雨水管网收集后，排入附近水体。事故状态下的雨水经事故水池收集后达标排放。
+
+第9章 节水与环保措施
+9.1 节水措施
+
+提高浓缩倍数：本项目循环水浓缩倍数设计为 5，有效降低排污水量和补充水量
+
+设置旁滤系统：连续过滤去除悬浮物，保证循环水水质
+
+优化操作参数：根据水质监测结果及时调整加药量和排污量
+
+废水回收利用：生产废水经处理后尽量回用
+
+9.2 环保措施
+
+噪声控制：冷却塔选用低噪声型，风机加装消声器
+
+飘水控制：冷却塔设置高效收水器，飘水率≤0.001%
+
+废水处理：循环排污水及旁滤反洗废水排入厂区污水处理场集中处理
+
+污泥处置：过滤器反洗污泥经脱水后妥善处置
+
+第10章 结论与建议
+10.1 设计结论
+
+本项目循环冷却水系统补充水量为 385.25 m³/h，其中蒸发损失 292.20 m³/h、风吹损失 20.00 m³/h、排污水量 73.05 m³/h
+
+系统总容积 1200.00 m³，系统容积比 0.060，满足 GB/T 50746 §6.1.9 要求
+
+旁滤处理水量 80.00 m³/h，设置 1 台过滤器
+
+浓缩倍数 5，满足规范要求
+
+10.2 建议
+
+在详细设计阶段，应对循环水系统阻力进行精确水力核算，确定循环水泵扬程
+
+建议设置在线水质监测仪表（电导率、pH、浊度等），实现自动化控制
+
+消防给水系统的具体参数需根据建筑防火分类在详细设计阶段确定
+
+建议加强循环水处理药剂的管理，确保水质达标
+
+附录 计算公式汇总
+
+序号
+
+	
+
+公式名称
+
+	
+
+公式
+
+	
+
+计算结果
+
+	
+
+单位
+
+
+
+
+1
+
+	
+
+蒸发水量
+
+	
+
+Qe = Q × KZF × Δt
+
+	
+
+292.20
+
+	
+
+m³/h
+
+
+
+
+2
+
+	
+
+风吹损失水量
+
+	
+
+Qw = Q × 0.001
+
+	
+
+20.00
+
+	
+
+m³/h
+
+
+
+
+3
+
+	
+
+排污水量
+
+	
+
+Qb = Qe / (N-1)
+
+	
+
+73.05
+
+	
+
+m³/h
+
+
+
+
+4
+
+	
+
+补充水量
+
+	
+
+Qm = Qe + Qw + Qb
+
+	
+
+385.25
+
+	
+
+m³/h
+
+
+
+
+5
+
+	
+
+塔底水池容积
+
+	
+
+V_pool = pool_area × h
+
+	
+
+800.00
+
+	
+
+m³
+
+
+
+
+6
+
+	
+
+系统总容积
+
+	
+
+V_system = V_pool + V_suction
+
+	
+
+1200.00
+
+	
+
+m³
+
+
+
+
+7
+
+	
+
+系统容积比
+
+	
+
+V_ratio = V_system / Q
+
+	
+
+0.060
+
+	
+
+—
+
+
+
+
+8
+
+	
+
+水泵基础长度
+
+	
+
+L = spacing + 0.5
+
+	
+
+4.00
+
+	
+
+m
+
+
+
+
+9
+
+	
+
+旁滤水量
+
+	
+
+Qsf = Q × sf_ratio
+
+	
+
+80.00
+
+	
+
+m³/h
+
+
+
+
+10
+
+	
+
+过滤器台数
+
+	
+
+n = ceil(Qsf/Q_unit)
+
+	
+
+1
+
+	
+
+台
+
+
+
+
+11
+
+	
+
+反洗瞬时流量
+
+	
+
+Qbw = A × q × n
+
+	
+
+150.00
+
+	
+
+L/s
+
+
+
+
+12
+
+	
+
+单次反洗水量
+
+	
+
+Vbw = Qbw × t × n × 60 / 1000
+
+	
+
+18.00
+
+	
+
+m³
+
+
+"
+      uid=40_110 heading "吉林石化新装置给排水设计专篇" level="1"
+      uid=40_111 heading "第1章 总则" level="2"
+      uid=40_112 heading "1.1 编制目的" level="3"
+      uid=40_113 paragraph
+        uid=40_114 StaticText "本设计专篇旨在为"
+        uid=40_115 strong
+          uid=40_116 StaticText "吉林石化新装置"
+        uid=40_117 StaticText "提供完整、系统的给排水设计方案，确保项目满足生产运行、消防安全及环保要求。本专篇涵盖循环冷却水系统、给水系统、排水系统及污水处理等核心内容，遵循国家现行规范标准，结合项目实际情况进行优化设计。"
+      uid=40_118 heading "1.2 编制依据" level="3"
+      uid=40_119 heading "1.2.1 主要法规、规范及标准" level="4"
+      uid=40_120 table
+        uid=40_121 row
+          uid=40_122 columnheader "序号"
+            uid=40_123 paragraph
+              uid=40_124 StaticText "序号"
+          uid=40_125 columnheader "名称"
+            uid=40_126 paragraph
+              uid=40_127 StaticText "名称"
+          uid=40_128 columnheader "编号"
+            uid=40_129 paragraph
+              uid=40_130 StaticText "编号"
+        uid=40_131 row
+          uid=40_132 cell "1"
+            uid=40_133 paragraph
+              uid=40_134 StaticText "1"
+          uid=40_135 cell "《石油化工循环水场设计规范》"
+            uid=40_136 paragraph
+              uid=40_137 StaticText "《石油化工循环水场设计规范》"
+          uid=40_138 cell "GB/T 50746-2012"
+            uid=40_139 paragraph
+              uid=40_140 StaticText "GB/T 50746-2012"
+        uid=40_141 row
+          uid=40_142 cell "2"
+            uid=40_143 paragraph
+              uid=40_144 StaticText "2"
+          uid=40_145 cell "《工业循环冷却水处理设计规范》"
+            uid=40_146 paragraph
+              uid=40_147 StaticText "《工业循环冷却水处理设计规范》"
+          uid=40_148 cell "GB 50050-2017"
+            uid=40_149 paragraph
+              uid=40_150 StaticText "GB 50050-2017"
+        uid=40_151 row
+          uid=40_152 cell "3"
+            uid=40_153 paragraph
+              uid=40_154 StaticText "3"
+          uid=40_155 cell "《室外给水设计标准》"
+            uid=40_156 paragraph
+              uid=40_157 StaticText "《室外给水设计标准》"
+          uid=40_158 cell "GB 50013-2018"
+            uid=40_159 paragraph
+              uid=40_160 StaticText "GB 50013-2018"
+        uid=40_161 row
+          uid=40_162 cell "4"
+            uid=40_163 paragraph
+              uid=40_164 StaticText "4"
+          uid=40_165 cell "《室外排水设计标准》"
+            uid=40_166 paragraph
+              uid=40_167 StaticText "《室外排水设计标准》"
+          uid=40_168 cell "GB 50014-2021"
+            uid=40_169 paragraph
+              uid=40_170 StaticText "GB 50014-2021"
+        uid=40_171 row
+          uid=40_172 cell "5"
+            uid=40_173 paragraph
+              uid=40_174 StaticText "5"
+          uid=40_175 cell "《消防给水及消火栓系统技术规范》"
+            uid=40_176 paragraph
+              uid=40_177 StaticText "《消防给水及消火栓系统技术规范》"
+          uid=40_178 cell "GB 50974-2014"
+            uid=40_179 paragraph
+              uid=40_180 StaticText "GB 50974-2014"
+        uid=40_181 row
+          uid=40_182 cell "6"
+            uid=40_183 paragraph
+              uid=40_184 StaticText "6"
+          uid=40_185 cell "《石油化工企业设计防火标准》"
+            uid=40_186 paragraph
+              uid=40_187 StaticText "《石油化工企业设计防火标准》"
+          uid=40_188 cell "GB 50160-2008 (2018年版)"
+            uid=40_189 paragraph
+              uid=40_190 StaticText "GB 50160-2008 (2018年版)"
+        uid=40_191 row
+          uid=40_192 cell "7"
+            uid=40_193 paragraph
+              uid=40_194 StaticText "7"
+          uid=40_195 cell "《建筑设计防火规范》"
+            uid=40_196 paragraph
+              uid=40_197 StaticText "《建筑设计防火规范》"
+          uid=40_198 cell "GB 50016-2014 (2018年版)"
+            uid=40_199 paragraph
+              uid=40_200 StaticText "GB 50016-2014 (2018年版)"
+        uid=40_201 row
+          uid=40_202 cell "8"
+            uid=40_203 paragraph
+              uid=40_204 StaticText "8"
+          uid=40_205 cell "《工业建筑供暖通风与空气调节设计规范》"
+            uid=40_206 paragraph
+              uid=40_207 StaticText "《工业建筑供暖通风与空气调节设计规范》"
+          uid=40_208 cell "GB 50019-2015"
+            uid=40_209 paragraph
+              uid=40_210 StaticText "GB 50019-2015"
+        uid=40_211 row
+          uid=40_212 cell "9"
+            uid=40_213 paragraph
+              uid=40_214 StaticText "9"
+          uid=40_215 cell "《节水型企业评价导则》"
+            uid=40_216 paragraph
+              uid=40_217 StaticText "《节水型企业评价导则》"
+          uid=40_218 cell "GB/T 7119-2018"
+            uid=40_219 paragraph
+              uid=40_220 StaticText "GB/T 7119-2018"
+        uid=40_221 row
+          uid=40_222 cell "10"
+            uid=40_223 paragraph
+              uid=40_224 StaticText "10"
+          uid=40_225 cell "《污水综合排放标准》"
+            uid=40_226 paragraph
+              uid=40_227 StaticText "《污水综合排放标准》"
+          uid=40_228 cell "GB 8978-1996"
+            uid=40_229 paragraph
+              uid=40_230 StaticText "GB 8978-1996"
+      uid=40_231 heading "1.2.2 其他依据" level="4"
+      uid=40_232 list
+        uid=40_233 listitem level="1"
+          uid=40_234 paragraph
+            uid=40_235 StaticText "项目可行性研究报告及批复文件"
+        uid=40_236 listitem level="1"
+          uid=40_237 paragraph
+            uid=40_238 StaticText "建设单位提供的基础资料及设计要求"
+        uid=40_239 listitem level="1"
+          uid=40_240 paragraph
+            uid=40_241 StaticText "项目所在地气象、水文、地质等资料"
+      uid=40_242 heading "1.3 设计范围" level="3"
+      uid=40_243 paragraph
+        uid=40_244 StaticText "本设计专篇的设计范围为吉林石化新装置的给排水系统，包括但不限于以下内容："
+      uid=40_245 list
+        uid=40_246 listitem level="1"
+          uid=40_247 paragraph
+            uid=40_248 strong
+              uid=40_249 StaticText "循环冷却水系统"
+            uid=40_250 StaticText "：包括冷却塔、循环水泵、旁滤系统、水处理加药系统等"
+        uid=40_251 listitem level="1"
+          uid=40_252 paragraph
+            uid=40_253 strong
+              uid=40_254 StaticText "生产给水系统"
+            uid=40_255 StaticText "：包括新鲜水补给、工艺给水等"
+        uid=40_256 listitem level="1"
+          uid=40_257 paragraph
+            uid=40_258 strong
+              uid=40_259 StaticText "排水系统"
+            uid=40_260 StaticText "：包括生活污水、生产废水、雨水排放等"
+        uid=40_261 listitem level="1"
+          uid=40_262 paragraph
+            uid=40_263 strong
+              uid=40_264 StaticText "消防给水系统"
+            uid=40_265 StaticText "：包括消防水池、消防泵房、消防管网等"
+        uid=40_266 listitem level="1"
+          uid=40_267 paragraph
+            uid=40_268 strong
+              uid=40_269 StaticText "污水处理系统"
+            uid=40_270 StaticText "：包括废水收集、预处理及排放"
+      uid=40_271 heading "1.4 设计原则" level="3"
+      uid=40_272 list
+        uid=40_273 listitem level="1"
+          uid=40_274 paragraph
+            uid=40_275 StaticText "严格执行国家现行规范标准，确保设计安全可靠"
+        uid=40_276 listitem level="1"
+          uid=40_277 paragraph
+            uid=40_278 StaticText "坚持"节约用水、保护环境"的原则，提高水的重复利用率"
+        uid=40_279 listitem level="1"
+          uid=40_280 paragraph
+            uid=40_281 StaticText "采用先进、成熟的技术和工艺，确保系统运行稳定"
+        uid=40_282 listitem level="1"
+          uid=40_283 paragraph
+            uid=40_284 StaticText "注重节能降耗，降低运行成本"
+        uid=40_285 listitem level="1"
+          uid=40_286 paragraph
+            uid=40_287 StaticText "考虑装置运行的灵活性，便于操作维护"
+      uid=40_288 heading "第2章 设计基础资料" level="2"
+      uid=40_289 heading "2.1 项目概况" level="3"
+      uid=40_290 paragraph
+        uid=40_291 StaticText "本项目为"
+        uid=40_292 strong
+          uid=40_293 StaticText "吉林石化新装置"
+        uid=40_294 StaticText "，位于吉林省吉林市吉林石化公司厂区内。项目主要承担石油化工产品生产任务，需要完善的给排水系统保障生产运行。"
+      uid=40_295 heading "2.2 气象条件" level="3"
+      uid=40_296 table
+        uid=40_297 row
+          uid=40_298 columnheader "参数"
+            uid=40_299 paragraph
+              uid=40_300 StaticText "参数"
+          uid=40_301 columnheader "数值"
+            uid=40_302 paragraph
+              uid=40_303 StaticText "数值"
+          uid=40_304 columnheader "单位"
+            uid=40_305 paragraph
+              uid=40_306 StaticText "单位"
+        uid=40_307 row
+          uid=40_308 cell "年平均气温"
+            uid=40_309 paragraph
+              uid=40_310 StaticText "年平均气温"
+          uid=40_311 cell "5.0"
+            uid=40_312 paragraph
+              uid=40_313 StaticText "5.0"
+          uid=40_314 cell "℃"
+            uid=40_315 paragraph
+              uid=40_316 StaticText "℃"
+        uid=40_317 row
+          uid=40_318 cell "极端最高气温"
+            uid=40_319 paragraph
+              uid=40_320 StaticText "极端最高气温"
+          uid=40_321 cell "38.5"
+            uid=40_322 paragraph
+              uid=40_323 StaticText "38.5"
+          uid=40_324 cell "℃"
+            uid=40_325 paragraph
+              uid=40_326 StaticText "℃"
+        uid=40_327 row
+          uid=40_328 cell "极端最低气温"
+            uid=40_329 paragraph
+              uid=40_330 StaticText "极端最低气温"
+          uid=40_331 cell "-33.6"
+            uid=40_332 paragraph
+              uid=40_333 StaticText "-33.6"
+          uid=40_334 cell "℃"
+            uid=40_335 paragraph
+              uid=40_336 StaticText "℃"
+        uid=40_337 row
+          uid=40_338 cell "年平均相对湿度"
+            uid=40_339 paragraph
+              uid=40_340 StaticText "年平均相对湿度"
+          uid=40_341 cell "65"
+            uid=40_342 paragraph
+              uid=40_343 StaticText "65"
+          uid=40_344 cell "%"
+            uid=40_345 paragraph
+              uid=40_346 StaticText "%"
+        uid=40_347 row
+          uid=40_348 cell "年平均风速"
+            uid=40_349 paragraph
+              uid=40_350 StaticText "年平均风速"
+          uid=40_351 cell "3.8"
+            uid=40_352 paragraph
+              uid=40_353 StaticText "3.8"
+          uid=40_354 cell "m/s"
+            uid=40_355 paragraph
+              uid=40_356 StaticText "m/s"
+        uid=40_357 row
+          uid=40_358 cell "最大冻土深度"
+            uid=40_359 paragraph
+              uid=40_360 StaticText "最大冻土深度"
+          uid=40_361 cell "1.8"
+            uid=40_362 paragraph
+              uid=40_363 StaticText "1.8"
+          uid=40_364 cell "m"
+            uid=40_365 paragraph
+              uid=40_366 StaticText "m"
+      uid=40_367 heading "2.3 水源条件" level="3"
+      uid=40_368 heading "2.3.1 给水水源" level="4"
+      uid=40_369 paragraph
+        uid=40_370 StaticText "项目给水水源来自吉林石化公司厂区市政给水管网，供水压力≥0.4MPa，水质符合《生活饮用水卫生标准》(GB 5749)要求。"
+      uid=40_371 heading "2.3.2 排水去向" level="4"
+      uid=40_372 list
+        uid=40_373 listitem level="1"
+          uid=40_374 paragraph
+            uid=40_375 StaticText "生活污水：经化粪池处理后排入厂区污水管网"
+        uid=40_376 listitem level="1"
+          uid=40_377 paragraph
+            uid=40_378 StaticText "生产废水：经预处理后达到排放标准排入厂区污水处理场"
+        uid=40_379 listitem level="1"
+          uid=40_380 paragraph
+            uid=40_381 StaticText "雨水：经厂区雨水系统排入附近水体"
+      uid=40_382 heading "2.4 设计用水量" level="3"
+      uid=40_383 table
+        uid=40_384 row
+          uid=40_385 columnheader "序号"
+            uid=40_386 paragraph
+              uid=40_387 StaticText "序号"
+          uid=40_388 columnheader "用水项目"
+            uid=40_389 paragraph
+              uid=40_390 StaticText "用水项目"
+          uid=40_391 columnheader "最大用水量"
+            uid=40_392 paragraph
+              uid=40_393 StaticText "最大用水量"
+          uid=40_394 columnheader "平均用水量"
+            uid=40_395 paragraph
+              uid=40_396 StaticText "平均用水量"
+          uid=40_397 columnheader "单位"
+            uid=40_398 paragraph
+              uid=40_399 StaticText "单位"
+        uid=40_400 row
+          uid=40_401 cell "1"
+            uid=40_402 paragraph
+              uid=40_403 StaticText "1"
+          uid=40_404 cell "循环冷却水补充水"
+            uid=40_405 paragraph
+              uid=40_406 StaticText "循环冷却水补充水"
+          uid=40_407 cell "20.0"
+            uid=40_408 paragraph
+              uid=40_409 StaticText "20.0"
+          uid=40_410 cell "16.21"
+            uid=40_411 paragraph
+              uid=40_412 StaticText "16.21"
+          uid=40_413 cell "m³/h"
+            uid=40_414 paragraph
+              uid=40_415 StaticText "m³/h"
+        uid=40_416 row
+          uid=40_417 cell "2"
+            uid=40_418 paragraph
+              uid=40_419 StaticText "2"
+          uid=40_420 cell "生产给水"
+            uid=40_421 paragraph
+              uid=40_422 StaticText "生产给水"
+          uid=40_423 cell "—"
+            uid=40_424 paragraph
+              uid=40_425 StaticText "—"
+          uid=40_426 cell "—"
+            uid=40_427 paragraph
+              uid=40_428 StaticText "—"
+          uid=40_429 cell "m³/h"
+            uid=40_430 paragraph
+              uid=40_431 StaticText "m³/h"
+        uid=40_432 row
+          uid=40_433 cell "3"
+            uid=40_434 paragraph
+              uid=40_435 StaticText "3"
+          uid=40_436 cell "生活给水"
+            uid=40_437 paragraph
+              uid=40_438 StaticText "生活给水"
+          uid=40_439 cell "—"
+            uid=40_440 paragraph
+              uid=40_441 StaticText "—"
+          uid=40_442 cell "—"
+            uid=40_443 paragraph
+              uid=40_444 StaticText "—"
+          uid=40_445 cell "m³/h"
+            uid=40_446 paragraph
+              uid=40_447 StaticText "m³/h"
+        uid=40_448 row
+          uid=40_449 cell "4"
+            uid=40_450 paragraph
+              uid=40_451 StaticText "4"
+          uid=40_452 cell "消防给水"
+            uid=40_453 paragraph
+              uid=40_454 StaticText "消防给水"
+          uid=40_455 cell "—"
+            uid=40_456 paragraph
+              uid=40_457 StaticText "—"
+          uid=40_458 cell "—"
+            uid=40_459 paragraph
+              uid=40_460 StaticText "—"
+          uid=40_461 cell "L/s"
+            uid=40_462 paragraph
+              uid=40_463 StaticText "L/s"
+      uid=40_464 blockquote
+        uid=40_465 paragraph
+          uid=40_466 strong
+            uid=40_467 StaticText "注"
+          uid=40_468 StaticText "：上表中循环冷却水补充水量为计算值（见第3章），其他用水数据待后续详细设计阶段确定。"
+      uid=40_469 heading "2.5 设计参数汇总" level="3"
+      uid=40_470 table
+        uid=40_471 row
+          uid=40_472 columnheader "参数名称"
+            uid=40_473 paragraph
+              uid=40_474 StaticText "参数名称"
+          uid=40_475 columnheader "符号"
+            uid=40_476 paragraph
+              uid=40_477 StaticText "符号"
+          uid=40_478 columnheader "数值"
+            uid=40_479 paragraph
+              uid=40_480 StaticText "数值"
+          uid=40_481 columnheader "单位"
+            uid=40_482 paragraph
+              uid=40_483 StaticText "单位"
+          uid=40_484 columnheader "说明"
+            uid=40_485 paragraph
+              uid=40_486 StaticText "说明"
+        uid=40_487 row
+          uid=40_488 cell "循环水设计水量"
+            uid=40_489 paragraph
+              uid=40_490 StaticText "循环水设计水量"
+          uid=40_491 cell "Q"
+            uid=40_492 paragraph
+              uid=40_493 StaticText "Q"
+          uid=40_494 cell "20000"
+            uid=40_495 paragraph
+              uid=40_496 StaticText "20000"
+          uid=40_497 cell "m³/h"
+            uid=40_498 paragraph
+              uid=40_499 StaticText "m³/h"
+          uid=40_500 cell "循环冷却水系统循环水量"
+            uid=40_501 paragraph
+              uid=40_502 StaticText "循环冷却水系统循环水量"
+        uid=40_503 row
+          uid=40_504 cell "冷却塔进出水温差"
+            uid=40_505 paragraph
+              uid=40_506 StaticText "冷却塔进出水温差"
+          uid=40_507 cell "Δt"
+            uid=40_508 paragraph
+              uid=40_509 StaticText "Δt"
+          uid=40_510 cell "10"
+            uid=40_511 paragraph
+              uid=40_512 StaticText "10"
+          uid=40_513 cell "℃"
+            uid=40_514 paragraph
+              uid=40_515 StaticText "℃"
+          uid=40_516 cell "设计温差"
+            uid=40_517 paragraph
+              uid=40_518 StaticText "设计温差"
+        uid=40_519 row
+          uid=40_520 cell "浓缩倍数"
+            uid=40_521 paragraph
+              uid=40_522 StaticText "浓缩倍数"
+          uid=40_523 cell "N"
+            uid=40_524 paragraph
+              uid=40_525 StaticText "N"
+          uid=40_526 cell "5"
+            uid=40_527 paragraph
+              uid=40_528 StaticText "5"
+          uid=40_529 cell "—"
+            uid=40_530 paragraph
+              uid=40_531 StaticText "—"
+          uid=40_532 cell "宜≥5.0"
+            uid=40_533 paragraph
+              uid=40_534 StaticText "宜≥5.0"
+        uid=40_535 row
+          uid=40_536 cell "循环水系统补水率"
+            uid=40_537 paragraph
+              uid=40_538 StaticText "循环水系统补水率"
+          uid=40_539 cell "—"
+            uid=40_540 paragraph
+              uid=40_541 StaticText "—"
+          uid=40_542 cell "0.8"
+            uid=40_543 paragraph
+              uid=40_544 StaticText "0.8"
+          uid=40_545 cell "%"
+            uid=40_546 paragraph
+              uid=40_547 StaticText "%"
+          uid=40_548 cell "补充水量占循环水量比例"
+            uid=40_549 paragraph
+              uid=40_550 StaticText "补充水量占循环水量比例"
+        uid=40_551 row
+          uid=40_552 cell "蒸发损失系数"
+            uid=40_553 paragraph
+              uid=40_554 StaticText "蒸发损失系数"
+          uid=40_555 cell "KZF"
+            uid=40_556 paragraph
+              uid=40_557 StaticText "KZF"
+          uid=40_558 cell "0.001461"
+            uid=40_559 paragraph
+              uid=40_560 StaticText "0.001461"
+          uid=40_561 cell "1/℃"
+            uid=40_562 paragraph
+              uid=40_563 StaticText "1/℃"
+          uid=40_564 cell "GB/T 50746表3.3.3内插"
+            uid=40_565 paragraph
+              uid=40_566 StaticText "GB/T 50746表3.3.3内插"
+        uid=40_567 row
+          uid=40_568 cell "风吹损失率"
+            uid=40_569 paragraph
+              uid=40_570 StaticText "风吹损失率"
+          uid=40_571 cell "—"
+            uid=40_572 paragraph
+              uid=40_573 StaticText "—"
+          uid=40_574 cell "0.1"
+            uid=40_575 paragraph
+              uid=40_576 StaticText "0.1"
+          uid=40_577 cell "%"
+            uid=40_578 paragraph
+              uid=40_579 StaticText "%"
+          uid=40_580 cell "按循环水量的0.1%计"
+            uid=40_581 paragraph
+              uid=40_582 StaticText "按循环水量的0.1%计"
+        uid=40_583 row
+          uid=40_584 cell "旁滤比例"
+            uid=40_585 paragraph
+              uid=40_586 StaticText "旁滤比例"
+          uid=40_587 cell "sf_ratio"
+            uid=40_588 paragraph
+              uid=40_589 StaticText "sf_ratio"
+          uid=40_590 cell "0.4"
+            uid=40_591 paragraph
+              uid=40_592 StaticText "0.4"
+          uid=40_593 cell "%"
+            uid=40_594 paragraph
+              uid=40_595 StaticText "%"
+          uid=40_596 cell "GB50050 §4.0.4：1%~5%"
+            uid=40_597 paragraph
+              uid=40_598 StaticText "GB50050 §4.0.4：1%~5%"
+        uid=40_599 row
+          uid=40_600 cell "水池平面面积"
+            uid=40_601 paragraph
+              uid=40_602 StaticText "水池平面面积"
+          uid=40_603 cell "pool_area"
+            uid=40_604 paragraph
+              uid=40_605 StaticText "pool_area"
+          uid=40_606 cell "400"
+            uid=40_607 paragraph
+              uid=40_608 StaticText "400"
+          uid=40_609 cell "m²"
+            uid=40_610 paragraph
+              uid=40_611 StaticText "m²"
+          uid=40_612 cell "冷却塔集水池"
+            uid=40_613 paragraph
+              uid=40_614 StaticText "冷却塔集水池"
+        uid=40_615 row
+          uid=40_616 cell "吸水池容积"
+            uid=40_617 paragraph
+              uid=40_618 StaticText "吸水池容积"
+          uid=40_619 cell "V_suction"
+            uid=40_620 paragraph
+              uid=40_621 StaticText "V_suction"
+          uid=40_622 cell "400"
+            uid=40_623 paragraph
+              uid=40_624 StaticText "400"
+          uid=40_625 cell "m³"
+            uid=40_626 paragraph
+              uid=40_627 StaticText "m³"
+          uid=40_628 cell "循环水泵吸水池"
+            uid=40_629 paragraph
+              uid=40_630 StaticText "循环水泵吸水池"
+        uid=40_631 row
+          uid=40_632 cell "水泵电机间距"
+            uid=40_633 paragraph
+              uid=40_634 StaticText "水泵电机间距"
+          uid=40_635 cell "pump_motor_spacing"
+            uid=40_636 paragraph
+              uid=40_637 StaticText "pump_motor_spacing"
+          uid=40_638 cell "3.5"
+            uid=40_639 paragraph
+              uid=40_640 StaticText "3.5"
+          uid=40_641 cell "m"
+            uid=40_642 paragraph
+              uid=40_643 StaticText "m"
+          uid=40_644 cell "最外端螺孔间距"
+            uid=40_645 paragraph
+              uid=40_646 StaticText "最外端螺孔间距"
+        uid=40_647 row
+          uid=40_648 cell "单罐过滤面积"
+            uid=40_649 paragraph
+              uid=40_650 StaticText "单罐过滤面积"
+          uid=40_651 cell "filter_area"
+            uid=40_652 paragraph
+              uid=40_653 StaticText "filter_area"
+          uid=40_654 cell "10"
+            uid=40_655 paragraph
+              uid=40_656 StaticText "10"
+          uid=40_657 cell "m²"
+            uid=40_658 paragraph
+              uid=40_659 StaticText "m²"
+          uid=40_660 cell "旁滤过滤器"
+            uid=40_661 paragraph
+              uid=40_662 StaticText "旁滤过滤器"
+        uid=40_663 row
+          uid=40_664 cell "单台过滤器处理能力"
+            uid=40_665 paragraph
+              uid=40_666 StaticText "单台过滤器处理能力"
+          uid=40_667 cell "filter_unit_capacity"
+            uid=40_668 paragraph
+              uid=40_669 StaticText "filter_unit_capacity"
+          uid=40_670 cell "80"
+            uid=40_671 paragraph
+              uid=40_672 StaticText "80"
+          uid=40_673 cell "m³/h"
+            uid=40_674 paragraph
+              uid=40_675 StaticText "m³/h"
+          uid=40_676 cell "—"
+            uid=40_677 paragraph
+              uid=40_678 StaticText "—"
+        uid=40_679 row
+          uid=40_680 cell "同时反洗罐数"
+            uid=40_681 paragraph
+              uid=40_682 StaticText "同时反洗罐数"
+          uid=40_683 cell "concurrent_backwash"
+            uid=40_684 paragraph
+              uid=40_685 StaticText "concurrent_backwash"
+          uid=40_686 cell "1"
+            uid=40_687 paragraph
+              uid=40_688 StaticText "1"
+          uid=40_689 cell "台"
+            uid=40_690 paragraph
+              uid=40_691 StaticText "台"
+          uid=40_692 cell "—"
+            uid=40_693 paragraph
+              uid=40_694 StaticText "—"
+        uid=40_695 row
+          uid=40_696 cell "反洗强度"
+            uid=40_697 paragraph
+              uid=40_698 StaticText "反洗强度"
+          uid=40_699 cell "backwash_intensity"
+            uid=40_700 paragraph
+              uid=40_701 StaticText "backwash_intensity"
+          uid=40_702 cell "15.0"
+            uid=40_703 paragraph
+              uid=40_704 StaticText "15.0"
+          uid=40_705 cell "L/(s·m²)"
+            uid=40_706 paragraph
+              uid=40_707 StaticText "L/(s·m²)"
+          uid=40_708 cell "设计取值"
+            uid=40_709 paragraph
+              uid=40_710 StaticText "设计取值"
+        uid=40_711 row
+          uid=40_712 cell "反洗时间"
+            uid=40_713 paragraph
+              uid=40_714 StaticText "反洗时间"
+          uid=40_715 cell "backwash_duration"
+            uid=40_716 paragraph
+              uid=40_717 StaticText "backwash_duration"
+          uid=40_718 cell "2.0"
+            uid=40_719 paragraph
+              uid=40_720 StaticText "2.0"
+          uid=40_721 cell "min"
+            uid=40_722 paragraph
+              uid=40_723 StaticText "min"
+          uid=40_724 cell "单罐反洗一次时间"
+            uid=40_725 paragraph
+              uid=40_726 StaticText "单罐反洗一次时间"
+      uid=40_727 heading "第3章 循环冷却水系统设计" level="2"
+      uid=40_728 heading "3.1 设计概述" level="3"
+      uid=40_729 paragraph
+        uid=40_730 StaticText "循环冷却水系统是石化装置的重要公用工程设施，用于为生产过程中需要冷却的工艺介质提供冷却水。本系统采用开式循环冷却水系统，通过冷却塔散热实现循环水的降温再生。"
+      uid=40_731 heading "3.2 水量平衡计算" level="3"
+      uid=40_732 heading "3.2.1 蒸发水量计算" level="4"
+      uid=40_733 paragraph
+        uid=40_734 StaticText "根据《石油化工循环水场设计规范》(GB/T 50746-2012)公式计算："
+      uid=40_735 paragraph
+        uid=40_736 StaticText "其中："
+      uid=40_737 list
+        uid=40_738 listitem level="1"
+          uid=40_739 paragraph
+            uid=40_740 StaticText "Q — 循环水设计水量 = "
+            uid=40_741 strong
+              uid=40_742 StaticText "20000 m³/h"
+        uid=40_743 listitem level="1"
+          uid=40_744 paragraph
+            uid=40_745 StaticText "KZF — 蒸发损失系数 = "
+            uid=40_746 strong
+              uid=40_747 StaticText "0.001461 1/℃"
+            uid=40_748 StaticText "（GB/T 50746 表3.3.3内插）"
+        uid=40_749 listitem level="1"
+          uid=40_750 paragraph
+            uid=40_751 StaticText "Δt — 冷却塔进出水温差 = "
+            uid=40_752 strong
+              uid=40_753 StaticText "10 ℃"
+      uid=40_754 paragraph
+        uid=40_755 StaticText "代入计算："
+      uid=40_756 heading "3.2.2 风吹损失水量计算" level="4"
+      uid=40_757 paragraph
+        uid=40_758 StaticText "风吹损失水量按循环水量的0.1%计算："
+      uid=40_759 paragraph
+        uid=40_760 StaticText "代入计算："
+      uid=40_761 heading "3.2.3 排污水量计算" level="4"
+      uid=40_762 paragraph
+        uid=40_763 StaticText "排污水量由浓缩倍数控制，计算公式为："
+      uid=40_764 paragraph
+        uid=40_765 StaticText "其中："
+      uid=40_766 list
+        uid=40_767 listitem level="1"
+          uid=40_768 paragraph
+            uid=40_769 StaticText "Qe — 蒸发水量 = "
+            uid=40_770 strong
+              uid=40_771 StaticText "292.20 m³/h"
+        uid=40_772 listitem level="1"
+          uid=40_773 paragraph
+            uid=40_774 StaticText "N — 浓缩倍数 = "
+            uid=40_775 strong
+              uid=40_776 StaticText "5"
+            uid=40_777 StaticText "（宜≥5.0且不应低于3.0）"
+      uid=40_778 paragraph
+        uid=40_779 StaticText "代入计算："
+      uid=40_780 heading "3.2.4 补充水量计算" level="4"
+      uid=40_781 paragraph
+        uid=40_782 StaticText "补充水量为蒸发水量、风吹损失水量和排污水量之和："
+      uid=40_783 paragraph
+        uid=40_784 StaticText "代入计算："
+      uid=40_785 heading "3.2.5 水量平衡汇总表" level="4"
+      uid=40_786 table
+        uid=40_787 row
+          uid=40_788 columnheader "项目名称"
+            uid=40_789 paragraph
+              uid=40_790 StaticText "项目名称"
+          uid=40_791 columnheader "符号"
+            uid=40_792 paragraph
+              uid=40_793 StaticText "符号"
+          uid=40_794 columnheader "计算值"
+            uid=40_795 paragraph
+              uid=40_796 StaticText "计算值"
+          uid=40_797 columnheader "单位"
+            uid=40_798 paragraph
+              uid=40_799 StaticText "单位"
+          uid=40_800 columnheader "占循环水量比例"
+            uid=40_801 paragraph
+              uid=40_802 StaticText "占循环水量比例"
+        uid=40_803 row
+          uid=40_804 cell "循环水量"
+            uid=40_805 paragraph
+              uid=40_806 StaticText "循环水量"
+          uid=40_807 cell "Q"
+            uid=40_808 paragraph
+              uid=40_809 StaticText "Q"
+          uid=40_810 cell "20000"
+            uid=40_811 paragraph
+              uid=40_812 StaticText "20000"
+          uid=40_813 cell "m³/h"
+            uid=40_814 paragraph
+              uid=40_815 StaticText "m³/h"
+          uid=40_816 cell "100%"
+            uid=40_817 paragraph
+              uid=40_818 StaticText "100%"
+        uid=40_819 row
+          uid=40_820 cell "蒸发水量"
+            uid=40_821 paragraph
+              uid=40_822 StaticText "蒸发水量"
+          uid=40_823 cell "Qe"
+            uid=40_824 paragraph
+              uid=40_825 StaticText "Qe"
+          uid=40_826 cell "292.20"
+            uid=40_827 paragraph
+              uid=40_828 StaticText "292.20"
+          uid=40_829 cell "m³/h"
+            uid=40_830 paragraph
+              uid=40_831 StaticText "m³/h"
+          uid=40_832 cell "1.46%"
+            uid=40_833 paragraph
+              uid=40_834 StaticText "1.46%"
+        uid=40_835 row
+          uid=40_836 cell "风吹损失"
+            uid=40_837 paragraph
+              uid=40_838 StaticText "风吹损失"
+          uid=40_839 cell "Qw"
+            uid=40_840 paragraph
+              uid=40_841 StaticText "Qw"
+          uid=40_842 cell "20.00"
+            uid=40_843 paragraph
+              uid=40_844 StaticText "20.00"
+          uid=40_845 cell "m³/h"
+            uid=40_846 paragraph
+              uid=40_847 StaticText "m³/h"
+          uid=40_848 cell "0.10%"
+            uid=40_849 paragraph
+              uid=40_850 StaticText "0.10%"
+        uid=40_851 row
+          uid=40_852 cell "排污水量"
+            uid=40_853 paragraph
+              uid=40_854 StaticText "排污水量"
+          uid=40_855 cell "Qb"
+            uid=40_856 paragraph
+              uid=40_857 StaticText "Qb"
+          uid=40_858 cell "73.05"
+            uid=40_859 paragraph
+              uid=40_860 StaticText "73.05"
+          uid=40_861 cell "m³/h"
+            uid=40_862 paragraph
+              uid=40_863 StaticText "m³/h"
+          uid=40_864 cell "0.37%"
+            uid=40_865 paragraph
+              uid=40_866 StaticText "0.37%"
+        uid=40_867 row
+          uid=40_868 cell "补充水量"
+            uid=40_869 paragraph
+              uid=40_870 strong
+                uid=40_871 StaticText "补充水量"
+          uid=40_872 cell "Qm"
+            uid=40_873 paragraph
+              uid=40_874 strong
+                uid=40_875 StaticText "Qm"
+          uid=40_876 cell "385.25"
+            uid=40_877 paragraph
+              uid=40_878 strong
+                uid=40_879 StaticText "385.25"
+          uid=40_880 cell "m³/h"
+            uid=40_881 paragraph
+              uid=40_882 strong
+                uid=40_883 StaticText "m³/h"
+          uid=40_884 cell "1.93%"
+            uid=40_885 paragraph
+              uid=40_886 strong
+                uid=40_887 StaticText "1.93%"
+      uid=40_888 blockquote
+        uid=40_889 paragraph
+          uid=40_890 strong
+            uid=40_891 StaticText "节水分析"
+          uid=40_892 StaticText "：本项目浓缩倍数设计为 "
+          uid=40_893 strong
+            uid=40_894 StaticText "5"
+          uid=40_895 StaticText "，系统补水率约为 "
+          uid=40_896 strong
+            uid=40_897 StaticText "1.93%"
+          uid=40_898 StaticText "，符合《工业循环冷却水处理设计规范》(GB 50050-2017)要求。"
+      uid=40_899 heading "3.3 冷却塔选型" level="3"
+      uid=40_900 heading "3.3.1 冷却塔类型选择" level="4"
+      uid=40_901 paragraph
+        uid=40_902 StaticText "根据项目特点及气象条件，选用"
+        uid=40_903 strong
+          uid=40_904 StaticText "横流式机械通风冷却塔"
+        uid=40_905 StaticText "。横流式冷却塔具有以下优点："
+      uid=40_906 list
+        uid=40_907 listitem level="1"
+          uid=40_908 paragraph
+            uid=40_909 StaticText "风阻小、能耗低"
+        uid=40_910 listitem level="1"
+          uid=40_911 paragraph
+            uid=40_912 StaticText "噪声低、飘水率低"
+        uid=40_913 listitem level="1"
+          uid=40_914 paragraph
+            uid=40_915 StaticText "维护方便、运行可靠"
+      uid=40_916 heading "3.3.2 冷却塔技术参数" level="4"
+      uid=40_917 table
+        uid=40_918 row
+          uid=40_919 columnheader "序号"
+            uid=40_920 paragraph
+              uid=40_921 StaticText "序号"
+          uid=40_922 columnheader "参数名称"
+            uid=40_923 paragraph
+              uid=40_924 StaticText "参数名称"
+          uid=40_925 columnheader "单位"
+            uid=40_926 paragraph
+              uid=40_927 StaticText "单位"
+          uid=40_928 columnheader "数值"
+            uid=40_929 paragraph
+              uid=40_930 StaticText "数值"
+        uid=40_931 row
+          uid=40_932 cell "1"
+            uid=40_933 paragraph
+              uid=40_934 StaticText "1"
+          uid=40_935 cell "处理水量"
+            uid=40_936 paragraph
+              uid=40_937 StaticText "处理水量"
+          uid=40_938 cell "m³/h"
+            uid=40_939 paragraph
+              uid=40_940 StaticText "m³/h"
+          uid=40_941 cell "20000"
+            uid=40_942 paragraph
+              uid=40_943 StaticText "20000"
+        uid=40_944 row
+          uid=40_945 cell "2"
+            uid=40_946 paragraph
+              uid=40_947 StaticText "2"
+          uid=40_948 cell "进水温度"
+            uid=40_949 paragraph
+              uid=40_950 StaticText "进水温度"
+          uid=40_951 cell "℃"
+            uid=40_952 paragraph
+              uid=40_953 StaticText "℃"
+          uid=40_954 cell "32"
+            uid=40_955 paragraph
+              uid=40_956 StaticText "32"
+        uid=40_957 row
+          uid=40_958 cell "3"
+            uid=40_959 paragraph
+              uid=40_960 StaticText "3"
+          uid=40_961 cell "出水温度"
+            uid=40_962 paragraph
+              uid=40_963 StaticText "出水温度"
+          uid=40_964 cell "℃"
+            uid=40_965 paragraph
+              uid=40_966 StaticText "℃"
+          uid=40_967 cell "42"
+            uid=40_968 paragraph
+              uid=40_969 StaticText "42"
+        uid=40_970 row
+          uid=40_971 cell "4"
+            uid=40_972 paragraph
+              uid=40_973 StaticText "4"
+          uid=40_974 cell "湿球温度"
+            uid=40_975 paragraph
+              uid=40_976 StaticText "湿球温度"
+          uid=40_977 cell "℃"
+            uid=40_978 paragraph
+              uid=40_979 StaticText "℃"
+          uid=40_980 cell "28"
+            uid=40_981 paragraph
+              uid=40_982 StaticText "28"
+        uid=40_983 row
+          uid=40_984 cell "5"
+            uid=40_985 paragraph
+              uid=40_986 StaticText "5"
+          uid=40_987 cell "逼近度"
+            uid=40_988 paragraph
+              uid=40_989 StaticText "逼近度"
+          uid=40_990 cell "℃"
+            uid=40_991 paragraph
+              uid=40_992 StaticText "℃"
+          uid=40_993 cell "4"
+            uid=40_994 paragraph
+              uid=40_995 StaticText "4"
+        uid=40_996 row
+          uid=40_997 cell "6"
+            uid=40_998 paragraph
+              uid=40_999 StaticText "6"
+          uid=40_1000 cell "风机功率"
+            uid=40_1001 paragraph
+              uid=40_1002 StaticText "风机功率"
+          uid=40_1003 cell "kW"
+            uid=40_1004 paragraph
+              uid=40_1005 StaticText "kW"
+          uid=40_1006 cell "—"
+            uid=40_1007 paragraph
+              uid=40_1008 StaticText "—"
+        uid=40_1009 row
+          uid=40_1010 cell "7"
+            uid=40_1011 paragraph
+              uid=40_1012 StaticText "7"
+          uid=40_1013 cell "塔体重量"
+            uid=40_1014 paragraph
+              uid=40_1015 StaticText "塔体重量"
+          uid=40_1016 cell "t"
+            uid=40_1017 paragraph
+              uid=40_1018 StaticText "t"
+          uid=40_1019 cell "—"
+            uid=40_1020 paragraph
+              uid=40_1021 StaticText "—"
+      uid=40_1022 heading "3.4 循环水泵设计" level="3"
+      uid=40_1023 heading "3.4.1 水泵选型" level="4"
+      uid=40_1024 paragraph
+        uid=40_1025 StaticText "循环水泵选用"
+        uid=40_1026 strong
+          uid=40_1027 StaticText "大流量低扬程离心泵"
+        uid=40_1028 StaticText "，具体参数如下："
+      uid=40_1029 table
+        uid=40_1030 row
+          uid=40_1031 columnheader "序号"
+            uid=40_1032 paragraph
+              uid=40_1033 StaticText "序号"
+          uid=40_1034 columnheader "参数名称"
+            uid=40_1035 paragraph
+              uid=40_1036 StaticText "参数名称"
+          uid=40_1037 columnheader "单位"
+            uid=40_1038 paragraph
+              uid=40_1039 StaticText "单位"
+          uid=40_1040 columnheader "数值"
+            uid=40_1041 paragraph
+              uid=40_1042 StaticText "数值"
+        uid=40_1043 row
+          uid=40_1044 cell "1"
+            uid=40_1045 paragraph
+              uid=40_1046 StaticText "1"
+          uid=40_1047 cell "流量"
+            uid=40_1048 paragraph
+              uid=40_1049 StaticText "流量"
+          uid=40_1050 cell "m³/h"
+            uid=40_1051 paragraph
+              uid=40_1052 StaticText "m³/h"
+          uid=40_1053 cell "20000"
+            uid=40_1054 paragraph
+              uid=40_1055 StaticText "20000"
+        uid=40_1056 row
+          uid=40_1057 cell "2"
+            uid=40_1058 paragraph
+              uid=40_1059 StaticText "2"
+          uid=40_1060 cell "扬程"
+            uid=40_1061 paragraph
+              uid=40_1062 StaticText "扬程"
+          uid=40_1063 cell "m"
+            uid=40_1064 paragraph
+              uid=40_1065 StaticText "m"
+          uid=40_1066 cell "—"
+            uid=40_1067 paragraph
+              uid=40_1068 StaticText "—"
+        uid=40_1069 row
+          uid=40_1070 cell "3"
+            uid=40_1071 paragraph
+              uid=40_1072 StaticText "3"
+          uid=40_1073 cell "转速"
+            uid=40_1074 paragraph
+              uid=40_1075 StaticText "转速"
+          uid=40_1076 cell "r/min"
+            uid=40_1077 paragraph
+              uid=40_1078 StaticText "r/min"
+          uid=40_1079 cell "—"
+            uid=40_1080 paragraph
+              uid=40_1081 StaticText "—"
+        uid=40_1082 row
+          uid=40_1083 cell "4"
+            uid=40_1084 paragraph
+              uid=40_1085 StaticText "4"
+          uid=40_1086 cell "电机功率"
+            uid=40_1087 paragraph
+              uid=40_1088 StaticText "电机功率"
+          uid=40_1089 cell "kW"
+            uid=40_1090 paragraph
+              uid=40_1091 StaticText "kW"
+          uid=40_1092 cell "—"
+            uid=40_1093 paragraph
+              uid=40_1094 StaticText "—"
+        uid=40_1095 row
+          uid=40_1096 cell "5"
+            uid=40_1097 paragraph
+              uid=40_1098 StaticText "5"
+          uid=40_1099 cell "台数"
+            uid=40_1100 paragraph
+              uid=40_1101 StaticText "台数"
+          uid=40_1102 cell "台"
+            uid=40_1103 paragraph
+              uid=40_1104 StaticText "台"
+          uid=40_1105 cell "2（1用1备）"
+            uid=40_1106 paragraph
+              uid=40_1107 StaticText "2（1用1备）"
+      uid=40_1108 heading "3.4.2 水泵基础设计" level="4"
+      uid=40_1109 paragraph
+        uid=40_1110 StaticText "水泵基础长度按以下公式计算："
+      uid=40_1111 paragraph
+        uid=40_1112 StaticText "其中："
+      uid=40_1113 list
+        uid=40_1114 listitem level="1"
+          uid=40_1115 paragraph
+            uid=40_1116 StaticText "L_电机间距 — 水泵和电机最外端螺孔间距 = "
+            uid=40_1117 strong
+              uid=40_1118 StaticText "3.5 m"
+      uid=40_1119 paragraph
+        uid=40_1120 StaticText "代入计算："
+      uid=40_1121 heading "3.5 循环水系统水压核算" level="3"
+      uid=40_1122 heading "3.5.1 系统阻力组成" level="4"
+      uid=40_1123 paragraph
+        uid=40_1124 StaticText "循环水系统总阻力包括："
+      uid=40_1125 list
+        uid=40_1126 listitem level="1"
+          uid=40_1127 paragraph
+            uid=40_1128 StaticText "换热器压降"
+        uid=40_1129 listitem level="1"
+          uid=40_1130 paragraph
+            uid=40_1131 StaticText "冷却塔布水器压降"
+        uid=40_1132 listitem level="1"
+          uid=40_1133 paragraph
+            uid=40_1134 StaticText "管道沿程阻力"
+        uid=40_1135 listitem level="1"
+          uid=40_1136 paragraph
+            uid=40_1137 StaticText "局部阻力（阀门、弯头等）"
+        uid=40_1138 listitem level="1"
+          uid=40_1139 paragraph
+            uid=40_1140 StaticText "提升高度"
+      uid=40_1141 heading "3.5.2 水泵扬程确定" level="4"
+      uid=40_1142 paragraph
+        uid=40_1143 StaticText "水泵扬程 = 系统总阻力 + 5m安全余量"
+      uid=40_1144 blockquote
+        uid=40_1145 paragraph
+          uid=40_1146 strong
+            uid=40_1147 StaticText "注"
+          uid=40_1148 StaticText "：具体阻力数据需在详细设计阶段根据管道布置图精确核算。"
+      uid=40_1149 heading "第4章 系统容积设计" level="2"
+      uid=40_1150 heading "4.1 冷却塔水池容积" level="3"
+      uid=40_1151 heading "4.1.1 有效水深确定" level="4"
+      uid=40_1152 paragraph
+        uid=40_1153 StaticText "根据《石油化工循环水场设计规范》(GB/T 50746-2012)第4.3.13条规定，"
+        uid=40_1154 strong
+          uid=40_1155 StaticText "1.0~1.5m为有效水深"
+        uid=40_1156 StaticText "。本项目考虑到操作弹性及安全余量，取有效水深为 "
+        uid=40_1157 strong
+          uid=40_1158 StaticText "2.0m"
+        uid=40_1159 StaticText "。"
+      uid=40_1160 heading "4.1.2 水池有效容积计算" level="4"
+      uid=40_1161 paragraph
+        uid=40_1162 StaticText "其中："
+      uid=40_1163 list
+        uid=40_1164 listitem level="1"
+          uid=40_1165 paragraph
+            uid=40_1166 StaticText "A_pool — 水池平面面积 = "
+            uid=40_1167 strong
+              uid=40_1168 StaticText "400 m²"
+        uid=40_1169 listitem level="1"
+          uid=40_1170 paragraph
+            uid=40_1171 StaticText "h_eff — 有效水深 = "
+            uid=40_1172 strong
+              uid=40_1173 StaticText "2.0 m"
+      uid=40_1174 paragraph
+        uid=40_1175 StaticText "代入计算："
+      uid=40_1176 heading "4.2 系统总容积及容积比校验" level="3"
+      uid=40_1177 heading "4.2.1 系统总容积" level="4"
+      uid=40_1178 paragraph
+        uid=40_1179 StaticText "其中："
+      uid=40_1180 list
+        uid=40_1181 listitem level="1"
+          uid=40_1182 paragraph
+            uid=40_1183 StaticText "V_pool — 塔底水池有效容积 = "
+            uid=40_1184 strong
+              uid=40_1185 StaticText "800.00 m³"
+        uid=40_1186 listitem level="1"
+          uid=40_1187 paragraph
+            uid=40_1188 StaticText "V_suction — 吸水池容积 = "
+            uid=40_1189 strong
+              uid=40_1190 StaticText "400 m³"
+      uid=40_1191 paragraph
+        uid=40_1192 StaticText "代入计算："
+      uid=40_1193 heading "4.2.2 系统容积比校验" level="4"
+      uid=40_1194 paragraph
+        uid=40_1195 StaticText "根据 GB/T 50746 第6.1.9条规定："
+        uid=40_1196 strong
+          uid=40_1197 StaticText "系统总容积应控制在循环水小时流量的1/3~1/2之间"
+        uid=40_1198 StaticText "。"
+      uid=40_1199 paragraph
+        uid=40_1200 strong
+          uid=40_1201 StaticText "校验结果"
+        uid=40_1202 StaticText "： ✓ 系统容积比 "
+        uid=40_1203 strong
+          uid=40_1204 StaticText "0.060"
+        uid=40_1205 StaticText "，满足 GB/T 50746 §6.1.9 要求（1/3~1/2）。"
+      uid=40_1206 heading "第5章 旁滤系统设计" level="2"
+      uid=40_1207 heading "5.1 设计概述" level="3"
+      uid=40_1208 paragraph
+        uid=40_1209 StaticText "为防止循环水系统中悬浮物积累影响换热效率及造成腐蚀结垢，设置旁流过滤系统对部分循环水进行连续过滤处理。"
+      uid=40_1210 heading "5.2 旁滤处理水量" level="3"
+      uid=40_1211 paragraph
+        uid=40_1212 StaticText "根据《工业循环冷却水处理设计规范》(GB 50050-2017)第4.0.4条规定，旁滤水量为循环水量的"
+        uid=40_1213 strong
+          uid=40_1214 StaticText "1%~5%"
+        uid=40_1215 StaticText "。本项目取 "
+        uid=40_1216 strong
+          uid=40_1217 StaticText "0.4%"
+        uid=40_1218 StaticText "。"
+      uid=40_1219 paragraph
+        uid=40_1220 StaticText "其中："
+      uid=40_1221 list
+        uid=40_1222 listitem level="1"
+          uid=40_1223 paragraph
+            uid=40_1224 StaticText "Q — 循环水量 = "
+            uid=40_1225 strong
+              uid=40_1226 StaticText "20000 m³/h"
+        uid=40_1227 listitem level="1"
+          uid=40_1228 paragraph
+            uid=40_1229 StaticText "R_sf — 旁滤比例 = "
+            uid=40_1230 strong
+              uid=40_1231 StaticText "0.4%"
+      uid=40_1232 paragraph
+        uid=40_1233 StaticText "代入计算："
+      uid=40_1234 heading "5.3 过滤器选型" level="3"
+      uid=40_1235 heading "5.3.1 过滤器台数计算" level="4"
+      uid=40_1236 paragraph
+        uid=40_1237 StaticText "其中："
+      uid=40_1238 list
+        uid=40_1239 listitem level="1"
+          uid=40_1240 paragraph
+            uid=40_1241 StaticText "Q_sf — 旁滤处理水量 = "
+            uid=40_1242 strong
+              uid=40_1243 StaticText "80.00 m³/h"
+        uid=40_1244 listitem level="1"
+          uid=40_1245 paragraph
+            uid=40_1246 StaticText "Q_unit — 单台过滤器处理能力 = "
+            uid=40_1247 strong
+              uid=40_1248 StaticText "80 m³/h"
+      uid=40_1249 paragraph
+        uid=40_1250 StaticText "代入计算："
+      uid=40_1251 heading "5.3.2 过滤器技术参数" level="4"
+      uid=40_1252 table
+        uid=40_1253 row
+          uid=40_1254 columnheader "序号"
+            uid=40_1255 paragraph
+              uid=40_1256 StaticText "序号"
+          uid=40_1257 columnheader "参数名称"
+            uid=40_1258 paragraph
+              uid=40_1259 StaticText "参数名称"
+          uid=40_1260 columnheader "单位"
+            uid=40_1261 paragraph
+              uid=40_1262 StaticText "单位"
+          uid=40_1263 columnheader "数值"
+            uid=40_1264 paragraph
+              uid=40_1265 StaticText "数值"
+        uid=40_1266 row
+          uid=40_1267 cell "1"
+            uid=40_1268 paragraph
+              uid=40_1269 StaticText "1"
+          uid=40_1270 cell "处理水量"
+            uid=40_1271 paragraph
+              uid=40_1272 StaticText "处理水量"
+          uid=40_1273 cell "m³/h"
+            uid=40_1274 paragraph
+              uid=40_1275 StaticText "m³/h"
+          uid=40_1276 cell "80.00"
+            uid=40_1277 paragraph
+              uid=40_1278 StaticText "80.00"
+        uid=40_1279 row
+          uid=40_1280 cell "2"
+            uid=40_1281 paragraph
+              uid=40_1282 StaticText "2"
+          uid=40_1283 cell "过滤速度"
+            uid=40_1284 paragraph
+              uid=40_1285 StaticText "过滤速度"
+          uid=40_1286 cell "m/h"
+            uid=40_1287 paragraph
+              uid=40_1288 StaticText "m/h"
+          uid=40_1289 cell "—"
+            uid=40_1290 paragraph
+              uid=40_1291 StaticText "—"
+        uid=40_1292 row
+          uid=40_1293 cell "3"
+            uid=40_1294 paragraph
+              uid=40_1295 StaticText "3"
+          uid=40_1296 cell "单罐过滤面积"
+            uid=40_1297 paragraph
+              uid=40_1298 StaticText "单罐过滤面积"
+          uid=40_1299 cell "m²"
+            uid=40_1300 paragraph
+              uid=40_1301 StaticText "m²"
+          uid=40_1302 cell "10"
+            uid=40_1303 paragraph
+              uid=40_1304 StaticText "10"
+        uid=40_1305 row
+          uid=40_1306 cell "4"
+            uid=40_1307 paragraph
+              uid=40_1308 StaticText "4"
+          uid=40_1309 cell "滤料类型及层厚"
+            uid=40_1310 paragraph
+              uid=40_1311 StaticText "滤料类型及层厚"
+          uid=40_1312 cell "—"
+            uid=40_1313 paragraph
+              uid=40_1314 StaticText "—"
+          uid=40_1315 cell "—"
+            uid=40_1316 paragraph
+              uid=40_1317 StaticText "—"
+        uid=40_1318 row
+          uid=40_1319 cell "5"
+            uid=40_1320 paragraph
+              uid=40_1321 StaticText "5"
+          uid=40_1322 cell "运行压力"
+            uid=40_1323 paragraph
+              uid=40_1324 StaticText "运行压力"
+          uid=40_1325 cell "MPa"
+            uid=40_1326 paragraph
+              uid=40_1327 StaticText "MPa"
+          uid=40_1328 cell "—"
+            uid=40_1329 paragraph
+              uid=40_1330 StaticText "—"
+        uid=40_1331 row
+          uid=40_1332 cell "6"
+            uid=40_1333 paragraph
+              uid=40_1334 StaticText "6"
+          uid=40_1335 cell "台数"
+            uid=40_1336 paragraph
+              uid=40_1337 StaticText "台数"
+          uid=40_1338 cell "台"
+            uid=40_1339 paragraph
+              uid=40_1340 StaticText "台"
+          uid=40_1341 cell "1"
+            uid=40_1342 paragraph
+              uid=40_1343 StaticText "1"
+      uid=40_1344 heading "5.4 反洗系统设计" level="3"
+      uid=40_1345 heading "5.4.1 反洗瞬时流量计算" level="4"
+      uid=40_1346 paragraph
+        uid=40_1347 StaticText "其中："
+      uid=40_1348 list
+        uid=40_1349 listitem level="1"
+          uid=40_1350 paragraph
+            uid=40_1351 StaticText "A_filter — 单罐过滤面积 = "
+            uid=40_1352 strong
+              uid=40_1353 StaticText "10 m²"
+        uid=40_1354 listitem level="1"
+          uid=40_1355 paragraph
+            uid=40_1356 StaticText "q_bw — 反洗强度 = "
+            uid=40_1357 strong
+              uid=40_1358 StaticText "15.0 L/(s·m²)"
+        uid=40_1359 listitem level="1"
+          uid=40_1360 paragraph
+            uid=40_1361 StaticText "n_bw — 同时反洗罐数 = "
+            uid=40_1362 strong
+              uid=40_1363 StaticText "1 台"
+      uid=40_1364 paragraph
+        uid=40_1365 StaticText "代入计算："
+      uid=40_1366 heading "5.4.2 单次反洗总水量计算" level="4"
+      uid=40_1367 paragraph
+        uid=40_1368 StaticText "其中："
+      uid=40_1369 list
+        uid=40_1370 listitem level="1"
+          uid=40_1371 paragraph
+            uid=40_1372 StaticText "Q_bw — 反洗瞬时流量 = "
+            uid=40_1373 strong
+              uid=40_1374 StaticText "150.00 L/s"
+        uid=40_1375 listitem level="1"
+          uid=40_1376 paragraph
+            uid=40_1377 StaticText "t_bw — 单罐反洗时间 = "
+            uid=40_1378 strong
+              uid=40_1379 StaticText "2.0 min"
+        uid=40_1380 listitem level="1"
+          uid=40_1381 paragraph
+            uid=40_1382 StaticText "n_total — 过滤器总台数 = "
+            uid=40_1383 strong
+              uid=40_1384 StaticText "1 台"
+      uid=40_1385 paragraph
+        uid=40_1386 StaticText "代入计算："
+      uid=40_1387 heading "5.4.3 反洗水池容积" level="4"
+      uid=40_1388 paragraph
+        uid=40_1389 StaticText "反洗水池有效容积按不小于最大一台过滤器的单次反洗水量确定，即 "
+        uid=40_1390 strong
+          uid=40_1391 StaticText "18.00 m³"
+        uid=40_1392 StaticText "。考虑安全余量，反洗水池有效容积取 "
+        uid=40_1393 strong
+          uid=40_1394 StaticText "21.60 m³"
+        uid=40_1395 StaticText "。"
+      uid=40_1396 heading "第6章 化学水处理系统" level="2"
+      uid=40_1397 heading "6.1 加药系统设计" level="3"
+      uid=40_1398 heading "6.1.1 缓蚀阻垢剂" level="4"
+      uid=40_1399 list
+        uid=40_1400 listitem level="1"
+          uid=40_1401 paragraph
+            uid=40_1402 strong
+              uid=40_1403 StaticText "药剂名称"
+            uid=40_1404 StaticText "：高效缓蚀阻垢剂"
+        uid=40_1405 listitem level="1"
+          uid=40_1406 paragraph
+            uid=40_1407 strong
+              uid=40_1408 StaticText "投加浓度"
+            uid=40_1409 StaticText "：2~5 mg/L"
+        uid=40_1410 listitem level="1"
+          uid=40_1411 paragraph
+            uid=40_1412 strong
+              uid=40_1413 StaticText "投加点"
+            uid=40_1414 StaticText "：循环水回水管"
+        uid=40_1415 listitem level="1"
+          uid=40_1416 paragraph
+            uid=40_1417 strong
+              uid=40_1418 StaticText "加药泵选型"
+            uid=40_1419 StaticText "：计量泵，2台（1用1备）"
+      uid=40_1420 heading "6.1.2 杀菌灭藻剂" level="4"
+      uid=40_1421 list
+        uid=40_1422 listitem level="1"
+          uid=40_1423 paragraph
+            uid=40_1424 strong
+              uid=40_1425 StaticText "药剂名称"
+            uid=40_1426 StaticText "：非氧化性杀菌剂"
+        uid=40_1427 listitem level="1"
+          uid=40_1428 paragraph
+            uid=40_1429 strong
+              uid=40_1430 StaticText "投加方式"
+            uid=40_1431 StaticText "：冲击式投加"
+        uid=40_1432 listitem level="1"
+          uid=40_1433 paragraph
+            uid=40_1434 strong
+              uid=40_1435 StaticText "投加周期"
+            uid=40_1436 StaticText "：每周1~2次"
+        uid=40_1437 listitem level="1"
+          uid=40_1438 paragraph
+            uid=40_1439 strong
+              uid=40_1440 StaticText "投加量"
+            uid=40_1441 StaticText "：50~100 mg/L"
+      uid=40_1442 heading "6.1.3 pH调节剂" level="4"
+      uid=40_1443 list
+        uid=40_1444 listitem level="1"
+          uid=40_1445 paragraph
+            uid=40_1446 strong
+              uid=40_1447 StaticText "药剂名称"
+            uid=40_1448 StaticText "：硫酸"
+        uid=40_1449 listitem level="1"
+          uid=40_1450 paragraph
+            uid=40_1451 strong
+              uid=40_1452 StaticText "投加目的"
+            uid=40_1453 StaticText "：调节循环水pH值"
+        uid=40_1454 listitem level="1"
+          uid=40_1455 paragraph
+            uid=40_1456 strong
+              uid=40_1457 StaticText "投加点"
+            uid=40_1458 StaticText "：循环水回水管"
+      uid=40_1459 heading "6.2 水质控制指标" level="3"
+      uid=40_1460 table
+        uid=40_1461 row
+          uid=40_1462 columnheader "序号"
+            uid=40_1463 paragraph
+              uid=40_1464 StaticText "序号"
+          uid=40_1465 columnheader "控制项目"
+            uid=40_1466 paragraph
+              uid=40_1467 StaticText "控制项目"
+          uid=40_1468 columnheader "控制指标"
+            uid=40_1469 paragraph
+              uid=40_1470 StaticText "控制指标"
+          uid=40_1471 columnheader "单位"
+            uid=40_1472 paragraph
+              uid=40_1473 StaticText "单位"
+        uid=40_1474 row
+          uid=40_1475 cell "1"
+            uid=40_1476 paragraph
+              uid=40_1477 StaticText "1"
+          uid=40_1478 cell "pH值"
+            uid=40_1479 paragraph
+              uid=40_1480 StaticText "pH值"
+          uid=40_1481 cell "7.0~9.0"
+            uid=40_1482 paragraph
+              uid=40_1483 StaticText "7.0~9.0"
+          uid=40_1484 cell "—"
+            uid=40_1485 paragraph
+              uid=40_1486 StaticText "—"
+        uid=40_1487 row
+          uid=40_1488 cell "2"
+            uid=40_1489 paragraph
+              uid=40_1490 StaticText "2"
+          uid=40_1491 cell "浓缩倍数"
+            uid=40_1492 paragraph
+              uid=40_1493 StaticText "浓缩倍数"
+          uid=40_1494 cell "≥5.0"
+            uid=40_1495 paragraph
+              uid=40_1496 StaticText "≥5.0"
+          uid=40_1497 cell "—"
+            uid=40_1498 paragraph
+              uid=40_1499 StaticText "—"
+        uid=40_1500 row
+          uid=40_1501 cell "3"
+            uid=40_1502 paragraph
+              uid=40_1503 StaticText "3"
+          uid=40_1504 cell "浊度"
+            uid=40_1505 paragraph
+              uid=40_1506 StaticText "浊度"
+          uid=40_1507 cell "≤15"
+            uid=40_1508 paragraph
+              uid=40_1509 StaticText "≤15"
+          uid=40_1510 cell "NTU"
+            uid=40_1511 paragraph
+              uid=40_1512 StaticText "NTU"
+        uid=40_1513 row
+          uid=40_1514 cell "4"
+            uid=40_1515 paragraph
+              uid=40_1516 StaticText "4"
+          uid=40_1517 cell "总铁含量"
+            uid=40_1518 paragraph
+              uid=40_1519 StaticText "总铁含量"
+          uid=40_1520 cell "≤0.5"
+            uid=40_1521 paragraph
+              uid=40_1522 StaticText "≤0.5"
+          uid=40_1523 cell "mg/L"
+            uid=40_1524 paragraph
+              uid=40_1525 StaticText "mg/L"
+        uid=40_1526 row
+          uid=40_1527 cell "5"
+            uid=40_1528 paragraph
+              uid=40_1529 StaticText "5"
+          uid=40_1530 cell "总磷含量"
+            uid=40_1531 paragraph
+              uid=40_1532 StaticText "总磷含量"
+          uid=40_1533 cell "2~5"
+            uid=40_1534 paragraph
+              uid=40_1535 StaticText "2~5"
+          uid=40_1536 cell "mg/L"
+            uid=40_1537 paragraph
+              uid=40_1538 StaticText "mg/L"
+        uid=40_1539 row
+          uid=40_1540 cell "6"
+            uid=40_1541 paragraph
+              uid=40_1542 StaticText "6"
+          uid=40_1543 cell "异养菌总数"
+            uid=40_1544 paragraph
+              uid=40_1545 StaticText "异养菌总数"
+          uid=40_1546 cell "≤5×10⁵"
+            uid=40_1547 paragraph
+              uid=40_1548 StaticText "≤5×10⁵"
+          uid=40_1549 cell "个/mL"
+            uid=40_1550 paragraph
+              uid=40_1551 StaticText "个/mL"
+      uid=40_1552 heading "第7章 给水系统设计" level="2"
+      uid=40_1553 heading "7.1 生产给水系统" level="3"
+      uid=40_1554 heading "7.1.1 水源及水质" level="4"
+      uid=40_1555 paragraph
+        uid=40_1556 StaticText "生产给水水源来自厂区市政给水管网，水质符合《生活饮用水卫生标准》(GB 5749-2022)要求。"
+      uid=40_1557 heading "7.1.2 用水量" level="4"
+      uid=40_1558 table
+        uid=40_1559 row
+          uid=40_1560 columnheader "序号"
+            uid=40_1561 paragraph
+              uid=40_1562 StaticText "序号"
+          uid=40_1563 columnheader "用水项目"
+            uid=40_1564 paragraph
+              uid=40_1565 StaticText "用水项目"
+          uid=40_1566 columnheader "最大用水量"
+            uid=40_1567 paragraph
+              uid=40_1568 StaticText "最大用水量"
+          uid=40_1569 columnheader "平均用水量"
+            uid=40_1570 paragraph
+              uid=40_1571 StaticText "平均用水量"
+          uid=40_1572 columnheader "单位"
+            uid=40_1573 paragraph
+              uid=40_1574 StaticText "单位"
+        uid=40_1575 row
+          uid=40_1576 cell "1"
+            uid=40_1577 paragraph
+              uid=40_1578 StaticText "1"
+          uid=40_1579 cell "循环冷却水补充水"
+            uid=40_1580 paragraph
+              uid=40_1581 StaticText "循环冷却水补充水"
+          uid=40_1582 cell "20.0"
+            uid=40_1583 paragraph
+              uid=40_1584 StaticText "20.0"
+          uid=40_1585 cell "16.21"
+            uid=40_1586 paragraph
+              uid=40_1587 StaticText "16.21"
+          uid=40_1588 cell "m³/h"
+            uid=40_1589 paragraph
+              uid=40_1590 StaticText "m³/h"
+        uid=40_1591 row
+          uid=40_1592 cell "2"
+            uid=40_1593 paragraph
+              uid=40_1594 StaticText "2"
+          uid=40_1595 cell "工艺给水"
+            uid=40_1596 paragraph
+              uid=40_1597 StaticText "工艺给水"
+          uid=40_1598 cell "—"
+            uid=40_1599 paragraph
+              uid=40_1600 StaticText "—"
+          uid=40_1601 cell "—"
+            uid=40_1602 paragraph
+              uid=40_1603 StaticText "—"
+          uid=40_1604 cell "m³/h"
+            uid=40_1605 paragraph
+              uid=40_1606 StaticText "m³/h"
+        uid=40_1607 row
+          uid=40_1608 cell "3"
+            uid=40_1609 paragraph
+              uid=40_1610 StaticText "3"
+          uid=40_1611 cell "消防补水"
+            uid=40_1612 paragraph
+              uid=40_1613 StaticText "消防补水"
+          uid=40_1614 cell "—"
+            uid=40_1615 paragraph
+              uid=40_1616 StaticText "—"
+          uid=40_1617 cell "—"
+            uid=40_1618 paragraph
+              uid=40_1619 StaticText "—"
+          uid=40_1620 cell "m³/h"
+            uid=40_1621 paragraph
+              uid=40_1622 StaticText "m³/h"
+        uid=40_1623 row
+          uid=40_1624 cell "4"
+            uid=40_1625 paragraph
+              uid=40_1626 StaticText "4"
+          uid=40_1627 cell "合计"
+            uid=40_1628 paragraph
+              uid=40_1629 StaticText "合计"
+          uid=40_1630 cell "—"
+            uid=40_1631 paragraph
+              uid=40_1632 StaticText "—"
+          uid=40_1633 cell "—"
+            uid=40_1634 paragraph
+              uid=40_1635 StaticText "—"
+          uid=40_1636 cell "—"
+            uid=40_1637 paragraph
+              uid=40_1638 StaticText "—"
+      uid=40_1639 heading "7.1.3 给水管道" level="4"
+      uid=40_1640 list
+        uid=40_1641 listitem level="1"
+          uid=40_1642 paragraph
+            uid=40_1643 StaticText "主干管管径：DN—"
+        uid=40_1644 listitem level="1"
+          uid=40_1645 paragraph
+            uid=40_1646 StaticText "管材：热镀锌钢管 / PE管"
+        uid=40_1647 listitem level="1"
+          uid=40_1648 paragraph
+            uid=40_1649 StaticText "给水压力：≥0.4 MPa"
+      uid=40_1650 heading "7.2 消防给水系统" level="3"
+      uid=40_1651 heading "7.2.1 消防用水量" level="4"
+      uid=40_1652 paragraph
+        uid=40_1653 StaticText "根据《消防给水及消火栓系统技术规范》(GB 50974-2014)，本项目消防用水量按以下标准确定："
+      uid=40_1654 table
+        uid=40_1655 row
+          uid=40_1656 columnheader "序号"
+            uid=40_1657 paragraph
+              uid=40_1658 StaticText "序号"
+          uid=40_1659 columnheader "项目名称"
+            uid=40_1660 paragraph
+              uid=40_1661 StaticText "项目名称"
+          uid=40_1662 columnheader "火灾次数"
+            uid=40_1663 paragraph
+              uid=40_1664 StaticText "火灾次数"
+          uid=40_1665 columnheader "灭火持续时间"
+            uid=40_1666 paragraph
+              uid=40_1667 StaticText "灭火持续时间"
+          uid=40_1668 columnheader "消防用水量"
+            uid=40_1669 paragraph
+              uid=40_1670 StaticText "消防用水量"
+          uid=40_1671 columnheader "单位"
+            uid=40_1672 paragraph
+              uid=40_1673 StaticText "单位"
+        uid=40_1674 row
+          uid=40_1675 cell "1"
+            uid=40_1676 paragraph
+              uid=40_1677 StaticText "1"
+          uid=40_1678 cell "室外消火栓"
+            uid=40_1679 paragraph
+              uid=40_1680 StaticText "室外消火栓"
+          uid=40_1681 cell "1"
+            uid=40_1682 paragraph
+              uid=40_1683 StaticText "1"
+          uid=40_1684 cell "3.0"
+            uid=40_1685 paragraph
+              uid=40_1686 StaticText "3.0"
+          uid=40_1687 cell "—"
+            uid=40_1688 paragraph
+              uid=40_1689 StaticText "—"
+          uid=40_1690 cell "h"
+            uid=40_1691 paragraph
+              uid=40_1692 StaticText "h"
+        uid=40_1693 row
+          uid=40_1694 cell "2"
+            uid=40_1695 paragraph
+              uid=40_1696 StaticText "2"
+          uid=40_1697 cell "室内消火栓"
+            uid=40_1698 paragraph
+              uid=40_1699 StaticText "室内消火栓"
+          uid=40_1700 cell "1"
+            uid=40_1701 paragraph
+              uid=40_1702 StaticText "1"
+          uid=40_1703 cell "3.0"
+            uid=40_1704 paragraph
+              uid=40_1705 StaticText "3.0"
+          uid=40_1706 cell "—"
+            uid=40_1707 paragraph
+              uid=40_1708 StaticText "—"
+          uid=40_1709 cell "h"
+            uid=40_1710 paragraph
+              uid=40_1711 StaticText "h"
+        uid=40_1712 row
+          uid=40_1713 cell "3"
+            uid=40_1714 paragraph
+              uid=40_1715 StaticText "3"
+          uid=40_1716 cell "自动喷水灭火"
+            uid=40_1717 paragraph
+              uid=40_1718 StaticText "自动喷水灭火"
+          uid=40_1719 cell "1"
+            uid=40_1720 paragraph
+              uid=40_1721 StaticText "1"
+          uid=40_1722 cell "1.0"
+            uid=40_1723 paragraph
+              uid=40_1724 StaticText "1.0"
+          uid=40_1725 cell "—"
+            uid=40_1726 paragraph
+              uid=40_1727 StaticText "—"
+          uid=40_1728 cell "h"
+            uid=40_1729 paragraph
+              uid=40_1730 StaticText "h"
+        uid=40_1731 row
+          uid=40_1732 cell "4"
+            uid=40_1733 paragraph
+              uid=40_1734 StaticText "4"
+          uid=40_1735 cell "消防总用水量"
+            uid=40_1736 paragraph
+              uid=40_1737 StaticText "消防总用水量"
+          uid=40_1738 cell "—"
+            uid=40_1739 paragraph
+              uid=40_1740 StaticText "—"
+          uid=40_1741 cell "—"
+            uid=40_1742 paragraph
+              uid=40_1743 StaticText "—"
+          uid=40_1744 cell "—"
+            uid=40_1745 paragraph
+              uid=40_1746 StaticText "—"
+          uid=40_1747 cell "m³"
+            uid=40_1748 paragraph
+              uid=40_1749 StaticText "m³"
+      uid=40_1750 blockquote
+        uid=40_1751 paragraph
+          uid=40_1752 strong
+            uid=40_1753 StaticText "注"
+          uid=40_1754 StaticText "：具体消防用水量待详细设计阶段根据建筑防火分类精确核算。"
+      uid=40_1755 heading "7.2.2 消防水池" level="4"
+      uid=40_1756 list
+        uid=40_1757 listitem level="1"
+          uid=40_1758 paragraph
+            uid=40_1759 StaticText "有效容积：— m³（待核算）"
+        uid=40_1760 listitem level="1"
+          uid=40_1761 paragraph
+            uid=40_1762 StaticText "补水时间：≤48 h"
+        uid=40_1763 listitem level="1"
+          uid=40_1764 paragraph
+            uid=40_1765 StaticText "设置位置：—"
+      uid=40_1766 heading "7.2.3 消防泵房" level="4"
+      uid=40_1767 list
+        uid=40_1768 listitem level="1"
+          uid=40_1769 paragraph
+            uid=40_1770 StaticText "消防主泵：2台（1用1备）"
+        uid=40_1771 listitem level="1"
+          uid=40_1772 paragraph
+            uid=40_1773 StaticText "喷淋泵：2台（1用1备）"
+        uid=40_1774 listitem level="1"
+          uid=40_1775 paragraph
+            uid=40_1776 StaticText "稳压泵：2台（1用1备）"
+      uid=40_1777 heading "第8章 排水系统设计" level="2"
+      uid=40_1778 heading "8.1 生产废水系统" level="3"
+      uid=40_1779 heading "8.1.1 废水来源及性质" level="4"
+      uid=40_1780 table
+        uid=40_1781 row
+          uid=40_1782 columnheader "序号"
+            uid=40_1783 paragraph
+              uid=40_1784 StaticText "序号"
+          uid=40_1785 columnheader "废水来源"
+            uid=40_1786 paragraph
+              uid=40_1787 StaticText "废水来源"
+          uid=40_1788 columnheader "主要污染物"
+            uid=40_1789 paragraph
+              uid=40_1790 StaticText "主要污染物"
+          uid=40_1791 columnheader "排放量"
+            uid=40_1792 paragraph
+              uid=40_1793 StaticText "排放量"
+          uid=40_1794 columnheader "处理方式"
+            uid=40_1795 paragraph
+              uid=40_1796 StaticText "处理方式"
+        uid=40_1797 row
+          uid=40_1798 cell "1"
+            uid=40_1799 paragraph
+              uid=40_1800 StaticText "1"
+          uid=40_1801 cell "循环排污水"
+            uid=40_1802 paragraph
+              uid=40_1803 StaticText "循环排污水"
+          uid=40_1804 cell "TDS、悬浮物"
+            uid=40_1805 paragraph
+              uid=40_1806 StaticText "TDS、悬浮物"
+          uid=40_1807 cell "73.05 m³/h"
+            uid=40_1808 paragraph
+              uid=40_1809 StaticText "73.05 m³/h"
+          uid=40_1810 cell "排入厂区污水管网"
+            uid=40_1811 paragraph
+              uid=40_1812 StaticText "排入厂区污水管网"
+        uid=40_1813 row
+          uid=40_1814 cell "2"
+            uid=40_1815 paragraph
+              uid=40_1816 StaticText "2"
+          uid=40_1817 cell "旁滤反洗废水"
+            uid=40_1818 paragraph
+              uid=40_1819 StaticText "旁滤反洗废水"
+          uid=40_1820 cell "悬浮物"
+            uid=40_1821 paragraph
+              uid=40_1822 StaticText "悬浮物"
+          uid=40_1823 cell "18.00 m³/次"
+            uid=40_1824 paragraph
+              uid=40_1825 StaticText "18.00 m³/次"
+          uid=40_1826 cell "排入厂区污水管网"
+            uid=40_1827 paragraph
+              uid=40_1828 StaticText "排入厂区污水管网"
+        uid=40_1829 row
+          uid=40_1830 cell "3"
+            uid=40_1831 paragraph
+              uid=40_1832 StaticText "3"
+          uid=40_1833 cell "其他生产废水"
+            uid=40_1834 paragraph
+              uid=40_1835 StaticText "其他生产废水"
+          uid=40_1836 cell "—"
+            uid=40_1837 paragraph
+              uid=40_1838 StaticText "—"
+          uid=40_1839 cell "—"
+            uid=40_1840 paragraph
+              uid=40_1841 StaticText "—"
+          uid=40_1842 cell "排入厂区污水管网"
+            uid=40_1843 paragraph
+              uid=40_1844 StaticText "排入厂区污水管网"
+      uid=40_1845 heading "8.1.2 排水制度" level="4"
+      uid=40_1846 paragraph
+        uid=40_1847 StaticText "生产废水采用"
+        uid=40_1848 strong
+          uid=40_1849 StaticText "清污分流、雨污分流"
+        uid=40_1850 StaticText "的排水体制。"
+      uid=40_1851 heading "8.2 生活污水系统" level="3"
+      uid=40_1852 heading "8.2.1 污水来源" level="4"
+      uid=40_1853 paragraph
+        uid=40_1854 StaticText "生活污水主要来自装置区办公楼、休息室等场所。"
+      uid=40_1855 heading "8.2.2 处理方式" level="4"
+      uid=40_1856 paragraph
+        uid=40_1857 StaticText "生活污水经化粪池预处理后，排入厂区污水管网，进入厂区污水处理场集中处理。"
+      uid=40_1858 heading "8.3 雨水系统" level="3"
+      uid=40_1859 heading "8.3.1 设计降雨强度" level="4"
+      uid=40_1860 list
+        uid=40_1861 listitem level="1"
+          uid=40_1862 paragraph
+            uid=40_1863 StaticText "设计重现期：P = 3年"
+        uid=40_1864 listitem level="1"
+          uid=40_1865 paragraph
+            uid=40_1866 StaticText "降雨历时：t = 10 min"
+        uid=40_1867 listitem level="1"
+          uid=40_1868 paragraph
+            uid=40_1869 StaticText "径流系数：Ψ = 0.45"
+      uid=40_1870 heading "8.3.2 雨水排放" level="4"
+      uid=40_1871 paragraph
+        uid=40_1872 StaticText "雨水经厂区雨水管网收集后，排入附近水体。事故状态下的雨水经事故水池收集后达标排放。"
+      uid=40_1873 heading "第9章 节水与环保措施" level="2"
+      uid=40_1874 heading "9.1 节水措施" level="3"
+      uid=40_1875 list
+        uid=40_1876 listitem level="1"
+          uid=40_1877 paragraph
+            uid=40_1878 strong
+              uid=40_1879 StaticText "提高浓缩倍数"
+            uid=40_1880 StaticText "：本项目循环水浓缩倍数设计为 "
+            uid=40_1881 strong
+              uid=40_1882 StaticText "5"
+            uid=40_1883 StaticText "，有效降低排污水量和补充水量"
+        uid=40_1884 listitem level="1"
+          uid=40_1885 paragraph
+            uid=40_1886 strong
+              uid=40_1887 StaticText "设置旁滤系统"
+            uid=40_1888 StaticText "：连续过滤去除悬浮物，保证循环水水质"
+        uid=40_1889 listitem level="1"
+          uid=40_1890 paragraph
+            uid=40_1891 strong
+              uid=40_1892 StaticText "优化操作参数"
+            uid=40_1893 StaticText "：根据水质监测结果及时调整加药量和排污量"
+        uid=40_1894 listitem level="1"
+          uid=40_1895 paragraph
+            uid=40_1896 strong
+              uid=40_1897 StaticText "废水回收利用"
+            uid=40_1898 StaticText "：生产废水经处理后尽量回用"
+      uid=40_1899 heading "9.2 环保措施" level="3"
+      uid=40_1900 list
+        uid=40_1901 listitem level="1"
+          uid=40_1902 paragraph
+            uid=40_1903 strong
+              uid=40_1904 StaticText "噪声控制"
+            uid=40_1905 StaticText "：冷却塔选用低噪声型，风机加装消声器"
+        uid=40_1906 listitem level="1"
+          uid=40_1907 paragraph
+            uid=40_1908 strong
+              uid=40_1909 StaticText "飘水控制"
+            uid=40_1910 StaticText "：冷却塔设置高效收水器，飘水率≤0.001%"
+        uid=40_1911 listitem level="1"
+          uid=40_1912 paragraph
+            uid=40_1913 strong
+              uid=40_1914 StaticText "废水处理"
+            uid=40_1915 StaticText "：循环排污水及旁滤反洗废水排入厂区污水处理场集中处理"
+        uid=40_1916 listitem level="1"
+          uid=40_1917 paragraph
+            uid=40_1918 strong
+              uid=40_1919 StaticText "污泥处置"
+            uid=40_1920 StaticText "：过滤器反洗污泥经脱水后妥善处置"
+      uid=40_1921 heading "第10章 结论与建议" level="2"
+      uid=40_1922 heading "10.1 设计结论" level="3"
+      uid=40_1923 list
+        uid=40_1924 listitem level="1"
+          uid=40_1925 paragraph
+            uid=40_1926 StaticText "本项目循环冷却水系统补充水量为 "
+            uid=40_1927 strong
+              uid=40_1928 StaticText "385.25 m³/h"
+            uid=40_1929 StaticText "，其中蒸发损失 "
+            uid=40_1930 strong
+              uid=40_1931 StaticText "292.20 m³/h"
+            uid=40_1932 StaticText "、风吹损失 "
+            uid=40_1933 strong
+              uid=40_1934 StaticText "20.00 m³/h"
+            uid=40_1935 StaticText "、排污水量 "
+            uid=40_1936 strong
+              uid=40_1937 StaticText "73.05 m³/h"
+        uid=40_1938 listitem level="1"
+          uid=40_1939 paragraph
+            uid=40_1940 StaticText "系统总容积 "
+            uid=40_1941 strong
+              uid=40_1942 StaticText "1200.00 m³"
+            uid=40_1943 StaticText "，系统容积比 "
+            uid=40_1944 strong
+              uid=40_1945 StaticText "0.060"
+            uid=40_1946 StaticText "，满足 GB/T 50746 §6.1.9 要求"
+        uid=40_1947 listitem level="1"
+          uid=40_1948 paragraph
+            uid=40_1949 StaticText "旁滤处理水量 "
+            uid=40_1950 strong
+              uid=40_1951 StaticText "80.00 m³/h"
+            uid=40_1952 StaticText "，设置 "
+            uid=40_1953 strong
+              uid=40_1954 StaticText "1"
+            uid=40_1955 StaticText " 台过滤器"
+        uid=40_1956 listitem level="1"
+          uid=40_1957 paragraph
+            uid=40_1958 StaticText "浓缩倍数 "
+            uid=40_1959 strong
+              uid=40_1960 StaticText "5"
+            uid=40_1961 StaticText "，满足规范要求"
+      uid=40_1962 heading "10.2 建议" level="3"
+      uid=40_1963 list
+        uid=40_1964 listitem level="1"
+          uid=40_1965 paragraph
+            uid=40_1966 StaticText "在详细设计阶段，应对循环水系统阻力进行精确水力核算，确定循环水泵扬程"
+        uid=40_1967 listitem level="1"
+          uid=40_1968 paragraph
+            uid=40_1969 StaticText "建议设置在线水质监测仪表（电导率、pH、浊度等），实现自动化控制"
+        uid=40_1970 listitem level="1"
+          uid=40_1971 paragraph
+            uid=40_1972 StaticText "消防给水系统的具体参数需根据建筑防火分类在详细设计阶段确定"
+        uid=40_1973 listitem level="1"
+          uid=40_1974 paragraph
+            uid=40_1975 StaticText "建议加强循环水处理药剂的管理，确保水质达标"
+      uid=40_1976 heading "附录 计算公式汇总" level="2"
+      uid=40_1977 table
+        uid=40_1978 row
+          uid=40_1979 columnheader "序号"
+            uid=40_1980 paragraph
+              uid=40_1981 StaticText "序号"
+          uid=40_1982 columnheader "公式名称"
+            uid=40_1983 paragraph
+              uid=40_1984 StaticText "公式名称"
+          uid=40_1985 columnheader "公式"
+            uid=40_1986 paragraph
+              uid=40_1987 StaticText "公式"
+          uid=40_1988 columnheader "计算结果"
+            uid=40_1989 paragraph
+              uid=40_1990 StaticText "计算结果"
+          uid=40_1991 columnheader "单位"
+            uid=40_1992 paragraph
+              uid=40_1993 StaticText "单位"
+        uid=40_1994 row
+          uid=40_1995 cell "1"
+            uid=40_1996 paragraph
+              uid=40_1997 StaticText "1"
+          uid=40_1998 cell "蒸发水量"
+            uid=40_1999 paragraph
+              uid=40_2000 StaticText "蒸发水量"
+          uid=40_2001 cell "Qe = Q × KZF × Δt"
+            uid=40_2002 paragraph
+              uid=40_2003 StaticText "Qe = Q × KZF × Δt"
+          uid=40_2004 cell "292.20"
+            uid=40_2005 paragraph
+              uid=40_2006 StaticText "292.20"
+          uid=40_2007 cell "m³/h"
+            uid=40_2008 paragraph
+              uid=40_2009 StaticText "m³/h"
+        uid=40_2010 row
+          uid=40_2011 cell "2"
+            uid=40_2012 paragraph
+              uid=40_2013 StaticText "2"
+          uid=40_2014 cell "风吹损失水量"
+            uid=40_2015 paragraph
+              uid=40_2016 StaticText "风吹损失水量"
+          uid=40_2017 cell "Qw = Q × 0.001"
+            uid=40_2018 paragraph
+              uid=40_2019 StaticText "Qw = Q × 0.001"
+          uid=40_2020 cell "20.00"
+            uid=40_2021 paragraph
+              uid=40_2022 StaticText "20.00"
+          uid=40_2023 cell "m³/h"
+            uid=40_2024 paragraph
+              uid=40_2025 StaticText "m³/h"
+        uid=40_2026 row
+          uid=40_2027 cell "3"
+            uid=40_2028 paragraph
+              uid=40_2029 StaticText "3"
+          uid=40_2030 cell "排污水量"
+            uid=40_2031 paragraph
+              uid=40_2032 StaticText "排污水量"
+          uid=40_2033 cell "Qb = Qe / (N-1)"
+            uid=40_2034 paragraph
+              uid=40_2035 StaticText "Qb = Qe / (N-1)"
+          uid=40_2036 cell "73.05"
+            uid=40_2037 paragraph
+              uid=40_2038 StaticText "73.05"
+          uid=40_2039 cell "m³/h"
+            uid=40_2040 paragraph
+              uid=40_2041 StaticText "m³/h"
+        uid=40_2042 row
+          uid=40_2043 cell "4"
+            uid=40_2044 paragraph
+              uid=40_2045 StaticText "4"
+          uid=40_2046 cell "补充水量"
+            uid=40_2047 paragraph
+              uid=40_2048 StaticText "补充水量"
+          uid=40_2049 cell "Qm = Qe + Qw + Qb"
+            uid=40_2050 paragraph
+              uid=40_2051 StaticText "Qm = Qe + Qw + Qb"
+          uid=40_2052 cell "385.25"
+            uid=40_2053 paragraph
+              uid=40_2054 StaticText "385.25"
+          uid=40_2055 cell "m³/h"
+            uid=40_2056 paragraph
+              uid=40_2057 StaticText "m³/h"
+        uid=40_2058 row
+          uid=40_2059 cell "5"
+            uid=40_2060 paragraph
+              uid=40_2061 StaticText "5"
+          uid=40_2062 cell "塔底水池容积"
+            uid=40_2063 paragraph
+              uid=40_2064 StaticText "塔底水池容积"
+          uid=40_2065 cell "V_pool = pool_area × h"
+            uid=40_2066 paragraph
+              uid=40_2067 StaticText "V_pool = pool_area × h"
+          uid=40_2068 cell "800.00"
+            uid=40_2069 paragraph
+              uid=40_2070 StaticText "800.00"
+          uid=40_2071 cell "m³"
+            uid=40_2072 paragraph
+              uid=40_2073 StaticText "m³"
+        uid=40_2074 row
+          uid=40_2075 cell "6"
+            uid=40_2076 paragraph
+              uid=40_2077 StaticText "6"
+          uid=40_2078 cell "系统总容积"
+            uid=40_2079 paragraph
+              uid=40_2080 StaticText "系统总容积"
+          uid=40_2081 cell "V_system = V_pool + V_suction"
+            uid=40_2082 paragraph
+              uid=40_2083 StaticText "V_system = V_pool + V_suction"
+          uid=40_2084 cell "1200.00"
+            uid=40_2085 paragraph
+              uid=40_2086 StaticText "1200.00"
+          uid=40_2087 cell "m³"
+            uid=40_2088 paragraph
+              uid=40_2089 StaticText "m³"
+        uid=40_2090 row
+          uid=40_2091 cell "7"
+            uid=40_2092 paragraph
+              uid=40_2093 StaticText "7"
+          uid=40_2094 cell "系统容积比"
+            uid=40_2095 paragraph
+              uid=40_2096 StaticText "系统容积比"
+          uid=40_2097 cell "V_ratio = V_system / Q"
+            uid=40_2098 paragraph
+              uid=40_2099 StaticText "V_ratio = V_system / Q"
+          uid=40_2100 cell "0.060"
+            uid=40_2101 paragraph
+              uid=40_2102 StaticText "0.060"
+          uid=40_2103 cell "—"
+            uid=40_2104 paragraph
+              uid=40_2105 StaticText "—"
+        uid=40_2106 row
+          uid=40_2107 cell "8"
+            uid=40_2108 paragraph
+              uid=40_2109 StaticText "8"
+          uid=40_2110 cell "水泵基础长度"
+            uid=40_2111 paragraph
+              uid=40_2112 StaticText "水泵基础长度"
+          uid=40_2113 cell "L = spacing + 0.5"
+            uid=40_2114 paragraph
+              uid=40_2115 StaticText "L = spacing + 0.5"
+          uid=40_2116 cell "4.00"
+            uid=40_2117 paragraph
+              uid=40_2118 StaticText "4.00"
+          uid=40_2119 cell "m"
+            uid=40_2120 paragraph
+              uid=40_2121 StaticText "m"
+        uid=40_2122 row
+          uid=40_2123 cell "9"
+            uid=40_2124 paragraph
+              uid=40_2125 StaticText "9"
+          uid=40_2126 cell "旁滤水量"
+            uid=40_2127 paragraph
+              uid=40_2128 StaticText "旁滤水量"
+          uid=40_2129 cell "Qsf = Q × sf_ratio"
+            uid=40_2130 paragraph
+              uid=40_2131 StaticText "Qsf = Q × sf_ratio"
+          uid=40_2132 cell "80.00"
+            uid=40_2133 paragraph
+              uid=40_2134 StaticText "80.00"
+          uid=40_2135 cell "m³/h"
+            uid=40_2136 paragraph
+              uid=40_2137 StaticText "m³/h"
+        uid=40_2138 row
+          uid=40_2139 cell "10"
+            uid=40_2140 paragraph
+              uid=40_2141 StaticText "10"
+          uid=40_2142 cell "过滤器台数"
+            uid=40_2143 paragraph
+              uid=40_2144 StaticText "过滤器台数"
+          uid=40_2145 cell "n = ceil(Qsf/Q_unit)"
+            uid=40_2146 paragraph
+              uid=40_2147 StaticText "n = ceil(Qsf/Q_unit)"
+          uid=40_2148 cell "1"
+            uid=40_2149 paragraph
+              uid=40_2150 StaticText "1"
+          uid=40_2151 cell "台"
+            uid=40_2152 paragraph
+              uid=40_2153 StaticText "台"
+        uid=40_2154 row
+          uid=40_2155 cell "11"
+            uid=40_2156 paragraph
+              uid=40_2157 StaticText "11"
+          uid=40_2158 cell "反洗瞬时流量"
+            uid=40_2159 paragraph
+              uid=40_2160 StaticText "反洗瞬时流量"
+          uid=40_2161 cell "Qbw = A × q × n"
+            uid=40_2162 paragraph
+              uid=40_2163 StaticText "Qbw = A × q × n"
+          uid=40_2164 cell "150.00"
+            uid=40_2165 paragraph
+              uid=40_2166 StaticText "150.00"
+          uid=40_2167 cell "L/s"
+            uid=40_2168 paragraph
+              uid=40_2169 StaticText "L/s"
+        uid=40_2170 row
+          uid=40_2171 cell "12"
+            uid=40_2172 paragraph
+              uid=40_2173 StaticText "12"
+          uid=40_2174 cell "单次反洗水量"
+            uid=40_2175 paragraph
+              uid=40_2176 StaticText "单次反洗水量"
+          uid=40_2177 cell "Vbw = Qbw × t × n × 60 / 1000"
+            uid=40_2178 paragraph
+              uid=40_2179 StaticText "Vbw = Qbw × t × n × 60 / 1000"
+          uid=40_2180 cell "18.00"
+            uid=40_2181 paragraph
+              uid=40_2182 StaticText "18.00"
+          uid=40_2183 cell "m³"
+            uid=40_2184 paragraph
+              uid=40_2185 StaticText "m³"
+      uid=40_2186 paragraph
+        uid=40_2187 LineBreak "
+"
+    uid=40_2188 button "撤销 (Ctrl+Z)"
+    uid=40_2189 button "重做 (Ctrl+Y)" disableable disabled
+    uid=40_2190 button "正文"
+    uid=40_2191 button "标题 1"
+    uid=40_2192 button "标题 2"
+    uid=40_2193 button "标题 3"
+    uid=40_2194 button "加粗 (Ctrl+B)"
+    uid=40_2195 button "斜体 (Ctrl+I)"
+    uid=40_2196 button "下划线 (Ctrl+U)"
+    uid=40_2197 button "删除线"
+    uid=40_2198 button "高亮"
+    uid=40_2199 button "行内代码"
+    uid=40_2200 button "链接"
+    uid=40_2201 button "无序列表"
+    uid=40_2202 button "有序列表"
+    uid=40_2203 button "任务列表"
+    uid=40_2204 button "左对齐"
+    uid=40_2205 button "居中"
+    uid=40_2206 button "右对齐"
+    uid=40_2207 button "引用块"
+    uid=40_2208 button "代码块"
+    uid=40_2209 button "分割线"
+    uid=40_2210 button "插入表格"

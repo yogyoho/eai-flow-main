@@ -24,7 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useState } from "react";
 
-import "./index.css";
+import "./landing.css";
 import {
   DropdownMenu,
   DropdownMenuContent,
