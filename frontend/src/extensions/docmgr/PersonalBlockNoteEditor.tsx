@@ -663,11 +663,11 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
             width: 192, flexShrink: 0, display: "flex", flexDirection: "column",
             borderRight: "1px solid hsl(var(--border))", background: "hsl(var(--muted) / 0.5)",
           }}>
-            <div style={{ padding: "16px 12px 0" }}>
+            <div style={{ padding: "16px 8px 0" }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: "hsl(var(--muted-foreground))",
                 textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>目录</p>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 16px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px" }}>
               {headings.map((h) => (
                 <button
                   key={h.id}
@@ -680,7 +680,7 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
                     padding: "4px 8px 4px 0", borderRadius: "0 4px 4px 0", fontSize: 13,
                     color: "hsl(var(--muted-foreground))", cursor: "pointer", overflow: "hidden",
                     textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    paddingLeft: 4 + h.level * 12,
+                    paddingLeft: h.level * 10,
                   }}
                 >
                   {h.text}
