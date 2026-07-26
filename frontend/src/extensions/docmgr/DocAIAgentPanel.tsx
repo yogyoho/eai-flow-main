@@ -534,40 +534,50 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           <div className="p-4 space-y-4">
-            {/* User messages from local state */}
-            {userMessages.map((msg, i) => (
-              <div key={`user-${i}`} className="flex justify-end">
-                <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words">
-                  {msg}
-                </div>
-              </div>
-            ))}
-            {/* AI messages from stream */}
-            {allMessages.filter((m: any) => m.type === "ai").map((m: any) => {
-              const { text, ops, error } = parseAIMessage(m.content);
-              return (
-                <div key={m.id}>
-                  <div className="text-sm leading-relaxed break-words text-foreground">
-                    {text ? (
-                      <SafeStreamdown>{text}</SafeStreamdown>
-                    ) : (
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                        思考中...
-                      </span>
+            {/* Interleaved Q&A: 问1 答1 问2 答2 ... */}
+            {(() => {
+              const aiMsgs = allMessages.filter((m: any) => m.type === "ai");
+              const items: Array<{ type: "human"; text: string; idx: number } | { type: "ai"; msg: any }> = [];
+              let aiIdx = 0;
+              for (let i = 0; i < Math.max(userMessages.length, aiMsgs.length); i++) {
+                if (i < userMessages.length) items.push({ type: "human", text: userMessages[i], idx: i });
+                if (aiIdx < aiMsgs.length) items.push({ type: "ai", msg: aiMsgs[aiIdx++] });
+              }
+              return items.map((item) => {
+                if (item.type === "human") {
+                  return (
+                    <div key={`user-${item.idx}`} className="flex justify-end">
+                      <div className="max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        {item.text}
+                      </div>
+                    </div>
+                  );
+                }
+                const { text, ops, error } = parseAIMessage(item.msg.content);
+                return (
+                  <div key={item.msg.id}>
+                    <div className="text-sm leading-relaxed break-words text-foreground">
+                      {text ? (
+                        <SafeStreamdown>{text}</SafeStreamdown>
+                      ) : (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                          思考中...
+                        </span>
+                      )}
+                    </div>
+                    {ops && ops.length > 0 && mode !== "plan" && (
+                      <OperationCards operations={ops} editorRef={editorRef} mode={mode} />
+                    )}
+                    {error && (
+                      <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                        ⚠️ {error}
+                      </div>
                     )}
                   </div>
-                  {ops && ops.length > 0 && mode !== "plan" && (
-                    <OperationCards operations={ops} editorRef={editorRef} mode={mode} />
-                  )}
-                  {error && (
-                    <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                      ⚠️ {error}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
 
             {streamState?.isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm px-1">

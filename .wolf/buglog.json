@@ -7342,6 +7342,54 @@
       "related_bugs": [],
       "occurrences": 3,
       "last_seen": "2026-07-26T08:18:10.825Z"
+    },
+    {
+      "id": "bug-450",
+      "timestamp": "2026-07-26T08:22:09.982Z",
+      "error_message": "CSS fix: padding, flex",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "padding: \"16px 12px 0\" → \"16px 8px 0\"; flex: 1, overflowY: \"auto\", padding: \"0 12px 16px\" → 1, overflowY: \"auto\", padding: \"0 8px 16px\"",
+      "fix": "Changed padding: \"16px 12px 0\" → \"16px 8px 0\"; flex: 1, overflowY: \"auto\", padding: \"0 12px 16px\" → 1, overflowY: \"auto\", padding: \"0 8px 16px\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T08:23:05.266Z"
+    },
+    {
+      "id": "bug-451",
+      "timestamp": "2026-07-26T08:29:16.635Z",
+      "error_message": "CSS fix: ponytail",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "ponytail: store original user messages in a ref array, pushed on submit. → track user messages in state so they survive re-renders.",
+      "fix": "Changed ponytail: store original user messages in a ref array, pushed on submit. → track user messages in state so they survive re-renders.",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-26T08:32:09.784Z"
+    },
+    {
+      "id": "bug-452",
+      "timestamp": "2026-07-26T08:38:19.669Z",
+      "error_message": "CSS fix: m",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "m: any) => m.type === \"ai\").map((m: any) => { → any) => m.type === \"ai\")",
+      "fix": "Changed m: any) => m.type === \"ai\").map((m: any) => { → any) => m.type === \"ai\")",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T08:38:19.669Z"
     }
   ]
 }

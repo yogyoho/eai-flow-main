@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-05-11T15:07:37.183Z",
   "lifetime": {
-    "total_tokens_estimated": 116081531,
-    "total_reads": 38695,
-    "total_writes": 49278,
+    "total_tokens_estimated": 116107857,
+    "total_reads": 38698,
+    "total_writes": 49297,
     "total_sessions": 460,
-    "anatomy_hits": 20428,
+    "anatomy_hits": 20431,
     "anatomy_misses": 17057,
-    "repeated_reads_blocked": 31926,
-    "estimated_savings_vs_bare_cli": 195726814
+    "repeated_reads_blocked": 31928,
+    "estimated_savings_vs_bare_cli": 195742354
   },
   "sessions": [
     {
@@ -510021,6 +510021,169 @@
         "writes_count": 2,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-07-26-1610",
+      "started": "2026-07-26T08:10:58.220Z",
+      "ended": "2026-07-26T08:18:33.758Z",
+      "reads": [],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 0,
+        "output_tokens_estimated": 127,
+        "reads_count": 0,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 0
+      }
+    },
+    {
+      "id": "session-2026-07-26-1610",
+      "started": "2026-07-26T08:10:58.220Z",
+      "ended": "2026-07-26T08:23:25.121Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 8783,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 14,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 8783,
+        "output_tokens_estimated": 239,
+        "reads_count": 1,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-26-1610",
+      "started": "2026-07-26T08:10:58.220Z",
+      "ended": "2026-07-26T08:32:47.477Z",
+      "reads": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 8783,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 7470,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 25,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 98,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+          "tokens_estimated": 14,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 113,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 15,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 459,
+          "action": "edit"
+        },
+        {
+          "file": "D:/eai/eai-flow-main/frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+          "tokens_estimated": 65,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 16253,
+        "output_tokens_estimated": 924,
+        "reads_count": 2,
+        "writes_count": 11,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 2
       }
     }
   ],
