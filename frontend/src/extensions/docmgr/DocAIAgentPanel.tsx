@@ -228,13 +228,12 @@ function OperationCards({
   const autoOps = operations.filter((o) => o.autoApply);
   const manualOps = operations.filter((o) => !o.autoApply);
 
-  // Auto-apply autoApply operations on mount
+  // Auto-apply autoApply operations when they change
   useEffect(() => {
     if (autoOps.length > 0) {
       editorRef.current?.applyOperations(autoOps);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoOps, editorRef]);
 
   return (
     <div className="space-y-2 mt-3">
@@ -297,6 +296,8 @@ export default function DocAIAgentPanel({
 
   const pendingRef = useRef<{ message: string; modelName: string | null } | null>(null);
   const [submitTick, setSubmitTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // ── model selector ────────────────────────────────────────────────
   useEffect(() => {
@@ -318,10 +319,13 @@ export default function DocAIAgentPanel({
     const el = inputRef.current;
     if (!el) return;
     const trimmed = el.value.trim();
-    if (!trimmed || isCreating) return;
+    if (!trimmed || isCreating || submitting) return;
 
+    const message = trimmed;
     el.value = "";
     el.style.height = "auto";
+    setError(null);
+    setSubmitting(true);
 
     try {
       // Sync current editor content to backend
@@ -336,12 +340,16 @@ export default function DocAIAgentPanel({
       });
 
       await ensureThread();
-      pendingRef.current = { message: trimmed, modelName };
+      pendingRef.current = { message, modelName };
       setSubmitTick((v) => v + 1);
-    } catch {
-      // error surfaced via stream state
+    } catch (e: any) {
+      // Restore input on failure so user can retry
+      el.value = message;
+      setError(e?.message || "发送失败，请重试");
+    } finally {
+      setSubmitting(false);
     }
-  }, [isCreating, ensureThread, modelName, editorRef, threadId, docRelPath]);
+  }, [isCreating, submitting, ensureThread, modelName, editorRef, threadId, docRelPath]);
 
   // ── send queued message when stream is ready ──────────────────────
   const streamReady = !!subThreadId && !!streamState && !streamState.isLoading;
@@ -493,6 +501,12 @@ export default function DocAIAgentPanel({
 
       {/* Input area */}
       <div className="p-3 border-t border-border shrink-0">
+        {error && (
+          <div className="mb-2 text-xs text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 flex items-center justify-between">
+            <span>❌ {error}</span>
+            <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-600">✕</button>
+          </div>
+        )}
         <div className="bg-muted/30 border border-border rounded-2xl px-3 py-2">
           <textarea
             ref={inputRef}
@@ -500,7 +514,7 @@ export default function DocAIAgentPanel({
             onKeyDown={handleKeyDown}
             placeholder="输入指令..."
             rows={1}
-            disabled={isCreating}
+            disabled={isCreating || submitting}
             className="w-full border-none outline-none bg-transparent text-[13px] text-foreground min-w-0 placeholder:text-muted-foreground resize-none leading-relaxed max-h-[120px]"
           />
           <div className="flex items-center justify-between mt-1.5">
@@ -540,15 +554,15 @@ export default function DocAIAgentPanel({
             <button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={isCreating}
+              disabled={isCreating || submitting}
               className={cn(
                 "w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                !streamState?.isLoading && !isCreating
+                !streamState?.isLoading && !isCreating && !submitting
                   ? "bg-primary text-primary-foreground hover:opacity-90"
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {streamState?.isLoading || isCreating ? (
+              {streamState?.isLoading || isCreating || submitting ? (
                 <span className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
               ) : (
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
