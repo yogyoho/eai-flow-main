@@ -142,7 +142,7 @@ describe("parseOperations", () => {
     const input = `发现2处问题。
 
 ---OPERATIONS---
-[{"op":"replace","anchor":"实际参数","content":"## 设计参数分析","autoApply":false}]`;
+[{"op":"replace","anchor":"实际参数","content":"## 设计参数分析"}]`;
     const result = parseOperations(input);
     expect(result.analysis).toBe("发现2处问题。");
     expect(result.parseError).toBeNull();
@@ -152,7 +152,6 @@ describe("parseOperations", () => {
       op: "replace",
       anchor: "实际参数",
       content: "## 设计参数分析",
-      autoApply: false,
     });
   });
 
@@ -174,9 +173,9 @@ describe("parseOperations", () => {
 
   test("multiple operations", () => {
     const ops = [
-      { op: "replace", anchor: "旧标题", content: "## 新标题", autoApply: false },
-      { op: "append", content: "## 结论\n\n总结内容。", autoApply: false },
-      { op: "delete", anchor: "重复段落", autoApply: true },
+      { op: "replace" as const, anchor: "旧标题", content: "## 新标题" },
+      { op: "append" as const, content: "## 结论\n\n总结内容。" },
+      { op: "delete" as const, anchor: "重复段落" },
     ];
     const input = "分析。\n\n---OPERATIONS---\n" + JSON.stringify(ops);
     const result = parseOperations(input);
@@ -187,76 +186,40 @@ describe("parseOperations", () => {
     expect(result.operations![2].op).toBe("delete");
   });
 
-  test("autoApply and manual operations mixed", () => {
+  test("operations parsed from JSON", () => {
     const ops = [
-      { op: "replace" as const, anchor: "标题", content: "## 新", autoApply: false },
-      { op: "replace" as const, anchor: "## 新", content: "## 新\n\n加空格", autoApply: true },
+      { op: "replace" as const, anchor: "标题", content: "## 新" },
+      { op: "append" as const, content: "## 加的内容" },
     ];
     const input = "文本。\n\n---OPERATIONS---\n" + JSON.stringify(ops);
     const result = parseOperations(input);
-    expect(result.operations![0].autoApply).toBe(false);
-    expect(result.operations![1].autoApply).toBe(true);
+    expect(result.operations!.length).toBe(2);
+    expect(result.operations![0].op).toBe("replace");
+    expect(result.operations![1].op).toBe("append");
   });
 });
 
 // ─── buildPrompt ───────────────────────────────────────────────────────
 
 describe("buildPrompt", () => {
-  test("includes document content", () => {
-    const prompt = buildPrompt({
-      docContent: "# 测试文档\n\n内容。",
-      anchors: '[0] H1 "# 测试文档"\n[1] P "内容。"',
-      userMessage: "总结",
-    });
-    expect(prompt).toContain("# 测试文档");
-    expect(prompt).toContain("内容。");
-  });
+  function b(mode: string, msg: string) { return buildPrompt({ mode: mode as any, docContent: "# 测试文档\n\n内容。", anchors: '[0] H1 "# 测试文档"', userMessage: msg }); }
 
-  test("includes anchor index", () => {
-    const prompt = buildPrompt({
-      docContent: "doc",
-      anchors: '[0] H1 "# 标题"\n[1] P "段落文本"',
-      userMessage: "操作",
-    });
-    expect(prompt).toContain('[0] H1 "# 标题"');
-    expect(prompt).toContain('[1] P "段落文本"');
+  test("ask mode — includes document content", () => { expect(b("ask","总结")).toContain("# 测试文档"); });
+  test("includes anchor index", () => { expect(b("ask","操作")).toContain('[0] H1 "# 测试文档"'); });
+  test("includes user message", () => { expect(b("ask","润色")).toContain("润色"); });
+  test("ask mode — includes operation format", () => {
+    const p = b("ask","test");
+    expect(p).toContain("---OPERATIONS---");
+    expect(p).toContain('"replace"');
   });
-
-  test("includes user message", () => {
-    const prompt = buildPrompt({
-      docContent: "doc",
-      anchors: "",
-      userMessage: "请帮我润色这段文字",
-    });
-    expect(prompt).toContain("请帮我润色这段文字");
+  test("ask mode — includes examples", () => {
+    const p = b("ask","test");
+    expect(p).toContain("设计参数分析");
+    expect(p).toContain("示例1");
   });
-
-  test("includes operation format instructions", () => {
-    const prompt = buildPrompt({
-      docContent: "doc",
-      anchors: "",
-      userMessage: "test",
-    });
-    expect(prompt).toContain("---OPERATIONS---");
-    expect(prompt).toContain("replace");
-    expect(prompt).toContain("insert_after");
-    expect(prompt).toContain("delete");
-    expect(prompt).toContain("prepend");
-    expect(prompt).toContain("append");
-    expect(prompt).toContain("autoApply");
-  });
-
-  test("includes few-shot examples", () => {
-    const prompt = buildPrompt({
-      docContent: "doc",
-      anchors: "",
-      userMessage: "test",
-    });
-    // New prompt has 3 examples with concrete operations
-    expect(prompt).toContain("设计参数分析");
-    expect(prompt).toContain("GB/T 50746-2012");
-    expect(prompt).toContain("示例1");
-    expect(prompt).toContain("示例2");
-    expect(prompt).toContain("示例3");
+  test("plan mode — no operations format", () => {
+    const p = b("plan","分析");
+    expect(p).not.toContain("---OPERATIONS---");
+    expect(p).toContain("不要输出任何文档编辑操作");
   });
 });

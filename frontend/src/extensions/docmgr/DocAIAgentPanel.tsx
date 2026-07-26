@@ -16,37 +16,60 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
 
+// ─── types ────────────────────────────────────────────────────────────────
+type AIMode = "ask" | "auto" | "plan";
+const MODE_OPTIONS: { value: AIMode; label: string }[] = [
+  { value: "ask", label: "Ask" },
+  { value: "auto", label: "Auto" },
+  { value: "plan", label: "Plan" },
+];
+
 // ─── helpers ────────────────────────────────────────────────────────────
 
-/** Build the unified system prompt with anchor index + operations format (spec §5). */
+/** Build the system prompt — format depends on mode. */
 export function buildPrompt(params: {
+  mode: AIMode;
   docContent: string;
   anchors: string;
   userMessage: string;
 }): string {
+  if (params.mode === "plan") {
+    return `你是文档分析助手。请阅读下方文档并根据用户指令提供分析、建议、思路或合规审查。
+
+**重要**：只输出分析和建议，不要输出任何文档编辑操作。
+用 Markdown 格式回复。
+
+**文档全文**：
+\`\`\`markdown
+${params.docContent}
+\`\`\`
+
+**用户指令**：${params.userMessage}`;
+  }
+
+  // ask / auto mode: full prompt with operations format
   return `你是文档编辑助手，能直接修改文档。回复分两部分，用 \`---OPERATIONS---\` 分隔。
 
 **规则（必须遵守）**：
 1. 凡是要添加/修改/删除文档内容的，必须在 \`---OPERATIONS---\` 后输出 JSON 操作数组
 2. 只有纯聊天/纯分析/纯问答才不需要操作块
-3. 操作数组必须是合法 JSON，一行一条，不要换行
+3. 操作数组必须是合法 JSON
 
 **操作类型与格式**：
-{"op":"replace","anchor":"要匹配的文本","content":"新内容（markdown）","autoApply":false}
-{"op":"insert_after","anchor":"在这段之后","content":"插入的内容","autoApply":false}
-{"op":"delete","anchor":"删除这段","autoApply":true}
-{"op":"prepend","content":"文档开头插入","autoApply":false}
-{"op":"append","content":"文档末尾追加","autoApply":false}
+{"op":"replace","anchor":"要匹配的文本","content":"新内容（markdown）"}
+{"op":"insert_after","anchor":"在这段之后","content":"插入的内容"}
+{"op":"delete","anchor":"删除这段"}
+{"op":"prepend","content":"文档开头插入"}
+{"op":"append","content":"文档末尾追加"}
 
 **anchor 定位**：从下方锚点索引用最近似文本（取标题或段落前20字）。
-**autoApply**：纯格式修正=true，内容增删=false。
 
 **示例1 — 内容修改**：
 \`\`\`
 需要将第3节标题更新为更准确的描述。
 
 ---OPERATIONS---
-[{"op":"replace","anchor":"实际参数","content":"## 设计参数分析","autoApply":false}]
+[{"op":"replace","anchor":"实际参数","content":"## 设计参数分析"}]
 \`\`\`
 
 **示例2 — 末尾追加**：
@@ -54,15 +77,7 @@ export function buildPrompt(params: {
 在文档末尾补充一段结论。
 
 ---OPERATIONS---
-[{"op":"append","content":"## 结论\\n\\n本文基于GB/T 50746-2012完成循环水系统设计计算，各项指标满足规范要求。","autoApply":false}]
-\`\`\`
-
-**示例3 — 纯格式修正**：
-\`\`\`
-中英文之间需要添加空格，标题层级需要统一。
-
----OPERATIONS---
-[{"op":"replace","anchor":"## 设计参数分析","content":"## 设计参数分析\\n\\n根据GB/T 50746-2012表3.3.3，蒸发损失系数计算公式如下：","autoApply":true}]
+[{"op":"append","content":"## 结论\\n\\n本文基于GB/T 50746-2012完成循环水系统设计计算，各项指标满足规范要求。"}]
 \`\`\`
 
 **锚点索引**：
@@ -137,27 +152,43 @@ function WelcomePage() {
   );
 }
 
-/** Merged notification card for auto-applied operations (spec §8). */
-function AutoApplyCard({ operations, onUndo }: { operations: DocOperation[]; onUndo: () => void }) {
+/** Notification card for auto-applied operations with undo. */
+function AutoNotifyCard({ operations, onUndo }: { operations: DocOperation[]; onUndo: () => void }) {
   const [dismissed, setDismissed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   if (dismissed) return null;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-base">🔧</span>
-        <span className="font-medium text-foreground">已自动应用 {operations.length} 项格式修正</span>
+        <span className="font-medium text-foreground">已自动应用 {operations.length} 项操作</span>
       </div>
-      <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-0.5">
-        {operations.map((op, i) => (
-          <li key={i}>{op.content?.slice(0, 80) || op.op}</li>
-        ))}
-      </ol>
-      <button onClick={() => { onUndo(); setDismissed(true); }} className="text-xs text-primary hover:underline mt-2">
-        撤销此次自动修正
-      </button>
+      {expanded && (
+        <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-0.5 mb-2">
+          {operations.map((op, i) => (
+            <li key={i}>{opLabel(op)}: {op.content?.slice(0, 60) || op.anchor?.slice(0, 40) || "-"}</li>
+          ))}
+        </ol>
+      )}
+      <div className="flex gap-3">
+        <button onClick={() => setExpanded(!expanded)} className="text-xs text-muted-foreground hover:text-foreground">
+          {expanded ? "收起" : "展开查看详情"}
+        </button>
+        <button onClick={() => { onUndo(); setDismissed(true); }} className="text-xs text-primary hover:underline">
+          撤销全部
+        </button>
+      </div>
     </div>
   );
+}
+
+function opLabel(op: DocOperation): string {
+  if (op.op === "delete") return "删除";
+  if (op.op === "insert_after") return "插入";
+  if (op.op === "prepend") return "开头插入";
+  if (op.op === "append") return "末尾追加";
+  return "替换";
 }
 
 /** Per-operation confirm card (spec §8). */
@@ -226,30 +257,35 @@ function ConfirmCard({
   );
 }
 
-/** Render parsed operations: autoApply merged card + per-operation confirm cards. */
+/** Render operations based on mode: auto-apply or confirm cards. */
 function OperationCards({
   operations,
   editorRef,
+  mode,
 }: {
   operations: DocOperation[];
   editorRef: React.RefObject<PersonalBlockNoteEditorRef | null>;
+  mode: AIMode;
 }) {
-  const autoOps = operations.filter((o) => o.autoApply);
-  const manualOps = operations.filter((o) => !o.autoApply);
-
-  // Auto-apply autoApply operations when they change
+  // Auto mode: apply all immediately, show notification
   useEffect(() => {
-    if (autoOps.length > 0) {
-      editorRef.current?.applyOperations(autoOps);
+    if (mode === "auto" && operations.length > 0) {
+      editorRef.current?.applyOperations(operations);
     }
-  }, [autoOps, editorRef]);
+  }, [operations, editorRef, mode]);
 
+  if (mode === "auto") {
+    return (
+      <div className="space-y-2 mt-3">
+        <AutoNotifyCard operations={operations} onUndo={() => { /* TBD */ }} />
+      </div>
+    );
+  }
+
+  // Ask mode: confirm cards
   return (
     <div className="space-y-2 mt-3">
-      {autoOps.length > 0 && (
-        <AutoApplyCard operations={autoOps} onUndo={() => { /* TBD: reverse operations */ }} />
-      )}
-      {manualOps.map((op, i) => (
+      {operations.map((op, i) => (
         <ConfirmCard
           key={i}
           operation={op}
@@ -290,9 +326,14 @@ export default function DocAIAgentPanel({
   const { models } = useModels();
   const [modelName, setModelName] = useState<string | null>(null);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [mode, setMode] = useState<AIMode>("ask");
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [chatKey, setChatKey] = useState(0);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   const client = useMemo(() => getAPIClient(), []);
 
@@ -320,6 +361,16 @@ export default function DocAIAgentPanel({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [modelMenuOpen]);
+
+  useEffect(() => {
+    if (!modeMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node))
+        setModeMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [modeMenuOpen]);
 
   const selectedModelLabel = modelName
     ? models.find((m) => m.name === modelName)?.display_name ?? modelName
@@ -382,7 +433,7 @@ export default function DocAIAgentPanel({
           })
           .join("\n");
 
-        const prompt = buildPrompt({ docContent, anchors, userMessage: message });
+        const prompt = buildPrompt({ mode: modeRef.current, docContent, anchors, userMessage: message });
 
         streamState.submit(
           { messages: [{ type: "human", content: prompt }] },
@@ -492,8 +543,8 @@ export default function DocAIAgentPanel({
                       </span>
                     )}
                   </div>
-                  {ops && ops.length > 0 && (
-                    <OperationCards operations={ops} editorRef={editorRef} />
+                  {ops && ops.length > 0 && mode !== "plan" && (
+                    <OperationCards operations={ops} editorRef={editorRef} mode={mode} />
                   )}
                   {error && (
                     <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
@@ -535,7 +586,36 @@ export default function DocAIAgentPanel({
             className="w-full border-none outline-none bg-transparent text-[13px] text-foreground min-w-0 placeholder:text-muted-foreground resize-none leading-relaxed max-h-[120px]"
           />
           <div className="flex items-center justify-between mt-1.5">
-            <div ref={modelMenuRef} className="relative shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Mode selector */}
+              <div ref={modeMenuRef} className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setModeMenuOpen((v) => !v)}
+                  className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors rounded-md px-1.5 py-0.5 hover:bg-muted"
+                >
+                  <span>{MODE_OPTIONS.find(m => m.value === mode)?.label || "Ask"}</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2.5 3.5L5 6L7.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {modeMenuOpen && (
+                  <div className="absolute bottom-full right-0 mb-2 w-28 bg-background rounded-xl shadow-lg border border-border py-1 z-50">
+                    {MODE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setMode(opt.value); setModeMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted ${mode === opt.value ? "bg-primary/5 text-primary" : ""}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Model selector */}
+              <div ref={modelMenuRef} className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setModelMenuOpen((v) => !v)}
@@ -567,6 +647,7 @@ export default function DocAIAgentPanel({
                   ))}
                 </div>
               )}
+            </div>
             </div>
             <button
               type="button"

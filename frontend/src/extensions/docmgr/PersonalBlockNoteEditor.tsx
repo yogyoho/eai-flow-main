@@ -39,9 +39,8 @@ export interface DocAnchor {
 
 export interface DocOperation {
   op: "replace" | "insert_after" | "delete" | "prepend" | "append";
-  anchor?: string;     // text to match; omitted for prepend/append
-  content?: string;    // new markdown content; omitted for delete
-  autoApply: boolean;
+  anchor?: string;
+  content?: string;
 }
 
 // ponytail: simple Levenshtein for fuzzy anchor matching (spec §7 level 4).
