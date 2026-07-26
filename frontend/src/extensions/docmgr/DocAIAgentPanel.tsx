@@ -3,6 +3,7 @@
 import {
   RefreshCw,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -521,8 +522,8 @@ export default function DocAIAgentPanel({
           <span className="text-sm font-semibold text-foreground">AI 助手</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="新对话">
-            <RefreshCw className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="清除对话">
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
             <X className="w-3.5 h-3.5" />
