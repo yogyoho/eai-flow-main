@@ -1,13 +1,13 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
+import { BrowserTrigger } from "@/components/workspace/browser-view";
 import {
   ChatBox,
   useSpecificChatMode,
@@ -34,6 +34,7 @@ import { TodoList } from "@/components/workspace/todo-list";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { useActiveGoal } from "@/components/workspace/use-active-goal";
 import { Welcome } from "@/components/workspace/welcome";
+import { useBrowserControlEnabled } from "@/core/features";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   buildHumanInputResponseText,
@@ -69,6 +70,7 @@ export default function ChatPage() {
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
+  const { enabled: browserControlEnabled } = useBrowserControlEnabled();
   const { tokenUsageEnabled } = useModels();
   const threadTokenUsage = useThreadTokenUsage(
     isNewThread || isMock ? undefined : threadId,
@@ -81,24 +83,7 @@ export default function ChatPage() {
   const branchThread = useBranchThread();
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const mountedRef = useRef(false);
-  const [pageReady, setPageReady] = useState(false);
   useSpecificChatMode();
-
-  // EAI: parse project context from URL params
-  const searchParams = useSearchParams();
-  const fromProject = searchParams.get("from") === "project";
-  const projectContext = fromProject
-    ? {
-        projectId: searchParams.get("projectId") ?? "",
-        projectName: decodeURIComponent(searchParams.get("projectName") ?? ""),
-        stage: Number(searchParams.get("stage")) || 3,
-        chapterId: searchParams.get("chapterId"),
-        chapterName: searchParams.get("chapterName")
-          ? decodeURIComponent(searchParams.get("chapterName")!)
-          : null,
-        mode: (searchParams.get("mode") ?? "") || "writing",
-      }
-    : null;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -157,19 +142,6 @@ export default function ChatPage() {
       }
     },
   });
-
-  // EAI: show loading overlay while history loads from backend.
-  // Max 15 s fallback — if the SDK never flips isHistoryLoading to false,
-  // the overlay would block the page permanently without a timeout.
-  useEffect(() => {
-    if (isHistoryLoading) return;
-    const timer = setTimeout(() => setPageReady(true), 300);
-    return () => clearTimeout(timer);
-  }, [isHistoryLoading]);
-  useEffect(() => {
-    const fallback = setTimeout(() => setPageReady(true), 15_000);
-    return () => clearTimeout(fallback);
-  }, []);
 
   const hasThreadMessages = thread.messages.length > 0;
 
@@ -271,6 +243,7 @@ export default function ChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
+  const browserEnabled = !isNewThread && browserControlEnabled;
   const { activeGoal, hasGoal, setLocalGoal } = useActiveGoal(
     threadId,
     thread.values.goal,
@@ -284,10 +257,6 @@ export default function ChatPage() {
     [thread.messages],
   );
 
-  if (!pageReady) {
-    return <PageLoadingOverlay text="加载对话中..." />;
-  }
-
   return (
     <ThreadContext.Provider value={{ thread, isMock }}>
       <SidecarProvider
@@ -295,7 +264,7 @@ export default function ChatPage() {
         context={settings.context}
         isMock={isMock}
       >
-        <ChatBox threadId={threadId}>
+        <ChatBox threadId={threadId} browserEnabled={browserEnabled}>
           <div className="relative flex size-full min-h-0 justify-between">
             <header
               className={cn(
@@ -325,6 +294,7 @@ export default function ChatPage() {
                   }
                 />
                 <SidecarTrigger />
+                {browserEnabled && <BrowserTrigger />}
                 <ExportTrigger threadId={threadId} />
                 <ArtifactTrigger />
               </div>
@@ -413,6 +383,7 @@ export default function ChatPage() {
                       )}
                       isWelcomeMode={isWelcomeMode}
                       threadId={threadId}
+                      draftThreadId={isNewThread ? "new" : threadId}
                       autoFocus={isWelcomeMode}
                       status={
                         thread.error
