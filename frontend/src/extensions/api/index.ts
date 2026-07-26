@@ -453,6 +453,84 @@ export const docmgrApi = {
     });
   },
 
+  aiEdit: (data: {
+    text: string;
+    operation: "polish" | "expand" | "condense" | "chat";
+    model_name?: string;
+  }) =>
+    request<{ result: string }>("/docmgr/documents/ai-edit", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  aiEditStream: async (
+    data: {
+      text: string;
+      operation: "polish" | "expand" | "condense" | "chat";
+      model_name?: string;
+    },
+    onToken: (token: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string> => {
+    const response = await fetch(
+      `${API_BASE}/docmgr/documents/ai-edit/stream`,
+      {
+        method: "POST",
+        headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
+        body: JSON.stringify(data),
+        signal,
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const err = await response.text().catch(() => "Unknown error");
+      throw new ApiError(response.status, `AI stream failed: ${response.status} ${err}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new ApiError(500, "No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.token != null) {
+              fullText += parsed.token;
+              try {
+                onToken(parsed.token);
+              } catch { /* swallow callback errors to keep reader alive */ }
+            }
+            if (parsed.error) {
+              throw new ApiError(500, parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof ApiError) throw e;
+            /* skip malformed lines */
+          }
+        }
+      }
+    } finally {
+      reader.cancel();
+    }
+
+    return fullText;
+  },
+
   syncThreadFiles: async (threadId: string): Promise<{ synced: number; skipped: number }> => {
     return request("/docmgr/sync-thread-files", {
       method: "POST",

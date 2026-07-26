@@ -42,8 +42,6 @@ export interface Translations {
     regenerate: string;
     branch: string;
     showArtifacts: string;
-    browser: string;
-    showBrowser: string;
   };
 
   home: {
@@ -92,14 +90,12 @@ export interface Translations {
     largeUnavailable: string;
     sensitiveUnavailable: string;
     truncatedUnavailable: string;
-    symlinkUnavailable: string;
     truncatedSummary: string;
   };
 
   // Input Box
   inputBox: {
     placeholder: string;
-    disclaimer: string;
     createSkillPrompt: string;
     addAttachments: string;
     inputPolish: string;
@@ -157,8 +153,6 @@ export interface Translations {
     goalNone: string;
     goalActive: string;
     goalFailed: string;
-    goalTooLong: string;
-    goalLengthCounter: string;
     compactSuccess: string;
     compactSkipped: string;
     compactFailed: string;
@@ -347,23 +341,6 @@ export interface Translations {
     agentCreated: string;
     startChatting: string;
     backToGallery: string;
-    settings: string;
-    settingsTitle: string;
-    settingsDescription: string;
-    settingsModel: string;
-    settingsModelDefault: string;
-    settingsTemperature: string;
-    settingsTemperatureHint: string;
-    settingsMaxTokens: string;
-    settingsMaxTokensPlaceholder: string;
-    settingsThinking: string;
-    settingsThinkingOn: string;
-    settingsThinkingOff: string;
-    settingsReasoningEffort: string;
-    settingsInherit: string;
-    settingsSaved: string;
-    settingsInvalidTemperature: string;
-    settingsInvalidMaxTokens: string;
   };
 
   // Breadcrumb
@@ -479,15 +456,6 @@ export interface Translations {
     clickToViewContent: string;
     writeTodos: string;
     skillInstallTooltip: string;
-    browserNavigate: (url: string) => string;
-    browserNavigateGeneric: string;
-    browserClick: string;
-    browserType: string;
-    browserSnapshot: string;
-    browserGetText: string;
-    browserBack: string;
-    browserScreenshot: string;
-    browserClose: string;
   };
 
   humanInput: {
@@ -734,8 +702,6 @@ export interface Translations {
     emailPlaceholder: string;
     password: string;
     passwordPlaceholder: string;
-    rememberMe: string;
-    rememberMeDescription: string;
     pleaseWait: string;
     signIn: string;
     createAccount: string;

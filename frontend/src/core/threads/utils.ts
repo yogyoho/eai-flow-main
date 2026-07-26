@@ -21,7 +21,6 @@ export function pathOfThread(
   context?: Pick<AgentThreadContext, "agent_name"> | null,
 ) {
   const threadId = typeof thread === "string" ? thread : thread.thread_id;
-  const encodedThreadId = encodeURIComponent(threadId);
   let agentName: string | undefined;
   if (typeof thread === "string") {
     agentName = context?.agent_name;
@@ -36,8 +35,8 @@ export function pathOfThread(
   }
 
   return agentName
-    ? `/workspace/agents/${encodeURIComponent(agentName)}/chats/${encodedThreadId}`
-    : `/workspace/chats/${encodedThreadId}`;
+    ? `/workspace/agents/${encodeURIComponent(agentName)}/chats/${threadId}`
+    : `/workspace/chats/${threadId}`;
 }
 
 export function textOfMessage(message: Message) {

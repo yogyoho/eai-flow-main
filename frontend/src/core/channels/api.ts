@@ -110,8 +110,7 @@ export async function disconnectChannelProvider(
 // ── WeChat / iLink bot management ────────────────────────────────────
 
 export interface StartWechatBotBindResponse {
-  qrcode_url?: string | null;
-  status?: string;
+  qrcode_url?: string;
 }
 
 export async function startWechatBotBind(): Promise<StartWechatBotBindResponse> {
