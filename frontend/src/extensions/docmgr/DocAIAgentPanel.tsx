@@ -106,6 +106,8 @@ export function parseOperations(text: string): { analysis: string; operations: D
   if (!opsPart) return { analysis, operations: [], parseError: null };
 
   // ponytail: normalize common AI JSON formatting errors.
+  // 0. Strip markdown code fences ```json ... ```
+  opsPart = opsPart.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
   // 1. Wrap bare object in array: {"op":...} → [{"op":...}]
   if (opsPart.startsWith("{") && !opsPart.startsWith("[")) {
     opsPart = "[" + opsPart + "]";
@@ -116,6 +118,13 @@ export function parseOperations(text: string): { analysis: string; operations: D
   }
   // 3. Strip trailing comma before ] or }
   opsPart = opsPart.replace(/,(\s*[}\]])/g, "$1");
+  // 4. Try to extract JSON array if mixed with other text
+  const arrayMatch = opsPart.match(/\[[\s\S]*\]/);
+  if (arrayMatch && arrayMatch[0].length > opsPart.length * 0.5) {
+    opsPart = arrayMatch[0];
+  }
+
+  console.log("[DocAI] opsPart after normalize:", opsPart.slice(0, 500));
 
   try {
     const ops = JSON.parse(opsPart);
