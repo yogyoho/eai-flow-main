@@ -115,12 +115,14 @@ export function parseOperations(text: string): { analysis: string; operations: D
 function WelcomePage() {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-      <div className="text-3xl mb-3 opacity-40">💬</div>
-      <div className="text-sm font-medium text-foreground mb-1">AI 协作文档助手</div>
+      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+        <Sparkles className="w-6 h-6 text-primary" />
+      </div>
+      <div className="text-base font-semibold text-foreground mb-6">文档 AI 助手</div>
 
       <div className="w-full text-left space-y-4 text-sm text-muted-foreground">
         <div>
-          <div className="font-medium text-foreground mb-1.5">📝 内容协作</div>
+          <div className="font-medium text-foreground mb-1.5">内容协作</div>
           <ul className="space-y-1 text-xs">
             <li>"给第3节加一段安全措施"</li>
             <li>"把设计参数表格改成文字描述"</li>
@@ -128,7 +130,7 @@ function WelcomePage() {
           </ul>
         </div>
         <div>
-          <div className="font-medium text-foreground mb-1.5">🔍 文档审查</div>
+          <div className="font-medium text-foreground mb-1.5">文档审查</div>
           <ul className="space-y-1 text-xs">
             <li>"检查公式编号是否连续"</li>
             <li>"这段计算逻辑有没有问题"</li>
@@ -136,7 +138,7 @@ function WelcomePage() {
           </ul>
         </div>
         <div>
-          <div className="font-medium text-foreground mb-1.5">✨ 格式修正（自动应用）</div>
+          <div className="font-medium text-foreground mb-1.5">格式修正（自动应用）</div>
           <ul className="space-y-1 text-xs">
             <li>"统一中英文之间的空格"</li>
             <li>"修正标题层级"</li>
@@ -161,7 +163,9 @@ function AutoNotifyCard({ operations, onUndo }: { operations: DocOperation[]; on
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-base">🔧</span>
+        <div className="w-4 h-4 rounded bg-primary/10 flex items-center justify-center">
+          <RefreshCw className="w-2.5 h-2.5 text-primary" />
+        </div>
         <span className="font-medium text-foreground">已自动应用 {operations.length} 项操作</span>
       </div>
       {expanded && (
@@ -224,34 +228,49 @@ function ConfirmCard({
     : "替换";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3 text-sm">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-sm">✏️</span>
-        <span className="font-medium text-foreground">
-          {opLabel}: "{operation.anchor?.slice(0, 30) || "文档开头/末尾"}"
+    <div className="rounded-lg border border-border bg-card overflow-hidden text-sm">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border/60">
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary">
+          {opLabel}
         </span>
-        {status === "applied" && <span className="text-xs text-green-600 ml-auto">✅ 已应用</span>}
-        {status === "failed" && <span className="text-xs text-red-500 ml-auto">❌ 失败</span>}
+        <span className="text-xs text-muted-foreground truncate flex-1">
+          {operation.anchor?.slice(0, 40) || (operation.op === "prepend" ? "文档开头" : operation.op === "append" ? "文档末尾" : "-")}
+        </span>
+        {status === "applied" && <span className="text-[11px] font-medium text-green-600">已应用</span>}
+        {status === "failed" && <span className="text-[11px] font-medium text-red-500">失败</span>}
       </div>
 
+      {/* Content preview */}
       {operation.op !== "delete" && operation.content && (
-        <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 mb-2 max-h-20 overflow-y-auto">
-          <pre className="whitespace-pre-wrap font-mono">{operation.content.slice(0, 200)}</pre>
+        <div className="px-3 py-2 text-xs text-muted-foreground max-h-20 overflow-y-auto">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{operation.content.slice(0, 200)}</pre>
         </div>
       )}
 
+      {/* Actions */}
       {status === "pending" && (
-        <div className="flex gap-1.5">
-          <button onClick={onPreview} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80">预览定位📍</button>
-          <button onClick={handleApply} className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90">✅ 应用</button>
-          <button onClick={() => { onSkip(); setStatus("skipped"); }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80">✕ 跳过</button>
+        <div className="flex border-t border-border/60">
+          <button onClick={onPreview} className="flex-1 text-xs py-2 text-muted-foreground hover:bg-muted/50 transition-colors">
+            预览定位
+          </button>
+          <button onClick={handleApply} className="flex-1 text-xs py-2 font-medium text-primary hover:bg-primary/5 border-l border-border/60 transition-colors">
+            应用
+          </button>
+          <button onClick={() => { onSkip(); setStatus("skipped"); }} className="flex-1 text-xs py-2 text-muted-foreground hover:bg-muted/50 border-l border-border/60 transition-colors">
+            跳过
+          </button>
         </div>
       )}
       {status === "applied" && (
-        <button onClick={() => { /* ponytail: undo within 2min, skip for now */ }} className="text-xs text-primary hover:underline">撤销</button>
+        <div className="px-3 py-1.5 border-t border-border/60 bg-muted/20">
+          <button onClick={() => {}} className="text-xs text-muted-foreground hover:text-foreground transition-colors">撤销</button>
+        </div>
       )}
       {status === "failed" && (
-        <button onClick={handleApply} className="text-xs text-primary hover:underline">重试</button>
+        <div className="px-3 py-1.5 border-t border-border/60 bg-red-50/30 dark:bg-red-950/10">
+          <button onClick={handleApply} className="text-xs text-primary hover:underline">重试</button>
+        </div>
       )}
     </div>
   );
