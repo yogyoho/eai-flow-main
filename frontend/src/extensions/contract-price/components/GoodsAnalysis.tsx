@@ -39,7 +39,7 @@ const badgeColors: Record<BadgeColor, string> = {
   cyan: "bg-cyan-500/10 text-cyan-600",
   violet: "bg-violet-500/10 text-violet-600",
   amber: "bg-amber-500/10 text-amber-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
+  emerald: "bg-success/10 text-success",
 };
 
 function ChartCard({ title, meta, icon, badgeColor = "blue", children }: { title: string; meta?: string; icon?: React.ReactNode; badgeColor?: BadgeColor; children: React.ReactNode }) {
@@ -309,7 +309,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
                     <td className="px-5 py-2.5 text-right font-mono text-muted-foreground">{(it.quantity as number)?.toFixed(2) ?? "—"}</td>
                     <td className="px-5 py-2.5">{(it.unit as string) || "—"}</td>
                     <td className="px-5 py-2.5">
-                      <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${it.validation_status === "ok" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>
+                      <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${it.validation_status === "ok" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600"}`}>
                         {it.validation_status === "ok" ? "已校验" : "待核验"}
                       </span>
                     </td>
