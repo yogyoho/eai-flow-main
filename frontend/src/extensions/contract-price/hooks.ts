@@ -22,6 +22,14 @@ export function useDashboard() {
   return useQuery({ queryKey: KEYS.dashboard, queryFn: contractPriceApi.dashboard });
 }
 
+export function useGoodsAnalysis(params: { name?: string; cluster_id?: string }) {
+  return useQuery({
+    queryKey: ["cpa", "goods-analysis", params],
+    queryFn: () => contractPriceApi.goodsAnalysis(params),
+    enabled: !!(params.name || params.cluster_id),
+  });
+}
+
 export function useDocuments(params: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: KEYS.documents(params),

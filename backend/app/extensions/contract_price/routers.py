@@ -437,6 +437,20 @@ async def dashboard(
     )
 
 
+@router.get("/contract-price-analysis")
+async def contract_price_analysis(
+    name: str | None = None,
+    cluster_id: UUID | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(get_current_user),
+):
+    """Cross-contract goods price analysis: box plot stats, supplier comparison,
+    trend by date, price histogram, and paginated detail table."""
+    return await crud.goods_analysis(db, name=name, cluster_id=cluster_id, skip=skip, limit=limit)
+
+
 # --- Pipeline trigger ------------------------------------------------------
 
 

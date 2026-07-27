@@ -2,8 +2,6 @@
 
 import { AlertTriangle, Boxes, FileText, ListChecks, PackageSearch, Play, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GoodsAnalysis } from "@/extensions/contract-price/components/GoodsAnalysis";
 import { StatCard } from "@/extensions/contract-price/components/StatCard";
 import {
   Table,
@@ -22,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/contract-price/components/ui/table";
-import { useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
+import { useClusters, useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
 
 function formatDate(s: string | null): string {
   if (!s) return "—";
@@ -38,9 +37,11 @@ const statusTone: Record<string, string> = {
 export function DashboardView() {
   const { data, isLoading, refetch, isFetching } = useDashboard();
   const runPipeline = useRunPipeline();
+  const { data: clustersData } = useClusters({ limit: 30 });
 
   const d = data;
   const runCount = d?.recent_runs.length ?? 0;
+  const clusters = clustersData?.items ?? [];
 
   return (
     <div className="space-y-6 p-8">
@@ -103,71 +104,8 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Charts (T7) */}
-      {d?.charts ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard title="货物均价 Top10" subtitle="按条目数排序的聚类组">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={d.charts.top_goods} layout="vertical" margin={{ left: 8, right: 24, top: 8 }}>
-                <CartesianGrid horizontal={false} stroke="#e5e7eb" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="avg_price" name="均价" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="价格区间分布" subtitle="含税单价分桶的条目数">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={d.charts.price_ranges} margin={{ top: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="range" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" name="条目数" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="校验状态分布" subtitle="ok / 待核验 / 已修正">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={d.charts.validation}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  labelLine={false}
-                >
-                  {d.charts.validation.map((v) => (
-                    <Cell
-                      key={v.status}
-                      fill={v.status === "ok" ? "#10b981" : v.status === "needs_review" ? "#f59e0b" : "#6b7280"}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="聚类规模分布" subtitle="每簇条目数分桶">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={d.charts.cluster_sizes} margin={{ top: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="range" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" name="聚类数" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-      ) : null}
+      {/* Cross-contract goods analysis (search + charts) */}
+      <GoodsAnalysis clusters={clusters} />
 
       {runPipeline.isError ? (
         <p className="text-sm text-destructive">
@@ -247,24 +185,4 @@ function StatCardLazy(props: {
     );
   }
   return <StatCard {...props} />;
-}
-
-function ChartCard({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        {subtitle ? <CardDescription>{subtitle}</CardDescription> : null}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
 }

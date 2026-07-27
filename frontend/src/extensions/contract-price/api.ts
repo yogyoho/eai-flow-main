@@ -42,6 +42,10 @@ export const contractPriceApi = {
   // Functional area 6: dashboard
   dashboard: () => authFetch<CpaDashboard>(`${API_BASE}/dashboard`),
 
+  // Cross-contract goods analysis
+  goodsAnalysis: (params: { name?: string; cluster_id?: string; skip?: number; limit?: number }) =>
+    authFetch<Record<string, unknown>>(`${API_BASE}/contract-price-analysis${qs(params)}`),
+
   // Functional area 1: documents
   listDocuments: (params?: {
     keyword?: string;

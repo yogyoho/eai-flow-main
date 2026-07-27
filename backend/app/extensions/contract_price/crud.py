@@ -488,6 +488,166 @@ async def dashboard_charts(session: AsyncSession) -> dict:
     }
 
 
+# --- Cross-contract goods analysis (functional area 7) --------------------
+
+
+async def goods_analysis(
+    session: AsyncSession,
+    name: Optional[str] = None,
+    cluster_id: Optional[UUID] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> dict:
+    """Cross-contract price analysis for a single goods (by name fuzzy match)
+    or a cluster. Returns box-plot stats, supplier/date breakdowns, price
+    histogram, and a paginated detail table — all in one payload for the
+    dashboard analysis view.
+
+    Price stats use ONLY ok/corrected items (needs_review excluded, same rule
+    as cluster stats).
+    """
+    import statistics as _stats
+
+    base = (
+        select(CpaItem, CpaDocument)
+        .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
+    )
+    if name:
+        base = base.where(CpaItem.goods_name.ilike(f"%{name}%"))
+    elif cluster_id:
+        base = base.where(CpaItem.cluster_id == cluster_id)
+    else:
+        return {"error": "provide name or cluster_id"}
+
+    result = await session.execute(base.order_by(CpaItem.created_at))
+    rows = result.all()
+
+    if not rows:
+        return {"goods_name": name or "", "total": 0}
+
+    items = [r[0] for r in rows]  # CpaItem objects
+    docs = [r[1] for r in rows]  # CpaDocument objects
+
+    # price stats: only ok/corrected
+    priced = [
+        float(it.unit_price)
+        for it in items
+        if it.unit_price is not None and it.validation_status in ("ok", "corrected")
+    ]
+    ok_count = sum(1 for it in items if it.validation_status == "ok")
+    nr_count = sum(1 for it in items if it.validation_status == "needs_review")
+
+    boxplot: Optional[dict] = None
+    if priced:
+        ps = sorted(priced)
+        n = len(ps)
+        q1 = ps[n // 4] if n >= 4 else ps[0]
+        q3 = ps[(3 * n) // 4] if n >= 4 else ps[-1]
+        iqr = q3 - q1
+        lo_fence = q1 - 1.5 * iqr
+        hi_fence = q3 + 1.5 * iqr
+        outliers = [
+            {"contract_no": it.source_contract_no or "—", "unit_price": float(it.unit_price)}
+            for it in items
+            if it.unit_price is not None
+            and it.validation_status in ("ok", "corrected")
+            and (float(it.unit_price) < lo_fence or float(it.unit_price) > hi_fence)
+        ]
+        boxplot = {
+            "count": n,
+            "min": round(ps[0], 2),
+            "q1": round(q1, 2),
+            "median": round(_stats.median(ps), 2),
+            "q3": round(q3, 2),
+            "max": round(ps[-1], 2),
+            "mean": round(_stats.mean(ps), 2),
+            "std": round(_stats.stdev(ps), 2) if n > 1 else 0,
+            "iqr": round(iqr, 2),
+            "outliers": outliers,
+        }
+
+    # supplier breakdown
+    by_supplier_map: dict[str, list[float]] = {}
+    for it, doc in zip(items, docs):
+        sup = doc.supplier or "未知供应商"
+        by_supplier_map.setdefault(sup, [])
+        if it.unit_price is not None and it.validation_status in ("ok", "corrected"):
+            by_supplier_map[sup].append(float(it.unit_price))
+    by_supplier = sorted(
+        [
+            {
+                "name": sup,
+                "count": len(vals),
+                "avg_price": round(_stats.mean(vals), 2) if vals else 0,
+                "min": round(min(vals), 2) if vals else 0,
+                "max": round(max(vals), 2) if vals else 0,
+            }
+            for sup, vals in by_supplier_map.items()
+        ],
+        key=lambda x: x["count"],
+        reverse=True,
+    )
+
+    # date breakdown (monthly avg)
+    by_date_map: dict[str, list[float]] = {}
+    for it, doc in zip(items, docs):
+        if doc.sign_date and it.unit_price and it.validation_status in ("ok", "corrected"):
+            month_key = doc.sign_date.strftime("%Y-%m")
+            by_date_map.setdefault(month_key, []).append(float(it.unit_price))
+    by_date = sorted(
+        [
+            {"month": m, "count": len(vals), "avg_price": round(_stats.mean(vals), 2)}
+            for m, vals in by_date_map.items()
+        ],
+        key=lambda x: x["month"],
+    )
+
+    # price histogram buckets
+    if priced:
+        ps = priced
+        buckets = [(0, 10), (10, 50), (50, 200), (200, 1000), (1000, float("inf"))]
+        ranges = []
+        for lo, hi in buckets:
+            cnt = sum(1 for p in ps if lo <= p < hi)
+            if cnt > 0 or lo < max(ps):
+                lbl = f"{int(lo)}-{int(hi)}" if hi != float("inf") else f"{int(lo)}+"
+                ranges.append({"range": lbl, "count": cnt})
+    else:
+        ranges = []
+
+    # detail table (paginated)
+    total = len(items)
+    page_items = items[skip : skip + limit]
+    detail = [
+        {
+            "id": str(it.id),
+            "goods_name": it.goods_name,
+            "contract_no": it.source_contract_no or "—",
+            "supplier": next((d.supplier for d in docs if d.id == it.document_id), None) or "—",
+            "unit_price": float(it.unit_price) if it.unit_price is not None else None,
+            "price_untaxed": float(it.price_untaxed) if it.price_untaxed is not None else None,
+            "quantity": float(it.quantity) if it.quantity is not None else None,
+            "unit": it.unit or "—",
+            "validation_status": it.validation_status,
+            "is_outlier": it.is_outlier,
+            "source_page": it.source_page,
+        }
+        for it in page_items
+    ]
+
+    return {
+        "goods_name": name or (items[0].goods_name if items else ""),
+        "total": total,
+        "ok_count": ok_count,
+        "needs_review_count": nr_count,
+        "boxplot": boxplot,
+        "by_supplier": by_supplier,
+        "by_date": by_date,
+        "price_ranges": ranges,
+        "items": detail,
+    }
+
+
 # --- Config (functional area 5) --------------------------------------------
 
 
