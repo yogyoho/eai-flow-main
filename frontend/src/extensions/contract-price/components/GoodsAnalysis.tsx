@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, BarChart3, Building2, CalendarX, Check, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarX, Check, ChevronLeft, ChevronRight, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -69,11 +69,14 @@ const COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e"
 
 // ── main component ──
 
+const PAGE_SIZE = 10;
+
 export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
 
-  const params = selectedCluster ? { cluster_id: selectedCluster } : {};
+  const params = selectedCluster ? { cluster_id: selectedCluster, skip: page * PAGE_SIZE, limit: PAGE_SIZE } : {};
   const { data, isLoading } = useGoodsAnalysis(params);
 
   return (
@@ -107,6 +110,7 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
                       value={c.representative_name}
                       onSelect={() => {
                         setSelectedCluster(c.id);
+                        setPage(0);
                         setOpen(false);
                       }}
                     >
@@ -312,6 +316,37 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
             </tbody>
           </table>
         </div>
+        {/* Pagination */}
+        {total > PAGE_SIZE ? (
+          <div className="flex items-center justify-between border-t border-border px-5 py-2.5">
+            <span className="text-xs text-muted-foreground">
+              第 {page * PAGE_SIZE + 1} — {Math.min((page + 1) * PAGE_SIZE, total)} 条 / 共 {total} 条
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                上一页
+              </Button>
+              <span className="text-xs font-medium text-muted-foreground">{page + 1} / {Math.ceil(total / PAGE_SIZE)}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2"
+                disabled={(page + 1) * PAGE_SIZE >= total}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                下一页
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
