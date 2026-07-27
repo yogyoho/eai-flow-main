@@ -122,7 +122,7 @@ export function BoxPlot({ data }: BoxPlotProps) {
       <text x={cx + boxHalf + 8} y={y(max) + 4} fill="currentColor" fontSize={11} opacity={0.6}>
         max ¥{max.toFixed(0)}
       </text>
-      <text x={cx - boxHalf - 8} y={y(min) + 4} textAnchor="end" fill="currentColor" fontSize={11} opacity={0.6}>
+      <text x={cx + boxHalf + 8} y={y(min) + 4} fill="currentColor" fontSize={11} opacity={0.6}>
         min ¥{min.toFixed(0)}
       </text>
     </svg>
