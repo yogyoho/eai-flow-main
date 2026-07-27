@@ -194,9 +194,9 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                       <stop offset="100%" stopColor="#8b5cf6" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
-                  <YAxis tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                  <CartesianGrid strokeDasharray="2 4" stroke="rgba(100,116,139,0.22)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" />
+                  <YAxis tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Line type="monotone" dataKey="avg_price" stroke="url(#trend-line)" strokeWidth={2.5} dot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }} activeDot={{ r: 6 }} />
                 </LineChart>
@@ -220,9 +220,9 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.15} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
-                <XAxis dataKey="range" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
-                <YAxis tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" allowDecimals={false} />
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(100,116,139,0.22)" />
+                <XAxis dataKey="range" tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" />
+                <YAxis tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="count" fill="url(#hist-bar)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -241,8 +241,8 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.25} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
-                <XAxis type="number" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(100,116,139,0.22)" />
+                <XAxis type="number" tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.4)" width={80} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="avg_price" fill="url(#sup-bar)" radius={[0, 4, 4, 0]}>

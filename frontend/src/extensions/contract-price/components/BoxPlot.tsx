@@ -63,18 +63,18 @@ export function BoxPlot({ data }: BoxPlotProps) {
       {/* Grid lines + Y labels */}
       {gridVals.map((v, i) => (
         <g key={i}>
-          <line x1={PAD_L} y1={y(v)} x2={W - PAD_R} y2={y(v)} stroke="currentColor" strokeWidth={1} strokeDasharray="2 4" opacity={0.1} />
-          <text x={8} y={y(v) + 4} fill="currentColor" fontSize={10} opacity={0.4} fontFamily="monospace">
+          <line x1={PAD_L} y1={y(v)} x2={W - PAD_R} y2={y(v)} stroke="currentColor" strokeWidth={1} strokeDasharray="2 4" opacity={0.22} />
+          <text x={8} y={y(v) + 4} fill="currentColor" fontSize={12} opacity={0.65} fontFamily="monospace">
             ¥{v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}
           </text>
         </g>
       ))}
 
       {/* Whiskers */}
-      <line x1={cx} y1={y(max)} x2={cx} y2={y(q3)} stroke="currentColor" strokeWidth={1.5} opacity={0.3} />
-      <line x1={cx} y1={y(min)} x2={cx} y2={y(q1)} stroke="currentColor" strokeWidth={1.5} opacity={0.3} />
-      <line x1={cx - 25} y1={y(max)} x2={cx + 25} y2={y(max)} stroke="currentColor" strokeWidth={2} opacity={0.4} />
-      <line x1={cx - 25} y1={y(min)} x2={cx + 25} y2={y(min)} stroke="currentColor" strokeWidth={2} opacity={0.4} />
+      <line x1={cx} y1={y(max)} x2={cx} y2={y(q3)} stroke="currentColor" strokeWidth={1.5} opacity={0.45} />
+      <line x1={cx} y1={y(min)} x2={cx} y2={y(q1)} stroke="currentColor" strokeWidth={1.5} opacity={0.45} />
+      <line x1={cx - 25} y1={y(max)} x2={cx + 25} y2={y(max)} stroke="currentColor" strokeWidth={2} opacity={0.55} />
+      <line x1={cx - 25} y1={y(min)} x2={cx + 25} y2={y(min)} stroke="currentColor" strokeWidth={2} opacity={0.55} />
 
       {/* Box (Q1 → Q3) */}
       <rect
@@ -110,19 +110,19 @@ export function BoxPlot({ data }: BoxPlotProps) {
       ))}
 
       {/* Labels */}
-      <text x={cx - boxHalf - 8} y={y(q1) + 4} textAnchor="end" fill="currentColor" fontSize={10} opacity={0.5}>
+      <text x={cx - boxHalf - 8} y={y(q1) + 4} textAnchor="end" fill="currentColor" fontSize={12} opacity={0.7}>
         Q1 ¥{q1.toFixed(0)}
       </text>
-      <text x={cx} y={H - 8} textAnchor="middle" fill="var(--color-primary, #3b82f6)" fontSize={11} fontWeight={700}>
+      <text x={cx} y={H - 8} textAnchor="middle" fill="var(--color-primary, #3b82f6)" fontSize={12} fontWeight={700}>
         中位 ¥{median.toFixed(0)}
       </text>
-      <text x={cx + boxHalf + 8} y={y(q3) + 4} fill="currentColor" fontSize={10} opacity={0.5}>
+      <text x={cx + boxHalf + 8} y={y(q3) + 4} fill="currentColor" fontSize={12} opacity={0.7}>
         Q3 ¥{q3.toFixed(0)}
       </text>
-      <text x={cx + 40} y={y(max) + 4} fill="currentColor" fontSize={9} opacity={0.4}>
+      <text x={cx + 40} y={y(max) + 4} fill="currentColor" fontSize={11} opacity={0.6}>
         max ¥{max.toFixed(0)}
       </text>
-      <text x={cx + 40} y={y(min) + 4} fill="currentColor" fontSize={9} opacity={0.4}>
+      <text x={cx + 40} y={y(min) + 4} fill="currentColor" fontSize={11} opacity={0.6}>
         min ¥{min.toFixed(0)}
       </text>
     </svg>
