@@ -324,7 +324,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
             </span>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 className="h-7 px-2"
                 disabled={page === 0}
@@ -335,7 +335,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
               </Button>
               <span className="text-xs font-medium text-muted-foreground">{page + 1} / {Math.ceil(total / pageSize)}</span>
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 className="h-7 px-2"
                 disabled={(page + 1) * pageSize >= total}
