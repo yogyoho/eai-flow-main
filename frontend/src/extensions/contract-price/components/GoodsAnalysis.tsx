@@ -31,7 +31,17 @@ import type { CpaCluster } from "@/extensions/contract-price/types";
 
 // ── chart card matching prototype style ──
 
-function ChartCard({ title, meta, icon, children }: { title: string; meta?: string; icon?: React.ReactNode; children: React.ReactNode }) {
+type BadgeColor = "blue" | "cyan" | "violet" | "amber" | "emerald";
+
+const badgeColors: Record<BadgeColor, string> = {
+  blue: "bg-blue-500/10 text-blue-600",
+  cyan: "bg-cyan-500/10 text-cyan-600",
+  violet: "bg-violet-500/10 text-violet-600",
+  amber: "bg-amber-500/10 text-amber-600",
+  emerald: "bg-emerald-500/10 text-emerald-600",
+};
+
+function ChartCard({ title, meta, icon, badgeColor = "blue", children }: { title: string; meta?: string; icon?: React.ReactNode; badgeColor?: BadgeColor; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-card shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] p-5 transition-shadow hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
       <div className="mb-4 flex items-center justify-between">
@@ -39,7 +49,7 @@ function ChartCard({ title, meta, icon, children }: { title: string; meta?: stri
           {icon}
           {title}
         </h3>
-        {meta ? <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">{meta}</span> : null}
+        {meta ? <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${badgeColors[badgeColor]}`}>{meta}</span> : null}
       </div>
       {children}
     </div>
@@ -176,14 +186,14 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
       {/* Charts 2x2 grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Box plot */}
-        <ChartCard title="价格分布(箱线图)" meta={boxplot ? `IQR = ${boxplot.iqr?.toFixed(0)}` : ""} icon={<LayoutGrid className="h-[15px] w-[15px] text-muted-foreground/50" />}>
+        <ChartCard title="价格分布(箱线图)" meta={boxplot ? `IQR = ${boxplot.iqr?.toFixed(0)}` : ""} badgeColor="blue" icon={<LayoutGrid className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <BoxPlot data={boxplot} />
           </div>
         </ChartCard>
 
         {/* Trend curve */}
-        <ChartCard title="价格趋势" meta={byDate.length > 0 ? `${byDate.length} 个月` : "无日期数据"} icon={<Activity className="h-[15px] w-[15px] text-muted-foreground/50" />}>
+        <ChartCard title="价格趋势" meta={byDate.length > 0 ? `${byDate.length} 个月` : "无日期数据"} badgeColor="cyan" icon={<Activity className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             {byDate.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -210,7 +220,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
         </ChartCard>
 
         {/* Histogram */}
-        <ChartCard title="价格区间分布" meta={`${total} 条`} icon={<BarChart3 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
+        <ChartCard title="价格区间分布" meta={`${total} 条`} badgeColor="violet" icon={<BarChart3 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={priceRanges} margin={{ left: 0, right: 20, top: 5 }}>
@@ -231,7 +241,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
         </ChartCard>
 
         {/* Supplier comparison */}
-        <ChartCard title="供应商均价对比" meta={`${bySupplier.length} 家`} icon={<Building2 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
+        <ChartCard title="供应商均价对比" meta={`${bySupplier.length} 家`} badgeColor="amber" icon={<Building2 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySupplier} layout="vertical" margin={{ left: 80, right: 20, top: 5 }}>
@@ -263,7 +273,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
             <Table2 className="h-[15px] w-[15px] text-muted-foreground/50" />
             价格明细(跨合同)
           </h3>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">{total} 条</span>
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">{total} 条</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
