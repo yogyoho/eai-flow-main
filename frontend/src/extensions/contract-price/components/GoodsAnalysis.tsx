@@ -169,7 +169,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
       {/* Title bar */}
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3.5 shadow-sm">
         <h2 className="text-lg font-bold tracking-tight">{goodsName}</h2>
-        <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">
+        <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success">
           已校验 {okCount} / {total}
         </span>
         {nrCount > 0 ? (
@@ -280,7 +280,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
             <Table2 className="h-[15px] w-[15px] text-muted-foreground/50" />
             价格明细(跨合同)
           </h3>
-          <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">{total} 条</span>
+          <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-bold text-success">{total} 条</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
