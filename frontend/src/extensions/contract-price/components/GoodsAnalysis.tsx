@@ -39,7 +39,7 @@ function ChartCard({ title, meta, icon, children }: { title: string; meta?: stri
           {icon}
           {title}
         </h3>
-        {meta ? <span className="font-mono text-[11px] font-bold text-muted-foreground">{meta}</span> : null}
+        {meta ? <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">{meta}</span> : null}
       </div>
       {children}
     </div>
@@ -263,7 +263,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
             <Table2 className="h-[15px] w-[15px] text-muted-foreground/50" />
             价格明细(跨合同)
           </h3>
-          <span className="font-mono text-[11px] font-bold text-muted-foreground">{total} 条</span>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">{total} 条</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
