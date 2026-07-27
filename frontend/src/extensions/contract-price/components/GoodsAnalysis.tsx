@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, BarChart3, Building2, CalendarX, Check, ChevronLeft, ChevronRight, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarX, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Crosshair, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
+import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
 import { useGoodsAnalysis } from "@/extensions/contract-price/hooks";
 import type { CpaCluster } from "@/extensions/contract-price/types";
 
@@ -150,6 +151,7 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
 // ── result renderer ──
 
 function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string, unknown>; page: number; setPage: (fn: (p: number) => number) => void; pageSize: number }) {
+  const [trace, setTrace] = useState<Record<string, unknown> | null>(null);
   const boxplot = data.boxplot as
     | { min: number; q1: number; median: number; q3: number; max: number; mean: number; iqr?: number; outliers: { unit_price: number }[] }
     | null;
@@ -290,6 +292,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
                 <th className="px-5 py-2.5 text-right font-semibold">数量</th>
                 <th className="px-5 py-2.5 text-left font-semibold">单位</th>
                 <th className="px-5 py-2.5 text-left font-semibold whitespace-nowrap">状态</th>
+                <th className="px-5 py-2.5 text-center font-semibold">溯源</th>
               </tr>
             </thead>
             <tbody>
@@ -309,6 +312,20 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
                       <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${it.validation_status === "ok" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>
                         {it.validation_status === "ok" ? "已校验" : "待核验"}
                       </span>
+                    </td>
+                    <td className="px-5 py-2.5 text-center">
+                      {it.source_page != null ? (
+                        <button
+                          type="button"
+                          className="text-rose-500 hover:text-rose-600 transition-colors"
+                          title="溯源到原文"
+                          onClick={() => setTrace(it)}
+                        >
+                          <Crosshair className="h-4 w-4 inline-block" />
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -348,6 +365,14 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
           </div>
         ) : null}
       </div>
+
+      {/* Traceback drawer */}
+      <TracebackDrawer
+        docId={(trace?.document_id as string) ?? null}
+        page={(trace?.source_page as number) ?? null}
+        bbox={(trace?.source_bbox as number[]) ?? null}
+        onClose={() => setTrace(null)}
+      />
     </div>
   );
 }

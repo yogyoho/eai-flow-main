@@ -621,6 +621,7 @@ async def goods_analysis(
     detail = [
         {
             "id": str(it.id),
+            "document_id": str(it.document_id),
             "goods_name": it.goods_name,
             "contract_no": it.source_contract_no or "—",
             "supplier": next((d.supplier for d in docs if d.id == it.document_id), None) or "—",
@@ -631,6 +632,7 @@ async def goods_analysis(
             "validation_status": it.validation_status,
             "is_outlier": it.is_outlier,
             "source_page": it.source_page,
+            "source_bbox": it.source_bbox,
         }
         for it in page_items
     ]
