@@ -15,44 +15,44 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
 import { useGoodsAnalysis } from "@/extensions/contract-price/hooks";
 import type { CpaCluster } from "@/extensions/contract-price/types";
 
-// ── helpers ──
+// ── chart card matching prototype style ──
 
 function ChartCard({ title, meta, children }: { title: string; meta?: string; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
-          {meta ? <span className="text-xs text-muted-foreground/60 font-mono">{meta}</span> : null}
-        </div>
-        {children}
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-border bg-card shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] p-5 transition-shadow hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        {meta ? <span className="font-mono text-[11px] text-muted-foreground/60">{meta}</span> : null}
+      </div>
+      {children}
+    </div>
   );
 }
 
+// ── tooltip style for recharts ──
+
+const tooltipStyle = {
+  backgroundColor: "var(--background)",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  fontSize: "12px",
+} as const;
+
+const COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e"];
+
 // ── main component ──
 
-export function GoodsAnalysis({
-  clusters,
-}: {
-  clusters: CpaCluster[];
-}) {
+export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState("");
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
 
-  const params = applied
-    ? { name: applied }
-    : selectedCluster
-      ? { cluster_id: selectedCluster }
-      : {};
+  const params = applied ? { name: applied } : selectedCluster ? { cluster_id: selectedCluster } : {};
   const { data, isLoading } = useGoodsAnalysis(params);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,13 +69,13 @@ export function GoodsAnalysis({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="输入货物名称搜索(如:多孔砖墙、电缆、钢管)..."
-          className="flex-1"
+          className="h-[42px] flex-1 rounded-lg"
         />
-        <Button type="submit" size="sm">
+        <Button type="submit" size="sm" className="h-[42px]">
           搜索
         </Button>
         <select
-          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          className="h-[42px] min-w-[260px] rounded-lg border border-input bg-card px-4 text-sm outline-none cursor-pointer transition-colors hover:border-border focus:border-ring focus:shadow-[0_0_12px_-2px_rgba(6,182,212,0.2)]"
           value={selectedCluster ?? ""}
           onChange={(e) => {
             setSelectedCluster(e.target.value || null);
@@ -110,40 +110,39 @@ export function GoodsAnalysis({
 
 function AnalysisResult({ data }: { data: Record<string, unknown> }) {
   const boxplot = data.boxplot as
-    | { min: number; q1: number; median: number; q3: number; max: number; outliers: { unit_price: number }[] }
+    | { min: number; q1: number; median: number; q3: number; max: number; mean: number; iqr?: number; outliers: { unit_price: number }[] }
     | null;
   const bySupplier = (data.by_supplier ?? []) as { name: string; count: number; avg_price: number }[];
   const byDate = (data.by_date ?? []) as { month: string; count: number; avg_price: number }[];
   const priceRanges = (data.price_ranges ?? []) as { range: string; count: number }[];
   const items = (data.items ?? []) as Record<string, unknown>[];
-
   const goodsName = data.goods_name as string;
   const total = data.total as number;
   const okCount = data.ok_count as number;
   const nrCount = data.needs_review_count as number;
 
-  const COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e"];
-
   return (
     <div className="space-y-4">
       {/* Title bar */}
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <h2 className="text-lg font-bold">{goodsName}</h2>
-        <span className="rounded-full bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-600">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3.5 shadow-sm">
+        <h2 className="text-lg font-bold tracking-tight">{goodsName}</h2>
+        <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">
           已校验 {okCount} / {total}
         </span>
         {nrCount > 0 ? (
-          <span className="rounded-full bg-amber-500/10 px-3 py-0.5 text-xs font-semibold text-amber-600">
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">
             待核验 {nrCount}
           </span>
         ) : null}
         {boxplot ? (
-          <span className="ml-auto text-sm text-muted-foreground">
-            均值 <span className="font-bold text-primary">{`¥${boxplot.mean.toFixed(2)}`}</span>
-            <span className="ml-3 text-xs text-muted-foreground/60">
+          <div className="ml-auto flex items-center gap-4 text-sm text-muted-foreground">
+            <span>
+              均值 <span className="font-bold text-primary">{`¥${boxplot.mean.toFixed(2)}`}</span>
+            </span>
+            <span className="text-xs text-muted-foreground/60">
               区间 [¥{boxplot.min.toFixed(0)} — ¥{boxplot.max.toFixed(0)}]
             </span>
-          </span>
+          </div>
         ) : null}
       </div>
 
@@ -168,25 +167,11 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                       <stop offset="100%" stopColor="#8b5cf6" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.06} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="currentColor" opacity={0.4} />
-                  <YAxis tick={{ fontSize: 11 }} stroke="currentColor" opacity={0.4} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--background, #020617)",
-                      border: "1px solid var(--border, #1e293b)",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="avg_price"
-                    stroke="url(#trend-line)"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }}
-                    activeDot={{ r: 6 }}
-                  />
+                  <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                  <YAxis tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="avg_price" stroke="url(#trend-line)" strokeWidth={2.5} dot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -208,17 +193,10 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.15} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.06} />
-                <XAxis dataKey="range" tick={{ fontSize: 10 }} stroke="currentColor" opacity={0.4} />
-                <YAxis tick={{ fontSize: 11 }} stroke="currentColor" opacity={0.4} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--background, #020617)",
-                    border: "1px solid var(--border, #1e293b)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
+                <XAxis dataKey="range" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                <YAxis tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="count" fill="url(#hist-bar)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -236,24 +214,10 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.25} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.06} />
-                <XAxis type="number" tick={{ fontSize: 11 }} stroke="currentColor" opacity={0.4} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 11 }}
-                  stroke="currentColor"
-                  opacity={0.4}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--background, #020617)",
-                    border: "1px solid var(--border, #1e293b)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(148,163,184,0.15)" />
+                <XAxis type="number" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(148,163,184,0.4)" />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.4)" width={80} />
+                <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="avg_price" fill="url(#sup-bar)" radius={[0, 4, 4, 0]}>
                   {bySupplier.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} fillOpacity={0.5} />
@@ -266,64 +230,48 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
       </div>
 
       {/* Detail table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">价格明细(跨合同)</h3>
-            <span className="text-xs text-muted-foreground/60 font-mono">{total} 条</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground/50">
-                  <th className="px-5 py-2 text-left font-medium">合同编号</th>
-                  <th className="px-5 py-2 text-left font-medium">供应商</th>
-                  <th className="px-5 py-2 text-right font-medium">含税单价</th>
-                  <th className="px-5 py-2 text-right font-medium">数量</th>
-                  <th className="px-5 py-2 text-left font-medium">单位</th>
-                  <th className="px-5 py-2 text-left font-medium">状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it, i) => {
-                  const price = it.unit_price as number | null;
-                  const isOutlier = it.is_outlier as boolean;
-                  return (
-                    <tr key={i} className="border-b border-border/40 hover:bg-primary/5">
-                      <td className="px-5 py-2.5 font-mono text-xs text-muted-foreground">
-                        {(it.contract_no as string) || "—"}
-                      </td>
-                      <td className="px-5 py-2.5 font-medium">{it.supplier as string}</td>
-                      <td
-                        className={`px-5 py-2.5 text-right font-mono font-semibold ${
-                          isOutlier ? "text-rose-500" : "text-primary"
-                        }`}
-                      >
-                        {price != null ? `¥${price.toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-5 py-2.5 text-right font-mono text-muted-foreground">
-                        {(it.quantity as number)?.toFixed(2) ?? "—"}
-                      </td>
-                      <td className="px-5 py-2.5">{(it.unit as string) || "—"}</td>
-                      <td className="px-5 py-2.5 whitespace-nowrap">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            it.validation_status === "ok"
-                              ? "bg-emerald-500/10 text-emerald-600"
-                              : "bg-amber-500/10 text-amber-600"
-                          }`}
-                        >
-                          {it.validation_status === "ok" ? "已校验" : "待核验"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">价格明细(跨合同)</h3>
+          <span className="font-mono text-[11px] text-muted-foreground/60">{total} 条</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground/50">
+                <th className="px-5 py-2.5 text-left font-semibold">合同编号</th>
+                <th className="px-5 py-2.5 text-left font-semibold">供应商</th>
+                <th className="px-5 py-2.5 text-right font-semibold">含税单价</th>
+                <th className="px-5 py-2.5 text-right font-semibold">数量</th>
+                <th className="px-5 py-2.5 text-left font-semibold">单位</th>
+                <th className="px-5 py-2.5 text-left font-semibold whitespace-nowrap">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, i) => {
+                const price = it.unit_price as number | null;
+                const isOutlier = it.is_outlier as boolean;
+                return (
+                  <tr key={i} className="border-b border-border/40 transition-colors hover:bg-primary/5">
+                    <td className="px-5 py-2.5 font-mono text-[11px] text-muted-foreground">{(it.contract_no as string) || "—"}</td>
+                    <td className="px-5 py-2.5 font-medium">{it.supplier as string}</td>
+                    <td className={`px-5 py-2.5 text-right font-mono font-semibold ${isOutlier ? "text-rose-500" : "text-primary"}`}>
+                      {price != null ? `¥${price.toFixed(2)}` : "—"}
+                    </td>
+                    <td className="px-5 py-2.5 text-right font-mono text-muted-foreground">{(it.quantity as number)?.toFixed(2) ?? "—"}</td>
+                    <td className="px-5 py-2.5">{(it.unit as string) || "—"}</td>
+                    <td className="px-5 py-2.5">
+                      <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${it.validation_status === "ok" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>
+                        {it.validation_status === "ok" ? "已校验" : "待核验"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
