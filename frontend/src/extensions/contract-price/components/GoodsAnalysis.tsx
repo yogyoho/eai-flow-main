@@ -141,7 +141,7 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
           </p>
         </div>
       ) : (
-        <AnalysisResult data={data} />
+        <AnalysisResult data={data} page={page} setPage={setPage} pageSize={PAGE_SIZE} />
       )}
     </div>
   );
@@ -149,7 +149,7 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
 
 // ── result renderer ──
 
-function AnalysisResult({ data }: { data: Record<string, unknown> }) {
+function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string, unknown>; page: number; setPage: (fn: (p: number) => number) => void; pageSize: number }) {
   const boxplot = data.boxplot as
     | { min: number; q1: number; median: number; q3: number; max: number; mean: number; iqr?: number; outliers: { unit_price: number }[] }
     | null;
@@ -317,10 +317,10 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
           </table>
         </div>
         {/* Pagination */}
-        {total > PAGE_SIZE ? (
+        {total > pageSize ? (
           <div className="flex items-center justify-between border-t border-border px-5 py-2.5">
             <span className="text-xs text-muted-foreground">
-              第 {page * PAGE_SIZE + 1} — {Math.min((page + 1) * PAGE_SIZE, total)} 条 / 共 {total} 条
+              第 {page * pageSize + 1} — {Math.min((page + 1) * pageSize, total)} 条 / 共 {total} 条
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -333,12 +333,12 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                 <ChevronLeft className="h-3.5 w-3.5" />
                 上一页
               </Button>
-              <span className="text-xs font-medium text-muted-foreground">{page + 1} / {Math.ceil(total / PAGE_SIZE)}</span>
+              <span className="text-xs font-medium text-muted-foreground">{page + 1} / {Math.ceil(total / pageSize)}</span>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 px-2"
-                disabled={(page + 1) * PAGE_SIZE >= total}
+                disabled={(page + 1) * pageSize >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
                 下一页
