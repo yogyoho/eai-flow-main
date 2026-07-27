@@ -253,7 +253,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="rgba(100,116,139,0.22)" />
                 <XAxis type="number" tick={{ fontSize: 12, fontFamily: "monospace", fill: "rgba(71,85,105,0.85)" }} stroke="rgba(100,116,139,0.5)" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="rgba(148,163,184,0.4)" width={80} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "rgba(51,65,85,0.9)" }} stroke="rgba(100,116,139,0.5)" width={80} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="avg_price" fill="url(#sup-bar)" radius={[0, 4, 4, 0]}>
                   {bySupplier.map((_, i) => (
