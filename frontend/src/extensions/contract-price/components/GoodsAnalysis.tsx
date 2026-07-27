@@ -176,7 +176,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
             <span>
               均值 <span className="font-bold text-primary">{`¥${boxplot.mean.toFixed(2)}`}</span>
             </span>
-            <span className="text-xs text-muted-foreground/60">
+            <span className="text-xs font-bold text-muted-foreground">
               区间 [¥{boxplot.min.toFixed(0)} — ¥{boxplot.max.toFixed(0)}]
             </span>
           </div>
