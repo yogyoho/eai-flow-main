@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Activity, BarChart3, Building2, Check, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -15,18 +16,29 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
 import { useGoodsAnalysis } from "@/extensions/contract-price/hooks";
 import type { CpaCluster } from "@/extensions/contract-price/types";
 
 // ── chart card matching prototype style ──
 
-function ChartCard({ title, meta, children }: { title: string; meta?: string; children: React.ReactNode }) {
+function ChartCard({ title, meta, icon, children }: { title: string; meta?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-card shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] p-5 transition-shadow hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          {icon}
+          {title}
+        </h3>
         {meta ? <span className="font-mono text-[11px] text-muted-foreground/60">{meta}</span> : null}
       </div>
       {children}
@@ -48,56 +60,71 @@ const COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e"
 // ── main component ──
 
 export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
-  const [search, setSearch] = useState("");
-  const [applied, setApplied] = useState("");
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
-  const params = applied ? { name: applied } : selectedCluster ? { cluster_id: selectedCluster } : {};
+  const params = selectedCluster ? { cluster_id: selectedCluster } : {};
   const { data, isLoading } = useGoodsAnalysis(params);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setApplied(search.trim());
-    setSelectedCluster(null);
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Search + cluster select */}
-      <form onSubmit={handleSubmit} className="flex gap-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="输入货物名称搜索(如:多孔砖墙、电缆、钢管)..."
-          className="h-[42px] flex-1 rounded-lg"
-        />
-        <Button type="submit" size="sm" className="h-[42px]">
-          搜索
-        </Button>
-        <select
-          className="h-[42px] min-w-[260px] rounded-lg border border-input bg-card px-4 text-sm outline-none cursor-pointer transition-colors hover:border-border focus:border-ring focus:shadow-[0_0_12px_-2px_rgba(6,182,212,0.2)]"
-          value={selectedCluster ?? ""}
-          onChange={(e) => {
-            setSelectedCluster(e.target.value || null);
-            setApplied("");
-            setSearch("");
-          }}
-        >
-          <option value="">选择聚类组...</option>
-          {clusters.slice(0, 30).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.representative_name} ({c.item_count}条)
-            </option>
-          ))}
-        </select>
-      </form>
+    <div className="flex min-h-0 flex-1 flex-col space-y-4">
+      {/* Cluster select */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-muted-foreground shrink-0">选择货物：</span>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="h-[42px] min-w-[260px] justify-between rounded-lg font-normal"
+            >
+              {selectedCluster
+                ? clusters.find((c) => c.id === selectedCluster)?.representative_name ?? "选择货物聚类组..."
+                : "选择货物聚类组..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[400px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="输入名称模糊检索..." />
+              <CommandList>
+                <CommandEmpty>未找到匹配的货物</CommandEmpty>
+                <CommandGroup>
+                  {clusters.slice(0, 30).map((c) => (
+                    <CommandItem
+                      key={c.id}
+                      value={c.representative_name}
+                      onSelect={() => {
+                        setSelectedCluster(c.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={`h-4 w-4 shrink-0 ${selectedCluster === c.id ? "opacity-100" : "opacity-0"}`}
+                      />
+                      <span className="truncate">{c.representative_name}</span>
+                      <span className="ml-auto font-mono text-xs text-muted-foreground">
+                        {c.item_count}条
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
 
       {/* Results */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">分析中...</div>
+        <div className="flex flex-1 items-center justify-center py-20 text-sm text-muted-foreground">分析中...</div>
       ) : !data || data.total === 0 ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          {applied || selectedCluster ? "未找到匹配的货物数据" : "输入货物名称或选择聚类组开始分析"}
+        <div className="flex flex-1 flex-col items-center justify-center py-20 text-center">
+          <PackageSearch className="mb-3 h-12 w-12 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">
+            {selectedCluster ? "未找到匹配的货物数据" : "选择货物聚类组开始分析"}
+          </p>
         </div>
       ) : (
         <AnalysisResult data={data} />
@@ -149,14 +176,14 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
       {/* Charts 2x2 grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Box plot */}
-        <ChartCard title="价格分布(箱线图)" meta={boxplot ? `IQR = ${boxplot.iqr?.toFixed(0)}` : ""}>
+        <ChartCard title="价格分布(箱线图)" meta={boxplot ? `IQR = ${boxplot.iqr?.toFixed(0)}` : ""} icon={<LayoutGrid className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <BoxPlot data={boxplot} />
           </div>
         </ChartCard>
 
         {/* Trend curve */}
-        <ChartCard title="价格趋势" meta={byDate.length > 0 ? `${byDate.length} 个月` : "无日期数据"}>
+        <ChartCard title="价格趋势" meta={byDate.length > 0 ? `${byDate.length} 个月` : "无日期数据"} icon={<Activity className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             {byDate.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -183,7 +210,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
         </ChartCard>
 
         {/* Histogram */}
-        <ChartCard title="价格区间分布" meta={`${total} 条`}>
+        <ChartCard title="价格区间分布" meta={`${total} 条`} icon={<BarChart3 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={priceRanges} margin={{ left: 0, right: 20, top: 5 }}>
@@ -204,7 +231,7 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
         </ChartCard>
 
         {/* Supplier comparison */}
-        <ChartCard title="供应商均价对比" meta={`${bySupplier.length} 家`}>
+        <ChartCard title="供应商均价对比" meta={`${bySupplier.length} 家`} icon={<Building2 className="h-[15px] w-[15px] text-muted-foreground/50" />}>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySupplier} layout="vertical" margin={{ left: 80, right: 20, top: 5 }}>
@@ -232,7 +259,10 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
       {/* Detail table */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h3 className="text-sm font-semibold text-muted-foreground">价格明细(跨合同)</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <Table2 className="h-[15px] w-[15px] text-muted-foreground/50" />
+            价格明细(跨合同)
+          </h3>
           <span className="font-mono text-[11px] text-muted-foreground/60">{total} 条</span>
         </div>
         <div className="overflow-x-auto">
