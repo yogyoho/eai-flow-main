@@ -23,13 +23,13 @@ const colorClasses: Record<StatColor, string> = {
 
 export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] transition-all hover:border-primary/35 hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
+    <div className="flex items-center gap-4 rounded-xl border border-border bg-card py-3 px-5 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] transition-all hover:border-primary/35 hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
       <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", colorClasses[color])}>
         <Icon className="h-[18px] w-[18px]" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs uppercase tracking-wide text-muted-foreground/60">{label}</p>
-        <p className="text-2xl font-bold tabular-nums text-foreground">{value}</p>
+        <p className="font-cyber text-2xl font-extrabold tracking-tight text-foreground">{value}</p>
         {hint ? <p className="truncate text-[11px] text-muted-foreground">{hint}</p> : null}
       </div>
     </div>
