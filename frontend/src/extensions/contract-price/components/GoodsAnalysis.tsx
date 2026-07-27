@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, BarChart3, Building2, Check, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarX, Check, ChevronsUpDown, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -212,7 +212,8 @@ function AnalysisResult({ data }: { data: Record<string, unknown> }) {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                <CalendarX className="h-8 w-8 text-muted-foreground/30" />
                 合同缺少签订日期,无法生成趋势
               </div>
             )}
