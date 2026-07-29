@@ -82,6 +82,20 @@ if ! docker compose version &>/dev/null; then
     exit 1
 fi
 
+# EAI-CUSTOM: 检测可用的 Python 3（manifest.json 生成用）。
+# Windows 上 `python3` 常是 Microsoft Store 占位符（不可用），故检测失败时回退 `python`。
+PYTHON=""
+for c in python3 python; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; assert sys.version_info >= (3,)' 2>/dev/null; then
+        PYTHON="$c"; break
+    fi
+done
+if [ -z "$PYTHON" ]; then
+    err "Python 3 未找到（生成 manifest.json 需要）。请安装 python3。"
+    exit 1
+fi
+ok "Python: ${PYTHON} ($("${PYTHON}" --version 2>&1))"
+
 # ── Image inventories ──────────────────────────────────────────────────────────
 
 # Public images (pulled from registries)
@@ -717,6 +731,31 @@ ok "  Generated: install.sh"
 echo ""
 
 # ── Package ────────────────────────────────────────────────────────────────────
+
+# ── manifest.json: 版本号 + 各镜像 digest（供 --delta 比对与 IMAGE_TAG 回滚记录）──
+# EAI-CUSTOM: 镜像打版本 tag，支持按版本回滚与增量升级比对。
+VERSION_TAG="v${DATE}-$(git rev-parse --short HEAD)"
+CFG_HASH=$(sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
+MANIFEST="${OUTPUT_DIR}/manifest.json"
+ALL_IMGS=("${BUILT_IMAGE_NAMES[@]}" "${PUBLIC_IMAGES[@]}")
+"${PYTHON}" - "$VERSION_TAG" "$DATE" "$CFG_HASH" "$MANIFEST" "${ALL_IMGS[@]}" <<'PY'
+import json, subprocess, sys
+ver, date, cfg, out, *imgs = sys.argv[1:]
+digests = {}
+for img in imgs:
+    try:
+        dgst = subprocess.check_output(
+            ["docker", "image", "inspect", img, "--format", "{{.Id}}"],
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        dgst = "unknown"
+    digests[img] = {"digest": dgst}
+with open(out, "w") as f:
+    json.dump({"version": ver, "exported_at": date, "images": digests, "config_hash": cfg}, f, indent=2, ensure_ascii=False)
+print(f"  manifest.json: version={ver}, {len(imgs)} images")
+PY
+ok "  Generated: manifest.json (version=${VERSION_TAG})"
 
 info "Calculating package size..."
 PACKAGE_SIZE=$(du -sh "${OUTPUT_DIR}" | cut -f1)

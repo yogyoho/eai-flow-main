@@ -70,7 +70,7 @@ services:
 
   # ── Gateway API ────────────────────────────────────────────────────────────
   gateway:
-    image: deer-flow-gateway:latest
+    image: deer-flow-gateway:${IMAGE_TAG:-latest}
     container_name: prod-eai-flow-gateway
     command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --workers ${GATEWAY_WORKERS:-4}"
     volumes:

@@ -31,7 +31,7 @@ services:
 
   # ── Collaboration WebSocket Server (Hocuspocus) ────────────────────────────
   collab:
-    image: eai-flow-collab:latest
+    image: eai-flow-collab:${IMAGE_TAG:-latest}
     container_name: prod-eai-flow-collab
     depends_on:
       postgres-ext:
