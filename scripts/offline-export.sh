@@ -219,9 +219,28 @@ done
 # builder layers (pnpm install) are reused from the cached dev build, so this
 # only re-runs `pnpm build` and assembles the minimal runtime stage.
 FRONTEND_PROD_IMAGE="deer-flow-frontend:latest"
-info "  Building: frontend (prod target, direct Dockerfile build)"
+
+# EAI-CUSTOM: 按客户品牌注入。读 repo 根 deploy.conf 的 BRAND_*（运维导出前按客户填）；
+# 无 deploy.conf 则用默认（brand.ts 回落 "EAIFlow"）。
+BRAND_NAME_VAL=""; BRAND_FOOTER_VAL=""; BRAND_ASSETS_DIR_VAL=""
+if [ -f "${REPO_ROOT}/deploy.conf" ]; then
+    BRAND_NAME_VAL=$(grep -E "^BRAND_NAME=" "${REPO_ROOT}/deploy.conf" | head -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+    BRAND_FOOTER_VAL=$(grep -E "^BRAND_FOOTER=" "${REPO_ROOT}/deploy.conf" | head -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+    BRAND_ASSETS_DIR_VAL=$(grep -E "^BRAND_ASSETS_DIR=" "${REPO_ROOT}/deploy.conf" | head -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+fi
+# 拷客户 logo/favicon 进 frontend/public/（构建期 COPY 烘焙进镜像）
+ASSETS_DIR="${REPO_ROOT}/${BRAND_ASSETS_DIR_VAL:-deploy/offline/brand-assets}"
+if [ -d "$ASSETS_DIR" ]; then
+    for f in favicon.ico favicon.svg logo.svg; do
+        [ -f "$ASSETS_DIR/$f" ] && cp "$ASSETS_DIR/$f" "${REPO_ROOT}/frontend/public/$f"
+    done
+fi
+
+info "  Building: frontend (prod target, brand=\"${BRAND_NAME_VAL:-EAIFlow}\")"
 if ! docker build --target prod --progress=plain \
      --build-arg APP_VERSION="${VERSION}" \
+     --build-arg BRAND_NAME="${BRAND_NAME_VAL}" \
+     --build-arg BRAND_FOOTER="${BRAND_FOOTER_VAL}" \
      -t "${FRONTEND_PROD_IMAGE}" \
      -f frontend/Dockerfile .; then
     err "  Build failed for: frontend (prod)"
@@ -229,6 +248,9 @@ if ! docker build --target prod --progress=plain \
     exit 1
 fi
 ok "  Built:    frontend (prod) → ${FRONTEND_PROD_IMAGE}"
+
+# 恢复 frontend/public（防客户资源污染源码树）
+git -C "${REPO_ROOT}" checkout -- frontend/public/favicon.ico frontend/public/favicon.svg frontend/public/logo.svg 2>/dev/null || true
 
 # Collect actual image names from built services.
 # docker compose -p eai-docker build produces images named eai-docker-<service>:latest

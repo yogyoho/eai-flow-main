@@ -37,6 +37,12 @@ RUN cd /app/frontend && pnpm install --frozen-lockfile
 # and the frontend falls back to package.json's version.
 ARG APP_VERSION=""
 ENV NEXT_PUBLIC_APP_VERSION=$APP_VERSION
+# EAI-CUSTOM: 按客户品牌化（构建期注入 NEXT_PUBLIC_*，next build 内联烘焙进产物）。
+# offline-export.sh 通过 --build-arg BRAND_NAME/BRAND_FOOTER 传入（来自 deploy.conf）。
+ARG BRAND_NAME=""
+ARG BRAND_FOOTER=""
+ENV NEXT_PUBLIC_BRAND_NAME=$BRAND_NAME
+ENV NEXT_PUBLIC_BRAND_FOOTER=$BRAND_FOOTER
 RUN cd /app/frontend && SKIP_ENV_VALIDATION=1 pnpm build
 
 # ── Prod: minimal runtime with pre-built output ───────────────────────────────
