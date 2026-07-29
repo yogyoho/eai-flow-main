@@ -431,6 +431,9 @@ mkdir -p "${OUTPUT_DIR}/scripts"
 cp "scripts/generate-config.sh"          "${OUTPUT_DIR}/scripts/generate-config.sh"
 chmod +x "${OUTPUT_DIR}/scripts/generate-config.sh"
 cp "deploy/offline/deploy.conf.example"  "${OUTPUT_DIR}/deploy.conf.example"
+# EAI-CUSTOM: 服务器端增量升级脚本
+cp "deploy/offline/upgrade.sh"           "${OUTPUT_DIR}/upgrade.sh"
+chmod +x "${OUTPUT_DIR}/upgrade.sh"
 
 # Skills directory (just the public structure)
 if [ -d "skills/public" ]; then
