@@ -699,6 +699,29 @@ export interface Translations {
       adminRequired: string;
       empty: string;
     };
+    wechat: {
+      title: string;
+      description: string;
+      linkTitle: string;
+      linkDescription: string;
+      getCode: string;
+      codeHint: string;
+      linkFailed: string;
+      botTitle: string;
+      botDescription: string;
+      bound: string;
+      unbound: string;
+      pending: string;
+      bind: string;
+      rebind: string;
+      bindStarted: string;
+      bindFailed: string;
+      openQr: string;
+      shareQrTitle: string;
+      shareQrDescription: string;
+      refreshShareQr: string;
+      shareQrFreshHint: string;
+    };
     channels: {
       title: string;
       description: string;
