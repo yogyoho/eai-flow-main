@@ -793,6 +793,7 @@ export const zhCN: Translations = {
       adminRequired: "需要管理员权限才能管理 MCP 工具。",
       empty: "暂无 MCP 工具。",
     },
+    // EAI-CUSTOM: 微信绑定设置页文案（E-续 ③ 微信 iLink 集成；上游 settings 无此 wechat 块）
     wechat: {
       title: "微信",
       description: "绑定你的微信，通过 DeerFlow Bot 收发消息。",

@@ -824,6 +824,7 @@ export const enUS: Translations = {
       adminRequired: "Admin privileges are required to manage MCP tools.",
       empty: "No MCP tools configured.",
     },
+    // EAI-CUSTOM: WeChat bind settings page copy (E-续 ③ WeChat iLink integration; upstream settings has no wechat block)
     wechat: {
       title: "WeChat",
       description: "Link your WeChat to exchange messages through the DeerFlow bot.",

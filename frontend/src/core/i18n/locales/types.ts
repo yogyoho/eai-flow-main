@@ -699,6 +699,7 @@ export interface Translations {
       adminRequired: string;
       empty: string;
     };
+    // EAI-CUSTOM: WeChat bind settings page copy type (E-续 ③; upstream settings has no wechat block)
     wechat: {
       title: string;
       description: string;
