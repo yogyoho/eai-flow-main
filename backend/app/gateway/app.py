@@ -31,7 +31,7 @@ from app.extensions.workflow import router as workflow_router
 from app.extensions.workflow.timeline.routers import router as timeline_router
 from app.gateway.auth_middleware import AuthMiddleware
 from app.gateway.config import get_gateway_config
-from app.gateway.csrf_middleware import CSRFMiddleware, get_configured_cors_origins
+from app.gateway.csrf_middleware import CORS_EXPOSED_HEADERS, CSRFMiddleware, get_configured_cors_origins
 from app.gateway.deps import langgraph_runtime
 from app.gateway.routers import (
     agents,
@@ -455,6 +455,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+            expose_headers=list(CORS_EXPOSED_HEADERS),
         )
 
     # Include routers
