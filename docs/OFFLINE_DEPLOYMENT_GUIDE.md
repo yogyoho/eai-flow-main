@@ -3,6 +3,29 @@
 > 版本 2.1 | 2026-07-01 | 内网服务器（10.180.41.157）生产部署验证通过
 >
 > 版本 2.0 | 2026-06-10 | 本机验证通过
+>
+> 版本 3.0 | 2026-07-29 | `deploy.conf` 零编辑部署 + 增量升级 + 生产前端构建（见下方 v3 速览；其余为 v2 历史流程）
+
+## v3.0 新流程速览（2026-07-29）
+
+**核心变化**：配置从"多处手改"改为**单一 `deploy.conf` 驱动**；升级从"全量重装"改为 **delta 增量 + 快照回滚**；前端从 dev 模式改为**生产构建**（消灭 F.14–F.18 整类问题）。
+
+### 全新部署（零编辑）
+1. 解压离线包，`cp deploy.conf.example deploy.conf`，填 4 个品牌值 + 内网 LLM（内网可连外网则 LLM 留空）。
+2. `./install.sh` —— 自动生成 `.env`/`config.yaml`/`extensions_config.json`（路径/密钥/origins 自动推导）、load 镜像、起服务、建管理员。
+3. **无需手改任何配置文件。** 配置项说明见 `deploy/offline/deploy.conf.example`。
+
+### 增量升级（不再全量重传）
+- 开发机：`bash scripts/offline-export.sh --delta --since <上次版本>` → 只导出变化的镜像。
+- 服务器：`scp` delta 包 → `./upgrade.sh delta`（load delta → config_hash 变则重生成 → 重建变化服务 → 迁移前 `pg_dump` → 失败自动 reload 快照回滚）。
+
+### 替换已部署的旧系统（不丢数据）
+见 **`deploy/offline/cutover.md`**（复用同名 volume 的原地割接 + 完整备份/回滚步骤）。
+
+### 已根治的已知问题（v3 起无需再手动处理）
+F.2（`EXTENSIONS_DB`）、F.6（`NETWORK_NAME`）、F.11/F.13（RAGFlow pip PATH / tiktoken 预置）、F.14（nginx webpack-hmr）、F.18 及 HMR/allowedDevOrigins/Google Fonts（由生产前端构建根治）、F.20（`RAGFLOW_API_KEY` 走 `deploy.conf`）。
+
+---
 
 ## 目录
 
