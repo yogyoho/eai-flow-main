@@ -71,7 +71,7 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
       setDomains(d);
       setLicenseModules(m);
       if (!draft.businessDomain && d.length > 0) {
-        setDraft((prev) => ({ ...prev, businessDomain: d[0].key }));
+        setDraft((prev) => ({ ...prev, businessDomain: d[0]?.key ?? "" }));
       }
       if (!draft.licenseModule && m.length > 0) {
         setDraft((prev) => ({ ...prev, licenseModule: m[0] ?? "" }));
@@ -94,12 +94,13 @@ export function AppManagement({ refreshKey = 0 }: { refreshKey?: number }) {
     try {
       await updateApp(appId, {
         name: patch.name,
-        description: patch.description,
+        // EAI-CUSTOM: AppResponse 这三字段可空 (string|null)，AppUpdate 期望 string|undefined；null 视为「未提供」跳过
+        description: patch.description ?? undefined,
         iconName: patch.iconName,
         businessDomain: patch.businessDomain,
-        stageTag: patch.stageTag,
+        stageTag: patch.stageTag ?? undefined,
         path: patch.path,
-        licenseModule: patch.licenseModule,
+        licenseModule: patch.licenseModule ?? undefined,
         adminOnly: patch.adminOnly,
         isEnabled: patch.isEnabled,
         sortOrder: patch.sortOrder,

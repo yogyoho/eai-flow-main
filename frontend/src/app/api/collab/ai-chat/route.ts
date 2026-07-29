@@ -52,6 +52,8 @@ function toChatMessages(
 
   for (let i = 0; i < msgs.length; i++) {
     const msg = msgs[i];
+    // EAI-CUSTOM: noUncheckedIndexedAccess 下 msgs[i] 可能 undefined，跳过空槽
+    if (!msg) continue;
     let role = String(msg.role ?? "user");
     if (role === "developer") role = "system";
     if (!["system", "user", "assistant"].includes(role)) role = "user";
