@@ -1,5 +1,6 @@
 """Memory API router for retrieving and managing global memory data."""
 
+import asyncio
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -183,7 +184,8 @@ async def get_memory(http_request: Request) -> MemoryResponse:
         }
         ```
     """
-    memory_data = get_memory_manager().get_memory(user_id=_resolve_memory_user_id(http_request))
+    manager = get_memory_manager()
+    memory_data = await asyncio.to_thread(manager.get_memory, user_id=_resolve_memory_user_id(http_request))
     return MemoryResponse(**memory_data)
 
 
@@ -206,13 +208,13 @@ async def reload_memory(http_request: Request) -> MemoryResponse:
     user_id = _resolve_memory_user_id(http_request)
     manager = get_memory_manager()
     if hasattr(manager, "reload_memory"):
-        memory_data = manager.reload_memory(user_id=user_id)
+        memory_data = await asyncio.to_thread(manager.reload_memory, user_id=user_id)
     else:
         # Non-DeerMem backends have no reload concept; return current memory.
         # (Asymmetry vs fact CRUD, which raises 501 when unsupported: reload is a
         # read-only refresh, so degrading to get_memory is safe and still useful;
         # silently no-op'ing a write would hide data loss, so writes fail loud.)
-        memory_data = manager.get_memory(user_id=user_id)
+        memory_data = await asyncio.to_thread(manager.get_memory, user_id=user_id)
     return MemoryResponse(**memory_data)
 
 
@@ -226,7 +228,8 @@ async def reload_memory(http_request: Request) -> MemoryResponse:
 async def clear_memory(http_request: Request) -> MemoryResponse:
     """Clear all persisted memory data."""
     try:
-        memory_data = get_memory_manager().clear_memory(user_id=_resolve_memory_user_id(http_request))
+        manager = get_memory_manager()
+        memory_data = await asyncio.to_thread(manager.clear_memory, user_id=_resolve_memory_user_id(http_request))
     except OSError as exc:
         raise HTTPException(status_code=500, detail="Failed to clear memory data.") from exc
 
@@ -318,7 +321,8 @@ async def update_memory_fact_endpoint(fact_id: str, request: FactPatchRequest, h
 )
 async def export_memory(http_request: Request) -> MemoryResponse:
     """Export the current memory data."""
-    memory_data = get_memory_manager().get_memory(user_id=_resolve_memory_user_id(http_request))
+    manager = get_memory_manager()
+    memory_data = await asyncio.to_thread(manager.get_memory, user_id=_resolve_memory_user_id(http_request))
     return MemoryResponse(**memory_data)
 
 
@@ -332,7 +336,8 @@ async def export_memory(http_request: Request) -> MemoryResponse:
 async def import_memory(request: MemoryResponse, http_request: Request) -> MemoryResponse:
     """Import and persist memory data."""
     try:
-        memory_data = get_memory_manager().import_memory(request.model_dump(), user_id=_resolve_memory_user_id(http_request))
+        manager = get_memory_manager()
+        memory_data = await asyncio.to_thread(manager.import_memory, request.model_dump(), user_id=_resolve_memory_user_id(http_request))
     except OSError as exc:
         raise HTTPException(status_code=500, detail="Failed to import memory data.") from exc
 
@@ -402,7 +407,8 @@ async def get_memory_status(http_request: Request) -> MemoryStatusResponse:
         Combined memory configuration and current data.
     """
     config = get_memory_config()
-    memory_data = get_memory_manager().get_memory(user_id=_resolve_memory_user_id(http_request))
+    manager = get_memory_manager()
+    memory_data = await asyncio.to_thread(manager.get_memory, user_id=_resolve_memory_user_id(http_request))
 
     return MemoryStatusResponse(
         config=MemoryConfigResponse(
