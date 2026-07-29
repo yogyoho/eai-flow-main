@@ -137,6 +137,16 @@ class RegeneratePrepareResponse(BaseModel):
     target_run_id: str
 
 
+class EditRegeneratePrepareRequest(BaseModel):
+    human_message_id: str = Field(..., min_length=1, description="Source human message id to edit and rerun")
+    replacement_text: str = Field(..., min_length=1, description="Replacement user-visible text")
+
+
+class EditRegeneratePrepareResponse(RegeneratePrepareResponse):
+    replacement_human_message_id: str
+    source_message_ids: list[str]
+
+
 class ThreadMessagesPageResponse(BaseModel):
     data: list[dict[str, Any]]
     has_more: bool
@@ -310,6 +320,15 @@ def _message_additional_kwargs(message: Any) -> dict[str, Any]:
     return dict(value or {}) if isinstance(value, dict) else {}
 
 
+def _message_tool_calls(message: Any) -> list[Any]:
+    value = getattr(message, "tool_calls", None)
+    if value is None and isinstance(message, dict):
+        value = message.get("tool_calls")
+    if value is None:
+        value = _message_additional_kwargs(message).get("tool_calls")
+    return list(value) if isinstance(value, list) else []
+
+
 def _is_hidden_or_control_message(message: Any) -> bool:
     message_type = _message_type(message)
     additional_kwargs = _message_additional_kwargs(message)
@@ -333,6 +352,19 @@ def _checkpoint_messages(checkpoint_tuple: Any) -> list[Any]:
     channel_values = checkpoint.get("channel_values", {}) if isinstance(checkpoint, dict) else {}
     messages = channel_values.get("messages", []) if isinstance(channel_values, dict) else []
     return messages if isinstance(messages, list) else []
+
+
+def _checkpoint_values(snapshot: Any) -> dict[str, Any]:
+    # EAI-CUSTOM: 上游走 materialized state-accessor（snapshot.values）路径；
+    # EAI 的 regenerate 仍用原始 checkpointer 元组，状态在 checkpoint.channel_values。
+    # 这里两者都兼容：优先 .values，回落到 channel_values，保证 _has_active_goal /
+    # title 读取在原始 checkpointer 路径上也能工作。
+    values = getattr(snapshot, "values", None)
+    if isinstance(values, dict):
+        return dict(values)
+    checkpoint = getattr(snapshot, "checkpoint", None) or {}
+    channel_values = checkpoint.get("channel_values", {}) if isinstance(checkpoint, dict) else {}
+    return dict(channel_values) if isinstance(channel_values, dict) else {}
 
 
 def _checkpoint_configurable(checkpoint_tuple: Any) -> dict[str, Any]:
@@ -371,6 +403,59 @@ def _clean_human_message_for_regenerate(message: Any) -> dict[str, Any]:
     if name:
         clean_message["name"] = name
     return clean_message
+
+
+def _clean_human_message_for_edit(message: Any, *, replacement_id: str, replacement_text: str) -> dict[str, Any]:
+    source_kwargs = _message_additional_kwargs(message)
+    additional_kwargs: dict[str, Any] = {}
+    for key in ("files", "referenced_message_contexts"):
+        if key in source_kwargs:
+            additional_kwargs[key] = deepcopy(source_kwargs[key])
+
+    clean_message: dict[str, Any] = {
+        "type": "human",
+        "id": replacement_id,
+        "content": [{"type": "text", "text": replacement_text}],
+        "additional_kwargs": additional_kwargs,
+    }
+    name = _message_name(message)
+    if name:
+        clean_message["name"] = name
+    return clean_message
+
+
+def _is_terminal_assistant_text_message(message: Any) -> bool:
+    return _is_visible_ai_message(message) and bool(_message_text(message).strip()) and not _message_tool_calls(message)
+
+
+def _has_title(values: dict[str, Any]) -> bool:
+    title = values.get("title")
+    return isinstance(title, str) and bool(title)
+
+
+def _has_active_goal(snapshot: Any) -> bool:
+    goal = _checkpoint_values(snapshot).get("goal")
+    return isinstance(goal, dict) and goal.get("status") == "active"
+
+
+def _latest_editable_turn(messages: list[Any], human_message_id: str) -> tuple[int, Any, int, Any, list[str]]:
+    latest_human_index = next((index for index in range(len(messages) - 1, -1, -1) if _is_visible_human_message(messages[index])), None)
+    if latest_human_index is None or _message_id(messages[latest_human_index]) != human_message_id:
+        raise HTTPException(status_code=409, detail="Only the latest completed user turn can be edited")
+
+    source_human = messages[latest_human_index]
+    last_ai_index: int | None = None
+    for index, message in enumerate(messages[latest_human_index + 1 :], start=latest_human_index + 1):
+        if _is_visible_human_message(message):
+            break
+        if _is_visible_ai_message(message):
+            last_ai_index = index
+
+    if last_ai_index is None or not _is_terminal_assistant_text_message(messages[last_ai_index]):
+        raise HTTPException(status_code=409, detail="Only completed assistant text turns can be edited")
+
+    source_message_ids = [message_id for message in messages[latest_human_index : last_ai_index + 1] if (message_id := _message_id(message))]
+    return latest_human_index, source_human, last_ai_index, messages[last_ai_index], source_message_ids
 
 
 def _event_message_id(row: dict[str, Any]) -> str | None:
