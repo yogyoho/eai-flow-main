@@ -91,8 +91,11 @@ PUBLIC_IMAGES=(
     "temporalio/auto-setup:1.27.0"
 )
 
-# Services to build (compose service names)
-BUILD_SERVICES="gateway frontend collab cad text-to-cad ocr cad-viewer"
+# Services to build via dev compose (compose service names).
+# EAI-CUSTOM: `frontend` is intentionally excluded here — the dev compose pins
+# build target=dev, which would produce a dev image. The frontend prod image is
+# built directly with `--target prod` in Step 2 below.
+BUILD_SERVICES="gateway collab cad text-to-cad ocr cad-viewer"
 
 # Compose files for building (in order)
 COMPOSE_FILES=(
@@ -169,15 +172,36 @@ for svc in $BUILD_SERVICES; do
     fi
 done
 
+# ── Frontend: build PROD image directly (dev compose pins target=dev) ────────
+# EAI-CUSTOM: prod build kills F.14-F.18 (HMR / allowedDevOrigins / Turbopack).
+# The dev compose (`docker/docker-compose-dev.yaml`) pins the frontend build to
+# `target: dev`, and `docker compose build` has no CLI flag to override the
+# target — so building through the compose yields a dev image. To ship a real
+# production image, build the Dockerfile directly with `--target prod`. Base /
+# builder layers (pnpm install) are reused from the cached dev build, so this
+# only re-runs `pnpm build` and assembles the minimal runtime stage.
+FRONTEND_PROD_IMAGE="deer-flow-frontend:latest"
+info "  Building: frontend (prod target, direct Dockerfile build)"
+if ! docker build --target prod --progress=plain \
+     --build-arg APP_VERSION="${VERSION}" \
+     -t "${FRONTEND_PROD_IMAGE}" \
+     -f frontend/Dockerfile .; then
+    err "  Build failed for: frontend (prod)"
+    err "  Run 'make docker-start' on this dev machine first to populate base layers, then re-run."
+    exit 1
+fi
+ok "  Built:    frontend (prod) → ${FRONTEND_PROD_IMAGE}"
+
 # Collect actual image names from built services.
 # docker compose -p eai-docker build produces images named eai-docker-<service>:latest
-# We tag them with the canonical names expected by docker-compose-offline.yaml
+# We tag them with the canonical names expected by docker-compose-offline.yaml.
+# EAI-CUSTOM: frontend is NOT in this map — it is built directly as
+# deer-flow-frontend:latest above and added to BUILT_IMAGE_NAMES below.
 BUILT_IMAGE_NAMES=()
 
 # Known compose project prefix → canonical tag mapping
 declare -A SERVICE_TAG_MAP=(
     ["eai-docker-gateway:latest"]="deer-flow-gateway:latest"
-    ["eai-docker-frontend:latest"]="deer-flow-frontend:latest"
     ["eai-docker-collab:latest"]="eai-flow-collab:latest"
     ["eai-docker-procurement-backend:latest"]="eai-flow-procurement-backend:latest"
     ["eai-docker-procurement-frontend:latest"]="eai-flow-procurement-frontend:latest"
@@ -198,6 +222,15 @@ for COMPOSE_IMG in "${!SERVICE_TAG_MAP[@]}"; do
         warn "  Image not found: ${COMPOSE_IMG} — skipping"
     fi
 done
+
+# EAI-CUSTOM: frontend prod image was built directly with the canonical tag, so
+# no retag is needed — just register it for the export (docker save) below.
+if docker image inspect "${FRONTEND_PROD_IMAGE}" &>/dev/null; then
+    BUILT_IMAGE_NAMES+=("${FRONTEND_PROD_IMAGE}")
+else
+    err "  Frontend prod image missing after build: ${FRONTEND_PROD_IMAGE}"
+    exit 1
+fi
 
 if [ ${#BUILT_IMAGE_NAMES[@]} -eq 0 ]; then
     err "No built images found. Build may have failed. Check docker images for eai-docker-*"
