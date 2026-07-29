@@ -5,7 +5,7 @@
 services:
   # ── RAGFlow (API + Web UI + Task Executor) ─────────────────────────────────
   ragflow:
-    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.25.3}
+    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.25.3-fixed}
     container_name: prod-eai-flow-ragflow
     environment:
       - MYSQL_HOST=ragflow-mysql
