@@ -12,9 +12,11 @@ import { assertNever, type User } from "@/core/auth/types";
 import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { LicenseShell } from "@/extensions/license/LicenseShell";
 import { ChunkErrorHandler } from "@/components/chunk-error-handler";
+// EAI-CUSTOM: 按客户品牌化（构建期注入，见 brand.ts）
+import { BRAND_NAME } from "@/brand";
 
 export const metadata: Metadata = {
-  title: "EAIFlow",
+  title: BRAND_NAME,
   description: "A LangChain-based framework for building super agents.",
 };
 
