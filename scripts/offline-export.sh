@@ -19,24 +19,30 @@ set -e
 
 WITH_RAGFLOW=true
 WITH_BUSINESS=false
+DELTA=false
+SINCE=""
 
-for arg in "$@"; do
-    case "$arg" in
-        --with-ragflow)   WITH_RAGFLOW=true ;;
-        --no-ragflow)     WITH_RAGFLOW=false ;;
-        --with-business)  WITH_BUSINESS=true ;;
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --with-ragflow)   WITH_RAGFLOW=true;  shift;;
+        --no-ragflow)     WITH_RAGFLOW=false; shift;;
+        --with-business)  WITH_BUSINESS=true; shift;;
+        --delta)          DELTA=true;         shift;;
+        --since)          SINCE="${2:-}";     shift 2;;
         --help|-h)
-            echo "Usage: $0 [--with-ragflow] [--no-ragflow] [--with-business]"
+            echo "Usage: $0 [--with-ragflow] [--no-ragflow] [--with-business] [--delta --since <version>]"
             echo ""
             echo "Options:"
             echo "  --with-ragflow    Include RAGFlow knowledge base images (default)"
             echo "  --no-ragflow      Exclude RAGFlow images"
             echo "  --with-business   Include business microservice images"
+            echo "  --delta           增量模式：只导出变化的镜像（需配合 --since）"
+            echo "  --since <version> 增量基线版本（.offline-export-history/<version>/manifest.json）"
             exit 0
             ;;
         *)
-            echo "Unknown argument: $arg"
-            echo "Usage: $0 [--with-ragflow] [--no-ragflow] [--with-business]"
+            echo "Unknown argument: $1" >&2
+            echo "Usage: $0 [--with-ragflow] [--no-ragflow] [--with-business] [--delta --since <version>]" >&2
             exit 1
             ;;
     esac
@@ -267,6 +273,83 @@ fi
 if [ ${#BUILT_IMAGE_NAMES[@]} -eq 0 ]; then
     err "No built images found. Build may have failed. Check docker images for eai-docker-*"
     exit 1
+fi
+
+# ── Delta 模式：仅导出相对上次 manifest 变化的镜像，打小增量包后退出 ──────────
+# EAI-CUSTOM: 增量升级（G3）。本地镜像 digest 与 .offline-export-history/<ver>/manifest.json
+# 比对，只 docker save 变化项；服务器端 upgrade.sh 只 load 这些。
+if [ "$DELTA" = true ]; then
+    PREV_MANIFEST="${REPO_ROOT}/.offline-export-history/${SINCE}/manifest.json"
+    if [ ! -f "$PREV_MANIFEST" ]; then
+        err "Delta 基线 manifest 未找到: $PREV_MANIFEST"
+        err "  先跑一次全量导出建立基线：bash scripts/offline-export.sh"
+        exit 1
+    fi
+    # 一次性载入上次各镜像 digest 到关联数组
+    declare -A PREV_DGST
+    while IFS=$'\t' read -r k v; do
+        [ -n "$k" ] && PREV_DGST["$k"]="$v"
+    done < <("${PYTHON}" - "$PREV_MANIFEST" <<'PY'
+import json, sys
+for k, v in json.load(open(sys.argv[1])).get("images", {}).items():
+    print(f"{k}\t{v.get('digest','')}")
+PY
+)
+    ALL_DELTA=("${BUILT_IMAGE_NAMES[@]}" "${PUBLIC_IMAGES[@]}")
+    mkdir -p "${IMAGES_DIR}"
+    CHANGED=0; UNCHANGED=0
+    info "Delta 导出（基线 ${SINCE}），仅导变化镜像："
+    for img in "${ALL_DELTA[@]}"; do
+        cur=$(docker image inspect "$img" --format '{{.Id}}' 2>/dev/null || echo "")
+        [ -z "$cur" ] && { warn "  本地缺失，跳过: ${img}"; continue; }
+        if [ "$cur" = "${PREV_DGST[$img]:-}" ]; then
+            UNCHANGED=$((UNCHANGED+1)); continue
+        fi
+        fname=$(echo "$img" | sed 's|[/:]|_|g; s|\.||g' | tr '[:upper:]' '[:lower:]')
+        info "  变化: ${img} → images/${fname}.tar"
+        if docker save "$img" -o "${IMAGES_DIR}/${fname}.tar"; then
+            ok "  已导: ${fname}.tar ($(du -sh "${IMAGES_DIR}/${fname}.tar" | cut -f1))"; CHANGED=$((CHANGED+1))
+        else
+            warn "  导出失败: ${img}"
+        fi
+    done
+    info "  变化 ${CHANGED}，未变 ${UNCHANGED}"
+
+    # 生成新 manifest + 存入历史
+    VERSION_TAG="v${DATE}-$(git rev-parse --short HEAD)"
+    CFG_HASH=$(sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
+    MANIFEST="${OUTPUT_DIR}/manifest.json"
+    "${PYTHON}" - "$VERSION_TAG" "$DATE" "$CFG_HASH" "$MANIFEST" "${ALL_DELTA[@]}" <<'PY'
+import json, subprocess, sys
+ver, date, cfg, out, *imgs = sys.argv[1:]
+digests = {}
+for img in imgs:
+    try:
+        dgst = subprocess.check_output(["docker","image","inspect",img,"--format","{{.Id}}"], text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception:
+        dgst = "unknown"
+    digests[img] = {"digest": dgst}
+with open(out,"w") as f:
+    json.dump({"version":ver,"exported_at":date,"images":digests,"config_hash":cfg}, f, indent=2, ensure_ascii=False)
+PY
+    mkdir -p "${REPO_ROOT}/.offline-export-history/${VERSION_TAG}"
+    cp "$MANIFEST" "${REPO_ROOT}/.offline-export-history/${VERSION_TAG}/manifest.json"
+
+    # 增量包只含 images/ + manifest（compose/config 已在全量包里）
+    tar czf "${REPO_ROOT}/eai-flow-delta-${VERSION_TAG}.tar.gz" -C "${OUTPUT_DIR}" images manifest.json
+    DELTA_SIZE=$(du -sh "${REPO_ROOT}/eai-flow-delta-${VERSION_TAG}.tar.gz" | cut -f1)
+    echo ""
+    echo "============================================="
+    echo "  Delta 包已生成（version=${VERSION_TAG}）"
+    echo "============================================="
+    echo "  文件:     eai-flow-delta-${VERSION_TAG}.tar.gz (${DELTA_SIZE})"
+    echo "  变化镜像: ${CHANGED}，未变 ${UNCHANGED}"
+    echo ""
+    echo "  推送升级（内网 ssh/scp）："
+    echo "    scp eai-flow-delta-${VERSION_TAG}.tar.gz root@<服务器>:/opt/eai-flow-offline/delta/"
+    echo "    ssh root@<服务器> 'cd /opt/eai-flow-offline && mkdir -p delta && tar xzf delta/eai-flow-delta-${VERSION_TAG}.tar.gz -C delta && ./upgrade.sh delta'"
+    echo ""
+    exit 0
 fi
 
 TOTAL_IMAGES=$(( ${#PUBLIC_IMAGES[@]} + ${#BUILT_IMAGE_NAMES[@]} ))
@@ -756,6 +839,9 @@ with open(out, "w") as f:
 print(f"  manifest.json: version={ver}, {len(imgs)} images")
 PY
 ok "  Generated: manifest.json (version=${VERSION_TAG})"
+# 存入历史，供后续 --delta --since <VERSION_TAG> 比对基线
+mkdir -p "${REPO_ROOT}/.offline-export-history/${VERSION_TAG}"
+cp "$MANIFEST" "${REPO_ROOT}/.offline-export-history/${VERSION_TAG}/manifest.json"
 
 info "Calculating package size..."
 PACKAGE_SIZE=$(du -sh "${OUTPUT_DIR}" | cut -f1)
