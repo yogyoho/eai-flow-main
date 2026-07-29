@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -23,9 +24,17 @@ from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
 
 from app.gateway.authz import require_permission
+from app.gateway.checkpoint_lineage import (
+    CheckpointLineageError,
+    CheckpointParentMissingError,
+    find_checkpoint_before_message,
+    find_checkpoint_before_message_chronologically,
+)
 from app.gateway.deps import get_checkpointer, get_current_user, get_feedback_repo, get_run_event_store, get_run_manager, get_run_store, get_stream_bridge
 from app.gateway.pagination import trim_run_message_page
 from app.gateway.services import sse_consumer, start_run, wait_for_run_completion
+from app.gateway.utils import sanitize_log_param
+from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
 from deerflow.runtime import CancelOutcome, RunRecord, RunStatus, serialize_channel_values_for_api
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY, get_original_user_content_text, message_to_text
 from deerflow.workspace_changes import get_workspace_changes_response
@@ -37,6 +46,9 @@ REGENERATE_HISTORY_SCAN_LIMIT = 200
 # (one per successful run in steady state) consume roughly half of history.
 REGENERATE_HISTORY_RAW_SCAN_LIMIT = REGENERATE_HISTORY_SCAN_LIMIT * 2
 THREAD_MESSAGE_PAGE_SCAN_BATCH = 201
+_MISSING_REGENERATE_BASE_DETAIL = "Could not find an addressable checkpoint before the target user message"
+_UNSAFE_REGENERATE_LINEAGE_DETAIL = "Could not safely resolve the checkpoint before the target user message"
+THREAD_MESSAGE_LEGACY_SCAN_BATCH = 201
 
 
 def _is_duration_only_checkpoint(checkpoint_tuple: Any) -> bool:
@@ -396,7 +408,12 @@ def _clean_human_message_for_regenerate(message: Any) -> dict[str, Any]:
         "content": [{"type": "text", "text": content}],
         "additional_kwargs": additional_kwargs,
     }
-    message_id = _message_id(message)
+    # Replay the id the client originally sent. The dynamic-context reminder
+    # re-keys the first user message of a thread to `{id}__user`, and replaying
+    # that persisted id into a state that has no reminder yet makes the
+    # middleware treat the turn as already injected, silently dropping the date
+    # and memory block the original turn had.
+    message_id = strip_injected_user_message_id_suffix(_message_id(message))
     if message_id:
         clean_message["id"] = message_id
     name = _message_name(message)
@@ -477,7 +494,13 @@ def _run_last_ai_matches_message(record: RunRecord, message: Any) -> bool:
     return last_ai_message == target_text[: len(last_ai_message)]
 
 
-async def _find_target_run_id(thread_id: str, message_id: str, target_message: Any, request: Request) -> str:
+async def _find_target_run_id(
+    thread_id: str,
+    message_id: str,
+    target_message: Any,
+    source_human: Any,
+    request: Request,
+) -> str:
     event_store = get_run_event_store(request)
     rows = await event_store.list_messages(thread_id, limit=REGENERATE_HISTORY_SCAN_LIMIT)
     for row in reversed(rows):
@@ -487,6 +510,11 @@ async def _find_target_run_id(thread_id: str, message_id: str, target_message: A
             run_id = row.get("run_id")
             if isinstance(run_id, str) and run_id:
                 return run_id
+
+    source_run_id = _message_additional_kwargs(source_human).get("run_id")
+    if isinstance(source_run_id, str) and source_run_id:
+        return source_run_id
+
     run_mgr = get_run_manager(request)
     user_id = await get_current_user(request)
     records = await run_mgr.list_by_thread(thread_id, user_id=user_id, limit=10)
@@ -506,9 +534,40 @@ async def _find_target_run_id(thread_id: str, message_id: str, target_message: A
     raise HTTPException(status_code=409, detail="Could not find source run for assistant message")
 
 
-async def _find_base_checkpoint_before_human(thread_id: str, human_message_id: str, request: Request) -> Any:
+async def _find_base_checkpoint_before_human(
+    thread_id: str,
+    human_message_id: str,
+    request: Request,
+    *,
+    head_checkpoint: Any | None = None,
+) -> Any:
+    # EAI-CUSTOM: 上游用 build_thread_checkpoint_state_accessor（materialized state-accessor，
+    # 暴露 .aget/.ahistory）。EAI regenerate 仍走原始 checkpointer：它有 .aget（可供 lineage 行走），
+    # 但无 .ahistory，故 chronological 回落沿用 .alist（与 EAI 既有路径一致）。
     checkpointer = get_checkpointer(request)
     base_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    if head_checkpoint is not None:
+        try:
+            return await find_checkpoint_before_message(
+                checkpointer,
+                head_checkpoint,
+                human_message_id,
+                max_depth=REGENERATE_HISTORY_RAW_SCAN_LIMIT,
+            )
+        except CheckpointParentMissingError:
+            # 旧 checkpoint 与导入历史可能不带 parent 链接；对这些记录保留有界的 chronological 回落。
+            logger.debug(
+                "Could not resolve parent lineage for regenerate thread %s; falling back to history scan",
+                sanitize_log_param(thread_id),
+                exc_info=True,
+            )
+        except CheckpointLineageError as exc:
+            logger.warning(
+                "Rejected unsafe checkpoint lineage for regenerate thread %s",
+                sanitize_log_param(thread_id),
+                exc_info=True,
+            )
+            raise HTTPException(status_code=409, detail=_UNSAFE_REGENERATE_LINEAGE_DETAIL) from exc
     try:
         raw_checkpoints = [item async for item in checkpointer.alist(base_config, limit=REGENERATE_HISTORY_RAW_SCAN_LIMIT)]
         checkpoints = [item for item in raw_checkpoints if not _is_duration_only_checkpoint(item)]
@@ -516,19 +575,14 @@ async def _find_base_checkpoint_before_human(thread_id: str, human_message_id: s
         logger.exception("Failed to list checkpoints for regenerate thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to inspect checkpoint history") from exc
 
-    previous_checkpoint = None
-    for checkpoint_tuple in reversed(checkpoints):
-        messages = _checkpoint_messages(checkpoint_tuple)
-        message_ids = {_message_id(message) for message in messages}
-        if human_message_id in message_ids:
-            if previous_checkpoint is None:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Could not find an addressable checkpoint before the target user message",
-                )
-            return previous_checkpoint
-        if _checkpoint_configurable(checkpoint_tuple).get("checkpoint_id"):
-            previous_checkpoint = checkpoint_tuple
+    previous_checkpoint, target_found = find_checkpoint_before_message_chronologically(raw_checkpoints, human_message_id)
+    if target_found:
+        if previous_checkpoint is None:
+            raise HTTPException(
+                status_code=409,
+                detail=_MISSING_REGENERATE_BASE_DETAIL,
+            )
+        return previous_checkpoint
 
     if len(checkpoints) >= REGENERATE_HISTORY_SCAN_LIMIT:
         logger.warning(
@@ -543,7 +597,61 @@ async def _find_base_checkpoint_before_human(thread_id: str, human_message_id: s
     )
 
 
+def _run_status_value(record: Any) -> str | None:
+    status = getattr(record, "status", None)
+    if isinstance(status, RunStatus):
+        return status.value
+    return str(status) if status is not None else None
+
+
+async def _require_successful_source_run(thread_id: str, run_id: str, request: Request) -> RunRecord:
+    run_mgr = get_run_manager(request)
+    user_id = await get_current_user(request)
+    record = await run_mgr.get(run_id, user_id=user_id)
+    if record is None:
+        # The run-event journal is the authoritative lookup above. This fallback
+        # only covers recent in-memory/store hydration gaps for the latest turn.
+        records = await run_mgr.list_by_thread(thread_id, user_id=user_id, limit=20)
+        record = next((candidate for candidate in records if getattr(candidate, "run_id", None) == run_id), None)
+    if record is None:
+        raise HTTPException(status_code=409, detail="Could not find source run for assistant message")
+    record_thread_id = getattr(record, "thread_id", None)
+    if isinstance(record_thread_id, str) and record_thread_id and record_thread_id != thread_id:
+        raise HTTPException(status_code=409, detail="Could not find source run for assistant message")
+    if _run_status_value(record) != RunStatus.success.value:
+        raise HTTPException(status_code=409, detail="Only successful assistant runs can be edited and rerun")
+    return record
+
+
+async def _find_interrupted_target_run_id(
+    thread_id: str,
+    source_human: Any,
+    request: Request,
+) -> str | None:
+    source_run_id = _message_additional_kwargs(source_human).get("run_id")
+    if not isinstance(source_run_id, str) or not source_run_id:
+        return None
+
+    run_mgr = get_run_manager(request)
+    user_id = await get_current_user(request)
+    record = await run_mgr.get(source_run_id, user_id=user_id)
+    if record is None:
+        records = await run_mgr.list_by_thread(thread_id, user_id=user_id, limit=20)
+        record = next(
+            (candidate for candidate in records if getattr(candidate, "run_id", None) == source_run_id),
+            None,
+        )
+    if record is None:
+        return None
+    if getattr(record, "thread_id", None) != thread_id:
+        return None
+    if _run_status_value(record) != RunStatus.interrupted.value:
+        return None
+    return source_run_id
+
+
 async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: Request) -> RegeneratePrepareResponse:
+    # EAI-CUSTOM: 原始 checkpointer（aget_tuple）路径，上游用 materialized state-accessor（accessor.aget）。
     checkpointer = get_checkpointer(request)
     latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
     try:
@@ -551,42 +659,172 @@ async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: 
     except Exception as exc:
         logger.exception("Failed to read latest checkpoint for regenerate thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to read latest checkpoint") from exc
-    if latest_checkpoint is None:
+    latest_checkpoint_id = _checkpoint_configurable(latest_checkpoint).get("checkpoint_id") if latest_checkpoint is not None else None
+    if not latest_checkpoint_id:
         raise HTTPException(status_code=404, detail=f"Thread {thread_id} has no checkpoint")
 
     messages = _checkpoint_messages(latest_checkpoint)
     target_index = next((i for i, message in enumerate(messages) if _message_id(message) == message_id), None)
     if target_index is None:
-        raise HTTPException(status_code=404, detail=f"Message {message_id} not found")
-    target_message = messages[target_index]
-    if not _is_visible_ai_message(target_message):
-        raise HTTPException(status_code=409, detail="Only visible assistant messages can be regenerated")
+        # 响应在 LLM 调用中被中断时，可能已在 live stream 可见但从未落 checkpoint。
+        # 最新 user 消息上的服务端 run_id 是到该不完整 turn 的持久链接。
+        previous_human = next(
+            (message for message in reversed(messages) if _is_visible_human_message(message)),
+            None,
+        )
+        target_run_id = await _find_interrupted_target_run_id(thread_id, previous_human, request) if previous_human is not None else None
+        if target_run_id is None:
+            raise HTTPException(status_code=404, detail=f"Message {message_id} not found")
+    else:
+        target_message = messages[target_index]
+        if not _is_visible_ai_message(target_message):
+            raise HTTPException(status_code=409, detail="Only visible assistant messages can be regenerated")
 
-    latest_visible_ai = next((message for message in reversed(messages) if _is_visible_ai_message(message)), None)
-    if _message_id(latest_visible_ai) != message_id:
-        raise HTTPException(status_code=409, detail="Only the latest assistant message can be regenerated")
+        latest_visible_ai = next((message for message in reversed(messages) if _is_visible_ai_message(message)), None)
+        if _message_id(latest_visible_ai) != message_id:
+            raise HTTPException(status_code=409, detail="Only the latest assistant message can be regenerated")
 
-    previous_human = next((message for message in reversed(messages[:target_index]) if _is_visible_human_message(message)), None)
+        previous_human = next((message for message in reversed(messages[:target_index]) if _is_visible_human_message(message)), None)
+        target_run_id = (
+            await _find_target_run_id(
+                thread_id,
+                message_id,
+                target_message,
+                previous_human,
+                request,
+            )
+            if previous_human is not None
+            else None
+        )
     if previous_human is None:
         raise HTTPException(status_code=409, detail="Could not find the user message for this assistant response")
+    if target_run_id is None:
+        raise HTTPException(status_code=409, detail="Could not find source run for assistant message")
     previous_human_id = _message_id(previous_human)
     if not previous_human_id:
         raise HTTPException(status_code=409, detail="The source user message is missing an id")
 
-    base_checkpoint_tuple = await _find_base_checkpoint_before_human(thread_id, previous_human_id, request)
-    target_run_id = await _find_target_run_id(thread_id, message_id, target_message, request)
+    base_checkpoint_tuple = await _find_base_checkpoint_before_human(
+        thread_id,
+        previous_human_id,
+        request,
+        head_checkpoint=latest_checkpoint,
+    )
     checkpoint = _checkpoint_response(base_checkpoint_tuple)
     metadata = {
         "regenerate_from_message_id": message_id,
         "regenerate_from_run_id": target_run_id,
         "regenerate_checkpoint_id": checkpoint["checkpoint_id"],
     }
+    regenerate_input: dict[str, Any] = {"messages": [_clean_human_message_for_regenerate(previous_human)]}
+    latest_title = _checkpoint_values(latest_checkpoint).get("title")
+    if isinstance(latest_title, str) and latest_title:
+        # Regenerate 从目标 human turn 之前的 checkpoint 恢复；该 checkpoint 可能早于一次手动改名，
+        # 因此把当前 title 作为 graph input 重放，而不是让 checkpoint 回滚恢复旧的自动生成 title（#4457）。
+        regenerate_input["title"] = latest_title
     return RegeneratePrepareResponse(
-        input={"messages": [_clean_human_message_for_regenerate(previous_human)]},
+        input=regenerate_input,
         checkpoint=checkpoint,
         metadata=metadata,
         target_run_id=target_run_id,
     )
+
+
+async def _prepare_edit_regenerate_payload(
+    thread_id: str,
+    human_message_id: str,
+    replacement_text: str,
+    request: Request,
+) -> EditRegeneratePrepareResponse:
+    normalized_text = replacement_text.strip()
+    if not normalized_text:
+        raise HTTPException(status_code=409, detail="Edited message cannot be empty")
+
+    # EAI-CUSTOM: 原始 checkpointer（aget_tuple）路径，上游用 materialized state-accessor（accessor.aget）。
+    checkpointer = get_checkpointer(request)
+    latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    try:
+        latest_checkpoint = await checkpointer.aget_tuple(latest_config)
+    except Exception as exc:
+        logger.exception("Failed to read latest checkpoint for edit replay thread %s", thread_id)
+        raise HTTPException(status_code=500, detail="Failed to read latest checkpoint") from exc
+    latest_checkpoint_id = _checkpoint_configurable(latest_checkpoint).get("checkpoint_id") if latest_checkpoint is not None else None
+    if not latest_checkpoint_id:
+        raise HTTPException(status_code=404, detail=f"Thread {thread_id} has no checkpoint")
+
+    messages = _checkpoint_messages(latest_checkpoint)
+    if _has_active_goal(latest_checkpoint):
+        raise HTTPException(status_code=409, detail="Cannot edit while a goal is active")
+
+    _, source_human, _, source_ai, source_message_ids = _latest_editable_turn(messages, human_message_id)
+    source_text = get_original_user_content_text(_message_content(source_human), _message_additional_kwargs(source_human)).strip()
+    if normalized_text == source_text:
+        raise HTTPException(status_code=409, detail="Edited message is unchanged")
+
+    source_human_id = _message_id(source_human)
+    source_ai_id = _message_id(source_ai)
+    if not source_human_id:
+        raise HTTPException(status_code=409, detail="The source user message is missing an id")
+    if not source_ai_id:
+        raise HTTPException(status_code=409, detail="The source assistant message is missing an id")
+
+    base_checkpoint_tuple = await _find_base_checkpoint_before_human(
+        thread_id,
+        source_human_id,
+        request,
+        head_checkpoint=latest_checkpoint,
+    )
+    target_run_id = await _find_target_run_id(thread_id, source_ai_id, source_ai, source_human, request)
+    source_record = await _require_successful_source_run(thread_id, target_run_id, request)
+    checkpoint = _checkpoint_response(base_checkpoint_tuple)
+    replacement_human_message_id = str(uuid.uuid4())
+    source_metadata = getattr(source_record, "metadata", None) or {}
+    existing_group_id = source_metadata.get("edit_version_group_id") if isinstance(source_metadata, dict) else None
+    # Reserved for future edit-chain grouping across repeated edits of the same
+    # original prompt; current visibility still keys off regenerate_from_run_id.
+    edit_version_group_id = existing_group_id if isinstance(existing_group_id, str) and existing_group_id else source_human_id
+    metadata = {
+        "replay_kind": "edit",
+        "regenerate_from_message_id": source_ai_id,
+        "regenerate_from_run_id": target_run_id,
+        "regenerate_checkpoint_id": checkpoint["checkpoint_id"],
+        "edit_from_message_id": source_human_id,
+        "edit_message_id": replacement_human_message_id,
+        "edit_version_group_id": edit_version_group_id,
+    }
+    edit_input: dict[str, Any] = {
+        "messages": [
+            _clean_human_message_for_edit(
+                source_human,
+                replacement_id=replacement_human_message_id,
+                replacement_text=normalized_text,
+            )
+        ]
+    }
+    base_values = _checkpoint_values(base_checkpoint_tuple)
+    latest_title = _checkpoint_values(latest_checkpoint).get("title")
+    if _has_title(base_values) and isinstance(latest_title, str) and latest_title:
+        # The replay base can predate a manual rename, so replay the current
+        # title rather than letting checkpoint rollback restore the older one
+        # (#4457, the same rollback regenerate already guards against). An
+        # untitled base is deliberately left alone: it belongs to a thread the
+        # title middleware has not named yet, and pinning the current title
+        # there would keep a name generated from the prompt this edit replaced.
+        edit_input["title"] = latest_title
+    return EditRegeneratePrepareResponse(
+        input=edit_input,
+        checkpoint=checkpoint,
+        metadata=metadata,
+        target_run_id=target_run_id,
+        replacement_human_message_id=replacement_human_message_id,
+        source_message_ids=source_message_ids,
+    )
+
+
+async def _default_history_hidden_run_ids(run_mgr: Any, thread_id: str, *, user_id: str | None) -> set[str]:
+    superseded_run_ids = await run_mgr.list_successful_regenerate_sources(thread_id, user_id=user_id)
+    edit_visibility = await run_mgr.list_edit_replay_visibility(thread_id, user_id=user_id)
+    return set(superseded_run_ids) | set(edit_visibility.hidden_source_run_ids) | set(edit_visibility.hidden_attempt_run_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -603,6 +841,17 @@ async def prepare_regenerate_run(
 ) -> RegeneratePrepareResponse:
     """Prepare input and checkpoint for regenerating the latest assistant turn."""
     return await _prepare_regenerate_payload(thread_id, body.message_id, request)
+
+
+@router.post("/{thread_id}/runs/edit-regenerate/prepare", response_model=EditRegeneratePrepareResponse)
+@require_permission("runs", "create", owner_check=True, require_existing=True)
+async def prepare_edit_regenerate_run(
+    thread_id: str,
+    body: EditRegeneratePrepareRequest,
+    request: Request,
+) -> EditRegeneratePrepareResponse:
+    """Prepare input and checkpoint for editing then rerunning the latest user turn."""
+    return await _prepare_edit_regenerate_payload(thread_id, body.human_message_id, body.replacement_text, request)
 
 
 @router.post("/{thread_id}/runs", response_model=RunResponse)
