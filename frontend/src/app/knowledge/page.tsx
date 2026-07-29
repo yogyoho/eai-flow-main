@@ -345,7 +345,13 @@ function UploadModal({
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const acceptInfo = CHUNK_METHOD_ACCEPT[chunkMethod || "naive"] || CHUNK_METHOD_ACCEPT.naive;
+  // EAI-CUSTOM: noUncheckedIndexedAccess makes Record<string,T> lookups yield T | undefined;
+  // narrow with an early guard so every downstream acceptInfo.* access is defined.
+  const acceptInfo = CHUNK_METHOD_ACCEPT[chunkMethod || "naive"] ?? CHUNK_METHOD_ACCEPT.naive;
+  if (!acceptInfo) {
+    // Unknown chunk method — no accept config available, render nothing.
+    return null;
+  }
 
   const getFileExt = (name: string) => name.split(".").pop()?.toLowerCase() || "";
 

@@ -607,6 +607,58 @@ export interface Translations {
       skills: string;
       notification: string;
       about: string;
+      basic: string; // EAI-CUSTOM: basic settings tab label
+    };
+    // EAI-CUSTOM: basic settings namespace (BasicSettings page — upstream settings has no `basic` block)
+    basic: {
+      title: string;
+      theme: {
+        system: string;
+        light: string;
+        dark: string;
+      };
+      saveSuccess: string;
+      saveFailed: string;
+      retrieval: {
+        title: string;
+        description: string;
+        defaultModel: string;
+        fastModel: string;
+        embedModel: string;
+        placeholder: string;
+        reranker: string;
+      };
+      contentGuard: {
+        title: string;
+        description: string;
+        enable: string;
+        enableHint: string;
+        enableLLM: string;
+        enableLLMHint: string;
+        model: string;
+        modelPlaceholder: string;
+      };
+      language: {
+        title: string;
+        description: string;
+      };
+      services: {
+        title: string;
+        description: string;
+        docCenter: string;
+        docCenterDesc: string;
+        neo4j: string;
+        neo4jDesc: string;
+        apiDocs: string;
+        apiDocsDesc: string;
+        minio: string;
+        minioDesc: string;
+        milvus: string;
+        milvusDesc: string;
+        ragflow: string;
+        ragflowDesc: string;
+      };
+      save: string;
     };
     memory: {
       title: string;

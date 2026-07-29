@@ -170,6 +170,13 @@ export interface KnowledgeBase {
   allowed_depts?: string[];
   embedding_model?: string;
   chunk_method: string;
+  // EAI-CUSTOM: parser_config mirror (RAGFlow chunk/parser options — used by knowledge page)
+  parser_config?: {
+    chunk_token_num?: number;
+    delimiter?: string;
+    layout_recognize?: string;
+    [key: string]: unknown;
+  };
   language?: string;
   status: string;
   created_at: string;
@@ -188,6 +195,13 @@ export interface CreateKnowledgeBaseRequest {
   allowed_depts?: string[];
   embedding_model?: string;
   chunk_method?: string;
+  // EAI-CUSTOM: parser_config mirror (RAGFlow chunk/parser options — used by knowledge page)
+  parser_config?: {
+    chunk_token_num?: number;
+    delimiter?: string;
+    layout_recognize?: string;
+    [key: string]: unknown;
+  };
   language?: string;
 }
 
@@ -199,6 +213,13 @@ export interface UpdateKnowledgeBaseRequest {
   allowed_depts?: string[];
   embedding_model?: string;
   chunk_method?: string;
+  // EAI-CUSTOM: parser_config mirror (RAGFlow chunk/parser options — used by knowledge page)
+  parser_config?: {
+    chunk_token_num?: number;
+    delimiter?: string;
+    layout_recognize?: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface Document {
