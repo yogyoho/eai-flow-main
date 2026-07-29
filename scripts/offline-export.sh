@@ -328,6 +328,13 @@ if [ -f "deploy/offline/extensions_config.json" ]; then
 fi
 cp "deploy/offline/.env"                 "${OUTPUT_DIR}/.env"
 
+# EAI-CUSTOM: 零编辑部署所需 —— 配置生成器 + 唯一配置源模板拷进包。
+# install.sh 的 setup_config 调用 scripts/generate-config.sh，从 deploy.conf 生成全部配置。
+mkdir -p "${OUTPUT_DIR}/scripts"
+cp "scripts/generate-config.sh"          "${OUTPUT_DIR}/scripts/generate-config.sh"
+chmod +x "${OUTPUT_DIR}/scripts/generate-config.sh"
+cp "deploy/offline/deploy.conf.example"  "${OUTPUT_DIR}/deploy.conf.example"
+
 # Skills directory (just the public structure)
 if [ -d "skills/public" ]; then
     mkdir -p "${OUTPUT_DIR}/skills"
@@ -537,62 +544,50 @@ create_network() {
 # ── Setup config ───────────────────────────────────────────────────────────────
 
 setup_config() {
-    # Check that pre-configured files exist (they are included in the offline package)
-    local NEED_EDIT=false
+    info "Generating configuration (zero-edit)..."
+    echo ""
 
-    # .env file — pre-configured, verify key variables
-    if [ ! -f "${SCRIPT_DIR}/.env" ]; then
-        err ".env file is missing! This should have been included in the offline package."
+    # 首次部署：无 deploy.conf 则从模板创建，提示填 LLM 后重跑
+    if [ ! -f "${SCRIPT_DIR}/deploy.conf" ]; then
+        cp "${SCRIPT_DIR}/deploy.conf.example" "${SCRIPT_DIR}/deploy.conf"
+        warn "Created deploy.conf from template."
+        warn "  Fully offline? Edit deploy.conf (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL), then re-run ./install.sh"
+        warn "  Intranet with cloud egress? Leave LLM_* empty and re-run."
+        exit 0
+    fi
+
+    # 自动推导不可猜的值：root=部署目录；secret=已存在或随机生成；origin=本机IP:4026
+    local root="${SCRIPT_DIR}"
+    local secret
+    secret=$(grep '^BETTER_AUTH_SECRET=' "${SCRIPT_DIR}/.env" 2>/dev/null | cut -d= -f2 || true)
+    if [ -z "${secret}" ] || [ "${secret}" = "change-me-to-a-random-string" ]; then
+        secret=$(openssl rand -base64 32)
+        ok "Generated a fresh BETTER_AUTH_SECRET."
+    fi
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [ -z "${ip}" ] && ip="localhost"
+    local origin="http://${ip}:4026"
+    ok "Auto-derived: root=${root}  trusted_origin=${origin}"
+
+    # 由 deploy.conf 生成 .env / config.yaml / extensions_config.json
+    if ! bash "${SCRIPT_DIR}/scripts/generate-config.sh" \
+            --conf "${SCRIPT_DIR}/deploy.conf" --out "${SCRIPT_DIR}" \
+            --root "${root}" --secret "${secret}" --origin "${origin}"; then
+        err "generate-config.sh failed. Check deploy.conf (KEY=VALUE, one per line, comments on their own line)."
         exit 1
     fi
-    # Source .env to check critical vars
-    source "${SCRIPT_DIR}/.env"
-    if [ "${BETTER_AUTH_SECRET:-}" = "change-me-to-a-random-string" ]; then
-        warn "BETTER_AUTH_SECRET is still the default value. Please change it."
-        warn "  Run: openssl rand -base64 32"
-        NEED_EDIT=true
-    fi
-    if [ -z "${DEER_FLOW_ROOT:-}" ]; then
-        warn "DEER_FLOW_ROOT is not set in .env. Update it to this directory's absolute path."
-        NEED_EDIT=true
+
+    # F.10: 预置 nginx.conf 实体文件，防首次挂载把文件当目录创建
+    if [ ! -f "${SCRIPT_DIR}/nginx/nginx.conf" ]; then
+        mkdir -p "${SCRIPT_DIR}/nginx"
+        cp "${SCRIPT_DIR}/docker/nginx/nginx.conf" "${SCRIPT_DIR}/nginx/nginx.conf" 2>/dev/null || true
     fi
 
-    # config.yaml — pre-configured, check LLM endpoint
-    if [ ! -f "${SCRIPT_DIR}/config.yaml" ]; then
-        err "config.yaml is missing! This should have been included in the offline package."
-        exit 1
-    fi
-    if grep -q "your-model-name-here" "${SCRIPT_DIR}/config.yaml" 2>/dev/null; then
-        warn "config.yaml still has placeholder model name. Please configure your intranet LLM."
-        warn "  Edit config.yaml → models section:"
-        warn "    model: <your-model-name>"
-        warn "    base_url: http://<YOUR_LLM_IP>:<PORT>/v1"
-        NEED_EDIT=true
-    fi
+    # 运行时目录
+    mkdir -p "${SCRIPT_DIR}/data" "${SCRIPT_DIR}/logs" "${SCRIPT_DIR}/skills/custom"
 
-    # extensions_config.json
-    if [ ! -f "${SCRIPT_DIR}/extensions_config.json" ]; then
-        warn "extensions_config.json not found, creating empty config."
-        echo '{"mcpServers": {}, "skills": {}}' > "${SCRIPT_DIR}/extensions_config.json"
-    fi
-
-    if $NEED_EDIT; then
-        echo ""
-        echo "  Edit configuration files now? [Y/n]"
-        read -p "> " -n 1 -r
-        echo ""
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            ${EDITOR:-vi} "${SCRIPT_DIR}/.env"
-            ${EDITOR:-vi} "${SCRIPT_DIR}/config.yaml"
-        fi
-    fi
-
-    # Create data directories (mapped by docker compose volumes)
-    mkdir -p "${SCRIPT_DIR}/data"          # .deer-flow persistent data
-    mkdir -p "${SCRIPT_DIR}/logs"          # runtime logs
-    mkdir -p "${SCRIPT_DIR}/skills/custom" # custom skills
-
-    ok "Configuration files ready."
+    ok "Configuration ready."
     echo ""
 }
 
@@ -708,9 +703,9 @@ post_install() {
 
 check_environment
 confirm_install
+setup_config
 load_images
 create_network
-setup_config
 start_services
 wait_for_healthy
 post_install

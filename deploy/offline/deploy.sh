@@ -218,16 +218,48 @@ show_logs() {
     logs -f --tail=100 "${@:-}"
 }
 
+# ── 零编辑配置生成 ────────────────────────────────────────────────────────────
+setup_config() {
+  log_info "=== 生成配置（零编辑）==="
+  if [[ ! -f deploy.conf ]]; then
+    [[ -f deploy.conf.example ]] && cp deploy.conf.example deploy.conf
+    log_warn "已创建 deploy.conf；完全离线请填 LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 后重跑"
+    exit 0
+  fi
+  local root; root="$(pwd)"
+  local secret; secret="$(grep '^BETTER_AUTH_SECRET=' .env 2>/dev/null | cut -d= -f2 || true)"
+  if [[ -z "$secret" || "$secret" == "change-me-to-a-random-string" ]]; then
+    secret="$(openssl rand -base64 32)"
+  fi
+  local ip; ip="$(hostname -I 2>/dev/null | awk '{print $1}')"; [[ -z "$ip" ]] && ip="localhost"
+  local origin="http://${ip}:${PORT:-4026}"
+  # generate-config.sh：repo 内位于 ../../scripts/（deploy.sh 在 deploy/offline/），包内位于 ./scripts/
+  local gen="$SCRIPT_DIR/../../scripts/generate-config.sh"
+  [[ -f "$gen" ]] || gen="$SCRIPT_DIR/scripts/generate-config.sh"
+  bash "$gen" --conf deploy.conf --out . --root "$root" --secret "$secret" --origin "$origin" \
+    || { log_error "generate-config.sh 失败"; exit 1; }
+  mkdir -p data logs skills mcp-server
+  log_info "配置就绪"
+}
+
+# 破坏性操作守卫：禁止 down -v / volume prune（会销毁数据卷）
+guard_destructive() {
+  for a in "$@"; do
+    case "$a" in -v|--volumes) log_error "禁止 down -v（会销毁数据卷）；如需重置请先备份"; exit 1;; esac
+  done
+}
+
 # ── 主入口 ────────────────────────────────────────────────────────────────────
 
 case "${1:-deploy}" in
   deploy|start|up)
     preflight
-    ensure_dirs
+    setup_config
     ensure_network
     start_all
     ;;
   down|stop)
+    guard_destructive "$@"
     stop_all
     ;;
   restart)

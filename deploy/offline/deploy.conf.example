@@ -1,0 +1,25 @@
+# EAI-Flow 部署配置（唯一需要手写的文件）
+# 拷贝为 deploy.conf 后填值；.env / config.yaml / extensions_config.json 由
+# scripts/generate-config.sh 自动生成。DEER_FLOW_ROOT / BETTER_AUTH_SECRET /
+# TRUSTED_ORIGINS 在安装时自动推导，无需手填。
+#
+# 解析规则：每行一个 KEY=VALUE；注释必须单独成行（行内 # 不被剥离）；
+# 含空格的值用双引号包裹，如 BRAND_FOOTER="© 2026 ACME"。
+
+# ── 品牌（按客户变；构建期注入前端镜像）──
+BRAND_NAME=EAIFlow
+BRAND_FOOTER=
+BRAND_ASSETS_DIR=./brand-assets
+
+# ── LLM（内网可连外网则三项全留空，走云端默认模型；完全离线必填）──
+LLM_BASE_URL=
+LLM_API_KEY=
+LLM_MODEL=
+
+# ── 可选 ──
+# RAGFlow API Key：首次可留空，在 RAGFlow Web UI (:19381) 生成后补
+RAGFLOW_API_KEY=
+# RAGFlow 拉取外部资源用的代理（如 http://proxy:port），不需要则留空
+RAGFLOW_HTTP_PROXY=
+# 数据库密码，留空走默认 agentflow123
+DB_PASSWORD=

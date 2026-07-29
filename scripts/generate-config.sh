@@ -35,6 +35,7 @@ parse_conf() {
     key="$(echo "$key" | tr -d '[:space:]')"        # key 不应有空格
     val="${val#\"}"; val="${val%\"}"                # 去首尾双引号
     val="${val#\'}"; val="${val%\'}"                # 去首尾单引号
+    val="$(echo "$val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"  # 去首尾空白（防 trailing space 污染空值判断）
     [ -n "$key" ] && export "${key}=${val}"
   done < "$1"
 }
