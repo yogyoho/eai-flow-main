@@ -1150,7 +1150,9 @@ async def _scan_thread_message_page(
     """Select the newest ``limit + 1`` page-eligible rows before a cursor."""
     event_store = get_run_event_store(request)
     run_mgr = get_run_manager(request)
-    superseded_run_ids = await run_mgr.list_successful_regenerate_sources(thread_id, user_id=user_id)
+    # EAI-CUSTOM: 用合并的 hidden_run_ids（regenerate 被取代源 + edit-rerun 不可见源/失败尝试），
+    # 取代仅 regenerate 被取代源——这样 edit-and-rerun 后旧 turn 也在分页历史中隐藏。
+    hidden_run_ids = await _default_history_hidden_run_ids(run_mgr, thread_id, user_id=user_id)
     visible_desc: list[dict[str, Any]] = []
     scan_before = before_seq
 
@@ -1176,7 +1178,7 @@ async def _scan_thread_message_page(
             raise RuntimeError("Run event message rows are missing sequence values")
 
         for row in reversed(raw):
-            if _is_middleware_message_row(row) or row.get("run_id") in superseded_run_ids:
+            if _is_middleware_message_row(row) or row.get("run_id") in hidden_run_ids:
                 continue
             visible_desc.append(row)
             if len(visible_desc) == limit + 1:
