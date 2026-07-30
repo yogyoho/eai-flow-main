@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/extensions/app-center", tags=["app-center"])
 @router.get("/domains", response_model=AppDomainListResponse)
 async def list_domains(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("app_center:manage")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")  # EAI-CUSTOM: read access for all users; write ops use require_super_admin),  # EAI-CUSTOM: Add permission check
 ):
     items = await AppCenterService.list_domains(db)
     return AppDomainListResponse(
@@ -87,7 +87,7 @@ async def delete_domain(
 @router.get("/apps", response_model=AppDefinitionListResponse)
 async def list_apps(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("app_center:manage")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")  # EAI-CUSTOM: read access for all users; write ops use require_super_admin),  # EAI-CUSTOM: Add permission check
 ):
     items = await AppCenterService.list_apps(db)
     return AppDefinitionListResponse(
