@@ -76,10 +76,11 @@ async def get_my_permissions(
     nav_ids = registry.get_nav_ids_for_role(role_code)
     page_ids = registry.get_page_ids_for_role(role_code)
 
-    # If role has "*" for nav/pages, return all
+    # If role has "*" for nav, expand to all nav_ids and all pages
     if "*" in nav_ids:
         nav_ids = [m.nav_id for m in registry.list_nav_modules() if m.nav_id]
-    if "*" in page_ids:
+        page_ids = [p.id for m in registry.list_nav_modules() for p in m.pages]
+    elif "*" in page_ids:
         page_ids = [p.id for m in registry.list_nav_modules() for p in m.pages]
 
     return {

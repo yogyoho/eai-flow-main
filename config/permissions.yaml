@@ -197,6 +197,8 @@ roles:
     is_system: true
     level: 100
     nav: ["*"]
+    pages: ["*"]
+    permissions: ["*"]
 
   dept_head:
     display_name: "部门负责人"
