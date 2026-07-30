@@ -5,6 +5,8 @@ import { PermissionContext } from "./PermissionProvider";
 
 export interface PermissionState {
   permissions: string[];
+  nav: string[];
+  pages: string[];
   identity: {
     user_id: string;
     username: string;
@@ -27,7 +29,7 @@ export function usePermission() {
     throw new Error("usePermission must be used within a PermissionProvider");
   }
 
-  const { permissions, identity, isLoading } = ctx;
+  const { permissions, nav, pages, identity, isLoading } = ctx;
 
   const can = (permission: string): boolean => {
     if (isLoading) return false;
@@ -45,10 +47,24 @@ export function usePermission() {
 
   const hasAny = (...perms: string[]): boolean => perms.some(can);
 
+  const canNav = (navId: string): boolean => {
+    if (isLoading) return false;
+    if (nav.includes("*")) return true;
+    return nav.includes(navId);
+  };
+
+  const canPage = (pageId: string): boolean => {
+    if (isLoading) return false;
+    if (pages.includes("*")) return true;
+    return pages.includes(pageId);
+  };
+
   return {
     can,
     hasAll,
     hasAny,
+    canNav,
+    canPage,
     permissions,
     identity,
     isLoading,

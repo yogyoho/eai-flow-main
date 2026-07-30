@@ -12,6 +12,8 @@ export const PermissionContext = createContext<PermissionContextValue | null>(nu
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<PermissionState>({
     permissions: [],
+    nav: [],
+    pages: [],
     identity: {
       user_id: "",
       username: "",
@@ -39,6 +41,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       const data = await res.json();
       setState({
         permissions: data.permissions || [],
+        nav: data.nav || [],
+        pages: data.pages || [],
         identity: data.identity || {
           user_id: "", username: "", role_code: null, role_level: 0,
           dept_id: null, dept_ids: [], member_projects: [],
