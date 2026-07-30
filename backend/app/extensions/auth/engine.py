@@ -78,12 +78,20 @@ class FilterRule:
         if self.operator == "none_allow":
             return sqlalchemy_false()  # WHERE FALSE
 
+        # Resolve column: column_map takes priority, fall back to model attribute
+        col = None
+        if column_map and self.field in column_map:
+            col = column_map[self.field]
+        elif self.field and hasattr(model, self.field):
+            col = getattr(model, self.field)
+
+        if col is None:
+            return sqlalchemy_false()  # Unknown field — deny by default
+
         if self.operator == "eq":
-            col = column_map.get(self.field) or getattr(model, self.field)
             return col == self.value
 
         if self.operator == "in":
-            col = column_map.get(self.field) or getattr(model, self.field)
             if not self.value:
                 return sqlalchemy_false()
             return col.in_(self.value)
