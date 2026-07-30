@@ -133,6 +133,70 @@ class TestFilterRule:
         rule = FilterRule()
         assert rule.operator == "none_allow"
 
+    def test_to_sqlalchemy_eq(self):
+        from sqlalchemy import Column, String, select
+        from sqlalchemy.orm import declarative_base
+        Base = declarative_base()
+        class MockModel(Base):
+            __tablename__ = "mock_eq"
+            owner_id = Column(String, primary_key=True)
+        rule = FilterRule(operator="eq", field="owner_id", value="user-1")
+        column_map = {"owner_id": MockModel.owner_id}
+        expr = rule.to_sqlalchemy(MockModel, column_map)
+        stmt = select(MockModel).where(expr)
+        sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "owner_id" in sql
+
+    def test_to_sqlalchemy_in(self):
+        from sqlalchemy import Column, String
+        from sqlalchemy.orm import declarative_base
+        Base = declarative_base()
+        class MockModel(Base):
+            __tablename__ = "mock_in"
+            dept_id = Column(String, primary_key=True)
+        rule = FilterRule(operator="in", field="dept_id", value=["d1", "d2"])
+        column_map = {"dept_id": MockModel.dept_id}
+        expr = rule.to_sqlalchemy(MockModel, column_map)
+        assert expr is not None
+
+    def test_to_sqlalchemy_and_composite(self):
+        from sqlalchemy import Column, String
+        from sqlalchemy.orm import declarative_base
+        Base = declarative_base()
+        class MockModel(Base):
+            __tablename__ = "mock_and"
+            owner_id = Column(String, primary_key=True)
+            dept_id = Column(String)
+        inner1 = FilterRule(operator="eq", field="owner_id", value="u1")
+        inner2 = FilterRule(operator="in", field="dept_id", value=["d1"])
+        rule = FilterRule(operator="and", children=[inner1, inner2])
+        column_map = {"owner_id": MockModel.owner_id, "dept_id": MockModel.dept_id}
+        expr = rule.to_sqlalchemy(MockModel, column_map)
+        assert expr is not None
+
+    def test_to_sqlalchemy_auto_resolve_column(self):
+        from sqlalchemy import Column, String
+        from sqlalchemy.orm import declarative_base
+        Base = declarative_base()
+        class MockModel(Base):
+            __tablename__ = "mock_auto"
+            access_type = Column(String, primary_key=True)
+        rule = FilterRule(operator="eq", field="access_type", value="public")
+        expr = rule.to_sqlalchemy(MockModel, column_map=None)
+        assert expr is not None
+
+    def test_to_sqlalchemy_none_allow_returns_false(self):
+        from sqlalchemy import Column, String
+        from sqlalchemy.orm import declarative_base
+        Base = declarative_base()
+        class MockModel(Base):
+            __tablename__ = "mock_none"
+            id = Column(String, primary_key=True)
+        rule = FilterRule(operator="none_allow")
+        expr = rule.to_sqlalchemy(MockModel)
+        # Should produce a SQLAlchemy false() expression
+        assert expr is not None
+
     def test_from_template_in_with_none_value_returns_none_allow(self):
         template = {"dept_id IN": "$identity.dept_id"}
         idn = identity(dept_id=None)

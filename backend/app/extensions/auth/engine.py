@@ -5,6 +5,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from sqlalchemy import false as sqlalchemy_false
+
 from app.extensions.auth.identity import AttributeSet
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,37 @@ class FilterRule:
             "value": self.value,
             "children": [c.to_dict() for c in self.children] if self.children else None,
         }
+
+    def to_sqlalchemy(self, model, column_map: dict | None = None):
+        """Convert FilterRule to SQLAlchemy BinaryExpression.
+
+        Uses column_map for explicit field-to-column mapping; falls back to
+        getattr(model, field) for auto-resolution.
+        """
+        from sqlalchemy import and_, or_
+
+        column_map = column_map or {}
+
+        if self.operator == "none_allow":
+            return sqlalchemy_false()  # WHERE FALSE
+
+        if self.operator == "eq":
+            col = column_map.get(self.field) or getattr(model, self.field)
+            return col == self.value
+
+        if self.operator == "in":
+            col = column_map.get(self.field) or getattr(model, self.field)
+            if not self.value:
+                return sqlalchemy_false()
+            return col.in_(self.value)
+
+        if self.operator == "and" and self.children:
+            return and_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
+
+        if self.operator == "or" and self.children:
+            return or_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
+
+        return sqlalchemy_false()
 
 
 @dataclass
