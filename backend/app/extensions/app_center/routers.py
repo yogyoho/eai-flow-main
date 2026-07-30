@@ -16,7 +16,7 @@ from app.extensions.app_center.schemas import (
     AppDomainUpdate,
 )
 from app.extensions.app_center.service import AppCenterService
-from app.extensions.auth.middleware import get_current_user, require_super_admin
+from app.extensions.auth.middleware import get_current_user, require_permission, require_super_admin
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/extensions/app-center", tags=["app-center"])
 @router.get("/domains", response_model=AppDomainListResponse)
 async def list_domains(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("app_center:manage")),  # EAI-CUSTOM: Add permission check
 ):
     items = await AppCenterService.list_domains(db)
     return AppDomainListResponse(
@@ -87,7 +87,7 @@ async def delete_domain(
 @router.get("/apps", response_model=AppDefinitionListResponse)
 async def list_apps(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("app_center:manage")),  # EAI-CUSTOM: Add permission check
 ):
     items = await AppCenterService.list_apps(db)
     return AppDefinitionListResponse(

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from jsonschema import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user
+from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.database import get_db
 from app.extensions.plugin.schemas import (
     ApiKeyCreate,
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/api/extensions/plugins", tags=["plugins"])
 @router.get("/registry", response_model=PluginListResponse)
 async def list_registry(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:read")),  # EAI-CUSTOM: Add permission check
 ):
     items = await PluginService.list_plugins(db)
     return PluginListResponse(items=[PluginResponse.model_validate(i) for i in items])
@@ -42,7 +42,7 @@ async def list_registry(
 async def get_plugin(
     plugin_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:read")),  # EAI-CUSTOM: Add permission check
 ):
     p = await PluginService.get_plugin(db, plugin_id)
     if p is None:
@@ -57,7 +57,7 @@ async def get_plugin(
 async def list_instances(
     project_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:read")),  # EAI-CUSTOM: Add permission check
 ):
     items = await PluginService.list_instances(db, project_id=project_id)
     return PluginInstanceListResponse(items=[PluginInstanceResponse.model_validate(i) for i in items])
@@ -67,7 +67,7 @@ async def list_instances(
 async def install_instance(
     data: PluginInstanceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:install")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         inst = await PluginService.create_instance(db, data, user_id=current_user.id)
@@ -85,7 +85,7 @@ async def update_instance(
     instance_id: UUID,
     data: PluginInstanceUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:install")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         inst = await PluginService.update_instance(db, instance_id, data)
@@ -102,7 +102,7 @@ async def update_instance(
 async def uninstall_instance(
     instance_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:uninstall")),  # EAI-CUSTOM: Add permission check
 ):
     ok = await PluginService.delete_instance(db, instance_id)
     if not ok:
@@ -116,7 +116,7 @@ async def uninstall_instance(
 @router.get("/api-keys", response_model=ApiKeyListResponse)
 async def list_api_keys(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:read")),  # EAI-CUSTOM: Add permission check
 ):
     items = await PluginService.list_api_keys(db)
     return ApiKeyListResponse(items=[ApiKeyResponse.model_validate(i) for i in items])
@@ -126,7 +126,7 @@ async def list_api_keys(
 async def create_api_key(
     data: ApiKeyCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:install")),  # EAI-CUSTOM: Add permission check
 ):
     rec, raw = await PluginService.create_api_key(db, data, user_id=current_user.id)
     await db.commit()
@@ -138,7 +138,7 @@ async def create_api_key(
 async def revoke_api_key(
     key_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("skill:install")),  # EAI-CUSTOM: Add permission check
 ):
     ok = await PluginService.delete_api_key(db, key_id)
     if not ok:

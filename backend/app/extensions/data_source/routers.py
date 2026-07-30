@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user
+from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.data_source.schemas import (
     DatasetCreate,
     DatasetListResponse,
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/extensions/data-sources", tags=["data-sources"])
 @router.get("", response_model=DataSourceListResponse)
 async def list_data_sources(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items = await DataSourceService.list(db)
     return DataSourceListResponse(items=[DataSourceResponse.model_validate(i) for i in items])
@@ -38,7 +38,7 @@ async def list_data_sources(
 async def create_data_source(
     data: DataSourceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     existing = await DataSourceService.get_by_name(db, data.name)
     if existing:
@@ -53,7 +53,7 @@ async def create_data_source(
 async def get_data_source(
     source_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ds = await DataSourceService.get_by_id(db, source_id)
     if ds is None:
@@ -66,7 +66,7 @@ async def update_data_source(
     source_id: UUID,
     data: DataSourceUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ds = await DataSourceService.update(db, source_id, data)
     if ds is None:
@@ -80,7 +80,7 @@ async def update_data_source(
 async def delete_data_source(
     source_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ok = await DataSourceService.delete(db, source_id)
     if not ok:
@@ -92,7 +92,7 @@ async def delete_data_source(
 async def test_data_source(
     source_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ds = await DataSourceService.get_by_id(db, source_id)
     if ds is None:
@@ -109,7 +109,7 @@ async def test_data_source(
 async def sync_data_source(
     source_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ds = await DataSourceService.get_by_id(db, source_id)
     if ds is None:
@@ -131,7 +131,7 @@ async def sync_data_source(
 async def list_datasets(
     source_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items = await DataSourceService.list_datasets(db, source_id)
     return DatasetListResponse(items=[DatasetResponse.model_validate(i) for i in items])
@@ -142,7 +142,7 @@ async def create_dataset(
     source_id: UUID,
     data: DatasetCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         ds = await DataSourceService.create_dataset(db, source_id, data)
@@ -158,7 +158,7 @@ async def update_dataset(
     dataset_id: UUID,
     data: DatasetUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ds = await DataSourceService.update_dataset(db, dataset_id, data)
     if ds is None:
@@ -172,7 +172,7 @@ async def update_dataset(
 async def delete_dataset(
     dataset_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ok = await DataSourceService.delete_dataset(db, dataset_id)
     if not ok:

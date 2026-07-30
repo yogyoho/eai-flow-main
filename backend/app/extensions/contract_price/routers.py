@@ -13,6 +13,7 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
+import hashlib
 import logging
 import os
 from uuid import UUID
@@ -21,7 +22,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user
+from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.contract_price import crud, service, storage
 from app.extensions.contract_price.models import CpaDocument
 from app.extensions.contract_price.schemas import (
@@ -63,7 +64,7 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_documents(db, keyword, parse_status, skip, limit)
     return Page[DocumentOut](items=items, total=total, skip=skip, limit=limit)
@@ -73,11 +74,16 @@ async def list_documents(
 async def delete_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
-    deleted = await crud.delete_document(db, doc_id)
-    if not deleted:
+    doc = await db.get(CpaDocument, doc_id)
+    if doc is None:
         raise HTTPException(status_code=404, detail="document not found")
+    # also remove the MinIO object so storage doesn't leak (scan would otherwise
+    # re-ingest it every run). Previews are small PNGs, left to orphan.
+    key = doc.storage_uri.split("/", 3)[-1] if doc.storage_uri.count("/") >= 3 else doc.file_name
+    storage.delete_object(key)
+    await crud.delete_document(db, doc_id)
 
 
 @router.patch("/documents/{doc_id}", response_model=DocumentOut)
@@ -85,7 +91,7 @@ async def update_document(
     doc_id: UUID,
     body: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Manual补 fallback: fill project name/location (and doc metadata) the
     front-page OCR regex couldn't anchor. Used by the ContractsView editor."""
@@ -100,7 +106,7 @@ async def confirm_document(
     doc_id: UUID,
     body: DocumentConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Confirm-gate: mark a parsed document confirmed/skipped so the cluster
     phase will include it."""
@@ -114,7 +120,7 @@ async def confirm_document(
 async def confirm_all_documents(
     body: DocumentConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Batch confirm-gate: set every pending parsed document to the given status."""
     count = await crud.confirm_all_documents(db, body.confirm_status)
@@ -124,11 +130,16 @@ async def confirm_all_documents(
 @router.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Upload a contract to the independent cpa-contracts MinIO bucket.
 
     The pipeline picks it up on the next run (scan detects new files by SHA-256).
+    Dedup by CONTENT: re-uploading the same file under the SAME name overwrites
+    in place (and re-parses on content change); uploading the SAME content under
+    a DIFFERENT filename is rejected (409) so one contract can't pollute stats by
+    being counted twice.
     """
     name = (file.filename or "").lower()
     if not name.endswith((".pdf", ".docx")):
@@ -137,7 +148,23 @@ async def upload_document(
     if not data:
         raise HTTPException(status_code=400, detail="empty file")
     key = file.filename or "contract.pdf"
+    digest = hashlib.sha256(data).hexdigest()
+    dup = await crud.find_duplicate_document(db, digest, exclude_uri=f"s3://{storage.BUCKET}/{key}")
+    if dup is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"该合同内容已存在(文件名: {dup.file_name}),已拒绝重复上传。"
+                "如需重跑,请在合同文档页对该合同点「重新解析」。"
+            ),
+        )
     uri = storage.upload_bytes(key, data)
+    # Create a 'pending' doc row immediately so the list shows it (解析中)
+    # before the parse run finishes. _persist_parse upserts on storage_uri.
+    file_type = os.path.splitext(key)[1].lstrip(".").lower() or "pdf"
+    await crud.create_pending_document(
+        db, storage_uri=uri, file_name=key, file_hash=digest, file_type=file_type, size=len(data)
+    )
     return {"storage_uri": uri, "file_name": key, "size": len(data)}
 
 
@@ -146,7 +173,7 @@ async def get_preview(
     doc_id: UUID,
     page: int,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Stream a page's OCR preview PNG from MinIO (for the traceback overlay)."""
     doc = await db.get(CpaDocument, doc_id)
@@ -164,7 +191,7 @@ async def reparse_document(
     doc_id: UUID,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Re-parse a single document by force (bypass SHA-256 cache), preserving doc_id.
 
@@ -181,6 +208,9 @@ async def reparse_document(
         raise HTTPException(status_code=404, detail="document not found")
     # storage_uri looks like "s3://cpa-contracts/<key>"
     key = doc.storage_uri.split("/", 3)[-1] if doc.storage_uri.count("/") >= 3 else doc.file_name
+    # 立即置「解析中」(被重解析的文档当前可能是 parsed/needs_review,故强制覆写);
+    # force_key 子进程会重跑并覆写终态。
+    await crud.set_document_parse_status(db, doc_id, "parsing")
     run = await crud.create_run(
         db,
         trigger_type="manual",
@@ -203,7 +233,7 @@ async def list_clusters(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_clusters(db, cluster_status, category, skip, limit)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
@@ -213,7 +243,7 @@ async def list_clusters(
 async def get_cluster(
     cluster_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     cluster = await crud.get_cluster_with_items(db, cluster_id)
     if cluster is None:
@@ -226,7 +256,7 @@ async def confirm_cluster(
     cluster_id: UUID,
     body: ClusterConfirm,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         cluster = await crud.confirm_cluster(
@@ -244,7 +274,7 @@ async def reject_cluster(
     cluster_id: UUID,
     body: ClusterConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Reject a cluster (manual curation — drops it from confirmed stats)."""
     try:
@@ -261,7 +291,7 @@ async def update_cluster(
     cluster_id: UUID,
     body: ClusterUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Edit a cluster's display fields (category / representative_name)."""
     cluster = await crud.update_cluster(db, cluster_id, body.model_dump(exclude_unset=True))
@@ -274,7 +304,7 @@ async def update_cluster(
 async def merge_clusters(
     body: ClusterMerge,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         new_cluster = await crud.merge_clusters(
@@ -292,7 +322,7 @@ async def move_item(
     item_id: UUID,
     body: ItemMove,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     item = await crud.move_item(db, item_id, body.target_cluster_id)
     if item is None:
@@ -306,7 +336,7 @@ async def move_item(
 @router.get("/items/contracts")
 async def list_item_contracts(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Distinct source_contract_no with item counts (items-page filter options)."""
     return await crud.list_item_contracts(db)
@@ -319,13 +349,14 @@ async def list_items(
     cluster_id: UUID | None = None,
     run_id: UUID | None = None,
     only_outliers: bool = False,
+    validation_status: str | None = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_items(
-        db, goods_name, source_contract_no, cluster_id, run_id, only_outliers, skip, limit
+        db, goods_name, source_contract_no, cluster_id, run_id, only_outliers, validation_status, skip, limit
     )
     return Page[ItemOut](items=items, total=total, skip=skip, limit=limit)
 
@@ -335,7 +366,7 @@ async def update_item(
     item_id: UUID,
     body: ItemUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     item = await crud.update_item(db, item_id, body.model_dump(exclude_unset=True))
     if item is None:
@@ -347,7 +378,7 @@ async def update_item(
 async def delete_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     deleted = await crud.delete_item(db, item_id)
     if not deleted:
@@ -358,17 +389,28 @@ async def delete_item(
 async def batch_delete_items(
     body: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     count = await crud.delete_items_batch(db, body.item_ids)
     return {"deleted": count}
+
+
+@router.post("/items/batch-validate")
+async def batch_validate_items(
+    body: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+):
+    """Batch set validation_status (ok) for selected items."""
+    count = await crud.batch_validate_items(db, body.item_ids)
+    return {"updated": count}
 
 
 @router.delete("/items/by-run/{run_id}")
 async def delete_items_by_run(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     count = await crud.delete_items_by_run(db, run_id)
     return {"deleted": count}
@@ -383,7 +425,7 @@ async def list_runs(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_runs(db, run_status, skip, limit)
     return Page[RunOut](items=items, total=total, skip=skip, limit=limit)
@@ -393,7 +435,7 @@ async def list_runs(
 async def download_run_excel(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     run = await crud.get_run(db, run_id)
     if run is None:
@@ -403,18 +445,30 @@ async def download_run_excel(
     return FileResponse(run.excel_path, filename=os.path.basename(run.excel_path))
 
 
+@router.delete("/runs/{run_id}")
+async def delete_run(
+    run_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+):
+    ok = await crud.delete_run(db, run_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="run not found")
+    return {"deleted": True}
+
+
 # --- Functional area 5: config ---------------------------------------------
 
 
 @router.get("/config", response_model=ConfigOut)
-async def get_config(_: CurrentUser = Depends(get_current_user)):
+async def get_config(_: CurrentUser = Depends(require_permission("cpa:read"))):  # EAI-CUSTOM: Add permission check
     return crud.load_config()
 
 
 @router.put("/config", response_model=ConfigOut)
 async def update_config(
     body: ConfigUpdate,
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     return crud.save_config(body)
 
@@ -425,7 +479,7 @@ async def update_config(
 @router.get("/dashboard", response_model=DashboardOut)
 async def dashboard(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     counts = await crud.dashboard_counts(db)
     recent, _ = await crud.list_runs(db, limit=5)
@@ -444,7 +498,7 @@ async def contract_price_analysis(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Cross-contract goods price analysis: box plot stats, supplier comparison,
     trend by date, price histogram, and paginated detail table."""
@@ -459,7 +513,7 @@ async def trigger_pipeline(
     body: PipelineRunRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
     """Kick off a parse-phase run in the background; returns the run id immediately."""
     await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
@@ -471,6 +525,9 @@ async def trigger_pipeline(
         status="running",
         scope={"mode": body.mode, "phase": "parse", "started_by": current_user.username},
     )
+    # 立即把全部「已上传」文档置为「解析中」,前端点下按钮即可见状态切换;
+    # 子进程随后覆写为 parsed/failed/needs_review。
+    await crud.mark_documents_parsing(db)
     background.add_task(
         service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "parse"
     )
@@ -484,9 +541,9 @@ async def trigger_cluster(
     body: PipelineRunRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
 ):
-    """Phase 2: cluster confirmed/skipped documents' items in the background."""
+    """Phase 2: cluster all parsed documents' items in the background (no confirm gate)."""
     await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
     if await crud.has_running_run(db, "cluster"):
         raise HTTPException(status_code=409, detail="a cluster run is already in progress")
@@ -508,7 +565,7 @@ async def trigger_cluster(
 async def pipeline_status(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
 ):
     run = await crud.get_run(db, run_id)
     if run is None:

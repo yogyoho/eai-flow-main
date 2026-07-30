@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
+from app.extensions.schemas import CurrentUser
 from app.extensions.settings.service import SystemConfigService
 from app.extensions.settings.validator import (
     ModelValidationRequest,
@@ -131,7 +133,10 @@ def _dict_to_system_config(data: dict[str, str]) -> SystemConfig:
 
 
 @router.get("/config", response_model=SystemConfig)
-async def get_config(db: AsyncSession = Depends(get_db)) -> SystemConfig:
+async def get_config(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+) -> SystemConfig:
     """Get system configuration from database."""
     data = await SystemConfigService.get_all(db)
     if not data:
@@ -148,6 +153,7 @@ async def get_config(db: AsyncSession = Depends(get_db)) -> SystemConfig:
 async def update_config(
     config: SystemConfig,
     db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ) -> SystemConfig:
     """Update system configuration."""
     flat = _pydantic_to_flat_dict(config)
@@ -204,7 +210,9 @@ def _load_chat_model_choices() -> list[ChatModelGroup]:
 
 
 @router.get("/models/choices", response_model=ModelChoicesResponse)
-async def get_model_choices() -> ModelChoicesResponse:
+async def get_model_choices(
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+) -> ModelChoicesResponse:
     """Get available model choices for selection."""
     return ModelChoicesResponse(
         embed_models=_load_embed_model_choices(),
@@ -220,7 +228,10 @@ class ModelValidationResponse(BaseModel):
 
 
 @router.post("/models/validate", response_model=ModelValidationResponse)
-async def validate_models_endpoint(request: ModelValidationRequest) -> ModelValidationResponse:
+async def validate_models_endpoint(
+    request: ModelValidationRequest,
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+) -> ModelValidationResponse:
     """Validate multiple models in parallel.
 
     Args:

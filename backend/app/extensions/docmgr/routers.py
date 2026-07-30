@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user
+from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.database import get_db
 from app.extensions.docmgr.folder_service import FolderService
 from app.extensions.docmgr.service import AIDocumentService
@@ -78,7 +78,7 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """List all documents for the current user."""
     documents, total = await AIDocumentService.list_docs(
@@ -105,10 +105,12 @@ async def list_documents(
 async def get_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Get a specific document by ID."""
     document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+
+
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -121,7 +123,7 @@ async def get_document(
 async def create_document(
     data: AIDocumentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Create a new document."""
     document = await AIDocumentService.create(db, current_user.id, data)
@@ -133,7 +135,7 @@ async def update_document(
     doc_id: UUID,
     data: AIDocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Update a document."""
     document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
@@ -151,7 +153,7 @@ async def update_document(
 async def delete_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:delete")),  # EAI-CUSTOM: Add permission check
 ):
     """Delete a document."""
     document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
@@ -170,7 +172,7 @@ async def move_document(
     doc_id: UUID,
     request: MoveRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Move document to a folder or to My Documents."""
     doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
@@ -188,7 +190,7 @@ async def rename_document(
     doc_id: UUID,
     request: RenameRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Rename a document."""
     doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
@@ -202,7 +204,7 @@ async def rename_document(
 async def batch_delete_documents(
     request: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:delete")),  # EAI-CUSTOM: Add permission check
 ):
     """Batch delete documents."""
     count = await AIDocumentService.batch_delete(db, current_user.id, request.ids)
@@ -213,7 +215,7 @@ async def batch_delete_documents(
 async def preview_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Read file content for preview."""
     doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
@@ -230,7 +232,7 @@ async def export_document(
     doc_id: UUID,
     format: str = Query("md", description="Export format: md or docx"),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Export a document as Markdown (.md) or Word (.docx) file."""
     from urllib.parse import quote
@@ -275,7 +277,7 @@ async def export_document(
 
 
 @router.get("/cover-presets")
-async def list_cover_presets(current_user: CurrentUser = Depends(get_current_user)):
+async def list_cover_presets(current_user: CurrentUser = Depends(require_permission("doc:read"))):  # EAI-CUSTOM: Add permission check
     """List built-in cover page presets (id/label/fields; layout elements omitted)."""
     from app.extensions.output.cover_presets import public_cover_presets
 
@@ -297,7 +299,7 @@ async def export_document_with_layout(
     doc_id: UUID,
     request: ExportRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Export a document as Word (.docx) with layout template and watermark."""
     from urllib.parse import quote
@@ -364,7 +366,7 @@ class ExportContentRequest(BaseModel):
 @router.post("/export-content")
 async def export_content(
     request: ExportContentRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Export raw markdown content as Word (.docx) with layout template + watermark.
 
@@ -413,7 +415,7 @@ async def export_content(
 async def list_folders(
     project_scope: str | None = Query(None, description="Filter: personal or project"),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """List all folders for the current user."""
     folders = await AIDocumentService.list_folders(db, current_user.id, project_scope=project_scope)
@@ -426,7 +428,7 @@ async def get_folder_tree(
     project_scope: str | None = Query(None, description="Filter: personal or project"),
     doc_type: str | None = Query(None, description="Filter by doc_type, e.g. 'file_ref'"),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Get folder tree for the current user."""
     folders = await FolderService.get_folder_tree(
@@ -441,7 +443,7 @@ async def get_folder_tree(
 async def create_folder(
     data: CreateFolderRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Create a new folder or sub-folder."""
     try:
@@ -460,7 +462,7 @@ async def rename_folder(
     folder_id: UUID,
     data: FolderUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Rename a folder."""
     try:
@@ -476,7 +478,7 @@ async def rename_folder(
 async def get_folder_delete_info(
     folder_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Get deletion preview for a folder."""
     try:
@@ -490,7 +492,7 @@ async def get_folder_delete_info(
 async def delete_folder(
     folder_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:delete")),  # EAI-CUSTOM: Add permission check
 ):
     """Delete a folder and all its contents."""
     try:
@@ -533,7 +535,7 @@ AI_EDIT_TIMEOUT_SECONDS = 120
 @router.post("/documents/ai-edit/stream")
 async def ai_edit_text_stream(
     request: AIEditRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Stream AI operation result as SSE text/event-stream."""
     prompt_template = OPERATION_PROMPTS.get(request.operation)
@@ -601,7 +603,7 @@ def _extract_ai_response_text(content: object) -> str:
 @router.post("/documents/ai-edit", response_model=AIEditResponse)
 async def ai_edit_text(
     request: AIEditRequest,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Apply AI operation (polish/expand/condense/brainstorm) to a text snippet."""
     prompt_template = OPERATION_PROMPTS.get(request.operation)
@@ -642,7 +644,7 @@ async def ai_edit_text(
 async def sync_thread_files(
     request: SyncThreadFilesRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Sync sandbox files from a thread into document space."""
     from deerflow.config.paths import Paths
@@ -714,7 +716,7 @@ async def share_document(
     doc_id: UUID,
     data: ShareCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Share a document."""
     try:
@@ -727,7 +729,7 @@ async def share_document(
 async def list_document_shares(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """List all shares for a document."""
     return await ShareService.list_shares(db, doc_id, current_user.id)
@@ -737,7 +739,7 @@ async def list_document_shares(
 async def revoke_share(
     share_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:delete")),  # EAI-CUSTOM: Add permission check
 ):
     """Revoke a share."""
     revoked = await ShareService.revoke_share(db, share_id, current_user.id)
@@ -749,7 +751,7 @@ async def revoke_share(
 @router.get("/shared-with-me")
 async def shared_with_me(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """List documents shared with the current user."""
     return await ShareService.list_shared_with_me(db, current_user.id)
@@ -759,7 +761,7 @@ async def shared_with_me(
 async def access_shared_document(
     token: str,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Access a shared document via link token."""
     result = await ShareService.get_shared_document(db, token)
@@ -776,7 +778,7 @@ async def list_personal_outputs(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """List personal thread outputs — paginated direct filesystem view of 我的文档."""
     return await AIDocumentService.list_personal_outputs(db, current_user.id, skip, limit)
@@ -787,7 +789,7 @@ async def toggle_personal_star(
     thread_id: str,
     data: PersonalDocStarRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Toggle star on a personal doc."""
     await AIDocumentService.upsert_personal_star(
@@ -802,7 +804,7 @@ async def toggle_personal_share(
     thread_id: str,
     data: PersonalDocShareRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Toggle share on a personal doc."""
     await AIDocumentService.upsert_personal_share(
@@ -815,7 +817,7 @@ async def toggle_personal_share(
 @router.get("/personal-docs/starred")
 async def list_starred_personal(
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
 ):
     """Return all starred personal doc (thread_id, rel_path) pairs."""
     items = await AIDocumentService.list_starred_personal(db, current_user.id)
@@ -832,7 +834,7 @@ async def save_personal_content(
     thread_id: str,
     data: PersonalDocContentRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """写回线程 outputs/ 文件（编辑器保存）。"""
     try:

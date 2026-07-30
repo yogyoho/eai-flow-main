@@ -57,7 +57,7 @@ async def get_license_modules():
 async def import_license(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_permission("admin")),
+    current_user=Depends(require_permission("license:manage")),  # EAI-CUSTOM: Use license:manage permission
 ):
     """Import a new license file. Requires admin permission."""
     if not file.filename or not file.filename.endswith(".lic"):
@@ -95,7 +95,7 @@ async def get_license_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_permission("admin")),
+    current_user=Depends(require_permission("license:manage")),  # EAI-CUSTOM: Use license:manage permission
 ):
     """Get license import history. Requires admin permission."""
     items, total = await LicenseService.get_history(db, skip=skip, limit=limit)
@@ -108,7 +108,7 @@ async def get_license_history(
 @router.get("/export")
 async def export_license(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_permission("admin")),
+    current_user=Depends(require_permission("license:manage")),  # EAI-CUSTOM: Use license:manage permission
 ):
     """Download current active license file. Requires admin permission."""
     jwt_raw = await LicenseService.export_license(db)

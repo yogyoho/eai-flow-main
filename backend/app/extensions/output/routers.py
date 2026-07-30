@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.output.generator import generate_docx
 from app.extensions.output.schemas import (
@@ -22,6 +23,7 @@ from app.extensions.output.schemas import (
     LayoutTemplateUpdate,
 )
 from app.extensions.output.service import LayoutTemplateService
+from app.extensions.schemas import CurrentUser
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +75,10 @@ _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.get("/templates", response_model=LayoutTemplateListResponse)
-async def list_templates(db: AsyncSession = Depends(get_db)):
+async def list_templates(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     templates = await LayoutTemplateService.list_templates(db)
     return LayoutTemplateListResponse(
         items=[LayoutTemplateResponse.model_validate(t) for t in templates],
@@ -82,7 +87,11 @@ async def list_templates(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/templates/{template_id}", response_model=LayoutTemplateResponse)
-async def get_template(template_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_template(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     template = await LayoutTemplateService.get_template(db, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -90,7 +99,11 @@ async def get_template(template_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/templates", response_model=LayoutTemplateResponse, status_code=201)
-async def create_template(data: LayoutTemplateCreate, db: AsyncSession = Depends(get_db)):
+async def create_template(
+    data: LayoutTemplateCreate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     template = await LayoutTemplateService.create_template(db, data)
     return LayoutTemplateResponse.model_validate(template)
 
@@ -100,6 +113,7 @@ async def update_template(
     template_id: UUID,
     data: LayoutTemplateUpdate,
     db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     template = await LayoutTemplateService.get_template(db, template_id)
     if not template:
@@ -109,7 +123,11 @@ async def update_template(
 
 
 @router.delete("/templates/{template_id}", status_code=204)
-async def delete_template(template_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_template(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     template = await LayoutTemplateService.get_template(db, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -119,7 +137,11 @@ async def delete_template(template_id: UUID, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/templates/{template_id}/duplicate", response_model=LayoutTemplateResponse, status_code=201)
-async def duplicate_template(template_id: UUID, db: AsyncSession = Depends(get_db)):
+async def duplicate_template(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     template = await LayoutTemplateService.get_template(db, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -152,6 +174,7 @@ async def generate_report(
     cover_date: str | None = Form(None),
     cover_project_number: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Generate a report from a project, uploaded markdown file, or direct content string."""
     # Validate template exists
@@ -221,7 +244,10 @@ async def generate_report(
 
 
 @router.get("/download/{task_id}")
-async def download_report(task_id: str):
+async def download_report(
+    task_id: str,
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
     """Download a generated report file by task ID."""
     # Find the file — could be .docx or .pdf
     for ext in ("docx", "pdf"):
