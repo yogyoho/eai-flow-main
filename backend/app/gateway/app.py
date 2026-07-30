@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.extensions.app_center import router as app_center_router
 from app.extensions.approval import router as approval_router
+from app.extensions.auth.permission_routers import router as permissions_router
 from app.extensions.auth.policy_routers import router as policy_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
@@ -521,6 +522,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # ABAC Policies API is mounted at /api/policies
     app.include_router(policy_router)
+
+    # Permissions API is mounted at /api/permissions
+    app.include_router(permissions_router)
 
     # Users API is mounted at /api/extensions/users
     app.include_router(user_router)
