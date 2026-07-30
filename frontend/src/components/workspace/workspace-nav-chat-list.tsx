@@ -17,11 +17,14 @@ import {
 } from "@/components/ui/tooltip";
 import { useAgentsApiEnabled } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
+// EAI-CUSTOM: nav-level permission gating
+import { usePermission } from "@/core/permissions";
 
 export function WorkspaceNavChatList() {
   const { t } = useI18n();
   const pathname = usePathname();
   const { enabled: agentsEnabled } = useAgentsApiEnabled();
+  const { canNav } = usePermission();
   return (
     <SidebarGroup className="pt-1">
       <SidebarMenu>
@@ -89,17 +92,19 @@ export function WorkspaceNavChatList() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            isActive={pathname.startsWith("/docmgr")}
-            asChild
-          >
-            <Link className="text-muted-foreground" href="/docmgr">
-              <FolderCheck />
-              <span>文档空间</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        {canNav("nav:docmgr") && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={pathname.startsWith("/docmgr")}
+              asChild
+            >
+              <Link className="text-muted-foreground" href="/docmgr">
+                <FolderCheck />
+                <span>文档空间</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
       </SidebarMenu>
     </SidebarGroup>
   );

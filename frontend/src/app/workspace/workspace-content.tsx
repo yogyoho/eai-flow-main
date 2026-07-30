@@ -5,6 +5,8 @@ import { QueryClientProvider } from "@/components/query-client-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { CommandPalette } from "@/components/workspace/command-palette";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
+// EAI-CUSTOM: nav-level permission gating for sidebar and settings
+import { PermissionProvider } from "@/core/permissions";
 
 function parseSidebarOpenCookie(
   value: string | undefined,
@@ -24,12 +26,14 @@ export async function WorkspaceContent({
 
   return (
     <QueryClientProvider>
-      <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
-        <WorkspaceSidebar />
-        <SidebarInset className="min-w-0">{children}</SidebarInset>
-      </SidebarProvider>
-      <CommandPalette />
-      <Toaster position="bottom-right" richColors closeButton />
+      <PermissionProvider>
+        <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
+          <WorkspaceSidebar />
+          <SidebarInset className="min-w-0">{children}</SidebarInset>
+        </SidebarProvider>
+        <CommandPalette />
+        <Toaster position="bottom-right" richColors closeButton />
+      </PermissionProvider>
     </QueryClientProvider>
   );
 }

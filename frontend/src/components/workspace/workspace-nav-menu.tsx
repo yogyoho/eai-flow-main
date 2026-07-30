@@ -25,6 +25,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
+// EAI-CUSTOM: nav-level permission gating
+import { usePermission } from "@/core/permissions";
 
 import { SettingsDialog } from "./settings";
 
@@ -51,6 +53,7 @@ export function WorkspaceNavMenu() {
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const router = useRouter();
+  const { canNav } = usePermission();
 
   useEffect(() => {
     setMounted(true);
@@ -92,19 +95,24 @@ export function WorkspaceNavMenu() {
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                    <SettingsIcon className="size-4" />
-                    设置
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push("/knowledge")}>
-                    <BookOpen className="size-4" />
-                    知识库
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
-                    <Factory className="size-4" />
-                    知识工厂
-                  </DropdownMenuItem>
+                  {canNav("nav:settings") && (
+                    <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                      <SettingsIcon className="size-4" />
+                      设置
+                    </DropdownMenuItem>
+                  )}
+                  {canNav("nav:knowledge") && (
+                    <DropdownMenuItem onClick={() => router.push("/knowledge")}>
+                      <BookOpen className="size-4" />
+                      知识库
+                    </DropdownMenuItem>
+                  )}
+                  {canNav("nav:knowledge-factory") && (
+                    <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
+                      <Factory className="size-4" />
+                      知识工厂
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="size-4" />

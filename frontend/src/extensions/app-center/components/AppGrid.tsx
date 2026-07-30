@@ -42,6 +42,7 @@ export function AppGrid({
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {/* EAI-CUSTOM: nav-level permission gate — add canNav(app.nav_id) when API provides nav_id */}
       {apps.map((app) => (
         <AppCard
           key={app.id}
