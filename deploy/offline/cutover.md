@@ -115,6 +115,54 @@ docker image prune                               # 只删悬空镜像，安全
 
 ---
 
+## ⚠️ 已知坑（2026-07-30 服务器实测）
+
+### 坑 1：部署到新目录会丢 `./data`（deerflow.db + 聊天历史）
+**症状**：割接后旧的聊天会话历史没了（但知识库/文档/合同价数据都在）。
+**根因**：`./data`（bind mount）是相对部署目录的。新版本解压到**新目录**，其 `./data` 是**空的新目录** → 旧 `deerflow.db`（Gateway 认证用户 + 聊天 thread/run/feedback）+ thread 上传文件没带过来。
+**注意**：named volume（`eai-prod_prod-postgres-ext-data` 等）与部署目录无关、**会**随割接保留 → 知识库/文档/合同价都在。丢的只是 `./data` 里的 Gateway 认证 + 聊天历史。
+**对策**：割接后把旧 `./data` 从备份恢复到新部署目录：
+```bash
+cd /opt/eai-flow-offline-<新版本>
+tar xzf /opt/eai-backup-<日期>/data.tgz          # 解出旧 data/（含 deerflow.db + threads）
+ls -la data/data/deerflow.db                      # 确认在位
+docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml \
+  -f docker/docker-compose.temporal.yaml -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
+```
+恢复后用**旧 admin** 登录（密码是旧部署设的，不是 Admin@2026；忘了见坑 2 重置法）。
+
+### 坑 2：install.sh 的 admin 初始化在 gateway 不健康时静默失败
+**症状**：install.sh 跑完了，但 `admin@eai-flow.com` 登录报「Incorrect email or password」，`deerflow.db` 的 `users` 表为空。
+**根因**：install.sh 在 gateway 健康检查后调 `/api/v1/auth/initialize` 建 admin。若 gateway 当时 crash-loop（如坑 3 的 config 缺 sandbox），initialize 调用失败（502）→ admin 没建成。
+**对策**：gateway 修复健康后，手动补建 admin（users 表为空时 initialize 会成功，返回 201）：
+```bash
+curl -s -o /dev/null -w "HTTP %{http_code}\n" -X POST http://localhost:4026/api/v1/auth/initialize \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@eai-flow.com","password":"Admin@2026"}'
+```
+**重置已有 admin 密码**（users 表非空但忘了旧密码时）：
+```bash
+docker exec -e PYTHONPATH=/app/backend prod-eai-flow-gateway /app/backend/.venv/bin/python -c "
+import sqlite3
+from app.gateway.auth.password import hash_password
+con = sqlite3.connect('/app/backend/.deer-flow/data/deerflow.db')
+cur = con.execute('UPDATE users SET password_hash=? WHERE email=?', (hash_password('Admin@2026'), 'admin@eai-flow.com'))
+con.commit(); print('reset rows:', cur.rowcount)
+"
+```
+> 限流：连续登录失败 5 次锁 5 分钟（429）。`docker restart prod-eai-flow-gateway` 清内存计数器再登。
+
+### 坑 3：generate-config.sh 曾用最小 config 覆盖（缺 sandbox → gateway crash）
+**已在代码修复**（`generate-config.sh` 改为把内网 LLM 注入包内完整 config.yaml，保留 sandbox/tools/...，带回归测试）。**旧包**仍会触发：若 install 后 gateway 日志报 `AppConfig → sandbox → Field required`，说明用了有 bug 的旧 generator。
+**临时对策**（旧包）：从包 tar 恢复完整 config.yaml，再重建 gateway：
+```bash
+mkdir -p /tmp/cfg && tar xzf /opt/eai-flow-offline-*.tar.gz -C /tmp/cfg config.yaml && cp /tmp/cfg/config.yaml config.yaml
+docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml \
+  -f docker/docker-compose.temporal.yaml -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
+```
+
+---
+
 ## 割接后：日常增量升级（不再全量重传）
 
 开发机改代码后：
