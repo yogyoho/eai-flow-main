@@ -10,7 +10,8 @@ import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import require_permission
+from app.extensions.auth.engine import FilterRule
+from app.extensions.auth.middleware import require_permission, with_data_scope
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
@@ -80,16 +81,52 @@ async def list_knowledge_bases(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
+    # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering
     is_admin = False
     if current_user.role_id:
         from sqlalchemy import select as sa_select
         from app.extensions.models import Role
+
         role = await db.get(Role, current_user.role_id)
         if role and (role.is_system or "*" in (role.permissions or [])):
             is_admin = True
-    kbs, total = await KnowledgeBaseService.list_kbs(db, current_user.id, dept_id=current_user.dept_id, is_admin=is_admin, skip=skip, limit=limit)
-    return KnowledgeBaseListResponse(knowledge_bases=[KnowledgeBaseService.to_response(kb) for kb in kbs], total=total)
+
+    from sqlalchemy import select as sa_select
+    from app.extensions.models import KnowledgeBase
+
+    if is_admin:
+        query = sa_select(KnowledgeBase)
+    else:
+        column_map = {
+            "owner_id": KnowledgeBase.owner_id,
+            "access_type": KnowledgeBase.access_type,
+        }
+        query = sa_select(KnowledgeBase).where(
+            scope.to_sqlalchemy(KnowledgeBase, column_map)
+        )
+
+    # Count total before pagination
+    from sqlalchemy import func
+
+    if is_admin:
+        count_query = sa_select(func.count(KnowledgeBase.id))
+    else:
+        count_query = sa_select(func.count(KnowledgeBase.id)).where(
+            scope.to_sqlalchemy(KnowledgeBase, column_map)
+        )
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    query = query.offset(skip).limit(limit).order_by(KnowledgeBase.created_at.desc())
+    result = await db.execute(query)
+    kbs = result.scalars().all()
+
+    return KnowledgeBaseListResponse(
+        knowledge_bases=[KnowledgeBaseService.to_response(kb) for kb in kbs],
+        total=total,
+    )
 
 
 @router.post("", response_model=KnowledgeBaseResponse, status_code=status.HTTP_201_CREATED)
