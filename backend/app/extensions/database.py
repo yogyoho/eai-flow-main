@@ -1316,6 +1316,20 @@ async def migrate_db() -> None:
             "WHERE app_id IN ('admin', 'workflow-admin')"
         ))
 
+        # ── ABAC policies table ──
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS policies (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(200) NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                priority INT NOT NULL DEFAULT 0,
+                conditions JSONB NOT NULL DEFAULT '{}',
+                grants JSONB NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+
 
 async def _seed_role_permissions(conn):
     """Insert default role-permission mappings if the table is empty."""

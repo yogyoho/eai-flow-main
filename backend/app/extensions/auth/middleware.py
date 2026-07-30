@@ -214,8 +214,10 @@ def require_permission(permission: str):
 
         # EAI-CUSTOM: Delegate permission check to UnifiedPermissionEngine (ABAC-lite)
         from app.extensions.auth.cache import (
-            get_cached_engine, set_cached_engine,
-            get_cached_identity, set_cached_identity,
+            get_cached_engine,
+            get_cached_identity,
+            set_cached_engine,
+            set_cached_identity,
         )
         from app.extensions.auth.engine import UnifiedPermissionEngine
         from app.extensions.auth.identity import get_identity_provider
@@ -233,9 +235,30 @@ def require_permission(permission: str):
         if engine is None:
             registry = get_permission_registry()
             all_ids = {p.id for p in registry.list_all_permissions()}
+
+            # Load ABAC policies from DB
+            from app.extensions.auth.engine import Policy as EnginePolicy
+            from app.extensions.auth.models import Policy as PolicyModel
+
+            policy_result = await db.execute(
+                select(PolicyModel)
+                .where(PolicyModel.enabled == True)  # noqa: E712
+                .order_by(PolicyModel.priority)
+            )
+            policies = [
+                EnginePolicy(
+                    name=p.name,
+                    priority=p.priority,
+                    conditions=p.conditions,
+                    grants=p.grants,
+                )
+                for p in policy_result.scalars().all()
+            ]
+
             engine = UnifiedPermissionEngine(
                 role_permissions=role_permissions,
                 all_permission_ids=all_ids,
+                policies=policies,
             )
             set_cached_engine(engine)
 
