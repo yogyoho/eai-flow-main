@@ -23,6 +23,14 @@ done
 [ -n "${CONF:-}" ] && [ -f "$CONF" ] || { echo "ERR: --conf <file> required" >&2; exit 1; }
 mkdir -p "$OUT"
 
+# EAI-CUSTOM: 检测可用 Python 3（config.yaml 注入内网 LLM 用；Windows 上 python3 常是 Store 占位符）
+PYTHON=""
+for c in python3 python; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; assert sys.version_info >= (3,)' 2>/dev/null; then
+    PYTHON="$c"; break
+  fi
+done
+
 # ── 安全解析 conf：逐行读 KEY=VALUE，去引号/空白，export 到当前 shell ──
 # 不用 source：避免 `BRAND_FOOTER=© 2026 X` 这种带空格的值被当命令执行。
 parse_conf() {
@@ -74,26 +82,42 @@ for k in AGNES_API_KEY ZHIPU_API_KEY DEEPSEEK_API_KEY SILICONFLOW_API_KEY INTERN
   [ -n "$v" ] && echo "${k}=${v}" >> "$OUT/.env"
 done
 
-# ── config.yaml ──
+# ── config.yaml：基于包内 shipped 的完整配置注入，绝不覆盖 ──
+# EAI-CUSTOM: 旧实现用最小 models-only 文件覆盖 config.yaml，丢了 sandbox 段 →
+# gateway AppConfig 校验失败（sandbox Field required）→ crash。改为：offline-export 已把
+# deploy/offline/config.yaml（含 sandbox/tools/memory/... 全部段）拷到 $OUT，这里只在其
+# models 段首位注入内网 LLM（若有），其余段原样保留。
+BASE_CFG="$OUT/config.yaml"
+if [ ! -f "$BASE_CFG" ]; then
+  echo "ERR: $BASE_CFG 不存在。generate-config 需要包内完整的 config.yaml 作为基础（offline-export 会拷入）。" >&2
+  exit 1
+fi
 if [ -n "$LLM_BASE_URL" ]; then
-cat > "$OUT/config.yaml" <<EOF
-models:
-  - name: intranet-llm
-    display_name: 内网大模型
-    use: langchain_openai:ChatOpenAI
-    model: ${LLM_MODEL}
-    api_key: ${LLM_API_KEY}
-    base_url: ${LLM_BASE_URL}
-    request_timeout: 600.0
-    max_retries: 2
-    max_tokens: 8192
-    temperature: 0.7
-    supports_vision: false
-    supports_thinking: false
-EOF
+  if [ -z "$PYTHON" ]; then
+    echo "ERR: 需要 python3 把内网 LLM 注入 config.yaml。请安装 python3，或在 deploy.conf 留空 LLM_BASE_URL 用云端默认模型。" >&2
+    exit 1
+  fi
+  # 在首个 'models:' 行后插入 intranet-llm（作为默认/首选模型），保留其它所有段
+  "$PYTHON" - "$BASE_CFG" "$LLM_MODEL" "$LLM_API_KEY" "$LLM_BASE_URL" <<'PY' || { echo "ERR: config.yaml 注入失败" >&2; exit 1; }
+import sys
+path, model, key, base = sys.argv[1:5]
+text = open(path, encoding="utf-8").read()
+block = ("- name: intranet-llm\n"
+         "  display_name: 内网大模型\n"
+         "  use: langchain_openai:ChatOpenAI\n"
+         f"  model: {model}\n"
+         f"  api_key: {key}\n"
+         f"  base_url: {base}\n"
+         "  request_timeout: 600.0\n  max_retries: 2\n  max_tokens: 8192\n"
+         "  temperature: 0.7\n  supports_vision: false\n  supports_thinking: false\n")
+marker = "models:\n"
+text = text.replace(marker, marker + block, 1) if marker in text else marker + block + "\n" + text
+open(path, "w", encoding="utf-8").write(text)
+print("  injected intranet-llm as default model (sandbox/tools/memory preserved)")
+PY
 else
-  # 未配内网 LLM：内网可连外网则自行配置云端模型，或手填 models 段。
-  echo "# LLM_BASE_URL 未设置；请配置 models 段（内网 LLM 或可连的云端模型）。" > "$OUT/config.yaml"
+  # 未配内网 LLM：保留 shipped 的完整 config.yaml（含云端模型，内网可连外网时直接用）
+  :
 fi
 
 # ── extensions_config.json ──

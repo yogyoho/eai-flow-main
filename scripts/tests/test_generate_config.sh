@@ -16,6 +16,9 @@ LLM_API_KEY=sk-test
 LLM_MODEL=qwen-plus
 EOF
 
+# generate-config 在包内完整 config.yaml 基础上注入（模拟 offline-export 已拷入完整配置）
+cp "$HERE/../../deploy/offline/config.yaml" "$WORK/config.yaml"
+
 bash "$GEN" --conf "$WORK/deploy.conf" --out "$WORK" --root "/opt/eai" --secret "SECRETXYZ" --origin "http://10.0.0.5:4026"
 
 # Assertions — each must hold or the script is wrong.
@@ -24,6 +27,7 @@ grep -q "BETTER_AUTH_SECRET=SECRETXYZ" "$WORK/.env"                  || { echo "
 grep -q "DEER_FLOW_TRUSTED_ORIGINS=http://10.0.0.5:4026" "$WORK/.env" || { echo "FAIL: origin"; exit 1; }
 grep -q "base_url: http://10.0.0.5:8080/v1" "$WORK/config.yaml"     || { echo "FAIL: llm base_url"; exit 1; }
 grep -q "model: qwen-plus" "$WORK/config.yaml"                      || { echo "FAIL: llm model"; exit 1; }
+grep -q "^sandbox:" "$WORK/config.yaml"                             || { echo "FAIL: sandbox section lost (regression — gateway would crash!)"; exit 1; }
 grep -q "mcpServers" "$WORK/extensions_config.json"                 || { echo "FAIL: extensions_config"; exit 1; }
 
 echo "PASS: generate-config.sh"
