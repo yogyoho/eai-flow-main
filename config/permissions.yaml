@@ -1,6 +1,6 @@
 # permissions.yaml — 三级权限模型：导航 → 页面 → 操作
 # 格式版本，用于检测不兼容变更时告警
-version: 2
+version: 3
 
 modules:
   # ─── 工作台 ───
@@ -8,50 +8,53 @@ modules:
     display_name: "工作台"
     nav_id: "nav:dashboard"
     pages:
-      - { id: "dashboard:page:overview", display_name: "工作台概览" }
-    operations:
-      - { id: "dashboard:view", display_name: "查看工作台" }
+      - id: "dashboard:page:overview"
+        display_name: "工作台概览"
+        operations:
+          - { id: "dashboard:view", display_name: "查看工作台" }
 
   # ─── 智能写作 ───
   writing:
     display_name: "智能写作"
     nav_id: "nav:writing"
     pages:
-      - { id: "writing:page:chat", display_name: "AI 对话写作" }
-    operations:
-      - { id: "model:read", display_name: "使用 AI 模型" }
+      - id: "writing:page:chat"
+        display_name: "AI 对话写作"
+        operations:
+          - { id: "model:read", display_name: "使用 AI 模型" }
 
   # ─── 报告项目 ───
   projects:
     display_name: "报告项目"
     nav_id: "nav:projects"
     pages:
-      - { id: "projects:page:list", display_name: "项目列表" }
-    operations:
-      - { id: "project:create", display_name: "创建项目" }
-      - { id: "project:edit", display_name: "编辑项目" }
-      - { id: "project:delete", display_name: "删除项目" }
-      - { id: "project:read", display_name: "查看项目" }
-      - { id: "member:add", display_name: "添加成员" }
-      - { id: "member:remove", display_name: "移除成员" }
-      - { id: "chapter:write_own", display_name: "编写自己的章节" }
-      - { id: "chapter:write_any", display_name: "编写任意章节" }
-      - { id: "chapter:review", display_name: "审核章节" }
-      - { id: "chapter:review_any", display_name: "审核任意章节" }
-      - { id: "approval:submit", display_name: "提交审批" }
-      - { id: "approval:review", display_name: "审批审核" }
-      - { id: "approval:approve", display_name: "批准" }
-      - { id: "approval:view", display_name: "查看审批" }
-      - { id: "ai:start_writing", display_name: "启动 AI 写作" }
-      - { id: "outline:edit", display_name: "编辑大纲" }
-      - { id: "settings:edit", display_name: "编辑项目设置" }
-      - { id: "export:generate", display_name: "生成导出" }
-      - { id: "source:view", display_name: "查看来源" }
-      - { id: "version:rollback", display_name: "版本回滚" }
-      - { id: "workflow:read", display_name: "查看工作流" }
-      - { id: "workflow:start", display_name: "启动工作流" }
-      - { id: "workflow:cancel", display_name: "取消工作流" }
-      - { id: "workflow:edit", display_name: "编辑工作流" }
+      - id: "projects:page:list"
+        display_name: "项目列表"
+        operations:
+          - { id: "project:create", display_name: "创建项目" }
+          - { id: "project:edit", display_name: "编辑项目" }
+          - { id: "project:delete", display_name: "删除项目" }
+          - { id: "project:read", display_name: "查看项目" }
+          - { id: "member:add", display_name: "添加成员" }
+          - { id: "member:remove", display_name: "移除成员" }
+          - { id: "chapter:write_own", display_name: "编写自己的章节" }
+          - { id: "chapter:write_any", display_name: "编写任意章节" }
+          - { id: "chapter:review", display_name: "审核章节" }
+          - { id: "chapter:review_any", display_name: "审核任意章节" }
+          - { id: "approval:submit", display_name: "提交审批" }
+          - { id: "approval:review", display_name: "审批审核" }
+          - { id: "approval:approve", display_name: "批准" }
+          - { id: "approval:view", display_name: "查看审批" }
+          - { id: "ai:start_writing", display_name: "启动 AI 写作" }
+          - { id: "outline:edit", display_name: "编辑大纲" }
+          - { id: "settings:edit", display_name: "编辑项目设置" }
+          - { id: "export:generate", display_name: "生成导出" }
+          - { id: "source:view", display_name: "查看来源" }
+          - { id: "version:rollback", display_name: "版本回滚" }
+          - { id: "workflow:read", display_name: "查看工作流" }
+          - { id: "workflow:start", display_name: "启动工作流" }
+          - { id: "workflow:cancel", display_name: "取消工作流" }
+          - { id: "workflow:edit", display_name: "编辑工作流" }
     data_scopes:
       - { id: "project_member", display_name: "参与的项目", rule_template: { id IN: "$identity.member_projects" } }
       - { id: "project_all", display_name: "全部项目", rule_template: {} }
@@ -61,78 +64,109 @@ modules:
     display_name: "文档空间"
     nav_id: "nav:docmgr"
     pages:
-      - { id: "docmgr:page:browse", display_name: "文档浏览" }
-    operations:
-      - { id: "doc:read", display_name: "查看文档" }
-      - { id: "doc:upload", display_name: "上传文档" }
-      - { id: "doc:delete", display_name: "删除文档" }
+      - id: "docmgr:page:browse"
+        display_name: "文档浏览"
+        operations:
+          - { id: "doc:read", display_name: "查看文档" }
+          - { id: "doc:upload", display_name: "上传文档" }
+          - { id: "doc:delete", display_name: "删除文档" }
 
   # ─── 知识库 ───
   knowledge:
     display_name: "知识库"
     nav_id: "nav:knowledge"
     pages:
-      - { id: "knowledge:page:browse", display_name: "浏览知识库" }
-    operations:
-      - { id: "kb:read", display_name: "查看知识库" }
-      - { id: "kb:create", display_name: "创建知识库" }
-      - { id: "kb:update", display_name: "编辑知识库" }
-      - { id: "kb:delete", display_name: "删除知识库" }
-      - { id: "kb:upload", display_name: "上传文档" }
+      - id: "knowledge:page:browse"
+        display_name: "浏览知识库"
+        operations:
+          - { id: "kb:read", display_name: "查看知识库" }
+          - { id: "kb:create", display_name: "创建知识库" }
+          - { id: "kb:update", display_name: "编辑知识库" }
+          - { id: "kb:delete", display_name: "删除知识库" }
+          - { id: "kb:upload", display_name: "上传文档" }
     data_scopes:
       - { id: "knowledge_owner", display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
       - { id: "knowledge_dept", display_name: "本部门的知识库", rule_template: { or: [{ owner_id: "$identity.user_id" }, { dept_id IN: "$identity.dept_ids" }] } }
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
 
-  # ─── 知识工厂（9 个 tab）───
+  # ─── 知识工厂（8 个 tab）───
   knowledge_factory:
     display_name: "知识工厂"
     nav_id: "nav:knowledge-factory"
     pages:
-      - { id: "kf:page:sample", display_name: "样例管理/模板抽取" }
-      - { id: "kf:page:template", display_name: "模板编辑" }
-      - { id: "kf:page:law", display_name: "法规标准" }
-      - { id: "kf:page:compliance", display_name: "合规规则" }
-      - { id: "kf:page:version", display_name: "版本管理" }
-      - { id: "kf:page:quality", display_name: "质量评估" }
-      - { id: "kf:page:scrape", display_name: "网页爬取" }
-      - { id: "kf:page:dict", display_name: "业务字典" }
-    operations:
-      - { id: "kf:read", display_name: "查看知识工厂" }
-      - { id: "kf:template:edit", display_name: "编辑模板" }
-      - { id: "kf:template:publish", display_name: "发布模板" }
-      - { id: "kf:law:read", display_name: "查看法规" }
-      - { id: "kf:law:edit", display_name: "编辑法规" }
-      - { id: "kf:compliance:edit", display_name: "编辑合规规则" }
-      - { id: "kf:scrape:read", display_name: "查看网页抓取" }
-      - { id: "kf:scrape:execute", display_name: "执行网页抓取" }
-      - { id: "kf:dict:edit", display_name: "编辑业务字典" }
+      - id: "kf:page:sample"
+        display_name: "样例管理/模板抽取"
+        operations:
+          - { id: "kf:read", display_name: "查看知识工厂" }
+          - { id: "kf:template:edit", display_name: "编辑模板" }
+          - { id: "kf:template:publish", display_name: "发布模板" }
+      - id: "kf:page:template"
+        display_name: "模板编辑"
+        operations:
+          - { id: "kf:read", display_name: "查看知识工厂" }
+          - { id: "kf:template:edit", display_name: "编辑模板" }
+      - id: "kf:page:law"
+        display_name: "法规标准"
+        operations:
+          - { id: "kf:law:read", display_name: "查看法规" }
+          - { id: "kf:law:edit", display_name: "编辑法规" }
+      - id: "kf:page:compliance"
+        display_name: "合规规则"
+        operations:
+          - { id: "kf:compliance:edit", display_name: "编辑合规规则" }
+      - id: "kf:page:version"
+        display_name: "版本管理"
+        operations: []
+      - id: "kf:page:quality"
+        display_name: "质量评估"
+        operations: []
+      - id: "kf:page:scrape"
+        display_name: "网页爬取"
+        operations:
+          - { id: "kf:scrape:read", display_name: "查看网页抓取" }
+          - { id: "kf:scrape:execute", display_name: "执行网页抓取" }
+      - id: "kf:page:dict"
+        display_name: "业务字典"
+        operations:
+          - { id: "kf:dict:edit", display_name: "编辑业务字典" }
 
   # ─── 合同价格分析（应用中心 → 采购管理）───
   contract_price:
     display_name: "合同价格分析"
     nav_id: "nav:contract-price"
     pages:
-      - { id: "cpa:page:overview", display_name: "总览" }
-      - { id: "cpa:page:contracts", display_name: "合同解析" }
-      - { id: "cpa:page:items", display_name: "分项校验" }
-      - { id: "cpa:page:clusters", display_name: "分组审核" }
-      - { id: "cpa:page:tasks", display_name: "任务中心" }
-      - { id: "cpa:page:settings", display_name: "配置" }
-    operations:
-      - { id: "cpa:read", display_name: "查看合同价格" }
-      - { id: "cpa:import", display_name: "导入合同" }
-      - { id: "cpa:cluster", display_name: "执行聚类分析" }
-      - { id: "cpa:export", display_name: "导出分析结果" }
+      - id: "cpa:page:overview"
+        display_name: "总览"
+        operations:
+          - { id: "cpa:read", display_name: "查看合同价格" }
+      - id: "cpa:page:contracts"
+        display_name: "合同解析"
+        operations:
+          - { id: "cpa:import", display_name: "导入合同" }
+      - id: "cpa:page:items"
+        display_name: "分项校验"
+        operations:
+          - { id: "cpa:cluster", display_name: "执行聚类分析" }
+      - id: "cpa:page:clusters"
+        display_name: "分组审核"
+        operations: []
+      - id: "cpa:page:tasks"
+        display_name: "任务中心"
+        operations: []
+      - id: "cpa:page:settings"
+        display_name: "配置"
+        operations:
+          - { id: "cpa:export", display_name: "导出分析结果" }
 
   # ─── 报告输出（应用中心 → 报告输出）───
   output:
     display_name: "报告输出"
     nav_id: "nav:output"
     pages:
-      - { id: "output:page:index", display_name: "报告输出" }
-    operations:
-      - { id: "export:generate", display_name: "生成导出" }
+      - id: "output:page:index"
+        display_name: "报告输出"
+        operations:
+          - { id: "export:generate", display_name: "生成导出" }
 
   # ─── 流程管理（应用中心 → 流程管理，admin_only）───
   workflow_admin:
@@ -140,51 +174,60 @@ modules:
     nav_id: "nav:workflow-admin"
     admin_only: true
     pages:
-      - { id: "workflow-admin:page:index", display_name: "流程管理" }
-    operations:
-      - { id: "workflow:start", display_name: "启动工作流" }
-      - { id: "workflow:cancel", display_name: "取消工作流" }
-      - { id: "workflow:edit", display_name: "编辑工作流" }
-      - { id: "workflow:read", display_name: "查看工作流" }
+      - id: "workflow-admin:page:index"
+        display_name: "流程管理"
+        operations:
+          - { id: "workflow:read", display_name: "查看工作流" }
+          - { id: "workflow:start", display_name: "启动工作流" }
+          - { id: "workflow:cancel", display_name: "取消工作流" }
+          - { id: "workflow:edit", display_name: "编辑工作流" }
 
   # ─── 系统管理 ───
   admin:
     display_name: "系统管理"
     nav_id: "nav:admin"
     pages:
-      - { id: "admin:page:users", display_name: "用户管理" }
-      - { id: "admin:page:roles", display_name: "角色管理" }
-      - { id: "admin:page:departments", display_name: "部门管理" }
-      - { id: "admin:page:app-center", display_name: "应用管理" }
-    operations:
-      # 用户管理
-      - { id: "user:read", display_name: "查看用户" }
-      - { id: "user:create", display_name: "创建用户" }
-      - { id: "user:update", display_name: "编辑用户" }
-      - { id: "user:delete", display_name: "删除用户" }
-      # 角色管理
-      - { id: "role:read", display_name: "查看角色" }
-      - { id: "role:create", display_name: "创建角色" }
-      - { id: "role:update", display_name: "编辑角色" }
-      - { id: "role:delete", display_name: "删除角色" }
-      # 部门管理
-      - { id: "department:create", display_name: "创建部门" }
-      - { id: "department:update", display_name: "编辑部门" }
-      - { id: "department:delete", display_name: "删除部门" }
-      # 应用管理
-      - { id: "app_center:manage", display_name: "管理应用中心", admin_only: true }
+      - id: "admin:page:users"
+        display_name: "用户管理"
+        operations:
+          - { id: "user:read", display_name: "查看用户" }
+          - { id: "user:create", display_name: "创建用户" }
+          - { id: "user:update", display_name: "编辑用户" }
+          - { id: "user:delete", display_name: "删除用户" }
+      - id: "admin:page:roles"
+        display_name: "角色管理"
+        operations:
+          - { id: "role:read", display_name: "查看角色" }
+          - { id: "role:create", display_name: "创建角色" }
+          - { id: "role:update", display_name: "编辑角色" }
+          - { id: "role:delete", display_name: "删除角色" }
+      - id: "admin:page:departments"
+        display_name: "部门管理"
+        operations:
+          - { id: "department:create", display_name: "创建部门" }
+          - { id: "department:update", display_name: "编辑部门" }
+          - { id: "department:delete", display_name: "删除部门" }
+      - id: "admin:page:app-center"
+        display_name: "应用管理"
+        operations:
+          - { id: "app_center:manage", display_name: "管理应用中心", admin_only: true }
 
   # ─── 设置 ───
   settings:
     display_name: "设置"
     nav_id: "nav:settings"
     pages:
-      - { id: "settings:page:general", display_name: "基本设置" }
-      - { id: "settings:page:datasource", display_name: "数据源" }
-      - { id: "settings:page:license", display_name: "许可证" }
-    operations:
-      - { id: "system:access", display_name: "访问系统设置" }
-      - { id: "license:manage", display_name: "管理许可证", admin_only: true }
+      - id: "settings:page:general"
+        display_name: "基本设置"
+        operations:
+          - { id: "system:access", display_name: "访问系统设置" }
+      - id: "settings:page:datasource"
+        display_name: "数据源"
+        operations: []
+      - id: "settings:page:license"
+        display_name: "许可证"
+        operations:
+          - { id: "license:manage", display_name: "管理许可证", admin_only: true }
 
 # ── 角色默认映射 ──
 roles:
