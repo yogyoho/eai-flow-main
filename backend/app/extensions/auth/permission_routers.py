@@ -70,7 +70,21 @@ async def get_my_permissions(
 
     permissions = sorted(engine.list_permissions(identity))
 
+    # Get nav and page permissions for user's role
+    registry = get_permission_registry()
+    role_code = identity.role_code or ""
+    nav_ids = registry.get_nav_ids_for_role(role_code)
+    page_ids = registry.get_page_ids_for_role(role_code)
+
+    # If role has "*" for nav/pages, return all
+    if "*" in nav_ids:
+        nav_ids = [m.nav_id for m in registry.list_nav_modules() if m.nav_id]
+    if "*" in page_ids:
+        page_ids = [p.id for m in registry.list_nav_modules() for p in m.pages]
+
     return {
         "permissions": permissions,
+        "nav": nav_ids,
+        "pages": page_ids,
         "identity": identity.to_dict(),
     }
