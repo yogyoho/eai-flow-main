@@ -20,6 +20,12 @@ class DataScope:
 
 
 @dataclass
+class PageDef:
+    id: str
+    display_name: str
+
+
+@dataclass
 class PermissionPoint:
     id: str
     display_name: str
@@ -35,6 +41,26 @@ class ModulePermission:
     data_scopes: list[DataScope] = field(default_factory=list)
 
 
+@dataclass
+class NavModule:
+    key: str
+    display_name: str
+    nav_id: str
+    admin_only: bool
+    pages: list[PageDef] = field(default_factory=list)
+    operations: list[PermissionPoint] = field(default_factory=list)
+    data_scopes: list[DataScope] = field(default_factory=list)
+
+    @property
+    def permissions(self) -> list[PermissionPoint]:
+        """Backward compatibility alias for operations."""
+        return self.operations
+
+    @permissions.setter
+    def permissions(self, value: list[PermissionPoint]) -> None:
+        self.operations = value
+
+
 class PermissionRegistry:
     """Loads and serves the module-permission registry from a YAML file."""
 
@@ -46,7 +72,7 @@ class PermissionRegistry:
             )
         self._path = Path(yaml_path)
         self._mtime: float = 0.0
-        self.modules: dict[str, ModulePermission] = {}
+        self.modules: dict[str, NavModule] = {}
         self._role_defaults: dict[str, dict] = {}
         self._all_permissions: dict[str, PermissionPoint] = {}
         self._admin_only: list[PermissionPoint] = []
@@ -69,9 +95,20 @@ class PermissionRegistry:
         self._admin_only.clear()
 
         for module_key, module_data in modules_data.items():
-            mp = ModulePermission(display_name=module_data.get("display_name", module_key))
+            nav_id = module_data.get("nav_id", "")
 
-            for p in module_data.get("permissions") or []:
+            # Parse pages (v2 format)
+            pages: list[PageDef] = []
+            for p in module_data.get("pages") or []:
+                pages.append(PageDef(
+                    id=p["id"],
+                    display_name=p.get("display_name", p["id"]),
+                ))
+
+            # Parse operations (v2) or permissions (v1) — backward compat
+            ops_data = module_data.get("operations") or module_data.get("permissions") or []
+            operations: list[PermissionPoint] = []
+            for p in ops_data:
                 perm = PermissionPoint(
                     id=p["id"],
                     display_name=p.get("display_name", p["id"]),
@@ -79,20 +116,31 @@ class PermissionRegistry:
                     admin_only=p.get("admin_only", False),
                     module=module_key,
                 )
-                mp.permissions.append(perm)
+                operations.append(perm)
                 self._all_permissions[perm.id] = perm
                 if perm.admin_only:
                     self._admin_only.append(perm)
 
+            # Parse data_scopes (same in v1 and v2)
+            data_scopes: list[DataScope] = []
             for ds in module_data.get("data_scopes") or []:
-                mp.data_scopes.append(DataScope(
+                data_scopes.append(DataScope(
                     id=ds["id"],
                     display_name=ds.get("display_name", ds["id"]),
                     rule_template=ds.get("rule_template") or {},
                     module=module_key,
                 ))
 
-            self.modules[module_key] = mp
+            nm = NavModule(
+                key=module_key,
+                display_name=module_data.get("display_name", module_key),
+                nav_id=nav_id,
+                admin_only=module_data.get("admin_only", False),
+                pages=pages,
+                operations=operations,
+                data_scopes=data_scopes,
+            )
+            self.modules[module_key] = nm
 
     def _parse_roles(self, roles_data: dict) -> None:
         self._role_defaults.clear()
@@ -101,6 +149,8 @@ class PermissionRegistry:
                 "display_name": role_data.get("display_name", role_code),
                 "is_system": role_data.get("is_system", False),
                 "level": role_data.get("level", 10),
+                "nav": list(role_data.get("nav") or []),
+                "pages": list(role_data.get("pages") or []),
                 "permissions": list(role_data.get("permissions") or []),
                 "data_scopes": list(role_data.get("data_scopes") or []),
             }
@@ -114,7 +164,7 @@ class PermissionRegistry:
     def list_admin_only_permissions(self) -> list[PermissionPoint]:
         return list(self._admin_only)
 
-    def list_modules(self) -> list[tuple[str, ModulePermission]]:
+    def list_modules(self) -> list[tuple[str, NavModule]]:
         return list(self.modules.items())
 
     def get_data_scope(self, scope_id: str) -> DataScope | None:
@@ -126,6 +176,24 @@ class PermissionRegistry:
 
     def get_role_defaults(self, role_code: str) -> dict | None:
         return self._role_defaults.get(role_code)
+
+    def list_nav_modules(self) -> list[NavModule]:
+        """Return all modules that have nav_id (i.e. appear in navigation)."""
+        return [m for m in self.modules.values() if m.nav_id]
+
+    def get_nav_ids_for_role(self, role_code: str) -> list[str]:
+        """Get allowed nav IDs for a role from role defaults."""
+        defaults = self._role_defaults.get(role_code)
+        if defaults is None:
+            return []
+        return list(defaults.get("nav") or [])
+
+    def get_page_ids_for_role(self, role_code: str) -> list[str]:
+        """Get allowed page IDs for a role from role defaults."""
+        defaults = self._role_defaults.get(role_code)
+        if defaults is None:
+            return []
+        return list(defaults.get("pages") or [])
 
     def resolve_role_permissions(self, role_code: str) -> set[str]:
         defaults = self._role_defaults.get(role_code)
