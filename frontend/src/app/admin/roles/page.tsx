@@ -138,6 +138,35 @@ function getAllPermKeys(modules: RegistryModule[]): string[] {
   return modules.flatMap((m) => m.permissions.map((p) => p.id));
 }
 
+/** Check whether any module in the registry has the pages array (v3 tree format). */
+function hasPageTree(modules: RegistryModule[] | null | undefined): boolean {
+  return !!(modules && modules.length > 0 && modules.some((m) => m.pages && m.pages.length > 0));
+}
+
+/** Collect all operation IDs across modules with page tree, for "全选". */
+function getAllTreePermKeys(modules: RegistryModule[]): string[] {
+  const ids: string[] = [];
+  for (const m of modules) {
+    if (m.pages) {
+      for (const page of m.pages) {
+        for (const op of page.operations) {
+          ids.push(op.id);
+        }
+      }
+    }
+    // Also include any module-level permissions without pages (backward compat)
+    for (const p of m.permissions) {
+      ids.push(p.id);
+    }
+  }
+  return Array.from(new Set(ids));
+}
+
+/** Flat list of all permission keys from PERMISSION_CATEGORIES fallback. */
+function getAllFallbackPermKeys(): string[] {
+  return PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
+}
+
 /* ── Animated Permission Checkbox ─────────────────────────── */
 function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
   return (
@@ -178,7 +207,7 @@ function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: bool
   );
 }
 
-/* ── Permission Panel with styled checkboxes ──────────────── */
+/* ── Permission Panel with 3-level tree (Module → Page → Operation) ── */
 function PermissionPanel({
   selected, onChange, readonly = false, compact = false,
   modules,
@@ -190,12 +219,18 @@ function PermissionPanel({
   modules?: RegistryModule[] | null;
 }) {
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const categories = modules && modules.length > 0 ? modulesToCategories(modules) : PERMISSION_CATEGORIES;
-  const allPerms = modules && modules.length > 0 ? getAllPermKeys(modules) : PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
+  const isTree = hasPageTree(modules);
+  const treeModules: RegistryModule[] = isTree ? modules! : [];
+  const categories = !isTree && modules && modules.length > 0 ? modulesToCategories(modules) : (!isTree ? PERMISSION_CATEGORIES : []);
+  const allPerms = isTree ? getAllTreePermKeys(treeModules) : (modules && modules.length > 0 ? getAllPermKeys(modules) : getAllFallbackPermKeys());
 
-  // Initialise expanded state from categories
+  // Initialise expanded state
   useEffect(() => {
-    setExpandedCats(new Set(categories.map((c) => c.name)));
+    if (isTree && treeModules.length > 0) {
+      setExpandedCats(new Set(treeModules.map((m) => m.key)));
+    } else {
+      setExpandedCats(new Set(categories.map((c) => c.name)));
+    }
   }, [modules]);
 
   const toggleCat = (name: string) =>
@@ -217,6 +252,10 @@ function PermissionPanel({
     else onChange([...new Set([...selected, ...keys])]);
   };
 
+  const gridStyle = compact
+    ? { gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))" }
+    : { gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))" };
+
   return (
     <div className="space-y-3">
       {!readonly && (
@@ -233,97 +272,253 @@ function PermissionPanel({
         </div>
       )}
 
-      {categories.map((category) => {
-        const Icon = category.icon;
-        const isExpanded = expandedCats.has(category.name);
-        const catKeys = category.permissions.map((p) => p.key);
-        const selectedCount = selected.filter((p) => catKeys.includes(p)).length;
-        const allCatSelected = catKeys.every((k) => selected.includes(k));
-        const ratio = selectedCount / category.permissions.length;
+      {isTree && treeModules.length > 0 ? (
+        /* ── 3-level tree rendering (v3 modules with pages) ── */
+        treeModules.map((mod) => {
+          const isExpanded = expandedCats.has(mod.key);
 
-        return (
-          <div key={category.name} className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="flex items-center w-full">
-              <button type="button" onClick={() => toggleCat(category.name)}
-                className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
-                  selectedCount > 0
-                    ? "bg-primary/10 border border-primary/20"
-                    : "bg-muted border border-border",
-                )}>
-                  <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 ? "text-primary" : "text-muted-foreground")} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground text-sm">{category.name}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-muted-foreground tabular-nums">{selectedCount}/{category.permissions.length}</span>
-                    <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
-                      <motion.span
-                        className="absolute inset-y-0 left-0 bg-primary rounded-full"
-                        initial={false}
-                        animate={{ width: `${ratio * 100}%` }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                      />
-                    </span>
-                  </div>
-                </div>
-                <div className="ml-auto mr-2">
-                  <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  </motion.div>
-                </div>
-              </button>
-              {!readonly && (
-                <button type="button" onClick={() => toggleCategory(catKeys)}
-                  className={cn(
-                    "px-3 py-1.5 mr-3 text-xs font-semibold rounded-lg transition-all duration-200 shrink-0",
-                    allCatSelected
-                      ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
-                      : "bg-secondary/60 text-muted-foreground border border-transparent hover:bg-accent hover:text-foreground hover:border-border",
+          // Collect all operation IDs under this module (across all pages + direct)
+          const hasPages = !!(mod.pages && mod.pages.length > 0);
+          const pageOpIds: string[] = mod.pages ? mod.pages.flatMap((pg) => pg.operations.map((op) => op.id)) : [];
+          const directOpIds: string[] = mod.permissions.map((p) => p.id);
+          const allOpIds = Array.from(new Set([...pageOpIds, ...directOpIds]));
+          const totalOps = allOpIds.length;
+          const selectedCount = selected.filter((k) => allOpIds.includes(k)).length;
+          const allCatSelected = totalOps > 0 && allOpIds.every((k) => selected.includes(k));
+          const ratio = totalOps > 0 ? selectedCount / totalOps : 0;
+          const Icon = getModuleIcon(mod.key);
+
+          return (
+            <div key={mod.key} className="bg-card rounded-xl border border-border overflow-hidden">
+              {/* Module header */}
+              <div className="flex items-center w-full">
+                <button type="button" onClick={() => toggleCat(mod.key)}
+                  className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
+                    selectedCount > 0
+                      ? "bg-primary/10 border border-primary/20"
+                      : "bg-muted border border-border",
                   )}>
-                  {allCatSelected ? "取消全选" : "全选本组"}
-                </button>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                  <div className="px-3 pb-3 pt-1 grid gap-1.5"
-                    style={{ gridTemplateColumns: compact ? "repeat(auto-fill, minmax(145px, 1fr))" : "repeat(auto-fill, minmax(185px, 1fr))" }}>
-                    {category.permissions.map((perm) => {
-                      const isChecked = selected.includes(perm.key);
-                      return (
-                        <label key={perm.key}
-                          className={cn(
-                            "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
-                            readonly ? "cursor-default" : "cursor-pointer",
-                            isChecked
-                              ? "bg-primary/[0.04] border border-primary/10"
-                              : "border border-transparent hover:bg-accent/50 hover:border-border",
-                          )}>
-                          <input type="checkbox" checked={isChecked}
-                            onChange={() => togglePerm(perm.key)} disabled={readonly}
-                            className="sr-only peer" />
-                          <PermCheckbox checked={isChecked} disabled={readonly} />
-                          <span className={cn(
-                            "truncate transition-colors duration-200 leading-tight",
-                            readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
-                          )}>
-                            {perm.label}
-                          </span>
-                        </label>
-                      );
-                    })}
+                    <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 ? "text-primary" : "text-muted-foreground")} />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        );
-      })}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm">{mod.display_name}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground tabular-nums">{selectedCount}/{totalOps}</span>
+                      <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
+                        <motion.span
+                          className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                          initial={false}
+                          animate={{ width: `${ratio * 100}%` }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                  <div className="ml-auto mr-2">
+                    <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </motion.div>
+                  </div>
+                </button>
+                {!readonly && totalOps > 0 && (
+                  <button type="button" onClick={() => toggleCategory(allOpIds)}
+                    className={cn(
+                      "px-3 py-1.5 mr-3 text-xs font-semibold rounded-lg transition-all duration-200 shrink-0",
+                      allCatSelected
+                        ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+                        : "bg-secondary/60 text-muted-foreground border border-transparent hover:bg-accent hover:text-foreground hover:border-border",
+                    )}>
+                    {allCatSelected ? "取消全选" : "全选本组"}
+                  </button>
+                )}
+              </div>
+
+              {/* Expanded content: pages with their operations */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                    <div className="px-3 pb-3 pt-1">
+                      {hasPages ? (
+                        mod.pages!.map((page) => {
+                          const pageHasOps = page.operations.length > 0;
+                          return (
+                            <div key={page.id} className="mb-2 last:mb-0">
+                              {/* Page header */}
+                              <div className="flex items-center gap-2 py-2 px-1 text-sm font-semibold text-muted-foreground">
+                                <FileText className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                                <span className="truncate">{page.display_name}</span>
+                              </div>
+                              {/* Operations grid */}
+                              {pageHasOps ? (
+                                <div className="grid gap-1.5" style={gridStyle}>
+                                  {page.operations.map((op) => {
+                                    const isChecked = selected.includes(op.id);
+                                    return (
+                                      <label key={op.id}
+                                        className={cn(
+                                          "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                                          readonly ? "cursor-default" : "cursor-pointer",
+                                          isChecked
+                                            ? "bg-primary/[0.04] border border-primary/10"
+                                            : "border border-transparent hover:bg-accent/50 hover:border-border",
+                                        )}>
+                                        <input type="checkbox" checked={isChecked}
+                                          onChange={() => togglePerm(op.id)} disabled={readonly}
+                                          className="sr-only peer" />
+                                        <PermCheckbox checked={isChecked} disabled={readonly} />
+                                        <span className={cn(
+                                          "truncate transition-colors duration-200 leading-tight",
+                                          readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
+                                        )}>
+                                          {op.display_name}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-muted-foreground/50 px-1 pb-2">暂无操作项</div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        /* Backward compat: module with no pages, show permissions directly */
+                        totalOps > 0 ? (
+                          <div className="grid gap-1.5" style={gridStyle}>
+                            {mod.permissions.map((perm) => {
+                              const isChecked = selected.includes(perm.id);
+                              return (
+                                <label key={perm.id}
+                                  className={cn(
+                                    "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                                    readonly ? "cursor-default" : "cursor-pointer",
+                                    isChecked
+                                      ? "bg-primary/[0.04] border border-primary/10"
+                                      : "border border-transparent hover:bg-accent/50 hover:border-border",
+                                  )}>
+                                  <input type="checkbox" checked={isChecked}
+                                    onChange={() => togglePerm(perm.id)} disabled={readonly}
+                                    className="sr-only peer" />
+                                  <PermCheckbox checked={isChecked} disabled={readonly} />
+                                  <span className={cn(
+                                    "truncate transition-colors duration-200 leading-tight",
+                                    readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
+                                  )}>
+                                    {perm.display_name}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground/50 px-1 py-2">暂无权限点</div>
+                        )
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })
+      ) : (
+        /* ── Flat rendering (fallback / no pages) ── */
+        categories.map((category) => {
+          const Icon = category.icon;
+          const isExpanded = expandedCats.has(category.name);
+          const catKeys = category.permissions.map((p) => p.key);
+          const selectedCount = selected.filter((p) => catKeys.includes(p)).length;
+          const allCatSelected = catKeys.every((k) => selected.includes(k));
+          const ratio = selectedCount / category.permissions.length;
+
+          return (
+            <div key={category.name} className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="flex items-center w-full">
+                <button type="button" onClick={() => toggleCat(category.name)}
+                  className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
+                    selectedCount > 0
+                      ? "bg-primary/10 border border-primary/20"
+                      : "bg-muted border border-border",
+                  )}>
+                    <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm">{category.name}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground tabular-nums">{selectedCount}/{category.permissions.length}</span>
+                      <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
+                        <motion.span
+                          className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                          initial={false}
+                          animate={{ width: `${ratio * 100}%` }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                  <div className="ml-auto mr-2">
+                    <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </motion.div>
+                  </div>
+                </button>
+                {!readonly && (
+                  <button type="button" onClick={() => toggleCategory(catKeys)}
+                    className={cn(
+                      "px-3 py-1.5 mr-3 text-xs font-semibold rounded-lg transition-all duration-200 shrink-0",
+                      allCatSelected
+                        ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+                        : "bg-secondary/60 text-muted-foreground border border-transparent hover:bg-accent hover:text-foreground hover:border-border",
+                    )}>
+                    {allCatSelected ? "取消全选" : "全选本组"}
+                  </button>
+                )}
+              </div>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                    <div className="px-3 pb-3 pt-1 grid gap-1.5"
+                      style={{ gridTemplateColumns: compact ? "repeat(auto-fill, minmax(145px, 1fr))" : "repeat(auto-fill, minmax(185px, 1fr))" }}>
+                      {category.permissions.map((perm) => {
+                        const isChecked = selected.includes(perm.key);
+                        return (
+                          <label key={perm.key}
+                            className={cn(
+                              "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                              readonly ? "cursor-default" : "cursor-pointer",
+                              isChecked
+                                ? "bg-primary/[0.04] border border-primary/10"
+                                : "border border-transparent hover:bg-accent/50 hover:border-border",
+                            )}>
+                            <input type="checkbox" checked={isChecked}
+                              onChange={() => togglePerm(perm.key)} disabled={readonly}
+                              className="sr-only peer" />
+                            <PermCheckbox checked={isChecked} disabled={readonly} />
+                            <span className={cn(
+                              "truncate transition-colors duration-200 leading-tight",
+                              readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
+                            )}>
+                              {perm.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

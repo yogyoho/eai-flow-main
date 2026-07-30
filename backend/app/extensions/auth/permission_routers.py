@@ -20,13 +20,28 @@ router = APIRouter(prefix="/api/permissions", tags=["permissions"])
 async def get_registry(
     current_user: CurrentUser = Depends(require_permission("role:read")),
 ):
-    """Return all permission points, grouped by module."""
+    """Return all permission points, grouped by module with 3-level tree (Module → Page → Operation)."""
     registry = get_permission_registry()
     modules = []
     for module_key, mp in registry.list_modules():
         modules.append({
             "key": module_key,
             "display_name": mp.display_name,
+            "pages": [
+                {
+                    "id": page.id,
+                    "display_name": page.display_name,
+                    "operations": [
+                        {
+                            "id": op.id,
+                            "display_name": op.display_name,
+                            "admin_only": op.admin_only,
+                        }
+                        for op in page.operations
+                    ],
+                }
+                for page in mp.pages
+            ],
             "permissions": [
                 {
                     "id": p.id,

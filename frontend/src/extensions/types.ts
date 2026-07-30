@@ -129,11 +129,25 @@ export interface DataScopeItem {
   display_name: string;
 }
 
+export interface OperationItem {
+  id: string;
+  display_name: string;
+  admin_only?: boolean;
+}
+
+export interface PageItem {
+  id: string;
+  display_name: string;
+  operations: OperationItem[];
+}
+
 export interface RegistryModule {
   key: string;
   display_name: string;
   permissions: PermissionItem[];
   data_scopes: DataScopeItem[];
+  /** 三级权限树中的页面节点（v3），包含嵌套的操作列表 */
+  pages?: PageItem[];
 }
 
 export interface PermissionsRegistryResponse {
