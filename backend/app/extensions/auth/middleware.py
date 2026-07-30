@@ -212,25 +212,39 @@ def require_permission(permission: str):
                 detail="No role assigned. Please contact administrator.",
             )
 
-        role = await db.get(Role, current_user.role_id)
-        if role is None:
-            logger.warning(
-                "Permission check failed: user=%s role_id=%s not found in DB",
-                current_user.id, current_user.role_id,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Role not found",
-            )
+        # EAI-CUSTOM: Delegate permission check to UnifiedPermissionEngine (ABAC-lite)
+        from app.extensions.auth.engine import UnifiedPermissionEngine
+        from app.extensions.auth.identity import get_identity_provider
+        from app.extensions.auth.registry import get_permission_registry
 
-        permissions = role.permissions or []
-        if "*" in permissions or role.is_system:
-            return current_user
+        # Build engine from current DB state
+        result = await db.execute(select(Role))
+        roles = result.scalars().all()
+        role_permissions: dict[str, set[str]] = {}
+        for r in roles:
+            role_permissions[r.code] = set(r.permissions or [])
 
-        if permission not in permissions and f"{permission.split(':')[0]}:*" not in permissions:
+        registry = get_permission_registry()
+        all_ids = {p.id for p in registry.list_all_permissions()}
+
+        engine = UnifiedPermissionEngine(
+            role_permissions=role_permissions,
+            all_permission_ids=all_ids,
+        )
+
+        provider = get_identity_provider()
+        identity = await provider.resolve(current_user.id, db)
+
+        if identity.role_code and roles:
+            # Preserve is_system wildcard behavior: system roles with * get everything
+            matching_role = next((r for r in roles if r.code == identity.role_code), None)
+            if matching_role and (matching_role.is_system or "*" in (matching_role.permissions or [])):
+                return current_user
+
+        if not engine.check(identity, permission):
             logger.warning(
-                "Permission check failed: user=%s role=%s permissions=%s lacks '%s'",
-                current_user.id, role.code, permissions, permission,
+                "Permission check failed: user=%s role=%s lacks '%s'",
+                current_user.id, identity.role_code, permission,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
