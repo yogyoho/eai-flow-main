@@ -23,6 +23,7 @@ class DataScope:
 class PageDef:
     id: str
     display_name: str
+    operations: list[PermissionPoint] = field(default_factory=list)
 
 
 @dataclass
@@ -97,17 +98,35 @@ class PermissionRegistry:
         for module_key, module_data in modules_data.items():
             nav_id = module_data.get("nav_id", "")
 
-            # Parse pages (v2 format)
+            # Parse pages (v2/v3 format)
+            # v3: operations are nested under pages
+            # v2: pages and operations are separate lists
+            all_ops: list[PermissionPoint] = []
             pages: list[PageDef] = []
             for p in module_data.get("pages") or []:
+                page_ops: list[PermissionPoint] = []
+                for op in (p.get("operations") or []):
+                    perm = PermissionPoint(
+                        id=op["id"],
+                        display_name=op.get("display_name", op["id"]),
+                        description=op.get("description"),
+                        admin_only=op.get("admin_only", False),
+                        module=module_key,
+                    )
+                    page_ops.append(perm)
+                    all_ops.append(perm)
+                    self._all_permissions[perm.id] = perm
+                    if perm.admin_only:
+                        self._admin_only.append(perm)
+
                 pages.append(PageDef(
                     id=p["id"],
                     display_name=p.get("display_name", p["id"]),
+                    operations=page_ops,
                 ))
 
-            # Parse operations (v2) or permissions (v1) — backward compat
+            # Parse module-level operations (v2) or permissions (v1) — backward compat
             ops_data = module_data.get("operations") or module_data.get("permissions") or []
-            operations: list[PermissionPoint] = []
             for p in ops_data:
                 perm = PermissionPoint(
                     id=p["id"],
@@ -116,7 +135,7 @@ class PermissionRegistry:
                     admin_only=p.get("admin_only", False),
                     module=module_key,
                 )
-                operations.append(perm)
+                all_ops.append(perm)
                 self._all_permissions[perm.id] = perm
                 if perm.admin_only:
                     self._admin_only.append(perm)
@@ -137,7 +156,7 @@ class PermissionRegistry:
                 nav_id=nav_id,
                 admin_only=module_data.get("admin_only", False),
                 pages=pages,
-                operations=operations,
+                operations=all_ops,
                 data_scopes=data_scopes,
             )
             self.modules[module_key] = nm
