@@ -321,3 +321,35 @@ def require_super_admin():
         )
 
     return check_super_admin
+
+
+# ── Data scope dependency ────────────────────────────────────────────
+
+from app.extensions.auth.datascope import DataScopeEngine
+from app.extensions.auth.engine import FilterRule
+
+
+def with_data_scope(resource_type: str):
+    """FastAPI dependency: inject a FilterRule for data-level access control.
+
+    Usage:
+        @router.get("/knowledge-bases")
+        async def list_kbs(
+            db: AsyncSession = Depends(get_db),
+            scope: FilterRule = Depends(with_data_scope("knowledge")),
+        ):
+            query = select(KnowledgeBase).where(scope.to_sqlalchemy(KnowledgeBase))
+            ...
+    """
+    async def _scope(
+        current_user: CurrentUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> FilterRule:
+        from app.extensions.auth.identity import get_identity_provider
+
+        engine = DataScopeEngine.from_registry()
+        provider = get_identity_provider()
+        identity = await provider.resolve(current_user.id, db)
+        return engine.get_data_scope(identity, resource_type)
+
+    return _scope
