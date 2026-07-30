@@ -241,10 +241,21 @@ def require_permission(permission: str):
             if matching_role and (matching_role.is_system or "*" in (matching_role.permissions or [])):
                 return current_user
 
-        if not engine.check(identity, permission):
+        if current_user.role_id is not None and identity.role_code is None:
             logger.warning(
-                "Permission check failed: user=%s role=%s lacks '%s'",
-                current_user.id, identity.role_code, permission,
+                "Permission check failed: user=%s role_id=%s not found in DB",
+                current_user.id, current_user.role_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Role not found",
+            )
+
+        if not engine.check(identity, permission):
+            perms = role_permissions.get(identity.role_code or "", set())
+            logger.warning(
+                "Permission check failed: user=%s role=%s permissions=%s lacks '%s'",
+                current_user.id, identity.role_code, perms, permission,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

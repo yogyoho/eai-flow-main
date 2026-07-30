@@ -39,6 +39,8 @@ class FilterRule:
             if " IN" in key:
                 field = key[:key.rfind(" IN")].strip()
                 resolved = cls._resolve(raw_value, identity)
+                if resolved is None:
+                    return cls(operator="none_allow")
                 return cls(operator="in", field=field, value=resolved if isinstance(resolved, list) else [resolved])
             else:
                 resolved = cls._resolve(raw_value, identity)
@@ -145,9 +147,9 @@ class UnifiedPermissionEngine:
             "lt": lambda a, v: a is not None and a < v,
             "lte": lambda a, v: a is not None and a <= v,
             "contains": lambda a, v: v in a if isinstance(a, (list, str)) else False,
-            "not_contains": lambda a, v: v not in a if isinstance(a, (list, str)) else True,
+            "not_contains": lambda a, v: v not in a if isinstance(a, (list, str)) else False,
             "in": lambda a, v: a in v if isinstance(v, (list, tuple)) else False,
-            "not_in": lambda a, v: a not in v if isinstance(v, (list, tuple)) else True,
+            "not_in": lambda a, v: a not in v if isinstance(v, (list, tuple)) else False,
         }
 
         evaluator = operators.get(op)

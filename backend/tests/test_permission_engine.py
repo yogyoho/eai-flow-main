@@ -132,3 +132,48 @@ class TestFilterRule:
     def test_none_allow_default(self):
         rule = FilterRule()
         assert rule.operator == "none_allow"
+
+    def test_from_template_in_with_none_value_returns_none_allow(self):
+        template = {"dept_id IN": "$identity.dept_id"}
+        idn = identity(dept_id=None)
+        rule = FilterRule.from_template(template, idn)
+        assert rule.operator == "none_allow"
+
+    def test_not_contains_returns_false_when_attr_not_container(self):
+        from app.extensions.auth.engine import Policy
+        idn = identity(tags=None)
+        engine = UnifiedPermissionEngine(
+            role_permissions={"writer": set()},
+            policies=[
+                Policy(name="test", priority=10,
+                       conditions={"attr": "tags", "op": "not_contains", "value": "restricted"},
+                       grants={"permissions": ["kb:create"]}),
+            ],
+        )
+        assert engine.check(idn, "kb:create") is False
+
+    def test_not_in_returns_false_when_value_not_list(self):
+        from app.extensions.auth.engine import Policy
+        idn = identity(dept_id="dept-1")
+        engine = UnifiedPermissionEngine(
+            role_permissions={"writer": set()},
+            policies=[
+                Policy(name="test", priority=10,
+                       conditions={"attr": "dept_id", "op": "not_in", "value": "dept-123"},
+                       grants={"permissions": ["kb:create"]}),
+            ],
+        )
+        assert engine.check(idn, "kb:create") is False
+
+    def test_not_contains_works_with_valid_list(self):
+        from app.extensions.auth.engine import Policy
+        idn = identity(tags=["editor", "viewer"])
+        engine = UnifiedPermissionEngine(
+            role_permissions={"writer": set()},
+            policies=[
+                Policy(name="test", priority=10,
+                       conditions={"attr": "tags", "op": "not_contains", "value": "restricted"},
+                       grants={"permissions": ["kb:create"]}),
+            ],
+        )
+        assert engine.check(idn, "kb:create") is True
