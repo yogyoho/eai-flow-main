@@ -185,10 +185,6 @@ modules:
     operations:
       - { id: "system:access", display_name: "访问系统设置" }
       - { id: "license:manage", display_name: "管理许可证", admin_only: true }
-      # 插件管理（/plugins 独立页面 + 设置中的 skill 配置）
-      - { id: "skill:read", display_name: "查看插件" }
-      - { id: "skill:install", display_name: "安装插件" }
-      - { id: "skill:uninstall", display_name: "卸载插件" }
 
 # ── 角色默认映射 ──
 roles:
