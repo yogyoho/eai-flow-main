@@ -1,0 +1,208 @@
+# permissions.yaml — 模块权限声明 + 角色默认映射 + seed 策略
+# 格式版本，用于检测不兼容变更时告警
+version: 1
+
+modules:
+  knowledge:
+    display_name: "知识库"
+    permissions:
+      - { id: "kb:read", display_name: "查看知识库", description: "浏览和搜索知识库内容" }
+      - { id: "kb:create", display_name: "创建知识库", description: "创建新的知识库" }
+      - { id: "kb:update", display_name: "编辑知识库" }
+      - { id: "kb:delete", display_name: "删除知识库" }
+      - { id: "kb:upload", display_name: "上传文档" }
+    data_scopes:
+      - { id: "knowledge_owner", display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
+      - { id: "knowledge_dept", display_name: "本部门的知识库", rule_template: { or: [{ owner_id: "$identity.user_id" }, { dept_id IN: "$identity.dept_ids" }] } }
+      - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
+
+  contract_price:
+    display_name: "合同价格分析"
+    permissions:
+      - { id: "cpa:read", display_name: "查看合同价格" }
+      - { id: "cpa:import", display_name: "导入合同" }
+      - { id: "cpa:cluster", display_name: "执行聚类分析" }
+      - { id: "cpa:export", display_name: "导出分析结果" }
+    data_scopes:
+      - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
+      - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
+
+  user_management:
+    display_name: "用户管理"
+    permissions:
+      - { id: "user:read", display_name: "查看用户" }
+      - { id: "user:create", display_name: "创建用户" }
+      - { id: "user:update", display_name: "编辑用户" }
+      - { id: "user:delete", display_name: "删除用户" }
+
+  role_management:
+    display_name: "角色管理"
+    permissions:
+      - { id: "role:read", display_name: "查看角色" }
+      - { id: "role:create", display_name: "创建角色" }
+      - { id: "role:update", display_name: "编辑角色" }
+      - { id: "role:delete", display_name: "删除角色" }
+
+  department:
+    display_name: "部门管理"
+    permissions:
+      - { id: "department:create", display_name: "创建部门" }
+      - { id: "department:update", display_name: "编辑部门" }
+      - { id: "department:delete", display_name: "删除部门" }
+
+  project:
+    display_name: "报告项目"
+    permissions:
+      - { id: "project:create", display_name: "创建项目" }
+      - { id: "project:edit", display_name: "编辑项目" }
+      - { id: "project:delete", display_name: "删除项目" }
+      - { id: "project:read", display_name: "查看项目" }
+      - { id: "member:add", display_name: "添加成员" }
+      - { id: "member:remove", display_name: "移除成员" }
+      - { id: "chapter:write_own", display_name: "编写自己的章节" }
+      - { id: "chapter:write_any", display_name: "编写任意章节" }
+      - { id: "chapter:review", display_name: "审核章节" }
+      - { id: "chapter:review_any", display_name: "审核任意章节" }
+      - { id: "approval:submit", display_name: "提交审批" }
+      - { id: "approval:review", display_name: "审批审核" }
+      - { id: "approval:approve", display_name: "批准" }
+      - { id: "approval:view", display_name: "查看审批" }
+      - { id: "ai:start_writing", display_name: "启动 AI 写作" }
+      - { id: "outline:edit", display_name: "编辑大纲" }
+      - { id: "settings:edit", display_name: "编辑设置" }
+      - { id: "export:generate", display_name: "生成导出" }
+      - { id: "source:view", display_name: "查看来源" }
+      - { id: "version:rollback", display_name: "版本回滚" }
+    data_scopes:
+      - { id: "project_member", display_name: "参与的项目", rule_template: { id IN: "$identity.member_projects" } }
+      - { id: "project_all", display_name: "全部项目", rule_template: {} }
+
+  workflow:
+    display_name: "工作流"
+    permissions:
+      - { id: "workflow:read", display_name: "查看工作流" }
+      - { id: "workflow:start", display_name: "启动工作流" }
+      - { id: "workflow:cancel", display_name: "取消工作流" }
+      - { id: "workflow:edit", display_name: "编辑工作流" }
+
+  docmgr:
+    display_name: "文档空间"
+    permissions:
+      - { id: "doc:read", display_name: "查看文档" }
+      - { id: "doc:upload", display_name: "上传文档" }
+      - { id: "doc:delete", display_name: "删除文档" }
+
+  model_access:
+    display_name: "模型访问"
+    permissions:
+      - { id: "model:read", display_name: "使用模型" }
+
+  skills:
+    display_name: "插件与工具"
+    permissions:
+      - { id: "skill:read", display_name: "查看插件" }
+      - { id: "skill:install", display_name: "安装插件" }
+      - { id: "skill:uninstall", display_name: "卸载插件" }
+
+  license:
+    display_name: "许可证管理"
+    permissions:
+      - { id: "license:manage", display_name: "管理许可证", admin_only: true }
+
+  app_center:
+    display_name: "应用中心管理"
+    permissions:
+      - { id: "app_center:manage", display_name: "管理应用中心", admin_only: true }
+
+roles:
+  superadmin:
+    display_name: "超级管理员"
+    is_system: true
+    level: 100
+    permissions: ["*"]
+    data_scopes: ["project_all", "cpa_all", "knowledge_public"]
+
+  dept_head:
+    display_name: "部门负责人"
+    is_system: false
+    level: 50
+    permissions:
+      - kb:read
+      - kb:create
+      - doc:read
+      - doc:upload
+      - project:create
+      - project:read
+      - model:read
+      - system:access
+      - workflow:read
+      - cpa:read
+      - cpa:import
+      - approval:approve
+      - approval:submit
+      - approval:view
+      - chapter:review
+      - source:view
+    data_scopes: ["knowledge_dept", "cpa_dept", "project_member"]
+
+  project_manager:
+    display_name: "项目经理"
+    is_system: false
+    level: 60
+    permissions:
+      - "#inherit:dept_head"
+      - project:edit
+      - member:add
+      - member:remove
+      - chapter:write_any
+      - ai:start_writing
+      - outline:edit
+      - settings:edit
+      - export:generate
+      - approval:submit
+      - approval:review
+      - workflow:start
+      - workflow:cancel
+    data_scopes: ["project_member", "knowledge_dept", "cpa_dept"]
+
+  writer:
+    display_name: "撰写人"
+    is_system: false
+    level: 10
+    permissions:
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+      - chapter:write_own
+      - chapter:review
+      - ai:start_writing
+      - source:view
+      - workflow:read
+    data_scopes: ["project_member", "knowledge_dept"]
+
+  reviewer:
+    display_name: "审核员"
+    is_system: false
+    level: 20
+    permissions:
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+      - chapter:review
+      - approval:review
+      - source:view
+      - workflow:read
+    data_scopes: ["project_member", "knowledge_dept"]
+
+  user:
+    display_name: "普通用户"
+    is_system: false
+    level: 1
+    permissions:
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+    data_scopes: ["knowledge_public", "project_member"]
