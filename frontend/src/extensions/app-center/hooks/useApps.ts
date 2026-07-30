@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
 
@@ -71,6 +72,18 @@ function toAppDefinition(a: AppResponse, domains?: DomainResponse[]): AppDefinit
   };
 }
 
+function deriveNavId(path: string): string | null {
+  const segment = path.replace(/^\//, "").split("/")[0];
+  if (!segment) return null;
+  const mapping: Record<string, string> = {
+    "contract-price": "nav:contract-price",
+    "knowledge-factory": "nav:knowledge-factory",
+    "workflow-admin": "nav:workflow-admin",
+    "app-center": "nav:app-center",
+  };
+  return mapping[segment] || `nav:${segment}`;
+}
+
 /**
  * 应用中心主 hook：从 API 获取数据，聚合搜索、排序、业务域筛选与权限过滤。
  */
@@ -86,6 +99,7 @@ export function useApps(
   const [activeDomain, setActiveDomain] = useState<DomainFilter>("all");
 
   const isAdmin = user?.role_name === "Super Admin";
+  const { canNav } = usePermission();
 
   // Fetch apps & domains from API
   const {
@@ -123,9 +137,11 @@ export function useApps(
       if (app.adminOnly && !isAdmin) return false;
       if (app.licenseModule && !licenseLoading && !hasModule(app.licenseModule))
         return false;
+      const navId = deriveNavId(app.path);
+      if (navId && !canNav(navId)) return false;
       return true;
     });
-  }, [rawDefinitions, hasModule, isAdmin, licenseLoading]);
+  }, [rawDefinitions, hasModule, isAdmin, licenseLoading, canNav]);
 
   // 2. 业务域筛选项（通用域在前，含数量）
   const domainOptions = useMemo<DomainFilterOption[]>(() => {
