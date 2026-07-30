@@ -48,13 +48,13 @@ export function usePermission() {
   const hasAny = (...perms: string[]): boolean => perms.some(can);
 
   const canNav = (navId: string): boolean => {
-    if (isLoading) return false;
+    if (isLoading) return true;  // Fail-open: show nav during loading, API 403 is better than blank UI
     if (nav.includes("*")) return true;
     return nav.includes(navId);
   };
 
   const canPage = (pageId: string): boolean => {
-    if (isLoading) return false;
+    if (isLoading) return true;  // Fail-open: show page during loading
     if (pages.includes("*")) return true;
     return pages.includes(pageId);
   };
