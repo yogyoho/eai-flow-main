@@ -282,12 +282,44 @@ export const roleApi = {
 
 // ===== Permissions API =====
 
+// EAI-CUSTOM: permissions API uses /api prefix (not /api/extensions)
+// because the routes are registered at /api/permissions and /api/policies
+const PERM_API_BASE = "/api";
+
 export const permissionsApi = {
-  getRegistry: () => request<PermissionsRegistryResponse>("/permissions/registry"),
-  listPolicies: () => request<PolicyListResponse>("/policies"),
-  createPolicy: (data: PolicyCreateRequest) => request<PolicyItem>("/policies", { method: "POST", body: JSON.stringify(data) }),
-  updatePolicy: (id: string, data: Partial<PolicyCreateRequest>) => request<PolicyItem>(`/policies/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deletePolicy: (id: string) => request<MessageResponse>(`/policies/${id}`, { method: "DELETE" }),
+  getRegistry: async () => {
+    const res = await fetch(`${PERM_API_BASE}/permissions/registry`, { credentials: "include" });
+    if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
+    return res.json() as Promise<PermissionsRegistryResponse>;
+  },
+  listPolicies: async () => {
+    const res = await fetch(`${PERM_API_BASE}/policies`, { credentials: "include" });
+    if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
+    return res.json() as Promise<PolicyListResponse>;
+  },
+  createPolicy: async (data: PolicyCreateRequest) => {
+    const res = await fetch(`${PERM_API_BASE}/policies`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data), credentials: "include",
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
+    return res.json() as Promise<PolicyItem>;
+  },
+  updatePolicy: async (id: string, data: Partial<PolicyCreateRequest>) => {
+    const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data), credentials: "include",
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
+    return res.json() as Promise<PolicyItem>;
+  },
+  deletePolicy: async (id: string) => {
+    const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
+      method: "DELETE", credentials: "include",
+    });
+    if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
+    return res.json() as Promise<MessageResponse>;
+  },
 };
 
 // ===== Department API =====
