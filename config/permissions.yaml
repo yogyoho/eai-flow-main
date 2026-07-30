@@ -209,6 +209,7 @@ roles:
       - nav:knowledge-factory
       - nav:contract-price
       - nav:output
+      - nav:app-center
     pages: ["*"]
     permissions:
       - kb:read
@@ -243,6 +244,7 @@ roles:
       - nav:docmgr
       - nav:knowledge
       - nav:output
+      - nav:app-center
     pages: ["*"]
     permissions:
       - "#inherit:dept_head"
@@ -262,7 +264,7 @@ roles:
     display_name: "撰写人"
     is_system: false
     level: 10
-    nav: [nav:dashboard, nav:writing, nav:projects, nav:knowledge]
+    nav: [nav:dashboard, nav:writing, nav:projects, nav:knowledge, nav:app-center]
     pages: [projects:page:list, writing:page:chat, knowledge:page:browse, dashboard:page:overview]
     permissions:
       - kb:read
@@ -280,7 +282,7 @@ roles:
     display_name: "审核员"
     is_system: false
     level: 20
-    nav: [nav:dashboard, nav:projects, nav:knowledge]
+    nav: [nav:dashboard, nav:projects, nav:knowledge, nav:app-center]
     pages: [projects:page:list, knowledge:page:browse, dashboard:page:overview]
     permissions:
       - kb:read
@@ -297,7 +299,7 @@ roles:
     display_name: "普通用户"
     is_system: false
     level: 1
-    nav: [nav:dashboard, nav:knowledge]
+    nav: [nav:dashboard, nav:knowledge, nav:app-center]
     pages: [knowledge:page:browse, dashboard:page:overview]
     permissions:
       - kb:read
