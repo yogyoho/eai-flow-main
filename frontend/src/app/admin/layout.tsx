@@ -86,7 +86,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    {/* EAI-CUSTOM: PermissionProvider wraps admin layout for button-level permission checks */}
     <PermissionProvider>
       <SimpleShellLayout>
         <AdminLayoutContent>{children}</AdminLayoutContent>

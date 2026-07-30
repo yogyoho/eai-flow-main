@@ -140,6 +140,7 @@ services:
       - gateway-venv:/app/backend/.venv
       - ../config.yaml:/app/config.yaml
       - ../extensions_config.json:/app/extensions_config.json
+      - ../config/permissions.yaml:/app/config/permissions.yaml
       - ../skills:/app/skills
       - ../mcp-server:/app/mcp-server
       - ../contracts:/app/contracts
@@ -265,6 +266,10 @@ services:
     environment:
       - OCR_HOST=0.0.0.0
       - OCR_PORT=8010
+      # Process-level OCR concurrency (Phase-2 T1 bench: N=4 sweet spot, N=8
+      # degrades). Pairs with the skill CLI's CPA_PARSE_CONCURRENCY so the
+      # gateway fires ~4 concurrent /ocr requests against these 4 workers.
+      - OCR_WORKERS=4
     ports:
       - "8010:8010"
     volumes:
