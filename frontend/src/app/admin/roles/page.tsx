@@ -5,19 +5,24 @@ import {
   Search, Plus, Shield, Lock, Pencil, Trash2, Users, X,
   ChevronDown, Brain, Database, Puzzle, Wrench,
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
-  LayoutGrid, List,
+  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { roleApi, userApi } from "@/extensions/api";
-import type { Role, CreateRoleRequest, UpdateRoleRequest, User } from "@/extensions/types";
+import { permissionsApi, roleApi, userApi } from "@/extensions/api";
+import type {
+  Role, CreateRoleRequest, UpdateRoleRequest, User,
+  RegistryModule, PermissionItem, DataScopeItem,
+  PolicyItem, PolicyCondition, PolicyGrant,
+} from "@/extensions/types";
 import { cn } from "@/lib/utils";
 
+/* ── Fallback permission categories (used when registry not loaded) ── */
 const PERMISSION_CATEGORIES = [
   {
     name: "模型访问控制", icon: Brain,
@@ -111,7 +116,27 @@ const PERMISSION_CATEGORIES = [
   },
 ];
 
-const ALL_PERMS = PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
+/* ── Helpers ─────────────────────────────────────────── */
+function getModuleIcon(key: string) {
+  const map: Record<string, React.ComponentType<{ className?: string }>> = {
+    knowledge: Database, model: Brain, plugin: Puzzle,
+    system: Wrench, project: FolderKanban, approval: ClipboardCheck,
+    document: FileText, workflow: Workflow,
+  };
+  return map[key] || Shield;
+}
+
+function modulesToCategories(modules: RegistryModule[]) {
+  return modules.map((m) => ({
+    name: m.display_name,
+    icon: getModuleIcon(m.key),
+    permissions: m.permissions.map((p) => ({ key: p.id, label: p.display_name })),
+  }));
+}
+
+function getAllPermKeys(modules: RegistryModule[]): string[] {
+  return modules.flatMap((m) => m.permissions.map((p) => p.id));
+}
 
 /* ── Animated Permission Checkbox ─────────────────────────── */
 function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
@@ -125,13 +150,7 @@ function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: bool
         disabled && "opacity-40 pointer-events-none",
       )}
     >
-      {/* Animated SVG checkmark */}
-      <svg
-        viewBox="0 0 14 14"
-        fill="none"
-        className="w-[11px] h-[11px]"
-        aria-hidden="true"
-      >
+      <svg viewBox="0 0 14 14" fill="none" className="w-[11px] h-[11px]" aria-hidden="true">
         <motion.path
           d="M3 7.5L5.8 10.2L11 4"
           stroke="currentColor"
@@ -144,7 +163,6 @@ function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: bool
           transition={{ duration: 0.18, ease: "easeOut" }}
         />
       </svg>
-      {/* Ripple glow on check */}
       <AnimatePresence>
         {checked && (
           <motion.span
@@ -163,15 +181,22 @@ function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: bool
 /* ── Permission Panel with styled checkboxes ──────────────── */
 function PermissionPanel({
   selected, onChange, readonly = false, compact = false,
+  modules,
 }: {
   selected: string[];
   onChange: (perms: string[]) => void;
   readonly?: boolean;
   compact?: boolean;
+  modules?: RegistryModule[] | null;
 }) {
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(
-    new Set(PERMISSION_CATEGORIES.map((c) => c.name))
-  );
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const categories = modules && modules.length > 0 ? modulesToCategories(modules) : PERMISSION_CATEGORIES;
+  const allPerms = modules && modules.length > 0 ? getAllPermKeys(modules) : PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
+
+  // Initialise expanded state from categories
+  useEffect(() => {
+    setExpandedCats(new Set(categories.map((c) => c.name)));
+  }, [modules]);
 
   const toggleCat = (name: string) =>
     setExpandedCats((prev) => {
@@ -194,10 +219,9 @@ function PermissionPanel({
 
   return (
     <div className="space-y-3">
-      {/* Select all / Deselect all */}
       {!readonly && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => onChange(ALL_PERMS)}
+          <button type="button" onClick={() => onChange(allPerms)}
             className="group flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-foreground/80 bg-background border border-border rounded-lg hover:border-primary/40 hover:text-primary hover:bg-primary/[0.04] transition-all duration-200">
             <PermCheckbox checked={false} />
             全选
@@ -209,7 +233,7 @@ function PermissionPanel({
         </div>
       )}
 
-      {PERMISSION_CATEGORIES.map((category) => {
+      {categories.map((category) => {
         const Icon = category.icon;
         const isExpanded = expandedCats.has(category.name);
         const catKeys = category.permissions.map((p) => p.key);
@@ -219,7 +243,6 @@ function PermissionPanel({
 
         return (
           <div key={category.name} className="bg-card rounded-xl border border-border overflow-hidden">
-            {/* Category header */}
             <div className="flex items-center w-full">
               <button type="button" onClick={() => toggleCat(category.name)}
                 className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
@@ -235,7 +258,6 @@ function PermissionPanel({
                   <div className="font-medium text-foreground text-sm">{category.name}</div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-muted-foreground tabular-nums">{selectedCount}/{category.permissions.length}</span>
-                    {/* Mini progress bar */}
                     <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
                       <motion.span
                         className="absolute inset-y-0 left-0 bg-primary rounded-full"
@@ -265,7 +287,6 @@ function PermissionPanel({
               )}
             </div>
 
-            {/* Expanded permissions grid */}
             <AnimatePresence>
               {isExpanded && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
@@ -307,8 +328,9 @@ function PermissionPanel({
   );
 }
 
-/* ── Matrix Overview: roles × permission categories ─────────── */
-function RoleMatrixOverview({ roles }: { roles: Role[] }) {
+/* ── Matrix Overview: roles x permission categories ─────────── */
+function RoleMatrixOverview({ roles, modules }: { roles: Role[]; modules?: RegistryModule[] | null }) {
+  const categories = modules && modules.length > 0 ? modulesToCategories(modules) : PERMISSION_CATEGORIES;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse">
@@ -317,7 +339,7 @@ function RoleMatrixOverview({ roles }: { roles: Role[] }) {
             <th className="sticky left-0 bg-muted/60 px-3 py-2 text-left font-semibold text-foreground border-b border-r">
               角色
             </th>
-            {PERMISSION_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <th key={cat.name} className="px-3 py-2 text-center font-medium text-muted-foreground border-b whitespace-nowrap">
                 {cat.name}
               </th>
@@ -333,7 +355,7 @@ function RoleMatrixOverview({ roles }: { roles: Role[] }) {
                   <span>{role.name}</span>
                 </div>
               </td>
-              {PERMISSION_CATEGORIES.map((cat) => {
+              {categories.map((cat) => {
                 const catKeys = cat.permissions.map((p) => p.key);
                 const count = catKeys.filter((k) => (role.permissions || []).includes(k)).length;
                 const total = catKeys.length;
@@ -368,17 +390,407 @@ function RoleMatrixOverview({ roles }: { roles: Role[] }) {
   );
 }
 
+/* ── Data Scope Panel ──────────────────────────────────────── */
+function DataScopePanel({
+  modules, selections, onChange, readonly,
+}: {
+  modules: RegistryModule[];
+  selections: Record<string, string>;
+  onChange: (selections: Record<string, string>) => void;
+  readonly?: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">为各资源类型设置数据访问范围</p>
+      {modules
+        .filter((m) => m.data_scopes && m.data_scopes.length > 0)
+        .map((module) => {
+          const currentVal = selections[module.key] || module.data_scopes[0]?.id || "";
+          return (
+            <div key={module.key} className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  {(() => { const Icon = getModuleIcon(module.key); return <Icon className="w-4 h-4 text-primary" />; })()}
+                </div>
+                <span className="font-medium text-foreground text-sm">{module.display_name}</span>
+              </div>
+              <div className="flex flex-wrap gap-3 pl-11">
+                {module.data_scopes.map((scope) => {
+                  const isSelected = currentVal === scope.id;
+                  return (
+                    <label
+                      key={scope.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all duration-200",
+                        readonly ? "cursor-default" : "cursor-pointer",
+                        isSelected
+                          ? "bg-primary/[0.06] border-primary/30 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/20 hover:text-foreground",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name={`scope-${module.key}`}
+                        value={scope.id}
+                        checked={isSelected}
+                        onChange={() => { if (!readonly) onChange({ ...selections, [module.key]: scope.id }); }}
+                        disabled={readonly}
+                        className="sr-only"
+                      />
+                      <span className={cn(
+                        "w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center shrink-0",
+                        isSelected ? "border-primary" : "border-muted-foreground/40",
+                      )}>
+                        {isSelected && <span className="w-2 h-2 rounded-full bg-primary" />}
+                      </span>
+                      <span>{scope.display_name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      {modules.filter((m) => m.data_scopes && m.data_scopes.length > 0).length === 0 && (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          <Filter className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          暂无数据权限配置项
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Policies Panel ────────────────────────────────────────── */
+function PoliciesPanel({
+  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules,
+}: {
+  policies: PolicyItem[];
+  policiesLoading: boolean;
+  onToggle: (id: string, enabled: boolean) => void;
+  onDelete: (id: string) => void;
+  onAdd: () => void;
+  onSave: (policy: PolicyItem) => void;
+  modules: RegistryModule[];
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] }>({
+    name: "", conditions: [], grants: [],
+  });
+
+  const startEdit = useCallback((policy?: PolicyItem) => {
+    if (policy) {
+      setEditingId(policy.id);
+      setEditForm({ name: policy.name, conditions: [...policy.conditions], grants: [...policy.grants] });
+    } else {
+      setEditingId("__new__");
+      setEditForm({ name: "", conditions: [{ attribute: "", operator: "=", value: "" }], grants: [{ permission: "", data_scope: "" }] });
+    }
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditForm({ name: "", conditions: [], grants: [] });
+  }, []);
+
+  const handleSave = useCallback(() => {
+    onSave({
+      id: editingId === "__new__" ? "" : (editingId || ""),
+      name: editForm.name,
+      enabled: true,
+      conditions: editForm.conditions,
+      grants: editForm.grants,
+    });
+    cancelEdit();
+  }, [editingId, editForm, onSave, cancelEdit]);
+
+  const allPermissions = modules.flatMap((m) => m.permissions);
+  const allDataScopes = modules.flatMap((m) => m.data_scopes);
+
+  if (policiesLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />加载中...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">管理自定义访问策略（属性条件 + 权限授予）</p>
+        <button
+          type="button"
+          onClick={() => startEdit()}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20 transition-all"
+        >
+          <Plus className="w-3.5 h-3.5" /> 添加策略
+        </button>
+      </div>
+
+      {/* Policy list */}
+      {policies.length === 0 && editingId !== "__new__" && (
+        <div className="text-center py-12 text-muted-foreground text-sm bg-card rounded-xl border border-border">
+          <GripVertical className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          暂无自定义策略，点击"添加策略"创建
+        </div>
+      )}
+
+      {policies.map((policy) => (
+        <div key={policy.id} className={cn(
+          "bg-card rounded-xl border p-4 transition-all",
+          policy.enabled ? "border-border" : "border-border/50 opacity-60",
+        )}>
+          {editingId === policy.id ? (
+            <PolicyEditForm
+              form={editForm}
+              onChange={setEditForm}
+              onSave={handleSave}
+              onCancel={cancelEdit}
+              allPermissions={allPermissions}
+              allDataScopes={allDataScopes}
+            />
+          ) : (
+            <PolicyRow
+              policy={policy}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onEdit={() => startEdit(policy)}
+              allPermissions={allPermissions}
+            />
+          )}
+        </div>
+      ))}
+
+      {/* New policy form */}
+      {editingId === "__new__" && (
+        <div className="bg-card rounded-xl border border-primary/30 p-4 ring-1 ring-primary/10">
+          <PolicyEditForm
+            form={editForm}
+            onChange={setEditForm}
+            onSave={handleSave}
+            onCancel={cancelEdit}
+            allPermissions={allPermissions}
+            allDataScopes={allDataScopes}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Policy Row (read-only) ────────────────────────────────── */
+function PolicyRow({
+  policy, onToggle, onDelete, onEdit, allPermissions,
+}: {
+  policy: PolicyItem;
+  onToggle: (id: string, enabled: boolean) => void;
+  onDelete: (id: string) => void;
+  onEdit: () => void;
+  allPermissions: PermissionItem[];
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-foreground text-sm">{policy.name}</span>
+          <button
+            type="button"
+            onClick={() => onToggle(policy.id, !policy.enabled)}
+            className={cn(
+              "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors",
+              policy.enabled
+                ? "bg-success/10 text-success border-success/30"
+                : "bg-muted text-muted-foreground border-border",
+            )}
+          >
+            {policy.enabled ? <><Eye className="w-3 h-3" /> 已启用</> : <><EyeOff className="w-3 h-3" /> 已禁用</>}
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={onEdit} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => onDelete(policy.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      {/* Conditions summary */}
+      {policy.conditions.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {policy.conditions.map((c, i) => (
+            <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+              {c.attribute || "?"} {c.operator} {c.value || "?"}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Grants summary */}
+      {policy.grants.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {policy.grants.map((g, i) => {
+            const permLabel = allPermissions.find((p) => p.id === g.permission)?.display_name || g.permission;
+            return (
+              <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-primary/[0.06] text-primary border border-primary/10 font-medium">
+                {permLabel}{g.data_scope ? ` (${g.data_scope})` : ""}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Policy Edit Form ──────────────────────────────────────── */
+function PolicyEditForm({
+  form, onChange, onSave, onCancel, allPermissions, allDataScopes,
+}: {
+  form: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] };
+  onChange: (f: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] }) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  allPermissions: PermissionItem[];
+  allDataScopes: DataScopeItem[];
+}) {
+  const addCondition = () => onChange({ ...form, conditions: [...form.conditions, { attribute: "", operator: "=", value: "" }] });
+  const removeCondition = (i: number) => onChange({ ...form, conditions: form.conditions.filter((_, idx) => idx !== i) });
+  const updateCondition = (i: number, f: Partial<PolicyCondition>) => {
+    const conds = [...form.conditions];
+    conds[i] = { ...conds[i], ...f };
+    onChange({ ...form, conditions: conds });
+  };
+
+  const addGrant = () => onChange({ ...form, grants: [...form.grants, { permission: "", data_scope: "" }] });
+  const removeGrant = (i: number) => onChange({ ...form, grants: form.grants.filter((_, idx) => idx !== i) });
+  const updateGrant = (i: number, f: Partial<PolicyGrant>) => {
+    const grs = [...form.grants];
+    grs[i] = { ...grs[i], ...f };
+    onChange({ ...form, grants: grs });
+  };
+
+  const ATTR_OPTIONS = ["tags", "role_level", "dept_id", "user_id", "email_domain"];
+  const OP_OPTIONS = ["=", "!=", "contains", ">=", "<=", "in", "not_in"];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-xs font-medium text-foreground mb-1">策略名称</label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => onChange({ ...form, name: e.target.value })}
+          placeholder="例如：仅限高级用户访问"
+          className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+      </div>
+
+      {/* Conditions */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-medium text-foreground">条件 (Conditions)</label>
+          <button type="button" onClick={addCondition} className="text-xs text-primary hover:text-primary/80 font-medium">
+            + 添加条件
+          </button>
+        </div>
+        <div className="space-y-2">
+          {form.conditions.map((c, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Select value={c.attribute || "__none__"} onValueChange={(v) => updateCondition(i, { attribute: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="属性" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__"><span className="text-muted-foreground">选择属性</span></SelectItem>
+                  {ATTR_OPTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={c.operator} onValueChange={(v) => updateCondition(i, { operator: v })}>
+                <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <input
+                type="text"
+                value={c.value}
+                onChange={(e) => updateCondition(i, { value: e.target.value })}
+                placeholder="值"
+                className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button onClick={() => removeCondition(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Grants */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-medium text-foreground">权限授予 (Grants)</label>
+          <button type="button" onClick={addGrant} className="text-xs text-primary hover:text-primary/80 font-medium">
+            + 添加授予
+          </button>
+        </div>
+        <div className="space-y-2">
+          {form.grants.map((g, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Select value={g.permission || "__none__"} onValueChange={(v) => updateGrant(i, { permission: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="选择权限" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__"><span className="text-muted-foreground">选择权限</span></SelectItem>
+                  {allPermissions.map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={g.data_scope || "__none__"} onValueChange={(v) => updateGrant(i, { data_scope: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="数据范围" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__"><span className="text-muted-foreground">不限</span></SelectItem>
+                  {allDataScopes.map((s) => <SelectItem key={s.id} value={s.id}>{s.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <button onClick={() => removeGrant(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+        <button onClick={onCancel}
+          className="px-3 py-1.5 text-xs font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors">
+          取消
+        </button>
+        <button onClick={onSave}
+          className="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page Component ───────────────────────────────────── */
 export default function AdminRolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"permissions" | "users">("permissions");
+  const [activeTab, setActiveTab] = useState<"permissions" | "datascope" | "policies" | "users">("permissions");
   const [showMatrix, setShowMatrix] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [roleUsers, setRoleUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  // Registry & policies
+  const [registryModules, setRegistryModules] = useState<RegistryModule[] | null>(null);
+  const [policies, setPolicies] = useState<PolicyItem[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
+  const [dataScopeSelections, setDataScopeSelections] = useState<Record<string, string>>({});
 
   const [createForm, setCreateForm] = useState<CreateRoleRequest>({
     name: "", code: "", permissions: [], description: "", level: 10, parent_role_id: undefined,
@@ -387,6 +799,7 @@ export default function AdminRolesPage() {
     name: "", description: "", permissions: [],
   });
 
+  /* ── Data loading ────────────────────────────────────────── */
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -406,6 +819,28 @@ export default function AdminRolesPage() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Fetch permissions registry on mount
+  useEffect(() => {
+    permissionsApi.getRegistry()
+      .then((res) => setRegistryModules(res.modules))
+      .catch((err) => console.error("Failed to load permissions registry:", err));
+  }, []);
+
+  // Fetch policies when tab changes to policies
+  const loadPolicies = useCallback(async () => {
+    setPoliciesLoading(true);
+    try {
+      const res = await permissionsApi.listPolicies();
+      setPolicies(res.policies || []);
+    } catch (err) {
+      console.error("Failed to load policies:", err);
+      setPolicies([]);
+    } finally {
+      setPoliciesLoading(false);
+    }
+  }, []);
+
+  /* ── Handlers ────────────────────────────────────────────── */
   const filteredRoles = searchQuery
     ? roles.filter((r) =>
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -475,10 +910,64 @@ export default function AdminRolesPage() {
     setRoleUsers([]);
   };
 
-  const handleTabChange = (tab: "permissions" | "users") => {
+  const handleTabChange = (tab: "permissions" | "datascope" | "policies" | "users") => {
     setActiveTab(tab);
     if (tab === "users" && selectedRole && roleUsers.length === 0 && !usersLoading) {
       loadRoleUsers(selectedRole);
+    }
+    if (tab === "policies" && policies.length === 0 && !policiesLoading) {
+      loadPolicies();
+    }
+  };
+
+  // Policy CRUD handlers
+  const handlePolicyToggle = async (id: string, enabled: boolean) => {
+    try {
+      await permissionsApi.updatePolicy(id, { enabled });
+      setPolicies((prev) => prev.map((p) => p.id === id ? { ...p, enabled } : p));
+    } catch (err) {
+      console.error("Failed to toggle policy:", err);
+    }
+  };
+
+  const handlePolicyDelete = async (id: string) => {
+    if (!confirm("确定要删除该策略吗？")) return;
+    try {
+      await permissionsApi.deletePolicy(id);
+      setPolicies((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("Failed to delete policy:", err);
+    }
+  };
+
+  const handlePolicySave = async (policy: PolicyItem) => {
+    try {
+      if (policy.id) {
+        await permissionsApi.updatePolicy(policy.id, { name: policy.name, conditions: policy.conditions, grants: policy.grants });
+        setPolicies((prev) => prev.map((p) => p.id === policy.id ? { ...p, name: policy.name, conditions: policy.conditions, grants: policy.grants } : p));
+      } else {
+        const created = await permissionsApi.createPolicy({
+          name: policy.name, conditions: policy.conditions, grants: policy.grants,
+          role_id: selectedRole?.id, enabled: true,
+        });
+        setPolicies((prev) => [...prev, created]);
+      }
+    } catch (err) {
+      console.error("Failed to save policy:", err);
+      alert("保存策略失败");
+    }
+  };
+
+  // Save data scope selections to role
+  const handleDataScopeChange = async (selections: Record<string, string>) => {
+    setDataScopeSelections(selections);
+    if (selectedRole && !selectedRole.is_system) {
+      try {
+        // Append data_scopes to role update payload
+        await roleApi.update(selectedRole.id, { permissions: selectedRole.permissions, data_scopes: selections } as unknown as UpdateRoleRequest);
+      } catch (err) {
+        console.error("Failed to save data scopes:", err);
+      }
     }
   };
 
@@ -492,6 +981,8 @@ export default function AdminRolesPage() {
   if (isLoading) {
     return <PageLoadingOverlay text="加载中" />;
   }
+
+  const modules = registryModules || [];
 
   return (
     <main className="h-full flex overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
@@ -527,7 +1018,6 @@ export default function AdminRolesPage() {
                       ? "bg-card border-primary/30 shadow-sm ring-1 ring-primary/10"
                       : "border-transparent hover:bg-accent"
                   )}>
-                  {/* Row 1: name + system badge */}
                   <div className="flex items-center justify-between mb-1">
                     <span className={cn("font-medium text-sm truncate", isSelected ? "text-primary" : "text-foreground")}>
                       {role.name}
@@ -536,11 +1026,9 @@ export default function AdminRolesPage() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium shrink-0 ml-1">系统</span>
                     )}
                   </div>
-                  {/* Row 2: description (always reserve space) */}
                   <div className="text-xs text-muted-foreground line-clamp-1 mb-2 min-h-[1rem]">
                     {role.description || <span className="opacity-40">暂无描述</span>}
                   </div>
-                  {/* Row 3: users count + permissions count */}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Users className="w-3 h-3" /> —
@@ -600,42 +1088,63 @@ export default function AdminRolesPage() {
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-6 mt-4 border-b border-border px-8 -mx-8">
+              <div className="flex items-center gap-6 mt-4 border-b border-border px-8 -mx-8 overflow-x-auto">
                 <button onClick={() => handleTabChange("permissions")}
-                  className={cn("pb-3 text-sm font-medium transition-colors relative",
+                  className={cn("pb-3 text-sm font-medium transition-colors relative whitespace-nowrap",
                     activeTab === "permissions" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
-                  权限配置
+                  <KeyRound className="w-3.5 h-3.5 inline mr-1.5" />
+                  操作权限
                   {activeTab === "permissions" && (
                     <motion.div layoutId="roleActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                   )}
                 </button>
+                <button onClick={() => handleTabChange("datascope")}
+                  className={cn("pb-3 text-sm font-medium transition-colors relative whitespace-nowrap",
+                    activeTab === "datascope" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+                  <Filter className="w-3.5 h-3.5 inline mr-1.5" />
+                  数据权限
+                  {activeTab === "datascope" && (
+                    <motion.div layoutId="roleActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
+                <button onClick={() => handleTabChange("policies")}
+                  className={cn("pb-3 text-sm font-medium transition-colors relative whitespace-nowrap",
+                    activeTab === "policies" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+                  <GripVertical className="w-3.5 h-3.5 inline mr-1.5" />
+                  自定义策略
+                  {activeTab === "policies" && (
+                    <motion.div layoutId="roleActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
                 <button onClick={() => handleTabChange("users")}
-                  className={cn("pb-3 text-sm font-medium transition-colors relative",
+                  className={cn("pb-3 text-sm font-medium transition-colors relative whitespace-nowrap",
                     activeTab === "users" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
                   关联用户{activeTab === "users" ? ` (${usersLoading ? "…" : roleUsers.length})` : ""}
                   {activeTab === "users" && (
                     <motion.div layoutId="roleActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                   )}
                 </button>
-                {/* Matrix view toggle */}
-                <div className="ml-auto flex items-center gap-1 pb-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowMatrix(false)}
-                    className={cn("p-1.5 rounded transition-colors", !showMatrix ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-                    title="列表视图"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowMatrix(true)}
-                    className={cn("p-1.5 rounded transition-colors", showMatrix ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-                    title="矩阵概览"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                </div>
+                {/* Matrix view toggle — only for permissions tab */}
+                {activeTab === "permissions" && (
+                  <div className="ml-auto flex items-center gap-1 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowMatrix(false)}
+                      className={cn("p-1.5 rounded transition-colors", !showMatrix ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+                      title="列表视图"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMatrix(true)}
+                      className={cn("p-1.5 rounded transition-colors", showMatrix ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+                      title="矩阵概览"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -649,7 +1158,7 @@ export default function AdminRolesPage() {
                       <div>
                         <h3 className="text-sm font-semibold mb-3">角色权限矩阵</h3>
                         <div className="bg-card rounded-xl border border-border overflow-hidden">
-                          <RoleMatrixOverview roles={roles} />
+                          <RoleMatrixOverview roles={roles} modules={registryModules} />
                         </div>
                       </div>
                     ) : (
@@ -660,6 +1169,7 @@ export default function AdminRolesPage() {
                     <PermissionPanel
                       selected={selectedRole.permissions ?? []}
                       readonly={selectedRole.is_system}
+                      modules={registryModules}
                       onChange={async (perms) => {
                         try {
                           await roleApi.update(selectedRole.id, { permissions: perms });
@@ -671,6 +1181,32 @@ export default function AdminRolesPage() {
                     />
                     </>
                     )}
+                  </motion.div>
+                ) : activeTab === "datascope" ? (
+                  <motion.div key="datascope" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    {selectedRole.is_system && (
+                      <p className="text-xs text-muted-foreground mb-4">系统角色数据权限为只读</p>
+                    )}
+                    <DataScopePanel
+                      modules={modules}
+                      selections={dataScopeSelections}
+                      onChange={handleDataScopeChange}
+                      readonly={selectedRole.is_system}
+                    />
+                  </motion.div>
+                ) : activeTab === "policies" ? (
+                  <motion.div key="policies" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <PoliciesPanel
+                      policies={policies}
+                      policiesLoading={policiesLoading}
+                      onToggle={handlePolicyToggle}
+                      onDelete={handlePolicyDelete}
+                      onAdd={loadPolicies}
+                      onSave={handlePolicySave}
+                      modules={modules}
+                    />
                   </motion.div>
                 ) : (
                   <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -778,6 +1314,7 @@ export default function AdminRolesPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">权限配置</label>
                   <PermissionPanel selected={createForm.permissions ?? []}
+                    modules={registryModules}
                     compact
                     onChange={(perms) => setCreateForm({ ...createForm, permissions: perms })} />
                 </div>
@@ -890,6 +1427,7 @@ export default function AdminRolesPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">权限配置</label>
                   <PermissionPanel selected={editForm.permissions}
+                    modules={registryModules}
                     compact
                     onChange={(perms) => setEditForm({ ...editForm, permissions: perms })} />
                 </div>

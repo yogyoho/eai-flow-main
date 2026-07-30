@@ -22,6 +22,10 @@ import type {
   CreateRoleRequest,
   UpdateRoleRequest,
   RoleHierarchyResponse,
+  PermissionsRegistryResponse,
+  PolicyListResponse,
+  PolicyCreateRequest,
+  PolicyItem,
   Department,
   DepartmentListResponse,
   CreateDepartmentRequest,
@@ -274,6 +278,16 @@ export const roleApi = {
 
   getDescendants: (id: string) =>
     request<Role[]>(`/roles/${id}/hierarchy/descendants`),
+};
+
+// ===== Permissions API =====
+
+export const permissionsApi = {
+  getRegistry: () => request<PermissionsRegistryResponse>("/permissions/registry"),
+  listPolicies: () => request<PolicyListResponse>("/policies"),
+  createPolicy: (data: PolicyCreateRequest) => request<PolicyItem>("/policies", { method: "POST", body: JSON.stringify(data) }),
+  updatePolicy: (id: string, data: Partial<PolicyCreateRequest>) => request<PolicyItem>(`/policies/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deletePolicy: (id: string) => request<MessageResponse>(`/policies/${id}`, { method: "DELETE" }),
 };
 
 // ===== Department API =====

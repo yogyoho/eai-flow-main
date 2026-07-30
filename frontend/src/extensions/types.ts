@@ -118,6 +118,63 @@ export interface RoleHierarchyResponse {
   all_permissions: string[];
 }
 
+export interface PermissionItem {
+  id: string;
+  display_name: string;
+  admin_only?: boolean;
+}
+
+export interface DataScopeItem {
+  id: string;
+  display_name: string;
+}
+
+export interface RegistryModule {
+  key: string;
+  display_name: string;
+  permissions: PermissionItem[];
+  data_scopes: DataScopeItem[];
+}
+
+export interface PermissionsRegistryResponse {
+  modules: RegistryModule[];
+}
+
+export interface PolicyCondition {
+  attribute: string;
+  operator: string;
+  value: string;
+}
+
+export interface PolicyGrant {
+  permission: string;
+  data_scope: string;
+}
+
+export interface PolicyItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  conditions: PolicyCondition[];
+  grants: PolicyGrant[];
+  role_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PolicyListResponse {
+  policies: PolicyItem[];
+  total: number;
+}
+
+export interface PolicyCreateRequest {
+  name: string;
+  conditions: PolicyCondition[];
+  grants: PolicyGrant[];
+  role_id?: string;
+  enabled?: boolean;
+}
+
 export interface Department {
   id: string;
   name: string;
