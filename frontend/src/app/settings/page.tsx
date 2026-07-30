@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Settings } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { useI18n } from "@/core/i18n/hooks";
@@ -11,17 +11,27 @@ import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 
 
 import { BasicSettings } from "./basic-settings";
+import { usePermission } from "@/core/permissions";
 
 export default function SettingsPage() {
   const { t } = useI18n();
+  const { canPage } = usePermission();
   const [activeTab, setActiveTab] = useState("basic");
 
   const tabs = [
-    { id: "basic", label: t.settings.sections.basic },
-    { id: "data-sources", label: "数据源" },
-    // { id: "plugins", label: "插件" },   // 插件系统容器化改造中，暂时下线入口
-    { id: "license", label: "许可证" },
-  ];
+    { id: "basic", label: t.settings.sections.basic, pageId: "settings:page:general" },
+    { id: "data-sources", label: "数据源", pageId: "settings:page:datasource" },
+    // { id: "plugins", pageId: "settings:page:plugins", label: "插件" },   // 插件系统容器化改造中，暂时下线入口
+    { id: "license", label: "许可证", pageId: "settings:page:license" },
+  ].filter(tab => canPage(tab.pageId));
+
+  // 如果当前 activeTab 不在权限范围内，回退到第一个可见 tab
+  useEffect(() => {
+    const validIds = tabs.map(t => t.id);
+    if (validIds.length > 0 && !validIds.includes(activeTab)) {
+      setActiveTab(validIds[0]);
+    }
+  }, [tabs, activeTab]);
 
   return (
     <div className="flex flex-col h-full bg-background">
