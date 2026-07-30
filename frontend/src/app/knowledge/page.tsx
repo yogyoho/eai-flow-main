@@ -39,6 +39,8 @@ import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+// EAI-CUSTOM: button-level permission control
+import { PermissionProvider, usePermission } from "@/core/permissions";
 import { kbApi } from "@/extensions/api";
 import type {
   KnowledgeBase,
@@ -1337,6 +1339,8 @@ function KnowledgeBaseDetail({
 // ─── KnowledgeBaseManagement ─────────────────────────────────────────────────
 
 function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: string }) {
+  // EAI-CUSTOM: button-level permission check
+  const { can } = usePermission();
   const { toasts, show: toast, remove } = useToast();
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [typeFilter, setTypeFilter] = useState("all");
@@ -1566,10 +1570,13 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
               </p>
             </div>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="shrink-0">
-            <Plus className="h-4 w-4" />
-            新建知识库
-          </Button>
+          {/* EAI-CUSTOM: gate create button by kb:create permission */}
+          {can("kb:create") && (
+            <Button onClick={() => setIsCreateOpen(true)} className="shrink-0">
+              <Plus className="h-4 w-4" />
+              新建知识库
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -2220,10 +2227,13 @@ function KnowledgePageInner() {
 
 export default function KnowledgePage() {
   return (
-    <SimpleShellLayout>
-      <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-        <KnowledgePageInner />
-      </Suspense>
-    </SimpleShellLayout>
+    {/* EAI-CUSTOM: PermissionProvider enables button-level permission check in KnowledgeBaseManagement */}
+    <PermissionProvider>
+      <SimpleShellLayout>
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+          <KnowledgePageInner />
+        </Suspense>
+      </SimpleShellLayout>
+    </PermissionProvider>
   );
 }

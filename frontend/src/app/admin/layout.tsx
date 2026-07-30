@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
+// EAI-CUSTOM: button-level permission control
+import { PermissionProvider } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -84,8 +86,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SimpleShellLayout>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
-    </SimpleShellLayout>
+    {/* EAI-CUSTOM: PermissionProvider wraps admin layout for button-level permission checks */}
+    <PermissionProvider>
+      <SimpleShellLayout>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </SimpleShellLayout>
+    </PermissionProvider>
   );
 }

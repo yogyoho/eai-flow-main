@@ -28,6 +28,8 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+// EAI-CUSTOM: button-level permission control
+import { usePermission } from "@/core/permissions";
 import { userApi, roleApi, deptApi } from "@/extensions/api";
 import type {
   User,
@@ -49,6 +51,9 @@ function flattenDepts(depts: Department[]): Department[] {
 }
 
 export default function AdminUsersPage() {
+  // EAI-CUSTOM: button-level permission check
+  const { can } = usePermission();
+
   // Server-side pagination state
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -314,12 +319,15 @@ export default function AdminUsersPage() {
             <h1 className="text-2xl font-bold text-foreground">用户管理</h1>
             <p className="text-muted-foreground mt-1 text-sm">管理企业内所有用户的账号、部门归属及角色权限。</p>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> 添加用户
-          </button>
+          {/* EAI-CUSTOM: gate create user button by user:create permission */}
+          {can("user:create") && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> 添加用户
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
@@ -475,13 +483,16 @@ export default function AdminUsersPage() {
                         >
                           <Lock className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                          title="删除用户"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* EAI-CUSTOM: gate delete user button by user:delete permission */}
+                        {can("user:delete") && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            title="删除用户"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
