@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
+import { usePermission } from "@/core/permissions";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -41,19 +42,20 @@ interface NavItem {
   adminOnly?: boolean;
   /** If set, this nav item is hidden when the license module is not authorized */
   licenseModule?: string;
+  navId?: string;
   newTab?: boolean;
 }
 
 const allNavItems: NavItem[] = [
-  { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard" },
-  { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform" },
-  { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project" },
-  { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform" },
-  { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform" },
-  { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform" },
-  { href: "/app-center", label: "应用中心", icon: Blocks, licenseModule: "platform" },
-  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true, licenseModule: "platform" },
-  { href: "/settings", label: "设置", icon: Settings, licenseModule: "platform" },
+  { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard", navId: "nav:dashboard" },
+  { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
+  { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project", navId: "nav:projects" },
+  { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform", navId: "nav:docmgr" },
+  { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform", navId: "nav:knowledge-factory" },
+  { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform", navId: "nav:knowledge" },
+  { href: "/app-center", label: "应用中心", icon: Blocks, licenseModule: "platform", navId: "nav:app-center" },
+  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true, licenseModule: "platform", navId: "nav:admin" },
+  { href: "/settings", label: "设置", icon: Settings, licenseModule: "platform", navId: "nav:settings" },
 ];
 
 const bottomNavItems: NavItem[] = [];
@@ -98,16 +100,19 @@ export function ExtensionsSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { hasModule, isLoading: licenseLoading } = useLicense();
+  const { canNav } = usePermission();
   const [mounted, setMounted] = useState(false);
 
   const isAdmin = user?.role_name === "Super Admin";
 
-  // Filter by admin role + license module authorization
+  // Filter by admin role + license module authorization + nav-level permission
   const navItems = allNavItems.filter((item) => {
     // Admin-only items: skip if not admin
     if (item.adminOnly && !isAdmin) return false;
     // License-gated items: skip if module not authorized (show during loading)
     if (item.licenseModule && !licenseLoading && !hasModule(item.licenseModule)) return false;
+    // Nav-level permission: skip if user doesn't have nav permission
+    if (item.navId && !canNav(item.navId)) return false;
     return true;
   });
 
