@@ -213,27 +213,38 @@ def require_permission(permission: str):
             )
 
         # EAI-CUSTOM: Delegate permission check to UnifiedPermissionEngine (ABAC-lite)
+        from app.extensions.auth.cache import (
+            get_cached_engine, set_cached_engine,
+            get_cached_identity, set_cached_identity,
+        )
         from app.extensions.auth.engine import UnifiedPermissionEngine
         from app.extensions.auth.identity import get_identity_provider
         from app.extensions.auth.registry import get_permission_registry
 
-        # Build engine from current DB state
+        # Roles are always loaded (one cheap scan) — needed for is_system check
         result = await db.execute(select(Role))
         roles = result.scalars().all()
         role_permissions: dict[str, set[str]] = {}
         for r in roles:
             role_permissions[r.code] = set(r.permissions or [])
 
-        registry = get_permission_registry()
-        all_ids = {p.id for p in registry.list_all_permissions()}
+        # Engine: cached per request
+        engine = get_cached_engine()
+        if engine is None:
+            registry = get_permission_registry()
+            all_ids = {p.id for p in registry.list_all_permissions()}
+            engine = UnifiedPermissionEngine(
+                role_permissions=role_permissions,
+                all_permission_ids=all_ids,
+            )
+            set_cached_engine(engine)
 
-        engine = UnifiedPermissionEngine(
-            role_permissions=role_permissions,
-            all_permission_ids=all_ids,
-        )
-
-        provider = get_identity_provider()
-        identity = await provider.resolve(current_user.id, db)
+        # Identity: cached per request
+        identity = get_cached_identity()
+        if identity is None:
+            provider = get_identity_provider()
+            identity = await provider.resolve(current_user.id, db)
+            set_cached_identity(identity)
 
         if identity.role_code and roles:
             # Preserve is_system wildcard behavior: system roles with * get everything
