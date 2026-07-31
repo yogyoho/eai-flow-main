@@ -1044,7 +1044,7 @@ export default function AdminRolesPage() {
     name: "", description: "", permissions: [], nav: [],
   });
   /* EAI-CUSTOM: which nav modules are visible for the selected role (detail view) */
-  const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set(ALL_NAV_IDS));
+  const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set());  // EAI-CUSTOM: starts empty, populated by loadData/handleSelectRole
 
   /* ── Data loading ────────────────────────────────────────── */
   const loadData = async () => {
@@ -1052,11 +1052,18 @@ export default function AdminRolesPage() {
     try {
       const res = await roleApi.list();
       setRoles(res.roles);
-      setSelectedRole((prev) =>
-        prev
+      setSelectedRole((prev) => {
+        const next = prev
           ? (res.roles.find((r) => r.id === prev.id) ?? prev)
-          : (res.roles[0] ?? null)
-      );
+          : (res.roles[0] ?? null);
+        // EAI-CUSTOM: sync nav visibility when role data refreshes
+        if (next && next.nav && next.nav.length > 0) {
+          setDetailNavSet(new Set(next.nav));
+        } else if (next) {
+          setDetailNavSet(new Set(ALL_NAV_IDS));
+        }
+        return next;
+      });
     } catch (err) {
       console.error(err);
     } finally {
