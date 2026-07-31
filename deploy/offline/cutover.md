@@ -163,6 +163,20 @@ docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compos
 
 ---
 
+### 坑 4：Temporal 报 `password authentication failed for user "temporal"`
+**症状**：temporal 容器 crash-loop，日志 `pq: password authentication failed for user "temporal"`。
+**根因**：postgres 的 `/docker-entrypoint-initdb.d/10-temporal.sh`（创建 temporal 角色 + temporal/temporal_visibility 库）只在 postgres **数据卷真正为空** 时执行。若卷有残留（或只清了 `./data` 没清 named volume `eai-prod_prod-postgres-ext-data`），脚本被跳过 → temporal 角色没建 → temporal 连不上。
+**对策**：手动补建 temporal 角色 + 库（幂等），再**重启** temporal（不要 force-recreate）：
+```bash
+docker exec prod-eai-flow-postgres-ext sh /docker-entrypoint-initdb.d/10-temporal.sh   # 幂等：建角色 + 两库
+docker restart prod-eai-flow-temporal
+docker logs prod-eai-flow-temporal --tail 20   # 期望：Namespace cache refreshed / Search attributes added，无 auth failed
+```
+> `Search attribute ... already exists` 是幂等告警，不是错误。
+> 重启 temporal 即可（重连 postgres）；**别用 `up --force-recreate temporal`**——会级联重建依赖 postgres-ext，触发容器名冲突（`/prod-eai-flow-postgres-ext already in use`）。要单独重建某服务用 `--no-deps`。
+
+---
+
 ## 割接后：日常增量升级（不再全量重传）
 
 开发机改代码后：
