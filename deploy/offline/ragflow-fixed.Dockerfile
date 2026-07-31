@@ -6,9 +6,14 @@ FROM infiniflow/ragflow:v0.25.3
 
 # F.11: 把 venv 加入 PATH 并补 pip 软链（entrypoint 的 `pip` 调用才能解析）
 ENV PATH=/ragflow/.venv/bin:${PATH}
+# F.13: tiktoken 缓存目录钉在 /root/.cache（在 /ragflow 之外，不被 named volume prod-ragflow-data 覆盖）
+ENV TIKTOKEN_CACHE_DIR=/root/.cache/tiktoken
 RUN ln -sf pip3 /ragflow/.venv/bin/pip || true
 
-# F.13: 构建期（开发机有网）预下载 tiktoken 的 cl100k_base 编码文件并烘焙进镜像，
+# F.13: 构建期（开发机有网）预下载 cl100k_base.tiktoken 并烘焙进镜像。
 # 离线服务器首次初始化即无需连 openaipublic.blob.core.windows.net。
-# best-effort：下载失败不阻断构建（开发机无网时跳过，服务器侧仍可走 RAGFLOW_HTTP_PROXY 兜底）。
-RUN /ragflow/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" 2>/dev/null || true
+# 关键：**校验**文件落地（旧版 `|| true` 吞掉下载失败 → 镜像没文件 → 离线仍下载 → crash）。
+# 下载失败直接让构建失败（别 ship 一个假离线镜像）。
+RUN mkdir -p /root/.cache/tiktoken && \
+    /ragflow/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" && \
+    test -n "$(ls -A /root/.cache/tiktoken)" || (echo "FATAL: tiktoken cl100k_base 预下载失败" && exit 1)
