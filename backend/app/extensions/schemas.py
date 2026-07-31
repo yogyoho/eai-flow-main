@@ -187,6 +187,8 @@ class RoleCreate(RoleBase):
     """Role create schema."""
 
     permissions: list[str] = []
+    # EAI-CUSTOM: module nav visibility
+    nav: list[str] = []
 
 
 class RoleUpdate(BaseModel):
@@ -197,6 +199,8 @@ class RoleUpdate(BaseModel):
     permissions: list[str] | None = None
     level: int | None = None
     parent_role_id: UUID | None = None
+    # EAI-CUSTOM: module nav visibility
+    nav: list[str] | None = None
 
 
 class RoleResponse(RoleBase):
@@ -209,6 +213,8 @@ class RoleResponse(RoleBase):
     is_system: bool
     parent_role_name: str | None = None
     created_at: datetime
+    # EAI-CUSTOM: module nav visibility
+    nav: list[str] = []
 
 
 class RoleListResponse(BaseModel):

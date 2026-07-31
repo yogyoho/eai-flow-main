@@ -86,6 +86,8 @@ export interface Role {
   parent_role_id?: string;
   parent_role_name?: string;
   created_at: string;
+  /** EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") */
+  nav?: string[];
 }
 
 export interface RoleListResponse {
@@ -100,6 +102,8 @@ export interface CreateRoleRequest {
   description?: string;
   level?: number;
   parent_role_id?: string;
+  /** EAI-CUSTOM: module nav visibility */
+  nav?: string[];
 }
 
 export interface UpdateRoleRequest {
@@ -108,6 +112,8 @@ export interface UpdateRoleRequest {
   description?: string;
   level?: number;
   parent_role_id?: string;
+  /** EAI-CUSTOM: module nav visibility list */
+  nav?: string[];
 }
 
 export interface RoleHierarchyResponse {

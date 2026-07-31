@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -119,9 +120,12 @@ const PERMISSION_CATEGORIES = [
 /* ── Helpers ─────────────────────────────────────────── */
 function getModuleIcon(key: string) {
   const map: Record<string, React.ComponentType<{ className?: string }>> = {
-    knowledge: Database, model: Brain, plugin: Puzzle,
-    system: Wrench, project: FolderKanban, approval: ClipboardCheck,
-    document: FileText, workflow: Workflow,
+    dashboard: LayoutGrid, knowledge: Database, model: Brain,
+    plugin: Puzzle, system: Wrench, project: FolderKanban,
+    approval: ClipboardCheck, document: FileText, workflow: Workflow,
+    writing: FileText, docmgr: FileText, knowledge_factory: Brain,
+    contract_price: FileText, output: FileText,
+    workflow_admin: Workflow, admin: Shield, settings: Settings,
   };
   return map[key] || Shield;
 }
@@ -165,6 +169,29 @@ function getAllTreePermKeys(modules: RegistryModule[]): string[] {
 /** Flat list of all permission keys from PERMISSION_CATEGORIES fallback. */
 function getAllFallbackPermKeys(): string[] {
   return PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
+}
+
+/* ── EAI-CUSTOM: Module key → nav_id mapping ─────────────── */
+const MODULE_NAV_MAP: Record<string, string> = {
+  "dashboard": "nav:dashboard",
+  "writing": "nav:writing",
+  "projects": "nav:projects",
+  "docmgr": "nav:docmgr",
+  "knowledge": "nav:knowledge",
+  "knowledge_factory": "nav:knowledge-factory",
+  "contract_price": "nav:contract-price",
+  "output": "nav:output",
+  "workflow_admin": "nav:workflow-admin",
+  "admin": "nav:admin",
+  "settings": "nav:settings",
+};
+
+/** All known nav IDs from MODULE_NAV_MAP */
+const ALL_NAV_IDS = Object.values(MODULE_NAV_MAP);
+
+/** Derive nav_id from a module key, or null if not mapped */
+function getNavIdForModule(key: string): string | null {
+  return MODULE_NAV_MAP[key] || null;
 }
 
 /* ── Animated Permission Checkbox ─────────────────────────── */
@@ -211,13 +238,20 @@ function PermCheckbox({ checked, disabled }: { checked: boolean; disabled?: bool
 function PermissionPanel({
   selected, onChange, readonly = false, compact = false,
   modules,
+  enabledNavs,
+  onNavToggle,
 }: {
   selected: string[];
   onChange: (perms: string[]) => void;
   readonly?: boolean;
   compact?: boolean;
   modules?: RegistryModule[] | null;
+  /** EAI-CUSTOM: set of nav IDs (e.g. "nav:knowledge") that are visible */
+  enabledNavs?: Set<string>;
+  /** EAI-CUSTOM: called when a module nav toggle changes */
+  onNavToggle?: (navId: string, enabled: boolean) => void;
 }) {
+  const defaultEnabledNavs = enabledNavs ?? new Set(ALL_NAV_IDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const isTree = hasPageTree(modules);
   const treeModules: RegistryModule[] = isTree ? modules! : [];
@@ -287,6 +321,8 @@ function PermissionPanel({
           const allCatSelected = totalOps > 0 && allOpIds.every((k) => selected.includes(k));
           const ratio = totalOps > 0 ? selectedCount / totalOps : 0;
           const Icon = getModuleIcon(mod.key);
+          const navId = getNavIdForModule(mod.key);
+          const moduleVisible = navId ? defaultEnabledNavs.has(navId) : true;
 
           return (
             <div key={mod.key} className="bg-card rounded-xl border border-border overflow-hidden">
@@ -296,19 +332,19 @@ function PermissionPanel({
                   className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
-                    selectedCount > 0
+                    selectedCount > 0 && moduleVisible
                       ? "bg-primary/10 border border-primary/20"
                       : "bg-muted border border-border",
                   )}>
-                    <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 ? "text-primary" : "text-muted-foreground")} />
+                    <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 && moduleVisible ? "text-primary" : "text-muted-foreground")} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground text-sm">{mod.display_name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground tabular-nums">{selectedCount}/{totalOps}</span>
+                      <span className={cn("text-xs tabular-nums", moduleVisible ? "text-muted-foreground" : "text-muted-foreground/50")}>{selectedCount}/{totalOps}</span>
                       <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
                         <motion.span
-                          className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                          className={cn("absolute inset-y-0 left-0 rounded-full", moduleVisible ? "bg-primary" : "bg-muted-foreground/30")}
                           initial={false}
                           animate={{ width: `${ratio * 100}%` }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
@@ -323,15 +359,28 @@ function PermissionPanel({
                   </div>
                 </button>
                 {!readonly && totalOps > 0 && (
-                  <button type="button" onClick={() => toggleCategory(allOpIds)}
+                  <button type="button" onClick={() => { if (moduleVisible) toggleCategory(allOpIds); }}
+                    disabled={!moduleVisible}
                     className={cn(
                       "px-3 py-1.5 mr-3 text-xs font-semibold rounded-lg transition-all duration-200 shrink-0",
+                      !moduleVisible ? "opacity-40 cursor-not-allowed" : "",
                       allCatSelected
                         ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                         : "bg-secondary/60 text-muted-foreground border border-transparent hover:bg-accent hover:text-foreground hover:border-border",
                     )}>
                     {allCatSelected ? "取消全选" : "全选本组"}
                   </button>
+                )}
+                {/* EAI-CUSTOM: Module visibility toggle */}
+                {navId && onNavToggle && (
+                  <div className={cn("flex items-center gap-1.5 mr-3 shrink-0", readonly ? "opacity-50 pointer-events-none" : "")}>
+                    <span className="text-xs text-muted-foreground">模块可见</span>
+                    <Switch
+                      checked={moduleVisible}
+                      onCheckedChange={(checked) => onNavToggle(navId, checked)}
+                      disabled={readonly}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -340,7 +389,8 @@ function PermissionPanel({
                 {isExpanded && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="px-3 pb-3 pt-1">
+                    {/* EAI-CUSTOM: gray out + disable interaction when module not visible */}
+                    <div className={cn("px-3 pb-3 pt-1", !moduleVisible && "opacity-50 pointer-events-none")}>
                       {hasPages ? (
                         mod.pages!.map((page) => {
                           const pageHasOps = page.operations.length > 0;
@@ -988,11 +1038,13 @@ export default function AdminRolesPage() {
   const [dataScopeSelections, setDataScopeSelections] = useState<Record<string, string>>({});
 
   const [createForm, setCreateForm] = useState<CreateRoleRequest>({
-    name: "", code: "", permissions: [], description: "", level: 10, parent_role_id: undefined,
+    name: "", code: "", permissions: [], description: "", level: 10, parent_role_id: undefined, nav: ALL_NAV_IDS,
   });
-  const [editForm, setEditForm] = useState<{ name: string; description: string; permissions: string[]; level?: number; parent_role_id?: string }>({
-    name: "", description: "", permissions: [],
+  const [editForm, setEditForm] = useState<{ name: string; description: string; permissions: string[]; level?: number; parent_role_id?: string; nav: string[] }>({
+    name: "", description: "", permissions: [], nav: [],
   });
+  /* EAI-CUSTOM: which nav modules are visible for the selected role (detail view) */
+  const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set(ALL_NAV_IDS));
 
   /* ── Data loading ────────────────────────────────────────── */
   const loadData = async () => {
@@ -1048,7 +1100,7 @@ export default function AdminRolesPage() {
     try {
       await roleApi.create(createForm);
       setIsCreateModalOpen(false);
-      setCreateForm({ name: "", code: "", permissions: [], description: "" });
+      setCreateForm({ name: "", code: "", permissions: [], description: "", nav: ALL_NAV_IDS });
       loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "创建失败");
@@ -1072,6 +1124,7 @@ export default function AdminRolesPage() {
       permissions: role.permissions ?? [],
       level: role.level,
       parent_role_id: role.parent_role_id,
+      nav: role.nav ?? ALL_NAV_IDS,
     });
     setIsEditModalOpen(true);
   };
@@ -1103,6 +1156,12 @@ export default function AdminRolesPage() {
     setSelectedRole(role);
     setActiveTab("permissions");
     setRoleUsers([]);
+    // EAI-CUSTOM: initialize nav visibility from role data (default all enabled)
+    if (role.nav && role.nav.length > 0) {
+      setDetailNavSet(new Set(role.nav));
+    } else {
+      setDetailNavSet(new Set(ALL_NAV_IDS));
+    }
   };
 
   const handleTabChange = (tab: "permissions" | "datascope" | "policies" | "users") => {
@@ -1365,6 +1424,18 @@ export default function AdminRolesPage() {
                       selected={selectedRole.permissions ?? []}
                       readonly={selectedRole.is_system}
                       modules={registryModules}
+                      enabledNavs={detailNavSet}
+                      onNavToggle={async (navId, enabled) => {
+                        const newNavs = enabled
+                          ? [...detailNavSet, navId]
+                          : [...detailNavSet].filter(n => n !== navId);
+                        setDetailNavSet(new Set(newNavs));
+                        try {
+                          await roleApi.update(selectedRole.id, { nav: newNavs });
+                        } catch (err: unknown) {
+                          alert(err instanceof Error ? err.message : "更新导航可见性失败");
+                        }
+                      }}
                       onChange={async (perms) => {
                         try {
                           await roleApi.update(selectedRole.id, { permissions: perms });
@@ -1511,6 +1582,15 @@ export default function AdminRolesPage() {
                   <PermissionPanel selected={createForm.permissions ?? []}
                     modules={registryModules}
                     compact
+                    enabledNavs={new Set(createForm.nav || ALL_NAV_IDS)}
+                    onNavToggle={(navId, enabled) => {
+                      setCreateForm(prev => ({
+                        ...prev,
+                        nav: enabled
+                          ? [...(prev.nav || ALL_NAV_IDS), navId]
+                          : (prev.nav || ALL_NAV_IDS).filter(n => n !== navId),
+                      }));
+                    }}
                     onChange={(perms) => setCreateForm({ ...createForm, permissions: perms })} />
                 </div>
               </form>
@@ -1624,6 +1704,15 @@ export default function AdminRolesPage() {
                   <PermissionPanel selected={editForm.permissions}
                     modules={registryModules}
                     compact
+                    enabledNavs={new Set(editForm.nav)}
+                    onNavToggle={(navId, enabled) => {
+                      setEditForm(prev => ({
+                        ...prev,
+                        nav: enabled
+                          ? [...prev.nav, navId]
+                          : prev.nav.filter(n => n !== navId),
+                      }));
+                    }}
                     onChange={(perms) => setEditForm({ ...editForm, permissions: perms })} />
                 </div>
               </div>

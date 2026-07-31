@@ -231,6 +231,10 @@ async def migrate_db() -> None:
         await conn.execute(
             text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()")
         )
+        # EAI-CUSTOM: module nav visibility
+        await conn.execute(
+            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS nav VARCHAR(200)[] DEFAULT '{}'")
+        )
         await conn.execute(
             text("CREATE INDEX IF NOT EXISTS idx_roles_parent_role_id ON roles(parent_role_id)")
         )
@@ -1238,6 +1242,10 @@ async def migrate_db() -> None:
         # T8 observable progress: {total,done,failed,phase} updated per-doc by the cli.
         await conn.execute(text(
             "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS progress JSONB"
+        ))
+        # T10: human-readable task label (auto-derived from trigger_type + phase)
+        await conn.execute(text(
+            "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS label VARCHAR(100)"
         ))
         # T9 task grouping: link items to the parse run that created them.
         await conn.execute(text(

@@ -64,6 +64,8 @@ class Role(Base):
     level: Mapped[int] = mapped_column(Integer, default=10)
     parent_role_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    # EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge")
+    nav: Mapped[list] = mapped_column(ARRAY(String), default=[])
 
     # Relationships
     users: Mapped[list["User"]] = relationship("User", back_populates="role")

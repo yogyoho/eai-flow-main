@@ -59,6 +59,8 @@ class RoleService:
             description=data.description,
             level=data.level,
             parent_role_id=data.parent_role_id,
+            # EAI-CUSTOM: module nav visibility
+            nav=data.nav if data.nav else [],
         )
         db.add(role)
         await db.commit()
@@ -78,6 +80,9 @@ class RoleService:
             role.level = data.level
         if data.parent_role_id is not None:
             role.parent_role_id = data.parent_role_id
+        # EAI-CUSTOM: update module nav visibility
+        if data.nav is not None:
+            role.nav = data.nav
 
         await db.commit()
         await db.refresh(role)
@@ -96,6 +101,8 @@ class RoleService:
             code=data.new_code,
             permissions=role.permissions or [],
             description=role.description,
+            # EAI-CUSTOM: copy module nav visibility
+            nav=role.nav or [],
         )
         db.add(new_role)
         await db.commit()
