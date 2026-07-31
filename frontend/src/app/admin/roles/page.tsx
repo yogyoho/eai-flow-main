@@ -1156,7 +1156,7 @@ export default function AdminRolesPage() {
     setSelectedRole(role);
     setActiveTab("permissions");
     setRoleUsers([]);
-    // EAI-CUSTOM: initialize nav visibility from role data (default all enabled)
+    // EAI-CUSTOM: initialize nav visibility from role data (DB values)
     if (role.nav && role.nav.length > 0) {
       setDetailNavSet(new Set(role.nav));
     } else {
