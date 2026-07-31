@@ -157,4 +157,5 @@ class RoleService:
             parent_role_id=role.parent_role_id,
             parent_role_name=parent_role_name,
             created_at=role.created_at,
+            nav=role.nav or [],  # EAI-CUSTOM: module nav visibility
         )
