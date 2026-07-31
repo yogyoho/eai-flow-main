@@ -1,0 +1,344 @@
+config_version: 11
+log_level: info
+token_usage:
+  enabled: true
+models:
+- name: agnes-2.0-Flash
+  display_name: Agnes-2.0-Flash
+  use: langchain_openai:ChatOpenAI
+  model: agnes-2.0-flash
+  api_key: $AGNES_API_KEY
+  base_url: https://apihub.agnes-ai.com/v1/
+  request_timeout: 300.0
+  max_tokens: 8192
+  temperature: 0.7
+- name: glm-4.7-flash
+  display_name: GLM-4.7-flash (智谱官方)
+  use: langchain_openai:ChatOpenAI
+  model: glm-4.7-flash
+  api_key: $ZHIPU_API_KEY
+  base_url: https://open.bigmodel.cn/api/paas/v4/
+  request_timeout: 300.0
+  max_tokens: 8192
+  temperature: 0.7
+- name: glm-5.1
+  display_name: GLM-5.1 (智谱官方)
+  use: langchain_openai:ChatOpenAI
+  model: glm-5.1
+  api_key: $ZHIPU_API_KEY
+  base_url: https://open.bigmodel.cn/api/paas/v4/
+  request_timeout: 300.0
+  max_tokens: 8192
+  temperature: 0.7
+- name: siliconflow-qwen
+  display_name: Qwen3.5-9B via SiliconFlow
+  use: langchain_openai:ChatOpenAI
+  model: Qwen/Qwen3.5-9B
+  api_key: $SILICONFLOW_API_KEY
+  base_url: https://api.siliconflow.cn/v1
+  max_tokens: 16384
+  supports_thinking: true
+- name: deepseek-v4-pro
+  display_name: DeepSeek V4 Pro
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-v4-pro
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 600.0
+  max_retries: 2
+  max_tokens: 8192
+  supports_thinking: true
+  supports_vision: false
+  when_thinking_enabled:
+    extra_body:
+      thinking:
+        type: enabled
+  when_thinking_disabled:
+    extra_body:
+      thinking:
+        type: disabled
+- name: deepseek-v4-flash
+  display_name: DeepSeek V4 Flash
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-v4-flash
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 60.0
+  max_retries: 1
+  max_tokens: 8192
+  supports_thinking: true
+  supports_vision: false
+  when_thinking_enabled:
+    extra_body:
+      thinking:
+        type: enabled
+  when_thinking_disabled:
+    extra_body:
+      thinking:
+        type: disabled
+
+# =============================================================================
+# 内网 LLM 模板（完全离线客户取消注释并修改）
+# =============================================================================
+# - name: intranet-llm
+#   display_name: 内网大模型
+#   use: langchain_openai:ChatOpenAI
+#   model: your-model-name-here
+#   api_key: $INTERNAL_LLM_API_KEY
+#   base_url: http://your-llm-server:port/v1/
+#   request_timeout: 600.0
+#   max_retries: 2
+#   max_tokens: 8192
+#   temperature: 0.7
+#   supports_vision: false
+#   supports_thinking: false
+
+tool_groups:
+- name: web
+- name: file:read
+- name: file:write
+- name: bash
+tools:
+# === 搜索配置 ===
+- name: web_search
+  group: web
+  use: deerflow.community.ddg_search.tools:web_search_tool
+  max_results: 5
+  # 备选: searxng(自托管搜索,内网友好)
+  # use: deerflow.community.searxng.tools:web_search_tool
+  # base_url: http://searxng:8080
+- name: web_fetch
+  group: web
+  use: deerflow.community.browserless.tools:web_fetch_tool
+  base_url: http://browserless:3000
+  timeout_s: 30
+  # 备选: jina_ai(Reader API,需Key)
+  # use: deerflow.community.jina_ai.tools:web_fetch_tool
+  # timeout: 10
+  # 备选: crawl4ai(自托管爬虫,JS重页面,无需Key)
+  # use: deerflow.community.crawl4ai.tools:web_fetch_tool
+  # base_url: http://localhost:11235
+  # timeout: 30
+- name: image_search
+  group: web
+  use: deerflow.community.image_search.tools:image_search_tool
+  max_results: 5
+- name: web_capture                          # Browserless 截图(自托管,无需Key)
+  group: web
+  use: deerflow.community.browserless.tools:web_capture_tool
+
+  # === 需 API Key 的社区模块(占位,获取 Key 后取消注释即可激活) ===
+  # Brave Search — 独立搜索引擎,需 BRAVE_SEARCH_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.brave.tools:web_search_tool
+  #   max_results: 5
+  # - name: image_search
+  #   group: web
+  #   use: deerflow.community.brave.tools:image_search_tool
+  #   max_results: 5
+  # Serper — Google 搜索,需 SERPER_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.serper.tools:web_search_tool
+  #   max_results: 5
+  # - name: image_search
+  #   group: web
+  #   use: deerflow.community.serper.tools:image_search_tool
+  #   max_results: 5
+  # Tavily — AI 搜索,需 TAVILY_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.tavily.tools:web_search_tool
+  #   max_results: 5
+  # Exa — 语义搜索,需 EXA_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.exa.tools:web_search_tool
+  #   max_results: 5
+  # GroundRoute — 元搜索聚合6引擎,需 GROUNDROUTE_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.groundroute.tools:web_search_tool
+  #   max_results: 5
+  # Firecrawl — 网页批量抓取,需 FIRECRAWL_API_KEY
+  # - name: web_fetch
+  #   group: web
+  #   use: deerflow.community.firecrawl.tools:web_fetch_tool
+  # fastCRW — Firecrawl 兼容抓取,需 CRW_API_KEY
+  # - name: web_fetch
+  #   group: web
+  #   use: deerflow.community.fastcrw.tools:web_fetch_tool
+  #   max_results: 5
+  # InfoQuest — AI 搜索问答,需 INFOQUEST_API_KEY
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.infoquest.tools:web_search_tool
+  #   max_results: 5
+- name: ls
+  group: file:read
+  use: deerflow.sandbox.tools:ls_tool
+- name: read_file
+  group: file:read
+  use: deerflow.sandbox.tools:read_file_tool
+- name: glob
+  group: file:read
+  use: deerflow.sandbox.tools:glob_tool
+  max_results: 200
+- name: grep
+  group: file:read
+  use: deerflow.sandbox.tools:grep_tool
+  max_results: 100
+- name: write_file
+  group: file:write
+  use: deerflow.sandbox.tools:write_file_tool
+- name: str_replace
+  group: file:write
+  use: deerflow.sandbox.tools:str_replace_tool
+- name: bash
+  group: bash
+  use: deerflow.sandbox.tools:bash_tool
+tool_search:
+  enabled: false
+input_polish:
+  enabled: true
+  max_chars: 4000
+  model_name: null   # null = use default chat model; set to fast model for lower latency
+uploads:
+  auto_convert_documents: true
+  pdf_converter: auto
+  max_files: 10
+  max_file_size: 52428800
+  max_total_size: 104857600
+sandbox:
+  use: deerflow.sandbox.local:LocalSandboxProvider
+  allow_host_bash: true
+  bash_output_max_chars: 20000
+  read_file_output_max_chars: 50000
+  ls_output_max_chars: 20000
+skills:
+  container_path: /mnt/skills
+title:
+  enabled: true
+  max_words: 6
+  max_chars: 60
+  model_name: null
+ui:
+  show_tool_output: false
+summarization:
+  enabled: true
+  model_name: null
+  trigger:
+  - type: tokens
+    value: 15564
+  keep:
+    type: messages
+    value: 10
+  trim_tokens_to_summarize: 15564
+  summary_prompt: "请用中文对以下对话进行简洁总结。保留关键事实、决策、用户偏好和待办事项。输出格式：先用1-2句话概括主题，再列出3-5个关键点。"
+  preserve_recent_skill_count: 5
+  preserve_recent_skill_tokens: 25000
+  preserve_recent_skill_tokens_per_skill: 5000
+  skill_file_read_tool_names:
+  - read_file
+  - read
+  - view
+  - cat
+memory:
+  enabled: true
+  storage_path: memory.json
+  debounce_seconds: 30
+  model_name: null
+  max_facts: 100
+  fact_confidence_threshold: 0.7
+  injection_enabled: true
+  max_injection_tokens: 2000
+agents_api:
+  enabled: true
+skill_evolution:
+  enabled: false
+  moderation_model_name: null
+suggestions:
+  enabled: true
+checkpointer:
+  type: sqlite
+  connection_string: /tmp/deerflow/checkpoints.db
+database:
+  backend: sqlite
+  sqlite_dir: /app/backend/.deer-flow/data
+loop_detection:
+  enabled: true
+  warn_threshold: 3
+  hard_limit: 5
+  window_size: 20
+  max_tracked_threads: 100
+  tool_freq_warn: 30
+  tool_freq_hard_limit: 50
+run_events:
+  backend: memory
+  max_trace_content: 10240
+  track_token_usage: true
+tool_output:
+  enabled: true
+  externalize_min_chars: 12000
+  preview_head_chars: 2000
+  preview_tail_chars: 1000
+  fallback_max_chars: 30000
+  fallback_head_chars: 8000
+  fallback_tail_chars: 3000
+  storage_subdir: .tool-results
+  exempt_tools:
+  - read_file
+  - read_file_tool
+safety_finish_reason:
+  enabled: true
+
+# User-owned IM channel connections (E-续 ③). Built for bot_token/binding-code
+# providers (feishu/dingtalk/etc.) where an admin pastes credentials in the 渠道
+# tab. WeChat/iLink is QR-based (token auto-generated on scan) so it does NOT fit
+# this model — it runs via the system `channels.wechat` + QR login below instead.
+# wechat is therefore left out of channel_connections to avoid a meaningless
+# "连接 / Bot token" prompt in the sidebar.
+channel_connections:
+  enabled: true
+  require_bound_identity: false
+
+# System WeChat iLink bot. qrcode_login_enabled triggers the QR bootstrap on
+# first start (no bot_token yet): WechatChannel._bind_via_qrcode() fetches a QR
+# from ilinkai.weixin.qq.com, logs it, and polls get_qrcode_status until you
+# scan+confirm, then obtains and persists the bot_token automatically.
+channels:
+  wechat:
+    enabled: true
+    qrcode_login_enabled: true
+    state_dir: /app/backend/.deer-flow/channels/wechat
+    # Access control: only WeChat users who bind via /connect <code> (linked to
+    # their DeerFlow account) may use the bot. Unbound senders get a "link first"
+    # prompt. The connection_repo + binding flow are enabled by channels.wechat.
+    require_bound_identity: true
+
+# ── Subagent system ──
+subagents:
+  custom_agents:
+    petrochem-utilities-agent:
+      description: 石化设计院公用工程室AI助手 — 管理给排水、消防、暖通、管道设计专篇编写。消防用已有skill，给排水用多轮交互模式（参数确认→公式计算→章节生成→一致性校验→合规检查）。
+      system_prompt: |
+        你是石化设计院公用工程室的AI助手。
+
+        管辖范围：给排水设计、消防设计、暖通设计、管道设计。
+
+        执行模式：
+        - 消防专篇 → 调度已有skill (fire-protection-extract / fire-protection-report-v2)，不干预生成
+        - 给排水专篇 → 你亲自管理多轮交互：参数确认→公式计算→章节生成→一致性校验→合规检查
+
+        核心铁律：
+        1. 公式计算结果必须用户审核后才能写入报告
+        2. 参数变更自动传播到所有下游公式（增量重算）
+        3. 跨章节/跨专业数据不一致→阻断，强制用户对齐
+        4. 不编造数据，无法获取的值标注[待补充]
+        5. 每步等待用户确认后再进入下一步
+      skills:
+        - fire-protection-extract
+        - fire-protection-report-v2
+        - water-drainage-report
+      model: inherit
+      max_turns: 30
+      timeout_seconds: 1800

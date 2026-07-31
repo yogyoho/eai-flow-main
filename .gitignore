@@ -25,6 +25,8 @@ venv/
 
 # Configuration files
 config.yaml
+# EAI-CUSTOM: the shipped offline config IS version-controlled (deployment artifact, like compose files)
+!deploy/offline/config.yaml
 mcp_config.json
 extensions_config.json
 
