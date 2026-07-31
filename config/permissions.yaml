@@ -229,6 +229,14 @@ modules:
         operations:
           - { id: "license:manage", display_name: "管理许可证", admin_only: true }
 
+  # ─── 应用中心 ───
+  # 前端 Sidebar.tsx 引用 nav:app-center，但 permissions.yaml 漏了此模块 →
+  # superadmin 的 nav:["*"] 展开后不含 nav:app-center → 应用中心不显示
+  app_center:
+    display_name: "应用中心"
+    nav_id: "nav:app-center"
+    pages: []
+
 # ── 角色默认映射 ──
 roles:
   superadmin:
