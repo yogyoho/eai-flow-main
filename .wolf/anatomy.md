@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-01T01:00:25.553Z
-> Files: 1710 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-01T01:08:20.473Z
+> Files: 1713 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -479,9 +479,10 @@
 - `frontend-deps-need-image-rebuild.md` (~583 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~666 tok)
+- `MEMORY.md` (~698 tok)
 - `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~324 tok)
+- `role-management-yaml-driven.md` (~254 tok)
 - `upstream-fix-port-2026-07.md` — Declares absent (~1173 tok)
 - `upstream-sync-2026-07-29.md` (~1007 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
@@ -1799,6 +1800,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-08-01-role-management-yaml-driven.md` — 角色管理真相源统一(yaml驱动)实施计划 18任务 (~16800 tok)
 - `2026-05-18-geological-report-skill.md` — Geological Report Skill Implementation Plan (~7522 tok)
 - `2026-05-21-document-space-enhancement.md` — Document Space Enhancement Implementation Plan (~15765 tok)
 - `2026-05-25-project-rbac-workspace-approval.md` — 项目管理 RBAC + 成员工作台 + 审核流程 实施计划 (~9928 tok)
@@ -1836,10 +1838,10 @@
 - `2026-07-30-abac-phase2-plan.md` — Phase 2：数据域引擎 + ABAC 策略接入 — 实现计划 (~6027 tok)
 - `2026-07-30-abac-phase3-plan.md` — Phase 3：前端全链路权限控制 — 实现计划 (~304 tok)
 - `2026-07-30-abac-rbac-redesign-plan.md` — ABAC-lite 权限系统重构 — 实现计划 (~11219 tok)
+- `2026-08-01-role-management-yaml-driven.md` — 角色管理真相源统一（yaml 驱动）实施计划 (~14769 tok)
 
 ## docs/superpowers/specs/
 
-- `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一(yaml驱动)+功能修复设计 (~2830 tok)
 - `2026-05-12-knowledge-factory-agent-integration-design.md` — 知识工厂 ↔ Agent 双向协同集成设计 (~1878 tok)
 - `2026-05-18-geological-report-skill-design.md` — 固体矿产地质勘查报告制作技能设计 (~1611 tok)
 - `2026-05-20-ai-assistant-panel-design.md` — AI Assistant Panel Refactor Design (~1291 tok)
@@ -1891,6 +1893,7 @@
 - `2026-07-27-agent-registry-design.md` — Agent 注册表（数字员工看板）设计 (~3871 tok)
 - `2026-07-29-offline-deploy-simplification-design.md` — 离线部署简化与增量升级 — 设计文档 (~2582 tok)
 - `2026-07-30-abac-rbac-redesign-design.md` — ABAC-lite 权限系统重构设计 (~5138 tok)
+- `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一(yaml驱动)+功能修复设计 (~2830 tok)
 - `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一 + 功能修复设计（yaml 驱动） (~2318 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
