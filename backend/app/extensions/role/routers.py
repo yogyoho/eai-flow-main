@@ -60,6 +60,17 @@ async def create_role(
     return await RoleService.to_response(db, role)
 
 
+# EAI-CUSTOM (route order): 静态路径 /assignments 必须定义在 /{role_id} 之前，
+# 否则 "/assignments" 会被当成 role_id 走 UUID 解析 → 422（Task 12 U1 用户数全 0 的根因）
+@router.get("/assignments", response_model=list[RoleAssignmentInfo])
+async def get_role_assignments(
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("role:read")),
+):
+    """Get all roles with their user counts."""
+    return await RoleService.get_all_role_assignments(db)
+
+
 @router.get("/{role_id}", response_model=RoleResponse)
 async def get_role(
     role_id: UUID,
@@ -175,12 +186,3 @@ async def get_role_users(
         "users": [await UserService.to_response(db, u) for u in users],
         "total": total,
     }
-
-
-@router.get("/assignments", response_model=list[RoleAssignmentInfo])
-async def get_role_assignments(
-    db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("role:read")),
-):
-    """Get all roles with their user counts."""
-    return await RoleService.get_all_role_assignments(db)
