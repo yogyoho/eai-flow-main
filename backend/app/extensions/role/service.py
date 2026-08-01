@@ -59,7 +59,17 @@ class RoleOverlayStore:
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
-            os.replace(tmp, self.path)
+            try:
+                os.replace(tmp, self.path)
+            except OSError:
+                # EAI-CUSTOM: Docker Desktop bind-mount limitation — os.replace
+                # (rename over an existing mounted file) fails with Errno 16
+                # (Device or resource busy). Fall back to copy-over, which writes
+                # in place and works on bind mounts. The temp file holds the
+                # complete content, so the destination write is one full copy.
+                import shutil
+
+                shutil.copy2(tmp, self.path)
         finally:
             if os.path.exists(tmp):
                 os.remove(tmp)

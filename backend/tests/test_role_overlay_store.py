@@ -308,3 +308,39 @@ disabled_roles: []
     asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(permissions=["doc:read"])))
     entry = store.read()["roles"]["proj_mgr"]
     assert entry["permissions"] == ["doc:read"]  # replaced (different from resolved)
+
+
+def test_write_falls_back_to_copy_on_bind_mount(tmp_path, monkeypatch):
+    """Docker Desktop bind-mount: os.replace over a mounted file fails with
+    Errno 16 (Device or resource busy). write() must fall back to shutil.copy2
+    so the overlay update still lands (root cause of 'Extensions database
+    is unavailable' 503 on the roles-module toggle)."""
+    import shutil
+
+    import app.extensions.role.service as svc
+
+    overlay = tmp_path / "roles_custom.yaml"
+    overlay.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay))
+
+    def boom(src, dst):
+        raise OSError(16, "Device or resource busy")
+
+    monkeypatch.setattr(svc.os, "replace", boom)
+
+    copied = []
+    orig_copy2 = shutil.copy2
+
+    def spy_copy2(src, dst):
+        copied.append((src, dst))
+        return orig_copy2(src, dst)
+
+    monkeypatch.setattr(shutil, "copy2", spy_copy2)
+
+    store.write(
+        {"roles": {"x": {"display_name": "X", "permissions": [], "nav": []}}, "disabled_roles": []}
+    )
+
+    data = store.read()
+    assert "x" in data["roles"]  # write landed via copy2 fallback
+    assert len(copied) == 1  # copy2 was used exactly once
