@@ -1052,8 +1052,10 @@ export default function AdminRolesPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [res, asg] = await Promise.all([roleApi.list(), roleApi.assignments()]);
+      const res = await roleApi.list();
       setRoles(res.roles);
+      // U1: 用户数统计为 best-effort，失败不阻断角色列表渲染
+      const asg = await roleApi.assignments().catch(() => []);
       setAssignments(Object.fromEntries(asg.map((a) => [a.role_id, a.user_count])));
       setSelectedRole((prev) => {
         const next = prev
