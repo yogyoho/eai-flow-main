@@ -215,6 +215,8 @@ class RoleResponse(RoleBase):
     created_at: datetime
     # EAI-CUSTOM: module nav visibility
     nav: list[str] = []
+    # EAI-CUSTOM: data scopes resolved from registry (yaml+overlay)
+    data_scopes: list[str] = []
 
 
 class RoleListResponse(BaseModel):

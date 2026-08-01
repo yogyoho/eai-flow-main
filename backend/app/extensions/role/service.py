@@ -1,11 +1,17 @@
 """Role service for extensions module."""
 
 import logging
+import os
+import tempfile
+import uuid
+from pathlib import Path
 from uuid import UUID
 
+import yaml
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.registry import get_permission_registry
 from app.extensions.models import Role, User
 from app.extensions.schemas import (
     RoleAssignmentInfo,
@@ -18,8 +24,62 @@ from app.extensions.schemas import (
 logger = logging.getLogger(__name__)
 
 
+class RoleOverlayStore:
+    """Read/write config/roles_custom.yaml with atomic replace + mtime optimistic lock.
+
+    Single writer accepted: concurrent admin edits are last-writer-wins; a stale
+    mtime raises RuntimeError(409) instead of silently overwriting.
+    """
+
+    def __init__(self, overlay_path: str | None = None):
+        if overlay_path is None:
+            overlay_path = os.environ.get(
+                "ROLES_CUSTOM_YAML_PATH",
+                str(Path(__file__).parent.parent.parent.parent.parent / "config" / "roles_custom.yaml"),
+            )
+        self.path = Path(overlay_path)
+
+    def mtime(self) -> float:
+        return self.path.stat().st_mtime if self.path.exists() else 0.0
+
+    def read(self) -> dict:
+        if not self.path.exists():
+            return {"roles": {}, "disabled_roles": []}
+        with open(self.path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+        data.setdefault("roles", {})
+        data.setdefault("disabled_roles", [])
+        return data
+
+    def write(self, data: dict, expect_mtime: float | None = None) -> None:
+        if expect_mtime is not None and self.mtime() != expect_mtime:
+            raise RuntimeError("Overlay file changed concurrently; refresh and retry")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=str(self.path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+            os.replace(tmp, self.path)
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+
+    def notify_registry_reload(self) -> None:
+        from app.extensions.auth.registry import get_permission_registry
+
+        get_permission_registry().reload()
+
+
 class RoleService:
     """Role service."""
+
+    _store: RoleOverlayStore | None = None
+
+    @classmethod
+    def _overlay(cls) -> RoleOverlayStore:
+        if cls._store is None:
+            cls._store = RoleOverlayStore()
+        return cls._store
 
     @staticmethod
     async def get_role_by_id(db: AsyncSession, role_id: UUID) -> Role | None:
@@ -45,69 +105,99 @@ class RoleService:
 
         return list(roles), total
 
-    # Base permissions that every custom role must include to access extension APIs
-    BASE_PERMISSIONS = {"system:access", "kb:read", "doc:read"}
-
     @staticmethod
     async def create_role(db: AsyncSession, data: RoleCreate) -> Role:
-        # Auto-merge base permissions so custom roles can access extension APIs
-        merged = set(data.permissions) | RoleService.BASE_PERMISSIONS
-        role = Role(
-            name=data.name,
-            code=data.code,
-            permissions=sorted(merged),
-            description=data.description,
-            level=data.level,
-            parent_role_id=data.parent_role_id,
-            # EAI-CUSTOM: module nav visibility
-            nav=data.nav if data.nav else [],
-        )
-        db.add(role)
-        await db.commit()
-        await db.refresh(role)
-        return role
+        store = RoleService._overlay()
+        overlay = store.read()
+        if data.code in overlay["roles"]:
+            raise ValueError(f"Role code already exists: {data.code}")
+        overlay["roles"][data.code] = {
+            "display_name": data.name,
+            "permissions": list(data.permissions or []),
+            "nav": list(data.nav or []),
+            "data_scopes": [],
+            "level": data.level,
+            "description": data.description,
+        }
+        store.write(overlay, expect_mtime=store.mtime())
+        store.notify_registry_reload()
+        registry = get_permission_registry()
+        await _calibrate_single_role(db, registry, data.code)
+        return await RoleService.get_role_by_code(db, data.code)
 
     @staticmethod
     async def update_role(db: AsyncSession, role: Role, data: RoleUpdate) -> Role:
+        store = RoleService._overlay()
+        overlay = store.read()
+        code = role.code
+        entry = overlay["roles"].get(code)
+        if entry is None:
+            # 内置角色 → 写覆盖（整体覆盖 yaml 定义）
+            entry = {
+                "display_name": role.name,
+                "permissions": list(role.permissions or []),
+                "nav": role.nav or [],
+                "data_scopes": [],
+                "level": role.level or 10,
+                "description": role.description,
+            }
+            overlay["roles"][code] = entry
         if data.name is not None:
-            role.name = data.name
-        if data.description is not None:
-            role.description = data.description
+            entry["display_name"] = data.name
         if data.permissions is not None:
-            merged = set(data.permissions) | RoleService.BASE_PERMISSIONS
-            role.permissions = sorted(merged)
-        if data.level is not None:
-            role.level = data.level
-        if data.parent_role_id is not None:
-            role.parent_role_id = data.parent_role_id
-        # EAI-CUSTOM: update module nav visibility
+            entry["permissions"] = list(data.permissions)
         if data.nav is not None:
-            role.nav = data.nav
-
-        await db.commit()
-        await db.refresh(role)
-        return role
+            entry["nav"] = list(data.nav)
+        if data.level is not None:
+            entry["level"] = data.level
+        if data.description is not None:
+            entry["description"] = data.description
+        store.write(overlay, expect_mtime=store.mtime())
+        store.notify_registry_reload()
+        registry = get_permission_registry()
+        await _calibrate_single_role(db, registry, code)
+        return await RoleService.get_role_by_code(db, code)
 
     @staticmethod
     async def delete_role(db: AsyncSession, role: Role) -> None:
+        store = RoleService._overlay()
+        overlay = store.read()
+        code = role.code
+        if code in overlay["roles"]:
+            overlay["roles"].pop(code, None)
+        else:
+            # 内置角色 → tombstone（disabled_roles）
+            disabled = overlay.get("disabled_roles") or []
+            if code not in disabled:
+                overlay["disabled_roles"] = disabled + [code]
+        store.write(overlay, expect_mtime=store.mtime())
+        store.notify_registry_reload()
         await db.delete(role)
         await db.commit()
 
     @staticmethod
     async def copy_role(db: AsyncSession, role: Role, data: RoleCopy) -> Role:
-        """Copy a role with new name and code."""
-        new_role = Role(
-            name=data.new_name,
-            code=data.new_code,
-            permissions=role.permissions or [],
-            description=role.description,
-            # EAI-CUSTOM: copy module nav visibility
-            nav=role.nav or [],
-        )
-        db.add(new_role)
-        await db.commit()
-        await db.refresh(new_role)
-        return new_role
+        store = RoleService._overlay()
+        overlay = store.read()
+        if data.new_code in overlay["roles"]:
+            raise ValueError(f"Role code already exists: {data.new_code}")
+        from app.extensions.auth.registry import get_permission_registry
+
+        registry = get_permission_registry()
+        src_perms = sorted(registry.resolve_role_permissions(role.code))
+        src_defaults = registry.get_role_defaults(role.code) or {}
+        overlay["roles"][data.new_code] = {
+            "display_name": data.new_name,
+            "permissions": src_perms,
+            "nav": src_defaults.get("nav") or [],
+            "data_scopes": src_defaults.get("data_scopes") or [],
+            "level": src_defaults.get("level", 10),
+            "description": role.description,
+        }
+        store.write(overlay, expect_mtime=store.mtime())
+        store.notify_registry_reload()
+        await _calibrate_single_role(db, registry, data.new_code)
+        return await RoleService.get_role_by_code(db, data.new_code)
 
     @staticmethod
     async def get_role_user_count(db: AsyncSession, role_id: UUID) -> int:
@@ -138,6 +228,8 @@ class RoleService:
 
     @staticmethod
     async def to_response(db: AsyncSession, role: Role) -> RoleResponse:
+        from app.extensions.auth.registry import get_permission_registry
+
         parent_role_name = None
         if role.parent_role_id:
             stmt = select(Role).where(Role.id == role.parent_role_id)
@@ -146,6 +238,7 @@ class RoleService:
             if parent_role:
                 parent_role_name = parent_role.name
 
+        registry = get_permission_registry()
         return RoleResponse(
             id=role.id,
             name=role.name,
@@ -157,5 +250,34 @@ class RoleService:
             parent_role_id=role.parent_role_id,
             parent_role_name=parent_role_name,
             created_at=role.created_at,
-            nav=role.nav or [],  # EAI-CUSTOM: module nav visibility
+            nav=role.nav or [],
+            data_scopes=registry.get_data_scopes_for_role(role.code),
         )
+
+
+async def _calibrate_single_role(db: AsyncSession, registry, code: str) -> None:
+    """Recalibrate a single DB role row as a mirror of the registry (yaml+overlay)."""
+    from sqlalchemy import text as sa_text
+
+    resolved = sorted(registry.resolve_role_permissions(code))
+    defaults = registry.get_role_defaults(code) or {}
+    existing = await db.execute(sa_text("SELECT id FROM roles WHERE code = :code LIMIT 1"), {"code": code})
+    row = existing.fetchone()
+    if row is None:
+        db.add(Role(
+            id=uuid.uuid4(), code=code,
+            name=defaults.get("display_name", code),
+            permissions=resolved,
+            is_system=defaults.get("is_system", False),
+            level=defaults.get("level", 10),
+            nav=defaults.get("nav") or [],
+        ))
+    else:
+        r = await RoleService.get_role_by_code(db, code)
+        if r:
+            r.name = defaults.get("display_name", code)
+            r.permissions = resolved
+            r.is_system = defaults.get("is_system", False)
+            r.level = defaults.get("level", 10)
+            r.nav = defaults.get("nav") or []
+    await db.commit()
