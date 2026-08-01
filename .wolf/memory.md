@@ -11599,3 +11599,130 @@
 | 15:36 | Edited config/permissions.yaml | 9→10 lines | ~77 |
 | 15:36 | Edited frontend/src/extensions/shell/Sidebar.tsx | 5→6 lines | ~97 |
 | 15:45 | Task16 review fixes: gate status toggle (user:update), KB edit (kb:update) + dept_head kb:update, Sidebar admin fail-open isLoading||is_admin | admin/users/page.tsx, knowledge/page.tsx, Sidebar.tsx, permissions.yaml | typecheck 127 baseline, backend 27 pass | ~300 |
+| 15:42 | Edited backend/app/extensions/auth/policy_routers.py | expanded (+9 lines) | ~140 |
+| 15:42 | Edited backend/app/extensions/role/routers.py | 5→8 lines | ~117 |
+| 15:42 | Edited backend/app/extensions/role/routers.py | 5→8 lines | ~119 |
+| 15:42 | Edited backend/app/extensions/role/routers.py | 5→8 lines | ~120 |
+| 15:42 | Edited backend/app/extensions/role/routers.py | 2→6 lines | ~85 |
+| 15:43 | Edited frontend/src/extensions/types.ts | 7→8 lines | ~80 |
+| 15:43 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~522 |
+| 15:43 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM, and, conditions | ~72 |
+| 15:43 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM, and, EAI-CUSTOM | ~273 |
+| 15:43 | Edited config/permissions.yaml | modified CUSTOM() | ~111 |
+| 15:43 | Edited config/permissions.yaml | 4→5 lines | ~31 |
+| 15:43 | Edited config/permissions.yaml | 11→12 lines | ~94 |
+| 15:44 | Edited config/permissions.yaml | 10→11 lines | ~81 |
+| 15:44 | Edited config/permissions.yaml | 6→7 lines | ~50 |
+| 15:56 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 7→7 lines | ~168 |
+| 15:57 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | expanded (+6 lines) | ~246 |
+| 15:59 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 7→7 lines | ~172 |
+| 15:59 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 8→8 lines | ~234 |
+| 16:00 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 7→7 lines | ~138 |
+| 16:00 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | inline fix | ~44 |
+| 16:03 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | inline fix | ~70 |
+| 16:03 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 3→5 lines | ~173 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | expanded (+21 lines) | ~486 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | reduced (-6 lines) | ~365 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | inline fix | ~12 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 8→9 lines | ~244 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | inline fix | ~52 |
+| 16:04 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 4→4 lines | ~65 |
+| 16:05 | Edited C:/Users/admin/.claude/plans/modular-painting-treasure.md | 7→8 lines | ~120 |
+| 16:05 | Created C:/Users/admin/.claude/plans/modular-painting-treasure.md | — | ~2797 |
+| 16:09 | Created docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | — | ~4447 |
+| 16:15 | Created docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | — | ~6045 |
+| 16:10 | Task17 A1: create_policy 返回完整行(原只 id/name→前端 PolicyRow 崩) | backend/app/extensions/auth/policy_routers.py | committed 65e2026c | ~180 |
+| 16:10 | Task17 A2: 策略条件 shape UI数组⇄引擎dict 双向转换(toEngineConditions/toUIConditions)+types.ts PolicyCreateRequest.conditions→Record | frontend/src/app/admin/roles/page.tsx frontend/src/extensions/types.ts | committed 65e2026c | ~420 |
+| 16:10 | Task17 A3: role 4路由 overlay RuntimeError→409(原500) | backend/app/extensions/role/routers.py | committed 65e2026c | ~120 |
+| 16:10 | Task17 A4: permissions.yaml 5角色预备授权 dashboard:view(EAI-CUSTOM) | config/permissions.yaml | committed 65e2026c; registry 验证 resolve 含 dashboard:view | ~80 |
+| 16:12 | Task17 回归: 后端 3894p/420f/16s/136e;聚焦域测试 61/61 过;前端 typecheck 127 基线未变、lint 0 in 我的文件 | -- | 无新失败 | ~300 |
+| 16:24 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 1→4 lines | ~260 |
+| 16:24 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~113 |
+| 16:24 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 5→6 lines | ~196 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~42 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~32 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~54 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 2→3 lines | ~79 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~80 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~70 |
+| 16:25 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | "POST /release" → "POST /projects/{id}/relea" | ~53 |
+| 16:26 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~37 |
+| 16:26 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 3→3 lines | ~143 |
+| 16:26 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~42 |
+| 16:26 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~15 |
+| 16:26 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | "configurable.agent_name" → "agent_name" | ~161 |
+| 16:27 | Edited backend/CLAUDE.md | expanded (+11 lines) | ~532 |
+| 16:29 | Created frontend/src/extensions/role/policyConverters.ts | — | ~730 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | added 1 import(s) | ~70 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | — | ~0 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~40 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM | ~82 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | CSS: permissions, permissions | ~264 |
+| 16:29 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM, permissions | ~60 |
+| 16:30 | Edited frontend/src/app/admin/roles/page.tsx | 4→4 lines | ~44 |
+| 16:30 | Edited frontend/src/extensions/types.ts | 5→5 lines | ~82 |
+| 16:30 | Created frontend/tests/unit/extensions/roles/policy-converters.test.ts | — | ~914 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | "await POST /api/threads/{" → "GET /api/threads/{thread_" | ~114 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~87 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~33 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | "POST /release" → "POST /projects/{id}/relea" | ~34 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~38 |
+| 16:32 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~62 |
+| 16:33 | Edited frontend/src/extensions/role/policyConverters.ts | added nullish coalescing | ~17 |
+| 16:33 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 1→2 lines | ~256 |
+| 16:33 | Edited frontend/src/extensions/role/policyConverters.ts | inline fix | ~22 |
+| 16:33 | Edited frontend/tests/unit/extensions/roles/policy-converters.test.ts | inline fix | ~23 |
+| 16:33 | Edited docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | inline fix | ~26 |
+| 12:40 | office-hours: 项目管理模块 agent 桥分析——确认 3 硬伤+1 致命(写路径不提交)+skill 契约不匹配;设计文档经 3 轮对抗评审 4.6→5.8→8.4 达可实施;方案=修桥(A) | backend/app/extensions/project/{mcp,service,schemas}.py, extensions_config.json×2, coal-eia SKILL.md | DRAFT 待拍板权限边界 | ~13k |
+| 13:10 | office-hours→plan→spec: 协作工作台 collab-workspace 完全独立模块设计(#2+#3+#4+分层Tier) | docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md | 3轮评审 5.2→7.4→7.75 可实施;待评审拍板后开实施计划 | ~30k |
+| 16:34 | Session end: 172 writes across 28 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 171 reads | ~565101 tok |
+| 16:35 | Task17 review-fix C1: grants UI数组⇄引擎dict({permissions:[...]}) save/load 双向;I2 in/not_in 逗号拆分;I5 or树warn;提取 policyConverters.ts(纯函数可测) | frontend/src/app/admin/roles/page.tsx frontend/src/extensions/role/policyConverters.ts frontend/src/extensions/types.ts | committed 26426a17 | ~300 |
+| 16:35 | Task17 review-fix 验证: vitest 12/12; typecheck 127基线不变; backend 6/6; eslint 新文件0错 | frontend/tests/unit/extensions/roles/policy-converters.test.ts | pass | ~80 |
+| 16:39 | Created backend/app/extensions/workspace/__init__.py | — | ~74 |
+| 16:39 | Created backend/app/extensions/workspace/models.py | — | ~3402 |
+| 16:40 | Edited backend/app/extensions/database.py | expanded (+144 lines) | ~2277 |
+| 16:40 | Created backend/app/extensions/workspace/schemas.py | — | ~1655 |
+| 16:41 | Created backend/app/extensions/workspace/tier.py | — | ~804 |
+| 16:41 | Created backend/app/extensions/workspace/gate.py | — | ~757 |
+| 16:42 | Created backend/app/extensions/workspace/service.py | — | ~5773 |
+| 16:42 | Created backend/app/extensions/workspace/routers.py | — | ~4935 |
+| 16:42 | Edited docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md | expanded (+17 lines) | ~560 |
+| 16:42 | Edited backend/app/extensions/workspace/routers.py | 3→5 lines | ~77 |
+| 16:43 | Edited backend/app/gateway/app.py | added 1 import(s) | ~62 |
+| 16:43 | Edited backend/app/gateway/app.py | 1→2 lines | ~32 |
+| 16:44 | Created backend/app/extensions/workspace/agent_bridge.py | — | ~3286 |
+| 16:44 | Created backend/app/extensions/workspace/sandbox_sync.py | — | ~1217 |
+| 16:45 | Created backend/app/extensions/workspace/sandbox_sync.py | — | ~1313 |
+| 16:46 | Created backend/tests/test_collab_workspace.py | — | ~1240 |
+| 16:49 | Edited backend/app/extensions/database.py | 5→8 lines | ~75 |
+| 16:49 | Edited backend/app/extensions/database.py | 4→2 lines | ~51 |
+| 16:51 | Created frontend/src/extensions/workspace/types.ts | — | ~859 |
+| 16:51 | Created frontend/src/extensions/workspace/api.ts | — | ~1443 |
+| 16:51 | Created frontend/src/extensions/workspace/index.tsx | — | ~68 |
+| 16:52 | Created frontend/src/extensions/workspace/WorkspaceHome.tsx | — | ~1630 |
+| 16:52 | Created frontend/src/extensions/workspace/ProjectDetail.tsx | — | ~2514 |
+| 16:52 | Created frontend/src/extensions/workspace/components/QuickDocEditor.tsx | — | ~403 |
+| 16:52 | Created backend/app/extensions/auth/admin.py | — | ~481 |
+| 17:20 | Edited backend/app/extensions/role/service.py | modified CUSTOM() | ~43 |
+| 17:20 | Created frontend/src/extensions/workspace/components/TaskBoard.tsx | — | ~2287 |
+| 17:21 | Edited backend/app/extensions/role/service.py | inline fix | ~16 |
+| 17:21 | Edited backend/app/extensions/role/service.py | modified CUSTOM() | ~130 |
+| 17:21 | Created frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | — | ~2247 |
+| 17:21 | Created frontend/src/extensions/workspace/components/MembersPane.tsx | — | ~1715 |
+| 17:21 | Edited backend/app/extensions/knowledge/routers.py | modified CUSTOM() | ~113 |
+| 17:21 | Edited backend/app/extensions/project/routers.py | added 1 import(s) | ~56 |
+| 17:21 | Created frontend/src/app/workspace/collab/page.tsx | — | ~138 |
+| 17:21 | Edited backend/app/extensions/user/routers.py | modified _is_admin_role() | ~104 |
+| 17:21 | Edited backend/app/extensions/auth/unified_permissions.py | modified is_superadmin() | ~127 |
+| 17:21 | Created frontend/src/app/workspace/collab/[id]/page.tsx | — | ~170 |
+| 17:22 | Edited frontend/src/extensions/shell/Sidebar.tsx | 13→14 lines | ~54 |
+| 17:22 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: EAI-CUSTOM | ~79 |
+| 17:23 | Edited backend/tests/test_unified_project_permissions.py | modified test_get_user_permissions_non_admin_member() | ~295 |
+| 17:24 | Edited backend/app/extensions/auth/admin.py | modified is_superadmin() | ~248 |
+| 17:26 | Edited backend/tests/test_role_overlay_store.py | modified test_write_captures_mtime_before_read() | ~1122 |
+| 17:27 | Edited backend/app/extensions/role/service.py | 7→5 lines | ~76 |
+| 17:27 | Edited backend/app/extensions/role/service.py | _gp_registry() → get_permission_registry() | ~72 |
+| 17:27 | Edited backend/app/extensions/role/service.py | modified CUSTOM() | ~85 |
+| 17:40 | Edited backend/app/extensions/project/routers.py | modified CUSTOM() | ~74 |
+| 17:40 | Edited backend/app/extensions/project/routers.py | modified CUSTOM() | ~66 |
+| 18:10 | 角色管理 yaml 驱动实施完成:36 commit(Task1-17);I1乐观锁读前捕获/I2 is_superadmin统一7处DB角色读取/I3保留#inherit;plan域73+101测试过;延后:后端颗粒强制(需角色授权)/workflow-admin显示名/I4 contract_price数据权限未接线 | auth/,role/,project/,database.py,permissions.yaml,frontend admin/roles等 | done | ~120k |
