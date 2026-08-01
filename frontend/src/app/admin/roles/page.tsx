@@ -1037,6 +1037,19 @@ export default function AdminRolesPage() {
   /* EAI-CUSTOM: which nav modules are visible for the selected role (detail view) */
   const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set());  // EAI-CUSTOM: starts empty, populated by loadData/handleSelectRole
 
+  // EAI-CUSTOM (U4): 数据权限面板初始化 — 按角色的 data_scopes 解析每个 module 的已选 scope（无则回退默认第一个），空则清空
+  const initDataScopes = (role: Role) => {
+    setDataScopeSelections(
+      role.data_scopes?.length
+        ? Object.fromEntries(
+            (registryModules || [])
+              .filter((m) => m.data_scopes?.length)
+              .map((m) => [m.key, (role.data_scopes || []).find((d) => m.data_scopes!.some((s) => s.id === d)) || m.data_scopes![0]!.id]),
+          )
+        : {}
+    );
+  };
+
   /* ── Data loading ────────────────────────────────────────── */
   const loadData = async () => {
     setIsLoading(true);
@@ -1056,6 +1069,8 @@ export default function AdminRolesPage() {
         } else if (next) {
           setDetailNavSet(new Set(ALL_NAV_IDS));
         }
+        // EAI-CUSTOM (U4): sync data scope selections when role data refreshes
+        if (next) initDataScopes(next);
         return next;
       });
     } catch (err) {
@@ -1073,6 +1088,13 @@ export default function AdminRolesPage() {
       .then((res) => setRegistryModules(res.modules))
       .catch((err) => console.error("Failed to load permissions registry:", err));
   }, []);
+
+  // EAI-CUSTOM (U4): 注册表异步加载完成后补齐数据权限面板初始化（解决初始加载竞态——loadData 可能先于 registry 返回）
+  useEffect(() => {
+    if (registryModules && selectedRole) {
+      initDataScopes(selectedRole);
+    }
+  }, [registryModules, selectedRole]);
 
   // Fetch policies when tab changes to policies
   const loadPolicies = useCallback(async () => {
@@ -1163,6 +1185,8 @@ export default function AdminRolesPage() {
     } else {
       setDetailNavSet(new Set(ALL_NAV_IDS));
     }
+    // EAI-CUSTOM (U4): initialize data scope selections from role data (切换角色重置)
+    initDataScopes(role);
   };
 
   const handleTabChange = (tab: "permissions" | "datascope" | "policies" | "users") => {
@@ -1218,8 +1242,8 @@ export default function AdminRolesPage() {
     setDataScopeSelections(selections);
     if (selectedRole && !selectedRole.is_system) {
       try {
-        // Append data_scopes to role update payload
-        await roleApi.update(selectedRole.id, { permissions: selectedRole.permissions, data_scopes: selections } as unknown as UpdateRoleRequest);
+        const scopes = Object.values(selections);
+        await roleApi.update(selectedRole.id, { permissions: selectedRole.permissions, nav: selectedRole.nav, data_scopes: scopes });
       } catch (err) {
         console.error("Failed to save data scopes:", err);
       }

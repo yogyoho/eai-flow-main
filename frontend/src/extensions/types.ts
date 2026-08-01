@@ -88,6 +88,8 @@ export interface Role {
   created_at: string;
   /** EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") */
   nav?: string[];
+  /** EAI-CUSTOM: data scope ids resolved from registry */
+  data_scopes?: string[];
 }
 
 export interface RoleListResponse {
@@ -122,6 +124,8 @@ export interface UpdateRoleRequest {
   parent_role_id?: string;
   /** EAI-CUSTOM: module nav visibility list */
   nav?: string[];
+  /** EAI-CUSTOM: data scope ids persisted to overlay via write-through */
+  data_scopes?: string[];
 }
 
 export interface RoleHierarchyResponse {

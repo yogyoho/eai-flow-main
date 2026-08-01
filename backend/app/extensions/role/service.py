@@ -157,6 +157,9 @@ class RoleService:
             entry["level"] = data.level
         if data.description is not None:
             entry["description"] = data.description
+        # EAI-CUSTOM (U4): data scopes 写透到 overlay
+        if data.data_scopes is not None:
+            entry["data_scopes"] = list(data.data_scopes)
         store.write(overlay, expect_mtime=store.mtime())
         store.notify_registry_reload()
         registry = get_permission_registry()

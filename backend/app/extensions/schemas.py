@@ -201,6 +201,8 @@ class RoleUpdate(BaseModel):
     parent_role_id: UUID | None = None
     # EAI-CUSTOM: module nav visibility
     nav: list[str] | None = None
+    # EAI-CUSTOM: data scopes (persisted to overlay via write-through)
+    data_scopes: list[str] | None = None
 
 
 class RoleResponse(RoleBase):
