@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-26T15:20:23.333Z
-> Files: 1622 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-01T01:00:25.553Z
+> Files: 1710 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -44,7 +44,7 @@
 - `.cursorrules` (~467 tok)
 - `.dockerignore` — Docker ignore rules (~191 tok)
 - `.gitattributes` — Git attributes (~194 tok)
-- `.gitignore` — Git ignore rules (~233 tok)
+- `.gitignore` — Git ignore rules (~500 tok)
 - `.mcp.json` (~84 tok)
 - `.opencode.json` (~55 tok)
 - `.pre-commit-config.yaml` (~322 tok)
@@ -52,6 +52,7 @@
 - `开发日志.md` — 提问： (~2745 tok)
 - `手动差分技术方案.md` — 手动差分技术方案：将 bytedance/deer-flow 同步到 feature/extensions-migration (~3219 tok)
 - `AGENTS.md` — MCP Tools: code-review-graph (~438 tok)
+- `app_center_seed_fix.sql` — app_center_seed_fix.sql — manually seed the 5 domains + 10 built-in apps (~831 tok)
 - `body.txt` (~19 tok)
 - `check_fonts.py` (~81 tok)
 - `CLAUDE.md` — page login info (~3649 tok)
@@ -214,6 +215,149 @@
 
 - `embedded-chat-design.html` (~2844 tok)
 
+## .worktrees/abac-3level/backend/app/extensions/auth/
+
+- `permission_routers.py` — Permission API endpoints — registry, current user permissions, role config. (~883 tok)
+- `registry.py` — Permission registry - loads permissions.yaml, serves permission metadata. (~2393 tok)
+
+## .worktrees/abac-3level/backend/tests/
+
+- `test_permission_registry.py` — TestPermissionRegistry: test_loads_all_modules_from_yaml, test_get_permission_by_id, test_list_all_p (~2544 tok)
+
+## .worktrees/abac-3level/frontend/src/app/workspace/
+
+- `workspace-content.tsx` — EAI-CUSTOM: nav-level permission gating for sidebar and settings (~387 tok)
+
+## .worktrees/abac-3level/frontend/src/components/workspace/
+
+- `workspace-nav-chat-list.tsx` — WorkspaceNavChatList (~1140 tok)
+- `workspace-nav-menu.tsx` — NavMenuButtonContent (~1145 tok)
+
+## .worktrees/abac-3level/frontend/src/core/permissions/
+
+- `PermissionProvider.tsx` — PermissionContext (~570 tok)
+- `usePermission.ts` — Exports PermissionState, usePermission (~516 tok)
+
+## .worktrees/abac-3level/frontend/src/extensions/app-center/components/
+
+- `AppGrid.tsx` — 业务域首次出现顺序（用于 accent 确定性分配） (~541 tok)
+
+## .worktrees/abac-permissions/.wolf/
+
+- `anatomy.md` — anatomy.md (~33855 tok)
+- `buglog.json` (~80445 tok)
+- `cerebrum.md` — Cerebrum (~17237 tok)
+- `memory.md` — Memory (~230139 tok)
+
+## .worktrees/abac-permissions/backend/app/extensions/auth/
+
+- `engine.py` — Unified ABAC-lite permission engine. (~1595 tok)
+- `identity.py` — Identity provider - resolves a user to an AttributeSet for ABAC evaluation. (~1394 tok)
+- `middleware.py` — Authentication middleware for extensions module. (~3274 tok)
+- `registry.py` — Permission registry - loads permissions.yaml, serves permission metadata. (~1715 tok)
+
+## .worktrees/abac-permissions/backend/tests/
+
+- `test_identity_provider.py` — Tests for AttributeSet and IdentityProvider. (~3244 tok)
+- `test_permission_engine.py` — TestUnifiedPermissionEngine: identity, test_star_wildcard_grants_all, test_exact_permission_match, t (~2046 tok)
+- `test_permission_registry.py` — TestPermissionRegistry: test_loads_all_modules_from_yaml, test_get_permission_by_id, test_list_all_p (~1230 tok)
+
+## .worktrees/abac-permissions/config/
+
+- `permissions.yaml` — permissions.yaml — 模块权限声明 + 角色默认映射 + seed 策略 (~1848 tok)
+
+## .worktrees/abac-phase2/.wolf/
+
+- `anatomy.md` — anatomy.md (~33863 tok)
+- `memory.md` — Memory (~230285 tok)
+
+## .worktrees/abac-phase2/backend/app/extensions/
+
+- `database.py` — Database connection and session management for extensions module. (~19559 tok)
+
+## .worktrees/abac-phase2/backend/app/extensions/auth/
+
+- `cache.py` — Request-scoped caching for permission engine and identity. (~340 tok)
+- `datascope.py` — Data scope engine - resolves role data_scopes to FilterRules. (~703 tok)
+- `engine.py` — Unified ABAC-lite permission engine. (~1932 tok)
+- `middleware.py` — Authentication middleware for extensions module. (~3940 tok)
+- `models.py` — ABAC policy model. (~274 tok)
+- `policy_routers.py` — ABAC policy CRUD endpoints. (~939 tok)
+
+## .worktrees/abac-phase2/backend/app/extensions/knowledge/
+
+- `routers.py` — Knowledge base routers for extensions module. (~5250 tok)
+
+## .worktrees/abac-phase2/backend/app/gateway/
+
+- `app.py` — lifespan (~6792 tok)
+
+## .worktrees/abac-phase2/backend/tests/
+
+- `test_datascope.py` — TestDataScopeEngine: test_get_data_scope_returns_filter_rule, test_unknown_resource_returns_none_all (~996 tok)
+- `test_permission_engine.py` — TestUnifiedPermissionEngine: identity, test_star_wildcard_grants_all, test_exact_permission_match, t (~2866 tok)
+- `test_policy_crud.py` — Tests for Policy model and engine integration. (~161 tok)
+
+## .worktrees/abac-phase3/.wolf/
+
+- `anatomy.md` — anatomy.md (~33822 tok)
+- `memory.md` — Memory (~230149 tok)
+
+## .worktrees/abac-phase3/backend/app/extensions/auth/
+
+- `permission_routers.py` — Permission API endpoints — registry, current user permissions, role config. (~726 tok)
+
+## .worktrees/abac-phase3/backend/app/gateway/
+
+- `app.py` — lifespan (~6842 tok)
+
+## .worktrees/abac-phase3/frontend/src/app/admin/
+
+- `layout.tsx` — Check if the current user has admin privileges. (~917 tok)
+
+## .worktrees/abac-phase3/frontend/src/app/admin/roles/
+
+- `page.tsx` — PERMISSION_CATEGORIES (~19025 tok)
+
+## .worktrees/abac-phase3/frontend/src/app/admin/users/
+
+- `page.tsx` — PAGE_SIZE (~10900 tok)
+
+## .worktrees/abac-phase3/frontend/src/app/knowledge/
+
+- `page.tsx` — formatDate (~23449 tok)
+
+## .worktrees/abac-phase3/frontend/src/core/permissions/
+
+- `index.ts` (~47 tok)
+- `PermissionProvider.tsx` — PermissionContext (~544 tok)
+- `usePermission.ts` — Exports PermissionState, usePermission (~402 tok)
+
+## .worktrees/abac-phase3/frontend/src/extensions/
+
+- `types.ts` — Exports LoginRequest, LoginResponse, CurrentUser, User + 59 more (~3300 tok)
+
+## .worktrees/abac-phase3/frontend/src/extensions/api/
+
+- `index.ts` — API routes: GET (2 endpoints) (~12513 tok)
+
+## .worktrees/abac-tree/backend/app/extensions/auth/
+
+- `permission_routers.py` — Permission API endpoints — registry, current user permissions, role config. (~1074 tok)
+- `registry.py` — Permission registry - loads permissions.yaml, serves permission metadata. (~2653 tok)
+
+## .worktrees/abac-tree/config/
+
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~3122 tok)
+
+## .worktrees/abac-tree/frontend/src/app/admin/roles/
+
+- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~22192 tok)
+
+## .worktrees/abac-tree/frontend/src/extensions/
+
+- `types.ts` — 三级权限树中的页面节点（v3），包含嵌套的操作列表 (~3373 tok)
+
 ## .worktrees/app-center-categorization/frontend/src/extensions/app-center/
 
 - `AppCenterPage.tsx` — 应用中心主页面。 (~1200 tok)
@@ -289,17 +433,21 @@
 - `breezy-tinkering-mccarthy.md` — 工作流编辑器节点精简与增强 (~1140 tok)
 - `calm-conjuring-bubble.md` — Fix: Multi-user project management access control (~738 tok)
 - `concurrent-roaming-pie.md` — Plan: 修复 7月16后引入的 streamdown preprocess 卡顿回归 (~952 tok)
+- `cosmic-soaring-leaf.md` — Fix: gateway 502 after install — generate-config.sh destroys the full config.yaml (~1702 tok)
 - `crystalline-petting-elephant.md` — 分析：Docker 容器重建后对话历史为空 (~590 tok)
 - `declarative-mixing-lamport.md` — 报告大纲 AI 自动提取章节功能 (~987 tok)
 - `deep-wobbling-dragon.md` — AI 从文档自动提取合规规则 — 实施计划 (~965 tok)
+- `delegated-greeting-pebble.md` — Fix: 部分扫描版合同的溯源预览图缺失 (~151 tok)
 - `eager-whistling-minsky.md` — Plan: coal-eia-report — Complete Functional Upgrade Design (v2) (~1957 tok)
 - `federated-prancing-spindle.md` — 知识库三级数据隔离：私有可见 / 部门可见 / 公开可见 (~739 tok)
 - `giggly-mixing-toucan.md` — Plan: 沙箱输出文件自动同步到文档空间 (~1024 tok)
 - `goofy-foraging-puzzle.md` — Fix: Admin API Security + Role System Enhancement (~1487 tok)
 - `harmonic-twirling-crab.md` — Implementation Plan: Close Spec Gaps Across 4 Domains (~2160 tok)
 - `humble-sniffing-quail.md` — WeChat iLink: admin UI bind + per-user binding-code authorization (~2582 tok)
+- `joyful-coalescing-puddle.md` — 剩余待更新代码详细分析 (~834 tok)
 - `lazy-exploring-liskov.md` — Knowledge Factory Card Beautification Plan (~1240 tok)
 - `lexical-puzzling-wreath.md` — Plan: Implement 6 Project Workspace Tabs with Polished UI (~2467 tok)
+- `linear-baking-adleman.md` — 100 contracts feasibility analysis (~499 tok)
 - `lucky-stirring-tome.md` — 修复：agent 链式调用 + 消息顺序错乱 (~532 tok)
 - `magical-popping-sloth.md` — 流程看板 — 工作流执行进度可视化 (~1195 tok)
 - `majestic-greeting-thacker.md` — AI 助手模式选择器 — 设计 (~558 tok)
@@ -315,6 +463,7 @@
 - `tingly-pondering-pretzel.md` — 分页组件显示异常 — 根因分析 & 修复 (~423 tok)
 - `tranquil-doodling-spring.md` — Plan: Refactor Frontend Theme Based on Yuxi Color System (~1614 tok)
 - `typed-cooking-quilt.md` — Plan: EditorTab 改造 — 横向章节栏 → 左侧树形大纲 (~803 tok)
+- `velvet-wondering-pike.md` — Fix: DocMgr AI Assistant 404 "Thread not found" (~334 tok)
 - `velvety-waddling-hopcroft.md` — Plan: Add `cwd` support to MCP server config (方案3) (~916 tok)
 - `vivid-wishing-hippo.md` — Plan: 完善协同编辑器版本历史面板 (~179 tok)
 - `wiggly-whistling-fern.md` — Plan: Fix Collab AI Chat Endpoint (~991 tok)
@@ -322,6 +471,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `agentspace-refactor-plan.md` (~235 tok)
 - `docker-dev-environment.md` — Docker Development Environment (~389 tok)
 - `docker-restart-vs-up.md` (~150 tok)
 - `eai-custom-annotation-convention.md` (~204 tok)
@@ -329,9 +479,11 @@
 - `frontend-deps-need-image-rebuild.md` (~583 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~557 tok)
+- `MEMORY.md` (~666 tok)
+- `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~324 tok)
 - `upstream-fix-port-2026-07.md` — Declares absent (~1173 tok)
+- `upstream-sync-2026-07-29.md` (~1007 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
@@ -1084,32 +1236,35 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2047 tok)
-- `database.py` — Database connection and session management for extensions module. (~18784 tok)
+- `database.py` — Database connection and session management for extensions module. (~19731 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
-- `schemas.py` — Pydantic schemas for extensions module. (~4778 tok)
+- `schemas.py` — Pydantic schemas for extensions module. (~5024 tok)
 
 ## backend/app/extensions/app_center/
 
 - `__init__.py` — App-center extension — DB-persisted app & domain definitions. (~74 tok)
 - `models.py` — App-center SQLAlchemy models — domain labels & app definitions. (~824 tok)
-- `routers.py` — App-center API router — DB-persisted app catalog. (~1399 tok)
+- `routers.py` — App-center API router — DB-persisted app catalog. (~1439 tok)
 - `schemas.py` — App-center Pydantic request/response schemas. (~735 tok)
 - `service.py` — App-center service — static CRUD for domains & apps. (~950 tok)
 
 ## backend/app/extensions/auth/
 
+- `engine.py` — Unified ABAC-lite permission engine. (~2001 tok)
 - `middleware.py` — Authentication middleware for extensions module. (~2925 tok)
+- `permission_routers.py` — Permission API endpoints — registry, current user permissions, role config. (~912 tok)
 - `unified_permissions.py` — Unified permission checking — single entry point for all project RBAC. (~1178 tok)
 
 ## backend/app/extensions/contract_price/
 
 - `__init__.py` — Contract price analysis extension. (~225 tok)
-- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~2756 tok)
-- `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~1493 tok)
-- `routers.py` — Contract price analysis management API — all functional areas. (~2704 tok)
-- `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~847 tok)
-- `service.py` — Pipeline orchestration service for the management API. (~842 tok)
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~8677 tok)
+- `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~2040 tok)
+- `routers.py` — Contract price analysis management API — all functional areas. (~6425 tok)
+- `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~1437 tok)
+- `service.py` — Pipeline orchestration service for the management API. (~1222 tok)
+- `storage.py` — MinIO storage for contract files (independent ``cpa-contracts`` bucket). (~783 tok)
 
 ## backend/app/extensions/dashboard/
 
@@ -1124,7 +1279,7 @@
 
 - `__init__.py` (~0 tok)
 - `mcp.py` — Data source MCP Server — exposes read-only data query tools to the agent. (~3287 tok)
-- `routers.py` — Data source API router — CRUD + connection test + manual sync. (~1778 tok)
+- `routers.py` — Data source API router — CRUD + connection test + manual sync. (~1956 tok)
 - `schemas.py` — Pydantic schemas for the data_source extension. Field names align with (~774 tok)
 - `service.py` — DataSource service: connection testing, sync, read-only query guard, CRUD. (~3642 tok)
 
@@ -1140,7 +1295,7 @@
 - `editor_tools.py` — Editor tools registered via config.yaml function calling. (~3192 tok)
 - `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~1612 tok)
 - `folder_service.py` — Folder service for document space folder management. (~4444 tok)
-- `routers.py` — AI Document routers for extensions module. (~8884 tok)
+- `routers.py` — AI Document routers for extensions module. (~9358 tok)
 - `service.py` — AI Document service for extensions module. (~9630 tok)
 - `share_models.py` — Document share model. (~351 tok)
 - `share_schemas.py` — Document share schemas. (~176 tok)
@@ -1202,13 +1357,13 @@
 
 ## backend/app/extensions/license/
 
-- `routers.py` — License API routers. (~1187 tok)
+- `routers.py` — License API routers. (~1234 tok)
 - `schemas.py` — Pydantic schemas for license module. (~633 tok)
 - `service.py` — License verification and management service. (~4320 tok)
 
 ## backend/app/extensions/models/
 
-- `__init__.py` — SQLAlchemy data models for extensions module. (~12851 tok)
+- `__init__.py` — SQLAlchemy data models for extensions module. (~13210 tok)
 - `role_permission.py` — Unified role-permission model — single source of truth for all project RBAC. (~617 tok)
 
 ## backend/app/extensions/output/
@@ -1217,7 +1372,7 @@
 - `cover_presets.py` — Built-in cover-page presets for the docmgr Word export. (~514 tok)
 - `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~14880 tok)
 - `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
-- `routers.py` — FastAPI router for layout template CRUD and report generation. (~2593 tok)
+- `routers.py` — FastAPI router for layout template CRUD and report generation. (~2858 tok)
 - `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
 - `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~3179 tok)
 - `service.py` — Business logic for layout template CRUD. (~1135 tok)
@@ -1225,7 +1380,7 @@
 ## backend/app/extensions/plugin/
 
 - `__init__.py` (~0 tok)
-- `routers.py` — Plugin API router — registry + instances + API keys (metadata only). (~1428 tok)
+- `routers.py` — Plugin API router — registry + instances + API keys (metadata only). (~1573 tok)
 - `schemas.py` — Pydantic schemas for the plugin extension. Field names align with frontend (~711 tok)
 - `seed.py` — Seed built-in plugins into the registry. Idempotent. (~1062 tok)
 - `service.py` — Plugin service: config validation, instance CRUD, API key issuance. (~3209 tok)
@@ -1253,12 +1408,20 @@
 
 ## backend/app/extensions/role/
 
-- `service.py` — Role service for extensions module. (~1483 tok)
+- `service.py` — Role service for extensions module. (~1587 tok)
+
+## backend/app/extensions/settings/
+
+- `routers.py` — Settings API router. (~2482 tok)
 
 ## backend/app/extensions/user/
 
 - `routers.py` — User routers for extensions module. (~2856 tok)
-- `service.py` — User service for extensions module. (~3991 tok)
+- `service.py` — User service for extensions module. (~4670 tok)
+
+## backend/app/extensions/user_department/
+
+- `service.py` — User-Department association service for extensions module. (~1803 tok)
 
 ## backend/app/extensions/workflow/
 
@@ -1304,24 +1467,26 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan (~7042 tok)
+- `app.py` — lifespan (~6745 tok)
 - `auth_disabled.py` — Auth-disabled (single-user local) mode flag — EAI shim. (~148 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1780 tok)
-- `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2573 tok)
+- `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~2798 tok)
 - `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~4632 tok)
 - `internal_auth.py` — Authentication for trusted Gateway internal callers. (~649 tok)
 - `services.py` — Run lifecycle service layer. (~13200 tok)
 
 ## backend/app/gateway/routers/
 
-- `__init__.py` (~84 tok)
+- `__init__.py` (~204 tok)
 - `auth.py` — Authentication endpoints. (~5844 tok)
 - `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~8822 tok)
 - `mcp.py` — API: 1 endpoints (~4857 tok)
-- `memory.py` — Memory API router for retrieving and managing user memory data with per-user isolation. (~4173 tok)
+- `memory.py` — Memory API router for retrieving and managing global memory data. (~4995 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1552 tok)
-- `suggestions.py` — API: 2 endpoints (~1554 tok)
-- `threads.py` — Thread CRUD, state, and history endpoints. (~16398 tok)
+- `suggestions.py` — API: 2 endpoints (~1700 tok)
+- `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~17185 tok)
+- `threads.py` — Thread CRUD, state, and history endpoints. (~16318 tok)
+- `ui.py` — UI configuration endpoint (EAI minimal stub). (~58 tok)
 - `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1697 tok)
 
 ## backend/collab-server/
@@ -1503,7 +1668,7 @@
 - `test_client.py` — Tests for DeerFlowClient. (~39473 tok)
 - `test_collab.py` — Tests for the collaboration module: schemas, service logic, and router endpoints. (~8977 tok)
 - `test_consistency_engine.py` — Test cross-section and cross-discipline consistency validation engine. (~4040 tok)
-- `test_contract_price_extension.py` — Tests for the contract_price extension (models, routes, schemas). (~731 tok)
+- `test_contract_price_extension.py` — Tests for the contract_price extension (models, routes, schemas). (~2781 tok)
 - `test_contract_price_model_parity.py` — Parity test: the agent skill's mirror ``cpa_`` models must stay in sync with (~943 tok)
 - `test_dangling_tool_call_middleware.py` — Tests for DanglingToolCallMiddleware. (~5248 tok)
 - `test_dashboard.py` — Tests for dashboard service and API endpoints. (~1396 tok)
@@ -1560,6 +1725,7 @@
 - `test_sync_outputs_to_docmgr.py` — Tests for sync_outputs_to_docmgr and present_files callback integration. (~1923 tok)
 - `test_sync_thread_files_folder.py` — Regression tests: chat-originated docs must be filed into the folder tree. (~1247 tok)
 - `test_template_management.py` — Tests for workflow template management. (~571 tok)
+- `test_thread_regenerate_prepare.py` — EAI 回归测试：regenerate / edit-rerun prepare 路径（原始 checkpointer 适配版）。 (~2646 tok)
 - `test_tiktoken_cache_offload.py` — Tests for tiktoken encoding cache + memory-injection offload (upstream #3411). (~716 tok)
 - `test_timeline.py` — Tests for ProjectTimeline CRUD operations. (~2297 tok)
 - `test_traceability.py` — Tests for AI content traceability parsing and missing source detection. (~1447 tok)
@@ -1571,16 +1737,28 @@
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
 - `test_workflow_template.py` — Tests for workflow template management — approval workflow, visibility, state transitions. (~3015 tok)
 
+## config/
+
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~3186 tok)
+
 ## deploy/offline/
 
-- `config.yaml` — ============================================================================= (~1776 tok)
-- `deploy.sh` — ============================================================================= (~1921 tok)
-- `docker-compose.extensions.yaml` — ============================================================================= (~479 tok)
-- `docker-compose.ragflow.yaml` — ============================================================================= (~1236 tok)
+- `config.yaml` (~2868 tok)
+- `cutover.md` — EAI-Flow 数据安全割接手册（旧部署 → 新方案） (~1913 tok)
+- `deploy.conf.example` — EAI-Flow 部署配置（唯一需要手写的文件） (~175 tok)
+- `deploy.sh` — ============================================================================= (~2254 tok)
+- `docker-compose.extensions.yaml` — ============================================================================= (~520 tok)
+- `docker-compose.ragflow.yaml` — ============================================================================= (~1382 tok)
 - `docker-compose.temporal.yaml` — ============================================================================= (~212 tok)
-- `docker-compose.yaml` — ============================================================================= (~1175 tok)
+- `docker-compose.yaml` — ============================================================================= (~1354 tok)
 - `extensions_config.json` (~820 tok)
+- `ragflow-fixed.Dockerfile` — EAI-CUSTOM: RAGFlow v0.25.3 离线修复镜像 (~255 tok)
 - `README.md` — Project documentation (~1066 tok)
+- `upgrade.sh` — upgrade.sh — 服务器端增量升级（配合 scripts/offline-export.sh --delta 产出的 delta 包） (~1203 tok)
+
+## deploy/offline/brand-assets/
+
+- `README.md` — Project documentation (~199 tok)
 
 ## deploy/offline/nginx/
 
@@ -1589,7 +1767,7 @@
 ## docker/
 
 - `dev-entrypoint.sh` — DeerFlow gateway dev entrypoint — runs inside the docker-compose-dev gateway (~1045 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~3979 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~4068 tok)
 - `docker-compose-offline.yaml` — DeerFlow Offline Deployment (~978 tok)
 - `docker-compose.business.yaml` — Business Microservices (~1533 tok)
 - `docker-compose.extensions-offline.yaml` — DeerFlow Extensions Services — Offline Version (~538 tok)
@@ -1612,7 +1790,9 @@
 - `CODE_MERGE_GUIDE.md` — 代码更新差分实施方案 (~4405 tok)
 - `EAI-CUSTOMIZATION-WHITELIST.md` — EAI 品牌定制白名单 v0.5.0 (~1787 tok)
 - `ngrok-setup.md` — ngrok 内网穿透配置方案 (~569 tok)
-- `OFFLINE_DEPLOYMENT_GUIDE.md` — EAI-Flow 内网离线部署操作手册 (~3477 tok)
+- `OFFLINE_DEPLOYMENT_GUIDE.md` — EAI-Flow 内网离线部署操作手册 (~7169 tok)
+- `prototype-contract-price-dashboard-light.html` — 合同价格分析 — 浅色 (~5313 tok)
+- `prototype-contract-price-dashboard.html` — 合同价格分析 — 总览原型 (~6500 tok)
 - `ROADMAP.md` — EAI-Flow 产品路线图与待实现需求 (~774 tok)
 - `upstream-sync-classification-2026-07-17.md` — 上游差分分类分析 2026-07-17 (~3627 tok)
 - `upstream-sync-gap-2026-07-16.md` — 上游同步差距文档（post-history-rewrite） (~3330 tok)
@@ -1651,9 +1831,15 @@
 - `2026-07-22-docmgr-export-toc.md` — 文档空间 Word 导出目录(TOC)Implementation Plan (~3436 tok)
 - `2026-07-22-tiptap-math-mdplugin.md` — Tiptap 数学渲染重构：markdown-it 插件方案 — 实现计划 (~3577 tok)
 - `2026-07-26-docmgr-ai-panel-redesign.md` — 文档空间右侧 AI 助手重新定位 — 实施计划 (~6539 tok)
+- `2026-07-27-agent-registry.md` — Agent 注册表（数字员工看板）Implementation Plan (~20052 tok)
+- `2026-07-29-offline-deploy-simplification.md` — 离线部署简化与增量升级 — Implementation Plan (~8210 tok)
+- `2026-07-30-abac-phase2-plan.md` — Phase 2：数据域引擎 + ABAC 策略接入 — 实现计划 (~6027 tok)
+- `2026-07-30-abac-phase3-plan.md` — Phase 3：前端全链路权限控制 — 实现计划 (~304 tok)
+- `2026-07-30-abac-rbac-redesign-plan.md` — ABAC-lite 权限系统重构 — 实现计划 (~11219 tok)
 
 ## docs/superpowers/specs/
 
+- `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一(yaml驱动)+功能修复设计 (~2830 tok)
 - `2026-05-12-knowledge-factory-agent-integration-design.md` — 知识工厂 ↔ Agent 双向协同集成设计 (~1878 tok)
 - `2026-05-18-geological-report-skill-design.md` — 固体矿产地质勘查报告制作技能设计 (~1611 tok)
 - `2026-05-20-ai-assistant-panel-design.md` — AI Assistant Panel Refactor Design (~1291 tok)
@@ -1702,6 +1888,10 @@
 - `2026-07-23-docmgr-agent-editor-design.md` — 文档空间 — AI Agent 编辑器协作设计 (~3164 tok)
 - `2026-07-25-docmgr-blocknote-ai-unification.md` — 文档空间 AI 助手重构 — BlockNote 统一方案 (~843 tok)
 - `2026-07-26-docmgr-ai-panel-redesign.md` — 文档空间 — 右侧 AI 助手重新定位设计 (~1875 tok)
+- `2026-07-27-agent-registry-design.md` — Agent 注册表（数字员工看板）设计 (~3871 tok)
+- `2026-07-29-offline-deploy-simplification-design.md` — 离线部署简化与增量升级 — 设计文档 (~2582 tok)
+- `2026-07-30-abac-rbac-redesign-design.md` — ABAC-lite 权限系统重构设计 (~5138 tok)
+- `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一 + 功能修复设计（yaml 驱动） (~2318 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1711,7 +1901,8 @@
 
 - `.npmrc` (~31 tok)
 - `CLAUDE.md` — CLAUDE.md (~1303 tok)
-- `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~722 tok)
+- `Dockerfile` — Docker container definition (~698 tok)
+- `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~925 tok)
 - `package.json` — Node.js package manifest (~1578 tok)
 - `test_debug_login.py` — Login via form submission (handles CSRF automatically) then test plugin tabs. (~2055 tok)
 - `test_plugin_tabs.py` — Test plugin sub-tabs stay within settings page. (~1262 tok)
@@ -1724,11 +1915,12 @@
 
 ## frontend/src/
 
+- `brand.ts` — EAI-CUSTOM: 按客户品牌化（构建期注入）。 (~111 tok)
 - `version.ts` — Exports APP_VERSION (~11 tok)
 
 ## frontend/src/app/
 
-- `layout.tsx` — metadata (~302 tok)
+- `layout.tsx` — EAI-CUSTOM: 按客户品牌化（构建期注入，见 brand.ts） (~584 tok)
 
 ## frontend/src/app/(auth)/
 
@@ -1744,7 +1936,7 @@
 
 ## frontend/src/app/(auth)/setup/
 
-- `page.tsx` — SetupPage — renders form (~2736 tok)
+- `page.tsx` — SetupPage — renders form (~2762 tok)
 
 ## frontend/src/app/[lang]/docs/
 
@@ -1752,11 +1944,11 @@
 
 ## frontend/src/app/admin/
 
-- `layout.tsx` — Check if the current user has admin privileges. (~843 tok)
+- `layout.tsx` — Check if the current user has admin privileges. (~889 tok)
 
 ## frontend/src/app/admin/app-center/
 
-- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3946 tok)
+- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3988 tok)
 - `controls.tsx` — 强调色时显示的色块（可选） (~452 tok)
 - `DomainManagement.tsx` — accent → 实心色块背景类（用于下拉项的色点） (~2761 tok)
 - `page.tsx` — AdminAppCenterPage (~275 tok)
@@ -1767,7 +1959,7 @@
 
 ## frontend/src/app/admin/roles/
 
-- `page.tsx` — PERMISSION_CATEGORIES (~12297 tok)
+- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~23554 tok)
 
 ## frontend/src/app/admin/templates/
 
@@ -1794,7 +1986,7 @@
 
 ## frontend/src/app/api/collab/ai-chat/
 
-- `route.ts` — Stream plain text deltas in AI SDK UI message format (~3432 tok)
+- `route.ts` — Stream plain text deltas in AI SDK UI message format (~3452 tok)
 
 ## frontend/src/app/api/memory/
 
@@ -1810,7 +2002,7 @@
 
 ## frontend/src/app/contract-price/
 
-- `layout.tsx` — navItems (~651 tok)
+- `layout.tsx` — navItems (~650 tok)
 - `page.tsx` — ContractPriceDashboardPage (~54 tok)
 
 ## frontend/src/app/contract-price/clusters/
@@ -1843,7 +2035,7 @@
 
 ## frontend/src/app/knowledge/
 
-- `page.tsx` — formatDate (~23223 tok)
+- `page.tsx` — formatDate (~23418 tok)
 
 ## frontend/src/app/login/
 
@@ -1860,7 +2052,7 @@
 
 ## frontend/src/app/settings/
 
-- `page.tsx` — SettingsPage (~974 tok)
+- `page.tsx` — SettingsPage (~1118 tok)
 
 ## frontend/src/app/test-editor/
 
@@ -1911,6 +2103,10 @@
 - `App.tsx` — LandingNew (~4749 tok)
 - `index.css` — Styles: 2 rules (~374 tok)
 
+## frontend/src/components/landing/
+
+- `footer.tsx` — EAI-CUSTOM: 按客户品牌化（构建期注入，见 brand.ts） (~362 tok)
+
 ## frontend/src/components/ui/
 
 - `admin-select.tsx` — AdminSelect (~1094 tok)
@@ -1922,7 +2118,7 @@
 
 - `input-box-helpers.ts` — Exports MAX_SKILL_SUGGESTIONS, MAX_GOAL_OBJECTIVE_CHARS, isGoalObjectiveTooLong, GOAL_OBJECTIVE_COUN (~2157 tok)
 - `input-box.tsx` — Whether to render the input in welcome layout (vertically centered, (~24802 tok)
-- `recent-chat-list.tsx` — threadHref — renders modal (~3613 tok)
+- `recent-chat-list.tsx` — RecentChatList (~3890 tok)
 - `save-to-doc-button.tsx` — extractTitle (~591 tok)
 - `thread-channel-source.tsx` — ThreadChannelIcon (~379 tok)
 - `token-usage-indicator.tsx` — TokenUsageIndicator (~1471 tok)
@@ -1952,7 +2148,7 @@
 
 ## frontend/src/components/workspace/citations/
 
-- `artifact-link.tsx` — Link renderer for artifact markdown: citation: prefix → CitationLink, otherwise underlined text. (~570 tok)
+- `artifact-link.tsx` — Link renderer for artifact markdown: citation: prefix → CitationLink, otherwise underlined text. (~331 tok)
 
 ## frontend/src/components/workspace/messages/
 
@@ -1986,11 +2182,11 @@
 ## frontend/src/core/api/
 
 - `api-client.ts` — SDK ``onRequest`` hook that mints the ``X-CSRF-Token`` header from the (~3004 tok)
-- `stream-mode.ts` — Exports CHAT_RUN_STREAM_MODES, warnUnsupportedStreamModes, sanitizeRunStreamOptions, forceChatRunStr (~604 tok)
+- `stream-mode.ts` — Stream modes required for chat runs — used by EAI hooks.ts. (~660 tok)
 
 ## frontend/src/core/artifacts/
 
-- `utils.ts` — Exports urlOfArtifact, extractArtifactsFromThread, buildWriteFileArtifactURL, resolveArtifactURL + 2 (~1079 tok)
+- `utils.ts` — Exports urlOfArtifact, extractArtifactsFromThread, buildWriteFileArtifactURL, resolveArtifactURL, re (~770 tok)
 
 ## frontend/src/core/auth/
 
@@ -2008,9 +2204,9 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~11022 tok)
-- `types.ts` — Exports Translations (~4968 tok)
-- `zh-CN.ts` — Exports zhCN (~7673 tok)
+- `en-US.ts` — Exports enUS (~13366 tok)
+- `types.ts` — Exports Translations (~6894 tok)
+- `zh-CN.ts` — Exports zhCN (~9274 tok)
 
 ## frontend/src/core/mcp/
 
@@ -2019,6 +2215,10 @@
 ## frontend/src/core/messages/
 
 - `utils.ts` — Exports MessageGroup, getMessageGroups, getBranchableAssistantGroupIds, groupMessages + 8 more (~5743 tok)
+
+## frontend/src/core/permissions/
+
+- `usePermission.ts` — Exports PermissionState, usePermission (~547 tok)
 
 ## frontend/src/core/rehype/
 
@@ -2039,7 +2239,7 @@
 ## frontend/src/core/threads/
 
 - `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~20593 tok)
-- `utils.ts` — Exports ChannelThreadSource, pathOfThread, textOfMessage, titleOfThread, channelSourceOfThread (~799 tok)
+- `utils.ts` — Exports THREAD_PINNED_METADATA_KEY, ChannelThreadSource, pathOfThread, textOfMessage + 2 more (~817 tok)
 
 ## frontend/src/core/uploads/
 
@@ -2047,11 +2247,11 @@
 
 ## frontend/src/extensions/
 
-- `types.ts` — Exports LoginRequest, LoginResponse, CurrentUser, User + 50 more (~2811 tok)
+- `types.ts` — EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") (~3438 tok)
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~11676 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~12874 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -2077,7 +2277,7 @@
 
 ## frontend/src/extensions/app-center/hooks/
 
-- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1747 tok)
+- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1919 tok)
 - `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
 
 ## frontend/src/extensions/collab/
@@ -2105,20 +2305,22 @@
 
 ## frontend/src/extensions/contract-price/
 
-- `api.ts` — API client for the contract-price-analysis management API. (~1101 tok)
-- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~870 tok)
-- `types.ts` — TypeScript types for the contract-price-analysis API. (~658 tok)
+- `api.ts` — API client for the contract-price-analysis management API. (~2077 tok)
+- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2382 tok)
+- `types.ts` — TypeScript types for the contract-price-analysis API (v2). (~1075 tok)
 
 ## frontend/src/extensions/contract-price/components/
 
-- `ClustersView.tsx` — statusBadge — renders table (~2874 tok)
-- `ContractsView.tsx` — statusTone — renders form, table (~1332 tok)
-- `DashboardView.tsx` — formatDate — renders table (~1722 tok)
-- `ItemsView.tsx` — ItemsView — renders form, table (~1952 tok)
+- `BoxPlot.tsx` — Custom SVG box plot — renders min/Q1/median/Q3/max + outliers. (~1236 tok)
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~5366 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6483 tok)
+- `DashboardView.tsx` — DashboardView (~892 tok)
+- `GoodsAnalysis.tsx` — badgeColors (~5114 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~8970 tok)
 - `PageHeader.tsx` — PageHeader — renders table (~356 tok)
-- `SettingsView.tsx` — SettingsView (~1424 tok)
-- `StatCard.tsx` — toneClasses (~360 tok)
-- `TasksView.tsx` — statusTone — renders table (~1313 tok)
+- `SettingsView.tsx` — SettingsView (~1715 tok)
+- `StatCard.tsx` — colorClasses (~411 tok)
+- `TasksView.tsx` — Download a run's Excel via credentialed fetch → blob (auth-cookie safe, (~3046 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -2171,8 +2373,8 @@
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~8428 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~25031 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~8562 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~25054 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13007 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
@@ -2182,7 +2384,7 @@
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
 - `TiptapEditor.tsx` — 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） (~8437 tok)
-- `useDocAIThread.ts` — Read the CSRF cookie value from document.cookie. (~1020 tok)
+- `useDocAIThread.ts` — Read the CSRF cookie value from document.cookie. (~1131 tok)
 - `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1426 tok)
 - `useFolderTree.ts` — Exports useFolderTree (~617 tok)
 
@@ -2347,11 +2549,12 @@
 
 ## frontend/src/extensions/shell/
 
-- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~1883 tok)
+- `ShellLayout.tsx` — ShellLayout (~228 tok)
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~2042 tok)
 
 ## frontend/src/extensions/types/
 
-- `index.ts` — 知识库类型：ragflow | pageindex（旧数据可能缺省，前端按 ragflow 展示） (~2942 tok)
+- `index.ts` — EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") (~3008 tok)
 
 ## frontend/src/extensions/workflow/
 
@@ -2423,12 +2626,16 @@
 ## frontend/src/styles/
 
 - `eai-overrides.css` — Styles: 8 rules (~823 tok)
-- `globals.css` — Styles: 67 rules, 156 vars (~10383 tok)
+- `globals.css` — Styles: 66 rules, 159 vars (~10086 tok)
 
 ## frontend/tests/e2e/
 
 - `load-more.spec.ts` — E2E test: "Load More" button on conversation page (~1394 tok)
 - `traceability-tab.spec.ts` — E2E test: 文档空间协同编辑页中溯源 Tab 测试 (~2182 tok)
+
+## frontend/tests/unit/
+
+- `brand.test.ts` (~107 tok)
 
 ## frontend/tests/unit/core/api/
 
@@ -2482,14 +2689,26 @@
 - `server.py` — analyze_cad, main (~3140 tok)
 - `test_analyze.py` — Self-check for analyze_cad (parse-only; rasterize is too slow for a unit test). (~702 tok)
 
+## mcp-server/ocr-service/
+
+- `ocr_engine.py` — Dual-path contract table extraction engine. (~4872 tok)
+- `requirements.txt` — Python dependencies (~56 tok)
+- `server.py` — eai-flow-ocr — FastAPI service wrapping OcrEngine. (~713 tok)
+
 ## scripts/
 
 - `config-upgrade.sh` — config-upgrade.sh - Upgrade config.yaml to match config.example.yaml (~1225 tok)
 - `docker.sh` — Declares for (~4435 tok)
-- `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~5999 tok)
+- `generate-config.sh` — generate-config.sh — 读 deploy.conf（唯一可信配置源），生成 config.yaml / .env / extensions_config.json (~1351 tok)
+- `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~9076 tok)
 - `serve.sh` — serve.sh — Unified DeerFlow service launcher (~2834 tok)
 - `test_kanban.py` — ", handle_api) (~2873 tok)
 - `wait-for-port.sh` — wait-for-port.sh - Wait for a TCP port to become available (~480 tok)
+
+## scripts/tests/
+
+- `test_delta_export.sh` — Self-check for the --delta diff logic (Task 3.2). (~339 tok)
+- `test_generate_config.sh` — Self-check for generate-config.sh (Ponytail: one small runnable check, no framework). (~455 tok)
 
 ## skills/custom/coal-eia-report/
 
@@ -2524,69 +2743,6 @@
 
 - `SKILL.md` — 煤矿工程报告合规审查 Skill — 安全规程/技术指标/章节完整性/术语规范 (~1600 tok)
 - `SKILL.md` — 煤矿工程报告合规审查 (~399 tok)
-
-## skills/custom/contract-price-analysis/
-
-- `conftest.py` — Pytest config: ensure required env vars exist before module import. (~130 tok)
-- `README.md` — Project documentation (~569 tok)
-- `requirements.txt` — Python dependencies (~22 tok)
-- `SKILL.md` — 合同分项价格分析技能 (~511 tok)
-
-## skills/custom/contract-price-analysis/scripts/
-
-- `__init__.py` (~0 tok)
-- `cli.py` — End-to-end pipeline orchestration. (~2977 tok)
-- `config.py` — Configuration loaded from environment variables. (~251 tok)
-- `db.py` — Async DB engine + session factory for cpa_ tables. (~238 tok)
-- `excel_generator.py` — Generate a 6-sheet Excel report with charts via xlsxwriter. (~1998 tok)
-- `models.py` — SQLAlchemy ORM models for cpa_ tables (PostgreSQL postgres-ext). (~1492 tok)
-- `ragflow_client.py` — RAGFlow REST API client with incremental change detection. (~1548 tok)
-- `stats.py` — Aggregate statistics over a group of unit prices. (~528 tok)
-
-## skills/custom/contract-price-analysis/scripts/clustering/
-
-- `__init__.py` — Clustering subpackage: vectorization (text + tech params) and DBSCAN engine. (~24 tok)
-- `engine.py` — DBSCAN clustering over vectorized goods samples (numpy-only, no scikit-learn). (~924 tok)
-- `vectorizer.py` — Feature vectorizer: char-ngram TF-IDF over goods name/spec + standardized tech params. (~1005 tok)
-
-## skills/custom/contract-price-analysis/scripts/parser/
-
-- `__init__.py` — Document parsers for contract price line-items. (~524 tok)
-- `base.py` — Parser interface. (~80 tok)
-- `list_parser.py` — Numbered-list parser. (~486 tok)
-- `mixed_parser.py` — Mixed parser: tables first, fall back to list parsing per chunk. (~227 tok)
-- `table_parser.py` — Markdown-table parser. (~872 tok)
-
-## skills/custom/contract-price-analysis/scripts/server/
-
-- `__init__.py` — Contract price analysis — management API service (FastAPI). (~19 tok)
-- `app.py` — FastAPI application for the contract-price-analysis management API. (~441 tok)
-- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~2577 tok)
-- `deps.py` — Shared dependencies for the management API. (~127 tok)
-- `main.py` — uvicorn entrypoint for the management API. (~117 tok)
-- `schemas.py` — Pydantic request/response models for the management API. (~854 tok)
-
-## skills/custom/contract-price-analysis/scripts/server/routers/
-
-- `__init__.py` — API routers, one per management functional area. (~16 tok)
-
-## skills/custom/contract-price-analysis/tests/
-
-- `test_cli.py` — End-to-end CLI pipeline tests (RAGFlow + DB mocked). (~781 tok)
-- `test_clustering_engine.py` — Tests for the DBSCAN clustering engine. (~429 tok)
-- `test_config.py` — test_get_config_reads_env, test_get_config_defaults (~233 tok)
-- `test_db_models.py` — Tests for cpa_ ORM models. (~1010 tok)
-- `test_excel_generator.py` — Tests for the Excel generator (6 sheets + charts). (~688 tok)
-- `test_parser.py` — Tests for the three parser modes + dispatch. (~649 tok)
-- `test_ragflow_client.py` — Tests for the RAGFlow client (HTTP mocked — no live server needed). (~1127 tok)
-- `test_stats.py` — Tests for price statistics computation. (~307 tok)
-- `test_vectorizer.py` — Tests for the text+param vectorizer. (~385 tok)
-
-## skills/custom/contract-price-analysis/tests/server/
-
-- `__init__.py` (~0 tok)
-- `test_app.py` — Tests for the FastAPI app scaffold (health endpoint, CORS). (~280 tok)
-- `test_schemas_crud.py` — Tests for schemas + config CRUD (JSON-backed, no DB needed). (~616 tok)
 
 ## skills/custom/fire-protection-extract/
 
@@ -2671,6 +2827,44 @@
 ## skills/custom/water-drainage-report/scripts/
 
 - `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~3532 tok)
+
+## skills/public/contract-price-analysis/
+
+- `conftest.py` — Pytest config: ensure required env vars exist before module import. (~130 tok)
+- `README.md` — Project documentation (~569 tok)
+- `requirements.txt` — Python dependencies (~22 tok)
+- `SKILL.md` — 合同分项价格分析技能 (~511 tok)
+
+## skills/public/contract-price-analysis/scripts/
+
+- `__init__.py` (~0 tok)
+- `cli.py` — End-to-end pipeline (v2: MinIO + eai-flow-ocr). (~12911 tok)
+- `config.py` — Configuration loaded from environment variables. (~251 tok)
+- `db.py` — Async DB engine + session factory for cpa_ tables. (~238 tok)
+- `document_parser.py` — Parse a contract file via the eai-flow-ocr HTTP service -> TableExtract list. (~1218 tok)
+- `document_scanner.py` — Scan the MinIO bucket for contract files; detect changed via SHA-256. (~784 tok)
+- `excel_generator.py` — 6-sheet Excel report with charts (xlsxwriter). (~1998 tok)
+- `models.py` — SQLAlchemy ORM for cpa_ tables (v2: MinIO-backed documents). (~2101 tok)
+- `project_fields.py` — Extract project-level fields (name, location) from OCR'd first-page text. (~1843 tok)
+- `stats.py` — Aggregate statistics over a group of unit prices. (~528 tok)
+- `table_classifier.py` — Classify extracted tables and map column roles. (~4680 tok)
+
+## skills/public/contract-price-analysis/scripts/clustering/
+
+- `__init__.py` — Clustering subpackage: vectorization + DBSCAN engine. (~24 tok)
+- `engine.py` — DBSCAN clustering (numpy-only, no scikit-learn). (~924 tok)
+- `vectorizer.py` — Feature vectorizer for goods-name clustering. (~1407 tok)
+
+## skills/public/contract-price-analysis/tests/
+
+- `test_cli.py` — v2 pipeline tests (MinIO + OCR mocked — no live services needed). (~1861 tok)
+- `test_clustering_engine.py` — Tests for the DBSCAN clustering engine. (~429 tok)
+- `test_config.py` — test_get_config_reads_env, test_get_config_defaults (~233 tok)
+- `test_db_models.py` — Tests for cpa_ ORM models. (~1010 tok)
+- `test_excel_generator.py` — Tests for the Excel generator (6 sheets + charts). (~688 tok)
+- `test_stats.py` — Tests for price statistics computation. (~307 tok)
+- `test_table_classifier.py` — bbox-x column alignment tests (the ② root fix, hybrid form). (~1070 tok)
+- `test_vectorizer.py` — Tests for the type-blocking vectorizer. (~648 tok)
 
 ## skills/public/fire-protection-report-v2/
 
