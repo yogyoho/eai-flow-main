@@ -12,6 +12,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Blocks,
+  KanbanSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -50,6 +51,8 @@ const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard", navId: "nav:dashboard" },
   { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project", navId: "nav:projects" },
+  // EAI-CUSTOM: Collab Workspace 协作工作台
+  { href: "/workspace/collab", label: "协作工作台", icon: KanbanSquare, licenseModule: "platform", navId: "nav:collab-workspace" },
   { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform", navId: "nav:docmgr" },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform", navId: "nav:knowledge-factory" },
   { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform", navId: "nav:knowledge" },
@@ -118,6 +121,10 @@ export function ExtensionsSidebar() {
     return true;
   });
 
+  // EAI-CUSTOM (nav flash fix): 权限/许可证加载完成前不渲染导航项——用骨架屏占位保持
+  // 布局稳定，避免 canNav 加载期 fail-open 导致的"无权图标闪现后消失"。
+  const navReady = !isLoading && !licenseLoading;
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -141,21 +148,28 @@ export function ExtensionsSidebar() {
 
         {/* Main navigation */}
         <nav className="flex flex-col items-center py-4 gap-2 flex-1">
-          {navItems.map(({ href, label, icon, newTab }) => {
-            const isActive =
-              pathname === href ||
-              (href !== "/" && pathname.startsWith(href + "/"));
-            return (
-              <NavIcon
-                key={href}
-                href={href}
-                label={label}
-                icon={icon}
-                isActive={isActive}
-                newTab={newTab}
-              />
-            );
-          })}
+          {!navReady ? (
+            /* Skeleton while permissions/license resolve — nothing flashes in/out */
+            Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="w-10 h-10 rounded-lg bg-muted/60 animate-pulse" />
+            ))
+          ) : (
+            navItems.map(({ href, label, icon, newTab }) => {
+              const isActive =
+                pathname === href ||
+                (href !== "/" && pathname.startsWith(href + "/"));
+              return (
+                <NavIcon
+                  key={href}
+                  href={href}
+                  label={label}
+                  icon={icon}
+                  isActive={isActive}
+                  newTab={newTab}
+                />
+              );
+            })
+          )}
         </nav>
 
         {/* Bottom navigation (settings) */}
