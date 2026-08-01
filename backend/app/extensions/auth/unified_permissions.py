@@ -18,6 +18,35 @@ from app.extensions.models import ProjectMember, Role
 from app.extensions.models.role_permission import ProjectRole
 from app.extensions.schemas import CurrentUser
 
+# Legacy slot_type / duty values stored in ProjectMember.phase_duties JSONB → ProjectRole value.
+# phase_duties entries carry the machine value under "slot_type" and a display label under "role".
+_PHASE_DUTY_ROLE_MAP: dict[str, str] = {
+    "lead": ProjectRole.PHASE_LEAD.value,
+    "leader": ProjectRole.PHASE_LEAD.value,
+    "reviewer": ProjectRole.REVIEWER.value,
+    "dept_reviewer": ProjectRole.REVIEWER.value,
+    "data_reviewer": ProjectRole.REVIEWER.value,
+    "approver": ProjectRole.APPROVER.value,
+    "company_reviewer": ProjectRole.APPROVER.value,
+    "write": ProjectRole.WRITER.value,
+    "writer": ProjectRole.WRITER.value,
+}
+
+# Legacy ProjectMember.role values → ProjectRole value (new unified taxonomy).
+# The system writes: "owner" (creator), "writer"/"leader" (auto-assign),
+# and VALID_MEMBER_ROLES (owner/manager/editor/reviewer/approver/member).
+_MEMBER_ROLE_MAP: dict[str, str] = {
+    "lead": ProjectRole.PHASE_LEAD.value,
+    "leader": ProjectRole.PHASE_LEAD.value,
+    "manager": ProjectRole.PHASE_LEAD.value,
+    "dept_reviewer": ProjectRole.REVIEWER.value,
+    "company_reviewer": ProjectRole.APPROVER.value,
+    "editor": ProjectRole.WRITER.value,
+    "member": ProjectRole.WRITER.value,
+    "write": ProjectRole.WRITER.value,
+    "writer": ProjectRole.WRITER.value,
+}
+
 
 async def resolve_user_project_role(
     db: AsyncSession,
@@ -28,8 +57,8 @@ async def resolve_user_project_role(
     """Resolve a user's effective ProjectRole within a project.
 
     Priority:
-    1. phase_duties override for the given phase_node
-    2. ProjectMember.role
+    1. phase_duties override for the given phase_node (slot_type first)
+    2. ProjectMember.role (with legacy role mapping)
     3. None (not a member)
     """
     member_result = await db.execute(
@@ -42,30 +71,23 @@ async def resolve_user_project_role(
     if not member:
         return None
 
-    # Phase-scoped role override
+    # Phase-scoped role override. phase_duties stores the machine value under
+    # "slot_type" (e.g. "leader"/"writer") in current writes, or "duty" in
+    # legacy rows; "role" only holds a display label (e.g. "组长"/"组员").
+    # Read slot_type → duty → role in that order.
     if phase_node and member.phase_duties:
         phase_duty = member.phase_duties.get(phase_node, {})
-        duty_role = phase_duty.get("role")
+        duty_role = phase_duty.get("slot_type") or phase_duty.get("duty") or phase_duty.get("role")
         if duty_role:
-            _LEGACY_MAP = {
-                "lead": ProjectRole.PHASE_LEAD.value,
-                "leader": ProjectRole.PHASE_LEAD.value,
-                "reviewer": ProjectRole.REVIEWER.value,
-                "dept_reviewer": ProjectRole.REVIEWER.value,
-                "approver": ProjectRole.APPROVER.value,
-                "company_reviewer": ProjectRole.APPROVER.value,
-                "write": ProjectRole.WRITER.value,
-                "writer": ProjectRole.WRITER.value,
-            }
-            normalised = _LEGACY_MAP.get(duty_role, duty_role)
+            normalised = _PHASE_DUTY_ROLE_MAP.get(duty_role, duty_role)
             try:
                 return ProjectRole(normalised)
             except ValueError:
                 pass
 
-    # Project-level role
+    # Project-level role (legacy values mapped into the unified taxonomy)
     try:
-        return ProjectRole(member.role)
+        return ProjectRole(_MEMBER_ROLE_MAP.get(member.role, member.role))
     except ValueError:
         return None
 
@@ -147,13 +169,23 @@ def require_resource_permission(action: str):
         request: Request = ...,
         db: AsyncSession = Depends(get_db),
     ) -> str | None:
-        is_admin = False
-        if current_user.role_id is not None:
-            role_obj = await db.get(Role, current_user.role_id)
-            if role_obj and (role_obj.is_system or "*" in (role_obj.permissions or [])):
-                is_admin = True
-        if is_admin:
+        from app.extensions.auth.identity import get_identity_provider
+        from app.extensions.auth.registry import get_permission_registry
+
+        # Registry-based admin bypass (mirrors require_super_admin)
+        registry = get_permission_registry()
+        provider = get_identity_provider()
+        identity = await provider.resolve(current_user.id, db)
+        defaults = registry.get_role_defaults(identity.role_code)
+        is_system = bool(defaults and defaults.get("is_system"))
+        resolved = registry.resolve_role_permissions(identity.role_code or "")
+        if is_system or "*" in resolved:
             return "owner"
+
+        # Base gate: every caller needs global system:access (mirrors the legacy
+        # require_permission("system:access") dependency the old shim used).
+        if "system:access" not in resolved:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Permission denied: system:access required")
 
         project_id = request.path_params.get("project_id")
         if not project_id:

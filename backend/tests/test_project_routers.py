@@ -35,13 +35,34 @@ def _make_admin_role():
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     app = FastAPI()
     app.include_router(router)
 
     mock_user = _make_user()
     mock_db = AsyncMock()
     mock_db.get = AsyncMock(return_value=_make_admin_role())
+
+    # EAI-CUSTOM: require_permission / require_resource_permission resolve the
+    # global role via the identity provider + PermissionRegistry. Mirror the
+    # mock role's is_system flag so admin vs non-admin fixtures both work, and
+    # make db.execute usable for the ABAC policy load (empty policies).
+    from app.extensions.auth.identity import AttributeSet
+
+    exec_result = MagicMock()
+    exec_result.scalars.return_value.all.return_value = []
+    exec_result.scalar_one_or_none.return_value = None
+    mock_db.execute = AsyncMock(return_value=exec_result)
+
+    async def _fake_resolve(user_id, db):
+        role = db.get.return_value
+        if role and role.is_system:
+            return AttributeSet(user_id=str(user_id), username="admin", role_code="superadmin")
+        return AttributeSet(user_id=str(user_id), username="user", role_code="user")
+
+    mock_provider = MagicMock()
+    mock_provider.resolve = AsyncMock(side_effect=_fake_resolve)
+    monkeypatch.setattr("app.extensions.auth.identity.get_identity_provider", lambda: mock_provider)
 
     async def _override_get_current_user():
         return mock_user

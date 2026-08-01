@@ -399,8 +399,8 @@ async def _check_phase_access(
 ) -> None:
     """Check that the user can edit the given chapter within its phase scope.
 
-    Owners/managers always pass. For other roles, the chapter must belong
-    to the project's current phase (project.current_phase_node).
+    Owners and phase leads (managers) always pass. For other roles, the
+    chapter must belong to the project's current phase (project.current_phase_node).
     """
     # Resolve project role
     is_admin = False
@@ -413,12 +413,13 @@ async def _check_phase_access(
         return
 
     from app.extensions.auth.unified_permissions import resolve_user_project_role
+    from app.extensions.models.role_permission import ProjectRole
 
     project_role = await resolve_user_project_role(db, user.id, project_id)
-    if project_role and project_role.value in ("owner", "manager"):
-        return  # Owners/managers have full access
+    if project_role in (ProjectRole.OWNER, ProjectRole.PHASE_LEAD):
+        return  # Owners and phase leads (managers) have full access
 
-    # For non-owner/manager: check phase scope
+    # For non-owner/non-phase-lead: check phase scope
     from app.extensions.models import ReportProject, ProjectChapter
 
     project = await db.get(ReportProject, project_id)
