@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
+import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
   RegistryModule, PermissionItem,
@@ -172,44 +173,6 @@ function getAllFallbackPermKeys(): string[] {
   return PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
 }
 
-/* ── 策略条件形状转换：UI 数组 ⇄ 引擎 dict ─────────────────────────
- * 后端引擎 (_evaluate_conditions) 存储/评估 {and:[{attr,op,value}]}，op ∈ {eq,neq,gt,gte,lt,lte,contains,not_contains,in,not_in}；
- * UI 编辑用 [{attribute,operator,value}]，operator 为展示符（=,!=,>=,<=,contains,in,not_in）。
- * 保存时转引擎 dict，加载时转回 UI 数组 —— 保证 SAVED shape 与引擎一致且编辑器可用。
- */
-const UI_TO_ENGINE_OP: Record<string, string> = {
-  "=": "eq", "!=": "neq", ">": "gt", "<": "lt", ">=": "gte", "<=": "lte",
-  "contains": "contains", "not_contains": "not_contains", "in": "in", "not_in": "not_in",
-};
-const ENGINE_TO_UI_OP: Record<string, string> = {
-  eq: "=", neq: "!=", gt: ">", lt: "<", gte: ">=", lte: "<=",
-  contains: "contains", not_contains: "not_contains", in: "in", not_in: "not_in",
-};
-
-/** UI 数组 → 引擎 dict（空数组 → 空 dict，引擎视为无条件=全量） */
-function toEngineConditions(conds: PolicyCondition[]): Record<string, unknown> {
-  if (!conds.length) return {};
-  return {
-    and: conds.map((c) => ({
-      attr: c.attribute,
-      op: UI_TO_ENGINE_OP[c.operator] || c.operator,
-      value: c.value,
-    })),
-  };
-}
-
-/** 引擎 dict → UI 数组（后端返回 {and:[...]}，兼容旧数据已是数组） */
-function toUIConditions(conds: unknown): PolicyCondition[] {
-  if (Array.isArray(conds)) return conds as PolicyCondition[];
-  if (!conds || typeof conds !== "object") return [];
-  const list = (conds as Record<string, unknown>).and as Array<Record<string, unknown>> | undefined;
-  if (!Array.isArray(list)) return [];
-  return list.map((c) => ({
-    attribute: (c.attr as string) ?? "",
-    operator: ENGINE_TO_UI_OP[c.op as string] || ((c.op as string) ?? "="),
-    value: (c.value as string) ?? "",
-  }));
-}
 
 /* ── EAI-CUSTOM: Module key → nav_id mapping ─────────────── */
 const MODULE_NAV_MAP: Record<string, string> = {
@@ -772,7 +735,8 @@ function PoliciesPanel({
   const startEdit = useCallback((policy?: PolicyItem) => {
     if (policy) {
       setEditingId(policy.id);
-      setEditForm({ name: policy.name, conditions: [...policy.conditions], grants: [...policy.grants] });
+      // EAI-CUSTOM: 后端返回 conditions/grants 为引擎 dict，编辑前转回 UI 数组（toUIConditions/toGrantArray 对数组幂等）
+      setEditForm({ name: policy.name, conditions: toUIConditions(policy.conditions), grants: toGrantArray(policy.grants) });
     } else {
       setEditingId("__new__");
       setEditForm({ name: "", conditions: [{ attribute: "", operator: "=", value: "" }], grants: [{ permission: "" }] });
@@ -877,6 +841,8 @@ function PolicyRow({
   onEdit: () => void;
   allPermissions: PermissionItem[];
 }) {
+  // EAI-CUSTOM: 后端返回 grants 为引擎 dict {permissions:[...]}，渲染前统一转数组（兼容旧数据已是数组）
+  const grantList = toGrantArray(policy.grants);
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -915,9 +881,9 @@ function PolicyRow({
         </div>
       )}
       {/* Grants summary */}
-      {policy.grants.length > 0 && (
+      {grantList.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {policy.grants.map((g, i) => {
+          {grantList.map((g, i) => {
             const permLabel = allPermissions.find((p) => p.id === g.permission)?.display_name || g.permission;
             return (
               <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-primary/[0.06] text-primary border border-primary/10 font-medium">
@@ -1140,7 +1106,7 @@ export default function AdminRolesPage() {
     try {
       const res = await permissionsApi.listPolicies();
       // EAI-CUSTOM: 后端存储条件为引擎 dict {and:[...]}，加载时转回 UI 数组，保证 PolicyRow/startEdit 读数组可用
-      setPolicies((res.policies || []).map((p) => ({ ...p, conditions: toUIConditions(p.conditions) })));
+      setPolicies((res.policies || []).map((p) => ({ ...p, conditions: toUIConditions(p.conditions), grants: toGrantArray(p.grants) })));
     } catch (err) {
       console.error("Failed to load policies:", err);
       setPolicies([]);
@@ -1260,19 +1226,19 @@ export default function AdminRolesPage() {
 
   const handlePolicySave = async (policy: PolicyItem) => {
     try {
-      // EAI-CUSTOM: 保存时把 UI 条件数组转成引擎 dict 形式（后端 Pydantic conditions:dict + 引擎 {and:[{attr,op,value}]}）
+      // EAI-CUSTOM: 保存时把 UI 条件/授权数组转成引擎 dict 形式（后端 Pydantic conditions/grants 均为 dict；引擎 {and:[{attr,op,value}]} / grants={permissions:[...]}）
       const payload = {
         name: policy.name,
         conditions: toEngineConditions(policy.conditions),
-        grants: policy.grants,
+        grants: { permissions: policy.grants.map((g) => g.permission).filter(Boolean) },
       };
       if (policy.id) {
         await permissionsApi.updatePolicy(policy.id, payload);
         setPolicies((prev) => prev.map((p) => p.id === policy.id ? { ...p, name: policy.name, conditions: policy.conditions, grants: policy.grants } : p));
       } else {
         const created = await permissionsApi.createPolicy({ ...payload, enabled: true });
-        // EAI-CUSTOM: 后端返回完整行（conditions 为引擎 dict），转回 UI 数组再入列表
-        setPolicies((prev) => [...prev, { ...created, conditions: toUIConditions(created.conditions) }]);
+        // EAI-CUSTOM: 后端返回完整行（conditions/grants 为引擎 dict），转回 UI 数组再入列表
+        setPolicies((prev) => [...prev, { ...created, conditions: toUIConditions(created.conditions), grants: toGrantArray(created.grants) }]);
       }
     } catch (err) {
       console.error("Failed to save policy:", err);
