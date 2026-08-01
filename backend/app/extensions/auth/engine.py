@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import false as sqlalchemy_false
+from sqlalchemy import false as sqlalchemy_false, true as sqlalchemy_true
 
 from app.extensions.auth.identity import AttributeSet
 
@@ -23,8 +23,11 @@ class FilterRule:
 
     @classmethod
     def from_template(cls, template: dict, identity: AttributeSet) -> "FilterRule":
-        if not template:
+        if template is None:
             return cls(operator="none_allow")
+
+        if isinstance(template, dict) and not template:
+            return cls(operator="allow_all")  # 空模板 = 全量访问
 
         if "or" in template:
             return cls(
@@ -77,6 +80,9 @@ class FilterRule:
 
         if self.operator == "none_allow":
             return sqlalchemy_false()  # WHERE FALSE
+
+        if self.operator == "allow_all":
+            return sqlalchemy_true()  # WHERE TRUE
 
         # Resolve column: column_map takes priority, fall back to model attribute
         col = None

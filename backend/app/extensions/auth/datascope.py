@@ -53,6 +53,8 @@ class DataScopeEngine:
             return FilterRule.from_template(applicable[0].rule_template, identity)
 
         children = [FilterRule.from_template(s.rule_template, identity) for s in applicable]
+        if any(c.operator == "allow_all" for c in children):
+            return FilterRule(operator="allow_all")
         children = [c for c in children if c.operator != "none_allow"]
         if not children:
             return FilterRule(operator="none_allow")

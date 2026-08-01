@@ -107,3 +107,31 @@ disabled_roles: []
     rule = engine.get_data_scope(identity, "contract_price")
     assert rule.operator == "in"
     assert rule.field == "dept_id"
+
+
+def test_empty_template_means_allow_all(tmp_path):
+    """空 rule_template {} 应解析为 allow_all（全量），而非 none_allow（拒绝全部）。"""
+    from app.extensions.auth.registry import PermissionRegistry
+
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules:
+  projects:
+    display_name: "项目"
+    nav_id: "nav:projects"
+    pages: []
+    operations: []
+    data_scopes:
+      - { id: "project_all", display_name: "全部", rule_template: {} }
+roles:
+  manager:
+    display_name: "经理"
+    permissions: ["project:read"]
+    data_scopes: ["project_all"]
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml))
+    engine = DataScopeEngine.from_registry_with(reg)
+    identity = AttributeSet(user_id="1", username="u", role_code="manager")
+    rule = engine.get_data_scope(identity, "projects")
+    assert rule.operator == "allow_all"

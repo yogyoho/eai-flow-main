@@ -125,9 +125,9 @@ class TestFilterRule:
         assert len(rule.children) == 2
         assert rule.children[0].value == "u1"
 
-    def test_from_template_empty_is_none_allow(self):
+    def test_from_template_empty_is_allow_all(self):
         rule = FilterRule.from_template({}, identity())
-        assert rule.operator == "none_allow"
+        assert rule.operator == "allow_all"
 
     def test_none_allow_default(self):
         rule = FilterRule()
