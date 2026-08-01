@@ -157,6 +157,9 @@ modules:
         display_name: "配置"
         operations:
           - { id: "cpa:export", display_name: "导出分析结果" }
+    data_scopes:
+      - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
+      - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
 
   # ─── 报告输出（应用中心 → 报告输出）───
   output:

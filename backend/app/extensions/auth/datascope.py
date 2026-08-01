@@ -19,18 +19,20 @@ class DataScopeEngine:
 
     @classmethod
     def from_registry(cls) -> "DataScopeEngine":
-        """Build engine from PermissionRegistry (reads permissions.yaml)."""
-        registry = get_permission_registry()
+        """Build engine from the global PermissionRegistry."""
+        return cls.from_registry_with(get_permission_registry())
+
+    @classmethod
+    def from_registry_with(cls, registry) -> "DataScopeEngine":
+        """Build engine from a given PermissionRegistry (supports overlay in tests)."""
         scopes_by_resource: dict[str, list[DataScope]] = {}
         for module_key, mp in registry.list_modules():
             if mp.data_scopes:
                 scopes_by_resource[module_key] = mp.data_scopes
 
         role_data_scopes: dict[str, list[str]] = {}
-        for code in registry._role_defaults:
-            defaults = registry.get_role_defaults(code)
-            if defaults and defaults.get("data_scopes"):
-                role_data_scopes[code] = defaults["data_scopes"]
+        for code in registry.list_role_codes():
+            role_data_scopes[code] = registry.get_data_scopes_for_role(code)
 
         return cls(scopes_by_resource, role_data_scopes)
 

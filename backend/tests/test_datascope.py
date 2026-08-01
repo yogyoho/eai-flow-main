@@ -70,3 +70,40 @@ class TestDataScopeEngine:
         assert rule is not None
         # Should not be none_allow if permissions.yaml has writer with knowledge_dept
         assert rule.operator != "none_allow"
+
+
+def test_get_data_scope_from_overlay_role(tmp_path):
+    """角色 data_scopes 经 registry（含 overlay）解析，不再硬编码 yaml 默认。"""
+    from app.extensions.auth.registry import PermissionRegistry
+
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules:
+  contract_price:
+    display_name: "合同价格"
+    nav_id: "nav:contract-price"
+    pages: []
+    operations:
+      - { id: "cpa:read", display_name: "查看" }
+    data_scopes:
+      - { id: "cpa_all", display_name: "全部", rule_template: {} }
+      - { id: "cpa_dept", display_name: "本部门", rule_template: { dept_id IN: "$identity.dept_ids" } }
+roles: {}
+""", encoding="utf-8")
+    overlay_yaml = tmp_path / "roles_custom.yaml"
+    overlay_yaml.write_text("""
+roles:
+  buyer:
+    display_name: "采购员"
+    permissions: ["cpa:read"]
+    data_scopes: ["cpa_dept"]
+disabled_roles: []
+""", encoding="utf-8")
+
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(overlay_yaml))
+    engine = DataScopeEngine.from_registry_with(reg)
+    identity = AttributeSet(user_id="1", username="u", role_code="buyer", dept_ids=["d1"])
+    rule = engine.get_data_scope(identity, "contract_price")
+    assert rule.operator == "in"
+    assert rule.field == "dept_id"
