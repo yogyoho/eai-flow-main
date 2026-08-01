@@ -241,3 +241,18 @@ class TestFilterRule:
             ],
         )
         assert engine.check(idn, "kb:create") is True
+
+
+def test_engine_uses_resolved_inherited_permissions():
+    """验证 engine 接收 registry.resolve_role_permissions 已展开 #inherit 的结果。"""
+    engine = UnifiedPermissionEngine(
+        role_permissions={
+            # 模拟 registry.resolve_role_permissions 已展开 #inherit
+            "manager": {"project:edit", "kb:read", "doc:read"},
+            "user": {"kb:read"},
+        },
+        all_permission_ids={"project:edit", "kb:read", "doc:read"},
+    )
+    identity = AttributeSet(user_id="1", username="u", role_code="manager", role_level=20)
+    assert engine.check(identity, "project:edit") is True
+    assert engine.check(identity, "doc:read") is True   # 继承来的权限

@@ -223,20 +223,19 @@ def require_permission(permission: str):
         from app.extensions.auth.identity import get_identity_provider
         from app.extensions.auth.registry import get_permission_registry
 
-        # Roles are always loaded (one cheap scan) — needed for is_system check
-        result = await db.execute(select(Role))
-        roles = result.scalars().all()
-        role_permissions: dict[str, set[str]] = {}
-        for r in roles:
-            role_permissions[r.code] = set(r.permissions or [])
+        # EAI-CUSTOM: Roles come from PermissionRegistry (permissions.yaml + roles_custom.yaml overlay),
+        # with #inherit expansion — DB roles table is a calibrated mirror, not the source.
+        registry = get_permission_registry()
+        role_permissions = {
+            code: registry.resolve_role_permissions(code)
+            for code in registry.list_role_codes()
+        }
+        all_ids = {p.id for p in registry.list_all_permissions()}
 
         # Engine: cached per request
         engine = get_cached_engine()
         if engine is None:
-            registry = get_permission_registry()
-            all_ids = {p.id for p in registry.list_all_permissions()}
-
-            # Load ABAC policies from DB
+            # Load ABAC policies from DB (global, dynamic — kept as data)
             from app.extensions.auth.engine import Policy as EnginePolicy
             from app.extensions.auth.models import Policy as PolicyModel
 
@@ -269,11 +268,12 @@ def require_permission(permission: str):
             identity = await provider.resolve(current_user.id, db)
             set_cached_identity(identity)
 
-        if identity.role_code and roles:
-            # Preserve is_system wildcard behavior: system roles with * get everything
-            matching_role = next((r for r in roles if r.code == identity.role_code), None)
-            if matching_role and (matching_role.is_system or "*" in (matching_role.permissions or [])):
-                return current_user
+        # EAI-CUSTOM: System-role wildcard bypass comes from registry defaults, not DB
+        defaults = registry.get_role_defaults(identity.role_code)
+        is_system = bool(defaults and defaults.get("is_system"))
+        resolved = role_permissions.get(identity.role_code or "", set())
+        if is_system or "*" in resolved:
+            return current_user
 
         if current_user.role_id is not None and identity.role_code is None:
             logger.warning(
@@ -286,10 +286,9 @@ def require_permission(permission: str):
             )
 
         if not engine.check(identity, permission):
-            perms = role_permissions.get(identity.role_code or "", set())
             logger.warning(
-                "Permission check failed: user=%s role=%s permissions=%s lacks '%s'",
-                current_user.id, identity.role_code, perms, permission,
+                "Permission check failed: user=%s role=%s lacks '%s'",
+                current_user.id, identity.role_code, permission,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
