@@ -16,19 +16,25 @@ class TestProjectCreatePermissionGate:
     """Verify that project:create is NOT in the default 'user' role permissions."""
 
     def test_user_role_defaults_lack_project_create(self):
-        from app.extensions.auth.middleware import _ROLE_DEFAULTS
+        from app.extensions.auth.registry import get_permission_registry
 
-        user_perms = _ROLE_DEFAULTS["user"]["permissions"]
-        assert "project:create" not in user_perms, (
+        registry = get_permission_registry()
+        defaults = registry.get_role_defaults("user")
+        assert defaults is not None, "user role should exist in registry"
+        resolved = registry.resolve_role_permissions("user")
+        assert "project:create" not in resolved, (
             "project:create should NOT be in default user permissions"
         )
 
     def test_superadmin_role_has_wildcard(self):
-        from app.extensions.auth.middleware import _ROLE_DEFAULTS
+        from app.extensions.auth.registry import get_permission_registry
 
-        sa_perms = _ROLE_DEFAULTS["superadmin"]["permissions"]
-        assert "*" in sa_perms
-        assert _ROLE_DEFAULTS["superadmin"]["is_system"] is True
+        registry = get_permission_registry()
+        defaults = registry.get_role_defaults("superadmin")
+        assert defaults is not None, "superadmin role should exist in registry"
+        assert defaults["is_system"] is True
+        resolved = registry.resolve_role_permissions("superadmin")
+        assert "*" in resolved
 
     def test_require_permission_project_create_allows_admin(self):
         """Super admin (wildcard permission) should pass project:create check."""
@@ -39,35 +45,36 @@ class TestProjectCreatePermissionGate:
         assert "project:create" not in _get_user_defaults()
 
     @pytest.mark.asyncio
-    async def test_user_role_auto_reset_on_drift(self):
-        """_ensure_role should reset a user role that has project:create extra."""
+    async def test_user_role_ensure_no_drift_reset(self):
+        """_ensure_role should NOT reset extra permissions admin has granted (S3 fix)."""
         from unittest.mock import AsyncMock, MagicMock
 
-        from app.extensions.auth.middleware import _ensure_role, _ROLE_DEFAULTS
+        from app.extensions.auth.middleware import _ensure_role
 
-        # Simulate a role in DB that has project:create (old defaults)
-        old_role = MagicMock()
-        old_role.is_system = False
-        old_role.permissions = [
+        # Simulate a role in DB that has project:create (admin-granted extra)
+        extra_perms = [
             "model:read", "system:access", "project:create",
         ]
+        old_role = MagicMock()
+        old_role.is_system = False
+        old_role.permissions = list(extra_perms)
 
         db = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = old_role
         db.execute.return_value = mock_result
 
-        await _ensure_role(db, "user")
+        result = await _ensure_role(db, "user")
 
-        # The role should have been reset to NOT include project:create
-        expected = _ROLE_DEFAULTS["user"]["permissions"]
-        assert old_role.permissions == expected
-        assert "project:create" not in old_role.permissions
+        # The role should be returned as-is — NO reset (S3 fix)
+        assert result is old_role
+        assert old_role.permissions == extra_perms
+        assert "project:create" in old_role.permissions
 
 
 def _get_user_defaults():
-    from app.extensions.auth.middleware import _ROLE_DEFAULTS
-    return _ROLE_DEFAULTS["user"]["permissions"]
+    from app.extensions.auth.registry import get_permission_registry
+    return sorted(get_permission_registry().resolve_role_permissions("user"))
 
 
 # ── P0-2: Workflow definition super admin lock ──

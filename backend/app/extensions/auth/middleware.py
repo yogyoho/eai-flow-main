@@ -22,66 +22,35 @@ logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN_COOKIE = "access_token"
 
-# Role definitions for on-demand creation when seed_db hasn't run yet.
-_ROLE_DEFAULTS = {
-    "user": {
-        "name": "普通用户",
-        "permissions": [
-            "model:read", "model:create", "model:update", "model:delete",
-            "kb:read", "kb:create", "kb:update", "kb:delete",
-            "doc:read", "doc:upload", "doc:delete",
-            "skill:read", "skill:install", "skill:uninstall",
-            "system:access",
-            "workflow:read",
-        ],
-        "level": 1,
-    },
-    "superadmin": {"name": "Super Admin", "permissions": ["*"], "is_system": True, "level": 100},
-}
-
-
 async def _ensure_role(db: AsyncSession, code: str) -> Role | None:
-    """Look up a role by code, creating it on-the-fly if missing.
+    """Look up a role by code, creating it on-the-fly from registry defaults if missing.
 
-    Also detects when a non-system role (e.g. "user") has been given
-    overly broad permissions such as ``system:*`` and resets them to
-    the coded defaults.  This prevents privilege escalation if the DB
-    was manually modified during development.
+    No drift-reset: registry (permissions.yaml + roles_custom.yaml overlay) is the
+    source of truth, and admin-assigned extra permissions must persist (S3 fix).
     """
+    from app.extensions.auth.registry import get_permission_registry
+
     result = await db.execute(select(Role).where(Role.code == code))
     role = result.scalar_one_or_none()
-
-    defaults = _ROLE_DEFAULTS.get(code)
-
     if role is not None:
-        # Guard: if a non-system role has system-level wildcard, reset it.
-        if defaults and not role.is_system:
-            expected = set(defaults["permissions"])
-            actual = set(role.permissions or [])
-            if actual != expected and (actual - expected):
-                # Has extra permissions beyond the coded default → reset
-                logger.warning(
-                    "Role '%s' (code=%s) has drifted from defaults: %s → resetting to %s",
-                    role.name, code, list(actual), list(expected),
-                )
-                role.permissions = defaults["permissions"]
-                await db.commit()
         return role
 
+    registry = get_permission_registry()
+    defaults = registry.get_role_defaults(code)
     if defaults is None:
         return None
 
     role = Role(
         id=uuid.uuid4(),
         code=code,
-        name=defaults["name"],
-        permissions=defaults["permissions"],
+        name=defaults.get("display_name", code),
+        permissions=sorted(registry.resolve_role_permissions(code)),
         is_system=defaults.get("is_system", False),
         level=defaults.get("level", 10),
     )
     db.add(role)
     await db.flush()
-    logger.info("Auto-created role '%s' (code=%s)", defaults["name"], code)
+    logger.info("Auto-created role '%s' (code=%s)", defaults.get("display_name", code), code)
     return role
 
 
