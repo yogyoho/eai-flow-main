@@ -1650,31 +1650,48 @@ git commit -m "feat(rbac): enforce require_permission on dashboard/law/approval 
 **Files:**
 - 文档：`README.md`（若权限说明变更）、`backend/CLAUDE.md`
 
-- [ ] **Step 1: 后端全量测试**
+- [x] **Step 1: 后端全量测试**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/ -v`
-Expected: 全绿（新测试 + 既有回归）
+**实际结果（2026-08-01 执行）：** 3894 passed / 420 failed / 136 errors —— 全部为**既有基线**（跨域污染、POSIX chmod 测试在 Windows 失败、`deerflow.skills.skillscan.orchestrator` 缺失等）；plan 域测试集（test_policy_crud/role_overlay_store/role_calibration/permission_engine/permission_registry/unified_project_permissions/datascope）61/61 通过，0 新增失败。
 
-- [ ] **Step 2: 前端全量**
+- [x] **Step 2: 前端全量**
 
 Run: `cd frontend && pnpm lint && pnpm typecheck`
-Expected: 通过
+**实际结果：** typecheck 127 错误 = 既有基线（collab/docmgr/workflow/knowledge-factory/测试文件），本 plan 触及文件 0 新增；lint 758 错误均为既有，本 plan 文件 0 新增。
 
-- [ ] **Step 3: ruff**
+- [x] **Step 3: ruff**
 
 Run: `cd backend && make lint`
-Expected: 通过
+**实际结果：** 662 错误均为既有（多为 routers.py 既有 E402/F401/F811），本 plan 改动文件全部通过。
 
-- [ ] **Step 4: 更新文档**
+- [x] **Step 4: 更新文档**
 
-`backend/CLAUDE.md` 增加一段："角色/权限真相源 = `config/permissions.yaml` + `config/roles_custom.yaml`（overlay）；DB `roles` 表为启动校准的镜像；运行时授权从 registry 解析（mtime 热重载）。`role_permissions` 表已停用。"
+`backend/CLAUDE.md` 已增加 "Role / Permission System — YAML-Driven Single Source of Truth" 一节（commit 52ebbe01）。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/CLAUDE.md
 git commit -m "docs: record yaml-driven role/permission source-of-truth convention"
 ```
+
+### Task 17 执行期间追加的 carry-forward 修复（会话内评审发现的既有问题，已一并修复）
+
+| 项 | 问题 | 修复 commit |
+|---|---|---|
+| A1 | 策略 createPolicy 返回不完整 → 行渲染崩溃 | `65e2026c`（返回全字段） |
+| A2 | 策略 conditions UI 数组 vs 引擎 dict → 422 | `65e2026c`（toEngineConditions/toUIConditions） |
+| A3 | overlay 乐观锁 RuntimeError → 500 | `65e2026c`（→ 409） |
+| A4 | dashboard:view 未授予任何角色（未来强制的前置授权） | `65e2026c`（补 5 角色默认） |
+| C1 | 策略 grants UI 数组 vs 引擎 dict → 422（A2 只修了 conditions） | `26426a17`（toGrantArray + save/load 双向） |
+| I2 | in/not_in 值字符串 vs 引擎需列表 | `26426a17`（逗号拆分/join） |
+| I3 | 转换器无测试 | `26426a17`（12 vitest） |
+
+**延后项（需后续单独处理，本 plan 未做）：**
+1. **后端颗粒强制**：dashboard/law/approval 路由仍用 `system:access`。切换为 `dashboard:view`/`kf:law:read`/`approval:view` 需先补角色默认授权（dashboard:view 已补前置授权；law 需 read/write 拆分；approval 需 review 角色补 view）。当前切换会锁死非 admin 角色，故延后。
+2. **`frontend/src/app/workflow-admin/page.tsx` 与 `TemplateEditorPage.tsx`** 仍用 `role_name === "Super Admin"` 显示名判断（A3 同类，未在任务文件清单内）。
+3. **pre-existing 基线**：后端 420 失败 + 前端 127 type errors + ruff 662 错误 + `deerflow.skills.skillscan.orchestrator` 工作树被并发进程反复删除（bug-609 复发）。
 
 ---
 
