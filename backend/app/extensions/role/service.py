@@ -161,7 +161,8 @@ class RoleService:
         if data.data_scopes is not None:
             from app.extensions.auth.registry import get_permission_registry
 
-            invalid = [sid for sid in data.data_scopes if get_permission_registry().get_data_scope(sid) is None]
+            registry = get_permission_registry()
+            invalid = [sid for sid in data.data_scopes if registry.get_data_scope(sid) is None]
             if invalid:
                 raise ValueError(f"Unknown data scope ids: {invalid}")
             entry["data_scopes"] = list(data.data_scopes)

@@ -83,7 +83,10 @@ async def update_role(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
     if role.is_system:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot modify system role")
-    role = await RoleService.update_role(db, role, data)
+    try:
+        role = await RoleService.update_role(db, role, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return await RoleService.to_response(db, role)
 
 
