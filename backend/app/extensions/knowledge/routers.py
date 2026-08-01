@@ -84,16 +84,13 @@ async def list_knowledge_bases(
     scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
     # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering
-    is_admin = False
-    if current_user.role_id:
-        from sqlalchemy import select as sa_select
-        from app.extensions.models import Role
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
 
-        role = await db.get(Role, current_user.role_id)
-        if role and (role.is_system or "*" in (role.permissions or [])):
-            is_admin = True
+    is_admin = await is_superadmin(db, current_user.id)
 
     from sqlalchemy import select as sa_select
+
     from app.extensions.models import KnowledgeBase
 
     if is_admin:

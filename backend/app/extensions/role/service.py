@@ -108,6 +108,7 @@ class RoleService:
     @staticmethod
     async def create_role(db: AsyncSession, data: RoleCreate) -> Role:
         store = RoleService._overlay()
+        mtime_before = store.mtime()  # EAI-CUSTOM (I1): 读前捕获 mtime，乐观锁才能覆盖读-写窗口
         overlay = store.read()
         if data.code in overlay["roles"]:
             raise ValueError(f"Role code already exists: {data.code}")
@@ -119,7 +120,7 @@ class RoleService:
             "level": data.level,
             "description": data.description,
         }
-        store.write(overlay, expect_mtime=store.mtime())
+        store.write(overlay, expect_mtime=mtime_before)
         store.notify_registry_reload()
         registry = get_permission_registry()
         await _calibrate_single_role(db, registry, data.code)
@@ -128,14 +129,13 @@ class RoleService:
     @staticmethod
     async def update_role(db: AsyncSession, role: Role, data: RoleUpdate) -> Role:
         store = RoleService._overlay()
+        mtime_before = store.mtime()  # EAI-CUSTOM (I1): 读前捕获 mtime，乐观锁才能覆盖读-写窗口
         overlay = store.read()
         code = role.code
         entry = overlay["roles"].get(code)
         if entry is None:
             # 内置角色首次编辑 → 从 registry 默认值构建 overlay 条目，
             # 保留 data_scopes/is_system，并保留 #inherit 标记（不展平继承）
-            from app.extensions.auth.registry import get_permission_registry
-
             defaults = get_permission_registry().get_role_defaults(code) or {}
             entry = {
                 "display_name": defaults.get("display_name", role.name),
@@ -150,7 +150,11 @@ class RoleService:
         if data.name is not None:
             entry["display_name"] = data.name
         if data.permissions is not None:
-            entry["permissions"] = list(data.permissions)
+            # EAI-CUSTOM (I3): 若前端回传的权限集与当前已解析结果一致（仅改名称等），保留 overlay 中
+            # 的 #inherit 标记，避免展平继承链导致后续父角色权限变更不再传播
+            resolved_current = get_permission_registry().resolve_role_permissions(code)
+            if set(data.permissions) != resolved_current:
+                entry["permissions"] = list(data.permissions)
         if data.nav is not None:
             entry["nav"] = list(data.nav)
         if data.level is not None:
@@ -159,14 +163,12 @@ class RoleService:
             entry["description"] = data.description
         # EAI-CUSTOM (U4): data scopes 写透到 overlay（先校验 scope id 必须存在于 registry，deny-by-default 之外的未知 id 一律拒绝）
         if data.data_scopes is not None:
-            from app.extensions.auth.registry import get_permission_registry
-
             registry = get_permission_registry()
             invalid = [sid for sid in data.data_scopes if registry.get_data_scope(sid) is None]
             if invalid:
                 raise ValueError(f"Unknown data scope ids: {invalid}")
             entry["data_scopes"] = list(data.data_scopes)
-        store.write(overlay, expect_mtime=store.mtime())
+        store.write(overlay, expect_mtime=mtime_before)
         store.notify_registry_reload()
         registry = get_permission_registry()
         await _calibrate_single_role(db, registry, code)
@@ -175,6 +177,7 @@ class RoleService:
     @staticmethod
     async def delete_role(db: AsyncSession, role: Role) -> None:
         store = RoleService._overlay()
+        mtime_before = store.mtime()  # EAI-CUSTOM (I1): 读前捕获 mtime，乐观锁才能覆盖读-写窗口
         overlay = store.read()
         code = role.code
         if code in overlay["roles"]:
@@ -184,7 +187,7 @@ class RoleService:
             disabled = overlay.get("disabled_roles") or []
             if code not in disabled:
                 overlay["disabled_roles"] = disabled + [code]
-        store.write(overlay, expect_mtime=store.mtime())
+        store.write(overlay, expect_mtime=mtime_before)
         store.notify_registry_reload()
         await db.delete(role)
         await db.commit()
@@ -192,6 +195,7 @@ class RoleService:
     @staticmethod
     async def copy_role(db: AsyncSession, role: Role, data: RoleCopy) -> Role:
         store = RoleService._overlay()
+        mtime_before = store.mtime()  # EAI-CUSTOM (I1): 读前捕获 mtime，乐观锁才能覆盖读-写窗口
         overlay = store.read()
         if data.new_code in overlay["roles"]:
             raise ValueError(f"Role code already exists: {data.new_code}")
@@ -208,7 +212,7 @@ class RoleService:
             "level": src_defaults.get("level", 10),
             "description": role.description,
         }
-        store.write(overlay, expect_mtime=store.mtime())
+        store.write(overlay, expect_mtime=mtime_before)
         store.notify_registry_reload()
         await _calibrate_single_role(db, registry, data.new_code)
         return await RoleService.get_role_by_code(db, data.new_code)

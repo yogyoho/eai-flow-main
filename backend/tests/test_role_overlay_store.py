@@ -213,3 +213,98 @@ def test_update_role_persists_valid_data_scope(tmp_path, monkeypatch):
     assert entry["data_scopes"] == ["knowledge_dept"]
     assert result is not None and result.code == "dept_head"
     assert fake_db.committed
+
+
+def test_write_captures_mtime_before_read(tmp_path, monkeypatch):
+    """I1: write-through captures mtime BEFORE read, so a concurrent edit landing
+    between read and write trips the optimistic lock (was a silent no-op)."""
+    import os
+
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    # Interpose on read() to simulate a concurrent edit AFTER mtime capture
+    # but BEFORE the data is read — the exact window the old code missed.
+    orig_mtime = store.mtime
+    orig_read = store.read
+    orig_write = store.write
+    race_fired = False
+
+    def read_spy():
+        nonlocal race_fired
+        m = orig_mtime()
+        os.utime(overlay_path, (m + 2.0, m + 2.0))  # simulate concurrent editor
+        race_fired = True
+        return orig_read()
+
+    store.mtime = orig_mtime
+    store.read = read_spy
+    store.write = orig_write
+
+    fake_registry = _FakeRegistry()
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(),
+        name="新角色",
+        code="brand_new_role",
+        permissions=["doc:write"],
+        is_system=False,
+        level=1,
+        description=None,
+        nav=[],
+    )
+    fake_db = _FakeDb()
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(name="改名")))
+    assert race_fired  # the concurrent edit was simulated and the lock caught it
+
+
+def test_update_role_preserves_inherit_on_unchanged_permissions(tmp_path, monkeypatch):
+    """I3: when the frontend round-trips permissions equal to the resolved set
+    (e.g. a name-only edit), the overlay's #inherit markers are preserved —
+    the inheritance chain is not flattened."""
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("""
+roles:
+  proj_mgr:
+    display_name: "项目经理"
+    permissions: ["#inherit:dept_head", "project:edit"]
+    nav: []
+    data_scopes: []
+    is_system: false
+    level: 60
+disabled_roles: []
+""", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    fake_registry = _FakeRegistry()  # resolve_role_permissions returns {"doc:write"}
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(),
+        name="项目经理",
+        code="proj_mgr",
+        permissions=["doc:write"],  # resolved mirror — what the UI round-trips
+        is_system=False,
+        level=60,
+        description=None,
+        nav=[],
+    )
+    fake_db = _FakeDb()
+
+    # Incoming permissions == resolved set → #inherit markers preserved
+    asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(permissions=["doc:write"])))
+    entry = store.read()["roles"]["proj_mgr"]
+    assert "#inherit:dept_head" in entry["permissions"]  # not flattened
+
+    # Control: a genuinely changed permission set DOES replace the entry
+    asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(permissions=["doc:read"])))
+    entry = store.read()["roles"]["proj_mgr"]
+    assert entry["permissions"] == ["doc:read"]  # replaced (different from resolved)

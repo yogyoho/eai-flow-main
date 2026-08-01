@@ -54,11 +54,10 @@ async def list_projects(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
-    is_admin = False
-    if user.role_id:
-        role = await db.get(Role, user.role_id)
-        if role and (role.is_system or "*" in (role.permissions or [])):
-            is_admin = True
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
+
+    is_admin = await is_superadmin(db, user.id)
 
     items, total = await service.list_projects(
         db, user_id=user.id, is_admin=is_admin,
@@ -74,11 +73,10 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ):
     # Check admin status — admins can see any project
-    is_admin = False
-    if user.role_id:
-        role = await db.get(Role, user.role_id)
-        if role and (role.is_system or "*" in (role.permissions or [])):
-            is_admin = True
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
+
+    is_admin = await is_superadmin(db, user.id)
 
     if not is_admin:
         # Verify membership

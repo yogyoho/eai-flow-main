@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
-from app.extensions.models import ProjectMember, Role
+from app.extensions.models import ProjectMember
 from app.extensions.models.role_permission import ProjectRole
 from app.extensions.schemas import CurrentUser
 
@@ -99,15 +99,11 @@ async def get_user_permissions(
     phase_node: str | None = None,
 ) -> set[str]:
     """Return the effective permission set for a user in a project."""
+    # Admin bypass — system role or wildcard (registry-backed, yaml authority)
+    from app.extensions.auth.admin import is_superadmin
     from app.extensions.auth.registry import get_permission_registry
 
-    # Admin bypass — system role or wildcard
-    from app.extensions.models import User
-    user = await db.get(User, user_id)
-    user_role = None
-    if user and user.role_id:
-        user_role = await db.get(Role, user.role_id)
-    if user_role and (user_role.is_system or "*" in (user_role.permissions or [])):
+    if await is_superadmin(db, user_id):
         # Admin sees every permission granted to any project role
         registry = get_permission_registry()
         all_perms: set[str] = set()

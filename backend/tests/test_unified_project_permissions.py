@@ -117,7 +117,8 @@ def _patch_registry_and_provider(monkeypatch, reg, *, role_code="user"):
 def test_get_user_permissions_non_admin_member(tmp_path, monkeypatch):
     """普通成员按 project_roles 取权限，不属于自己的权限不可见。"""
     reg = _make_registry(tmp_path)
-    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: reg)
+    # I2: get_user_permissions 的 admin bypass 走 is_superadmin → IdentityProvider，需一并 mock
+    _patch_registry_and_provider(monkeypatch, reg, role_code="user")
 
     db = _FakeDb(member=_Member())
     perms = asyncio.run(get_user_permissions(db, "u1", "p1"))
@@ -129,11 +130,10 @@ def test_get_user_permissions_non_admin_member(tmp_path, monkeypatch):
 def test_get_user_permissions_admin_union(tmp_path, monkeypatch):
     """管理员（is_system）应拿到所有 project_roles 权限的并集。"""
     reg = _make_registry(tmp_path)
-    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: reg)
+    # I2: superadmin 经 is_superadmin(registry is_system) 判定为 admin
+    _patch_registry_and_provider(monkeypatch, reg, role_code="superadmin")
 
-    admin_role = _Role()
-    admin_role.is_system = True
-    db = _FakeDb(user=_User(role_id="r1"), role=admin_role)
+    db = _FakeDb(member=_Member())
     perms = asyncio.run(get_user_permissions(db, "u1", "p1"))
     assert "chapter:write_own" in perms
     assert "chapter:review" in perms

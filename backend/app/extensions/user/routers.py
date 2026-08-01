@@ -61,23 +61,11 @@ async def list_users(
 
 
 async def _is_admin_role(db: AsyncSession, current_user: CurrentUser) -> bool:
-    """Check if current user has admin role."""
-    if not current_user.role_id:
-        return False
+    """Check if current user has admin role (registry-backed, yaml authority)."""
+    # EAI-CUSTOM (I2): admin via registry helper, not DB role row (calibrated mirror may lag)
+    from app.extensions.auth.admin import is_superadmin
 
-    from sqlalchemy import select
-
-    from app.extensions.models import Role
-
-    stmt = select(Role).where(Role.id == current_user.role_id)
-    result = await db.execute(stmt)
-    role = result.scalar_one_or_none()
-
-    if not role:
-        return False
-
-    permissions = role.permissions or []
-    return "*" in permissions or role.is_system
+    return await is_superadmin(db, current_user.id)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
