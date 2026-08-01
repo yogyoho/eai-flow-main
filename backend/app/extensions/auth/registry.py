@@ -100,6 +100,7 @@ class PermissionRegistry:
             logger.warning("permissions.yaml not found at %s, registry is empty", self._path)
             return
         self._mtime = self._path.stat().st_mtime
+        self._disabled_roles.clear()
         with open(self._path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh) or {}
 
@@ -113,6 +114,9 @@ class PermissionRegistry:
             with open(self._overlay_path, encoding="utf-8") as fh:
                 overlay = yaml.safe_load(fh) or {}
             self._apply_overlay(overlay)
+        else:
+            # 覆盖文件不存在时重置 mtime，以便文件后续出现时能被检测到
+            self._overlay_mtime = 0.0
 
     def _parse_modules(self, modules_data: dict) -> None:
         self.modules.clear()
@@ -309,7 +313,12 @@ class PermissionRegistry:
         reloaded = False
         if self._path.exists() and self._path.stat().st_mtime > self._mtime:
             reloaded = True
-        if self._overlay_path.exists() and self._overlay_path.stat().st_mtime > self._overlay_mtime:
+        # 检测覆盖文件变更：mtime 变化，或文件从存在变为不存在
+        if self._overlay_path.exists():
+            if self._overlay_path.stat().st_mtime > self._overlay_mtime:
+                reloaded = True
+        elif self._overlay_mtime > 0:
+            # 覆盖文件之前存在，现已被删除
             reloaded = True
         if reloaded:
             logger.info("permissions.yaml / roles_custom.yaml changed, reloading registry")

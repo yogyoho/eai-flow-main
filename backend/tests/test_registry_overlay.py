@@ -61,3 +61,49 @@ project_roles:
     reg = PermissionRegistry(str(main_yaml))
     assert reg.get_project_roles()["owner"] == ["project:edit", "project:delete"]
     assert reg.get_project_roles()["writer"] == ["chapter:write_own"]
+
+
+def test_disabled_roles_cleared_on_reload(tmp_path):
+    """验证 reload 时 _disabled_roles 被正确清空。
+
+    场景：首次加载 overlay 禁用了 A+B 两个角色，修改 overlay 只禁用 B，
+    调用 reload() 后，A 不应再处于禁用状态。
+    """
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules: {}
+roles:
+  alpha:
+    display_name: "Alpha"
+    level: 10
+    permissions: ["a:read"]
+  beta:
+    display_name: "Beta"
+    level: 20
+    permissions: ["b:read"]
+""", encoding="utf-8")
+    overlay_yaml = tmp_path / "roles_custom.yaml"
+    overlay_yaml.write_text("""
+disabled_roles: ["alpha", "beta"]
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(overlay_yaml))
+
+    # 首次加载：两个角色都被禁用
+    assert reg.get_role_defaults("alpha") is None
+    assert reg.get_role_defaults("beta") is None
+    assert "alpha" not in reg.list_role_codes()
+    assert "beta" not in reg.list_role_codes()
+
+    # 修改 overlay：只禁用 beta，alpha 恢复
+    overlay_yaml.write_text("""
+disabled_roles: ["beta"]
+""", encoding="utf-8")
+    reg.reload()
+
+    # alpha 应恢复可见
+    assert reg.get_role_defaults("alpha") is not None
+    assert "alpha" in reg.list_role_codes()
+    # beta 仍被禁用
+    assert reg.get_role_defaults("beta") is None
+    assert "beta" not in reg.list_role_codes()
