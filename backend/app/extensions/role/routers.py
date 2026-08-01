@@ -50,7 +50,10 @@ async def create_role(
     existing = await RoleService.get_role_by_code(db, data.code)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role code already exists")
-    role = await RoleService.create_role(db, data)
+    try:
+        role = await RoleService.create_role(db, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return await RoleService.to_response(db, role)
 
 
@@ -123,8 +126,10 @@ async def copy_role(
     existing = await RoleService.get_role_by_code(db, data.new_code)
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role code already exists")
-
-    new_role = await RoleService.copy_role(db, role, data)
+    try:
+        new_role = await RoleService.copy_role(db, role, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return await RoleService.to_response(db, new_role)
 
 
