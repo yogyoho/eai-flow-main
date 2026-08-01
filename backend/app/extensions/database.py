@@ -1468,7 +1468,7 @@ async def seed_db() -> None:
 
             # Ensure admin user exists, bound to the superadmin role
             admin_row = (await session.execute(
-                text("SELECT id FROM users WHERE username = 'admin' LIMIT 1")
+                text("SELECT id FROM users WHERE username = 'admin' AND is_deleted = false LIMIT 1")
             )).fetchone()
             if admin_row is None:
                 super_row = (await session.execute(
@@ -1486,7 +1486,9 @@ async def seed_db() -> None:
                     {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": super_row[0]},
                 )
                 logger.info("Created admin user (username: admin, password: admin123)")
-                await session.commit()
+
+            # Commit calibration + any admin-user creation
+            await session.commit()
 
             # Seed business dictionaries from JSON if table is empty
             try:
