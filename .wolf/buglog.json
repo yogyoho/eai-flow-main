@@ -2,6 +2,23 @@
   "version": 1,
   "bugs": [
     {
+      "id": "bug-695",
+      "timestamp": "2026-08-01T10:11:33",
+      "error_message": "PermissionRegistry._load() 未解析主 YAML 文件的 disabled_roles，仅 overlay 文件处理 disabled_roles",
+      "file": "backend/app/extensions/auth/registry.py",
+      "root_cause": "_load() 中只调用了 _parse_modules/_parse_roles/_parse_project_roles，没有处理 data.get('disabled_roles')。overlay 的 _apply_overlay() 有处理 disabled_roles，但主文件的 disabled_roles 被静默忽略",
+      "fix": "在 _parse_project_roles 之后添加了对主文件 disabled_roles 的解析循环",
+      "tags": [
+        "rbac",
+        "registry",
+        "disabled_roles",
+        "yaml-parsing"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T10:11:33"
+    },
+    {
       "id": "bug-001",
       "timestamp": "2026-06-22T13:18:10.107Z",
       "error_message": "Missing guard clause",
@@ -7982,6 +7999,4303 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-26T15:16:23.805Z"
+    },
+    {
+      "id": "bug-490",
+      "timestamp": "2026-07-26T15:34:36.196Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/gateway/routers/ui.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T15:34:36.196Z"
+    },
+    {
+      "id": "bug-491",
+      "timestamp": "2026-07-26T15:54:19.550Z",
+      "error_message": "Type error",
+      "file": "frontend/src/core/api/stream-mode.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-26T15:54:19.550Z"
+    },
+    {
+      "id": "bug-492",
+      "timestamp": "2026-07-27T09:05:58.000Z",
+      "error_message": "onUndo is not defined — ConfirmCard component destructured onUndo from props but never captured it in parameter list",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "onUndo was declared in the TypeScript type annotation (line 254: `onUndo?: () => void`) but missing from the destructured parameter list (line 245-248). OperationCards passed onUndo={handleUndo} but ConfirmCard never received it → ReferenceError on call.",
+      "fix": "Added `onUndo` to the destructured parameter list of ConfirmCard (line 249).",
+      "tags": [
+        "docmgr",
+        "tsx",
+        "reference-error",
+        "props-destructuring"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T09:05:58.000Z"
+    },
+    {
+      "id": "bug-493",
+      "timestamp": "2026-07-27T01:40:14.972Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T01:40:14.972Z"
+    },
+    {
+      "id": "bug-494",
+      "timestamp": "2026-07-27T09:30:00.000Z",
+      "error_message": "HTTP 404: Thread <uuid> not found — 文档空间新建文档后打开 AI 助手报错",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx, DocAIAgentPanel.tsx",
+      "root_cause": "AI 助手使用 LangGraph useStream hook，但线程是懒创建的（首次发消息时才 POST /api/langgraph/threads）。useStream 在面板打开时就初始化（无 threadId），发消息时 subThreadId 从 null 变为真实 UUID，useStream 无法处理 null→threadId 过渡导致 404。代码注释已在 line 433-434 指出此问题但未实现修复。",
+      "fix": "1) DocumentManagement.tsx: AI 面板打开按钮 onClick 中预调用 ensureThread()，确保 subThreadId 在 DocAIAgentPanel 挂载前就已存在；2) DocAIAgentPanel key 改为 `${subThreadId ?? 'pending'}-${aiPanelKey}` 强制 React 在 threadId 变更时卸载/重新挂载组件，避免 useStream null→threadId 过渡；3) DocAIAgentPanel.tsx: subThreadId 为 null 且 isCreating 时显示 loading 态而非 WelcomePage",
+      "tags": [
+        "docmgr",
+        "tsx",
+        "langgraph",
+        "useStream",
+        "null-to-threadId",
+        "404"
+      ],
+      "related_bugs": [
+        "bug-492"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T09:30:00.000Z"
+    },
+    {
+      "id": "bug-495",
+      "timestamp": "2026-07-27T01:52:20.260Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/docmgr/useDocAIThread.ts",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T01:52:20.260Z"
+    },
+    {
+      "id": "bug-496",
+      "timestamp": "2026-07-27T01:52:41.651Z",
+      "error_message": "Wrong reference: void should be Promise",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Used \"void\" instead of \"Promise\"",
+      "fix": "Changed void → Promise",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T01:52:41.651Z"
+    },
+    {
+      "id": "bug-497",
+      "timestamp": "2026-07-27T01:52:50.009Z",
+      "error_message": "Missing await",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T01:52:50.009Z"
+    },
+    {
+      "id": "bug-498",
+      "timestamp": "2026-07-27T03:38:35.575Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/prototype-contract-price-dashboard.html",
+      "root_cause": "Had \"font-size:14px;font-weight:600;color:var(--db-tex",
+      "fix": "Changed to \"font-size:14px;font-weight:600;color:var(--db-tex",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T03:38:35.575Z"
+    },
+    {
+      "id": "bug-499",
+      "timestamp": "2026-07-27T05:11:12.553Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T05:11:12.553Z"
+    },
+    {
+      "id": "bug-500",
+      "timestamp": "2026-07-27T05:11:52.095Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T05:11:52.095Z"
+    },
+    {
+      "id": "bug-501",
+      "timestamp": "2026-07-27T05:19:21.090Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "23 lines replaced/restructured",
+      "fix": "Rewrote 33→4 lines (23 removed) | Also: }) {; return (",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T05:20:11.219Z"
+    },
+    {
+      "id": "bug-502",
+      "timestamp": "2026-07-27T05:21:17.783Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T05:21:17.783Z"
+    },
+    {
+      "id": "bug-503",
+      "timestamp": "2026-07-27T07:42:15.159Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T07:42:15.159Z"
+    },
+    {
+      "id": "bug-504",
+      "timestamp": "2026-07-27T07:43:44.923Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/contract-price/layout.tsx",
+      "root_cause": "Had \"min-h-0 min-w-0 flex-1 overflow-hidden\"",
+      "fix": "Changed to \"min-h-0 min-w-0 flex-1 overflow-auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T07:43:44.923Z"
+    },
+    {
+      "id": "bug-505",
+      "timestamp": "2026-07-27T08:01:34.628Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 13→4 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T08:01:34.628Z"
+    },
+    {
+      "id": "bug-506",
+      "timestamp": "2026-07-27T08:13:24.407Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 10→12 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T08:13:24.407Z"
+    },
+    {
+      "id": "bug-507",
+      "timestamp": "2026-07-27T08:16:46.519Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T08:16:46.519Z"
+    },
+    {
+      "id": "bug-508",
+      "timestamp": "2026-07-27T08:22:16.551Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 14→6 lines (8 removed) | Also: {/* Search + cluster select */}; <form onSubmit={handleSubmit} className=\"flex gap- | Also: setApplied(\"\");; setSearch(\"\");",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-07-27T08:23:48.159Z"
+    },
+    {
+      "id": "bug-509",
+      "timestamp": "2026-07-27T08:25:10.258Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"@/components/ui/input\"",
+      "fix": "Changed to \"@/components/ui/popover\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T08:25:10.258Z"
+    },
+    {
+      "id": "bug-510",
+      "timestamp": "2026-07-27T09:53:54.463Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"flex gap-3\"",
+      "fix": "Changed to \"flex items-center gap-3\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T09:54:20.907Z"
+    },
+    {
+      "id": "bug-511",
+      "timestamp": "2026-07-27T10:07:56.151Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"space-y-4\"",
+      "fix": "Changed to \"flex min-h-0 flex-1 flex-col space-y-4\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T10:08:20.806Z"
+    },
+    {
+      "id": "bug-512",
+      "timestamp": "2026-07-27T10:08:11.047Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Had \"space-y-6 p-8\"",
+      "fix": "Changed to \"flex min-h-0 flex-1 flex-col space-y-6 p-8\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T10:08:11.047Z"
+    },
+    {
+      "id": "bug-513",
+      "timestamp": "2026-07-27T10:39:25.006Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"rgba(148,163,184,0.15)\"",
+      "fix": "Changed to \"rgba(100,116,139,0.22)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T10:39:45.287Z"
+    },
+    {
+      "id": "bug-514",
+      "timestamp": "2026-07-27T10:55:21.521Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"font-mono text-[11px] text-muted-foreground/60\"",
+      "fix": "Changed to \"font-mono text-[11px] font-bold text-muted-foregr",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 9,
+      "last_seen": "2026-07-27T11:05:32.491Z"
+    },
+    {
+      "id": "bug-515",
+      "timestamp": "2026-07-27T11:04:07.928Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→24 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:04:07.928Z"
+    },
+    {
+      "id": "bug-516",
+      "timestamp": "2026-07-27T11:09:25.997Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/StatCard.tsx",
+      "root_cause": "Had \"text-2xl font-bold tabular-nums text-foreground\"",
+      "fix": "Changed to \"font-cyber text-2xl font-extrabold tracking-tight",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:09:25.997Z"
+    },
+    {
+      "id": "bug-517",
+      "timestamp": "2026-07-27T11:14:54.731Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/BoxPlot.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:14:54.731Z"
+    },
+    {
+      "id": "bug-518",
+      "timestamp": "2026-07-27T11:24:07.165Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/BoxPlot.tsx",
+      "root_cause": "Had \"end\"",
+      "fix": "Changed to \"currentColor\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:24:07.165Z"
+    },
+    {
+      "id": "bug-519",
+      "timestamp": "2026-07-27T11:26:58.001Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"rgba(148,163,184,0.4)\"",
+      "fix": "Changed to \"rgba(51,65,85,0.9)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T11:29:48.309Z"
+    },
+    {
+      "id": "bug-520",
+      "timestamp": "2026-07-27T11:37:21.632Z",
+      "error_message": "CSS fix: cluster_id",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "cluster_id: selectedCluster → selectedCluster, skip: page * PAGE_SIZE, limit: PAGE_SIZE",
+      "fix": "Changed cluster_id: selectedCluster → selectedCluster, skip: page * PAGE_SIZE, limit: PAGE_SIZE",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:37:21.632Z"
+    },
+    {
+      "id": "bug-521",
+      "timestamp": "2026-07-27T11:38:20.336Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:38:20.336Z"
+    },
+    {
+      "id": "bug-522",
+      "timestamp": "2026-07-27T11:43:48.422Z",
+      "error_message": "Wrong reference: PAGE_SIZE should be pageSize",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Used \"PAGE_SIZE\" instead of \"pageSize\"",
+      "fix": "Changed PAGE_SIZE → pageSize",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-07-27T11:44:18.986Z"
+    },
+    {
+      "id": "bug-523",
+      "timestamp": "2026-07-27T11:52:11.245Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"@/extensions/contract-price/hooks\"",
+      "fix": "Changed to \"@/extensions/contract-price/components/TracebackD",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T11:52:11.245Z"
+    },
+    {
+      "id": "bug-524",
+      "timestamp": "2026-07-27T11:53:28.868Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: {/* Traceback drawer */}; <TracebackDrawer",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T11:54:26.258Z"
+    },
+    {
+      "id": "bug-525",
+      "timestamp": "2026-07-27T12:08:00.101Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"rounded-full bg-emerald-500/10 px-2.5 py-0.5 text",
+      "fix": "Changed to \"rounded-full bg-success/10 px-2.5 py-0.5 text-[11",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T12:08:14.086Z"
+    },
+    {
+      "id": "bug-526",
+      "timestamp": "2026-07-27T20:30:00.000Z",
+      "error_message": "POST /api/extensions/contract-price/pipeline/run 和 /documents/{id}/reparse 后台任务静默失败（run 记录 status=failed，前端 TasksView 看到 run 失败）。上传后自动解析的整条 workflow 不工作。",
+      "file": "backend/app/extensions/contract_price/service.py",
+      "root_cause": "skill 在 commit 86735708(17 技能 custom→public 迁移)+13cbe8f0(替换所有 custom/ 路径引用为 public/)中从 skills/custom/contract-price-analysis 迁到了 skills/public/contract-price-analysis，但 13cbe8f0 漏改了 service.py:26 的 _SKILL_DIR = _REPO_ROOT / 'skills' / 'custom' / 'contract-price-analysis'。.gitignore:40 skills/custom/* 使该路径在磁盘上不存在。run_pipeline_subprocess 用 asyncio.create_subprocess_exec(cwd=_SKILL_DIR) → cwd 指向不存在目录 → NotADirectoryError → 被 except Exception 兜底 → finish_run(status=failed)，而端点本身已返回 200（后台任务），所以是半静默失败。无测试覆盖真实子进程路径(test_cli 全 mock)，迁移回归未被发现。CLI 手动跑(python -m scripts.cli)正常，所以设计文档里的端到端验证数据(139 items)是真的——只是 gateway 自动触发这条链路断了。",
+      "fix": "service.py:26 改 _SKILL_DIR = _REPO_ROOT / 'skills' / 'public' / 'contract-price-analysis'；docstring 同步。验证：docker compose -p eai-docker restart gateway 后 POST /pipeline/run，run_history.status 应为 completed。",
+      "tags": [
+        "contract-price",
+        "stale-path",
+        "migration-regression",
+        "background-task",
+        "silent-failure",
+        "batch-workflow"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T20:30:00.000Z"
+    },
+    {
+      "id": "bug-527",
+      "timestamp": "2026-07-27T13:23:20.841Z",
+      "error_message": "Wrong reference: custom should be public",
+      "file": "backend/app/extensions/contract_price/service.py",
+      "root_cause": "Used \"custom\" instead of \"public\"",
+      "fix": "Changed custom → public",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T13:23:20.841Z"
+    },
+    {
+      "id": "bug-528",
+      "timestamp": "2026-07-27T13:25:25.575Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 14→35 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T13:25:25.575Z"
+    },
+    {
+      "id": "bug-529",
+      "timestamp": "2026-07-27T13:26:33.301Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/document_scanner.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 27→41 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T13:26:33.301Z"
+    },
+    {
+      "id": "bug-530",
+      "timestamp": "2026-07-27T13:31:31.809Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_cli.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T13:31:31.809Z"
+    },
+    {
+      "id": "bug-531",
+      "timestamp": "2026-07-27T14:29:51.881Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 31→56 lines (12 removed) | Also: def looks_like_continuation(rows: list, roles: dic; The layout detector splits one logical table acros",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-27T14:30:01.058Z"
+    },
+    {
+      "id": "bug-532",
+      "timestamp": "2026-07-27T14:35:10.271Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T14:35:10.271Z"
+    },
+    {
+      "id": "bug-533",
+      "timestamp": "2026-07-27T15:41:29.254Z",
+      "error_message": "Wrong operator: == should be >=",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py",
+      "root_cause": "Used \"==\" instead of \">=\"",
+      "fix": "Changed operator == → >=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T15:41:29.254Z"
+    },
+    {
+      "id": "bug-534",
+      "timestamp": "2026-07-27T15:48:53.455Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→25 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T15:48:53.455Z"
+    },
+    {
+      "id": "bug-527",
+      "timestamp": "2026-07-27T22:30:00.000Z",
+      "error_message": "合同解析 404 项,但价格全提成 含税合价(应为 含税单价)。用户:404项价格提取错了,要含税单价实际是含税合价。旧 207 项 run 价格是对的。",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py + cli.py",
+      "root_cause": "② 根治(bbox-x 列对齐)初版让 goods(表头)页也走 x 对齐,用 _derive_role_x 扫表头 cell 取角色 x。但 含税 是合并单元格(colspan 跨 单价+合价 两列),rapid-table 把多行表头拆碎后,'含税' 表头 cell 落在 x≈0.767,正好夹在数据列 含税单价(x=0.73)和 含税合价(x=0.79)之间——_row_cells_by_x 取最近,合价(0.79)比单价(0.73)离 0.767 更近(0.023<0.037)→ price_taxed 落到合价列。索引路径(_map_roles over 折叠表头)按列序取最左含税列=col9,而 col9 数据恰好是单价(1.31),所以索引是对的(旧 207 run 即证)。即:表头 cell 的 x 不可信(被拆碎/错位),但表头列序+数据格 x 可信。",
+      "fix": "hybrid——goods(表头)页回退**索引**对齐(extract_items 不传 roles_x,直接用 _map_roles 的 col_index,拿 col9=单价);x 只用于**续表**页(roles_x 从**数据格**读 _roles_x_from_data,继承给漂移的续表页找对 cell)。_rediscover_taxed_price_col(算术 单价×工程量≈合价)在 goods 页也跑一次作兜底,防 _map_roles 偶发错列。验证:平整场地 taxed=1.31(含税单价),非 1078.83(合价)。",
+      "tags": [
+        "contract-price",
+        "price-alignment",
+        "bbox-x",
+        "merged-header",
+        "colspan",
+        "regression"
+      ],
+      "related_bugs": [
+        "bug-526"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-27T22:30:00.000Z"
+    },
+    {
+      "id": "bug-536",
+      "timestamp": "2026-07-28T00:45:46.389Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→14 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T00:45:46.389Z"
+    },
+    {
+      "id": "bug-537",
+      "timestamp": "2026-07-28T00:45:58.845Z",
+      "error_message": "Missing await",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T00:45:58.845Z"
+    },
+    {
+      "id": "bug-538",
+      "timestamp": "2026-07-28T00:46:19.654Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_contract_price_extension.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T00:46:19.654Z"
+    },
+    {
+      "id": "bug-528",
+      "timestamp": "2026-07-28T01:05:00.000Z",
+      "error_message": "同一份合同上传出现多条记录(库内 3 份 file_hash 完全相同),价格分析/聚类被重复数据污染(同一批价格算 2-3 遍)。",
+      "file": "backend/app/extensions/contract_price/{routers,crud,storage}.py + skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "去重按 storage_uri(文件名/MinIO key),不是按 file_hash(内容)。同一份合同换文件名上传(浏览器重复下载改名 -盖章-2.pdf / 历史名)= 不同 key = 不同 storage_uri = 新文档,各自跑出一份分项。file_hash 字段有,但只用在「同名文件内容是否变了」的增量(scan_changed),从不跨文件名去重。upsert 也按 storage_uri,所以不同名 = 不 upsert = 不去重。",
+      "fix": "两层按内容(file_hash)去重:① 上传端 POST /documents/upload 算 sha256,crud.find_duplicate_document 查同 hash 不同 uri → 409 拒重(同名重传除外,允许覆盖+重解析);② parse 端 _persist_parse 安全网——新 storage_uri 插入前查同 hash 不同 uri,命中则 skip(不插文档不加分项)。加 storage.delete_object + DELETE /documents/{id} 端点清 MinIO 对象(原先只删 DB 行,MinIO 泄漏)。清存量:3→1(删 591 条分项 + 2 文档 + 2 MinIO 对象,保留用户真实文件名那份)。测试:test_find_duplicate_document_matches_cross_filename。",
+      "tags": [
+        "contract-price",
+        "dedup",
+        "file_hash",
+        "duplicate",
+        "data-integrity",
+        "minio"
+      ],
+      "related_bugs": [
+        "bug-526"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T01:05:00.000Z"
+    },
+    {
+      "id": "bug-540",
+      "timestamp": "2026-07-28T01:47:43.663Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Condition was: if (autoAnalyze && failed < list.length)",
+      "fix": "Changed to: if (failed < list.length)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T01:47:43.663Z"
+    },
+    {
+      "id": "bug-541",
+      "timestamp": "2026-07-28T01:47:47.021Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 13→4 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T01:47:47.021Z"
+    },
+    {
+      "id": "bug-542",
+      "timestamp": "2026-07-28T02:00:25.497Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 19→4 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:00:25.497Z"
+    },
+    {
+      "id": "bug-543",
+      "timestamp": "2026-07-28T02:01:10.919Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"@/lib/utils\"",
+      "fix": "Changed to \"@/extensions/contract-price/api\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:01:10.919Z"
+    },
+    {
+      "id": "bug-544",
+      "timestamp": "2026-07-28T02:08:28.375Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 14→5 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:08:28.375Z"
+    },
+    {
+      "id": "bug-545",
+      "timestamp": "2026-07-28T02:10:05.958Z",
+      "error_message": "CSS fix: hover, group-hover",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "hover: text-emerald-600\" → text-destructive\"; group-hover: opacity-100 text-destructive hover:text-destructive\" → opacity-100\">",
+      "fix": "Changed hover: text-emerald-600\" → text-destructive\"; group-hover: opacity-100 text-destructive hover:text-destructive\" → opacity-100\">",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:10:05.958Z"
+    },
+    {
+      "id": "bug-546",
+      "timestamp": "2026-07-28T02:27:37.417Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: <td className=\"py-4 px-6 tabular-nums\">{doc.sign_date ?? \"—\"",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-28T02:30:10.457Z"
+    },
+    {
+      "id": "bug-547",
+      "timestamp": "2026-07-28T02:27:51.404Z",
+      "error_message": "Wrong reference: Delete should be Trash2",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Used \"Delete\" instead of \"Trash2\"",
+      "fix": "Changed Delete → Trash2",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:27:51.404Z"
+    },
+    {
+      "id": "bug-548",
+      "timestamp": "2026-07-28T02:32:08.340Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"h-8 w-[170px] border-transparent bg-transparent p",
+      "fix": "Changed to `h-8 ${width} border-transparent bg-transparent px",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:32:08.341Z"
+    },
+    {
+      "id": "bug-549",
+      "timestamp": "2026-07-28T02:56:52.693Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Condition was: if (autoAnalyze && failed < list.length)",
+      "fix": "Changed to: if (failed < list.length)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:56:52.693Z"
+    },
+    {
+      "id": "bug-550",
+      "timestamp": "2026-07-28T02:56:58.074Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"合同文档\"",
+      "fix": "Changed to \"合同解析\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:56:58.074Z"
+    },
+    {
+      "id": "bug-551",
+      "timestamp": "2026-07-28T02:57:01.838Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 14→5 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:57:01.838Z"
+    },
+    {
+      "id": "bug-552",
+      "timestamp": "2026-07-28T02:57:05.998Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/contract-price/layout.tsx",
+      "root_cause": "Had \"合同清单\"",
+      "fix": "Changed to \"合同解析\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T02:57:05.998Z"
+    },
+    {
+      "id": "bug-553",
+      "timestamp": "2026-07-28T03:26:57.817Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"@/components/ui/input\"",
+      "fix": "Changed to \"@/components/ui/dialog\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T03:26:57.817Z"
+    },
+    {
+      "id": "bug-554",
+      "timestamp": "2026-07-28T03:27:09.860Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 16→8 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T03:27:09.860Z"
+    },
+    {
+      "id": "bug-555",
+      "timestamp": "2026-07-28T03:54:08.798Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"flex items-center justify-end gap-0.5 opacity-0 t",
+      "fix": "Changed to \"flex items-center justify-end gap-0.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T03:54:08.798Z"
+    },
+    {
+      "id": "bug-556",
+      "timestamp": "2026-07-28T04:13:59.974Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "No early return/throw for edge case: [\"confirmed\", \"skipped\", \"clustered\"].includes(doc.confirm_s",
+      "fix": "Added guard clause: if ([\"confirmed\", \"skipped\", \"clustered\"].in)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:13:59.974Z"
+    },
+    {
+      "id": "bug-557",
+      "timestamp": "2026-07-28T04:14:04.480Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"py-3 px-6 text-xs font-semibold text-muted-foregr",
+      "fix": "Changed to \"py-3 px-6 text-xs font-semibold text-muted-foregr",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-28T04:14:24.761Z"
+    },
+    {
+      "id": "bug-558",
+      "timestamp": "2026-07-28T04:14:39.501Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/contract-price/layout.tsx",
+      "root_cause": "Had \"聚类审核\"",
+      "fix": "Changed to \"分组审核\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:14:39.501Z"
+    },
+    {
+      "id": "bug-559",
+      "timestamp": "2026-07-28T04:15:34.875Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Had \"聚类审核\"",
+      "fix": "Changed to \"分组审核\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:15:34.875Z"
+    },
+    {
+      "id": "bug-560",
+      "timestamp": "2026-07-28T04:15:38.994Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Had \"聚类组数\"",
+      "fix": "Changed to \"分组数\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:15:38.994Z"
+    },
+    {
+      "id": "bug-561",
+      "timestamp": "2026-07-28T04:15:43.820Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"选择货物聚类组...\"",
+      "fix": "Changed to \"选择货物分组...\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-28T04:15:49.579Z"
+    },
+    {
+      "id": "bug-562",
+      "timestamp": "2026-07-28T04:24:24.854Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_contract_price_extension.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:24:24.854Z"
+    },
+    {
+      "id": "bug-563",
+      "timestamp": "2026-07-28T04:52:23.971Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:52:23.971Z"
+    },
+    {
+      "id": "bug-564",
+      "timestamp": "2026-07-28T04:52:29.360Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:52:29.360Z"
+    },
+    {
+      "id": "bug-565",
+      "timestamp": "2026-07-28T04:52:37.524Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→12 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T04:52:37.524Z"
+    },
+    {
+      "id": "bug-566",
+      "timestamp": "2026-07-28T07:07:44.120Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T07:07:44.120Z"
+    },
+    {
+      "id": "bug-567",
+      "timestamp": "2026-07-28T07:14:34.936Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Had \"space-y-6 p-8\"",
+      "fix": "Changed to \"space-y-6 px-8 pb-8\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T07:14:34.936Z"
+    },
+    {
+      "id": "bug-568",
+      "timestamp": "2026-07-28T09:10:14.405Z",
+      "error_message": "Missing await",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T09:10:14.405Z"
+    },
+    {
+      "id": "bug-569",
+      "timestamp": "2026-07-28T09:10:56.497Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "106 lines replaced/restructured",
+      "fix": "Rewrote 124→18 lines (106 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T09:10:56.497Z"
+    },
+    {
+      "id": "bug-570",
+      "timestamp": "2026-07-28T09:14:41.368Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_cli.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→13 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T09:14:41.368Z"
+    },
+    {
+      "id": "bug-571",
+      "timestamp": "2026-07-28T10:47:35.789Z",
+      "error_message": "Missing await",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T10:47:35.789Z"
+    },
+    {
+      "id": "bug-572",
+      "timestamp": "2026-07-28T10:48:40.594Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→17 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T10:48:40.594Z"
+    },
+    {
+      "id": "bug-573",
+      "timestamp": "2026-07-28T11:13:12.385Z",
+      "error_message": "Wrong reference: null should be processing",
+      "file": "frontend/src/extensions/contract-price/types.ts",
+      "root_cause": "Used \"null\" instead of \"processing\"",
+      "fix": "Changed null → processing",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:13:12.385Z"
+    },
+    {
+      "id": "bug-574",
+      "timestamp": "2026-07-28T11:13:14.840Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/TasksView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:13:14.841Z"
+    },
+    {
+      "id": "bug-575",
+      "timestamp": "2026-07-28T11:16:33.394Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→4 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:16:33.394Z"
+    },
+    {
+      "id": "bug-576",
+      "timestamp": "2026-07-28T11:17:10.197Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"上传合同扫描件(PDF/docx),存入独立 MinIO bucket。合同上传后进行解析文件解析",
+      "fix": "Changed to \"上传合同扫描件(PDF/docx)。上传完成后点「开始解析」触发 OCR 提取。\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:17:10.197Z"
+    },
+    {
+      "id": "bug-577",
+      "timestamp": "2026-07-28T11:21:38.794Z",
+      "error_message": "CSS fix: total",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "total: list.length, done: i + 1, failed → list.length, done, failed",
+      "fix": "Changed total: list.length, done: i + 1, failed → list.length, done, failed",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:21:38.794Z"
+    },
+    {
+      "id": "bug-578",
+      "timestamp": "2026-07-28T11:22:05.934Z",
+      "error_message": "Wrong reference: endswitch should be endsWith",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Used \"endswitch\" instead of \"endsWith\"",
+      "fix": "Changed endswitch → endsWith",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:22:05.934Z"
+    },
+    {
+      "id": "bug-579",
+      "timestamp": "2026-07-28T11:22:31.487Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:22:31.487Z"
+    },
+    {
+      "id": "bug-580",
+      "timestamp": "2026-07-28T11:35:36.855Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 21→13 lines (9 removed) | Also: <input; ref={fileInput}",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-28T11:36:01.644Z"
+    },
+    {
+      "id": "bug-581",
+      "timestamp": "2026-07-28T11:35:40.328Z",
+      "error_message": "CSS fix: files",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "files: FileList) => { → FileList | File[]) => {",
+      "fix": "Changed files: FileList) => { → FileList | File[]) => {",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:35:40.328Z"
+    },
+    {
+      "id": "bug-582",
+      "timestamp": "2026-07-28T11:36:32.238Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:36:32.238Z"
+    },
+    {
+      "id": "bug-583",
+      "timestamp": "2026-07-28T11:41:15.245Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 11→4 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:41:15.245Z"
+    },
+    {
+      "id": "bug-584",
+      "timestamp": "2026-07-28T11:41:18.557Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:41:18.557Z"
+    },
+    {
+      "id": "bug-585",
+      "timestamp": "2026-07-28T11:52:21.455Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"mb-3 h-12 w-12 text-muted-foreground/30\"",
+      "fix": "Changed to \"/contract-price/data-tip.svg\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T11:52:21.455Z"
+    },
+    {
+      "id": "bug-586",
+      "timestamp": "2026-07-28T12:03:12.440Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"h-4 w-4 text-muted-foreground/30\"",
+      "fix": "Changed to \"h-4 w-4 text-muted-foreground/60\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T12:03:12.440Z"
+    },
+    {
+      "id": "bug-587",
+      "timestamp": "2026-07-28T12:09:04.527Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T12:09:04.527Z"
+    },
+    {
+      "id": "bug-588",
+      "timestamp": "2026-07-28T12:11:57.788Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T12:11:57.788Z"
+    },
+    {
+      "id": "bug-589",
+      "timestamp": "2026-07-28T12:12:02.542Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "id: doc.id, body: { sign_date: v || null → doc.id, body: { sign_date: v",
+      "fix": "Changed id: doc.id, body: { sign_date: v || null → doc.id, body: { sign_date: v",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T12:12:02.542Z"
+    },
+    {
+      "id": "bug-590",
+      "timestamp": "2026-07-28T13:00:48.539Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T13:00:48.539Z"
+    },
+    {
+      "id": "bug-591",
+      "timestamp": "2026-07-28T13:01:44.241Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/vectorizer.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T13:01:44.241Z"
+    },
+    {
+      "id": "bug-592",
+      "timestamp": "2026-07-28T13:21:26.621Z",
+      "error_message": "Wrong reference: useDeleteItem should be useBatchValidateItems",
+      "file": "frontend/src/extensions/contract-price/components/ItemsView.tsx",
+      "root_cause": "Used \"useDeleteItem\" instead of \"useBatchValidateItems\"",
+      "fix": "Changed useDeleteItem → useBatchValidateItems",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T13:21:26.621Z"
+    },
+    {
+      "id": "bug-593",
+      "timestamp": "2026-07-28T13:21:32.764Z",
+      "error_message": "CSS fix: limit",
+      "file": "frontend/src/extensions/contract-price/components/ItemsView.tsx",
+      "root_cause": "limit: PAGE_SIZE, → onlyReview ? 500 : PAGE_SIZE,",
+      "fix": "Changed limit: PAGE_SIZE, → onlyReview ? 500 : PAGE_SIZE,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T13:21:32.764Z"
+    },
+    {
+      "id": "bug-594",
+      "timestamp": "2026-07-28T13:34:28.967Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/vectorizer.py",
+      "root_cause": "14 lines replaced/restructured",
+      "fix": "Rewrote 20→4 lines (14 removed) | Also: # Normalize each part to unit length, then weight ; # different specs (DN40 vs DN50) are separated eve | Also: # Build vocabulary + document frequency over the g; # — DN/PN specs are kept in the text AND extracted | Also: _DN_RE_AMP = re.compile(r\"(DN\\s*\\d+)\", re.IGNORECA; def _amplify_dn(name: str, repeats: int = 5) -> st",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-28T13:38:51.540Z"
+    },
+    {
+      "id": "bug-595",
+      "timestamp": "2026-07-28T13:52:55.182Z",
+      "error_message": "Wrong reference: 200 should be 500",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Used \"200\" instead of \"500\"",
+      "fix": "Changed 200 → 500",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-28T13:52:55.182Z"
+    },
+    {
+      "id": "bug-596",
+      "timestamp": "2026-07-29T04:38:29.058Z",
+      "error_message": "Significant refactor of ",
+      "file": "mcp-server/ocr-service/ocr_engine.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 24→61 lines (10 removed) | Also: continue; allc = [c for r in rows for c in r]",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-29T04:39:58.570Z"
+    },
+    {
+      "id": "bug-597",
+      "timestamp": "2026-07-29T05:14:40.932Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "22 lines replaced/restructured",
+      "fix": "Rewrote 23→8 lines (22 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T05:14:40.932Z"
+    },
+    {
+      "id": "bug-598",
+      "timestamp": "2026-07-29T08:34:07.702Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"px-5 py-2.5 font-mono text-[11px] text-muted-fore",
+      "fix": "Changed to \"px-5 py-2.5 font-medium\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T08:34:07.702Z"
+    },
+    {
+      "id": "bug-599",
+      "timestamp": "2026-07-29T09:25:08.579Z",
+      "error_message": "Wrong reference: pending_cluster_count should be outlier_count",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Used \"pending_cluster_count\" instead of \"outlier_count\"",
+      "fix": "Changed pending_cluster_count → outlier_count",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T09:25:08.579Z"
+    },
+    {
+      "id": "bug-600",
+      "timestamp": "2026-07-29T09:36:03.325Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/TasksView.tsx",
+      "root_cause": "Had \"whitespace-nowrap\"",
+      "fix": "Changed to \"}</TableCell>\n                    <TableCell clas",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T09:36:03.325Z"
+    },
+    {
+      "id": "bug-601",
+      "timestamp": "2026-07-29T09:39:38.362Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T09:39:38.362Z"
+    },
+    {
+      "id": "bug-602",
+      "timestamp": "2026-07-29T10:24:59.432Z",
+      "error_message": "CSS fix: onUpload",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "onUpload: (files: File[]) => void → (files: File[], autoParse: boolean) => void",
+      "fix": "Changed onUpload: (files: File[]) => void → (files: File[], autoParse: boolean) => void",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-29T10:26:23.200Z"
+    },
+    {
+      "id": "bug-603",
+      "timestamp": "2026-07-29T10:38:49.973Z",
+      "error_message": "CSS fix: label",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "label: \"待分组\", tone: \"text-amber-600\", pending: true → \"已解析\", tone: \"text-emerald-600\", pending: false",
+      "fix": "Changed label: \"待分组\", tone: \"text-amber-600\", pending: true → \"已解析\", tone: \"text-emerald-600\", pending: false",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T10:38:49.973Z"
+    },
+    {
+      "id": "bug-604",
+      "timestamp": "2026-07-29T10:39:12.967Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "23 lines replaced/restructured",
+      "fix": "Rewrote 27→3 lines (23 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T10:39:12.968Z"
+    },
+    {
+      "id": "bug-605",
+      "timestamp": "2026-07-29T10:43:22.151Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"解析中\"",
+      "fix": "Changed to \"已上传\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T10:43:22.151Z"
+    },
+    {
+      "id": "bug-606",
+      "timestamp": "2026-07-29T10:50:24.758Z",
+      "error_message": "CSS fix: label",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "label: \"已上传\", tone: \"text-muted-foreground\", pending: false → \"解析中\", tone: \"text-primary\", pending: false",
+      "fix": "Changed label: \"已上传\", tone: \"text-muted-foreground\", pending: false → \"解析中\", tone: \"text-primary\", pending: false",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T10:50:24.758Z"
+    },
+    {
+      "id": "bug-607",
+      "timestamp": "2026-07-29T11:01:19.349Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/hooks.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T11:01:19.349Z"
+    },
+    {
+      "id": "bug-608",
+      "timestamp": "2026-07-29T11:04:28.909Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_contract_price_extension.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T11:04:28.909Z"
+    },
+    {
+      "id": "bug-609",
+      "timestamp": "2026-07-29T11:20:33.608968Z",
+      "error_message": "Gateway 502 on restart: ModuleNotFoundError: No module named 'deerflow.skills.skillscan.orchestrator'",
+      "file": "backend/packages/harness/deerflow/skills/skillscan/orchestrator.py",
+      "root_cause": "orchestrator.py（1223 行，git 已跟踪）在一次 upstream-sync 操作中被误删，工作树缺失；而 skillscan/__init__.py 仍 `from .orchestrator import (...)`，导致 deerflow harness 导入失败 → gateway uvicorn 启动即崩（nginx 502）。重启前旧进程还在跑所以没暴露，一重启就炸。",
+      "fix": "git restore 该文件从 HEAD 恢复（纯删除，未改 harness 逻辑）。重启 gateway 后 /health 20s 内恢复 200。",
+      "tags": [
+        "harness",
+        "upstream-sync",
+        "gateway-startup",
+        "deleted-file",
+        "do-not-repeat"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T11:20:33.609023Z"
+    },
+    {
+      "id": "bug-610",
+      "timestamp": "2026-07-29T11:30:51.121Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Had \"Phase 2: cluster confirmed/skipped documents'",
+      "fix": "Changed to \"Phase 2: cluster all parsed documents'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T11:30:51.121Z"
+    },
+    {
+      "id": "bug-610",
+      "timestamp": "2026-07-29T11:35:48.823142Z",
+      "error_message": "点「开始分组」任务完成但 0 聚类:文档状态停在已解析,分组审核 tab 无新分组",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py (run_cluster / _persist_clusters)",
+      "root_cause": "聚类阶段 run_cluster 只聚 confirm_status IN (confirmed/skipped/clustered) 的文档的货物(_persist_clusters 同理只把这些文档置 clustered)。但 ContractsView UI 早已移除「确认」按钮(confirmMut 声明了却从未调用),其注释明写 'No confirm gate — parsed docs go straight to 已解析, then cluster run advances to 已分组'。于是文档永远是 confirm_status=pending → 聚类找到 0 条货物 → 0 分组。doc 级 confirm 门槛是旧设计残留,价格质量其实由 item 级 validation_status(needs_review 不计均值)把关。",
+      "fix": "去掉 doc 级 confirm 门槛,与已发布的 UI 对齐:run_cluster 改为聚 parse_status IN (parsed/needs_review) 的文档货物;_persist_clusters 成功后把这些文档置 confirm_status=clustered(前端 docStage 显示已分组)。同步更新 routers.py 注释 + ContractsView 分组对话框文案 + 删除死代码 confirmMut/useConfirmDocument。验证:直跑 --phase cluster 得 526 货物→119 分组,文档→clustered。",
+      "tags": [
+        "cluster",
+        "confirm-gate",
+        "dead-code",
+        "contract-price",
+        "ui-backend-mismatch"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T11:35:48.823142Z"
+    },
+    {
+      "id": "bug-612",
+      "timestamp": "2026-07-29T13:13:31.891Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/gateway/routers/suggestions.py",
+      "root_cause": "Was returning: SuggestionsConfigResponse(enabled=config.suggestio",
+      "fix": "Now returns: SuggestionsConfigResponse(enabled=config.suggestio",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:13:31.891Z"
+    },
+    {
+      "id": "bug-613",
+      "timestamp": "2026-07-29T13:29:36.863Z",
+      "error_message": "Wrong reference: BaseModel should be _MetadataRedactingResponse",
+      "file": "backend/app/gateway/routers/threads.py",
+      "root_cause": "Used \"BaseModel\" instead of \"_MetadataRedactingResponse\"",
+      "fix": "Changed BaseModel → _MetadataRedactingResponse",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-29T13:29:40.370Z"
+    },
+    {
+      "id": "bug-614",
+      "timestamp": "2026-07-29T13:32:44.901Z",
+      "error_message": "Significant refactor of ",
+      "file": "deploy/offline/docker-compose.yaml",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 41→30 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:32:44.901Z"
+    },
+    {
+      "id": "bug-615",
+      "timestamp": "2026-07-29T13:34:53.026Z",
+      "error_message": "Wrong reference: markdown should be ThreadExportFormat",
+      "file": "frontend/src/components/workspace/recent-chat-list.tsx",
+      "root_cause": "Used \"markdown\" instead of \"ThreadExportFormat\"",
+      "fix": "Changed markdown → ThreadExportFormat",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:34:53.026Z"
+    },
+    {
+      "id": "bug-616",
+      "timestamp": "2026-07-29T13:34:59.173Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/recent-chat-list.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 8→4 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:34:59.173Z"
+    },
+    {
+      "id": "bug-617",
+      "timestamp": "2026-07-29T13:36:28.275Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/offline-export.sh",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 29→59 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:36:28.275Z"
+    },
+    {
+      "id": "bug-618",
+      "timestamp": "2026-07-29T13:39:35.321Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/components/workspace/citations/artifact-link.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T13:39:35.321Z"
+    },
+    {
+      "id": "bug-619",
+      "timestamp": "2026-07-29T14:05:00.000Z",
+      "error_message": "Next.js prod build (pnpm build) fails type check: AppManagement.tsx:74:56 'Object is possibly undefined' on d[0].key (noUncheckedIndexedAccess). Blocks ALL frontend prod builds on main-dev-fork, including the new offline prod frontend (Task 1.1).",
+      "file": "frontend/src/app/admin/app-center/AppManagement.tsx",
+      "root_cause": "Index access d[0].key without null guard; line 77 (m[0] ?? \"\") uses safe pattern but line 74 does not. Pre-existing — last touched in bb027f6f (2026-07-06), NOT introduced by Task 1.1 deploy changes.",
+      "fix": "NOT FIXED (out of Task 1.1 scope). Recommended one-liner: businessDomain: d[0]?.key ?? \"\" (or guard). next build type-check surfaces one error at a time so more TS errors may lurk behind it — fixing frontend TS debt is a separate task.",
+      "tags": [
+        "prod-build",
+        "typescript",
+        "noUncheckedIndexedAccess",
+        "offline-deploy",
+        "pre-existing",
+        "task-1.1-blocker"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:05:00.000Z"
+    },
+    {
+      "id": "bug-620",
+      "timestamp": "2026-07-29T14:06:18.671Z",
+      "error_message": "Incorrect value in code",
+      "file": "scripts/offline-export.sh",
+      "root_cause": "Had \"infiniflow/ragflow:v0.25.3\"",
+      "fix": "Changed to \"infiniflow/ragflow:v0.25.3-fixed\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:06:18.671Z"
+    },
+    {
+      "id": "bug-621",
+      "timestamp": "2026-07-29T14:15:46.482Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/routers/memory.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: memory_data = await asyncio.to_thread(manager.reload_memory, | Also: memory_data = await asyncio.to_thread(manager.get_memory, us | Also: manager = get_memory_manager(); memory_data = await asyncio.to_thread(manager.clear_memory,  | Also: manager = get_memory_manager(); memory_data = await asyncio.to_thread(manager.import_memory,",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-07-29T14:16:20.854Z"
+    },
+    {
+      "id": "bug-622",
+      "timestamp": "2026-07-29T14:17:12.386Z",
+      "error_message": "Wrong reference: stop_all should be guard_destructive",
+      "file": "deploy/offline/deploy.sh",
+      "root_cause": "Used \"stop_all\" instead of \"guard_destructive\"",
+      "fix": "Changed stop_all → guard_destructive",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:17:12.386Z"
+    },
+    {
+      "id": "bug-623",
+      "timestamp": "2026-07-29T14:20:28.452Z",
+      "error_message": "Wrong reference: latest should be $",
+      "file": "deploy/offline/docker-compose.yaml",
+      "root_cause": "Used \"latest\" instead of \"$\"",
+      "fix": "Changed latest → $",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:20:28.452Z"
+    },
+    {
+      "id": "bug-624",
+      "timestamp": "2026-07-29T14:20:32.286Z",
+      "error_message": "Wrong reference: latest should be $",
+      "file": "deploy/offline/docker-compose.extensions.yaml",
+      "root_cause": "Used \"latest\" instead of \"$\"",
+      "fix": "Changed latest → $",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:20:32.286Z"
+    },
+    {
+      "id": "bug-625",
+      "timestamp": "2026-07-29T14:22:06.055Z",
+      "error_message": "Incorrect value in code",
+      "file": "scripts/offline-export.sh",
+      "root_cause": "Had \"$VERSION_TAG\"",
+      "fix": "Changed to \"${PYTHON}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:22:06.055Z"
+    },
+    {
+      "id": "bug-626",
+      "timestamp": "2026-07-29T14:24:23.421Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/threads.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 20→30 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:24:23.421Z"
+    },
+    {
+      "id": "bug-627",
+      "timestamp": "2026-07-29T14:25:23.466Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/offline-export.sh",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 24→30 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:25:23.466Z"
+    },
+    {
+      "id": "bug-628",
+      "timestamp": "2026-07-29T14:55:39.417Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 64→154 lines (10 removed) | Also: if latest_checkpoint is None:; base_checkpoint_tuple = await _find_base_checkpoin",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-29T14:56:22.101Z"
+    },
+    {
+      "id": "bug-629",
+      "timestamp": "2026-07-29T14:56:30.771Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T14:56:30.771Z"
+    },
+    {
+      "id": "bug-630",
+      "timestamp": "2026-07-29T15:02:25.900Z",
+      "error_message": "Wrong reference: superseded_run_ids should be hidden_run_ids",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "Used \"superseded_run_ids\" instead of \"hidden_run_ids\"",
+      "fix": "Changed superseded_run_ids → hidden_run_ids",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:02:25.900Z"
+    },
+    {
+      "id": "bug-631",
+      "timestamp": "2026-07-29T15:03:43.310Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/app-center/AppManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:03:43.310Z"
+    },
+    {
+      "id": "bug-632",
+      "timestamp": "2026-07-29T23:10:00Z",
+      "error_message": "edit-and-rerun 在 EAI 完全坏掉：前端 hooks.ts:2242 已完整接线 POST /runs/edit-regenerate/prepare（editAndRegenerateMessage + getLatestEditableTurn + onEditAndRegenerateMessage 都在），但后端无该端点 → UI 触发'编辑并重跑'即 404。regenerate 路径同时缺 #4534 settled-checkpoint lineage / #4480/#4457 title 保留 / edit-rerun 旧消息可见性。",
+      "file": "backend/app/gateway/routers/thread_runs.py (+ backend/app/gateway/checkpoint_lineage.py 新增)",
+      "root_cause": "上游 edit-and-rerun 特性(#4377/#4480/#4534/#4539)从未移植到 EAI fork。前端某次同步拿到完整接线，但后端 thread_runs.py 停在旧版：缺 edit-regenerate/prepare 端点 + checkpoint_lineage 模块 + regenerate 路径修正。harness run 基础设施(manager/store/sql 的 list_successful_regenerate_sources/list_edit_replay_visibility/EditReplayVisibility)已同步。",
+      "fix": "移植 edit-and-rerun 后端，4 commit：①checkpoint_lineage.py(#4534 纯新增,5测)；②edit-rerun helpers+模型；③_prepare_edit_regenerate_payload+端点+regenerate修正(#4534 lineage/#4480/#4457 title)；④_default_history_hidden_run_ids 接入 _scan_thread_message_page(/messages/page，UI useThreadHistory 走它)使旧 turn 隐藏。关键适配：上游用 materialized state-accessor(build_thread_checkpoint_state_accessor→resolve_thread_assistant_id，EAI 都缺)，EAI 沿用既有原始 checkpointer(get_checkpointer.aget_tuple)；raw checkpointer 有 .aget 可作 lineage accessor、无 .ahistory 故 chronological 回落用 .alist。8 测试过(5 lineage+3 prepare)。EAI-CUSTOM 标 4 处偏离。",
+      "tags": [
+        "edit-and-rerun",
+        "regenerate",
+        "checkpoint_lineage",
+        "upstream-sync",
+        "thread_runs",
+        "state-accessor",
+        "raw-checkpointer"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29"
+    },
+    {
+      "id": "bug-633",
+      "timestamp": "2026-07-29T15:20:29.855Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/app-center/AppManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:20:29.855Z"
+    },
+    {
+      "id": "bug-634",
+      "timestamp": "2026-07-29T15:21:18.771Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/app/api/collab/ai-chat/route.ts",
+      "root_cause": "No early return/throw for edge case: !msg",
+      "fix": "Added guard clause: if (!msg)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:21:18.771Z"
+    },
+    {
+      "id": "bug-633",
+      "timestamp": "2026-07-29T23:25:00Z",
+      "error_message": "对话页打开设置对话框切到微信 tab 运行时崩溃：Cannot read properties of undefined (reading 'title') @ wechat-settings-page.tsx:49 (t.settings.wechat.title)。",
+      "file": "frontend/src/core/i18n/locales/en-US.ts (+ zh-CN.ts, types.ts)",
+      "root_cause": "WechatSettingsPage 读 t.settings.wechat.{title,...}(21 key)，但 i18n 字典里 settings.wechat 根本不存在（只有 channels.descriptions.wechat 这个无关字符串）。微信设置页(E-续③)加组件时漏了对应翻译块。dev(Turbopack)只 strip type 不检查 → 运行时才崩，build/typecheck 才会报。",
+      "fix": "给 en-US/zh-CN 的 settings 块各加 wechat 对象(21 key：链接/绑定/QR分享文案)，types.ts 加对应类型。三文件 key 集一致(已校验)。标 EAI-CUSTOM。commit 7c6bfc55+76fed1af。",
+      "tags": [
+        "i18n",
+        "wechat",
+        "settings",
+        "frontend",
+        "runtime-crash",
+        "translation-missing",
+        "eai-custom"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29"
+    },
+    {
+      "id": "bug-636",
+      "timestamp": "2026-07-29T15:28:58.990Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/knowledge/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:28:58.990Z"
+    },
+    {
+      "id": "bug-637",
+      "timestamp": "2026-07-29T15:55:45.769Z",
+      "error_message": "CSS fix: title",
+      "file": "frontend/src/app/layout.tsx",
+      "root_cause": "title: \"EAIFlow\", → BRAND_NAME,",
+      "fix": "Changed title: \"EAIFlow\", → BRAND_NAME,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:55:45.769Z"
+    },
+    {
+      "id": "bug-638",
+      "timestamp": "2026-07-29T15:55:57.525Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/(auth)/setup/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:55:57.525Z"
+    },
+    {
+      "id": "bug-639",
+      "timestamp": "2026-07-29T15:56:03.408Z",
+      "error_message": "Wrong reference: EAIFlow should be BRAND_NAME",
+      "file": "frontend/src/app/(auth)/setup/page.tsx",
+      "root_cause": "Used \"EAIFlow\" instead of \"BRAND_NAME\"",
+      "fix": "Changed EAIFlow → BRAND_NAME",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:56:03.408Z"
+    },
+    {
+      "id": "bug-640",
+      "timestamp": "2026-07-29T15:56:07.375Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/components/landing/footer.tsx",
+      "root_cause": "Had \"@/lib/utils\"",
+      "fix": "Changed to \"@/brand\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-29T15:56:07.375Z"
+    },
+    {
+      "id": "bug-641",
+      "timestamp": "2026-07-30T04:02:32.991Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/generate-config.sh",
+      "root_cause": "18 lines replaced/restructured",
+      "fix": "Rewrote 21→37 lines (18 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T04:02:32.992Z"
+    },
+    {
+      "id": "bug-642",
+      "timestamp": "2026-07-30T04:02:59.824Z",
+      "error_message": "Incorrect value in code",
+      "file": "scripts/tests/test_generate_config.sh",
+      "root_cause": "Had \"mcpServers\"",
+      "fix": "Changed to \"^sandbox:\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T04:02:59.824Z"
+    },
+    {
+      "id": "bug-643",
+      "timestamp": "2026-07-30T10:11:44.529Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-07-30-abac-rbac-redesign-design.md",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 19→39 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T10:11:44.529Z"
+    },
+    {
+      "id": "bug-644",
+      "timestamp": "2026-07-30T10:46:06.175Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-07-30-abac-rbac-redesign-design.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 7→76 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T10:46:06.175Z"
+    },
+    {
+      "id": "bug-645",
+      "timestamp": "2026-07-30T11:05:00.527Z",
+      "error_message": "Incorrect value in code",
+      "file": ".worktrees/abac-permissions/.wolf/anatomy.md",
+      "root_cause": "Had `test_p0_permission_gates.py`",
+      "fix": "Changed to `test_permission_registry.py`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T11:05:00.527Z"
+    },
+    {
+      "id": "bug-646",
+      "timestamp": "2026-07-30T11:17:20.054Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-permissions/backend/app/extensions/auth/middleware.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 26→40 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T11:17:20.054Z"
+    },
+    {
+      "id": "bug-647",
+      "timestamp": "2026-07-30T12:58:05.054Z",
+      "error_message": "Wrong return value",
+      "file": ".worktrees/abac-permissions/backend/app/extensions/auth/engine.py",
+      "root_cause": "Was returning: cls(operator=\"in\", field=field, value=resolved if ",
+      "fix": "Now returns: cls(operator=\"none_allow\")",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T12:58:05.054Z"
+    },
+    {
+      "id": "bug-648",
+      "timestamp": "2026-07-30T12:58:20.196Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-permissions/backend/app/extensions/auth/middleware.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 15→26 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T12:58:20.196Z"
+    },
+    {
+      "id": "bug-649",
+      "timestamp": "2026-07-30T13:06:57.190Z",
+      "error_message": "Function not marked async",
+      "file": "docs/superpowers/plans/2026-07-30-abac-phase2-plan.md",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T13:06:57.190Z"
+    },
+    {
+      "id": "bug-650",
+      "timestamp": "2026-07-30T13:53:50.175Z",
+      "error_message": "Missing await",
+      "file": ".worktrees/abac-phase2/backend/app/extensions/auth/middleware.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: # Load ABAC policies from DB; from app.extensions.auth.models import Policy as PolicyModel",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-30T13:57:28.807Z"
+    },
+    {
+      "id": "bug-651",
+      "timestamp": "2026-07-30T13:58:03.203Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-phase2/backend/app/extensions/knowledge/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 16→52 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T13:58:03.203Z"
+    },
+    {
+      "id": "bug-652",
+      "timestamp": "2026-07-30T14:39:37.912Z",
+      "error_message": "Type error",
+      "file": ".worktrees/abac-phase3/frontend/src/extensions/api/index.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T14:39:37.912Z"
+    },
+    {
+      "id": "bug-653",
+      "timestamp": "2026-07-30T14:44:09.040Z",
+      "error_message": "Type error",
+      "file": ".worktrees/abac-phase3/frontend/src/app/admin/layout.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T14:44:09.040Z"
+    },
+    {
+      "id": "bug-654",
+      "timestamp": "2026-07-30T14:45:12.884Z",
+      "error_message": "Type error",
+      "file": ".worktrees/abac-phase3/frontend/src/app/admin/users/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T14:45:12.884Z"
+    },
+    {
+      "id": "bug-655",
+      "timestamp": "2026-07-30T14:45:40.617Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": ".worktrees/abac-phase3/frontend/src/app/admin/layout.tsx",
+      "root_cause": "EAI-CUSTOM: button-level permission control */ → button-level permission control",
+      "fix": "Changed EAI-CUSTOM: button-level permission control */ → button-level permission control",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T14:45:40.617Z"
+    },
+    {
+      "id": "bug-656",
+      "timestamp": "2026-07-30T14:45:43.534Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": ".worktrees/abac-phase3/frontend/src/app/knowledge/page.tsx",
+      "root_cause": "EAI-CUSTOM: button-level permission control */ → button-level permission control",
+      "fix": "Changed EAI-CUSTOM: button-level permission control */ → button-level permission control",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-30T14:49:15.334Z"
+    },
+    {
+      "id": "bug-657",
+      "timestamp": "2026-07-30T15:10:43.377Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/license/routers.py",
+      "root_cause": "Had \"admin\"",
+      "fix": "Changed to \"license:manage\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 15,
+      "last_seen": "2026-07-30T15:19:05.356Z"
+    },
+    {
+      "id": "bug-658",
+      "timestamp": "2026-07-30T15:11:02.312Z",
+      "error_message": "Wrong reference: require_super_admin should be require_permission",
+      "file": "backend/app/extensions/app_center/routers.py",
+      "root_cause": "Used \"require_super_admin\" instead of \"require_permission\"",
+      "fix": "Changed require_super_admin → require_permission",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-30T15:11:27.582Z"
+    },
+    {
+      "id": "bug-659",
+      "timestamp": "2026-07-30T15:17:19.185Z",
+      "error_message": "Missing import: )),  # EAI-CUSTOM: Add permission check\n):\n    ",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Module(s) not imported: )),  # EAI-CUSTOM: Add permission check\n):\n    ",
+      "fix": "Added import(s) for )),  # EAI-CUSTOM: Add permission check\n):\n    ",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-30T15:17:40.971Z"
+    },
+    {
+      "id": "bug-660",
+      "timestamp": "2026-07-30T15:18:53.201Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T15:18:53.201Z"
+    },
+    {
+      "id": "bug-661",
+      "timestamp": "2026-07-30T15:44:55.821Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "No early return/throw for edge case: !res.ok",
+      "fix": "Added guard clause: if (!res.ok)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T15:44:55.821Z"
+    },
+    {
+      "id": "bug-662",
+      "timestamp": "2026-07-30T16:36:43.529Z",
+      "error_message": "Significant refactor of ",
+      "file": "config/permissions.yaml",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 12→16 lines (6 removed) | Also: # ─── 合同价格分析（应用中心内）───; - { id: \"cpa:page:analysis\", display_name: \"合同分析\" ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-30T16:37:17.938Z"
+    },
+    {
+      "id": "bug-663",
+      "timestamp": "2026-07-30T16:44:06.378Z",
+      "error_message": "Wrong reference: ModulePermission should be NavModule",
+      "file": ".worktrees/abac-3level/backend/app/extensions/auth/registry.py",
+      "root_cause": "Used \"ModulePermission\" instead of \"NavModule\"",
+      "fix": "Changed ModulePermission → NavModule",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-30T16:44:31.949Z"
+    },
+    {
+      "id": "bug-664",
+      "timestamp": "2026-07-30T16:44:18.062Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-3level/backend/app/extensions/auth/registry.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 30→52 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T16:44:18.062Z"
+    },
+    {
+      "id": "bug-665",
+      "timestamp": "2026-07-30T16:49:47.365Z",
+      "error_message": "Wrong return value",
+      "file": ".worktrees/abac-3level/backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "Was returning: {",
+      "fix": "Now returns: all",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T16:49:47.365Z"
+    },
+    {
+      "id": "bug-666",
+      "timestamp": "2026-07-30T16:50:11.593Z",
+      "error_message": "Missing guard clause",
+      "file": ".worktrees/abac-3level/frontend/src/core/permissions/usePermission.ts",
+      "root_cause": "No early return/throw for edge case: isLoading",
+      "fix": "Added guard clause: if (isLoading)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T16:50:11.593Z"
+    },
+    {
+      "id": "bug-667",
+      "timestamp": "2026-07-30T17:02:30.371Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:02:30.371Z"
+    },
+    {
+      "id": "bug-668",
+      "timestamp": "2026-07-30T17:14:44.148Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/engine.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 12→20 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:14:44.148Z"
+    },
+    {
+      "id": "bug-669",
+      "timestamp": "2026-07-30T17:16:46.908Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/app_center/routers.py",
+      "root_cause": "Had \"app_center:manage\"",
+      "fix": "Changed to \"system:access\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:16:46.908Z"
+    },
+    {
+      "id": "bug-670",
+      "timestamp": "2026-07-30T17:40:04.114Z",
+      "error_message": "Significant refactor of ",
+      "file": "config/permissions.yaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:40:04.114Z"
+    },
+    {
+      "id": "bug-671",
+      "timestamp": "2026-07-30T17:45:05.164Z",
+      "error_message": "CSS fix: href",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "href: \"/settings\", label: \"设置\", icon: Settings, licenseModule: \"platform\" → \"/settings\", label: \"设置\", icon: Settings, licenseModule: \"platform\", navId: \"nav:settings\"",
+      "fix": "Changed href: \"/settings\", label: \"设置\", icon: Settings, licenseModule: \"platform\" → \"/settings\", label: \"设置\", icon: Settings, licenseModule: \"platform\", navId: \"nav:settings\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:45:05.164Z"
+    },
+    {
+      "id": "bug-672",
+      "timestamp": "2026-07-30T17:46:07.183Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/app/settings/page.tsx",
+      "root_cause": "id: \"license\", label: \"许可证\" → \"license\", label: \"许可证\", pageId: \"settings:page:license\"",
+      "fix": "Changed id: \"license\", label: \"许可证\" → \"license\", label: \"许可证\", pageId: \"settings:page:license\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:46:07.183Z"
+    },
+    {
+      "id": "bug-673",
+      "timestamp": "2026-07-30T17:46:25.225Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/hooks/useApps.ts",
+      "root_cause": "Had \"@/extensions/hooks/useAuth\"",
+      "fix": "Changed to \"@/core/permissions\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:46:25.225Z"
+    },
+    {
+      "id": "bug-674",
+      "timestamp": "2026-07-30T17:46:32.407Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/app-center/hooks/useApps.ts",
+      "root_cause": "No early return/throw for edge case: !segment",
+      "fix": "Added guard clause: if (!segment)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:46:32.407Z"
+    },
+    {
+      "id": "bug-675",
+      "timestamp": "2026-07-30T17:57:07.479Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/core/permissions/usePermission.ts",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T17:57:07.479Z"
+    },
+    {
+      "id": "bug-676",
+      "timestamp": "2026-07-30T18:02:27.363Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-tree/backend/app/extensions/auth/registry.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 23→41 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T18:02:27.363Z"
+    },
+    {
+      "id": "bug-677",
+      "timestamp": "2026-07-30T18:05:56.282Z",
+      "error_message": "Significant refactor of ",
+      "file": ".worktrees/abac-tree/frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 149→317 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T18:05:56.282Z"
+    },
+    {
+      "id": "bug-678",
+      "timestamp": "2026-07-30T18:09:03.015Z",
+      "error_message": "CSS fix: treeModules",
+      "file": ".worktrees/abac-tree/frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "treeModules: RegistryModule[] | null = isTree ? modules! : null → RegistryModule[] = isTree ? modules! : []",
+      "fix": "Changed treeModules: RegistryModule[] | null = isTree ? modules! : null → RegistryModule[] = isTree ? modules! : []",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-30T18:09:03.015Z"
+    },
+    {
+      "id": "bug-679",
+      "timestamp": "2026-07-31T03:25:54.956Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→11 lines (3 removed) | Also: selectedCount > 0; <Icon className={cn(\"w-4 h-4 transition-colors dur",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-31T03:26:47.024Z"
+    },
+    {
+      "id": "bug-680",
+      "timestamp": "2026-07-31T03:26:04.914Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-31T03:26:04.914Z"
+    },
+    {
+      "id": "bug-681",
+      "timestamp": "2026-07-31T03:27:18.207Z",
+      "error_message": "CSS fix: name",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "name: \"\", description: \"\", permissions: [], → \"\", description: \"\", permissions: [], nav: [],",
+      "fix": "Changed name: \"\", description: \"\", permissions: [], → \"\", description: \"\", permissions: [], nav: [],",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-31T03:32:02.842Z"
+    },
+    {
+      "id": "bug-682",
+      "timestamp": "2026-07-31T04:29:16.907Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "EAI-CUSTOM: initialize nav visibility from role data (default all enabled) → initialize nav visibility from role data",
+      "fix": "Changed EAI-CUSTOM: initialize nav visibility from role data (default all enabled) → initialize nav visibility from role data",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-31T04:29:32.161Z"
+    },
+    {
+      "id": "bug-683",
+      "timestamp": "2026-07-31T09:04:45.975Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 16→23 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-31T09:04:45.975Z"
+    },
+    {
+      "id": "bug-684",
+      "timestamp": "2026-07-31T09:04:57.900Z",
+      "error_message": "Wrong reference: ALL_NAV_IDS should be EAI",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Used \"ALL_NAV_IDS\" instead of \"EAI\"",
+      "fix": "Changed ALL_NAV_IDS → EAI",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-31T09:04:57.900Z"
+    },
+    {
+      "id": "bug-685",
+      "timestamp": "2026-07-31T13:04:28.401Z",
+      "error_message": "Significant refactor of ",
+      "file": "deploy/offline/ragflow-fixed.Dockerfile",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "dockerfile"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-31T13:04:28.401Z"
+    },
+    {
+      "id": "bug-686",
+      "timestamp": "2026-07-31T15:28:02.795Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-31T15:28:02.796Z"
+    },
+    {
+      "id": "bug-687",
+      "timestamp": "2026-08-01T01:07:59.835Z",
+      "error_message": "Function not marked async",
+      "file": "docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T01:07:59.835Z"
+    },
+    {
+      "id": "bug-688",
+      "timestamp": "2026-08-01T01:12:30.858Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/registry.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 9→10 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T01:12:30.858Z"
+    },
+    {
+      "id": "bug-689",
+      "timestamp": "2026-08-01T01:46:45.994Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_permission_engine.py",
+      "root_cause": "Had \"none_allow\"",
+      "fix": "Changed to \"allow_all\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T01:46:45.994Z"
+    },
+    {
+      "id": "bug-690",
+      "timestamp": "2026-08-01T01:53:02.677Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/middleware.py",
+      "root_cause": "36 lines replaced/restructured",
+      "fix": "Rewrote 61→30 lines (36 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T01:53:02.677Z"
+    },
+    {
+      "id": "bug-691",
+      "timestamp": "2026-08-01T02:01:13.001Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/middleware.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 33→38 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:01:13.001Z"
+    },
+    {
+      "id": "bug-692",
+      "timestamp": "2026-08-01T02:01:28.449Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_p0_permission_gates.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:01:28.449Z"
+    },
+    {
+      "id": "bug-693",
+      "timestamp": "2026-08-01T02:02:07.176Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_p0_permission_gates.py",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 88→118 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:02:07.176Z"
+    },
+    {
+      "id": "bug-694",
+      "timestamp": "2026-08-01T02:07:48.177Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:07:48.177Z"
+    },
+    {
+      "id": "bug-696",
+      "timestamp": "2026-08-01T02:19:51.226Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_role_calibration.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:19:51.226Z"
+    },
+    {
+      "id": "bug-697",
+      "timestamp": "2026-08-01T02:22:21.831Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "31 lines replaced/restructured",
+      "fix": "Rewrote 61→26 lines (31 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:22:21.831Z"
+    },
+    {
+      "id": "bug-698",
+      "timestamp": "2026-08-01T02:31:26.126Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Had ' LIMIT 1\"",
+      "fix": "Changed to ' AND is_deleted = false LIMIT 1\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:31:26.126Z"
+    },
+    {
+      "id": "bug-699",
+      "timestamp": "2026-08-01T02:36:08.904Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "40 lines replaced/restructured",
+      "fix": "Rewrote 63→93 lines (40 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:36:08.904Z"
+    },
+    {
+      "id": "bug-700",
+      "timestamp": "2026-08-01T02:36:30.461Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:36:30.461Z"
+    },
+    {
+      "id": "bug-701",
+      "timestamp": "2026-08-01T02:53:50.695Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 12→17 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:53:50.695Z"
+    },
+    {
+      "id": "bug-702",
+      "timestamp": "2026-08-01T02:54:16.607Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_role_overlay_store.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T02:54:16.607Z"
+    },
+    {
+      "id": "bug-703",
+      "timestamp": "2026-08-01T04:43:26.388Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_project_routers.py",
+      "root_cause": "Had \"app.extensions.project.permissions.get_project_ro",
+      "fix": "Changed to \"app.extensions.auth.unified_permissions.resolve_u",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T04:43:26.388Z"
+    },
+    {
+      "id": "bug-704",
+      "timestamp": "2026-08-01T04:57:51.218Z",
+      "error_message": "Wrong reference: member should be None",
+      "file": "backend/tests/test_project_routers.py",
+      "root_cause": "Used \"member\" instead of \"None\"",
+      "fix": "Changed member → None",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T04:57:51.218Z"
+    },
+    {
+      "id": "bug-705",
+      "timestamp": "2026-08-01T05:15:36.453Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md",
+      "root_cause": "Had `utils.ts:19`",
+      "fix": "Changed to `utils.ts:19-24`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T05:16:05.850Z"
+    },
+    {
+      "id": "bug-706",
+      "timestamp": "2026-08-01T05:19:06.160Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/unified_permissions.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 49→72 lines (8 removed) | Also: is_admin = False; if current_user.role_id is not None:",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T05:19:17.500Z"
+    },
+    {
+      "id": "bug-707",
+      "timestamp": "2026-08-01T12:45:00",
+      "error_message": "project MCP 工具 read_chapter/list_chapters/get_project/get_chapter_spec 调用即崩; write_chapter 写入被静默回滚; MCP 连 project-db 不存在",
+      "file": "backend/app/extensions/project/mcp.py + extensions_config.json",
+      "root_cause": "1) extensions_config PROJECT_DB_URL 指向 project-db 库(容器不存在,与 API 的 agentflow 库脑裂) 2) mcp.py 引用不存在的 _get_chapter_or_404/get_outline_tree/ProjectOut.current_stage 3) _run_in_db 从不 commit, AsyncSession.close() 回滚未提交事务 4) coal-eia SKILL.md 调 project_write_chapter(project_id,chapter_number) 与 MCP schema (chapter_id) 不匹配",
+      "fix": "设计文档 rev4: 改两份配置 DSN 为 postgres-ext 服务名; mcp.py 补辅助函数+current_stage 构造传值; _run_in_db 加 commit; MCP 写边界状态集合成员校验(不含 approved); coal-eia SKILL.md 契约对账",
+      "tags": [
+        "project",
+        "mcp",
+        "split-brain",
+        "db",
+        "dead-code"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T12:45:00"
+    },
+    {
+      "id": "bug-708",
+      "timestamp": "2026-08-01T05:36:32.042Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:36:32.042Z"
+    },
+    {
+      "id": "bug-709",
+      "timestamp": "2026-08-01T05:36:43.711Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:36:43.711Z"
+    },
+    {
+      "id": "bug-710",
+      "timestamp": "2026-08-01T05:39:25.856Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/types/index.ts",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 12→4 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:39:25.856Z"
+    },
+    {
+      "id": "bug-711",
+      "timestamp": "2026-08-01T05:55:00",
+      "error_message": "TS2305: Module '\"../types\"' has no exported member 'RoleAssignmentInfo'",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "frontend/src/extensions/ 同时存在 types/ 目录(types/index.ts) 与 types.ts 文件。TypeScript bundler 解析 `../types` / `@/extensions/types` 时,文件 types.ts 优先于目录 types/index.ts(types.ts → types/index.ts 顺序)。把新接口 RoleAssignmentInfo 误加进了被遮蔽的 types/index.ts,api/index.ts 编译报 TS2305",
+      "fix": "回退 types/index.ts 的误加,把 RoleAssignmentInfo 加到 frontend/src/extensions/types.ts(真正被解析的文件)",
+      "tags": [
+        "frontend",
+        "types",
+        "module-resolution",
+        "ts2305",
+        "u1"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:55:00"
+    },
+    {
+      "id": "bug-712",
+      "timestamp": "2026-08-01T05:50:23.585Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:50:23.585Z"
+    },
+    {
+      "id": "bug-713",
+      "timestamp": "2026-08-01T05:53:27.228Z",
+      "error_message": "CSS fix: grants",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "grants: [{ permission: \"\", data_scope: \"\" → [{ permission: \"\"",
+      "fix": "Changed grants: [{ permission: \"\", data_scope: \"\" → [{ permission: \"\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T05:53:30.598Z"
+    },
+    {
+      "id": "bug-714",
+      "timestamp": "2026-08-01T05:53:33.278Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T05:53:33.278Z"
+    },
+    {
+      "id": "bug-715",
+      "timestamp": "2026-08-01T06:15:40.123Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:15:40.123Z"
+    },
+    {
+      "id": "bug-716",
+      "timestamp": "2026-08-01T06:15:49.673Z",
+      "error_message": "CSS fix: permissions",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "permissions: selectedRole.permissions, data_scopes: selections → selectedRole.permissions, nav: selectedRole.nav, data_scopes: scopes",
+      "fix": "Changed permissions: selectedRole.permissions, data_scopes: selections → selectedRole.permissions, nav: selectedRole.nav, data_scopes: scopes",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:15:49.674Z"
+    },
+    {
+      "id": "bug-717",
+      "timestamp": "2026-08-01T06:41:37.484Z",
+      "error_message": "Wrong reference: type should be resolveDataScopeSelections",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Used \"type\" instead of \"resolveDataScopeSelections\"",
+      "fix": "Changed type → resolveDataScopeSelections",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:41:37.484Z"
+    },
+    {
+      "id": "bug-718",
+      "timestamp": "2026-08-01T06:41:45.100Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 12→4 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:41:45.100Z"
+    },
+    {
+      "id": "bug-719",
+      "timestamp": "2026-08-01T06:45:32.697Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/role/dataScope.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:45:32.697Z"
+    },
+    {
+      "id": "bug-720",
+      "timestamp": "2026-08-01T06:50:00",
+      "error_message": "数据权限面板为未配置 scope 的角色虚构选中首个 scope（如 user 角色显示 cpa_all），全量保存后角色静默获得完整合同数据权限",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "initDataScopes 与 DataScopePanel 在角色 data_scopes 缺该 module 条目时回退到该 module 第一个 scope 作为选中值（`|| m.data_scopes![0]!.id` / `selections[module.key] || module.data_scopes[0]?.id`），而后端是 deny-by-default——scope id 缺失=不授予。展示谎言 + 全量保存把虚构值持久化 = 越权授权",
+      "fix": "改为 deny-by-default：initDataScopes 仅当角色 data_scopes 真实匹配某 module 的 scope 时才生成条目（纯函数 resolveDataScopeSelections 于 frontend/src/extensions/role/dataScope.ts，附单元测试）；DataScopePanel currentVal=selections[module.key]||''（无选中显示「未配置」提示）；handleDataScopeChange 仅发送 data_scopes（不再回传 DB 镜像 permissions/nav）；后端 update_role 校验 scope id 必须存在于 registry（未知 id 抛 ValueError）",
+      "tags": [
+        "rbac",
+        "data-scope",
+        "deny-by-default",
+        "privilege-escalation",
+        "roles-ui"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:50:00"
+    },
+    {
+      "id": "bug-721",
+      "timestamp": "2026-08-01T06:59:50.100Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/app/admin/layout.tsx",
+      "root_cause": "Was returning: roleName === \"Super Admin\";",
+      "fix": "Now returns: roleName === \"Super Admin\" || roleName === \"超级管理员\"",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T06:59:50.100Z"
+    },
+    {
+      "id": "bug-722",
+      "timestamp": "2026-08-01T07:10:44.884Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:10:44.884Z"
+    },
+    {
+      "id": "bug-723",
+      "timestamp": "2026-08-01T07:11:01.932Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/admin/layout.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 32→43 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:11:01.932Z"
+    },
+    {
+      "id": "bug-724",
+      "timestamp": "2026-08-01T12:45:00.000Z",
+      "error_message": "A3 review: /me 的 is_admin 仅按 is_system 标志计算，忽略通配权限 '*';admin 布局外层闸门在 PermissionProvider 挂载前用角色显示名判权——改名但 is_system/通配的超管被锁在 admin 门外",
+      "file": "backend/app/extensions/auth/permission_routers.py;frontend/src/app/admin/layout.tsx",
+      "root_cause": "①/me 的 is_admin 与 middleware.require_super_admin 的超管定义(is_system OR '*' in resolved_permissions)不一致,通配角色(is_system=false,permissions=['*'])走后端 bypass 却返回 is_admin=false→admin 导航被隐藏;②AdminLayout 外层闸门在 PermissionProvider 挂载前运行,依赖硬编码显示名 isAdmin(role_name)",
+      "fix": "①/me 改为 is_system OR '*' in resolve_role_permissions(identity.role_code)(resolve_role_permissions 已展开 #inherit,继承通配同样覆盖);②PermissionProvider 上移到闸门之外,AdminGate 以 usePermission().is_admin 为唯一判权依据,删除 isAdmin(roleName) 助手;新增 test_registry_overlay.py 4 个 is_admin 判定测试(通配/系统标志/普通角色/继承通配)",
+      "tags": [
+        "rbac",
+        "admin",
+        "is_admin",
+        "a3",
+        "permissions"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T12:45:00.000Z"
+    },
+    {
+      "id": "bug-725",
+      "timestamp": "2026-08-01T07:23:34.498Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:23:34.498Z"
+    },
+    {
+      "id": "bug-726",
+      "timestamp": "2026-08-01T07:23:43.412Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/hooks/useApps.ts",
+      "root_cause": "Had \"@/extensions/hooks/useAuth\"",
+      "fix": "Changed to \"@/extensions/license/useLicense\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:23:43.412Z"
+    },
+    {
+      "id": "bug-727",
+      "timestamp": "2026-08-01T07:36:58.006Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "EAI-CUSTOM: gate admin nav by permission-system is_admin (A3/U2), not display-name check → gate admin nav by permission-system is_admin (A3/U2), not display-name check.",
+      "fix": "Changed EAI-CUSTOM: gate admin nav by permission-system is_admin (A3/U2), not display-name check → gate admin nav by permission-system is_admin (A3/U2), not display-name check.",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:36:58.006Z"
+    },
+    {
+      "id": "bug-728",
+      "timestamp": "2026-08-01T07:42:18.034Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/auth/policy_routers.py",
+      "root_cause": "Was returning: {\"id\": str(policy.id), \"name\": policy.name}",
+      "fix": "Now returns: {",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:42:18.034Z"
+    },
+    {
+      "id": "bug-729",
+      "timestamp": "2026-08-01T07:43:17.581Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:43:17.581Z"
+    },
+    {
+      "id": "bug-730",
+      "timestamp": "2026-08-01T07:43:25.393Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:43:25.393Z"
+    },
+    {
+      "id": "bug-731",
+      "timestamp": "2026-08-01T07:43:33.800Z",
+      "error_message": "CSS fix: name, enabled",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "name: policy.name, conditions: policy.conditions, grants: policy.grants, → policy.name, conditions: policy.conditions, grants: policy.grants; enabled: true, → true",
+      "fix": "Changed name: policy.name, conditions: policy.conditions, grants: policy.grants, → policy.name, conditions: policy.conditions, grants: policy.grants; enabled: true, → true",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T07:43:33.800Z"
+    },
+    {
+      "id": "bug-732",
+      "timestamp": "2026-08-01T07:57:06.269Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/.claude/plans/modular-painting-treasure.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→13 lines (3 removed) | Also: ### Agent 执行桥（#3）; - Task.assignee_type=agent → **workspace 本地 `ensur | Also: **必须新建的**：通用 Task 表（现任务散落 chapter.assigned_to/phas; **关键发现**：`local_executor.py` 是死代码，**Temporal 是唯一推进 | Also: - 新模块 `src/extensions/workspace/`，路由 `/workspace/c; - **页面功能操作与布局尽可能照抄 AgentSpace**（用户强调）：页面清单在 spec 的",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-08-01T08:04:07.017Z"
+    },
+    {
+      "id": "bug-733",
+      "timestamp": "2026-08-01T08:00:12.278Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/plans/modular-painting-treasure.md",
+      "root_cause": "Had `project_chapters.content`",
+      "fix": "Changed to `collab_sections.content`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T08:04:44.722Z"
+    },
+    {
+      "id": "bug-734",
+      "timestamp": "2026-08-01T08:15:00Z",
+      "error_message": "ModuleNotFoundError: No module named 'deerflow.skills.skillscan.orchestrator' → 全量 pytest 79 collection errors / 网关 /health 502",
+      "file": "backend/packages/harness/deerflow/skills/skillscan/orchestrator.py",
+      "root_cause": "git-tracked harness 文件被外部/并发进程反复从工作树删除(git status 呈 ` D`);skillscan/__init__.py 仍 `from .orchestrator import` → 凡 import app.gateway.routers 的测试 collection 全炸。已知 recurrence of bug-609(上游 sync 误删)。Task17 曾 git checkout HEAD 恢复验证存在,随后再次消失,判定有并发写者。",
+      "fix": "Task17 未修(属既有基线): 用 `git checkout HEAD -- <path>` 恢复;全量回归改用 `pytest --continue-on-collection-errors` 跑可收集子集并单独归类 collection errors。Do-Not-Repeat: 恢复后立即 `git status` 验证,若再次消失=并发进程在写工作树,勿持续争夺。",
+      "tags": [
+        "harness",
+        "skillscan",
+        "orchestrator",
+        "collection-error",
+        "concurrent-agent",
+        "windows"
+      ],
+      "related_bugs": [
+        "bug-609"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T08:15:00Z"
+    },
+    {
+      "id": "bug-735",
+      "timestamp": "2026-08-01T08:25:07.704Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md",
+      "root_cause": "Had `。**kind 不可变**；升级 report 走显式 `",
+      "fix": "Changed to `。**kind 不可变，仅经 `",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 8,
+      "last_seen": "2026-08-01T08:26:46.898Z"
+    },
+    {
+      "id": "bug-736",
+      "timestamp": "2026-08-01T08:25:23.000Z",
+      "error_message": "Wrong reference: reopen should be POST",
+      "file": "docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md",
+      "root_cause": "Used \"reopen\" instead of \"POST\"",
+      "fix": "Changed reopen → POST",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:25:23.000Z"
+    },
+    {
+      "id": "bug-737",
+      "timestamp": "2026-08-01T08:29:26.998Z",
+      "error_message": "CSS fix: conditions",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "conditions: toUIConditions(p.conditions) → toUIConditions(p.conditions), grants: toGrantArray(p.grants)",
+      "fix": "Changed conditions: toUIConditions(p.conditions) → toUIConditions(p.conditions), grants: toGrantArray(p.grants)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-08-01T08:29:47.130Z"
+    },
+    {
+      "id": "bug-738",
+      "timestamp": "2026-08-01T08:32:16.361Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md",
+      "root_cause": "Had `await POST /api/threads/{thread_id}/runs/{run_id}",
+      "fix": "Changed to `GET /api/threads/{thread_id}/runs/{run_id}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-08-01T08:32:42.665Z"
+    },
+    {
+      "id": "bug-739",
+      "timestamp": "2026-08-01T08:32:35.443Z",
+      "error_message": "Wrong reference: agent should be 8",
+      "file": "docs/superpowers/specs/2026-08-01-collab-workspace-refactor.md",
+      "root_cause": "Used \"agent\" instead of \"8\"",
+      "fix": "Changed agent → 8",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:32:35.443Z"
+    },
+    {
+      "id": "bug-740",
+      "timestamp": "2026-08-01T08:33:07.228Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/role/policyConverters.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:33:07.228Z"
+    },
+    {
+      "id": "bug-741",
+      "timestamp": "2026-08-01T08:35:00Z",
+      "error_message": "策略保存 422：前端 createPolicy/updatePolicy 发 grants 为数组 [{permission}]，后端 PolicyCreate.grants/PolicyUpdate.grants 是 dict，引擎读 grants.get('permissions')",
+      "file": "frontend/src/app/admin/roles/page.tsx frontend/src/extensions/role/policyConverters.ts",
+      "root_cause": "与 conditions 同源 shape 错配：后端存储/评估用 grants={permissions:[...]}，UI 用 [{permission}]。Task17 初版只转了 conditions 没转 grants → grants 传数组被 Pydantic dict 拒绝(422)或存成数组导致引擎授权不生效。",
+      "fix": "C1：提取 policyConverters.ts 新增 toGrantArray(dict→数组)；handlePolicySave 保存发 grants:{permissions:policy.grants.map(g=>g.permission).filter(Boolean)}；loadPolicies/startEdit/PolicyRow 用 toGrantArray 归一化；types.ts PolicyCreateRequest.grants→Record<string,unknown>。",
+      "tags": [
+        "rbac",
+        "policy",
+        "grants",
+        "shape-mismatch",
+        "422",
+        "frontend"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:35:00Z"
+    },
+    {
+      "id": "bug-742",
+      "timestamp": "2026-08-01T08:40:18.906Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:40:18.906Z"
+    },
+    {
+      "id": "bug-743",
+      "timestamp": "2026-08-01T08:42:41.735Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 25→42 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:42:41.735Z"
+    },
+    {
+      "id": "bug-744",
+      "timestamp": "2026-08-01T08:49:23.219Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T08:49:23.219Z"
+    },
+    {
+      "id": "bug-745",
+      "timestamp": "2026-08-01T09:21:02.053Z",
+      "error_message": "Wrong reference: store should be mtime_before",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "Used \"store\" instead of \"mtime_before\"",
+      "fix": "Changed store → mtime_before",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T09:21:02.053Z"
+    },
+    {
+      "id": "bug-746",
+      "timestamp": "2026-08-01T09:21:47.178Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/user/routers.py",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 18→6 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T09:21:47.178Z"
+    },
+    {
+      "id": "bug-747",
+      "timestamp": "2026-08-01T09:22:40.634Z",
+      "error_message": "CSS fix: href",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "href: \"/projects\", label: \"报告项目\", icon: ClipboardList, licenseModule: \"project\", navId: \"nav:projects\" → \"/workspace/collab\", label: \"协作工作台\", icon: KanbanSquare, licenseModule: \"platform\", navId: \"nav:collab-workspace\"",
+      "fix": "Changed href: \"/projects\", label: \"报告项目\", icon: ClipboardList, licenseModule: \"project\", navId: \"nav:projects\" → \"/workspace/collab\", label: \"协作工作台\", icon: KanbanSquare, licenseModule: \"platform\", navId: \"nav:collab-workspace\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T09:22:40.634Z"
+    },
+    {
+      "id": "bug-748",
+      "timestamp": "2026-08-01T09:59:18.066Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "Had \"ALTER TABLE collab_tasks DROP CONSTRAINT IF EXIST",
+      "fix": "Changed to \"ALTER TABLE collab_tasks ALTER COLUMN assignee_ty",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T09:59:18.066Z"
+    },
+    {
+      "id": "bug-749",
+      "timestamp": "2026-08-01T10:09:03.232Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/workspace/components/ApprovalsQueue.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: <span>{p.type === \"agent\" ? (p.agent_name ?? p.agentName ?? ",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-01T10:09:11.680Z"
+    },
+    {
+      "id": "bug-708",
+      "timestamp": "2026-08-01T10:05:00",
+      "error_message": "collab_tasks INSERT 违反 ck_collab_tasks_assignee CHECK 约束 (CheckViolationError)",
+      "file": "backend/app/extensions/workspace/{models,service}.py + database.py",
+      "root_cause": "models.py 的 assignee_type 列有 default=\"human\" + nullable=False；service.create_task 显式传 None 但 SQLAlchemy Python-side default 仍填 \"human\"，违反 CHECK(human 需 user_id)。任务应先可未指派。",
+      "fix": "assignee_type 改 nullable=True 无默认；CHECK 放宽允许 NULL(未指派)；database.py ALTER DROP NOT NULL + 重建约束；service.create_task 传 assignee_type=None。",
+      "tags": [
+        "workspace",
+        "check-constraint",
+        "sqlalchemy",
+        "nullable"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T10:05:00"
+    },
+    {
+      "id": "bug-709",
+      "timestamp": "2026-08-01T10:07:00",
+      "error_message": "CollabTaskOut.model_validate(task) MissingGreenlet: greenlet_spawn has not been called",
+      "file": "backend/app/extensions/workspace/{service,routers}.py",
+      "root_cause": "async SQLAlchemy 2.0 的 server-side defaults(created_at/updated_at) 在 flush 后未加载，model_validate 触发惰性加载但无 greenlet 上下文 → MissingGreenlet。",
+      "fix": "在 create_task/assign_task/update_task/record_handoff/create_section/materialize_sections_from_doc 的 flush 后加 await db.refresh(obj) 加载 server defaults。",
+      "tags": [
+        "workspace",
+        "sqlalchemy",
+        "async",
+        "missing-greenlet",
+        "pydantic"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-08-01T10:07:00"
+    },
+    {
+      "id": "bug-752",
+      "timestamp": "2026-08-01T13:06:53.883Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T13:06:53.883Z"
+    },
+    {
+      "id": "bug-753",
+      "timestamp": "2026-08-01T13:24:40.711Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/shell/Sidebar.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→25 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T13:24:40.711Z"
+    },
+    {
+      "id": "bug-754",
+      "timestamp": "2026-08-01T13:38:34.443Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/role-management-yaml-driven.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T13:38:34.443Z"
+    },
+    {
+      "id": "bug-755",
+      "timestamp": "2026-08-01T22:15:00Z",
+      "error_message": "Extensions database is unavailable (503) on roles module toggle; [Errno 16] Device or resource busy: '/app/config/tmpXXX.tmp' -> '/app/config/roles_custom.yaml'",
+      "file": "backend/app/extensions/role/service.py",
+      "root_cause": "RoleOverlayStore.write 用 os.replace(rename) 原子写，但 roles_custom.yaml 加入 docker bind-mount 后，Docker Desktop(Windows) 不允许 rename 覆盖已挂载文件 → OSError Errno 16。get_db 的 except connection_error_types 把 OSError 当连接错误 → 误报 503 Extensions database unavailable；写透中断 → DB 镜像未校准 → 刷新后改动消失。bind-mount 修复(665b9618)引入了此问题。",
+      "fix": "RoleOverlayStore.write 在 os.replace 抛 OSError 时回退 shutil.copy2(原地覆写,bind-mount 兼容)。commit 4aaa253e + 测试 test_write_falls_back_to_copy_on_bind_mount。",
+      "tags": [
+        "rbac",
+        "overlay",
+        "bind-mount",
+        "docker-desktop",
+        "os.replace",
+        "errno-16",
+        "503"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-01T22:15:00Z"
     }
   ]
 }
