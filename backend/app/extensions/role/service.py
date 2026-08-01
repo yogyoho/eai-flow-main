@@ -219,8 +219,11 @@ class RoleService:
 
     @staticmethod
     async def get_role_user_count(db: AsyncSession, role_id: UUID) -> int:
-        """Get the number of users assigned to a role."""
-        query = select(func.count(User.id)).where(User.role_id == role_id)
+        """Get the number of active (non-soft-deleted) users assigned to a role."""
+        query = select(func.count(User.id)).where(
+            User.role_id == role_id,
+            User.is_deleted == False,  # noqa: E712
+        )
         result = await db.execute(query)
         return result.scalar() or 0
 
