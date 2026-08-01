@@ -172,6 +172,45 @@ function getAllFallbackPermKeys(): string[] {
   return PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
 }
 
+/* ── 策略条件形状转换：UI 数组 ⇄ 引擎 dict ─────────────────────────
+ * 后端引擎 (_evaluate_conditions) 存储/评估 {and:[{attr,op,value}]}，op ∈ {eq,neq,gt,gte,lt,lte,contains,not_contains,in,not_in}；
+ * UI 编辑用 [{attribute,operator,value}]，operator 为展示符（=,!=,>=,<=,contains,in,not_in）。
+ * 保存时转引擎 dict，加载时转回 UI 数组 —— 保证 SAVED shape 与引擎一致且编辑器可用。
+ */
+const UI_TO_ENGINE_OP: Record<string, string> = {
+  "=": "eq", "!=": "neq", ">": "gt", "<": "lt", ">=": "gte", "<=": "lte",
+  "contains": "contains", "not_contains": "not_contains", "in": "in", "not_in": "not_in",
+};
+const ENGINE_TO_UI_OP: Record<string, string> = {
+  eq: "=", neq: "!=", gt: ">", lt: "<", gte: ">=", lte: "<=",
+  contains: "contains", not_contains: "not_contains", in: "in", not_in: "not_in",
+};
+
+/** UI 数组 → 引擎 dict（空数组 → 空 dict，引擎视为无条件=全量） */
+function toEngineConditions(conds: PolicyCondition[]): Record<string, unknown> {
+  if (!conds.length) return {};
+  return {
+    and: conds.map((c) => ({
+      attr: c.attribute,
+      op: UI_TO_ENGINE_OP[c.operator] || c.operator,
+      value: c.value,
+    })),
+  };
+}
+
+/** 引擎 dict → UI 数组（后端返回 {and:[...]}，兼容旧数据已是数组） */
+function toUIConditions(conds: unknown): PolicyCondition[] {
+  if (Array.isArray(conds)) return conds as PolicyCondition[];
+  if (!conds || typeof conds !== "object") return [];
+  const list = (conds as Record<string, unknown>).and as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(list)) return [];
+  return list.map((c) => ({
+    attribute: (c.attr as string) ?? "",
+    operator: ENGINE_TO_UI_OP[c.op as string] || ((c.op as string) ?? "="),
+    value: (c.value as string) ?? "",
+  }));
+}
+
 /* ── EAI-CUSTOM: Module key → nav_id mapping ─────────────── */
 const MODULE_NAV_MAP: Record<string, string> = {
   "dashboard": "nav:dashboard",
@@ -1100,7 +1139,8 @@ export default function AdminRolesPage() {
     setPoliciesLoading(true);
     try {
       const res = await permissionsApi.listPolicies();
-      setPolicies(res.policies || []);
+      // EAI-CUSTOM: 后端存储条件为引擎 dict {and:[...]}，加载时转回 UI 数组，保证 PolicyRow/startEdit 读数组可用
+      setPolicies((res.policies || []).map((p) => ({ ...p, conditions: toUIConditions(p.conditions) })));
     } catch (err) {
       console.error("Failed to load policies:", err);
       setPolicies([]);
@@ -1220,15 +1260,19 @@ export default function AdminRolesPage() {
 
   const handlePolicySave = async (policy: PolicyItem) => {
     try {
+      // EAI-CUSTOM: 保存时把 UI 条件数组转成引擎 dict 形式（后端 Pydantic conditions:dict + 引擎 {and:[{attr,op,value}]}）
+      const payload = {
+        name: policy.name,
+        conditions: toEngineConditions(policy.conditions),
+        grants: policy.grants,
+      };
       if (policy.id) {
-        await permissionsApi.updatePolicy(policy.id, { name: policy.name, conditions: policy.conditions, grants: policy.grants });
+        await permissionsApi.updatePolicy(policy.id, payload);
         setPolicies((prev) => prev.map((p) => p.id === policy.id ? { ...p, name: policy.name, conditions: policy.conditions, grants: policy.grants } : p));
       } else {
-        const created = await permissionsApi.createPolicy({
-          name: policy.name, conditions: policy.conditions, grants: policy.grants,
-          enabled: true,
-        });
-        setPolicies((prev) => [...prev, created]);
+        const created = await permissionsApi.createPolicy({ ...payload, enabled: true });
+        // EAI-CUSTOM: 后端返回完整行（conditions 为引擎 dict），转回 UI 数组再入列表
+        setPolicies((prev) => [...prev, { ...created, conditions: toUIConditions(created.conditions) }]);
       }
     } catch (err) {
       console.error("Failed to save policy:", err);

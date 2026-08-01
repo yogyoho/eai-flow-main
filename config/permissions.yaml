@@ -266,6 +266,9 @@ roles:
       - nav:app-center
     pages: ["*"]
     permissions:
+      # EAI-CUSTOM (Task17): 预备授权 dashboard:view —— dashboard/approval/law 路由当前仍强制 system:access，
+      # 此点为将来切换到模块级粒度（dashboard:view 等）做准备，先让持 nav:dashboard 的角色持有该权限，勿删除
+      - dashboard:view
       - kb:read
       - kb:create
       # EAI-CUSTOM: U2 button-level can() gates upload/delete/edit on these; dept_head manages KB content
@@ -306,6 +309,7 @@ roles:
     pages: ["*"]
     permissions:
       - "#inherit:dept_head"
+      - dashboard:view
       - project:edit
       - member:add
       - member:remove
@@ -325,6 +329,7 @@ roles:
     nav: [nav:dashboard, nav:writing, nav:projects, nav:knowledge, nav:app-center]
     pages: [projects:page:list, writing:page:chat, knowledge:page:browse, dashboard:page:overview]
     permissions:
+      - dashboard:view
       - kb:read
       - doc:read
       - model:read
@@ -343,6 +348,7 @@ roles:
     nav: [nav:dashboard, nav:projects, nav:knowledge, nav:app-center]
     pages: [projects:page:list, knowledge:page:browse, dashboard:page:overview]
     permissions:
+      - dashboard:view
       - kb:read
       - doc:read
       - model:read
@@ -363,6 +369,7 @@ roles:
     nav: [nav:dashboard, nav:knowledge, nav:app-center]
     pages: [knowledge:page:browse, dashboard:page:overview]
     permissions:
+      - dashboard:view
       - kb:read
       - doc:read
       - model:read

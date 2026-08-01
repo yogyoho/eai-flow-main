@@ -69,7 +69,16 @@ async def create_policy(
     db.add(policy)
     await db.commit()
     await db.refresh(policy)
-    return {"id": str(policy.id), "name": policy.name}
+    # EAI-CUSTOM: 返回完整策略行（前端 createPolicy 直接推入列表并渲染 conditions/grants，仅返回 id/name 会令 PolicyRow 读 undefined 崩溃）
+    return {
+        "id": str(policy.id),
+        "name": policy.name,
+        "enabled": policy.enabled,
+        "priority": policy.priority,
+        "conditions": policy.conditions,
+        "grants": policy.grants,
+        "created_at": policy.created_at.isoformat() if policy.created_at else None,
+    }
 
 
 @router.put("/{policy_id}")

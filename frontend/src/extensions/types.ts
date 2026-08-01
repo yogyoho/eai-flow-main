@@ -202,7 +202,8 @@ export interface PolicyListResponse {
 
 export interface PolicyCreateRequest {
   name: string;
-  conditions: PolicyCondition[];
+  // EAI-CUSTOM: 引擎存储/评估用 dict 形式 {and:[{attr,op,value}]}；UI 展示数组在 page.tsx 用 toEngineConditions/toUIConditions 双向转换
+  conditions: Record<string, unknown>;
   grants: PolicyGrant[];
   role_id?: string;
   enabled?: boolean;

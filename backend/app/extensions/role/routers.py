@@ -54,6 +54,9 @@ async def create_role(
         role = await RoleService.create_role(db, data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except RuntimeError as e:
+        # EAI-CUSTOM: overlay 乐观锁 mtime 冲突 → 409（前端刷新重试）
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     return await RoleService.to_response(db, role)
 
 
@@ -87,6 +90,9 @@ async def update_role(
         role = await RoleService.update_role(db, role, data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except RuntimeError as e:
+        # EAI-CUSTOM: overlay 乐观锁 mtime 冲突 → 409（前端刷新重试）
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     return await RoleService.to_response(db, role)
 
 
@@ -110,7 +116,11 @@ async def delete_role(
             detail=f"Cannot delete role with {user_count} assigned users. Please reassign users first.",
         )
 
-    await RoleService.delete_role(db, role)
+    try:
+        await RoleService.delete_role(db, role)
+    except RuntimeError as e:
+        # EAI-CUSTOM: overlay 乐观锁 mtime 冲突 → 409（前端刷新重试）
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     return MessageResponse(message="Role deleted successfully")
 
 
@@ -133,6 +143,9 @@ async def copy_role(
         new_role = await RoleService.copy_role(db, role, data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except RuntimeError as e:
+        # EAI-CUSTOM: overlay 乐观锁 mtime 冲突 → 409（前端刷新重试）
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     return await RoleService.to_response(db, new_role)
 
 
