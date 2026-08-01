@@ -62,6 +62,97 @@ project_roles:
     assert reg.get_project_roles()["writer"] == ["chapter:write_own"]
 
 
+def test_is_admin_wildcard_role(tmp_path):
+    """验证 /me 的 is_admin 判定：通配角色（is_system=false, permissions=[\"*\"]）视为 admin。
+
+    与 middleware.require_super_admin 的 bypass 定义（is_system OR \"*\" in resolved）
+    对齐：resolve_role_permissions 展开 #inherit 后，继承来的通配 \"*\" 同样被覆盖。
+    """
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules: {}
+roles:
+  power:
+    display_name: "通配角色"
+    is_system: false
+    permissions: ["*"]
+    nav: []
+    data_scopes: []
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
+    resolved = reg.resolve_role_permissions("power")
+    is_admin = bool((reg.get_role_defaults("power") or {}).get("is_system")) or "*" in resolved
+    assert is_admin is True
+
+
+def test_is_admin_system_flag_without_wildcard(tmp_path):
+    """验证 /me 的 is_admin 判定：is_system=true 但无通配时同样视为 admin。"""
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules: {}
+roles:
+  super:
+    display_name: "系统超管"
+    is_system: true
+    permissions: ["system:access"]
+    nav: []
+    data_scopes: []
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
+    resolved = reg.resolve_role_permissions("super")
+    is_admin = bool((reg.get_role_defaults("super") or {}).get("is_system")) or "*" in resolved
+    assert is_admin is True
+
+
+def test_is_admin_false_for_regular_role(tmp_path):
+    """验证 /me 的 is_admin 判定：普通角色（is_system=false, 无通配）不算 admin。"""
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules: {}
+roles:
+  user:
+    display_name: "普通用户"
+    is_system: false
+    permissions: ["kb:read", "doc:read"]
+    nav: []
+    data_scopes: []
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
+    resolved = reg.resolve_role_permissions("user")
+    is_admin = bool((reg.get_role_defaults("user") or {}).get("is_system")) or "*" in resolved
+    assert is_admin is False
+
+
+def test_is_admin_inherited_wildcard(tmp_path):
+    """验证 /me 的 is_admin 判定：#inherit 继承来的通配 \"*\" 同样视为 admin。"""
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text("""
+version: 3
+modules: {}
+roles:
+  base_admin:
+    display_name: "基座管理"
+    is_system: false
+    permissions: ["*"]
+    nav: []
+    data_scopes: []
+  power:
+    display_name: "继承通配"
+    is_system: false
+    permissions: ["#inherit:base_admin", "doc:read"]
+    nav: []
+    data_scopes: []
+""", encoding="utf-8")
+    reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
+    resolved = reg.resolve_role_permissions("power")
+    assert "*" in resolved
+    is_admin = bool((reg.get_role_defaults("power") or {}).get("is_system")) or "*" in resolved
+    assert is_admin is True
+
+
 def test_disabled_roles_cleared_on_reload(tmp_path):
     """验证 reload 时 _disabled_roles 被正确清空。
 

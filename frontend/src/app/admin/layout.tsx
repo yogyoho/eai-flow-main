@@ -25,13 +25,6 @@ const navItems = [
   { href: "/admin/app-center", label: "应用管理", icon: Blocks },
 ];
 
-/** Check if the current user has admin privileges. */
-function isAdmin(roleName?: string | null): boolean {
-  // EAI-CUSTOM: A3 顶层判权在 PermissionProvider 挂载前，显示名仅作兜底（含中文显示名）；
-  // 真实权威以 /api/permissions/me 的 is_admin（角色 is_system）为准。
-  return roleName === "Super Admin" || roleName === "超级管理员";
-}
-
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // EAI-CUSTOM: A3 以 /me 的 is_admin（角色 is_system）为准，替代仅靠显示名判权；
@@ -78,16 +71,29 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  // EAI-CUSTOM: A3 PermissionProvider 置于判权门之上，使 AdminGate 能消费 /me 的 is_admin
+  // 作为唯一判权依据（不再依赖角色显示名），避免改名但 is_system 的超管被误锁门外。
+  return (
+    <PermissionProvider>
+      <AdminGate>{children}</AdminGate>
+    </PermissionProvider>
+  );
+}
+
+function AdminGate({ children }: { children: ReactNode }) {
+  const { isLoading: userLoading } = useAuth();
+  const { is_admin, isLoading: permLoading } = usePermission();
   const router = useRouter();
+  const loading = userLoading || permLoading;
+  const authorized = is_admin;
 
   useEffect(() => {
-    if (!isLoading && !isAdmin(user?.role_name)) {
+    if (!loading && !authorized) {
       router.replace("/dashboard");
     }
-  }, [isLoading, user, router]);
+  }, [loading, authorized, router]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <SimpleShellLayout>
         <div className="flex h-full items-center justify-center">
@@ -97,15 +103,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!isAdmin(user?.role_name)) {
+  if (!authorized) {
     return null;
   }
 
   return (
-    <PermissionProvider>
-      <SimpleShellLayout>
-        <AdminLayoutContent>{children}</AdminLayoutContent>
-      </SimpleShellLayout>
-    </PermissionProvider>
+    <SimpleShellLayout>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </SimpleShellLayout>
   );
 }

@@ -94,9 +94,11 @@ async def get_my_permissions(
     elif "*" in page_ids:
         page_ids = [p.id for m in registry.list_nav_modules() for p in m.pages]
 
-    # EAI-CUSTOM: A3 前端 admin 布局以 is_admin 为准（按角色的 is_system 标志），
-    # 不再依赖前端硬编码显示名判权。
-    is_admin = bool((registry.get_role_defaults(identity.role_code) or {}).get("is_system"))
+    # EAI-CUSTOM: A3 前端 admin 布局以 is_admin 为准；后端超管定义 = is_system 标志
+    # 或通配权限 "*"（见 middleware.require_super_admin），二者其一即视为 admin。
+    # resolve_role_permissions 已展开 #inherit，继承来的通配 "*" 同样被覆盖。
+    resolved_perms = registry.resolve_role_permissions(identity.role_code or "")
+    is_admin = bool((registry.get_role_defaults(identity.role_code) or {}).get("is_system")) or "*" in resolved_perms
     return {
         "permissions": permissions,
         "nav": nav_ids,
