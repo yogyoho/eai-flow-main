@@ -1,13 +1,20 @@
 "use client";
 
-import { Users, Shield, Network, Loader2, Settings2, Blocks } from "lucide-react";
+import {
+  Users,
+  Shield,
+  Network,
+  Loader2,
+  Settings2,
+  Blocks,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 // EAI-CUSTOM: button-level permission control
-import { PermissionProvider } from "@/core/permissions";
+import { PermissionProvider, usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -20,43 +27,52 @@ const navItems = [
 
 /** Check if the current user has admin privileges. */
 function isAdmin(roleName?: string | null): boolean {
-  return roleName === "Super Admin";
+  // EAI-CUSTOM: A3 顶层判权在 PermissionProvider 挂载前，显示名仅作兜底（含中文显示名）；
+  // 真实权威以 /api/permissions/me 的 is_admin（角色 is_system）为准。
+  return roleName === "Super Admin" || roleName === "超级管理员";
 }
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // EAI-CUSTOM: A3 以 /me 的 is_admin（角色 is_system）为准，替代仅靠显示名判权；
+  // 加载中 fail-open 显示导航（与 canNav 的既有约定一致），避免闪跳。
+  const { is_admin, isLoading } = usePermission();
+  const showNav = isLoading || is_admin;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="bg-background flex h-full flex-col">
       {/* Top navigation bar */}
-      <header className="bg-background border-b border-border h-16 flex items-center px-6 shrink-0">
-        <div className="p-1 border rounded-sm bg-slate-50 border-slate-200 text-slate-600 shrink-0 mr-3">
-          <Settings2 className="w-4 h-4" />
+      <header className="bg-background border-border flex h-16 shrink-0 items-center border-b px-6">
+        <div className="mr-3 shrink-0 rounded-sm border border-slate-200 bg-slate-50 p-1 text-slate-600">
+          <Settings2 className="h-4 w-4" />
         </div>
-        <span className="font-bold text-lg tracking-tight text-foreground mr-8">系统管理</span>
-        <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
-          {navItems.map(({ href, label }) => {
-            const isActive = pathname === href;
-            return (
+        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
+          系统管理
+        </span>
+        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
+          {showNav &&
+            navItems.map(({ href, label }) => {
+              const isActive = pathname === href;
+              return (
                 <Link
                   key={href}
                   href={href}
                   className={cn(
-                    "flex items-center h-full transition-colors py-5 border-b-2",
+                    "flex h-full items-center border-b-2 py-5 transition-colors",
                     isActive
                       ? "text-primary border-primary"
-                      : "border-transparent hover:text-foreground"
+                      : "hover:text-foreground border-transparent",
                   )}
                 >
-                {label}
-              </Link>
-            );
-          })}
+                  {label}
+                </Link>
+              );
+            })}
         </nav>
       </header>
 
       {/* Main content area */}
-      <div className="flex-1 overflow-hidden min-w-0 min-h-0">{children}</div>
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -74,8 +90,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <SimpleShellLayout>
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
         </div>
       </SimpleShellLayout>
     );

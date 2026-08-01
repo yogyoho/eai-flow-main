@@ -19,6 +19,8 @@ export interface PermissionState {
     tags: string[];
     labels: Record<string, string>;
   };
+  // EAI-CUSTOM: A3 是否为系统管理员（/me 基于角色 is_system 返回），admin 布局用其判权
+  is_admin: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -29,7 +31,7 @@ export function usePermission() {
     throw new Error("usePermission must be used within a PermissionProvider");
   }
 
-  const { permissions, nav, pages, identity, isLoading } = ctx;
+  const { permissions, nav, pages, identity, is_admin, isLoading } = ctx;
 
   const can = (permission: string): boolean => {
     if (isLoading) return false;
@@ -48,13 +50,13 @@ export function usePermission() {
   const hasAny = (...perms: string[]): boolean => perms.some(can);
 
   const canNav = (navId: string): boolean => {
-    if (isLoading) return true;  // Fail-open: show nav during loading, API 403 is better than blank UI
+    if (isLoading) return true; // Fail-open: show nav during loading, API 403 is better than blank UI
     if (nav.includes("*")) return true;
     return nav.includes(navId);
   };
 
   const canPage = (pageId: string): boolean => {
-    if (isLoading) return true;  // Fail-open: show page during loading
+    if (isLoading) return true; // Fail-open: show page during loading
     if (pages.includes("*")) return true;
     return pages.includes(pageId);
   };
@@ -67,6 +69,7 @@ export function usePermission() {
     canPage,
     permissions,
     identity,
+    is_admin,
     isLoading,
   };
 }
