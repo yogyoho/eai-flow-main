@@ -65,16 +65,32 @@ class NavModule:
 class PermissionRegistry:
     """Loads and serves the module-permission registry from a YAML file."""
 
-    def __init__(self, yaml_path: str | None = None):
+    def __init__(self, yaml_path: str | None = None, overlay_path: str | None = None):
+        """加载权限注册表。
+
+        Args:
+            yaml_path: 主权限配置文件路径（permissions.yaml）
+            overlay_path: 角色自定义覆盖文件路径（roles_custom.yaml），
+                          用于覆盖/扩展内置角色、添加自定义角色、禁用角色
+        """
         if yaml_path is None:
             yaml_path = os.environ.get(
                 "PERMISSIONS_YAML_PATH",
                 str(Path(__file__).parent.parent.parent.parent.parent / "config" / "permissions.yaml"),
             )
+        if overlay_path is None:
+            overlay_path = os.environ.get(
+                "ROLES_CUSTOM_YAML_PATH",
+                str(Path(__file__).parent.parent.parent.parent.parent / "config" / "roles_custom.yaml"),
+            )
         self._path = Path(yaml_path)
+        self._overlay_path = Path(overlay_path)
         self._mtime: float = 0.0
+        self._overlay_mtime: float = 0.0
         self.modules: dict[str, NavModule] = {}
         self._role_defaults: dict[str, dict] = {}
+        self._project_roles: dict[str, list[str]] = {}
+        self._disabled_roles: set[str] = set()
         self._all_permissions: dict[str, PermissionPoint] = {}
         self._admin_only: list[PermissionPoint] = []
         self._load()
@@ -89,6 +105,14 @@ class PermissionRegistry:
 
         self._parse_modules(data.get("modules") or {})
         self._parse_roles(data.get("roles") or {})
+        self._parse_project_roles(data.get("project_roles") or {})
+
+        # 加载角色自定义覆盖文件（roles_custom.yaml）
+        if self._overlay_path.exists():
+            self._overlay_mtime = self._overlay_path.stat().st_mtime
+            with open(self._overlay_path, encoding="utf-8") as fh:
+                overlay = yaml.safe_load(fh) or {}
+            self._apply_overlay(overlay)
 
     def _parse_modules(self, modules_data: dict) -> None:
         self.modules.clear()
@@ -236,15 +260,61 @@ class PermissionRegistry:
             else:
                 resolved.add(perm)
 
+    def _parse_project_roles(self, project_roles_data: dict) -> None:
+        """解析项目级角色（project_roles）配置。"""
+        self._project_roles = {
+            code: list(perms or []) for code, perms in project_roles_data.items()
+        }
+
+    def _apply_overlay(self, overlay_data: dict) -> None:
+        """应用角色自定义覆盖：合并/覆盖角色定义，处理禁用角色列表。"""
+        for code, role_data in (overlay_data.get("roles") or {}).items():
+            self._role_defaults[code] = {
+                "display_name": role_data.get("display_name", code),
+                "is_system": role_data.get("is_system", False),
+                "level": role_data.get("level", 10),
+                "nav": list(role_data.get("nav") or []),
+                "pages": list(role_data.get("pages") or []),
+                "permissions": list(role_data.get("permissions") or []),
+                "data_scopes": list(role_data.get("data_scopes") or []),
+            }
+        for code in (overlay_data.get("disabled_roles") or []):
+            self._role_defaults.pop(code, None)
+            self._disabled_roles.add(code)
+
+    def list_role_codes(self) -> list[str]:
+        """返回所有已注册的角色代码列表。"""
+        return list(self._role_defaults.keys())
+
+    def get_data_scopes_for_role(self, role_code: str) -> list[str]:
+        """获取指定角色的数据范围列表。"""
+        defaults = self._role_defaults.get(role_code)
+        if defaults is None:
+            return []
+        return list(defaults.get("data_scopes") or [])
+
+    def get_project_roles(self) -> dict[str, list[str]]:
+        """返回项目级角色及其权限映射。"""
+        return {code: list(perms) for code, perms in self._project_roles.items()}
+
+    def is_role_disabled(self, role_code: str) -> bool:
+        """检查指定角色是否已被禁用。"""
+        return role_code in self._disabled_roles
+
+    def reload(self) -> None:
+        """强制重新加载注册表（包括主文件和覆盖文件）。"""
+        self._load()
+
     def _check_reload(self) -> bool:
-        if not self._path.exists():
-            return False
-        current_mtime = self._path.stat().st_mtime
-        if current_mtime > self._mtime:
-            logger.info("permissions.yaml changed, reloading registry")
+        reloaded = False
+        if self._path.exists() and self._path.stat().st_mtime > self._mtime:
+            reloaded = True
+        if self._overlay_path.exists() and self._overlay_path.stat().st_mtime > self._overlay_mtime:
+            reloaded = True
+        if reloaded:
+            logger.info("permissions.yaml / roles_custom.yaml changed, reloading registry")
             self._load()
-            return True
-        return False
+        return reloaded
 
 
 _registry: PermissionRegistry | None = None
