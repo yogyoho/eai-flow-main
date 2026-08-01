@@ -258,6 +258,17 @@ Configuration priority:
 3. `extensions_config.json` in current directory (backend/)
 4. `extensions_config.json` in parent directory (project root - **recommended location**)
 
+### Role / Permission System — YAML-Driven Single Source of Truth
+
+**EAI-CUSTOM:** The role & permission system is **yaml-driven** — `config/permissions.yaml` (module permission registry + role definitions + `project_roles:`) is the authoritative source, with a runtime-editable overlay `config/roles_custom.yaml` (custom roles, built-in overrides, `disabled_roles`).
+
+- **Runtime authorization** (`require_permission`, `require_super_admin`, `/api/permissions/me`, `DataScopeEngine`) resolves roles from the **PermissionRegistry** (`app/extensions/auth/registry.py`) — yaml + overlay merged, mtime hot-reloaded. `#inherit:` role inheritance is expanded at resolve time.
+- **DB `roles` table is a calibrated mirror** — a `code → id` mapping for `users.role_id` foreign keys, upserted from the registry at every startup (`_calibrate_roles_from_registry` in `app/extensions/database.py`). Do NOT write role definitions directly to the DB.
+- **Role management UI writes through to `config/roles_custom.yaml`** via `RoleService` + `RoleOverlayStore` (atomic write + mtime optimistic lock → HTTP 409 on conflict). Editing a built-in role creates an overlay override; deleting one writes a `disabled_roles` tombstone.
+- **Project-level RBAC** (`app/extensions/auth/unified_permissions.py`) reads `project_roles:` from permissions.yaml; the legacy `role_permissions` table and `project/permissions.py` / `project_permissions.py` matrices are **deprecated/deleted**.
+- **ABAC policies** (`policies` table) remain DB-backed as dynamic global data (not yaml).
+- New permission points must be declared in `permissions.yaml` before enforcement; `admin_only: true` points only apply to `is_system` roles.
+
 ### Gateway API (`app/gateway/`)
 
 FastAPI application on port 8001 with health check at `GET /health`. Set `GATEWAY_ENABLE_DOCS=false` to disable `/docs`, `/redoc`, and `/openapi.json` in production (default: enabled).
