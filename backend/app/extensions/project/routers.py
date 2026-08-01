@@ -16,7 +16,7 @@ from app.extensions.database import get_db
 from app.extensions.models import ProjectMember, ReportProject, Role, User
 from app.extensions.schemas import CurrentUser
 
-from .permissions import require_resource_permission
+from app.extensions.auth.unified_permissions import require_resource_permission
 from .schemas import (
     ApprovalActionRequest,
     ApprovalStatusOut,
@@ -300,52 +300,38 @@ async def get_my_permissions(
     2. Project role (owner gets all, member gets filtered)
     3. Phase duties bonus (lead/writer/reviewer get extra permissions)
     """
-    from app.extensions.models import ProjectMember, User
-    from app.extensions.project.project_permissions import (
-        PROJECT_PERMISSIONS,
-        get_project_role_permissions,
+    from app.extensions.auth.registry import get_permission_registry
+    from app.extensions.auth.unified_permissions import (
+        get_user_permissions,
+        resolve_user_project_role,
     )
 
     is_admin = False
-    system_role = None
     if user.role_id:
         role_obj = await db.get(Role, user.role_id)
         if role_obj:
             permissions = role_obj.permissions or []
             if "*" in permissions or role_obj.is_system:
                 is_admin = True
-            else:
-                system_role = role_obj
 
     if is_admin:
+        registry = get_permission_registry()
+        all_perms: set[str] = set()
+        for perms in registry.get_project_roles().values():
+            all_perms.update(perms)
         return ProjectPermissionsOut(
             role="owner",
-            permissions=list(PROJECT_PERMISSIONS),
+            permissions=sorted(all_perms),
             phase_duties=None,
             is_admin=True,
         )
 
-    # Look up project membership
-    stmt = select(ProjectMember).where(
-        ProjectMember.project_id == project_id,
-        ProjectMember.user_id == user.id,
-    )
-    result = await db.execute(stmt)
-    member = result.scalar_one_or_none()
-
-    if member is None:
-        return ProjectPermissionsOut(role=None, permissions=[], phase_duties=None, is_admin=False)
-
-    permissions = get_project_role_permissions(
-        project_role=member.role,
-        system_role=system_role,
-        phase_duties=member.phase_duties,
-    )
-
+    perms = await get_user_permissions(db, user.id, project_id, None)
+    project_role = await resolve_user_project_role(db, user.id, project_id, None)
     return ProjectPermissionsOut(
-        role=member.role,
-        permissions=permissions,
-        phase_duties=member.phase_duties,
+        role=project_role.value if project_role else None,
+        permissions=sorted(perms),
+        phase_duties=None,
         is_admin=False,
     )
 
@@ -426,11 +412,10 @@ async def _check_phase_access(
     if is_admin:
         return
 
-    from .permissions import get_project_role
-    from uuid import UUID as _UUID
+    from app.extensions.auth.unified_permissions import resolve_user_project_role
 
-    project_role = await get_project_role(db, project_id, user.id)
-    if project_role in ("owner", "manager"):
+    project_role = await resolve_user_project_role(db, user.id, project_id)
+    if project_role and project_role.value in ("owner", "manager"):
         return  # Owners/managers have full access
 
     # For non-owner/manager: check phase scope

@@ -1207,7 +1207,7 @@ async def migrate_db() -> None:
         """))
         # Bring existing (pre-current-schema) tables up to date: CREATE TABLE
         # IF NOT EXISTS won't alter them. Set the id default and ensure the
-        # unique (role, permission) index _seed_role_permissions depends on.
+        # unique (role, permission) index exists.
         await conn.execute(text(
             "ALTER TABLE role_permissions ALTER COLUMN id SET DEFAULT gen_random_uuid()"
         ))
@@ -1218,7 +1218,6 @@ async def migrate_db() -> None:
             CREATE UNIQUE INDEX IF NOT EXISTS idx_role_permissions_role_permission
             ON role_permissions(role, permission)
         """))
-        await _seed_role_permissions(conn)
 
         # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像
         from app.extensions.auth.registry import get_permission_registry
@@ -1342,27 +1341,6 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
-
-
-async def _seed_role_permissions(conn):
-    """Insert default role-permission mappings if the table is empty."""
-    from .models.role_permission import DEFAULT_ROLE_PERMISSIONS
-
-    result = await conn.execute(
-        text("SELECT COUNT(*) FROM role_permissions")
-    )
-    if result.scalar() > 0:
-        return
-
-    for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
-        for perm in perms:
-            await conn.execute(
-                text(
-                    "INSERT INTO role_permissions (role, permission) "
-                    "VALUES (:role, :perm) ON CONFLICT (role, permission) DO NOTHING"
-                ),
-                {"role": role.value, "perm": perm},
-            )
 
 
 # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像

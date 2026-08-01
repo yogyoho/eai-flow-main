@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
 from app.extensions.models import ProjectMember, Role
 from app.extensions.models.role_permission import ProjectRole
@@ -126,3 +127,48 @@ def RequireProjectPerm(action: str):
     ):
         return await require_project_permission(action, project_id, user, db)
     return Depends(_dep)
+
+
+async def _resolve_project_role_str(
+    db: AsyncSession, user_id: UUID, project_id: UUID, phase_node: str | None = None,
+) -> str | None:
+    """Resolve the effective project role as a plain string (or None)."""
+    role = await resolve_user_project_role(db, user_id, project_id, phase_node)
+    return role.value if role else None
+
+
+def require_resource_permission(action: str):
+    """Compat shim: unified_permissions check; returns project role string (old signature).
+
+    Replaces the legacy app.extensions.project.permissions.require_resource_permission.
+    """
+    async def check(
+        current_user: CurrentUser = Depends(get_current_user),
+        request: Request = ...,
+        db: AsyncSession = Depends(get_db),
+    ) -> str | None:
+        is_admin = False
+        if current_user.role_id is not None:
+            role_obj = await db.get(Role, current_user.role_id)
+            if role_obj and (role_obj.is_system or "*" in (role_obj.permissions or [])):
+                is_admin = True
+        if is_admin:
+            return "owner"
+
+        project_id = request.path_params.get("project_id")
+        if not project_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="project_id required in path")
+        from uuid import UUID as _UUID
+
+        try:
+            pid = _UUID(project_id)
+        except (ValueError, AttributeError):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid project_id")
+
+        perms = await get_user_permissions(db, current_user.id, pid)
+        if action not in perms:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail=f"Permission denied: {action}")
+        role = await resolve_user_project_role(db, current_user.id, pid)
+        return role.value if role else None
+
+    return check
