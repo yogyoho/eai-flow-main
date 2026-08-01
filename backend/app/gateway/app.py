@@ -26,6 +26,7 @@ from app.extensions.output.routers import router as output_router
 from app.extensions.plugin.routers import router as plugin_router
 from app.extensions.project import router as project_router
 from app.extensions.role.routers import router as role_router
+from app.extensions.workspace import router as workspace_router  # EAI-CUSTOM: Collab Workspace
 from app.extensions.settings.routers import router as settings_router
 from app.extensions.user.routers import router as user_router
 from app.extensions.web_scraper import web_scraper_router
@@ -564,6 +565,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Project management API is mounted at /api/extensions/project
     app.include_router(project_router)
+    app.include_router(workspace_router)  # EAI-CUSTOM: Collab Workspace
 
     # Approval workflow API is mounted at /api/extensions/approval
     app.include_router(approval_router)

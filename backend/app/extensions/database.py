@@ -1562,5 +1562,161 @@ async def seed_db() -> None:
                 logger.info("Seeded app-center: 5 domains + 10 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
+
     finally:
         await engine.dispose()
+
+    # ── Collab Workspace tables (EAI-CUSTOM: 完全独立模块，7 张 collab_* 表) ──
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_projects (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(255) NOT NULL,
+                kind VARCHAR(20) NOT NULL DEFAULT 'quickdoc',
+                doc_id UUID REFERENCES ai_documents(id) ON DELETE SET NULL,
+                owner_id UUID REFERENCES users(id),
+                tier_state VARCHAR(20) NOT NULL DEFAULT 'tier1',
+                tier_signals JSONB NOT NULL DEFAULT '[]',
+                escalated_at TIMESTAMP,
+                status VARCHAR(30) NOT NULL DEFAULT 'active',
+                compliance_pin BOOLEAN NOT NULL DEFAULT FALSE,
+                org_id UUID,
+                created_by UUID,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                CONSTRAINT ck_collab_projects_kind_doc CHECK (
+                    (kind = 'quickdoc' AND doc_id IS NOT NULL) OR (kind = 'report')
+                )
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_projects_owner ON collab_projects(owner_id)"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_sections (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                parent_id UUID,
+                title VARCHAR(500) NOT NULL,
+                level INT NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                doc_id UUID REFERENCES ai_documents(id) ON DELETE SET NULL,
+                content TEXT,
+                revision INT NOT NULL DEFAULT 0,
+                word_count_target INT NOT NULL DEFAULT 3000,
+                word_count_current INT NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_sections_project ON collab_sections(project_id)"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_members (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                member_type VARCHAR(10) NOT NULL,
+                user_id UUID,
+                agent_name VARCHAR(128),
+                role VARCHAR(20) NOT NULL DEFAULT 'editor',
+                joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                CONSTRAINT ck_collab_members_type CHECK (
+                    (member_type = 'human' AND user_id IS NOT NULL AND agent_name IS NULL)
+                    OR (member_type = 'agent' AND agent_name IS NOT NULL AND user_id IS NULL)
+                ),
+                CONSTRAINT uq_collab_members_proj_type_id UNIQUE (project_id, member_type, user_id, agent_name)
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_members_project ON collab_members(project_id)"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_tasks (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                title VARCHAR(255) NOT NULL,
+                kind VARCHAR(30) NOT NULL DEFAULT 'section_write',
+                assignee_type VARCHAR(10),
+                assignee_user_id UUID,
+                assignee_agent_name VARCHAR(128),
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                section_ref UUID REFERENCES collab_sections(id) ON DELETE SET NULL,
+                doc_id UUID REFERENCES ai_documents(id) ON DELETE SET NULL,
+                context JSONB,
+                handoff_state VARCHAR(20),
+                handoff_payload JSONB,
+                thread_id VARCHAR(100),
+                run_id VARCHAR(100),
+                attempt_count INT NOT NULL DEFAULT 0,
+                last_error TEXT,
+                revision INT NOT NULL DEFAULT 0,
+                due_at TIMESTAMP,
+                created_by UUID,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                CONSTRAINT ck_collab_tasks_assignee CHECK (
+                    assignee_type IS NULL
+                    OR (assignee_type = 'human' AND assignee_user_id IS NOT NULL AND assignee_agent_name IS NULL)
+                    OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)
+                )
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_tasks_project ON collab_tasks(project_id)"))
+        # EAI-CUSTOM: 放宽 ck_collab_tasks_assignee —— 允许未指派任务（assignee_type NULL）
+        await conn.execute(text("ALTER TABLE collab_tasks ALTER COLUMN assignee_type DROP NOT NULL"))
+        await conn.execute(text("ALTER TABLE collab_tasks DROP CONSTRAINT IF EXISTS ck_collab_tasks_assignee"))
+        await conn.execute(text("""
+            ALTER TABLE collab_tasks ADD CONSTRAINT ck_collab_tasks_assignee CHECK (
+                assignee_type IS NULL
+                OR (assignee_type = 'human' AND assignee_user_id IS NOT NULL AND assignee_agent_name IS NULL)
+                OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_gates (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                task_id UUID REFERENCES collab_tasks(id) ON DELETE SET NULL,
+                scope VARCHAR(30) NOT NULL DEFAULT 'task',
+                state VARCHAR(20) NOT NULL DEFAULT 'pending',
+                mode VARCHAR(30) NOT NULL DEFAULT 'all_must_approve',
+                participants JSONB NOT NULL DEFAULT '[]',
+                deadline_at TIMESTAMP,
+                escalation_rule JSONB,
+                resolved_by UUID,
+                resolved_at TIMESTAMP,
+                audit JSONB NOT NULL DEFAULT '[]',
+                revision INT NOT NULL DEFAULT 0,
+                propagated_to JSONB,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_gates_project ON collab_gates(project_id)"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_agent_runs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                task_id UUID REFERENCES collab_tasks(id) ON DELETE CASCADE,
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                thread_id VARCHAR(100),
+                run_id VARCHAR(100),
+                agent_name VARCHAR(128) NOT NULL,
+                prompt_snapshot TEXT,
+                status VARCHAR(20) NOT NULL DEFAULT 'spawned',
+                result JSONB,
+                max_duration INT NOT NULL DEFAULT 1800,
+                started_at TIMESTAMP,
+                finished_at TIMESTAMP
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_agent_runs_project ON collab_agent_runs(project_id)"))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS collab_activity (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
+                actor_type VARCHAR(10) NOT NULL DEFAULT 'human',
+                actor_id VARCHAR(128),
+                action VARCHAR(40) NOT NULL,
+                target VARCHAR(128),
+                detail JSONB,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_activity_project ON collab_activity(project_id)"))
+        logger.info("Collab workspace tables ensured")

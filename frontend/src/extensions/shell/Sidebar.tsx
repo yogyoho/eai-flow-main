@@ -51,8 +51,8 @@ const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard", navId: "nav:dashboard" },
   { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project", navId: "nav:projects" },
-  // EAI-CUSTOM: Collab Workspace 协作工作台
-  { href: "/workspace/collab", label: "协作工作台", icon: KanbanSquare, licenseModule: "platform", navId: "nav:collab-workspace" },
+  // EAI-CUSTOM: Collab Workspace 协作工作台（避开 /workspace 对话布局，独立路由）
+  { href: "/agentspace", label: "协作工作台", icon: KanbanSquare, licenseModule: "platform", navId: "nav:collab-workspace" },
   { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform", navId: "nav:docmgr" },
   { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform", navId: "nav:knowledge-factory" },
   { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform", navId: "nav:knowledge" },
