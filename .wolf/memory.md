@@ -11726,3 +11726,38 @@
 | 17:40 | Edited backend/app/extensions/project/routers.py | modified CUSTOM() | ~74 |
 | 17:40 | Edited backend/app/extensions/project/routers.py | modified CUSTOM() | ~66 |
 | 18:10 | 角色管理 yaml 驱动实施完成:36 commit(Task1-17);I1乐观锁读前捕获/I2 is_superadmin统一7处DB角色读取/I3保留#inherit;plan域73+101测试过;延后:后端颗粒强制(需角色授权)/workflow-admin显示名/I4 contract_price数据权限未接线 | auth/,role/,project/,database.py,permissions.yaml,frontend admin/roles等 | done | ~120k |
+| 17:45 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/role-management-yaml-driven.md | expanded (+10 lines) | ~212 |
+| 17:46 | Session end: 220 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~632301 tok |
+| 17:54 | Session end: 220 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~632301 tok |
+| 17:56 | Edited backend/app/extensions/workspace/models.py | 7→8 lines | ~104 |
+| 17:57 | Edited backend/app/extensions/workspace/service.py | 7→7 lines | ~66 |
+| 17:57 | Edited backend/app/extensions/database.py | 4→5 lines | ~100 |
+| 17:57 | Edited backend/app/extensions/database.py | expanded (+9 lines) | ~205 |
+| 17:57 | Edited backend/app/extensions/workspace/schemas.py | 6→6 lines | ~40 |
+| 17:59 | Edited backend/app/extensions/workspace/models.py | 3→3 lines | ~95 |
+| 17:59 | Edited backend/app/extensions/database.py | 3→3 lines | ~43 |
+| 17:59 | Edited backend/app/extensions/database.py | 2→3 lines | ~84 |
+| 18:02 | Edited frontend/src/extensions/workspace/api.ts | modified async() | ~137 |
+| 18:02 | Edited frontend/src/extensions/workspace/api.ts | modified async() | ~139 |
+| 18:06 | Edited backend/app/extensions/workspace/service.py | 5→6 lines | ~75 |
+| 18:06 | Edited backend/app/extensions/workspace/service.py | 6→7 lines | ~61 |
+| 18:06 | Edited backend/app/extensions/workspace/service.py | 14→15 lines | ~151 |
+| 18:06 | Edited backend/app/extensions/workspace/service.py | modified record_handoff() | ~52 |
+| 18:06 | Edited backend/app/extensions/workspace/service.py | 12→13 lines | ~97 |
+| 18:07 | Edited backend/app/extensions/workspace/service.py | 4→5 lines | ~36 |
+| 18:09 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | added nullish coalescing | ~66 |
+| 18:09 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | added nullish coalescing | ~143 |
+| 18:09 | Edited frontend/src/extensions/workspace/types.ts | 11→11 lines | ~110 |
+| 15:30 | 实施: collab-workspace 完全独立模块落地——7表迁移+service/routers/tier/gate/agent_bridge/sandbox_sync;前端 workspace 模块+路由+Sidebar导航;浏览器冒烟:项目创建201/任务创建201(修CHECK约束)/agent指派200(修MissingGreenlet+snake_case)+闸门自动建;13 pytest+边界绿 | backend/app/extensions/workspace/*, frontend/src/extensions/workspace/*, database.py | 完成,浏览器验证通过 | ~15k |
+| 18:15 | Session end: 239 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~634105 tok |
+| 20:54 | Session end: 239 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~634105 tok |
+| 21:02 | Session end: 239 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~634105 tok |
+| 21:04 | Edited backend/app/extensions/role/routers.py | modified get_role_assignments() | ~264 |
+| 21:04 | Edited backend/app/extensions/role/routers.py | removed 11 lines | ~9 |
+| 21:06 | Edited backend/app/extensions/role/service.py | modified get_role_user_count() | ~116 |
+| 21:09 | Session end: 242 writes across 47 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 183 reads | ~634619 tok |
+| 21:24 | Edited frontend/src/extensions/shell/Sidebar.tsx | modified CUSTOM() | ~269 |
+| 21:24 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: length | ~259 |
+| 21:36 | Edited docker/docker-compose-dev.yaml | 1→5 lines | ~113 |
+| 21:38 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/role-management-yaml-driven.md | added error handling | ~203 |
+| 21:40 | 侧边栏nav闪烁修复:加载期骨架屏(7e0579dd);U1用户数0根因=/assignments被/{role_id}遮蔽(9d664038)+软删过滤(da26e523);深挖出部署坑:roles_custom.yaml未bind-mount容器跑旧overlay→错误nav,加挂载重建(665b9618) | Sidebar.tsx,role/routers.py,role/service.py,docker-compose-dev.yaml | done | ~15k |
