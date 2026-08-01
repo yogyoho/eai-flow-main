@@ -1,8 +1,13 @@
 """Tests for RoleOverlayStore — atomic write + mtime optimistic lock."""
 
+import asyncio
+import uuid as uuid_mod
+
 import pytest
 
-from app.extensions.role.service import RoleOverlayStore
+from app.extensions.models import Role
+from app.extensions.role.service import RoleOverlayStore, RoleService
+from app.extensions.schemas import RoleUpdate
 
 
 def test_read_merge_write_roundtrip(tmp_path):
@@ -41,3 +46,104 @@ def test_stale_overlay_rejected(tmp_path):
     os.utime(overlay, (mtime0 + 2.0, mtime0 + 2.0))
     with pytest.raises(RuntimeError):
         store.write(store.read(), expect_mtime=mtime0)
+
+
+class _FakeResult:
+    """Mimics sqlalchemy Result for fetchone/scalar_one_or_none."""
+
+    def __init__(self, rows=None):
+        self._rows = list(rows or [])
+        self._it = iter(self._rows)
+
+    def fetchone(self):
+        return next(self._it, None)
+
+    def scalar_one_or_none(self):
+        return self._rows[0] if self._rows else None
+
+
+class _FakeDb:
+    """Minimal AsyncSession stand-in for RoleService.update_role unit test.
+
+    Raw `SELECT id FROM roles` (used by _calibrate_single_role) returns an
+    empty result so the INSERT path is taken; ORM `select(Role)` returns the
+    newly-added role.
+    """
+
+    def __init__(self, existing_role=None):
+        self.existing_role = existing_role
+        self.added = []
+        self.committed = False
+
+    async def execute(self, stmt, params=None):
+        if "SELECT id FROM roles" in str(stmt):
+            return _FakeResult()
+        row = self.existing_role or (self.added[0] if self.added else None)
+        return _FakeResult(rows=[row] if row is not None else [])
+
+    async def commit(self):
+        self.committed = True
+
+    def add(self, obj):
+        self.added.append(obj)
+
+
+class _FakeRegistry:
+    """Registry whose defaults carry a built-in role's yaml definition."""
+
+    def get_role_defaults(self, code):
+        return {
+            "display_name": "部门主管",
+            "permissions": ["#inherit:base", "doc:write"],
+            "nav": ["nav:knowledge"],
+            "data_scopes": ["knowledge_dept"],
+            "is_system": True,
+            "level": 15,
+            "description": "默认描述",
+        }
+
+    def resolve_role_permissions(self, code):
+        return {"doc:write"}
+
+    def reload(self):
+        pass
+
+
+def test_update_role_builtin_preserves_registry_defaults(tmp_path, monkeypatch):
+    """update_role on a built-in role (not yet in overlay) synthesizes the overlay
+    entry from registry defaults — preserving data_scopes/is_system and keeping
+    #inherit markers so inheritance stays dynamic (not flattened)."""
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    fake_registry = _FakeRegistry()
+    # update_role's bare get_permission_registry() uses service's module-level binding;
+    # notify_registry_reload() re-imports from auth.registry inside the store method.
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(),
+        name="部门主管",
+        code="dept_head",
+        permissions=["doc:write"],
+        is_system=True,
+        level=15,
+        description="旧描述",
+        nav=["nav:knowledge"],
+    )
+    fake_db = _FakeDb()
+
+    result = asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(name="新名称")))
+
+    entry = store.read()["roles"]["dept_head"]
+    assert entry["display_name"] == "新名称"  # data.name applied on top of defaults
+    assert entry["data_scopes"] == ["knowledge_dept"]  # preserved from defaults
+    assert entry["is_system"] is True  # preserved from defaults
+    assert entry["permissions"] == ["#inherit:base", "doc:write"]  # #inherit kept, not flattened
+    assert entry["level"] == 15
+    assert entry["description"] == "默认描述"
+    assert result is not None and result.code == "dept_head"
+    assert fake_db.committed

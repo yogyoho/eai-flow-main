@@ -132,14 +132,19 @@ class RoleService:
         code = role.code
         entry = overlay["roles"].get(code)
         if entry is None:
-            # 内置角色 → 写覆盖（整体覆盖 yaml 定义）
+            # 内置角色首次编辑 → 从 registry 默认值构建 overlay 条目，
+            # 保留 data_scopes/is_system，并保留 #inherit 标记（不展平继承）
+            from app.extensions.auth.registry import get_permission_registry
+
+            defaults = get_permission_registry().get_role_defaults(code) or {}
             entry = {
-                "display_name": role.name,
-                "permissions": list(role.permissions or []),
-                "nav": role.nav or [],
-                "data_scopes": [],
-                "level": role.level or 10,
-                "description": role.description,
+                "display_name": defaults.get("display_name", role.name),
+                "permissions": list(defaults.get("permissions") or role.permissions or []),
+                "nav": defaults.get("nav") or role.nav or [],
+                "data_scopes": defaults.get("data_scopes") or [],
+                "is_system": defaults.get("is_system", bool(role.is_system)),
+                "level": defaults.get("level", role.level or 10),
+                "description": defaults.get("description", role.description),
             }
             overlay["roles"][code] = entry
         if data.name is not None:
@@ -271,6 +276,7 @@ async def _calibrate_single_role(db: AsyncSession, registry, code: str) -> None:
             is_system=defaults.get("is_system", False),
             level=defaults.get("level", 10),
             nav=defaults.get("nav") or [],
+            description=defaults.get("description"),
         ))
     else:
         r = await RoleService.get_role_by_code(db, code)
@@ -280,4 +286,5 @@ async def _calibrate_single_role(db: AsyncSession, registry, code: str) -> None:
             r.is_system = defaults.get("is_system", False)
             r.level = defaults.get("level", 10)
             r.nav = defaults.get("nav") or []
+            r.description = defaults.get("description")
     await db.commit()
