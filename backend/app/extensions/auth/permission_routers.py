@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.engine import UnifiedPermissionEngine
@@ -10,7 +9,6 @@ from app.extensions.auth.identity import get_identity_provider
 from app.extensions.auth.middleware import require_permission
 from app.extensions.auth.registry import get_permission_registry
 from app.extensions.database import get_db
-from app.extensions.models import Role
 from app.extensions.schemas import CurrentUser
 
 router = APIRouter(prefix="/api/permissions", tags=["permissions"])
@@ -71,11 +69,11 @@ async def get_my_permissions(
     provider = get_identity_provider()
     identity = await provider.resolve(current_user.id, db)
 
-    result = await db.execute(sa_select(Role))
-    roles = result.scalars().all()
-    role_permissions = {r.code: set(r.permissions or []) for r in roles}
-
     registry = get_permission_registry()
+    role_permissions = {
+        code: registry.resolve_role_permissions(code)
+        for code in registry.list_role_codes()
+    }
     all_ids = {p.id for p in registry.list_all_permissions()}
 
     engine = UnifiedPermissionEngine(
@@ -85,13 +83,11 @@ async def get_my_permissions(
 
     permissions = sorted(engine.list_permissions(identity))
 
-    # Get nav and page permissions for user's role
-    registry = get_permission_registry()
     role_code = identity.role_code or ""
     nav_ids = registry.get_nav_ids_for_role(role_code)
     page_ids = registry.get_page_ids_for_role(role_code)
+    data_scopes = registry.get_data_scopes_for_role(role_code)
 
-    # If role has "*" for nav, expand to all nav_ids and all pages
     if "*" in nav_ids:
         nav_ids = [m.nav_id for m in registry.list_nav_modules() if m.nav_id]
         page_ids = [p.id for m in registry.list_nav_modules() for p in m.pages]
@@ -102,5 +98,6 @@ async def get_my_permissions(
         "permissions": permissions,
         "nav": nav_ids,
         "pages": page_ids,
+        "data_scopes": data_scopes,
         "identity": identity.to_dict(),
     }
