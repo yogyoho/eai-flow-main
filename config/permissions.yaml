@@ -364,3 +364,11 @@ roles:
       - model:read
       - system:access
     data_scopes: ["knowledge_public", "project_member"]
+
+# ── 项目级角色 → 权限映射（原 role_permissions 表 / DEFAULT_ROLE_PERMISSIONS 常量）──
+project_roles:
+  owner:      [project:edit, project:delete, member:add, member:remove, chapter:write_any, chapter:review_any, ai:start_writing, ai:stop_writing, approval:submit, approval:review, approval:approve, workflow:start, workflow:cancel, settings:edit, export:generate]
+  phase_lead: [chapter:write_any, chapter:review_any, ai:start_writing, approval:submit, member:add, outline:edit]
+  writer:     [chapter:write_own, chapter:confirm]
+  reviewer:   [chapter:review, approval:review]
+  approver:   [approval:approve, approval:view]

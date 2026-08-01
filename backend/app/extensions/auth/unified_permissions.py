@@ -1,11 +1,11 @@
 """Unified permission checking — single entry point for all project RBAC.
 
 Replaces the dual-system (permissions.py + project_permissions.py) with
-one function that queries the role_permissions table.
+one function that resolves the effective ProjectRole and maps it to
+permissions from the registry (permissions.yaml `project_roles:` section).
 """
 from __future__ import annotations
 
-from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
@@ -76,28 +76,28 @@ async def get_user_permissions(
     phase_node: str | None = None,
 ) -> set[str]:
     """Return the effective permission set for a user in a project."""
-    from app.extensions.models.role_permission import RolePermission
+    from app.extensions.auth.registry import get_permission_registry
 
-    # Admin bypass — look up user's system role
+    # Admin bypass — system role or wildcard
     from app.extensions.models import User
     user = await db.get(User, user_id)
     user_role = None
     if user and user.role_id:
         user_role = await db.get(Role, user.role_id)
     if user_role and (user_role.is_system or "*" in (user_role.permissions or [])):
-        result = await db.execute(select(RolePermission.permission))
-        return {row[0] for row in result.all()}
+        # Admin sees every permission granted to any project role
+        registry = get_permission_registry()
+        all_perms: set[str] = set()
+        for perms in registry.get_project_roles().values():
+            all_perms.update(perms)
+        return all_perms
 
     project_role = await resolve_user_project_role(db, user_id, project_id, phase_node)
     if not project_role:
         return set()
 
-    result = await db.execute(
-        select(RolePermission.permission).where(
-            RolePermission.role == project_role.value
-        )
-    )
-    return {row[0] for row in result.all()}
+    registry = get_permission_registry()
+    return set(registry.get_project_roles().get(project_role.value) or [])
 
 
 async def require_project_permission(
