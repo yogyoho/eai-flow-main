@@ -83,6 +83,49 @@ disabled_roles: []
     assert reg.list_role_codes()  # builtin + custom exist
 
 
+def test_calibrate_does_not_delete_disabled_role_with_users(tmp_path):
+    """禁用角色仍有用户引用时不得 DELETE（安全守卫）。"""
+    from app.extensions.database import _calibrate_roles_from_registry
+
+    main_yaml = tmp_path / "permissions.yaml"
+    main_yaml.write_text(
+        """
+version: 3
+modules: {}
+roles:
+  keep:
+    display_name: "保留"
+    is_system: false
+    level: 10
+    permissions: ["kb:read"]
+    nav: []
+    data_scopes: []
+disabled_roles: ["gone"]
+""",
+        encoding="utf-8",
+    )
+    reg = PermissionRegistry(str(main_yaml))
+
+    conn = FakeConn()
+    conn.db_role_rows = [("g1", "gone")]
+
+    async def exec_(stmt, params=None):
+        conn.calls.append((str(stmt), params))
+        sql = str(stmt)
+        if "SELECT id FROM roles WHERE code" in sql:
+            return FakeResult(rows=[("g1",)])  # gone exists in DB
+        if "SELECT id, code FROM roles" in sql:
+            return FakeResult(rows=conn.db_role_rows)
+        if "COUNT(*) FROM users" in sql:
+            return FakeResult(scalar_val=1)  # users still assigned -> must NOT delete
+        return FakeResult()
+
+    conn.execute = exec_
+    asyncio.run(_calibrate_roles_from_registry(conn, reg))
+    sql = " ".join(c[0] for c in conn.calls)
+    assert "DELETE FROM roles" not in sql
+
+
 def test_calibrate_updates_existing_and_deletes_disabled(tmp_path):
     """已有角色走 UPDATE，禁用且无用户引用的角色走 DELETE。"""
     from app.extensions.database import _calibrate_roles_from_registry
