@@ -304,13 +304,10 @@ async def get_my_permissions(
         resolve_user_project_role,
     )
 
-    is_admin = False
-    if user.role_id:
-        role_obj = await db.get(Role, user.role_id)
-        if role_obj:
-            permissions = role_obj.permissions or []
-            if "*" in permissions or role_obj.is_system:
-                is_admin = True
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
+
+    is_admin = await is_superadmin(db, user.id)
 
     if is_admin:
         registry = get_permission_registry()
@@ -401,13 +398,10 @@ async def _check_phase_access(
     chapter must belong to the project's current phase (project.current_phase_node).
     """
     # Resolve project role
-    is_admin = False
-    if user.role_id:
-        role_obj = await db.get(Role, user.role_id)
-        if role_obj and (role_obj.is_system or "*" in (role_obj.permissions or [])):
-            is_admin = True
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
 
-    if is_admin:
+    if await is_superadmin(db, user.id):
         return
 
     from app.extensions.auth.unified_permissions import resolve_user_project_role
