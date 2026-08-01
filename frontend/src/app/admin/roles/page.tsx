@@ -1030,6 +1030,8 @@ export default function AdminRolesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [roleUsers, setRoleUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  // EAI-CUSTOM (U1): role_id → 关联真实用户数，来自 GET /roles/assignments
+  const [assignments, setAssignments] = useState<Record<string, number>>({});
 
   // Registry & policies
   const [registryModules, setRegistryModules] = useState<RegistryModule[] | null>(null);
@@ -1050,8 +1052,9 @@ export default function AdminRolesPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await roleApi.list();
+      const [res, asg] = await Promise.all([roleApi.list(), roleApi.assignments()]);
       setRoles(res.roles);
+      setAssignments(Object.fromEntries(asg.map((a) => [a.role_id, a.user_count])));
       setSelectedRole((prev) => {
         const next = prev
           ? (res.roles.find((r) => r.id === prev.id) ?? prev)
@@ -1292,7 +1295,7 @@ export default function AdminRolesPage() {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" /> —
+                      <Users className="w-3 h-3" /> {assignments[role.id] ?? 0}
                     </span>
                     <span className="flex items-center gap-1">
                       <Key className="w-3 h-3" /> {role.permissions?.length ?? 0} 权限

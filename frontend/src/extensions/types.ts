@@ -95,6 +95,14 @@ export interface RoleListResponse {
   total: number;
 }
 
+/** 角色关联用户统计（U1）—— GET /api/extensions/roles/assignments */
+export interface RoleAssignmentInfo {
+  role_id: string;
+  role_name: string;
+  user_count: number;
+  permissions: string[];
+}
+
 export interface CreateRoleRequest {
   name: string;
   code: string;

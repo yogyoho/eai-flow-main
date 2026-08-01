@@ -22,6 +22,7 @@ import type {
   CreateRoleRequest,
   UpdateRoleRequest,
   RoleHierarchyResponse,
+  RoleAssignmentInfo,
   PermissionsRegistryResponse,
   PolicyListResponse,
   PolicyCreateRequest,
@@ -268,6 +269,9 @@ export const roleApi = {
 
   delete: (id: string) =>
     request<MessageResponse>(`/roles/${id}`, { method: "DELETE" }),
+
+  // 角色关联用户数统计（U1）
+  assignments: () => request<RoleAssignmentInfo[]>(`/roles/assignments`),
 
   // Hierarchy APIs
   getHierarchy: (id: string) =>
