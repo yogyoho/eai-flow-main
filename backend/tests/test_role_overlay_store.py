@@ -105,6 +105,10 @@ class _FakeRegistry:
     def resolve_role_permissions(self, code):
         return {"doc:write"}
 
+    def get_data_scope(self, scope_id):
+        known = {"knowledge_dept", "knowledge_owner"}
+        return scope_id if scope_id in known else None
+
     def reload(self):
         pass
 
@@ -145,5 +149,67 @@ def test_update_role_builtin_preserves_registry_defaults(tmp_path, monkeypatch):
     assert entry["permissions"] == ["#inherit:base", "doc:write"]  # #inherit kept, not flattened
     assert entry["level"] == 15
     assert entry["description"] == "默认描述"
+    assert result is not None and result.code == "dept_head"
+    assert fake_db.committed
+
+
+def test_update_role_rejects_unknown_data_scope(tmp_path, monkeypatch):
+    """update_role must reject scope ids absent from the registry (deny-by-default
+    hardening) — the overlay must not be written for an unknown scope."""
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    fake_registry = _FakeRegistry()
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(),
+        name="部门主管",
+        code="dept_head",
+        permissions=["doc:write"],
+        is_system=True,
+        level=15,
+        description="旧描述",
+        nav=["nav:knowledge"],
+    )
+    fake_db = _FakeDb()
+
+    with pytest.raises(ValueError):
+        asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(data_scopes=["bogus_scope"])))
+
+    # validation happens before store.write → nothing persisted on disk
+    assert "dept_head" not in store.read()["roles"]
+
+
+def test_update_role_persists_valid_data_scope(tmp_path, monkeypatch):
+    """update_role persists data_scopes only when every id exists in the registry."""
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    fake_registry = _FakeRegistry()
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(),
+        name="部门主管",
+        code="dept_head",
+        permissions=["doc:write"],
+        is_system=True,
+        level=15,
+        description="旧描述",
+        nav=["nav:knowledge"],
+    )
+    fake_db = _FakeDb()
+
+    result = asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(data_scopes=["knowledge_dept"])))
+
+    entry = store.read()["roles"]["dept_head"]
+    assert entry["data_scopes"] == ["knowledge_dept"]
     assert result is not None and result.code == "dept_head"
     assert fake_db.committed

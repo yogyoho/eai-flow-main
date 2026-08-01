@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
+import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
   RegistryModule, PermissionItem,
@@ -650,7 +651,7 @@ function DataScopePanel({
       {modules
         .filter((m) => m.data_scopes && m.data_scopes.length > 0)
         .map((module) => {
-          const currentVal = selections[module.key] || module.data_scopes[0]?.id || "";
+          const currentVal = selections[module.key] || "";
           return (
             <div key={module.key} className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3 mb-3">
@@ -660,6 +661,12 @@ function DataScopePanel({
                 <span className="font-medium text-foreground text-sm">{module.display_name}</span>
               </div>
               <div className="flex flex-wrap gap-3 pl-11">
+                {/* EAI-CUSTOM: deny-by-default — 角色未配置该 module 的 scope 时无任何 radio 选中，明确提示未配置 */}
+                {!currentVal && (
+                  <span className="inline-flex items-center px-3 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground/70 bg-muted/40">
+                    未配置（不授予该模块数据权限）
+                  </span>
+                )}
                 {module.data_scopes.map((scope) => {
                   const isSelected = currentVal === scope.id;
                   return (
@@ -1037,17 +1044,9 @@ export default function AdminRolesPage() {
   /* EAI-CUSTOM: which nav modules are visible for the selected role (detail view) */
   const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set());  // EAI-CUSTOM: starts empty, populated by loadData/handleSelectRole
 
-  // EAI-CUSTOM (U4): 数据权限面板初始化 — 按角色的 data_scopes 解析每个 module 的已选 scope（无则回退默认第一个），空则清空
+  // EAI-CUSTOM (U4): 数据权限面板初始化 — deny-by-default：仅当角色 data_scopes 真实匹配某 module 的 scope 时才生成条目（无匹配则无该 module 条目，绝不虚构授权）
   const initDataScopes = (role: Role) => {
-    setDataScopeSelections(
-      role.data_scopes?.length
-        ? Object.fromEntries(
-            (registryModules || [])
-              .filter((m) => m.data_scopes?.length)
-              .map((m) => [m.key, (role.data_scopes || []).find((d) => m.data_scopes!.some((s) => s.id === d)) || m.data_scopes![0]!.id]),
-          )
-        : {}
-    );
+    setDataScopeSelections(resolveDataScopeSelections(registryModules || [], role.data_scopes));
   };
 
   /* ── Data loading ────────────────────────────────────────── */
@@ -1237,13 +1236,12 @@ export default function AdminRolesPage() {
     }
   };
 
-  // Save data scope selections to role
+  // EAI-CUSTOM (U4): 保存数据权限 — 仅发送 data_scopes，绝不回传 DB 镜像的 permissions/nav（会覆盖 overlay yaml 更新后的值）
   const handleDataScopeChange = async (selections: Record<string, string>) => {
     setDataScopeSelections(selections);
     if (selectedRole && !selectedRole.is_system) {
       try {
-        const scopes = Object.values(selections);
-        await roleApi.update(selectedRole.id, { permissions: selectedRole.permissions, nav: selectedRole.nav, data_scopes: scopes });
+        await roleApi.update(selectedRole.id, { data_scopes: Object.values(selections) });
       } catch (err) {
         console.error("Failed to save data scopes:", err);
       }
