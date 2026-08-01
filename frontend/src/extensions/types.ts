@@ -176,7 +176,8 @@ export interface PolicyCondition {
 
 export interface PolicyGrant {
   permission: string;
-  data_scope: string;
+  // EAI-CUSTOM (U3): data_scope 可选 — 后端策略引擎不消费 grants.data_scope，UI 不再设置，仅保留兼容旧数据
+  data_scope?: string;
 }
 
 export interface PolicyItem {

@@ -18,7 +18,7 @@ import {
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
-  RegistryModule, PermissionItem, DataScopeItem,
+  RegistryModule, PermissionItem,
   PolicyItem, PolicyCondition, PolicyGrant,
 } from "@/extensions/types";
 import { cn } from "@/lib/utils";
@@ -729,7 +729,7 @@ function PoliciesPanel({
       setEditForm({ name: policy.name, conditions: [...policy.conditions], grants: [...policy.grants] });
     } else {
       setEditingId("__new__");
-      setEditForm({ name: "", conditions: [{ attribute: "", operator: "=", value: "" }], grants: [{ permission: "", data_scope: "" }] });
+      setEditForm({ name: "", conditions: [{ attribute: "", operator: "=", value: "" }], grants: [{ permission: "" }] });
     }
   }, []);
 
@@ -750,7 +750,6 @@ function PoliciesPanel({
   }, [editingId, editForm, onSave, cancelEdit]);
 
   const allPermissions = modules.flatMap((m) => m.permissions);
-  const allDataScopes = modules.flatMap((m) => m.data_scopes);
 
   if (policiesLoading) {
     return (
@@ -763,7 +762,7 @@ function PoliciesPanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">管理自定义访问策略（属性条件 + 权限授予）</p>
+        <p className="text-sm text-muted-foreground">管理全局访问策略（属性条件 + 权限授予），作用于所有角色</p>
         <button
           type="button"
           onClick={() => startEdit()}
@@ -793,7 +792,6 @@ function PoliciesPanel({
               onSave={handleSave}
               onCancel={cancelEdit}
               allPermissions={allPermissions}
-              allDataScopes={allDataScopes}
             />
           ) : (
             <PolicyRow
@@ -816,7 +814,6 @@ function PoliciesPanel({
             onSave={handleSave}
             onCancel={cancelEdit}
             allPermissions={allPermissions}
-            allDataScopes={allDataScopes}
           />
         </div>
       )}
@@ -890,14 +887,13 @@ function PolicyRow({
 
 /* ── Policy Edit Form ──────────────────────────────────────── */
 function PolicyEditForm({
-  form, onChange, onSave, onCancel, allPermissions, allDataScopes,
+  form, onChange, onSave, onCancel, allPermissions,
 }: {
   form: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] };
   onChange: (f: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] }) => void;
   onSave: () => void;
   onCancel: () => void;
   allPermissions: PermissionItem[];
-  allDataScopes: DataScopeItem[];
 }) {
   const addCondition = () => onChange({ ...form, conditions: [...form.conditions, { attribute: "", operator: "=", value: "" }] });
   const removeCondition = (i: number) => onChange({ ...form, conditions: form.conditions.filter((_, idx) => idx !== i) });
@@ -907,7 +903,7 @@ function PolicyEditForm({
     onChange({ ...form, conditions: conds });
   };
 
-  const addGrant = () => onChange({ ...form, grants: [...form.grants, { permission: "", data_scope: "" }] });
+  const addGrant = () => onChange({ ...form, grants: [...form.grants, { permission: "" }] });
   const removeGrant = (i: number) => onChange({ ...form, grants: form.grants.filter((_, idx) => idx !== i) });
   const updateGrant = (i: number, f: Partial<PolicyGrant>) => {
     const grs = [...form.grants];
@@ -915,7 +911,7 @@ function PolicyEditForm({
     onChange({ ...form, grants: grs });
   };
 
-  const ATTR_OPTIONS = ["tags", "role_level", "dept_id", "user_id", "email_domain"];
+  const ATTR_OPTIONS = ["tags", "role_level", "dept_id", "user_id"];  // 移除 email_domain（AttributeSet 无此属性）
   const OP_OPTIONS = ["=", "!=", "contains", ">=", "<=", "in", "not_in"];
 
   return (
@@ -986,13 +982,6 @@ function PolicyEditForm({
                 <SelectContent>
                   <SelectItem value="__none__"><span className="text-muted-foreground">选择权限</span></SelectItem>
                   {allPermissions.map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={g.data_scope || "__none__"} onValueChange={(v) => updateGrant(i, { data_scope: v === "__none__" ? "" : v })}>
-                <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="数据范围" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__"><span className="text-muted-foreground">不限</span></SelectItem>
-                  {allDataScopes.map((s) => <SelectItem key={s.id} value={s.id}>{s.display_name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <button onClick={() => removeGrant(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
@@ -1214,7 +1203,7 @@ export default function AdminRolesPage() {
       } else {
         const created = await permissionsApi.createPolicy({
           name: policy.name, conditions: policy.conditions, grants: policy.grants,
-          role_id: selectedRole?.id, enabled: true,
+          enabled: true,
         });
         setPolicies((prev) => [...prev, created]);
       }
