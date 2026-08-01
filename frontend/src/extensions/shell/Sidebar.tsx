@@ -100,10 +100,11 @@ export function ExtensionsSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { hasModule, isLoading: licenseLoading } = useLicense();
-  const { canNav } = usePermission();
+  const { canNav, is_admin } = usePermission();
   const [mounted, setMounted] = useState(false);
 
-  const isAdmin = user?.role_name === "Super Admin";
+  // EAI-CUSTOM: gate admin nav by permission-system is_admin (A3/U2), not display-name check
+  const isAdmin = is_admin;
 
   // Filter by admin role + license module authorization + nav-level permission
   const navItems = allNavItems.filter((item) => {

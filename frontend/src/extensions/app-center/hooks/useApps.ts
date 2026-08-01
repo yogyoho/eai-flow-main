@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { usePermission } from "@/core/permissions";
-import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
 
 import {
@@ -91,15 +90,14 @@ export function useApps(
   favorites: Set<string>,
   isFavoriteHydrated: boolean,
 ): UseAppsReturn {
-  const { user } = useAuth();
   const { hasModule, isLoading: licenseLoading } = useLicense();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("default");
   const [activeDomain, setActiveDomain] = useState<DomainFilter>("all");
 
-  const isAdmin = user?.role_name === "Super Admin";
-  const { canNav } = usePermission();
+  // EAI-CUSTOM: gate admin-only apps by permission-system is_admin (U2), not display-name check
+  const { canNav, is_admin } = usePermission();
 
   // Fetch apps & domains from API
   const {
@@ -134,14 +132,14 @@ export function useApps(
   // 1. 权限过滤
   const visibleApps = useMemo(() => {
     return rawDefinitions.filter((app) => {
-      if (app.adminOnly && !isAdmin) return false;
+      if (app.adminOnly && !is_admin) return false;
       if (app.licenseModule && !licenseLoading && !hasModule(app.licenseModule))
         return false;
       const navId = deriveNavId(app.path);
       if (navId && !canNav(navId)) return false;
       return true;
     });
-  }, [rawDefinitions, hasModule, isAdmin, licenseLoading, canNav]);
+  }, [rawDefinitions, hasModule, is_admin, licenseLoading, canNav]);
 
   // 2. 业务域筛选项（通用域在前，含数量）
   const domainOptions = useMemo<DomainFilterOption[]>(() => {

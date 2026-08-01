@@ -469,20 +469,26 @@ export default function AdminUsersPage() {
                         >
                           {user.status === "active" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                         </button>
-                        <button
-                          onClick={() => handleOpenModal(user)}
-                          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                          title="编辑用户"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openPasswordDialog(user)}
-                          className="p-1.5 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-colors"
-                          title="重置密码"
-                        >
-                          <Lock className="w-4 h-4" />
-                        </button>
+                        {/* EAI-CUSTOM: gate edit button by user:update permission */}
+                        {can("user:update") && (
+                          <button
+                            onClick={() => handleOpenModal(user)}
+                            className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                            title="编辑用户"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* EAI-CUSTOM: gate reset-password button by user:update permission */}
+                        {can("user:update") && (
+                          <button
+                            onClick={() => openPasswordDialog(user)}
+                            className="p-1.5 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-colors"
+                            title="重置密码"
+                          >
+                            <Lock className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* EAI-CUSTOM: gate delete user button by user:delete permission */}
                         {can("user:delete") && (
                           <button

@@ -2,7 +2,9 @@
 
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
+| 02:19 | seed_db role INSERTs replaced by _calibrate_roles_from_registry + admin user ensure | backend/app/extensions/database.py | -51/+16 lines, 16 tests pass | ~8k |
 | 09:15 | 修复 docmgr AI 助手撤销报错 onUndo is not defined | DocAIAgentPanel.tsx | ConfirmCard 的 onUndo 在 TS type 里声明了但没在解构参数列表里，添加上去即可 | ~50 |
+| 09:20 | 实现 Task 1: Registry 加载 overlay + project_roles + 双文件热重载 | registry.py, test_registry_overlay.py | __init__ 加 overlay_path, _load 加 project_roles + overlay 加载, 新增 6 个方法, _check_reload 改双文件检测。测试 2/2 pass, 回归 10/10 pass | ~800 |
 | 14:00 | Phase2 Task3: add request-scoped ContextVar cache for engine/identity | cache.py, middleware.py | Created cache.py with ContextVar-based caching; modified check_permission to use cache — 2nd+ calls in same request drop from 5 queries to 1 | ~800 |
 | 20:10 | port 上游 PR#2411 渲染层 memo chain(bug-174 层渲染) | rehype/index.ts, message-list-item/list/group/subtask-card, markdown-content, ai-elements/message | commit d547d3b3; MessageListItem memo+rehypeFadeInBlocks(块级fade)+MarkdownContent memo+MessageResponse equality; 解决每token整个列表re-render(~20→1); frontend 2026=200; 发现 sidecar/thread.ts pre-existing 损坏阻塞 typecheck | ~8k |
 | 19:30 | 层1 word-split 流式期禁用(bug-174 渲染层) | message-list/message-list-item/message-group/subtask-card | commit 7f62243a; 4处 useRehypeSplitWordsIntoSpans(isLoading)→(!isLoading); 流式期禁切词避免DOM爆, 非流式保动画; frontend 2026=200 | ~3k |
@@ -11400,3 +11402,194 @@
 | 09:07 | Created docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md | — | ~15057 |
 | 09:07 | Edited docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md | modified _resolve_project_role_str() | ~1118 |
 | 09:08 | Edited docs/superpowers/plans/2026-08-01-role-management-yaml-driven.md | 20→20 lines | ~170 |
+| 09:08 | Session end: 6 writes across 4 files (2026-08-01-role-management-yaml-driven-design.md, role-management-yaml-driven.md, MEMORY.md, 2026-08-01-role-management-yaml-driven.md) | 29 reads | ~139797 tok |
+| 09:11 | Created backend/tests/test_registry_overlay.py | — | ~559 |
+| 09:12 | Edited backend/app/extensions/auth/registry.py | modified __init__() | ~359 |
+| 09:12 | Edited backend/app/extensions/auth/registry.py | modified exists() | ~138 |
+| 09:12 | Edited backend/app/extensions/auth/registry.py | modified _resolve_inherit() | ~718 |
+| 09:12 | Edited backend/app/extensions/auth/registry.py | modified _check_reload() | ~131 |
+| 09:17 | Session end: 11 writes across 6 files (2026-08-01-role-management-yaml-driven-design.md, role-management-yaml-driven.md, MEMORY.md, 2026-08-01-role-management-yaml-driven.md, test_registry_overlay.py) | 33 reads | ~145777 tok |
+| 09:18 | Edited backend/app/extensions/auth/registry.py | modified _load() | ~270 |
+| 09:18 | Edited backend/app/extensions/auth/registry.py | modified _check_reload() | ~174 |
+| 09:18 | Edited backend/tests/test_registry_overlay.py | modified test_disabled_roles_cleared_on_reload() | ~417 |
+| 09:22 | Edited backend/tests/test_registry_overlay.py | 3→2 lines | ~36 |
+| 09:25 | Edited backend/tests/test_permission_engine.py | modified test_not_contains_works_with_valid_list() | ~348 |
+| 09:25 | Edited backend/app/extensions/auth/middleware.py | modified check() | ~847 |
+| 09:26 | Task 2: require_permission reads registry (overlay + #inherit), drop DB perms source | middleware.py, test_permission_engine.py | 37 tests pass, import OK, committed b1cdfdee | ~3000 |
+| 09:33 | Created config/roles_custom.yaml | — | ~80 |
+
+## Session: 2026-08-01 09:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:34 | Edited backend/app/extensions/auth/permission_routers.py | 2→1 lines | ~14 |
+| 09:34 | Edited backend/app/extensions/auth/permission_routers.py | — | ~0 |
+| 09:34 | Edited backend/app/extensions/auth/permission_routers.py | 37→36 lines | ~368 |
+| 09:35 | Task 3: /me reads registry — replaced DB select(Role) with registry.resolve_role_permissions(), added data_scopes, removed unused sa_select/Role imports | backend/app/extensions/auth/permission_routers.py | commit 6169fd37, ruff clean, import OK | ~200 |
+| 09:40 | Edited backend/tests/test_datascope.py | modified test_from_registry_builds_engine() | ~524 |
+| 09:41 | Edited backend/app/extensions/auth/datascope.py | modified from_registry() | ~232 |
+| 09:41 | Edited config/permissions.yaml | 3→6 lines | ~79 |
+| 09:42 | Task 4: DataScopeEngine from_registry_with + cpa_dept data_scopes | datascope.py, permissions.yaml, test_datascope.py | 6+9 tests pass, committed d3d99ac4 | ~800 |
+| 09:46 | Edited backend/app/extensions/auth/engine.py | inline fix | ~21 |
+| 09:46 | Edited backend/app/extensions/auth/engine.py | modified from_template() | ~84 |
+| 09:46 | Edited backend/app/extensions/auth/engine.py | 2→5 lines | ~54 |
+| 09:46 | Edited backend/app/extensions/auth/datascope.py | modified any() | ~79 |
+| 09:46 | Edited backend/tests/test_permission_engine.py | test_from_template_empty_is_none_allow() → test_from_template_empty_is_allow_all() | ~44 |
+| 09:46 | Edited backend/tests/test_datascope.py | modified test_empty_template_means_allow_all() | ~266 |
+| 09:47 | Fix: empty rule_template {} = allow_all (was deny-all), fixes cpa_all/project_all | engine.py, datascope.py, test_datascope.py, test_permission_engine.py | 31 tests pass, commited 8ba5edb5 | ~600 |
+| 09:49 | Session end: 12 writes across 6 files (permission_routers.py, test_datascope.py, datascope.py, permissions.yaml, engine.py) | 59 reads | ~202351 tok |
+| 09:50 | Session end: 12 writes across 6 files (permission_routers.py, test_datascope.py, datascope.py, permissions.yaml, engine.py) | 59 reads | ~202351 tok |
+| 09:53 | Edited backend/app/extensions/auth/middleware.py | modified _ensure_role() | ~319 |
+| 09:53 | Edited backend/tests/test_p0_permission_gates.py | modified test_user_role_defaults_lack_project_create() | ~729 |
+| 10:01 | Edited backend/app/extensions/auth/middleware.py | modified require_super_admin() | ~457 |
+| 10:01 | Edited config/permissions.yaml | 3→6 lines | ~74 |
+| 10:01 | Edited backend/tests/test_p0_permission_gates.py | modified test_ensure_role_creation_path() | ~536 |
+| 10:02 | Edited backend/tests/test_p0_permission_gates.py | modified test_require_super_admin_rejects_non_admin() | ~1353 |
+| 10:02 | Edited backend/tests/test_p0_permission_gates.py | modified test_ensure_role_creation_path() | ~486 |
+| 10:03 | Edited backend/tests/test_p0_permission_gates.py | modified test_require_super_admin_rejects_non_admin() | ~1175 |
+| 10:07 | Created backend/tests/test_role_calibration.py | — | ~1115 |
+| 10:07 | Edited backend/app/extensions/database.py | modified _calibrate_roles_from_registry() | ~755 |
+| 10:07 | Edited backend/app/extensions/database.py | 3→8 lines | ~86 |
+| 10:08 | Edited backend/app/extensions/auth/registry.py | 3→8 lines | ~101 |
+| 10:11 | Task 6: 启动校准 DB roles — 实现 _calibrate_roles_from_registry + 修复 registry disabled_roles 主文件解析 + 测试通过 + 提交 | database.py, registry.py, test_role_calibration.py | 2 tests passed, commit 561f1735 | ~3000 |
+| 10:19 | Edited backend/tests/test_role_calibration.py | modified test_calibrate_does_not_delete_disabled_role_with_users() | ~379 |
+| 10:22 | Edited backend/app/extensions/database.py | reduced (-35 lines) | ~432 |
+| 10:31 | Edited backend/app/extensions/database.py | 3→3 lines | ~50 |
+| 10:31 | Edited backend/app/extensions/database.py | 4→6 lines | ~72 |
+| 10:35 | Created backend/tests/test_role_overlay_store.py | — | ~358 |
+| 10:35 | Edited backend/app/extensions/role/service.py | modified __init__() | ~726 |
+| 10:36 | Edited backend/app/extensions/role/service.py | modified create_role() | ~1123 |
+| 10:36 | Edited backend/app/extensions/role/service.py | added 1 import(s) | ~68 |
+| 10:36 | Edited backend/app/extensions/role/service.py | modified to_response() | ~296 |
+| 10:36 | Edited backend/app/extensions/role/service.py | modified _calibrate_single_role() | ~397 |
+| 10:36 | Edited backend/app/extensions/schemas.py | 3→5 lines | ~54 |
+| 10:37 | Edited backend/tests/test_role_overlay_store.py | modified test_stale_overlay_rejected() | ~231 |
+| 11:0x | Task8 done: RoleOverlayStore atomic write + optimistic lock; RoleService CRUD writes through to roles_custom.yaml; _calibrate_single_role; RoleResponse+data_scopes | backend/app/extensions/role/service.py, backend/app/extensions/schemas.py, backend/tests/test_role_overlay_store.py | committed 3081b3d9; 42 tests pass | ~1400 |
+| 10:53 | Edited backend/app/extensions/role/service.py | 12→17 lines | ~268 |
+| 10:53 | Edited backend/app/extensions/role/service.py | 18→20 lines | ~223 |
+| 10:54 | Edited backend/tests/test_role_overlay_store.py | added 4 import(s) | ~81 |
+| 10:54 | Edited backend/tests/test_role_overlay_store.py | modified __init__() | ~1061 |
+| 11:2x | Task8 review fixes: update_role built-in entry synthesized from registry defaults (preserve data_scopes/is_system/#inherit); _calibrate_single_role mirrors description; regression test added | backend/app/extensions/role/service.py, backend/tests/test_role_overlay_store.py | committed d2bb9a36; 43 tests pass; ruff clean | ~700 |
+| 11:04 | Edited backend/app/extensions/role/routers.py | 5→8 lines | ~120 |
+| 11:05 | Edited backend/app/extensions/role/routers.py | 6→8 lines | ~125 |
+| 11:10 | Task9: role routers wrap RoleService.create_role/copy_role ValueError -> HTTP 400 (overlay dup-code race) | backend/app/extensions/role/routers.py | committed 3be82f91, 43 regression tests pass, ruff clean | ~2k |
+| 11:32 | Edited config/permissions.yaml | expanded (+8 lines) | ~270 |
+| 11:32 | Edited backend/app/extensions/auth/unified_permissions.py | modified that() | ~84 |
+| 11:32 | Edited backend/app/extensions/auth/unified_permissions.py | modified values() | ~279 |
+| 11:36 | Edited backend/app/extensions/auth/unified_permissions.py | 2→1 lines | ~6 |
+
+## Session: 2026-08-01 11:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| $(date +%H:%M) | Task 10 (A2): project_roles section added to config/permissions.yaml (owner/phase_lead/writer/reviewer/approver); unified_permissions.get_user_permissions now reads registry instead of role_permissions table | config/permissions.yaml, backend/app/extensions/auth/unified_permissions.py | commit 159dcf6e; 54 regression tests pass; pre-existing 11 legacy test_project_permissions.py failures (outdated role matrix, module deleted in Task 11) | ~6k |
+| 12:28 | Edited backend/app/extensions/auth/unified_permissions.py | added 1 import(s) | ~116 |
+| 12:31 | Edited backend/app/extensions/auth/unified_permissions.py | modified RequireProjectPerm() | ~614 |
+| 12:33 | Edited backend/app/extensions/project/routers.py | inline fix | ~23 |
+| 12:34 | Edited backend/app/extensions/project/routers.py | get_project_role() → resolve_user_project_role() | ~80 |
+| 12:36 | Edited backend/app/extensions/project/routers.py | modified values() | ~333 |
+| 12:38 | Edited backend/app/extensions/database.py | 16→15 lines | ~203 |
+| 12:41 | Edited backend/app/extensions/database.py | removed 23 lines | ~34 |
+| 12:43 | Edited backend/tests/test_project_routers.py | "app.extensions.project.pe" → "app.extensions.auth.unifi" | ~20 |
+| 12:46 | Created backend/tests/test_unified_project_permissions.py | — | ~1112 |
+| 12:56 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | — | ~1364 |
+| 12:57 | Edited backend/tests/test_project_routers.py | inline fix | ~12 |
+| 13:04 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | — | ~2256 |
+| 13:05 | Task11 A2: project/routers 迁移 unified_permissions + 删旧体系; 删 permissions.py/project_permissions.py/test_project_permissions*.py, 新增 test_unified_project_permissions.py, 修 test_project_routers.py patch target | routers.py/unified_permissions.py/database.py/tests | 56 reg tests + import pass; test_project_routers 28→20 pre-existing require_permission mock fail | ~2300 |
+| 13:30 | Task11 review fixes I1-I4: legacy member/duty role maps in resolve_user_project_role (slot_type/duty first); _check_phase_access uses ProjectRole.OWNER/PHASE_LEAD; shim admin via registry+identity provider + system:access base gate; added shim + legacy-mapping tests; fixed test_project_routers fixture (identity provider + db.execute chain) → full file green | unified_permissions.py/routers.py/test_project_routers.py/test_unified_project_permissions.py | 92 reg tests + 132 project tests pass; ruff clean on changed files | ~2600 |
+| 13:11 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | — | ~2896 |
+| 13:15 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~129 |
+| 13:15 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~51 |
+| 13:16 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~56 |
+| 13:16 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | 7→7 lines | ~211 |
+| 13:16 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~58 |
+| 13:17 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~34 |
+| 12:40 | office-hours: 项目管理模块 agent 桥分析——确认 3 硬伤+1 致命(写路径不提交)+skill 契约不匹配;设计文档经 3 轮对抗评审 4.6→5.8→8.4 达可实施;方案=修桥(A) | backend/app/extensions/project/{mcp,service,schemas}.py, extensions_config.json×2, coal-eia SKILL.md | DRAFT 待拍板权限边界 | ~13k |
+| 13:19 | Edited backend/app/extensions/auth/unified_permissions.py | modified resolve_user_project_role() | ~816 |
+| 13:19 | Edited backend/app/extensions/auth/unified_permissions.py | modified require_resource_permission() | ~605 |
+| 13:19 | Edited backend/app/extensions/project/routers.py | added 1 import(s) | ~119 |
+| 13:19 | Edited backend/app/extensions/project/routers.py | 5→5 lines | ~70 |
+| 13:20 | Created backend/tests/test_unified_project_permissions.py | — | ~2963 |
+| 13:20 | Edited backend/app/extensions/auth/unified_permissions.py | 13→13 lines | ~197 |
+| 13:21 | Edited backend/tests/test_project_routers.py | modified client() | ~474 |
+| 13:21 | Edited backend/tests/test_unified_project_permissions.py | modified __init__() | ~62 |
+| 13:30 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/yogyoho-main-dev-fork-design-20260801-124035.md | inline fix | ~28 |
+| 13:30 | Session end: 28 writes across 6 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 43 reads | ~158913 tok |
+| 13:36 | Edited frontend/src/extensions/api/index.ts | 4→7 lines | ~60 |
+| 13:36 | Edited frontend/src/extensions/types/index.ts | expanded (+8 lines) | ~74 |
+| 13:36 | Edited frontend/src/app/admin/roles/page.tsx | modified CUSTOM() | ~75 |
+| 13:36 | Edited frontend/src/app/admin/roles/page.tsx | 2→3 lines | ~56 |
+| 13:36 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~49 |
+| 13:37 | Edited frontend/src/extensions/api/index.ts | 5→6 lines | ~34 |
+| 13:39 | Edited frontend/src/extensions/types/index.ts | reduced (-8 lines) | ~21 |
+| 13:39 | Edited frontend/src/extensions/types.ts | expanded (+8 lines) | ~85 |
+| 13:55 | U1 角色列表真实用户数: roleApi.assignments + RoleAssignmentInfo(types.ts) + page.tsx 并行加载+侧栏展示, commit 10db2a34 | api/index.ts types.ts admin/roles/page.tsx | typecheck/lint 无新增错误 | ~900 |
+| 13:50 | Edited frontend/src/app/admin/roles/page.tsx | CSS: U1 | ~74 |
+| 13:58 | U1 followup: loadData 解耦 assignments fetch (best-effort .catch(()=>[])), commit a7effc8e | admin/roles/page.tsx | typecheck 无新增错误 | ~120 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~23 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | 2→1 lines | ~18 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | 3→2 lines | ~18 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | modified PolicyEditForm() | ~99 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~35 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~27 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | reduced (-7 lines) | ~54 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~31 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | 4→4 lines | ~52 |
+| 13:53 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~10 |
+| 13:54 | Edited frontend/src/app/admin/roles/page.tsx | 3→2 lines | ~16 |
+| 13:56 | Edited frontend/src/extensions/types.ts | modified CUSTOM() | ~46 |
+| 14:04 | Task13 U3: policy UI — removed email_domain from ATTR_OPTIONS, dropped data_scope grant Select + addGrant/startEdit init, clarified global scope text, removed role_id from createPolicy; made PolicyGrant.data_scope optional (was required → would add 4 type errors) | frontend/src/app/admin/roles/page.tsx frontend/src/extensions/types.ts | committed f9373381 | ~9000 |
+| 14:15 | Edited frontend/src/extensions/types.ts | 5→7 lines | ~65 |
+| 14:15 | Edited frontend/src/extensions/types.ts | 6→8 lines | ~68 |
+| 14:15 | Edited frontend/src/app/admin/roles/page.tsx | added optional chaining | ~224 |
+| 14:15 | Edited frontend/src/app/admin/roles/page.tsx | added 1 condition(s) | ~116 |
+| 14:15 | Edited frontend/src/app/admin/roles/page.tsx | modified if() | ~132 |
+| 14:15 | Edited frontend/src/app/admin/roles/page.tsx | CSS: nav | ~145 |
+| 14:16 | Edited frontend/src/app/admin/roles/page.tsx | added 1 condition(s) | ~134 |
+| 14:16 | Edited backend/app/extensions/schemas.py | modified RoleResponse() | ~73 |
+| 14:16 | Edited backend/app/extensions/role/service.py | modified CUSTOM() | ~86 |
+| 14:29 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~40 |
+| 14:30 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~40 |
+| 14:41 | Created frontend/src/extensions/role/dataScope.ts | — | ~212 |
+| 14:41 | Edited frontend/src/app/admin/roles/page.tsx | added 1 import(s) | ~45 |
+| 14:41 | Edited frontend/src/app/admin/roles/page.tsx | modified CUSTOM() | ~76 |
+| 14:41 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM | ~325 |
+| 14:42 | Edited frontend/src/app/admin/roles/page.tsx | modified CUSTOM() | ~135 |
+| 14:42 | Edited backend/app/extensions/role/service.py | modified CUSTOM() | ~142 |
+| 14:42 | Edited backend/tests/test_role_overlay_store.py | modified resolve_role_permissions() | ~75 |
+| 14:42 | Edited backend/tests/test_role_overlay_store.py | modified test_update_role_rejects_unknown_data_scope() | ~747 |
+| 14:42 | Created frontend/tests/unit/extensions/roles/dataScope.test.ts | — | ~689 |
+| 14:45 | Edited frontend/src/extensions/role/dataScope.ts | added nullish coalescing | ~59 |
+| 14:50 | Task14 U4 数据权限面板 review 修复：deny-by-default（无虚构 scope 选中）+ 后端 scope id 校验 + 纯函数 resolveDataScopeSelections + 单测 | frontend/src/app/admin/roles/page.tsx, frontend/src/extensions/role/dataScope.ts, frontend/tests/unit/extensions/roles/dataScope.test.ts, backend/app/extensions/role/service.py, backend/tests/test_role_overlay_store.py | 7 前端单测过 / 8 后端 pytest 过 / typecheck 127 基线不变 / ruff+eslint 干净 | ~950 |
+| 14:49 | Session end: 70 writes across 14 files (unified_permissions.py, routers.py, database.py, test_project_routers.py, test_unified_project_permissions.py) | 56 reads | ~222822 tok |
+| 14:54 | Edited backend/app/extensions/role/routers.py | 4→7 lines | ~105 |
+| 14:54 | Edited backend/app/extensions/role/service.py | 7→8 lines | ~119 |
+| 14:58 | Edited backend/app/extensions/auth/permission_routers.py | 13→17 lines | ~195 |
+| 14:59 | Edited frontend/src/core/permissions/PermissionProvider.tsx | CSS: is_admin | ~115 |
+| 14:59 | Edited frontend/src/core/permissions/PermissionProvider.tsx | CSS: EAI-CUSTOM, is_admin | ~161 |
+| 14:59 | Edited frontend/src/core/permissions/usePermission.ts | 19→21 lines | ~151 |
+| 14:59 | Edited frontend/src/core/permissions/usePermission.ts | inline fix | ~21 |
+| 14:59 | Edited frontend/src/core/permissions/usePermission.ts | 10→11 lines | ~38 |
+| 14:59 | Edited frontend/src/app/admin/layout.tsx | 2→2 lines | ~34 |
+| 14:59 | Edited frontend/src/app/admin/layout.tsx | CSS: EAI-CUSTOM | ~85 |
+| 14:59 | Edited frontend/src/app/admin/layout.tsx | CSS: EAI-CUSTOM | ~91 |
+| 15:00 | Edited frontend/src/app/admin/layout.tsx | 3→4 lines | ~63 |
+| 15:02 | Task15 A3: /me 返回 is_admin(基于角色 is_system) + PermissionProvider/usePermission 透传 + admin/layout 用 is_admin 判权(显示名兜底含中文) | permission_routers.py, PermissionProvider.tsx, usePermission.ts, admin/layout.tsx | typecheck 127无新增, ruff clean | ~4k |
+| 15:10 | Edited backend/app/extensions/auth/permission_routers.py | 3→5 lines | ~113 |
+| 15:10 | Edited frontend/src/app/admin/layout.tsx | removed 8 lines | ~20 |
+| 15:11 | Edited frontend/src/app/admin/layout.tsx | CSS: EAI-CUSTOM, isLoading, isLoading | ~329 |
+| 15:11 | Edited backend/tests/test_registry_overlay.py | modified test_is_admin_wildcard_role() | ~829 |
+| 15:11 | Created C:/Users/admin/.claude/plans/modular-painting-treasure.md | — | ~567 |
+| 12:45 | fix(rbac): /me is_admin = is_system OR wildcard "*" (resolve_role_permissions); admin layout PermissionProvider above gate keyed on usePermission().is_admin; +4 registry is_admin tests (864ebd6f) | permission_routers.py layout.tsx test_registry_overlay.py | done | ~520 |
+| 15:22 | Edited frontend/src/app/admin/users/page.tsx | expanded (+6 lines) | ~324 |
+| 15:23 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM | ~66 |
+| 15:23 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, kb, kb | ~142 |
+| 15:23 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, kb, kb | ~214 |
+| 15:23 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, kb, kb | ~178 |
+| 15:23 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: EAI-CUSTOM | ~63 |
+| 15:23 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | 3→2 lines | ~33 |
+| 15:23 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | useAuth() → is_admin() | ~116 |
+| 15:23 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | 8→8 lines | ~98 |
+| 15:24 | Edited config/permissions.yaml | 6→9 lines | ~71 |
+| 15:24 | Created C:/Users/admin/.claude/plans/modular-painting-treasure.md | — | ~2195 |
+| 15:30 | Task16 U2: 前端 can() 按钮级 gate(users: edit/reset→user:update; knowledge: upload→kb:upload, delete→kb:delete) + Sidebar/useApps admin 改 is_admin; Part A 后端权限串交换 defer→Task17(路由已强制 system:access, 模块级权限角色未授予/读权限误gate写操作) | admin/users/page.tsx, knowledge/page.tsx, shell/Sidebar.tsx, app-center/hooks/useApps.ts, config/permissions.yaml(dept_head +kb:upload/kb:delete) | typecheck 127 baseline, backend 54 passed | ~2600 |

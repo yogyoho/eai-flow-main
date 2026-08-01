@@ -696,6 +696,8 @@ function KnowledgeBaseDetail({
   toast: (msg: string, type?: ToastType) => void;
   onKbUpdated?: (kb: KnowledgeBase) => void;
 }) {
+  // EAI-CUSTOM: button-level permission check for upload/delete actions
+  const { can } = usePermission();
   const [activeTab, setActiveTab] = useState<"test" | "config">("test");
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
@@ -865,14 +867,17 @@ function KnowledgeBaseDetail({
         {/* File List Card */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background">
           <div className="flex shrink-0 items-center justify-between border-b border-border p-4">
-            <Button
-              variant="ghost"
-              onClick={() => setShowUpload(true)}
-              className="text-foreground hover:text-primary"
-            >
-              <Plus className="h-4 w-4" />
-              添加文件
-            </Button>
+            {/* EAI-CUSTOM: gate upload button by kb:upload permission */}
+            {can("kb:upload") && (
+              <Button
+                variant="ghost"
+                onClick={() => setShowUpload(true)}
+                className="text-foreground hover:text-primary"
+              >
+                <Plus className="h-4 w-4" />
+                添加文件
+              </Button>
+            )}
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Input
@@ -977,14 +982,17 @@ function KnowledgeBaseDetail({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDeleteDoc(doc.id, e)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* EAI-CUSTOM: gate doc-delete button by kb:delete permission */}
+                          {can("kb:delete") && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleDeleteDoc(doc.id, e)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1741,15 +1749,18 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleDelete(kb.id, e)}
-                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          title="删除"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/* EAI-CUSTOM: gate KB-delete button by kb:delete permission */}
+                        {can("kb:delete") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleDelete(kb.id, e)}
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            title="删除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </motion.div>

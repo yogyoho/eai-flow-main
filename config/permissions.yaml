@@ -268,6 +268,9 @@ roles:
     permissions:
       - kb:read
       - kb:create
+      # EAI-CUSTOM: U2 button-level can() gates upload/delete on these; dept_head manages KB content
+      - kb:upload
+      - kb:delete
       - doc:read
       - doc:upload
       - project:create
