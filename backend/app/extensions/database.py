@@ -1461,26 +1461,21 @@ async def seed_db() -> None:
 
     try:
         async with factory() as session:
-            # Check if seed data already exists
-            result = await session.execute(
-                text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
-            )
-            row = result.fetchone()
+            # Roles are calibrated from yaml registry (permissions.yaml + roles_custom.yaml)
+            from app.extensions.auth.registry import get_permission_registry
 
-            if row is None:
-                # Create superadmin role
-                role_id = str(uuid.uuid4())
-                await session.execute(
-                    text(
-                        "INSERT INTO roles "
-                        "(id, name, code, permissions, is_system, level, created_at) "
-                        "VALUES (:id, 'Super Admin', 'superadmin', :perms, true, 100, NOW())"
-                    ),
-                    {"id": role_id, "perms": ["*"]},
-                )
-                logger.info("Created superadmin role")
+            await _calibrate_roles_from_registry(session, get_permission_registry())
 
-                # Create admin user
+            # Ensure admin user exists, bound to the superadmin role
+            admin_row = (await session.execute(
+                text("SELECT id FROM users WHERE username = 'admin' LIMIT 1")
+            )).fetchone()
+            if admin_row is None:
+                super_row = (await session.execute(
+                    text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
+                )).fetchone()
+                if super_row is None:
+                    raise RuntimeError("superadmin role missing after calibration; check permissions.yaml")
                 user_id = str(uuid.uuid4())
                 await session.execute(
                     text(
@@ -1488,40 +1483,10 @@ async def seed_db() -> None:
                         "(id, username, email, password_hash, full_name, role_id, status, is_deleted, created_at, updated_at) "
                         "VALUES (:id, 'admin', 'admin@eai-flow.com', :pw_hash, 'Administrator', :role_id, 'active', false, NOW(), NOW())"
                     ),
-                    {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": role_id},
+                    {"id": user_id, "pw_hash": hash_password("admin123"), "role_id": super_row[0]},
                 )
                 logger.info("Created admin user (username: admin, password: admin123)")
-
-                # Create default user role for auto-bridged regular users
-                user_role_id = str(uuid.uuid4())
-                await session.execute(
-                    text(
-                        "INSERT INTO roles "
-                        "(id, name, code, permissions, is_system, level, created_at) "
-                        "VALUES (:id, '普通用户', 'user', :perms, false, 1, NOW())"
-                    ),
-                    {"id": user_role_id, "perms": ["kb:read", "kb:create", "kb:upload"]},
-                )
-                logger.info("Created default user role")
-
                 await session.commit()
-            else:
-                # Existing installations: ensure the 'user' role exists
-                result2 = await session.execute(
-                    text("SELECT id FROM roles WHERE code = 'user' LIMIT 1")
-                )
-                if result2.fetchone() is None:
-                    user_role_id = str(uuid.uuid4())
-                    await session.execute(
-                        text(
-                            "INSERT INTO roles "
-                            "(id, name, code, permissions, is_system, level, created_at) "
-                            "VALUES (:id, '普通用户', 'user', :perms, false, 1, NOW())"
-                        ),
-                        {"id": user_role_id, "perms": ["kb:read", "kb:create", "kb:upload"]},
-                    )
-                    await session.commit()
-                    logger.info("Created default user role for existing installation")
 
             # Seed business dictionaries from JSON if table is empty
             try:
