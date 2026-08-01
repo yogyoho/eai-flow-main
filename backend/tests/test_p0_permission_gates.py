@@ -71,6 +71,47 @@ class TestProjectCreatePermissionGate:
         assert old_role.permissions == extra_perms
         assert "project:create" in old_role.permissions
 
+    @pytest.mark.asyncio
+    async def test_ensure_role_creation_path(self):
+        """_ensure_role should create role from registry defaults when missing from DB."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        from app.extensions.auth.middleware import _ensure_role
+        from app.extensions.models import Role as RoleModel
+
+        db = AsyncMock()
+        db.add = MagicMock()  # SQLAlchemy db.add is synchronous
+        # Simulate role NOT in DB (first-time bridge for a new user)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute.return_value = mock_result
+
+        result = await _ensure_role(db, "user")
+
+        # Must have called db.add with a Role and db.flush
+        db.add.assert_called_once()
+        db.flush.assert_called_once()
+
+        # Inspect the created role
+        created_role = db.add.call_args[0][0]
+        assert isinstance(created_role, RoleModel)
+        assert created_role.code == "user"
+        assert created_role.name == "普通用户"
+        assert created_role.is_system is False
+        assert created_role.level == 1
+
+        # Permissions from registry: kb:read, doc:read, model:read, system:access
+        assert "kb:read" in created_role.permissions
+        assert "doc:read" in created_role.permissions
+        assert "model:read" in created_role.permissions
+        assert "system:access" in created_role.permissions
+        assert "project:create" not in created_role.permissions, (
+            "project:create should NOT be in registry-resolved default user permissions"
+        )
+
+        # The returned role should be the same object
+        assert result is created_role
+
 
 def _get_user_defaults():
     from app.extensions.auth.registry import get_permission_registry
@@ -86,71 +127,101 @@ class TestWorkflowSuperAdminLock:
     @pytest.mark.asyncio
     async def test_require_super_admin_rejects_non_admin(self):
         """require_super_admin should reject users without system role."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock, MagicMock, patch
 
+        from app.extensions.auth.identity import AttributeSet
         from app.extensions.auth.middleware import require_super_admin
 
         check_fn = require_super_admin()
 
         user = MagicMock()
+        user.id = str(uuid.uuid4())
         user.role_id = uuid.uuid4()
 
-        role = MagicMock()
-        role.is_system = False
-        role.permissions = ["system:access", "project:create"]
-
         db = AsyncMock()
-        db.get.return_value = role
 
-        from fastapi import HTTPException
+        # Mock identity provider to return non-system, non-wildcard user
+        identity = AttributeSet(user_id=user.id, username="test", role_code="user")
+        mock_provider = MagicMock()
+        mock_provider.resolve = AsyncMock(return_value=identity)
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_fn(current_user=user, db=db)
-        assert exc_info.value.status_code == 403
+        mock_registry = MagicMock()
+        mock_registry.get_role_defaults.return_value = {"is_system": False, "level": 1}
+        mock_registry.resolve_role_permissions.return_value = {"kb:read", "doc:read", "model:read", "system:access"}
+
+        with (
+            patch("app.extensions.auth.identity.get_identity_provider", return_value=mock_provider),
+            patch("app.extensions.auth.registry.get_permission_registry", return_value=mock_registry),
+        ):
+            from fastapi import HTTPException
+
+            with pytest.raises(HTTPException) as exc_info:
+                await check_fn(current_user=user, db=db)
+            assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_require_super_admin_allows_system_role(self):
         """require_super_admin should allow users with is_system=True."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock, MagicMock, patch
 
+        from app.extensions.auth.identity import AttributeSet
         from app.extensions.auth.middleware import require_super_admin
 
         check_fn = require_super_admin()
 
         user = MagicMock()
+        user.id = str(uuid.uuid4())
         user.role_id = uuid.uuid4()
 
-        role = MagicMock()
-        role.is_system = True
-        role.permissions = ["*"]
-
         db = AsyncMock()
-        db.get.return_value = role
 
-        result = await check_fn(current_user=user, db=db)
-        assert result == user
+        # Mock identity provider to return superadmin user
+        identity = AttributeSet(user_id=user.id, username="admin", role_code="superadmin")
+        mock_provider = MagicMock()
+        mock_provider.resolve = AsyncMock(return_value=identity)
+
+        mock_registry = MagicMock()
+        mock_registry.get_role_defaults.return_value = {"is_system": True, "level": 100}
+        mock_registry.resolve_role_permissions.return_value = {"*"}
+
+        with (
+            patch("app.extensions.auth.identity.get_identity_provider", return_value=mock_provider),
+            patch("app.extensions.auth.registry.get_permission_registry", return_value=mock_registry),
+        ):
+            result = await check_fn(current_user=user, db=db)
+            assert result == user
 
     @pytest.mark.asyncio
     async def test_require_super_admin_allows_wildcard(self):
         """require_super_admin should allow users with wildcard permissions."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock, MagicMock, patch
 
+        from app.extensions.auth.identity import AttributeSet
         from app.extensions.auth.middleware import require_super_admin
 
         check_fn = require_super_admin()
 
         user = MagicMock()
+        user.id = str(uuid.uuid4())
         user.role_id = uuid.uuid4()
 
-        role = MagicMock()
-        role.is_system = False
-        role.permissions = ["*"]
-
         db = AsyncMock()
-        db.get.return_value = role
 
-        result = await check_fn(current_user=user, db=db)
-        assert result == user
+        # Mock identity provider to return a role with wildcard but not is_system
+        identity = AttributeSet(user_id=user.id, username="power_user", role_code="power_user")
+        mock_provider = MagicMock()
+        mock_provider.resolve = AsyncMock(return_value=identity)
+
+        mock_registry = MagicMock()
+        mock_registry.get_role_defaults.return_value = {"is_system": False, "level": 50}
+        mock_registry.resolve_role_permissions.return_value = {"*"}
+
+        with (
+            patch("app.extensions.auth.identity.get_identity_provider", return_value=mock_provider),
+            patch("app.extensions.auth.registry.get_permission_registry", return_value=mock_registry),
+        ):
+            result = await check_fn(current_user=user, db=db)
+            assert result == user
 
     @pytest.mark.asyncio
     async def test_require_super_admin_rejects_no_role(self):

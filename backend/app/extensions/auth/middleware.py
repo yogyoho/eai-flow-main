@@ -297,24 +297,29 @@ def require_super_admin():
     e.g. editing/deleting workflow definitions after creation.
     """
 
+    # EAI-CUSTOM: Reads super-admin status from PermissionRegistry, not the DB Role row,
+    # so a tampered DB row (non-system role with "*") cannot grant super-admin access.
     async def check_super_admin(
         current_user: CurrentUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> CurrentUser:
+        from app.extensions.auth.identity import get_identity_provider
+        from app.extensions.auth.registry import get_permission_registry
+
         if current_user.role_id is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Super admin access required.",
             )
 
-        role = await db.get(Role, current_user.role_id)
-        if role is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Role not found.",
-            )
+        registry = get_permission_registry()
+        provider = get_identity_provider()
+        identity = await provider.resolve(current_user.id, db)
 
-        if role.is_system or "*" in (role.permissions or []):
+        defaults = registry.get_role_defaults(identity.role_code)
+        is_system = bool(defaults and defaults.get("is_system"))
+        resolved = registry.resolve_role_permissions(identity.role_code or "")
+        if is_system or "*" in resolved:
             return current_user
 
         raise HTTPException(

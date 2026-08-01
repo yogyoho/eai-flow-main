@@ -349,6 +349,9 @@ roles:
       - workflow:read
     data_scopes: ["project_member", "knowledge_dept"]
 
+  # 最小可信基线：新自动桥接用户的默认权限（yaml 权威）
+  # registry `user` role now grants only [kb:read, doc:read, model:read, system:access]
+  # vs the old 18-perm _ROLE_DEFAULTS["user"] — this is intentional least-privilege.
   user:
     display_name: "普通用户"
     is_system: false
