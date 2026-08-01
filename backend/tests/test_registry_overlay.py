@@ -1,5 +1,4 @@
 """测试 PermissionRegistry 的 overlay 加载、project_roles 和双文件热重载功能。"""
-import pytest
 from app.extensions.auth.registry import PermissionRegistry
 
 
