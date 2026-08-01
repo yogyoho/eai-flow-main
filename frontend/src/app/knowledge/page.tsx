@@ -849,14 +849,17 @@ function KnowledgeBaseDetail({
               >
                 <Copy className="h-4 w-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowEditKb(true)}
-                title="编辑"
-              >
-                <Edit3 className="h-4 w-4" />
-              </Button>
+              {/* EAI-CUSTOM: gate KB edit trigger by kb:update permission */}
+              {can("kb:update") && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowEditKb(true)}
+                  title="编辑"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -1740,15 +1743,18 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                             )}
                           />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => openEdit(kb, e)}
-                          className="text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="编辑"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {/* EAI-CUSTOM: gate KB edit button by kb:update permission */}
+                        {can("kb:update") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => openEdit(kb, e)}
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            title="编辑"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                         {/* EAI-CUSTOM: gate KB-delete button by kb:delete permission */}
                         {can("kb:delete") && (
                           <Button

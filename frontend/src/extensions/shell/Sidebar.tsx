@@ -100,11 +100,12 @@ export function ExtensionsSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { hasModule, isLoading: licenseLoading } = useLicense();
-  const { canNav, is_admin } = usePermission();
+  const { canNav, is_admin, isLoading } = usePermission();
   const [mounted, setMounted] = useState(false);
 
-  // EAI-CUSTOM: gate admin nav by permission-system is_admin (A3/U2), not display-name check
-  const isAdmin = is_admin;
+  // EAI-CUSTOM: gate admin nav by permission-system is_admin (A3/U2), not display-name check.
+  // Fail-open during /me load so the admin entry doesn't flash-hidden (Task 15 convention).
+  const isAdmin = isLoading || is_admin;
 
   // Filter by admin role + license module authorization + nav-level permission
   const navItems = allNavItems.filter((item) => {

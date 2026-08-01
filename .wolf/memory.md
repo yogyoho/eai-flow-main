@@ -11593,3 +11593,9 @@
 | 15:24 | Edited config/permissions.yaml | 6→9 lines | ~71 |
 | 15:24 | Created C:/Users/admin/.claude/plans/modular-painting-treasure.md | — | ~2195 |
 | 15:30 | Task16 U2: 前端 can() 按钮级 gate(users: edit/reset→user:update; knowledge: upload→kb:upload, delete→kb:delete) + Sidebar/useApps admin 改 is_admin; Part A 后端权限串交换 defer→Task17(路由已强制 system:access, 模块级权限角色未授予/读权限误gate写操作) | admin/users/page.tsx, knowledge/page.tsx, shell/Sidebar.tsx, app-center/hooks/useApps.ts, config/permissions.yaml(dept_head +kb:upload/kb:delete) | typecheck 127 baseline, backend 54 passed | ~2600 |
+| 15:36 | Edited frontend/src/app/admin/users/page.tsx | CSS: EAI-CUSTOM, user, user | ~234 |
+| 15:36 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, kb, kb | ~113 |
+| 15:36 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, kb, kb | ~172 |
+| 15:36 | Edited config/permissions.yaml | 9→10 lines | ~77 |
+| 15:36 | Edited frontend/src/extensions/shell/Sidebar.tsx | 5→6 lines | ~97 |
+| 15:45 | Task16 review fixes: gate status toggle (user:update), KB edit (kb:update) + dept_head kb:update, Sidebar admin fail-open isLoading||is_admin | admin/users/page.tsx, knowledge/page.tsx, Sidebar.tsx, permissions.yaml | typecheck 127 baseline, backend 27 pass | ~300 |

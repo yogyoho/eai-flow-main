@@ -462,13 +462,16 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => toggleUserStatus(user)}
-                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                          title={user.status === "active" ? "停用账号" : "启用账号"}
-                        >
-                          {user.status === "active" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                        </button>
+                        {/* EAI-CUSTOM: gate status toggle by user:update permission (calls userApi.update) */}
+                        {can("user:update") && (
+                          <button
+                            onClick={() => toggleUserStatus(user)}
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                            title={user.status === "active" ? "停用账号" : "启用账号"}
+                          >
+                            {user.status === "active" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                          </button>
+                        )}
                         {/* EAI-CUSTOM: gate edit button by user:update permission */}
                         {can("user:update") && (
                           <button
