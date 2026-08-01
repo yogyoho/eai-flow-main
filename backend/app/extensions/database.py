@@ -1220,6 +1220,11 @@ async def migrate_db() -> None:
         """))
         await _seed_role_permissions(conn)
 
+        # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像
+        from app.extensions.auth.registry import get_permission_registry
+
+        await _calibrate_roles_from_registry(conn, get_permission_registry())
+
         # data_sources.description column (Tier 1 agent awareness); idempotent —
         # create_all won't add columns to the pre-existing data_sources table.
         await conn.execute(text(
@@ -1358,6 +1363,66 @@ async def _seed_role_permissions(conn):
                 ),
                 {"role": role.value, "perm": perm},
             )
+
+
+# EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像
+async def _calibrate_roles_from_registry(conn, registry) -> None:
+    """Calibrate DB roles table as a mirror of permissions.yaml + roles_custom.yaml.
+
+    - yaml role missing in DB -> INSERT (with FK-usable id)
+    - existing role -> UPDATE name/permissions/is_system/level/nav to match registry
+    - disabled role with no user references -> DELETE
+    """
+    for code in registry.list_role_codes():
+        resolved = sorted(registry.resolve_role_permissions(code))
+        defaults = registry.get_role_defaults(code) or {}
+        existing = await conn.execute(
+            text("SELECT id FROM roles WHERE code = :code LIMIT 1"), {"code": code}
+        )
+        row = existing.fetchone()
+        if row is None:
+            await conn.execute(
+                text(
+                    "INSERT INTO roles (id, name, code, permissions, is_system, level, nav, created_at) "
+                    "VALUES (:id, :name, :code, :perms, :is_system, :level, :nav, NOW())"
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": defaults.get("display_name", code),
+                    "code": code,
+                    "perms": resolved,
+                    "is_system": defaults.get("is_system", False),
+                    "level": defaults.get("level", 10),
+                    "nav": defaults.get("nav") or [],
+                },
+            )
+        else:
+            await conn.execute(
+                text(
+                    "UPDATE roles SET name = :name, permissions = :perms, "
+                    "is_system = :is_system, level = :level, nav = :nav WHERE code = :code"
+                ),
+                {
+                    "name": defaults.get("display_name", code),
+                    "code": code,
+                    "perms": resolved,
+                    "is_system": defaults.get("is_system", False),
+                    "level": defaults.get("level", 10),
+                    "nav": defaults.get("nav") or [],
+                },
+            )
+
+    # Handle disabled: DB rows whose code is disabled in registry with no user refs -> DELETE
+    rows = (await conn.execute(text("SELECT id, code FROM roles"))).fetchall()
+    for r in rows:
+        if registry.is_role_disabled(r[1]):
+            cnt = (
+                await conn.execute(
+                    text("SELECT COUNT(*) FROM users WHERE role_id = :id"), {"id": r[0]}
+                )
+            ).scalar()
+            if cnt == 0:
+                await conn.execute(text("DELETE FROM roles WHERE id = :id"), {"id": r[0]})
 
 
 async def close_db() -> None:

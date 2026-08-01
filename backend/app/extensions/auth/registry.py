@@ -108,6 +108,11 @@ class PermissionRegistry:
         self._parse_roles(data.get("roles") or {})
         self._parse_project_roles(data.get("project_roles") or {})
 
+        # 解析主文件中的 disabled_roles
+        for code in (data.get("disabled_roles") or []):
+            self._role_defaults.pop(code, None)
+            self._disabled_roles.add(code)
+
         # 加载角色自定义覆盖文件（roles_custom.yaml）
         if self._overlay_path.exists():
             self._overlay_mtime = self._overlay_path.stat().st_mtime
