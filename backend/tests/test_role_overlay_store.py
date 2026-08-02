@@ -98,6 +98,7 @@ class _FakeRegistry:
             "permissions": ["#inherit:base", "doc:write"],
             "nav": ["nav:knowledge"],
             "data_scopes": ["knowledge_dept"],
+            "pages": ["*"],  # T1 review: built-in role default pages (all sub-pages visible)
             "is_system": True,
             "level": 15,
             "description": "默认描述",
@@ -159,6 +160,7 @@ def test_update_role_builtin_preserves_registry_defaults(tmp_path, monkeypatch):
     entry = store.read()["roles"]["dept_head"]
     assert entry["display_name"] == "新名称"  # data.name applied on top of defaults
     assert entry["data_scopes"] == ["knowledge_dept"]  # preserved from defaults
+    assert entry["pages"] == ["*"]  # T1 review: non-pages edit preserves sub-page visibility (C1)
     assert entry["is_system"] is True  # preserved from defaults
     assert entry["permissions"] == ["#inherit:base", "doc:write"]  # #inherit kept, not flattened
     assert entry["level"] == 15
