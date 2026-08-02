@@ -8,15 +8,11 @@ EAI-CUSTOM：上游 OIDC 发起路由把 state cookie 的 Path 绑在 /api/v1/au
 """
 
 import logging
-import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from starlette.responses import RedirectResponse
 
-from app.extensions.database import get_db
-from app.extensions.models import User
+from deerflow.config.app_config import get_app_config
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +32,10 @@ def _get_oidc_service():
 
 
 def _resolve_provider(provider: str):
-    """读取 config.yaml auth.oidc 中的 provider 配置；未启用/未知 → 404。"""
-    from deerflow.config.app_config import get_app_config
+    """读取 config.yaml auth.oidc 中的 provider 配置；未启用/未知 → 404。
 
+    使用模块级 get_app_config（便于测试 monkeypatch 覆盖）。
+    """
     app_config = get_app_config()
     oidc = app_config.auth.oidc
     if not oidc.enabled:
@@ -83,3 +80,44 @@ def _delete_eai_state_cookie(response: Response, request: Request, provider: str
         samesite="lax",
         path="/",
     )
+
+
+@sso_router.get("/start")
+async def sso_start(request: Request, provider: str, response: Response):
+    """发起 OIDC 登录：discover → 生成 state/nonce/PKCE → 写 Path=/ 的 state cookie → 302 IdP。
+
+    EAI-CUSTOM：自建发起（上游发起路由的 state cookie Path 不符）。
+    """
+    from app.gateway.auth.oidc_state import (
+        OIDCStatePayload,
+        compute_code_challenge,
+        generate_code_verifier,
+        generate_nonce,
+        generate_oidc_state,
+    )
+
+    _oidc, pc = _resolve_provider(provider)
+    if pc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO provider not configured")
+
+    metadata = await _get_oidc_service().discover(pc.issuer)
+    state = generate_oidc_state()
+    nonce = generate_nonce() if pc.nonce_enabled else None
+    verifier = generate_code_verifier() if pc.pkce_enabled else None
+    challenge = compute_code_challenge(verifier) if verifier else None
+
+    redirect_uri = _resolve_redirect_uri(request, provider, pc.redirect_uri)
+    auth_url = _get_oidc_service().build_authorization_url(
+        metadata=metadata,
+        client_id=pc.client_id,
+        redirect_uri=redirect_uri,
+        scopes=pc.scopes,
+        state=state,
+        nonce=nonce,
+        code_challenge=challenge,
+    )
+
+    payload = OIDCStatePayload(provider=provider, state=state, nonce=nonce, code_verifier=verifier)
+    _set_eai_state_cookie(response, request, payload)
+
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)

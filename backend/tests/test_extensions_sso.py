@@ -1,6 +1,5 @@
 """Tests for the EAI SSO (OIDC third facade)."""
 
-import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -58,3 +57,54 @@ class TestStateCookie:
         assert got.state == "s1"
         assert got.nonce == "n1"
         assert got.code_verifier == "v1"
+
+
+class TestStartEndpoint:
+    @pytest.mark.asyncio
+    async def test_unknown_provider_404(self, monkeypatch):
+        from app.extensions.auth import sso
+
+        app_cfg = MagicMock()
+        app_cfg.auth.oidc.enabled = True
+        app_cfg.auth.oidc.providers = {}
+        monkeypatch.setattr("app.extensions.auth.sso.get_app_config", lambda: app_cfg)
+
+        from fastapi import HTTPException, Response
+
+        with pytest.raises(HTTPException) as exc:
+            await sso.sso_start(_make_request(), "nope", Response())
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_start_redirects_and_sets_state_cookie(self, monkeypatch):
+        from app.extensions.auth import sso
+
+        pc = MagicMock()
+        pc.issuer = "https://idp.example.com/issuer"
+        pc.client_id = "client1"
+        pc.client_secret = "secret"
+        pc.redirect_uri = None
+        pc.scopes = ["openid", "email", "profile"]
+        pc.pkce_enabled = True
+        pc.nonce_enabled = True
+        pc.token_endpoint_auth_method = "client_secret_post"
+        app_cfg = MagicMock()
+        app_cfg.auth.oidc.enabled = True
+        app_cfg.auth.oidc.providers = {"keycloak": pc}
+        monkeypatch.setattr("app.extensions.auth.sso.get_app_config", lambda: app_cfg)
+
+        svc = MagicMock()
+        svc.discover = AsyncMock(return_value=MagicMock(authorization_endpoint="https://idp.example.com/auth"))
+        svc.build_authorization_url = lambda *a, **k: "https://idp.example.com/auth?client_id=client1"
+        monkeypatch.setattr(sso, "_get_oidc_service", lambda: svc)
+
+        req = _make_request()
+        req.headers = {"host": "localhost:2026"}
+        resp = Response()
+        result = await sso.sso_start(req, "keycloak", resp)
+        from starlette.responses import RedirectResponse
+
+        assert isinstance(result, RedirectResponse)
+        assert result.headers["location"].startswith("https://idp.example.com/auth")
+        assert "df_oidc_state_keycloak=" in resp.headers["set-cookie"]
+        assert "Path=/" in resp.headers["set-cookie"]
