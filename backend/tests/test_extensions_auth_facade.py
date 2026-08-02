@@ -36,3 +36,18 @@ class TestAuthConfig:
         assert cfg.otp.length == 6
         assert cfg.otp.ttl_seconds == 300
         assert cfg.otp.send_cooldown_seconds == 60
+
+
+class TestOtpModel:
+    def test_otp_codes_registered_on_shared_base(self):
+        import app.extensions.auth  # noqa: F401  # ensure facade imported
+        from app.extensions.database import Base
+
+        assert "otp_codes" in Base.metadata.tables
+
+    def test_otp_code_columns(self):
+        from app.extensions.models import OtpCode
+
+        row = OtpCode(email="a@b.com", code_hash="x", expires_at=datetime.now(UTC))
+        assert row.email == "a@b.com"
+        assert row.used_at is None
