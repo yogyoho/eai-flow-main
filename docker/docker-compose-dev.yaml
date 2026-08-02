@@ -337,6 +337,24 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── Keycloak（EAI SSO IdP，自托管，可 broker 企微/钉钉/飞书 + 联邦 AD/LDAP）──
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: eai-flow-keycloak
+    command: ["start-dev"]
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      - KC_DB=postgres
+      - KC_DB_URL=${KEYCLOAK_DB_URL:-jdbc:postgresql://eai-flow-postgres-ext:5432/keycloak}
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER:-agentflow}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-agentflow123}
+    ports:
+      - "8080:8080"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.
