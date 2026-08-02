@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.jwt import (
     generate_access_token,
     generate_refresh_token,
+    hash_password,
     verify_token,
 )
 from app.extensions.auth.middleware import ACCESS_TOKEN_COOKIE, get_current_user
@@ -110,14 +111,36 @@ async def login(request: Request, response: Response, body: LoginRequest, db: As
         _record_login_failure(client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
+    # EAI-CUSTOM 安全修正：extensions 哈希是密码真源，用 gateway 的 verify_password_async
+    # 验证（自动识别 $dfv2$/$dfv1$/裸 bcrypt 三种格式，fail-closed 返回 False）。
+    # ① 有哈希 → 本地验证；② 空哈希/无效哈希（facade 上线前的 bridge 老用户）→ 回退
+    # gateway 认证并一次性迁移成裸 bcrypt。任何分支密码错误都直接 401，
+    # **绝不** 用未验证的密码去 sync_user_created（否则攻击者用错误密码覆盖 gateway 哈希）。
     provider = get_local_provider()
-    gw_user = await provider.authenticate({"email": user.email, "password": body.password})
+    verified = False
+    if user.password_hash:
+        from app.gateway.auth.password import verify_password_async
+
+        verified = await verify_password_async(body.password, user.password_hash)
+    if not verified:
+        gw = await provider.authenticate({"email": user.email, "password": body.password})
+        if gw is not None:
+            verified = True
+            user.password_hash = hash_password(body.password)  # 一次性 bcrypt 迁移
+            await db.commit()
+
+    if not verified:
+        _record_login_failure(client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
+
+    # 密码已通过验证，此时才允许补建缺失的 gateway 镜像行（best-effort）。
+    gw_user = await provider.get_user_by_email(user.email)
     if gw_user is None:
-        # 自愈：gateway 镜像行可能缺失/过期（admin sync 失败）。best-effort 重同步后重试一次。
         from app.extensions.user import sync as user_sync
 
         await user_sync.sync_user_created(db, user.email, body.password, user.role_id)
-        gw_user = await provider.authenticate({"email": user.email, "password": body.password})
+        gw_user = await provider.get_user_by_email(user.email)
+
     if gw_user is None:
         _record_login_failure(client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")

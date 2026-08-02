@@ -45,6 +45,12 @@ _PUBLIC_EXACT_PATHS: frozenset[str] = frozenset(
         "/api/v1/auth/setup-status",
         "/api/v1/auth/initialize",
         "/api/v1/auth/providers",
+        # EAI-CUSTOM: extensions auth facade login endpoints (工号+密码 / 邮箱验证码)
+        # must be reachable without a session — they CREATE the session.
+        "/api/extensions/auth/login",
+        "/api/extensions/auth/logout",
+        "/api/extensions/auth/otp/send",
+        "/api/extensions/auth/login/otp",
     }
 )
 

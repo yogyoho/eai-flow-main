@@ -54,6 +54,13 @@ _AUTH_EXEMPT_PATHS: frozenset[str] = frozenset(
         "/api/v1/auth/logout",
         "/api/v1/auth/register",
         "/api/v1/auth/initialize",
+        # EAI-CUSTOM: extensions auth facade unauthenticated login endpoints
+        # (工号+密码 / 邮箱验证码). First call has no CSRF token yet — same
+        # treatment as the /api/v1/auth/* endpoints above.
+        "/api/extensions/auth/login",
+        "/api/extensions/auth/logout",
+        "/api/extensions/auth/otp/send",
+        "/api/extensions/auth/login/otp",
     }
 )
 

@@ -168,6 +168,64 @@ class TestPasswordLogin:
             await login(_make_request(), Response(), LoginRequest(username="zhangsan", password="x"), db)
         assert exc.value.status_code == 401
 
+    @pytest.mark.asyncio
+    async def test_login_wrong_password_with_bcrypt_hash_401(self, monkeypatch):
+        """安全回归：extensions bcrypt 哈希存在时密码错误必须 401，且绝不能触发
+        sync_user_created 覆盖 gateway 密码（历史漏洞：错误密码被自愈覆盖）。"""
+        from app.extensions.auth.jwt import hash_password
+        from app.extensions.models import User
+
+        db = AsyncMock()
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
+                    password_hash=hash_password("right-password"), status="active")
+        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
+
+        async def fake_authenticate(creds):
+            return None
+
+        provider = MagicMock()
+        provider.authenticate = fake_authenticate
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
+        sync_mock = AsyncMock()
+        monkeypatch.setattr("app.extensions.user.sync.sync_user_created", sync_mock)
+
+        from fastapi import HTTPException, Response
+
+        from app.extensions.auth.routers import LoginRequest, login
+
+        with pytest.raises(HTTPException) as exc:
+            await login(_make_request(), Response(), LoginRequest(username="zhangsan", password="wrong-password"), db)
+        assert exc.value.status_code == 401
+        sync_mock.assert_not_awaited()  # 密码未验证，绝不补建/覆盖 gateway 镜像行
+
+    @pytest.mark.asyncio
+    async def test_login_correct_bcrypt_password_success(self, monkeypatch):
+        """extensions bcrypt 为密码真源：正确密码直接通过，不调用 gateway authenticate。"""
+        from app.extensions.auth.jwt import hash_password
+        from app.extensions.models import User
+
+        db = AsyncMock()
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
+                    password_hash=hash_password("right-password"), status="active")
+        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
+
+        gw_user = MagicMock()
+        gw_user.id = uuid.uuid4()
+        gw_user.token_version = 0
+        provider = MagicMock()
+        provider.get_user_by_email = AsyncMock(return_value=gw_user)
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
+
+        from fastapi import Response
+
+        from app.extensions.auth.routers import LoginRequest, login
+
+        resp = Response()
+        result = await login(_make_request(), resp, LoginRequest(username="zhangsan", password="right-password"), db)
+        assert result.expires_in > 0
+        assert resp.headers["set-cookie"].startswith("access_token=")
+        provider.authenticate.assert_not_called()  # bcrypt 真源，不经过 gateway 验证
+
 
 class TestOtpEndpoints:
     @pytest.mark.asyncio
