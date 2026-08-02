@@ -141,6 +141,10 @@ async def _handle_write_chapter(arguments: dict) -> list[TextContent]:
     # EAI-CUSTOM: 桥修复（断点 4）——MCP 写边界集合成员校验，只在此处做。
     # 允许集 {pending, draft, completed}（去掉状态机不存在的 editing；不含 approved 防 agent 自批）。
     # 不做"状态转移"校验：update_chapter 与前端 OverviewTab 共享，转移校验会拒绝前端合法写入。
+    #
+    # EAI-CUSTOM TODO(security): 桥修复后 MCP 工具连共享 agentflow 库，但 _run_in_db 无用户上下文，
+    # 任意用户的 agent 可读写任意项目章节（交叉租户提权）。Ship-Gate 已接受"记录风险+TODO"方案（Open Q1-A）。
+    # 完整修复（thread→user 解析 + ProjectMember 成员校验）列为独立跟进项，写入桥上线前需项目方接受该风险。
     _VALID_WRITE_STATUSES = {"pending", "draft", "completed"}
     if status is not None and status not in _VALID_WRITE_STATUSES:
         return [TextContent(type="text", text=json.dumps(
