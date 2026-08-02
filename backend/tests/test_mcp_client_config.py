@@ -24,6 +24,26 @@ def test_build_server_params_stdio_success():
     }
 
 
+def test_build_server_params_stdio_passes_cwd():
+    """EAI-CUSTOM: stdio MCP 子进程需 cwd 才能 import app 包。"""
+    config = McpServerConfig(
+        type="stdio",
+        command="python",
+        args=["-m", "app.extensions.project.mcp"],
+        env={"PROJECT_DB_URL": "x"},
+        cwd="/app/backend",
+    )
+    params = build_server_params("project", config)
+    assert params["cwd"] == "/app/backend"
+
+
+def test_build_server_params_stdio_without_cwd():
+    """无 cwd 时不注入（兼容现有 server）。"""
+    config = McpServerConfig(type="stdio", command="npx", args=["-y", "x"])
+    params = build_server_params("s", config)
+    assert "cwd" not in params
+
+
 def test_extensions_config_resolves_env_variables_inside_nested_collections(monkeypatch):
     monkeypatch.setenv("MCP_TOKEN", "secret")
     monkeypatch.delenv("MISSING_TOKEN", raising=False)

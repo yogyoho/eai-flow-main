@@ -30,7 +30,11 @@ async def _run_in_db(func):
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     try:
         async with session_factory() as session:
-            return await func(session)
+            result = await func(session)
+            # EAI-CUSTOM: 桥修复（断点 3）——必须 commit，否则 AsyncSession.close() 回滚未提交事务，
+            # project_write_chapter 每次写入被静默丢弃。expire_on_commit=False 保证返回对象属性仍可读。
+            await session.commit()
+            return result
     finally:
         await engine.dispose()
 
@@ -57,7 +61,7 @@ TOOLS = [
             "properties": {
                 "chapter_id": {"type": "string", "description": "UUID of the chapter"},
                 "content": {"type": "string", "description": "The chapter content to write"},
-                "status": {"type": "string", "description": "Optional new status: draft, editing, completed", "enum": ["draft", "editing", "completed"]},
+                "status": {"type": "string", "description": "Optional new status: pending, draft, completed", "enum": ["pending", "draft", "completed"]},
             },
             "required": ["chapter_id", "content"],
         },
@@ -133,6 +137,16 @@ async def _handle_write_chapter(arguments: dict) -> list[TextContent]:
     chapter_id = arguments["chapter_id"]
     content = arguments["content"]
     status = arguments.get("status")
+
+    # EAI-CUSTOM: 桥修复（断点 4）——MCP 写边界集合成员校验，只在此处做。
+    # 允许集 {pending, draft, completed}（去掉状态机不存在的 editing；不含 approved 防 agent 自批）。
+    # 不做"状态转移"校验：update_chapter 与前端 OverviewTab 共享，转移校验会拒绝前端合法写入。
+    _VALID_WRITE_STATUSES = {"pending", "draft", "completed"}
+    if status is not None and status not in _VALID_WRITE_STATUSES:
+        return [TextContent(type="text", text=json.dumps(
+            {"error": f"非法 status: {status!r}，允许值: {sorted(_VALID_WRITE_STATUSES)}"},
+            ensure_ascii=False,
+        ))]
 
     word_count = len(content) if content else 0
 

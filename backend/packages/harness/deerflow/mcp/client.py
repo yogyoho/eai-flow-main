@@ -29,6 +29,11 @@ def build_server_params(server_name: str, config: McpServerConfig) -> dict[str, 
         # Add environment variables if present
         if config.env:
             params["env"] = config.env
+        # EAI-CUSTOM: 透传 cwd（extra 字段）。stdio 子进程需在配置的 cwd 下启动，
+        # 否则 `python -m app.extensions.*` 找不到 app 包（McpError: Connection closed 根因）。
+        cwd = getattr(config, "cwd", None)
+        if cwd:
+            params["cwd"] = cwd
     elif transport_type in ("sse", "http"):
         if not config.url:
             raise ValueError(f"MCP server '{server_name}' with {transport_type} transport requires 'url' field")

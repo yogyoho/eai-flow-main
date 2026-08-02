@@ -58,7 +58,7 @@
         "app.extensions.project.mcp"
       ],
       "env": {
-        "PROJECT_DB_URL": "postgresql+asyncpg://project:project123@project-db:5432/project"
+        "PROJECT_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
       },
       "cwd": "/app/backend",
       "url": null,

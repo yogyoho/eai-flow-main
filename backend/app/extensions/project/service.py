@@ -86,6 +86,25 @@ async def _get_project_or_404(db: AsyncSession, project_id):
     return project
 
 
+# EAI-CUSTOM: project MCP 桥修复辅助函数（断点 2）——供 read_chapter / list_chapters / get_chapter_spec 调用
+async def _get_chapter_or_404(db: AsyncSession, chapter_id):
+    stmt = select(ProjectChapter).where(ProjectChapter.id == chapter_id)
+    result = await db.execute(stmt)
+    chapter = result.scalar_one_or_none()
+    if not chapter:
+        raise ValueError("Chapter not found")
+    return chapter
+
+
+async def get_outline_tree(db: AsyncSession, project_id):
+    """返回项目的章节树（复用 _build_chapter_tree）。"""
+    stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id).order_by(ProjectChapter.sort_order)
+    result = await db.execute(stmt)
+    chapters = list(result.scalars().all())
+    assigned_names = await _get_assigned_names(db, chapters)
+    return _build_chapter_tree(chapters, assigned_names)
+
+
 async def _create_deerflow_thread(metadata: dict, cookies: dict | None = None, csrf_token: str | None = None) -> str:
     import httpx
     import os
@@ -300,6 +319,8 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         workflow_id=project.workflow_id,
         temporal_workflow_id=project.temporal_workflow_id,
         current_phase_node=project.current_phase_node,
+        # EAI-CUSTOM: 桥修复——显式传真实 DB 值（模型列 Integer default=1），非 schema 默认
+        current_stage=project.current_stage,
     )
 
 

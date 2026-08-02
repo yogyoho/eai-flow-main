@@ -238,11 +238,10 @@ knowledge-factory_kf_resolve_template(
    - 存在 `failed`：按 `suggestion` 修正内容，**最多重新校验 1 次**（避免死循环，参照规则 16）
    - 仍有 `failed` 但可接受：在章节末尾标注"⚠ 合规提示：{rule_name} 待人工复核"后写入
    - 工具调用失败/超时：不阻塞，回退到 `references/compliance_checklist.md` 静态清单，在章节末尾注明"合规校验暂不可用"
-9. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将（校验通过或标注后的）Markdown 内容写入文档空间。写入参数：
-   - `project_id`：当前项目ID
-   - `chapter_number`：章节编号（1-13）
-   - `title`：章节标题
+9. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将（校验通过或标注后的）Markdown 内容写入文档空间。写入参数（EAI-CUSTOM: 与 MCP schema 对齐——工具只接受 `chapter_id`+`content`+可选`status`，须先用 `project_list_chapters` 拿到章节 UUID）：
+   - `chapter_id`：章节 UUID（**先调 `project_list_chapters` 获取，不得用 chapter_number/标题**）
    - `content`：生成的 Markdown 文本
+   - `status`（可选）：`pending` / `draft` / `completed`（缺省 draft；**不得传 `approved`**，审批走审核环节）
 10. **输出摘要**：向用户报告该章生成完成，包括章节标题、主要内容要点、使用的标准依据、合规校验结果（X条通过/Y条待复核）、标注 `[待补充]` 的位置数量。
 
 **章节生成顺序**（按依赖关系）：

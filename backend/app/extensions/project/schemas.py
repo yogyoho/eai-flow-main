@@ -171,6 +171,8 @@ class ProjectOut(BaseModel):
     workflow_id: UUID | None = None
     temporal_workflow_id: str | None = None
     current_phase_node: str | None = None
+    # EAI-CUSTOM: project MCP 桥修复（断点 2）——暴露模型列 current_stage 供 agent stage 驱动
+    current_stage: int = 1
 
 
 class ProjectListItem(BaseModel):
