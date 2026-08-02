@@ -599,8 +599,8 @@ class ReportProject(Base):
         ForeignKey("extraction_templates.id"),
         nullable=True,
     )
-    status: Mapped[str] = mapped_column(String(20), default="setup")
-    current_stage: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+    # EAI-CUSTOM: current_stage dropped (ADR 2026-08-02 P2) — stage is derived, never stored.
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)

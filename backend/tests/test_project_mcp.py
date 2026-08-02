@@ -1,10 +1,10 @@
-"""Tests for project MCP bridge fix — dead refs, commit, status validation, current_stage.
+"""Tests for project MCP bridge fix — dead refs, commit, status validation, derived stage.
 
 EAI-CUSTOM: 桥修复回归测试（设计文档 Success Criteria 5）。
 纯单元测试，不依赖 DB：
 - (a) 5 工具 handler 无死引用（可 import + 函数可调用）
 - (b) write_chapter 的 status 集合成员校验（非法值被拒）
-- (c) ProjectOut 含 current_stage 字段
+- (c) ProjectOut 含 derived_stage（P2：current_stage 已删除）
 - (d) mcp.py 的 _run_in_db 含 commit
 """
 
@@ -94,17 +94,32 @@ class TestRunInDbCommits:
         assert "session.commit()" in src, "_run_in_db 缺 commit，写入会被回滚"
 
 
-class TestCurrentStage:
-    """断点 2：ProjectOut 暴露 current_stage，get_project 构造传真实值。"""
+class TestDerivedStage:
+    """P2（ADR 2026-08-02）：current_stage 删除，派生 stage 替代。"""
 
-    def test_project_out_has_current_stage(self):
+    def test_project_out_has_derived_stage(self):
         from app.extensions.project.schemas import ProjectOut
-        assert "current_stage" in ProjectOut.model_fields
+        assert "derived_stage" in ProjectOut.model_fields
+        assert "current_stage" not in ProjectOut.model_fields
 
-    def test_get_project_passes_current_stage(self):
+    def test_get_project_passes_derived_stage(self):
         from app.extensions.project.service import get_project
         src = inspect.getsource(get_project)
-        assert "current_stage=project.current_stage" in src, "get_project 未显式传 current_stage，会静默返回默认值"
+        assert "derived_stage=" in src, "get_project 未构造 derived_stage"
+        assert "current_stage=project.current_stage" not in src, "current_stage 应已删除"
+
+    def test_derive_project_stage_mapping(self):
+        from app.extensions.project.service import derive_project_stage
+        # setup (no chapters) -> 1; outline confirmed (all pending) -> 2
+        assert derive_project_stage("draft", []) == 1
+        assert derive_project_stage("draft", ["pending", "pending"]) == 2
+        # writing (any draft) -> 3; collab (all >= reviewing) -> 4
+        assert derive_project_stage("draft", ["draft", "pending"]) == 3
+        assert derive_project_stage("draft", ["reviewing", "approved"]) == 4
+        # approval -> 5; approved + all done -> 6; approved + rework -> 4
+        assert derive_project_stage("in_review", ["reviewing", "approved"]) == 5
+        assert derive_project_stage("approved", ["approved", "approved"]) == 6
+        assert derive_project_stage("approved", ["draft", "approved"]) == 4
 
 
 class TestWriteChapterEnum:

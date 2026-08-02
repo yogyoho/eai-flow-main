@@ -800,7 +800,6 @@ async def migrate_db() -> None:
                 report_type VARCHAR(100) NOT NULL,
                 template_id UUID REFERENCES extraction_templates(id),
                 status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- EAI-CUSTOM: canonical (ADR 2026-08-02)
-                current_stage INT NOT NULL DEFAULT 1,
                 thread_id VARCHAR(100),
                 created_by UUID REFERENCES users(id),
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -1386,6 +1385,10 @@ async def migrate_db() -> None:
                 END IF;
             END $$;
         """))
+        # EAI-CUSTOM: drop dead current_stage column (ADR 2026-08-02 P2). Stage is
+        # derived, never stored; the column was never written by any backend code.
+        # Idempotent (IF EXISTS) — no-op on fresh DBs created without the column.
+        await conn.execute(text("ALTER TABLE report_projects DROP COLUMN IF EXISTS current_stage"))
 
 
 # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像

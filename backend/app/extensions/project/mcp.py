@@ -210,7 +210,7 @@ async def _handle_get_project(arguments: dict) -> list[TextContent]:
             "name": p.name,
             "report_type": p.report_type,
             "status": p.status,
-            "current_stage": p.current_stage,
+            "derived_stage": p.derived_stage,
             "chapter_count": p.chapter_count,
         }
 

@@ -277,6 +277,32 @@ async def list_projects(
     return items, total
 
 
+def derive_project_stage(status: str, chapter_statuses: list[str]) -> int:
+    """Derive the six-stage progress bar from canonical status + chapter aggregates.
+
+    Pure function — stage is derived, never stored (ADR 2026-08-02 §3, P2).
+    Legacy values are normalized so it stays correct during the P4 transition.
+    """
+    from app.extensions.project.schemas import normalize_project_status
+    from app.extensions.writing.state_machine import normalize_chapter_status
+
+    st = normalize_project_status(status)
+    ch = [normalize_chapter_status(s) for s in chapter_statuses]
+
+    if st == "approved":
+        # Export only when every chapter is done; otherwise rework in progress.
+        return 6 if all(s in ("reviewing", "approved") for s in ch) else 4
+    if st == "in_review":
+        return 5  # Approval
+    if not ch:
+        return 1  # Setup
+    if all(s == "pending" for s in ch):
+        return 2  # Outline confirmed (template imported), no writing started
+    if all(s in ("reviewing", "approved") for s in ch):
+        return 4  # Collab
+    return 3  # Writing
+
+
 async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
@@ -319,8 +345,8 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         workflow_id=project.workflow_id,
         temporal_workflow_id=project.temporal_workflow_id,
         current_phase_node=project.current_phase_node,
-        # EAI-CUSTOM: 桥修复——显式传真实 DB 值（模型列 Integer default=1），非 schema 默认
-        current_stage=project.current_stage,
+        # EAI-CUSTOM: derived stage (ADR 2026-08-02 P2) — current_stage dropped.
+        derived_stage=derive_project_stage(project.status, [c.status for c in chapters]),
     )
 
 
