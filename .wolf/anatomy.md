@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-02T03:48:08.656Z
-> Files: 1772 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-02T04:12:02.706Z
+> Files: 1775 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -186,6 +186,7 @@
 - `design-v1.html` (~1890 tok)
 - `design-v2.html` (~1823 tok)
 - `page-visibility-options.html` (~1531 tok)
+- `waiting.html` (~35 tok)
 
 ## .superpowers/brainstorm/1201-1779712165/content/
 
@@ -1839,6 +1840,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-08-02-role-page-visibility.md` — 角色子页面可见性控制实施计划 6 任务 (~9200 tok)
 - `2026-05-18-geological-report-skill.md` — Geological Report Skill Implementation Plan (~7522 tok)
 - `2026-05-21-document-space-enhancement.md` — Document Space Enhancement Implementation Plan (~15765 tok)
 - `2026-05-25-project-rbac-workspace-approval.md` — 项目管理 RBAC + 成员工作台 + 审核流程 实施计划 (~9928 tok)
@@ -1878,10 +1880,10 @@
 - `2026-07-30-abac-rbac-redesign-plan.md` — ABAC-lite 权限系统重构 — 实现计划 (~11219 tok)
 - `2026-08-01-role-management-yaml-driven.md` — 角色管理真相源统一（yaml 驱动）实施计划 (~15139 tok)
 - `2026-08-01-role-management-yaml-driven.md` — 角色管理真相源统一（yaml 驱动）实施计划 (~14769 tok)
+- `2026-08-02-role-page-visibility.md` — 角色管理子页面可见性控制 实施计划 (~6481 tok)
 
 ## docs/superpowers/specs/
 
-- `2026-08-02-role-page-visibility-design.md` — 角色管理子页面可见性控制设计（每子页面可见开关+canPage接线） (~2600 tok)
 - `2026-05-12-knowledge-factory-agent-integration-design.md` — 知识工厂 ↔ Agent 双向协同集成设计 (~1878 tok)
 - `2026-05-18-geological-report-skill-design.md` — 固体矿产地质勘查报告制作技能设计 (~1611 tok)
 - `2026-05-20-ai-assistant-panel-design.md` — AI Assistant Panel Refactor Design (~1291 tok)
@@ -1936,6 +1938,7 @@
 - `2026-08-01-collab-workspace-refactor.md` — 协作工作台（Collab Workspace）设计 — 人+agent 通用协作 workspace (~6495 tok)
 - `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一(yaml驱动)+功能修复设计 (~2830 tok)
 - `2026-08-01-role-management-yaml-driven-design.md` — 角色管理真相源统一 + 功能修复设计（yaml 驱动） (~2318 tok)
+- `2026-08-02-role-page-visibility-design.md` — 角色管理 · 子页面可见性控制设计 (~1068 tok)
 - `2026-08-02-role-page-visibility-design.md` — 角色管理 · 子页面可见性控制设计 (~1061 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
