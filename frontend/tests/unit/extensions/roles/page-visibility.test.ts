@@ -17,7 +17,12 @@ describe("page visibility helpers", () => {
   it("* or missing → all visible", () => {
     expect(resolveVisiblePages(mods, ["*"])).toEqual(new Set(["kf:page:sample", "kf:page:law"]));
     expect(resolveVisiblePages(mods, undefined)).toEqual(new Set(["kf:page:sample", "kf:page:law"]));
-    expect(resolveVisiblePages(mods, [])).toEqual(new Set(["kf:page:sample", "kf:page:law"]));
+  });
+  it("[] (explicit none) → empty set (all hidden, matches runtime canPage)", () => {
+    expect(resolveVisiblePages(mods, [])).toEqual(new Set());
+  });
+  it("wildcard with extras → all (wildcard short-circuits)", () => {
+    expect(resolveVisiblePages(mods, ["*", "bogus"])).toEqual(new Set(["kf:page:sample", "kf:page:law"]));
   });
   it("explicit list → that set (unknown ids dropped)", () => {
     expect(resolveVisiblePages(mods, ["kf:page:law", "bogus"])).toEqual(new Set(["kf:page:law"]));
@@ -25,5 +30,8 @@ describe("page visibility helpers", () => {
   it("serializePages → * when all visible, else explicit", () => {
     expect(serializePages(new Set(["kf:page:sample", "kf:page:law"]), mods)).toEqual(["*"]);
     expect(serializePages(new Set(["kf:page:law"]), mods)).toEqual(["kf:page:law"]);
+  });
+  it("serializePages empty set → [] (none visible)", () => {
+    expect(serializePages(new Set(), mods)).toEqual([]);
   });
 });

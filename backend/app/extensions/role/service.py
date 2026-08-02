@@ -127,6 +127,9 @@ class RoleService:
             "permissions": list(data.permissions or []),
             "nav": list(data.nav or []),
             "data_scopes": [],
+            # EAI-CUSTOM (T3 review): 新角色默认所有子页面可见（pages:["*"]），
+            # 否则 pages 缺失 → [] → 运行时所有 tab 隐藏
+            "pages": ["*"],
             "level": data.level,
             "description": data.description,
         }
@@ -229,6 +232,8 @@ class RoleService:
             "permissions": src_perms,
             "nav": src_defaults.get("nav") or [],
             "data_scopes": src_defaults.get("data_scopes") or [],
+            # EAI-CUSTOM (T3 review): 复制角色继承源角色 pages（默认全可见）
+            "pages": src_defaults.get("pages") or ["*"],
             "level": src_defaults.get("level", 10),
             "description": role.description,
         }
