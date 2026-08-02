@@ -311,6 +311,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("No IM channels configured or channel service failed to start")
 
+            # Start scheduled task service (constructed once; background loop
+            # only when scheduler.enabled). Aligned with upstream app.py.
+            try:
+                from app.gateway.services import launch_scheduled_thread_run
+                from app.scheduler import ScheduledTaskService
+
+                if getattr(app.state, "scheduled_task_repo", None) is not None and getattr(app.state, "scheduled_task_run_repo", None) is not None:
+                    scheduled_task_service = ScheduledTaskService(
+                        task_repo=app.state.scheduled_task_repo,
+                        task_run_repo=app.state.scheduled_task_run_repo,
+                        launch_run=lambda **kwargs: launch_scheduled_thread_run(app=app, **kwargs),
+                        poll_interval_seconds=startup_config.scheduler.poll_interval_seconds,
+                        lease_seconds=startup_config.scheduler.lease_seconds,
+                        max_concurrent_runs=startup_config.scheduler.max_concurrent_runs,
+                    )
+                    app.state.scheduled_task_service = scheduled_task_service
+                    if startup_config.scheduler.enabled:
+                        await scheduled_task_service.start()
+            except Exception:
+                logger.exception("Failed to initialize scheduled task service")
+
             yield
 
             # Stop channel service on shutdown (bounded to prevent worker hang)
