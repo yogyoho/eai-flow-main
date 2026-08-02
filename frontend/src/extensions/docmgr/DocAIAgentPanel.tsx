@@ -553,8 +553,19 @@ export default function DocAIAgentPanel({
           { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 },
         );
       } catch (e: any) {
-        console.warn("[DocAI] submit effect failed:", e?.message);
-        setError("发送失败: " + (e?.message || "未知错误"));
+        const msg = e?.message || "";
+        const isMissing = e?.status === 404 || /not found/i.test(msg);
+        console.warn("[DocAI] submit effect failed:", msg);
+        if (isMissing) {
+          // 线程失效（网关重建/被删）→ 重建后自动重试一次
+          try {
+            await resetThread();
+            pendingRef.current = { message, modelName: mn };
+            setSubmitTick((v) => v + 1);
+            return;
+          } catch { /* 重建失败，走错误提示 */ }
+        }
+        setError("发送失败: " + (msg || "未知错误"));
       }
     })();
   }, [subThreadId, streamLoading, submitTick, editorRef, streamState]);

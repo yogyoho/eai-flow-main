@@ -1482,11 +1482,14 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             <Button
               variant={showAI ? "default" : "ghost"}
               size="sm"
-              onClick={() => {
-                if (!showAI) ensureThread();
+              disabled={!showAI && isCreating}
+              onClick={async () => {
+                // 先确保线程有效（校验 localStorage 里的 ID 是否失效，失效则重建），再开面板，避免 404
+                if (!showAI) await ensureThread();
                 setShowAI((v) => !v);
               }}
             >
+              {!showAI && isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
               AI 助手
             </Button>
             <Button
