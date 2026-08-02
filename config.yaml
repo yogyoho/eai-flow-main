@@ -268,6 +268,13 @@ checkpointer:
 database:
   backend: sqlite
   sqlite_dir: /app/backend/.deer-flow/data
+  # EAI-CUSTOM: 大任务性能——delta 模式（增量 checkpoint）+ 历史缓存。full→delta 是上游支持迁移路径（delta 进程透明读 legacy full checkpoint）。
+  checkpoint_channel_mode: delta
+  checkpoint_delta:
+    snapshot_frequency: 10
+  checkpoint_cache:
+    type: memory
+    max_entries: 128
 loop_detection:
   enabled: true
   warn_threshold: 3
