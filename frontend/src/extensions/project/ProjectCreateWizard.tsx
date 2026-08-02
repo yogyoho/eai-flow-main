@@ -108,7 +108,7 @@ async function fetchWorkflowTemplates(reportType?: string): Promise<TemplateOpti
   }
 }
 
-const MEMBER_ROLES: MemberRole[] = ["owner", "member"];
+const MEMBER_ROLES: MemberRole[] = ["owner", "writer"];
 
 /** A team member carries a display name plus the UUID we submit to the API.
  *  DF-2: the wizard used to submit usernames and 422 on UUID validation. */
@@ -987,7 +987,7 @@ export function ProjectCreateWizard() {
         memberList.push({ userId: leader.id, role: "owner" });
       }
       for (const m of teamMembers) {
-        memberList.push({ userId: m.id, role: "member" });
+        memberList.push({ userId: m.id, role: "writer" });
       }
 
       const workflowId = resolveWorkflowId();

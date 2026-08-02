@@ -50,14 +50,9 @@ const DEFAULT_TYPE_COLOR = "bg-primary/10 text-primary";
 // ─── Status colors for badges ─────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  setup: "bg-muted text-muted-foreground",
-  outline: "bg-primary/10 text-primary",
-  writing: "bg-primary/10 text-primary",
-  editing: "bg-warning/10 text-warning",
-  approval: "bg-warning/10 text-warning",
-  active: "bg-primary/10 text-primary",
-  completed: "bg-success/10 text-success",
-  archived: "bg-muted text-muted-foreground",
+  draft: "bg-primary/10 text-primary", // EAI-CUSTOM: canonical (ADR P5)
+  in_review: "bg-warning/10 text-warning",
+  approved: "bg-success/10 text-success",
 };
 
 // ─── Stat card data ────────────────────────────────────────────────────────────

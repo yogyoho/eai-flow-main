@@ -27,7 +27,8 @@ class FolderService:
         )
         result = await db.execute(stmt)
         row = result.scalar_one_or_none()
-        return row in ("owner", "manager")
+        # EAI-CUSTOM: canonical ProjectRole (ADR P5) — manager converged to phase_lead.
+        return row in ("owner", "phase_lead")
 
     @staticmethod
     async def _get_root_folder(db: AsyncSession, folder: Folder) -> Folder | None:

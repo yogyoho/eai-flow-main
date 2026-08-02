@@ -168,8 +168,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
       case "in_review":
         return 2; // 已提交审批
       case "approved":
-      case "archived":
-        return 4; // 完成
+        return 4; // 完成（archived 是正交 archivedAt 桶，非 spine 状态）
       default:
         return 1;
     }
@@ -235,7 +234,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
     if (!newMemberName.trim()) return;
     setAddingMember(true);
     try {
-      await projectApi.addMember(projectId, newMemberName.trim(), "member");
+      await projectApi.addMember(projectId, newMemberName.trim(), "writer");
       toast.success("成员已添加");
       setNewMemberName("");
       setShowAddMember(false);

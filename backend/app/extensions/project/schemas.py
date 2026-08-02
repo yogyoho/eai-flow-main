@@ -13,11 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # EAI-CUSTOM: 2026-08-02 single-state consolidation (ADR
 # docs/superpowers/specs/2026-08-02-writing-project-single-state.md).
-# Canonical project status: {draft, in_review, approved}. 'archived' remains a
-# status value until the orthogonal archived_at switch lands (ADR §9).
-VALID_PROJECT_STATUSES = ["draft", "in_review", "approved", "archived"]
+# Canonical project status: {draft, in_review, approved}. 'archived' is the
+# orthogonal bucket on report_projects.archived_at (ADR §9, P5).
+VALID_PROJECT_STATUSES = ["draft", "in_review", "approved"]
 
-VALID_MEMBER_ROLES = ["owner", "manager", "editor", "reviewer", "approver", "member"]
+# EAI-CUSTOM: canonical ProjectRole taxonomy (models/role_permission.py, ADR P5).
+VALID_MEMBER_ROLES = ["owner", "phase_lead", "writer", "reviewer", "approver"]
 
 VALID_WORKFLOW_STATUSES = ["pending", "in_progress", "approved", "rejected"]
 
@@ -29,50 +30,23 @@ VALID_DUTY_KEYS = {"leader", "writer", "dept_reviewer", "company_reviewer", "lea
 # ── State transitions ──
 
 VALID_STATE_TRANSITIONS: dict[str, set[str]] = {
-    "draft": {"in_review", "approved", "archived"},
-    "in_review": {"draft", "approved", "archived"},
-    "approved": {"in_review", "archived"},
-    "archived": {"draft"},  # unarchive path while the status-field switch is in place
+    "draft": {"in_review", "approved"},
+    "in_review": {"draft", "approved"},
+    "approved": {"in_review"},
 }
-
-# EAI-CUSTOM migration shim: legacy project statuses -> canonical.
-# Kept only until the P4 switch removes legacy producers; do not grow this map.
-LEGACY_PROJECT_STATUS_MAP: dict[str, str] = {
-    "setup": "draft",
-    "outline": "draft",
-    "writing": "draft",
-    "editing": "draft",
-    "in_progress": "draft",
-    "active": "draft",
-    "approval": "in_review",
-    "completed": "approved",
-}
-
-
-def normalize_project_status(value: str) -> str:
-    """Map a legacy project status to the canonical set.
-
-    Unknown values are returned unchanged so callers can reject them against
-    VALID_PROJECT_STATUSES (no silent default).
-    """
-    if value in VALID_PROJECT_STATUSES:
-        return value
-    return LEGACY_PROJECT_STATUS_MAP.get(value, value)
 
 
 def validate_status_transition(current: str, target: str) -> str | None:
     """Return error message if transition is invalid, None if valid.
 
-    Both current and target are normalized to canonical values, so the machine
-    accepts legacy producers until the P4 switch removes them. Admin/bypass
-    callers can ignore the result; this is a guard for normal progression.
+    Canonical-only — the legacy normalize shim was removed (ADR P5), so legacy
+    values are rejected fail-closed. Admin/bypass callers can ignore the result;
+    this is a guard for normal progression.
     """
-    cur = normalize_project_status(current)
-    tgt = normalize_project_status(target)
-    if tgt not in VALID_PROJECT_STATUSES:
+    if target not in VALID_PROJECT_STATUSES:
         return f"Unknown status: {target!r}"
-    allowed = VALID_STATE_TRANSITIONS.get(cur, set())
-    if tgt not in allowed:
+    allowed = VALID_STATE_TRANSITIONS.get(current, set())
+    if target not in allowed:
         return f"Cannot transition from {current!r} to {target!r}"
     return None
 
@@ -114,7 +88,7 @@ class MemberOut(BaseModel):
 
 class MemberCreate(BaseModel):
     user_id: UUID
-    role: str = "member"
+    role: str = "writer"  # EAI-CUSTOM: canonical ProjectRole (ADR P5)
 
 
 class MemberUpdate(BaseModel):
@@ -138,7 +112,7 @@ class MemberWithDuties(BaseModel):
     """A member to add during project creation, with optional org unit and phase duties."""
 
     user_id: UUID
-    role: str = "member"
+    role: str = "writer"  # EAI-CUSTOM: canonical ProjectRole (ADR P5)
     source_org_unit_id: UUID | None = None
     phase_duties: dict | None = None
 
@@ -197,6 +171,7 @@ class ProjectOut(BaseModel):
     workflow_id: UUID | None = None
     temporal_workflow_id: str | None = None
     current_phase_node: str | None = None
+    archived_at: datetime | None = None  # EAI-CUSTOM: orthogonal archive bucket (ADR P5)
     # EAI-CUSTOM: derived six-stage progress (ADR 2026-08-02 P2) — computed in
     # service.get_project from status + chapter aggregates, never stored.
     derived_stage: int = 1

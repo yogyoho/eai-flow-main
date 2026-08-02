@@ -20,7 +20,6 @@ const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> =
   },
   in_review: { color: "border-warning/20 bg-warning/10 text-warning", icon: <Clock className="h-3 w-3" /> },
   approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-  archived: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Chapter statuses
   pending: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
@@ -46,7 +45,6 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "编写中",
   in_review: "审核中",
   approved: "已通过",
-  archived: "已归档",
   pending: "未开始",
   reviewing: "审核中",
   writing: "编写中",

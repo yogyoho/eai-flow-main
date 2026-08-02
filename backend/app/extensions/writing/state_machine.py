@@ -31,44 +31,16 @@ VALID_CHAPTER_TRANSITIONS: dict[str, set[str]] = {
     ChapterStatus.APPROVED: {ChapterStatus.DRAFT},
 }
 
-# EAI-CUSTOM migration shim: legacy chapter statuses -> canonical.
-# Kept only until the P4 switch removes legacy producers; do not grow this map.
-LEGACY_CHAPTER_STATUS_MAP: dict[str, str] = {
-    "writing": "draft",
-    "editing": "draft",
-    "in_progress": "draft",
-    "rejected": "draft",
-    "error": "draft",
-    "review": "reviewing",
-    "in_review": "reviewing",
-    "reviewed": "approved",
-    "signed": "approved",
-    "completed": "reviewing",  # content-done-not-submitted; finalized -> approved
-}
-
-
-def normalize_chapter_status(value: str) -> str:
-    """Map a legacy chapter status to the canonical set.
-
-    Unknown values are returned unchanged so callers can reject them against
-    VALID_CHAPTER_TRANSITIONS (no silent default).
-    """
-    if value in VALID_CHAPTER_TRANSITIONS:
-        return value
-    return LEGACY_CHAPTER_STATUS_MAP.get(value, value)
-
 
 def validate_chapter_transition(current: str, target: str) -> str | None:
     """Return error message if transition is invalid, else None.
 
-    Both current and target are normalized to canonical values, so the machine
-    accepts legacy producers until the P4 switch removes them.
+    Canonical-only — the legacy normalize shim was removed (ADR P5), so legacy
+    values are rejected fail-closed.
     """
-    cur = normalize_chapter_status(current)
-    tgt = normalize_chapter_status(target)
-    if tgt not in VALID_CHAPTER_TRANSITIONS:
+    if target not in VALID_CHAPTER_TRANSITIONS:
         return f"Unknown chapter status: {target!r}"
-    allowed = VALID_CHAPTER_TRANSITIONS.get(cur, set())
-    if tgt not in allowed:
+    allowed = VALID_CHAPTER_TRANSITIONS.get(current, set())
+    if target not in allowed:
         return f"Cannot transition chapter from {current!r} to {target!r}"
     return None

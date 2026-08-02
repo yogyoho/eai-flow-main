@@ -23,14 +23,16 @@ describe("Project type labels", () => {
       draft: "进行中",
       in_review: "审批中",
       approved: "已完成",
-      archived: "已归档",
     });
   });
 
-  test("MEMBER_ROLE_LABELS has owner and member", () => {
-    expect(MEMBER_ROLE_LABELS).toMatchObject({
+  test("MEMBER_ROLE_LABELS has canonical ProjectRoles", () => {
+    expect(MEMBER_ROLE_LABELS).toEqual({
       owner: "负责人",
-      member: "成员",
+      phase_lead: "阶段负责人",
+      writer: "撰写人",
+      reviewer: "审核人",
+      approver: "审批人",
     });
   });
 });

@@ -600,6 +600,7 @@ class ReportProject(Base):
         nullable=True,
     )
     status: Mapped[str] = mapped_column(String(20), default="draft")  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # EAI-CUSTOM: orthogonal archive bucket (ADR 2026-08-02 P5)
     # EAI-CUSTOM: current_stage dropped (ADR 2026-08-02 P2) — stage is derived, never stored.
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -723,7 +724,7 @@ class ProjectMember(Base):
         ForeignKey("users.id"),
         nullable=False,
     )
-    role: Mapped[str] = mapped_column(String(50), default="editor")
+    role: Mapped[str] = mapped_column(String(50), default="writer")  # EAI-CUSTOM: canonical ProjectRole (ADR 2026-08-02 P5)
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source_org_unit_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True

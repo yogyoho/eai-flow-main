@@ -800,11 +800,12 @@ async def migrate_db() -> None:
                 report_type VARCHAR(100) NOT NULL,
                 template_id UUID REFERENCES extraction_templates(id),
                 status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- EAI-CUSTOM: canonical (ADR 2026-08-02)
+                archived_at TIMESTAMP,  -- EAI-CUSTOM: orthogonal archive bucket (ADR 2026-08-02 P5)
                 thread_id VARCHAR(100),
                 created_by UUID REFERENCES users(id),
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                CONSTRAINT ck_report_projects_status CHECK (status IN ('draft','in_review','approved','archived'))
+                CONSTRAINT ck_report_projects_status CHECK (status IN ('draft','in_review','approved'))
             )
         """))
         await conn.execute(text(
@@ -849,7 +850,7 @@ async def migrate_db() -> None:
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
                 user_id UUID NOT NULL REFERENCES users(id),
-                role VARCHAR(50) NOT NULL DEFAULT 'editor',
+                role VARCHAR(50) NOT NULL DEFAULT 'writer',  -- EAI-CUSTOM: canonical ProjectRole (ADR 2026-08-02 P5)
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 UNIQUE(project_id, user_id)
             )
@@ -1344,20 +1345,34 @@ async def migrate_db() -> None:
         """))
 
         # ── EAI-CUSTOM: single-state consolidation (ADR 2026-08-02) ──
-        # Backfill legacy project/chapter statuses to the canonical set, then add
-        # DB CHECK constraints as the enforcement backstop for writers that
-        # bypass service-layer validation. Idempotent — safe on every startup.
+        # Backfill legacy statuses to the canonical set, PRESERVING canonical values
+        # (P5 fix: the old ELSE 'draft' clobbered in_review/approved/reviewing on
+        # every restart). Add archived_at as the orthogonal archive bucket and
+        # enforce DB CHECK constraints as the backstop. Idempotent.
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP"))
+        # Legacy archived rows: the pre-archive status is unrecoverable ('archived'
+        # overwrote it), so assign 'approved' + archived_at from the row timestamp.
+        await conn.execute(text("""
+            UPDATE report_projects SET status = 'approved',
+                archived_at = COALESCE(updated_at, created_at)
+            WHERE status = 'archived'
+        """))
         await conn.execute(text("""
             UPDATE report_projects SET status = CASE status
-                WHEN 'completed' THEN 'approved'
-                WHEN 'approval'  THEN 'in_review'
+                WHEN 'draft'      THEN 'draft'
+                WHEN 'in_review'  THEN 'in_review'
+                WHEN 'approved'   THEN 'approved'
+                WHEN 'completed'  THEN 'approved'
+                WHEN 'approval'   THEN 'in_review'
                 ELSE 'draft'
-            END WHERE status <> 'archived'
+            END
         """))
         await conn.execute(text("""
             UPDATE project_chapters SET status = CASE status
                 WHEN 'pending'     THEN 'pending'
                 WHEN 'draft'       THEN 'draft'
+                WHEN 'reviewing'   THEN 'reviewing'
+                WHEN 'approved'    THEN 'approved'
                 WHEN 'writing'     THEN 'draft'
                 WHEN 'rejected'    THEN 'draft'
                 WHEN 'editing'     THEN 'draft'
@@ -1367,18 +1382,31 @@ async def migrate_db() -> None:
                 WHEN 'in_review'   THEN 'reviewing'
                 WHEN 'completed'   THEN 'reviewing'
                 WHEN 'reviewed'    THEN 'approved'
-                WHEN 'approved'    THEN 'approved'
                 WHEN 'signed'      THEN 'approved'
                 ELSE 'draft'
+            END
+        """))
+        # EAI-CUSTOM: converge ProjectMember.role to the canonical ProjectRole 5-value
+        # taxonomy (ADR 2026-08-02 P5): manager/leader→phase_lead, editor/member→writer.
+        await conn.execute(text("""
+            UPDATE project_members SET role = CASE role
+                WHEN 'manager' THEN 'phase_lead'
+                WHEN 'leader'  THEN 'phase_lead'
+                WHEN 'editor'  THEN 'writer'
+                WHEN 'member'  THEN 'writer'
+                ELSE role
             END
         """))
         await conn.execute(text("""
             DO $$
             BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_report_projects_status') THEN
-                    ALTER TABLE report_projects ADD CONSTRAINT ck_report_projects_status
-                        CHECK (status IN ('draft','in_review','approved','archived'));
+                -- Project status spine is now {draft,in_review,approved}; drop the
+                -- old 4-value constraint (allowed 'archived') and re-add 3-value.
+                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_report_projects_status') THEN
+                    ALTER TABLE report_projects DROP CONSTRAINT ck_report_projects_status;
                 END IF;
+                ALTER TABLE report_projects ADD CONSTRAINT ck_report_projects_status
+                    CHECK (status IN ('draft','in_review','approved'));
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_project_chapters_status') THEN
                     ALTER TABLE project_chapters ADD CONSTRAINT ck_project_chapters_status
                         CHECK (status IN ('pending','draft','reviewing','approved'));

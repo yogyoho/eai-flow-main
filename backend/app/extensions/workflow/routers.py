@@ -482,7 +482,7 @@ async def get_workflow_status_endpoint(
                 wf_name = definition.name
                 wf_graph = raw_graph
                 current = project.current_phase_node
-                project_done = project.status == "completed"
+                project_done = project.status == "approved"  # EAI-CUSTOM: canonical terminal (ADR P5)
 
                 from .service import topological_sort
 
@@ -568,7 +568,7 @@ async def get_workflow_status_endpoint(
         # display progress and allow manual phase completion.
         if not project.workflow_id and project.current_phase_node:
             current = project.current_phase_node
-            project_done = project.status == "completed"
+            project_done = project.status == "approved"  # EAI-CUSTOM: canonical terminal (ADR P5)
 
             # Collect chapter counts for the current phase
             chapter_counts: dict[str, tuple[int, int]] = {}
@@ -605,7 +605,7 @@ async def get_workflow_status_endpoint(
 
         # Determine overall workflow status
         wf_status = "idle"
-        project_done = project.status == "completed"
+        project_done = project.status == "approved"  # EAI-CUSTOM: canonical terminal (ADR P5)
         if project_done:
             wf_status = "completed"
         elif temporal_status:

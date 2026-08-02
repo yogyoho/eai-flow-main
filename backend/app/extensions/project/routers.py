@@ -201,6 +201,34 @@ async def update_project(
     return result
 
 
+# EAI-CUSTOM: orthogonal archive bucket (ADR P5) — archive/unarchive keep the
+# real spine status; only archived_at marks the bucket.
+@router.post("/projects/{project_id}/archive", response_model=ProjectOut)
+async def archive_project(
+    project_id: UUID,
+    _role: str = Depends(require_resource_permission("project:edit")),
+    _user: CurrentUserWithAccess = None,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.archive_project(db, project_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return result
+
+
+@router.post("/projects/{project_id}/unarchive", response_model=ProjectOut)
+async def unarchive_project(
+    project_id: UUID,
+    _role: str = Depends(require_resource_permission("project:edit")),
+    _user: CurrentUserWithAccess = None,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await service.unarchive_project(db, project_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return result
+
+
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: UUID,
@@ -437,18 +465,13 @@ class ChapterStatusUpdate(BaseModel):
     @field_validator("status")
     @classmethod
     def _canonical_status(cls, v: str) -> str:
-        # EAI-CUSTOM: canonical chapter status (ADR 2026-08-02). Legacy values
-        # (writing/completed/rejected/...) are normalized to the canonical set so
-        # the DB CHECK constraint is never violated during the P4 transition.
-        from app.extensions.writing.state_machine import (
-            VALID_CHAPTER_TRANSITIONS,
-            normalize_chapter_status,
-        )
+        # EAI-CUSTOM: canonical chapter status (ADR 2026-08-02 P5) — strict check,
+        # legacy normalize shim removed (fail-closed).
+        from app.extensions.writing.state_machine import VALID_CHAPTER_TRANSITIONS
 
-        normalized = normalize_chapter_status(v)
-        if normalized not in VALID_CHAPTER_TRANSITIONS:
+        if v not in VALID_CHAPTER_TRANSITIONS:
             raise ValueError(f"Invalid chapter status: {v!r}")
-        return normalized
+        return v
 
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/open")
@@ -1113,7 +1136,7 @@ async def get_project_stats(
             func.coalesce(
                 func.sum(
                     func.cast(
-                        ProjectChapter.status.in_(["draft", "writing", "review"]),
+                        ProjectChapter.status.in_(["draft", "reviewing"]),  # EAI-CUSTOM: canonical (ADR P5)
                         Integer,
                     )
                 ), 0

@@ -33,11 +33,13 @@ class TestValidationConstants:
     # (business_dictionaries table, category="report_type"). No hardcoded list to validate.
 
     def test_project_statuses(self):
-        # EAI-CUSTOM: canonical single-state set (ADR 2026-08-02).
-        assert VALID_PROJECT_STATUSES == ["draft", "in_review", "approved", "archived"]
+        # EAI-CUSTOM: canonical single-state set (ADR 2026-08-02 P5). 'archived'
+        # is the orthogonal archivedAt bucket, not a spine status.
+        assert VALID_PROJECT_STATUSES == ["draft", "in_review", "approved"]
 
     def test_member_roles_expanded(self):
-        assert VALID_MEMBER_ROLES == ["owner", "manager", "editor", "reviewer", "approver", "member"]
+        # EAI-CUSTOM: canonical ProjectRole taxonomy (ADR P5).
+        assert VALID_MEMBER_ROLES == ["owner", "phase_lead", "writer", "reviewer", "approver"]
 
     def test_workflow_statuses(self):
         assert VALID_WORKFLOW_STATUSES == ["pending", "in_progress", "approved", "rejected"]
@@ -76,10 +78,10 @@ class TestChapterOut:
 
 
 class TestMemberCreate:
-    def test_default_role_is_member(self):
+    def test_default_role_is_writer(self):
         uid = uuid4()
         m = MemberCreate(user_id=uid)
-        assert m.role == "member"
+        assert m.role == "writer"  # EAI-CUSTOM: canonical ProjectRole (ADR P5)
 
     def test_custom_role(self):
         uid = uuid4()

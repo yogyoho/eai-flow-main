@@ -456,8 +456,8 @@ class TestCreateProjectOwnerMembership:
                 created_by=creator,
                 members_data=[
                     {"user_id": creator, "role": "owner"},
-                    {"user_id": zhangsan, "role": "member"},
-                    {"user_id": wanger, "role": "member"},
+                    {"user_id": zhangsan, "role": "writer"},  # EAI-CUSTOM: canonical (ADR P5)
+                    {"user_id": wanger, "role": "writer"},  # EAI-CUSTOM: canonical (ADR P5)
                 ],
             )
 

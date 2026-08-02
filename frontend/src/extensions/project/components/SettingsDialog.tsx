@@ -98,6 +98,28 @@ export function SettingsDialog({
     }
   };
 
+  const [archiving, setArchiving] = useState(false);
+
+  // EAI-CUSTOM: orthogonal archive bucket (ADR P5) — archive keeps the real spine
+  // status; only archivedAt marks the bucket.
+  const handleArchive = async () => {
+    setArchiving(true);
+    try {
+      if (project.archivedAt) {
+        await projectApi.unarchive(projectId);
+        toast.success("项目已取消归档");
+      } else {
+        await projectApi.archive(projectId);
+        toast.success("项目已归档");
+      }
+      onRefresh();
+    } catch {
+      toast.error("归档操作失败");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (deleteConfirm !== project.name) return;
     setDeleting(true);
@@ -185,6 +207,29 @@ export function SettingsDialog({
               </Select>
             ) : (
               <p className="text-sm text-foreground">{PROJECT_STATUS_LABELS[project.status]}</p>
+            )}
+          </div>
+
+          {/* Archive — EAI-CUSTOM: orthogonal archivedAt bucket (ADR P5) */}
+          <div className="space-y-1.5">
+            <label className="text-[12px] text-muted-foreground font-medium">归档</label>
+            {canEdit ? (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-8" onClick={handleArchive} disabled={archiving}>
+                  {archiving ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : project.archivedAt ? (
+                    "取消归档"
+                  ) : (
+                    "归档项目"
+                  )}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  {project.archivedAt ? "已归档，从项目列表隐藏" : "归档后从项目列表隐藏，状态保留"}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground">{project.archivedAt ? "已归档" : "未归档"}</p>
             )}
           </div>
 

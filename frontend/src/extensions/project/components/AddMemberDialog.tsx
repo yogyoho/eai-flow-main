@@ -36,7 +36,7 @@ export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddM
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; username: string; fullName?: string }>>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<MemberRole>("member");
+  const [newRole, setNewRole] = useState<MemberRole>("writer");
   const [adding, setAdding] = useState(false);
 
   // Reset state on open
@@ -45,7 +45,7 @@ export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddM
       setSearchQuery("");
       setSearchResults([]);
       setSelectedUserId(null);
-      setNewRole("member");
+      setNewRole("writer");
     }
   }, [open]);
 

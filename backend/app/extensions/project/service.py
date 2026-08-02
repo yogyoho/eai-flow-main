@@ -155,8 +155,10 @@ async def list_projects(
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[ProjectListItem], int]:
-    query = select(ReportProject).where(ReportProject.status != "archived")
-    count_query = select(func.count(ReportProject.id)).where(ReportProject.status != "archived")
+    # EAI-CUSTOM: archived is the orthogonal archived_at bucket (ADR P5) — default
+    # list hides archived projects via archived_at IS NULL.
+    query = select(ReportProject).where(ReportProject.archived_at.is_(None))
+    count_query = select(func.count(ReportProject.id)).where(ReportProject.archived_at.is_(None))
 
     if user_id and not is_admin:
         member_exists = (
@@ -281,13 +283,10 @@ def derive_project_stage(status: str, chapter_statuses: list[str]) -> int:
     """Derive the six-stage progress bar from canonical status + chapter aggregates.
 
     Pure function — stage is derived, never stored (ADR 2026-08-02 §3, P2).
-    Legacy values are normalized so it stays correct during the P4 transition.
+    Inputs are canonical (legacy normalize shim removed, ADR P5).
     """
-    from app.extensions.project.schemas import normalize_project_status
-    from app.extensions.writing.state_machine import normalize_chapter_status
-
-    st = normalize_project_status(status)
-    ch = [normalize_chapter_status(s) for s in chapter_statuses]
+    st = status
+    ch = list(chapter_statuses)
 
     if st == "approved":
         # Export only when every chapter is done; otherwise rework in progress.
@@ -906,7 +905,7 @@ async def _auto_assign_org_bindings(db: AsyncSession, project: ReportProject, wo
 
 
 async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut | None:
-    from .schemas import normalize_project_status, validate_status_transition
+    from .schemas import validate_status_transition
 
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
@@ -914,21 +913,41 @@ async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut |
     if not project:
         return None
 
-    # Validate status transition if status is being changed
+    # EAI-CUSTOM: orthogonal archive (ADR P5) — 'archived' is not a spine status;
+    # PATCH status='archived' archives (sets archived_at, keeps real status), and
+    # PATCHing a spine status on an archived project unarchives it.
     new_status = kwargs.get("status")
-    if new_status is not None and new_status != project.status:
+    if new_status == "archived":
+        project.archived_at = func.now()
+        kwargs.pop("status", None)
+    elif new_status is not None and new_status != project.status:
         err = validate_status_transition(project.status, new_status)
         if err:
             raise HTTPException(status_code=400, detail=err)
-        # EAI-CUSTOM: store canonical value (ADR 2026-08-02). Legacy producers
-        # (frontend PATCH until P4) send setup/outline/... — normalize to the
-        # canonical value so the DB CHECK constraint is never violated.
-        kwargs["status"] = normalize_project_status(new_status)
+        if project.archived_at is not None:
+            project.archived_at = None  # unarchive on any spine-status change
 
     for k, v in kwargs.items():
         if v is not None:
             setattr(project, k, v)
 
+    await db.flush()
+    return await get_project(db, project_id)
+
+
+# EAI-CUSTOM: orthogonal archive bucket (ADR P5). Archived projects keep their
+# real spine status; only archived_at marks the bucket. list_projects hides them
+# via archived_at IS NULL; unarchive just clears the timestamp.
+async def archive_project(db: AsyncSession, project_id) -> ProjectOut | None:
+    project = await _get_project_or_404(db, project_id)
+    project.archived_at = func.now()
+    await db.flush()
+    return await get_project(db, project_id)
+
+
+async def unarchive_project(db: AsyncSession, project_id) -> ProjectOut | None:
+    project = await _get_project_or_404(db, project_id)
+    project.archived_at = None
     await db.flush()
     return await get_project(db, project_id)
 

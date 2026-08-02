@@ -4,10 +4,12 @@
 // and loaded dynamically by useReportTypes(). Any string is valid.
 export type ReportType = string;
 
-// EAI-CUSTOM: canonical single-state set (ADR 2026-08-02 P4).
-export type ProjectStatus = "draft" | "in_review" | "approved" | "archived";
+// EAI-CUSTOM: canonical single-state set (ADR 2026-08-02 P4/P5). 'archived' is
+// the orthogonal archivedAt bucket, not a spine status.
+export type ProjectStatus = "draft" | "in_review" | "approved";
 
-export type MemberRole = "owner" | "manager" | "editor" | "reviewer" | "approver" | "member";
+// EAI-CUSTOM: canonical ProjectRole taxonomy (ADR P5).
+export type MemberRole = "owner" | "phase_lead" | "writer" | "reviewer" | "approver";
 
 // ── Chapter ──
 
@@ -61,6 +63,7 @@ export interface ReportProject {
   temporalWorkflowId?: string | null;
   currentPhaseNode?: string | null;
   derivedStage?: number; // EAI-CUSTOM: canonical derived stage (ADR 2026-08-02 P2)
+  archivedAt?: string | null; // EAI-CUSTOM: orthogonal archive bucket (ADR P5)
 }
 
 export interface ProjectListItem {
@@ -112,16 +115,14 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   draft: "进行中", // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
   in_review: "审批中",
   approved: "已完成",
-  archived: "已归档",
 };
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
-  owner: "负责人",
-  manager: "管理者",
-  editor: "撰写人",
+  owner: "负责人", // EAI-CUSTOM: canonical ProjectRole (ADR P5)
+  phase_lead: "阶段负责人",
+  writer: "撰写人",
   reviewer: "审核人",
   approver: "审批人",
-  member: "成员",
 };
 
 // ── Approval config types ──

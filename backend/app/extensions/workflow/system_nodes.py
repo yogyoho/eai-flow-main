@@ -125,15 +125,13 @@ class EndNodeExecutor:
         from app.extensions.models import ReportProject
         import uuid
 
-        # EAI-CUSTOM: canonical project status (ADR 2026-08-02). The value comes
-        # from workflow graph config (free-form) — normalize to canonical and
-        # reject anything outside the canonical set instead of writing garbage.
-        from app.extensions.project.schemas import (
-            VALID_PROJECT_STATUSES,
-            normalize_project_status,
-        )
+        # EAI-CUSTOM: canonical project status (ADR 2026-08-02 P5). The value comes
+        # from workflow graph config (free-form) — strict-check against the
+        # canonical set instead of writing garbage. 'archived' is no longer a
+        # spine status (orthogonal archived_at); graph configs should not set it.
+        from app.extensions.project.schemas import VALID_PROJECT_STATUSES
 
-        new_status = normalize_project_status(actions.get("set_project_status", "approved"))
+        new_status = actions.get("set_project_status", "approved")
         if new_status not in VALID_PROJECT_STATUSES:
             return NodeResult(
                 status="error",

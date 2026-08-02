@@ -64,6 +64,17 @@ export const projectApi = {
     await authFetch<void>(`${API_BASE}/projects/${id}`, { method: "DELETE" });
   },
 
+  // EAI-CUSTOM: orthogonal archive bucket (ADR P5) — archive keeps real status,
+  // only archivedAt marks the bucket; list hides archived via archivedAt.
+  archive: async (id: string): Promise<ReportProject> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/archive`, { method: "POST" });
+    return toCamelCase<ReportProject>(data);
+  },
+  unarchive: async (id: string): Promise<ReportProject> => {
+    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/unarchive`, { method: "POST" });
+    return toCamelCase<ReportProject>(data);
+  },
+
   enter: async (id: string): Promise<{ threadId: string; projectId: string }> => {
     const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/enter`, { method: "POST" });
     return toCamelCase<{ threadId: string; projectId: string }>(data);
