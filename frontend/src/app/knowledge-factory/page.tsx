@@ -59,6 +59,15 @@ function KnowledgeFactoryMain() {
   const currentTab = visibleNav.some((n) => n.id === rawTab) ? rawTab : (visibleNav[0]?.id ?? "reports");
   const Content = TAB_COMPONENTS[currentTab];
 
+  // EAI-CUSTOM (T4 review I2): 权限加载完成但无任何可见页面 → 空状态，不回退渲染无权限内容
+  if (!permLoading && visibleNav.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+        当前角色没有可见的知识工厂页面
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-muted">
       {/* 顶部导航栏 — 与 admin/layout.tsx 一致 */}

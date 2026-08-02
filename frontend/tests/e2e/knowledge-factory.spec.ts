@@ -34,6 +34,34 @@ function mockExtensionsAPI(page: Page) {
       body: JSON.stringify({ knowledge_bases: [], total: 0 }),
     });
   });
+
+  // Mock permissions/me — sub-page visibility: all pages visible (["*"])
+  // Required since Task 4 filters knowledge-factory tabs by canPage(pageId).
+  void page.route("**/api/permissions/me", (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        permissions: ["kb:read", "kb:create", "kb:upload", "kb:update", "kb:delete", "kf:read"],
+        nav: ["*"],
+        pages: ["*"],
+        data_scopes: [],
+        is_admin: true,
+        identity: {
+          user_id: "00000000-0000-0000-0000-000000000001",
+          username: "admin",
+          role_code: "admin",
+          role_level: 100,
+          dept_id: null,
+          dept_ids: [],
+          member_projects: [],
+          project_roles: {},
+          tags: [],
+          labels: {},
+        },
+      }),
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -87,13 +115,13 @@ test.describe("Knowledge Factory page", () => {
     mockLangGraphAPI(page);
   });
 
-  test("renders the page header and all 8 navigation tabs", async ({ page }) => {
+  test("renders the page header and all 9 navigation tabs", async ({ page }) => {
     await page.goto("/knowledge-factory");
 
     // Page title / header
     await expect(page.locator("span", { hasText: "知识工厂" }).first()).toBeVisible({ timeout: 10_000 });
 
-    // All 8 nav tabs
+    // All 9 nav tabs
     const tabs = [
       "样例管理",
       "模板抽取",
@@ -103,6 +131,7 @@ test.describe("Knowledge Factory page", () => {
       "版本管理",
       "质量评估",
       "网页爬取",
+      "业务字典",
     ];
     for (const label of tabs) {
       await expect(page.locator("nav", { has: page.locator(`text="${label}"`) })).toBeVisible({ timeout: 5_000 });
