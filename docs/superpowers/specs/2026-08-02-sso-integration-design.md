@@ -1,9 +1,23 @@
 # EAI 统一认证门面 · SSO 单点登录集成设计
 
 - 日期：2026-08-02
-- 状态：定稿（待评审）
+- 状态：**定稿 · P0 已实现但默认未启用（未来与其他系统 SSO 集成时启用）**
 - 前置：`2026-08-02-auth-unify-design.md`（双轨登录门面已落地：工号+密码 / 邮箱+验证码）
 - 范围：SSO 作为**第三认证门面**（通用 OIDC），按**工号** join extensions 组织目录，零上游核心改动
+
+## ⏸ 当前状态（2026-08-03）—— 已归档待启用
+
+**结论：SSO 接入层（P0）代码已全部实现并提交到 `main-dev-fork`，但默认未启用。** 未来需要与其他系统做 SSO 集成时，按 §12 的启用清单操作即可。
+
+| 层 | 状态 | 说明 |
+|---|---|---|
+| P0 接入层代码 | ✅ 已实现并提交 | `app/extensions/auth/sso.py`（`/oidc/start` + `/oidc/callback/{provider}`）、`auth_middleware` 前缀豁免（EAI-CUSTOM）、登录页 SSO 按钮（`<Link prefetch={false}>`） |
+| P0 单元测试 | ✅ 8 个全绿 | `tests/test_extensions_sso.py` |
+| P1 Keycloak compose | ✅ 已加服务 | `docker/docker-compose-dev.yaml` 有 `keycloak` 服务，**未部署** |
+| 启用开关 | ⛔ 未启用 | `config.yaml` **没有 `auth.oidc`** → 点 SSO 按钮 `/oidc/start` 返回 404 |
+| 登录页按钮 | ⚠️ 已显示但点击 404 | 启用前置需按 §12.1 条件渲染（仅当 `/api/v1/auth/providers` 有 provider 时显示） |
+
+**为什么归档**：SSO 依赖真实 OIDC IdP（Keycloak/企微/钉钉/ADFS）才能验证。当前无 IdP 集成需求，代码与方案先行落地，待未来「与其他系统 SSO 集成」时启用。
 
 ## 1. 背景与目标
 
@@ -186,3 +200,64 @@ auth:
 3. 三种登录方式（密码/验证码/SSO）落到同一 extensions `user_id`，会话一致。
 4. 零上游核心改动（仅 auth_middleware 一个 EAI-CUSTOM 块加 2 路径）。
 5. `make test` 通过（新增 SSO 测试全绿）。
+
+## 12. 启用清单（未来需要时执行）
+
+> 代码已就绪（P0 已提交），启用 = 配置 + 部署，**不需要再写接入代码**。
+
+**12.1 隐藏死按钮（启用前置，必做）**
+登录页 SSO 按钮当前无条件渲染、点击 404。启用前把按钮改为**条件渲染**：登录页 mount 时 `GET /api/v1/auth/providers`（上游已有端点，返回 `{providers: [...]}`），仅当 `providers.length > 0` 时显示按钮。
+
+**12.2 部署 Keycloak（或任一 OIDC IdP）**
+```bash
+docker compose -p eai-docker -f docker/docker-compose-dev.yaml up -d keycloak
+```
+- 首次需建 `keycloak` 数据库（postgres-ext 的 agentflow 用户若无 CREATEDB 权限需授权或建库）。
+- Keycloak 管理台 `http://localhost:8080`（admin/admin123）：
+  1. 建 realm `eai`
+  2. 建 client `eai-flow`（confidential）
+  3. redirect_uri = `http://localhost:2026/api/extensions/auth/oidc/callback/keycloak`
+  4. **token mapper**：把 `preferred_username`（或 AD `employeeNumber` / 企微 `userid`）映射为 **`employee_number`** claim —— 这是回调 join 工号的键
+
+**12.3 配置 config.yaml + 重启 gateway**
+```yaml
+auth:
+  oidc:
+    enabled: true
+    frontend_base_url: "http://localhost:2026"
+    providers:
+      keycloak:
+        display_name: "企业统一登录"
+        issuer: "http://localhost:8080/realms/eai"
+        client_id: "eai-flow"
+        client_secret: "<client 密钥>"
+        redirect_uri: ""        # 空 → 自动派生为 EAI 回调
+        scopes: ["openid", "email", "profile"]
+```
+```bash
+docker compose -p eai-docker restart gateway
+```
+
+**12.4 验证**
+- 登录页 SSO 按钮可点 → Keycloak 授权页 → 回调 → 按工号登录。
+- Keycloak 里配一个与 extensions `User.username` 同工号的账号验证命中；未预建工号 → 401。
+
+## 13. 与其他系统做 SSO 集成（未来场景）
+
+本系统当前是 **OIDC 依赖方（SP）**。未来与「其他系统」做 SSO 集成，按方向分：
+
+**方向 A：其他系统作为 IdP，本系统接入（本设计已支持）**
+- 其他系统若提供标准 OIDC → 在 `config.yaml auth.oidc.providers` 加一个 provider 即可（同 Keycloak 配置，换 issuer/client/secret）。
+- 需对方 IdP 提供 **工号 claim**（`employee_number`/`preferred_username`）并已在 extensions 预建号。
+- 若对方是 企微/钉钉/飞书（非标准 OIDC）→ 经 **Keycloak broker**（Keycloak 把它们作为 OAuth2 IdP 接入，统一发 `employee_number`），本系统仍只认 Keycloak。
+
+**方向 B：本系统作为 IdP，其他系统接入**
+- 本系统基于 deer-flow 自带 OIDC 能力（`/api/v1/auth/oauth/*`）可暴露为标准 OIDC IdP；但 extensions 组织目录（工号/部门/角色）在 PostgreSQL，需要把 extensions 用户作为 OIDC 用户源暴露（未来工作）。
+- 或更简单：用 **Keycloak 统一收口**（本系统与各子系统的用户都进 Keycloak），各系统作为 SP 接入 Keycloak，Keycloak 联邦 AD/LDAP 作统一目录。
+
+**方向 C：存量旧系统（AD/LDAP 域认证）**
+- Keycloak **LDAP 用户联邦**对接 Active Directory：域账号+密码经 LDAP BIND 校验，工号取 AD `sAMAccountName`/`employeeNumber`。
+- **Kerberos/SPNEGO**：域内 PC 浏览器可无缝登录（需 krb5 配置 + 域控可达）。
+- **注意：Keycloak 不原生支持 NTLM**（纯 NTLM 的旧系统需适配器或改走 Kerberos/LDAP）。
+
+**推荐总架构（未来多系统统一 SSO）**：`各系统(SP) → Keycloak(IdP, 联邦 AD/LDAP + broker 企微/钉钉/飞书) → 统一发 employee_number(工号)`。本系统按本设计的 P0 接入层直接接 Keycloak 即可，无需再改代码。
