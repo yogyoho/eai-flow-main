@@ -268,6 +268,7 @@ Configuration priority:
 - **Project-level RBAC** (`app/extensions/auth/unified_permissions.py`) reads `project_roles:` from permissions.yaml; the legacy `role_permissions` table and `project/permissions.py` / `project_permissions.py` matrices are **deprecated/deleted**.
 - **ABAC policies** (`policies` table) remain DB-backed as dynamic global data (not yaml).
 - New permission points must be declared in `permissions.yaml` before enforcement; `admin_only: true` points only apply to `is_system` roles.
+- **Sub-page visibility** — each role's `pages` (page ids) controls which sub-page tabs render: `RoleUpdate.pages` write-through to overlay (validated against the registry); frontend `canPage(pageId)` filters knowledge-factory (9 tabs) and contract-price (6 sub-routes) nav.
 
 ### Gateway API (`app/gateway/`)
 
