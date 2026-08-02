@@ -25,13 +25,14 @@ const config = {
     defaultLocale: "en",
   },
   devIndicators: false,
-  // EAI-CUSTOM: 离线生产构建跳过 TS/ESLint 检查。
+  // EAI-CUSTOM: 离线生产构建跳过 TS 检查。
+  // Next.js 16 已移除 next.config.js 的 eslint 键（build 不再内嵌跑 ESLint，
+  // lint 走 pnpm lint/check 单独执行），故此处只需跳 TS。
   // 前端有 82 个既存 TS 错误（docmgr/BlockNote 雷区、agent-settings/workflow API 漂移等），
   // dev 模式本就不类型检查（pnpm dev 不跑 tsc）。设此开关让 prod 构建通过以解锁离线部署；
   // 这些错误作为独立技术债分批修（勿动 BlockNote DefaultChatTransport——重蹈崩溃复辙）。
   // 详见 docs/superpowers/specs/2026-07-29-offline-deploy-simplification-design.md (Task #18)。
   typescript: { ignoreBuildErrors: true },
-  eslint: { ignoreDuringBuilds: true },
   // Raise the dev-proxy body limit so large contract PDF uploads (>10MB scanned
   // docs) aren't truncated by the Next.js rewrite proxy (default 10MB → socket
   // hang up). Host `pnpm dev` only; Docker :2026 goes direct via nginx.
