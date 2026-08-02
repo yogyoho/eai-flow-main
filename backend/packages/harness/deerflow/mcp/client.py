@@ -1,4 +1,8 @@
-"""MCP client using langchain-mcp-adapters."""
+"""MCP client using langchain-mcp-adapters.
+
+EAI-CUSTOM: 本文件含对上游 deer-flow 的定制增强——build_server_params 透传 stdio MCP 的 cwd
+（bug-712，2026-08-02）。所有 EAI 改动以 `# ── EAI-CUSTOM START/END ──` 包裹，升级/差分时按此识别。
+"""
 
 import logging
 from typing import Any
@@ -29,11 +33,18 @@ def build_server_params(server_name: str, config: McpServerConfig) -> dict[str, 
         # Add environment variables if present
         if config.env:
             params["env"] = config.env
-        # EAI-CUSTOM: 透传 cwd（extra 字段）。stdio 子进程需在配置的 cwd 下启动，
-        # 否则 `python -m app.extensions.*` 找不到 app 包（McpError: Connection closed 根因）。
+        # ── EAI-CUSTOM START ──────────────────────────────────────────────────
+        # 上游 deer-flow 的 build_server_params 不透传 McpServerConfig 的 cwd(extra 字段)。
+        # 后果：stdio MCP 子进程默认继承 gateway 进程 cwd，`python -m app.extensions.*`
+        # 找不到 `app` 包（ModuleNotFoundError），导致 session.initialize() 抛
+        # McpError: Connection closed。影响所有 stdio MCP(project/data_sources/contract-price)。
+        # 参考：bug-712（2026-08-02）。extensions_config.json 的 stdio server 须配
+        # `"cwd": "/app/backend"` 才能 import app 包。
+        # 升级注意：若上游补上 cwd 透传，删去本段（EAI-CUSTOM END 以内）。
         cwd = getattr(config, "cwd", None)
         if cwd:
             params["cwd"] = cwd
+        # ── EAI-CUSTOM END ────────────────────────────────────────────────────
     elif transport_type in ("sse", "http"):
         if not config.url:
             raise ValueError(f"MCP server '{server_name}' with {transport_type} transport requires 'url' field")
