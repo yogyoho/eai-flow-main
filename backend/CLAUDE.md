@@ -305,6 +305,7 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 - 登录入口收敛到 `app/extensions/auth/routers.py`：`POST /api/extensions/auth/login`（工号或 email + 密码）与 `POST /api/extensions/auth/otp/send` + `POST /api/extensions/auth/login/otp`（邮箱验证码）。
 - extensions PostgreSQL 是组织目录真源（工号/部门/角色/启停）；Gateway 是会话层。密码验证委托 `get_local_provider().authenticate()`（argon2，admin 建号/改密时由 `app/extensions/user/sync.py` 镜像），会话用上游 `create_access_token` 签发 HttpOnly cookie —— 零上游代码改动。
 - 无自注册（`/register` 已禁用，返回 403）；验证码存 `otp_codes` 表（bcrypt 哈希、单次使用、TTL 5 分钟）；SMTP 配置见 `EAI_SMTP_*` 环境变量（`SmtpConfig`/`OtpConfig` in `app/extensions/config.py`）。
+- **SSO（第三登录方式，EAI-CUSTOM）**：`app/extensions/auth/sso.py` 提供 `GET /api/extensions/auth/oidc/start`（发起，复用上游 `OIDCService`）与 `GET /api/extensions/auth/oidc/callback/{provider}`（回调，按 IdP 的 `employee_number`/`preferred_username` claim（工号）join extensions `User.username`，**仅预建号可登**，复用 `_issue_gateway_session` 发会话）。state cookie 用上游签名格式写 `Path=/`（上游 `set_state_cookie` 的 path 绑在 `/api/v1/auth/callback/*`，EAI 回调收不到）。IdP 配置见 `config.yaml → auth.oidc.providers.*`；推荐 Keycloak（可 broker 企微/钉钉/飞书、联邦 AD/LDAP，token mapper 发 `employee_number`）。
 
 ### Sandbox System (`packages/harness/deerflow/sandbox/`)
 
