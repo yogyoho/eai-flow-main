@@ -60,9 +60,9 @@
 | 设置 | `app/settings/page.tsx` | 已接 `canPage` | ✅ |
 | 其他模块（项目/文档/知识库/写作/工作台） | 单页无 tab | 无需接线（模块级可见已覆盖） | — |
 
-**知识工厂 tab→page 映射**（9 tab vs 8 page id，需实现时确认）：
-- `reports`(样例管理)→`kf:page:sample`；`editor`(模板编辑)→`kf:page:template`；`law`→`kf:page:law`；`rules`(合规)→`kf:page:compliance`；`version`→`kf:page:version`；`quality`→`kf:page:quality`；`scraper`(网页爬取)→`kf:page:scrape`；`dictionaries`(业务字典)→`kf:page:dict`
-- `extraction`(模板抽取) 无独立 page id → 实现时二选一：(a) 映射到 `kf:page:sample`（共享）；(b) permissions.yaml 补一个 `kf:page:extraction`。
+**知识工厂 tab→page 映射**（用户已定：补 `kf:page:extraction`）：
+- `reports`(样例管理)→`kf:page:sample`；`extraction`(模板抽取)→**`kf:page:extraction`（permissions.yaml 新增，操作 `kf:read`）**；`editor`(模板编辑)→`kf:page:template`；`law`→`kf:page:law`；`rules`(合规)→`kf:page:compliance`；`version`→`kf:page:version`；`quality`→`kf:page:quality`；`scraper`(网页爬取)→`kf:page:scrape`；`dictionaries`(业务字典)→`kf:page:dict`
+- 9 tab ↔ 9 page id 一一对应。
 
 **接线方式**：`TabNavigation` / `contract-price/layout` 的 tab 数组生成处，用 `usePermission().canPage(pageId)` 过滤；不可见的 tab 不渲染。隐藏 tab 由路由守卫（后端 require_permission）兜底。
 
@@ -87,7 +87,7 @@
 - `frontend/src/extensions/types.ts` — `Role.pages`、`UpdateRoleRequest.pages`
 
 **配置：**
-- `config/permissions.yaml` — （如需）补 `kf:page:extraction` 或确认映射
+- `config/permissions.yaml` — **补 `kf:page:extraction`**（"模板抽取"页，操作 `kf:read`），使 9 tab ↔ 9 page id 一一对应
 
 ## 6. 测试
 
