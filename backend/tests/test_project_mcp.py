@@ -123,13 +123,20 @@ class TestDerivedStage:
 
 
 class TestWriteChapterEnum:
-    """断点 4：write_chapter schema enum 对齐。"""
+    """断点 4 + P3（ADR 2026-08-02）：write_chapter schema enum 对齐规范集。"""
 
     def test_enum_values(self):
         for tool in mcp.TOOLS:
             if tool.name == "write_chapter":
                 status_schema = tool.inputSchema["properties"]["status"]
-                assert status_schema["enum"] == ["pending", "draft", "completed"], \
-                    f"enum 应为 [pending,draft,completed]，实际 {status_schema['enum']}"
-                assert "approved" not in status_schema["enum"], "agent 不得自批"
-                assert "editing" not in status_schema["enum"], "editing 状态机不存在"
+                assert status_schema["enum"] == ["pending", "draft", "reviewing"], \
+                    f"enum 应为 [pending,draft,reviewing]，实际 {status_schema['enum']}"
+
+    def test_handler_whitelist(self):
+        from app.extensions.project.mcp import _handle_write_chapter
+        src = inspect.getsource(_handle_write_chapter)
+        # EAI-CUSTOM: canonical whitelist (ADR 2026-08-02 P3) — agent can start
+        # writing (draft) and submit for review (reviewing); approved stays
+        # agent-forbidden to prevent self-approval.
+        assert "_VALID_WRITE_STATUSES = {\"pending\", \"draft\", \"reviewing\"}" in src, \
+            "MCP 写白名单应为 {pending, draft, reviewing}（approved 不得出现）"

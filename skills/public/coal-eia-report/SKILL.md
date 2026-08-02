@@ -241,7 +241,7 @@ knowledge-factory_kf_resolve_template(
 9. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将（校验通过或标注后的）Markdown 内容写入文档空间。写入参数（EAI-CUSTOM: 与 MCP schema 对齐——工具只接受 `chapter_id`+`content`+可选`status`，须先用 `project_list_chapters` 拿到章节 UUID）：
    - `chapter_id`：章节 UUID（**先调 `project_list_chapters` 获取，不得用 chapter_number/标题**）
    - `content`：生成的 Markdown 文本
-   - `status`（可选）：`pending` / `draft` / `completed`（缺省 draft；**不得传 `approved`**，审批走审核环节）
+   - `status`（可选）：`pending` / `draft` / `reviewing`（缺省 draft；写完提交审阅传 `reviewing`；**不得传 `approved`**，审批走审核环节）
 10. **输出摘要**：向用户报告该章生成完成，包括章节标题、主要内容要点、使用的标准依据、合规校验结果（X条通过/Y条待复核）、标注 `[待补充]` 的位置数量。
 
 **章节生成顺序**（按依赖关系）：
