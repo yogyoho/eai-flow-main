@@ -121,8 +121,13 @@ else
 fi
 
 # ── extensions_config.json ──
-cat > "$OUT/extensions_config.json" <<'EOF'
+# EAI-CUSTOM: 不覆盖包内已有的 extensions_config.json（含 MCP 服务器配置）。
+# offline-export 已把 deploy/offline/extensions_config.json（含 8 个 MCP 服务器）拷到 $OUT。
+# 覆盖成空配置会导致 gateway 加载不到任何 MCP 工具（"暂无 MCP 工具"）。只在文件不存在时写空默认。
+if [ ! -f "$OUT/extensions_config.json" ]; then
+    cat > "$OUT/extensions_config.json" <<'EOF'
 {"mcpServers": {}, "skills": {}}
 EOF
+fi
 
 echo "Generated: $OUT/{.env,config.yaml,extensions_config.json} (brand=${BRAND_NAME})"

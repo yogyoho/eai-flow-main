@@ -212,6 +212,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
 
+    from deerflow.skills.projection import ensure_public_skill_projection
+
+    public_projection_ready = await asyncio.to_thread(ensure_public_skill_projection, app_config=startup_config)
+    if public_projection_ready:
+        logger.info("Ensured the public skill projection; user projections repair lazily on sandbox acquire")
+
     # Pre-warm tiktoken encoding cache so the first memory-injection request
     # never blocks on the BPE data download (hits an OpenAI/Azure URL that may
     # be unreachable in restricted networks — issue #3402). (Upstream #3411.)
@@ -360,11 +366,11 @@ def create_app() -> FastAPI:
     openapi_url = "/openapi.json" if config.enable_docs else None
 
     app = FastAPI(
-        title="DeerFlow API Gateway",
+        title="EAIFlow API Gateway",
         description="""
-## DeerFlow API Gateway
+## EAIFlow API Gateway
 
-API Gateway for DeerFlow - A LangGraph-based AI agent backend with sandbox execution capabilities.
+API Gateway for EAIFlow - A LangGraph-based AI agent backend with sandbox execution capabilities.
 
 ### Features
 

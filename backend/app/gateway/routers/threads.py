@@ -49,6 +49,7 @@ from deerflow.runtime.runs.worker import valid_duration_entry
 from deerflow.runtime.secret_context import redact_metadata_secrets
 from deerflow.runtime.user_context import get_effective_user_id
 from deerflow.utils.file_io import run_file_io
+from deerflow.utils.thread_id import resolve_thread_id, validate_thread_id
 from deerflow.utils.time import coerce_iso, now_iso
 
 logger = logging.getLogger(__name__)
@@ -489,8 +490,18 @@ async def delete_thread_data(thread_id: str, request: Request) -> ThreadDeleteRe
     """
     from app.gateway.deps import get_thread_store
 
-    # Clean local filesystem
-    response = _delete_thread_data(thread_id, user_id=get_effective_user_id())
+    # Clean local filesystem. Legacy IDs may predate the canonical
+    # filesystem-safe contract: they can still be removed from metadata/
+    # checkpoint stores, but must never be interpolated into a host path.
+    try:
+        validate_thread_id(thread_id)
+    except ValueError:
+        response = ThreadDeleteResponse(
+            success=True,
+            message="Skipped local data cleanup for legacy thread ID",
+        )
+    else:
+        response = _delete_thread_data(thread_id, user_id=get_effective_user_id())
 
     # Remove checkpoints (best-effort)
     checkpointer = getattr(request.app.state, "checkpointer", None)
@@ -557,7 +568,7 @@ async def create_thread(body: ThreadCreateRequest, request: Request) -> ThreadRe
 
     checkpointer = get_checkpointer(request)
     thread_store = get_thread_store(request)
-    thread_id = body.thread_id or str(uuid.uuid4())
+    thread_id = resolve_thread_id(body.thread_id)
     now = now_iso()
     thread_owner_user_id = get_trusted_internal_owner_user_id(request)
     thread_owner_kwargs = {"user_id": thread_owner_user_id} if thread_owner_user_id else {}

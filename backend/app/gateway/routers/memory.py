@@ -86,6 +86,10 @@ def _map_memory_fact_value_error(exc: ValueError) -> HTTPException:
     """Convert updater validation errors into stable API responses."""
     if exc.args and exc.args[0] == "confidence":
         detail = "Invalid confidence value; must be between 0 and 1."
+    elif exc.args and exc.args[0] == "agent_name":
+        detail = "An agent name is required for fact operations; user-global memory stores summaries only."
+    elif exc.args and exc.args[0] == "Duplicate fact":
+        return HTTPException(status_code=409, detail="A fact with the same content already exists.")
     else:
         detail = "Memory fact content cannot be empty."
     return HTTPException(status_code=400, detail=detail)
