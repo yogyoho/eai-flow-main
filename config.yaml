@@ -263,7 +263,8 @@ suggestions:
   enabled: true
 checkpointer:
   type: sqlite
-  connection_string: /tmp/deerflow/checkpoints.db
+  # EAI-CUSTOM: 持久化到 bind 挂载的 /app/backend/.deer-flow（原 /tmp/deerflow 是容器内可写层，重建即丢线程）
+  connection_string: /app/backend/.deer-flow/data/checkpoints.db
 database:
   backend: sqlite
   sqlite_dir: /app/backend/.deer-flow/data
