@@ -110,6 +110,9 @@ class _FakeRegistry:
         known = {"knowledge_dept", "knowledge_owner"}
         return scope_id if scope_id in known else None
 
+    def get_data_scopes_for_role(self, code):
+        return self.get_role_defaults(code).get("data_scopes", [])
+
     def reload(self):
         pass
 
@@ -391,7 +394,10 @@ def test_to_response_merges_pages(tmp_path, monkeypatch):
 
     fake_registry = _FakeRegistry()
     fake_registry.role_pages = {"dept_head": ["*"]}
+    # to_response 用局部 import 读 app.extensions.auth.registry.get_permission_registry，
+    # 两个绑定都 patch 上，否则测试命中真 registry（config-coupled，spec 评审建议）
     monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
 
     # 瞬时 Role 的 created_at 默认在 flush 时才填充，此处显式提供避免 RoleResponse 校验失败
     role = Role(
