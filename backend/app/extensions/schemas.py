@@ -25,6 +25,34 @@ class LoginResponse(BaseModel):
     expires_in: int
 
 
+class FacadeLoginResponse(BaseModel):
+    """EAI login facade response — Gateway-style session (cookie carries the token)."""
+
+    expires_in: int
+    needs_setup: bool = False
+
+
+class OtpSendRequest(BaseModel):
+    """OTP send request."""
+
+    email: EmailStr
+
+
+class OtpSendResponse(BaseModel):
+    """OTP send response."""
+
+    sent: bool = True
+    # EAI-CUSTOM: dev/placeholder echo when SMTP disabled — production MUST be None.
+    debug_code: str | None = None
+
+
+class OtpLoginRequest(BaseModel):
+    """OTP login request."""
+
+    email: EmailStr
+    code: str = Field(..., min_length=4, max_length=10)
+
+
 class RefreshTokenRequest(BaseModel):
     """Refresh token request schema."""
 

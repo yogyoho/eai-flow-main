@@ -3,15 +3,13 @@
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.jwt import (
     generate_access_token,
     generate_refresh_token,
-    hash_password,
-    verify_password,
     verify_token,
 )
 from app.extensions.auth.middleware import ACCESS_TOKEN_COOKIE, get_current_user
@@ -19,9 +17,13 @@ from app.extensions.database import get_db
 from app.extensions.models import Department, Role, User
 from app.extensions.schemas import (
     CurrentUser,
+    FacadeLoginResponse,
     LoginRequest,
     LoginResponse,
     MessageResponse,
+    OtpLoginRequest,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
+    OtpSendRequest,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
+    OtpSendResponse,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
     RefreshTokenRequest,
     UserCreate,
     UserResponse,
@@ -29,59 +31,101 @@ from app.extensions.schemas import (
 
 logger = logging.getLogger(__name__)
 
+# EAI-CUSTOM: Gateway session issuance + per-IP rate limiting for the auth facade.
+# 复用上游构建块（get_local_provider / create_access_token / get_auth_config /
+# is_secure_request）——不修改任何上游代码。
+async def _issue_gateway_session(email: str, request: Request, response: Response) -> FacadeLoginResponse:
+    from app.gateway.auth import create_access_token
+    from app.gateway.auth.config import get_auth_config
+    from app.gateway.csrf_middleware import is_secure_request
+    from app.gateway.deps import get_local_provider
+
+    provider = get_local_provider()
+    gw_user = await provider.get_user_by_email(email)
+    if gw_user is None:
+        gw_user = await provider.create_user(email=email, password=None, system_role="user", needs_setup=False)
+
+    token = create_access_token(str(gw_user.id), token_version=gw_user.token_version)
+    config = get_auth_config()
+    is_https = is_secure_request(request)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=is_https,
+        samesite="lax",
+        max_age=config.token_expiry_days * 24 * 3600 if is_https else None,
+    )
+    return FacadeLoginResponse(expires_in=config.token_expiry_days * 24 * 3600)
+
+
+_MAX_LOGIN_ATTEMPTS = 5
+_LOCKOUT_SECONDS = 300
+_login_attempts: dict[str, tuple[int, float]] = {}
+
+
+def _check_login_rate_limit(ip: str) -> None:
+    import time
+
+    record = _login_attempts.get(ip)
+    if record and record[0] >= _MAX_LOGIN_ATTEMPTS and time.time() < record[1]:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many login attempts. Try again later.")
+
+
+def _record_login_failure(ip: str) -> None:
+    import time
+
+    count, until = _login_attempts.get(ip, (0, 0.0))
+    count += 1
+    until = time.time() + _LOCKOUT_SECONDS if count >= _MAX_LOGIN_ATTEMPTS else until
+    _login_attempts[ip] = (count, until)
+
+
 router = APIRouter(prefix="/api/extensions/auth", tags=["Authentication"])
 
 
-@router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
-    """Authenticate user and return tokens."""
-    stmt = select(User).where(User.username == request.username)
+@router.post("/login", response_model=FacadeLoginResponse)
+async def login(request: Request, response: Response, body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """EAI 登录门面 —— 工号（或 email）+ 密码.
+
+    EAI-CUSTOM: extensions 是组织目录（工号→email）；Gateway 验证密码（argon2，
+    由 user/sync.py 在 admin 建号/改密时镜像）并持有会话 cookie。Gateway 行缺失时
+    best-effort 重同步一次再验证。
+    """
+    from app.gateway.deps import get_local_provider
+
+    client_ip = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_ip)
+
+    identifier = body.username.strip()
+    stmt = select(User).where(User.is_deleted == False)  # noqa: E712
+    if "@" in identifier:
+        stmt = stmt.where(User.email == identifier)
+    else:
+        stmt = stmt.where(User.username == identifier)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(request.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-        )
+    if user is None or user.status != "active":
+        _record_login_failure(client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
-    if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not active",
-        )
+    provider = get_local_provider()
+    gw_user = await provider.authenticate({"email": user.email, "password": body.password})
+    if gw_user is None:
+        # 自愈：gateway 镜像行可能缺失/过期（admin sync 失败）。best-effort 重同步后重试一次。
+        from app.extensions.user import sync as user_sync
 
-    role_code = None
-    permissions = []
-    if user.role_id:
-        stmt_role = select(Role).where(Role.id == user.role_id)
-        result_role = await db.execute(stmt_role)
-        role = result_role.scalar_one_or_none()
-        if role:
-            role_code = role.code
-            permissions = role.permissions or []
-
-    access_token, expires_in = generate_access_token(str(user.id), user.username, role_code, permissions)
-    refresh_token, _ = generate_refresh_token(str(user.id))
+        await user_sync.sync_user_created(db, user.email, body.password, user.role_id)
+        gw_user = await provider.authenticate({"email": user.email, "password": body.password})
+    if gw_user is None:
+        _record_login_failure(client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
     user.last_login_at = datetime.utcnow()
     await db.commit()
 
-    response.set_cookie(
-        key=ACCESS_TOKEN_COOKIE,
-        value=access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=expires_in,
-    )
-
-    return LoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=expires_in,
-    )
+    return await _issue_gateway_session(user.email, request, response)
 
 
 @router.post("/logout", response_model=MessageResponse)
@@ -183,56 +227,7 @@ async def get_me(current_user: CurrentUser = Depends(get_current_user), db: Asyn
     )
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_403_FORBIDDEN)
 async def register(request: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Register a new user."""
-    stmt = select(User).where(User.username == request.username)
-    result = await db.execute(stmt)
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists",
-        )
-
-    stmt = select(User).where(User.email == request.email)
-    result = await db.execute(stmt)
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists",
-        )
-
-    user = User(
-        username=request.username,
-        email=request.email,
-        password_hash=hash_password(request.password),
-        full_name=request.full_name,
-        dept_id=request.dept_id,
-        role_id=request.role_id,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    role_name = None
-    if user.role_id:
-        stmt_role = select(Role).where(Role.id == user.role_id)
-        result_role = await db.execute(stmt_role)
-        role = result_role.scalar_one_or_none()
-        if role:
-            role_name = role.name
-
-    return UserResponse(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        dept_id=user.dept_id,
-        dept_name=None,
-        role_id=user.role_id,
-        role_name=role_name,
-        status=user.status,
-        last_login_at=user.last_login_at,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
+    """EAI-CUSTOM: 企业无自注册 —— 用户由管理员统一创建."""
+    return MessageResponse(message="Registration is disabled; contact an administrator to create an account.", success=False)

@@ -83,3 +83,87 @@ class TestOtpCore:
 
         code = await otp.send_otp_email("a@b.com", "123456")
         assert code == "123456"
+
+
+def _make_request(host: str = "127.0.0.1") -> MagicMock:
+    req = MagicMock()
+    req.client = MagicMock()
+    req.client.host = host
+    req.url.scheme = "http"
+    return req
+
+
+class TestPasswordLogin:
+    @pytest.mark.asyncio
+    async def test_login_success_issues_cookie(self, monkeypatch):
+        from app.extensions.models import User
+
+        db = AsyncMock()
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
+                    password_hash="", status="active")
+        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
+
+        gw_user = MagicMock()
+        gw_user.id = uuid.uuid4()
+        gw_user.token_version = 0
+
+        async def fake_authenticate(creds):
+            assert creds["email"] == "zhangsan@eai-flow.com"
+            return gw_user
+
+        provider = MagicMock()
+        provider.authenticate = fake_authenticate
+        provider.get_user_by_email = AsyncMock(return_value=gw_user)
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
+
+        from fastapi import Response
+
+        from app.extensions.auth.routers import LoginRequest, login
+
+        resp = Response()
+        result = await login(_make_request(), resp, LoginRequest(username="zhangsan", password="secret123"), db)
+        assert result.expires_in > 0
+        assert resp.headers["set-cookie"].startswith("access_token=")
+
+    @pytest.mark.asyncio
+    async def test_login_wrong_password_401(self, monkeypatch):
+        from app.extensions.models import User
+
+        db = AsyncMock()
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
+                    password_hash="", status="active")
+        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
+
+        async def fake_authenticate(creds):
+            return None
+
+        provider = MagicMock()
+        provider.authenticate = fake_authenticate
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
+        monkeypatch.setattr("app.extensions.user.sync.sync_user_created", AsyncMock())
+
+        from fastapi import HTTPException, Response
+
+        from app.extensions.auth.routers import LoginRequest, login
+
+        resp = Response()
+        with pytest.raises(HTTPException) as exc:
+            await login(_make_request(), resp, LoginRequest(username="zhangsan", password="bad"), db)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_login_inactive_user_401(self):
+        from app.extensions.models import User
+
+        db = AsyncMock()
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
+                    password_hash="", status="disabled")
+        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
+
+        from fastapi import HTTPException, Response
+
+        from app.extensions.auth.routers import LoginRequest, login
+
+        with pytest.raises(HTTPException) as exc:
+            await login(_make_request(), Response(), LoginRequest(username="zhangsan", password="x"), db)
+        assert exc.value.status_code == 401
