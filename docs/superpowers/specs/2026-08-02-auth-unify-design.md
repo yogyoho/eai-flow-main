@@ -91,15 +91,22 @@ POST /api/extensions/auth/login   { username, password }
 1. username 兼容工号或 email。
 2. 按 username 查 extensions User（排除 is_deleted）；查不到且像 email 则按 email 查。拿到 user.email。
 3. 校验 user.status == "active"，否则 403。
-4. 复用 get_local_provider().authenticate({"email": user.email, "password": password})
-   - 失败：best-effort 重试一次 sync.sync_user_created(email, password, role_id) 自愈（覆盖 sync 曾失败的网关行缺失），仍失败 → 401。
-5. token = create_access_token(str(gw_user.id), token_version=gw_user.token_version)
-6. 设 access_token HttpOnly cookie（httponly, samesite=lax, secure 按请求, max_age=config.token_expiry_days*3600）。
-7. 返回 { expires_in, needs_setup }（与上游 login_local 同构）。
-8. per-IP 登录限流（镜像上游 _MAX_LOGIN_ATTEMPTS 模式，EAI 本地实现，不 import 上游私有函数）。
+4. 密码验证（**extensions 哈希是密码真源**，用 gateway `verify_password_async` 验证，
+   自动识别 `$dfvN$`/裸 bcrypt 三种格式，fail-closed 返回 False）：
+   - 有哈希 → `await verify_password_async(password, user.password_hash)`
+   - 空/无效哈希（facade 上线前的 bridge 老用户）→ 回退 `provider.authenticate()`（gateway argon2），
+     成功后一次性把 `hash_password(password)`（裸 bcrypt）写回 extensions 完成迁移
+   - **密码未验证通过，绝不调用 sync_user_created**（防止用未验证密码覆盖 gateway 哈希）
+5. 验证通过后，仅当 gateway 镜像行缺失时才 best-effort `sync.sync_user_created()` 补建。
+6. token = create_access_token(str(gw_user.id), token_version=gw_user.token_version)
+7. 设 access_token HttpOnly cookie（httponly, samesite=lax, secure 按请求, max_age=config.token_expiry_days*3600）。
+8. 返回 { expires_in, needs_setup }（与上游 login_local 同构）。
+9. per-IP 登录限流（镜像上游 _MAX_LOGIN_ATTEMPTS 模式，EAI 本地实现）。
 ```
 
-要点：密码验证委托给 gateway argon2（admin 建号/改密时 sync 已保证镜像有效）；extensions 只做"工号 → email"目录解析。这是与现有会话最自洽、改动最小的取向（已与用户确认）。
+要点（E2E 验证后修正，bug-809）：初版设计"密码验证委托 gateway argon2 + 失败自愈重同步"是**安全漏洞**——`authenticate` 失败无法区分「行缺失」与「密码错误」，错误密码会被当作自愈信号覆盖 gateway 哈希（实测：错误密码返回 200 且把 admin 密码覆盖成攻击值）。改为 **extensions 哈希真源验证**，密码未验证通过绝不同步。另：新端点是无认证登录入口，必须在 gateway 中间件豁免（EAI-CUSTOM 注释）：
+- `app/gateway/csrf_middleware.py::_AUTH_EXEMPT_PATHS` 加入 `/api/extensions/auth/{login,logout,otp/send,login/otp}`
+- `app/gateway/auth_middleware.py::_PUBLIC_EXACT_PATHS` 加入同 4 个路径
 
 ### 5.2 邮箱验证码登录（新增 `app/extensions/auth/otp.py`）
 
