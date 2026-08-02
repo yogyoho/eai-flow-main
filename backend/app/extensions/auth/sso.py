@@ -8,10 +8,16 @@ EAI-CUSTOM：上游 OIDC 发起路由把 state cookie 的 Path 绑在 /api/v1/au
 """
 
 import logging
+import secrets
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
+from app.extensions.database import get_db
+from app.extensions.models import User
 from deerflow.config.app_config import get_app_config
 
 logger = logging.getLogger(__name__)
@@ -121,3 +127,72 @@ async def sso_start(request: Request, provider: str, response: Response):
     _set_eai_state_cookie(response, request, payload)
 
     return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
+
+
+@sso_router.get("/callback/{provider}")
+async def sso_callback(
+    request: Request,
+    provider: str,
+    response: Response,
+    code: str,
+    state: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """OIDC 回调：验 state → 换码/验签 → 按工号 join extensions User → 复用 _issue_gateway_session。
+
+    EAI-CUSTOM：仅预建号可登（工号未预建/非 active → 401，绝不自动建号）。
+    """
+    from app.extensions.auth.routers import _issue_gateway_session
+    from app.gateway.auth.oidc_state import get_state_cookie
+
+    _oidc, pc = _resolve_provider(provider)
+    if pc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO provider not configured")
+
+    # 1) state 校验（constant-time）
+    payload = get_state_cookie(request, provider)
+    if payload is None or not secrets.compare_digest(payload.state, state):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid OIDC state")
+
+    # 2) 换码 + id_token 验签（复用上游 OIDCService）
+    metadata = await _get_oidc_service().discover(pc.issuer)
+    redirect_uri = _resolve_redirect_uri(request, provider, pc.redirect_uri)
+    identity = await _get_oidc_service().authenticate_callback(
+        provider_id=provider,
+        metadata=metadata,
+        client_id=pc.client_id,
+        client_secret=pc.client_secret,
+        code=code,
+        redirect_uri=redirect_uri,
+        code_verifier=payload.code_verifier,
+        nonce=payload.nonce,
+        auth_method=pc.token_endpoint_auth_method,
+    )
+
+    # 3) 提取工号（employee_number 首选，preferred_username 回退）；email 作次级别名
+    emp_no = identity.claims.get("employee_number") or identity.claims.get("preferred_username")
+    email = identity.email or ""
+
+    # 4) 按工号 join extensions User（仅预建号）
+    stmt = select(User).where(User.is_deleted == False)  # noqa: E712
+    if emp_no:
+        stmt = stmt.where(User.username == emp_no)
+    elif email:
+        stmt = stmt.where(User.email == email)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    # 工号未命中时回退 email
+    if user is None and emp_no and email:
+        stmt = select(User).where(User.email == email, User.is_deleted == False)  # noqa: E712
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SSO account not provisioned or inactive")
+
+    user.last_login_at = datetime.utcnow()
+    await db.commit()
+
+    _delete_eai_state_cookie(response, request, provider)
+    return await _issue_gateway_session(user.email, request, response)
