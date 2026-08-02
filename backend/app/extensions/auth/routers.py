@@ -21,9 +21,9 @@ from app.extensions.schemas import (
     LoginRequest,
     LoginResponse,
     MessageResponse,
-    OtpLoginRequest,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
-    OtpSendRequest,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
-    OtpSendResponse,  # noqa: F401  # EAI-CUSTOM: Task 5 OTP 端点使用
+    OtpLoginRequest,  # EAI-CUSTOM: Task 5 OTP 端点使用
+    OtpSendRequest,  # EAI-CUSTOM: Task 5 OTP 端点使用
+    OtpSendResponse,  # EAI-CUSTOM: Task 5 OTP 端点使用
     RefreshTokenRequest,
     UserCreate,
     UserResponse,
@@ -125,6 +125,50 @@ async def login(request: Request, response: Response, body: LoginRequest, db: As
     user.last_login_at = datetime.utcnow()
     await db.commit()
 
+    return await _issue_gateway_session(user.email, request, response)
+
+
+@router.post("/otp/send", response_model=OtpSendResponse)
+async def otp_send(request: Request, body: OtpSendRequest, db: AsyncSession = Depends(get_db)):
+    """发送登录验证码到指定邮箱（EAI-CUSTOM）.
+
+    防枚举：无论邮箱是否存在都返回统一响应。
+    """
+    from app.extensions.auth.otp import create_otp
+
+    email = body.email.strip().lower()
+    stmt = select(User).where(User.email == email, User.is_deleted == False)  # noqa: E712
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    debug_code = None
+    if user is not None and user.status == "active":
+        debug_code = await create_otp(db, email)
+    return OtpSendResponse(sent=True, debug_code=debug_code)
+
+
+@router.post("/login/otp", response_model=FacadeLoginResponse)
+async def login_otp(request: Request, response: Response, body: OtpLoginRequest, db: AsyncSession = Depends(get_db)):
+    """校验验证码并签发 Gateway 会话（EAI-CUSTOM）."""
+    from app.extensions.auth.otp import verify_otp
+
+    client_ip = request.client.host if request.client else "unknown"
+    _check_login_rate_limit(client_ip)
+
+    email = body.email.strip().lower()
+    if not await verify_otp(db, email, body.code):
+        _record_login_failure(client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="验证码错误或已过期")
+
+    stmt = select(User).where(User.email == email, User.is_deleted == False)  # noqa: E712
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user is None or user.status != "active":
+        _record_login_failure(client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="验证码错误或已过期")
+
+    user.last_login_at = datetime.utcnow()
+    await db.commit()
     return await _issue_gateway_session(user.email, request, response)
 
 
