@@ -4,7 +4,8 @@
 // and loaded dynamically by useReportTypes(). Any string is valid.
 export type ReportType = string;
 
-export type ProjectStatus = "setup" | "outline" | "writing" | "editing" | "approval" | "active" | "completed" | "archived";
+// EAI-CUSTOM: canonical single-state set (ADR 2026-08-02 P4).
+export type ProjectStatus = "draft" | "in_review" | "approved" | "archived";
 
 export type MemberRole = "owner" | "manager" | "editor" | "reviewer" | "approver" | "member";
 
@@ -59,6 +60,7 @@ export interface ReportProject {
   workflowId?: string | null;
   temporalWorkflowId?: string | null;
   currentPhaseNode?: string | null;
+  derivedStage?: number; // EAI-CUSTOM: canonical derived stage (ADR 2026-08-02 P2)
 }
 
 export interface ProjectListItem {
@@ -107,13 +109,9 @@ export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
 };
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  setup: "初始化",
-  outline: "大纲阶段",
-  writing: "撰写中",
-  editing: "审核修订",
-  approval: "审批中",
-  active: "进行中",
-  completed: "已完成",
+  draft: "进行中", // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
+  in_review: "审批中",
+  approved: "已完成",
   archived: "已归档",
 };
 

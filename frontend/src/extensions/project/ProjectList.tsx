@@ -71,7 +71,7 @@ interface StatCard {
 }
 
 function computeStats(projects: ProjectListItem[]): StatCard[] {
-  const inProgress = projects.filter((p) => ["active", "outline", "writing", "editing", "approval"].includes(p.status)).length;
+  const inProgress = projects.filter((p) => ["draft", "in_review"].includes(p.status)).length; // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
   return [
     {
       icon: <FolderKanban className="h-5 w-5" />,
@@ -90,14 +90,14 @@ function computeStats(projects: ProjectListItem[]): StatCard[] {
     {
       icon: <Loader2 className="h-5 w-5" />,
       label: "审批中",
-      count: projects.filter((p) => p.status === "approval").length,
+      count: projects.filter((p) => p.status === "in_review").length, // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
       iconBg: "bg-warning/10",
       iconColor: "text-warning",
     },
     {
       icon: <FolderKanban className="h-5 w-5" />,
       label: "已完成",
-      count: projects.filter((p) => p.status === "completed").length,
+      count: projects.filter((p) => p.status === "approved").length, // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
       iconBg: "bg-success/10",
       iconColor: "text-success",
     },

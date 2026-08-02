@@ -48,17 +48,17 @@ interface OverviewTabProps {
 // ── Status Badge Styles ──
 
 const STATUS_BADGE_STYLES: Record<ChapterStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  writing: "bg-primary/10 text-primary",
-  review: "bg-warning/10 text-warning",
-  completed: "bg-success/10 text-success",
+  pending: "bg-muted text-muted-foreground", // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
+  draft: "bg-primary/10 text-primary",
+  reviewing: "bg-warning/10 text-warning",
+  approved: "bg-success/10 text-success",
 };
 
 const STATUS_LABELS: Record<ChapterStatus, string> = {
-  draft: "待编写",
-  writing: "编写中",
-  review: "审核中",
-  completed: "已完成",
+  pending: "未开始",
+  draft: "编写中",
+  reviewing: "审核中",
+  approved: "已完成",
 };
 
 // ── Stat Card (cyber-themed, matches SciFiProjectDetail style) ──
@@ -147,7 +147,7 @@ function ChapterNode({
   const status = inferStatus(chapter);
   const activity = activityLabel(chapter.updatedAt);
   const isCompleting = completingId === chapter.id;
-  const canComplete = status !== "completed" && status !== "review";
+  const canComplete = status !== "approved" && status !== "reviewing"; // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
 
   return (
     <>
@@ -217,8 +217,8 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
     async (chapterId: string) => {
       setCompletingId(chapterId);
       try {
-        await projectApi.updateChapterStatus(projectId, chapterId, "completed");
-        toast.success("章节已标记为完成");
+        await projectApi.updateChapterStatus(projectId, chapterId, "reviewing"); // EAI-CUSTOM: submit for review (ADR 2026-08-02 P4)
+        toast.success("章节已提交审核");
         onRefresh();
       } catch {
         toast.error("标记完成失败");
@@ -255,10 +255,10 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const kanbanCards = useMemo<KanbanCardData[]>(() => {
     const flat = flattenChapters(project.chapters ?? []);
     const statusMap: Record<ChapterStatus, KanbanCardData["status"]> = {
+      pending: "pending", // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
       draft: "draft",
-      writing: "writing",
-      review: "review",
-      completed: "completed",
+      reviewing: "reviewing",
+      approved: "approved",
     };
     return flat.map((ch) => ({
       id: ch.id,
@@ -273,10 +273,10 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   const handleCardMove = useCallback(
     async (cardId: string, newStatus: string) => {
       const reverseMap: Record<string, string> = {
-        draft: "pending",
-        writing: "writing",
-        review: "in_review",
-        completed: "completed",
+        pending: "pending", // EAI-CUSTOM: canonical columns (ADR 2026-08-02 P4)
+        draft: "draft",
+        reviewing: "reviewing",
+        approved: "approved",
       };
       const chapterStatus = reverseMap[newStatus] ?? "pending";
       try {
@@ -324,7 +324,7 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   // Derived stats
   const flatChapters = useMemo(() => flattenChapters(project.chapters ?? []), [project.chapters]);
   const activeCount = useMemo(
-    () => flatChapters.filter((ch) => inferStatus(ch) === "writing").length,
+    () => flatChapters.filter((ch) => inferStatus(ch) === "draft").length, // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
     [flatChapters],
   );
   const totalCount = flatChapters.length;

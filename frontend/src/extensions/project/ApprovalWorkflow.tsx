@@ -28,7 +28,7 @@ function flattenChapters(chapters: ProjectChapter[]): ProjectChapter[] {
 
 function getApprovalSteps(chapter: ProjectChapter): ApprovalStep[] {
   const author = chapter.assignedName ?? "编辑";
-  if (chapter.status === "approved" || chapter.status === "signed") {
+  if (chapter.status === "approved") { // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
     return [
       { label: "编辑提交", assignee: author, status: "completed" },
       { label: "审核人审核", assignee: "审核人", status: "completed" },
@@ -36,7 +36,7 @@ function getApprovalSteps(chapter: ProjectChapter): ApprovalStep[] {
       { label: "定稿完成", assignee: "", status: "completed" },
     ];
   }
-  if (chapter.status === "pending_review") {
+  if (chapter.status === "reviewing") { // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
     return [
       { label: "编辑提交", assignee: author, status: "completed" },
       { label: "审核人审核", assignee: "审核人", status: "in_progress" },
@@ -44,14 +44,7 @@ function getApprovalSteps(chapter: ProjectChapter): ApprovalStep[] {
       { label: "定稿完成", assignee: "", status: "pending" },
     ];
   }
-  if (chapter.status === "rejected") {
-    return [
-      { label: "编辑提交", assignee: author, status: "completed" },
-      { label: "审核人审核", assignee: "审核人", status: "completed" },
-      { label: "退回修改", assignee: "审核人", status: "completed" },
-      { label: "等待重新提交", assignee: "", status: "pending" },
-    ];
-  }
+  // draft/pending（含被退回后回到 draft 的章节）→ 待重新编辑提交
   return [
     { label: "编辑提交", assignee: author, status: "pending" },
     { label: "审核人审核", assignee: "审核人", status: "pending" },
@@ -78,7 +71,7 @@ function StepIndicator({ step }: { step: ApprovalStep }) {
   return <div className="h-7 w-7 shrink-0 rounded-full border border-border" />;
 }
 
-const REVIEW_STATUSES = new Set(["pending_review", "rejected", "approved", "signed"]);
+const REVIEW_STATUSES = new Set(["reviewing", "approved"]); // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
 
 interface ApprovalWorkflowProps {
   project: ReportProject;
@@ -171,7 +164,7 @@ export function ApprovalWorkflow({ project, onRefresh }: ApprovalWorkflowProps) 
             </div>
 
             {/* Action buttons for pending_review */}
-            {selectedChapter.status === "pending_review" && (
+            {selectedChapter.status === "reviewing" && (
               <div className="flex items-center gap-2.5 pt-1">
                 <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={handleApprove} disabled={loading}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> 通过

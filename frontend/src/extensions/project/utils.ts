@@ -1,6 +1,7 @@
 import type { ProjectChapter } from "./types";
 
-export type ChapterStatus = "draft" | "writing" | "review" | "completed";
+// EAI-CUSTOM: canonical chapter status buckets (ADR 2026-08-02 P4).
+export type ChapterStatus = "pending" | "draft" | "reviewing" | "approved";
 
 /** Flatten nested chapters into a flat array (depth-first). */
 export function flattenChapters(chapters: ProjectChapter[]): ProjectChapter[] {
@@ -14,13 +15,14 @@ export function flattenChapters(chapters: ProjectChapter[]): ProjectChapter[] {
 
 /**
  * Auto-infer chapter display status from content and backend status.
- * Priority: completed > review > writing > draft
+ * Priority: approved > reviewing > draft > pending.
+ * Legacy backend values are folded into canonical buckets during the transition.
  */
 export function inferStatus(ch: ProjectChapter): ChapterStatus {
-  if (["completed", "approved", "signed"].includes(ch.status)) return "completed";
-  if (["in_review", "pending_review"].includes(ch.status)) return "review";
-  if ((ch.wordCountCurrent ?? 0) > 0) return "writing";
-  return "draft";
+  if (["approved", "signed", "completed"].includes(ch.status)) return "approved";
+  if (["reviewing", "in_review", "pending_review", "review", "reviewed"].includes(ch.status)) return "reviewing";
+  if ((ch.wordCountCurrent ?? 0) > 0 || ["draft", "writing"].includes(ch.status)) return "draft";
+  return "pending";
 }
 
 /** Format updatedAt into a human-friendly activity label. */

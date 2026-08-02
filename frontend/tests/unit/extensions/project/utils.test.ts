@@ -58,40 +58,38 @@ describe("inferStatus", () => {
     ...overrides,
   });
 
-  it("returns 'draft' when no content", () => {
-    expect(inferStatus(base())).toBe<ChapterStatus>("draft");
+  it("returns 'pending' when no content", () => {
+    expect(inferStatus(base())).toBe<ChapterStatus>("pending");
   });
 
-  it("returns 'writing' when wordCountCurrent > 0", () => {
-    expect(inferStatus(base({ wordCountCurrent: 100 }))).toBe<ChapterStatus>("writing");
+  it("returns 'draft' when wordCountCurrent > 0", () => {
+    expect(inferStatus(base({ wordCountCurrent: 100 }))).toBe<ChapterStatus>("draft");
   });
 
-  it("returns 'review' for in_review status", () => {
-    expect(inferStatus(base({ status: "in_review" }))).toBe<ChapterStatus>("review");
+  it("returns 'reviewing' for reviewing status", () => {
+    expect(inferStatus(base({ status: "reviewing" }))).toBe<ChapterStatus>("reviewing");
   });
 
-  it("returns 'review' for pending_review status", () => {
-    expect(inferStatus(base({ status: "pending_review", wordCountCurrent: 500 }))).toBe<ChapterStatus>("review");
+  it("returns 'reviewing' for legacy in_review/pending_review", () => {
+    expect(inferStatus(base({ status: "in_review", wordCountCurrent: 500 }))).toBe<ChapterStatus>("reviewing");
+    expect(inferStatus(base({ status: "pending_review", wordCountCurrent: 500 }))).toBe<ChapterStatus>("reviewing");
   });
 
-  it("returns 'completed' for completed status", () => {
-    expect(inferStatus(base({ status: "completed" }))).toBe<ChapterStatus>("completed");
+  it("returns 'approved' for approved status", () => {
+    expect(inferStatus(base({ status: "approved", wordCountCurrent: 1000 }))).toBe<ChapterStatus>("approved");
   });
 
-  it("returns 'completed' for approved status", () => {
-    expect(inferStatus(base({ status: "approved", wordCountCurrent: 1000 }))).toBe<ChapterStatus>("completed");
+  it("returns 'approved' for legacy completed/signed", () => {
+    expect(inferStatus(base({ status: "completed" }))).toBe<ChapterStatus>("approved");
+    expect(inferStatus(base({ status: "signed" }))).toBe<ChapterStatus>("approved");
   });
 
-  it("returns 'completed' for signed status", () => {
-    expect(inferStatus(base({ status: "signed" }))).toBe<ChapterStatus>("completed");
+  it("approved takes priority over reviewing", () => {
+    expect(inferStatus(base({ status: "approved", wordCountCurrent: 500 }))).toBe<ChapterStatus>("approved");
   });
 
-  it("completed takes priority over review", () => {
-    expect(inferStatus(base({ status: "approved" }))).toBe<ChapterStatus>("completed");
-  });
-
-  it("review takes priority over writing", () => {
-    expect(inferStatus(base({ status: "in_review", wordCountCurrent: 500 }))).toBe<ChapterStatus>("review");
+  it("reviewing takes priority over draft", () => {
+    expect(inferStatus(base({ status: "reviewing", wordCountCurrent: 500 }))).toBe<ChapterStatus>("reviewing");
   });
 });
 

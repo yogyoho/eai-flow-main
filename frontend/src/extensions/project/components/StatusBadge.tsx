@@ -10,24 +10,31 @@ interface StatusBadgeProps {
   type: "project" | "chapter";
 }
 
+// EAI-CUSTOM: canonical statuses (ADR 2026-08-02 P4). Legacy aliases kept only
+// during the transition so stale-fed badges still render sensibly.
 const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> = {
   // Project statuses
-  planning: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
+  draft: {
+    color: "border-primary/20 bg-primary/10 text-primary",
+    icon: <Loader2 className="h-3 w-3 animate-spin" />,
+  },
+  in_review: { color: "border-warning/20 bg-warning/10 text-warning", icon: <Clock className="h-3 w-3" /> },
+  approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+  archived: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+
+  // Chapter statuses
+  pending: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
+  reviewing: {
+    color: "border-warning/20 bg-warning/10 text-warning",
+    icon: <Clock className="h-3 w-3" />,
+  },
+
+  // Legacy aliases (transition shim)
   writing: {
     color: "border-primary/20 bg-primary/10 text-primary",
     icon: <Loader2 className="h-3 w-3 animate-spin" />,
   },
   review: { color: "border-warning/20 bg-warning/10 text-warning", icon: <Clock className="h-3 w-3" /> },
-  finalizing: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-  archived: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
-
-  // Chapter statuses
-  not_started: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
-  pending_review: {
-    color: "border-warning/20 bg-warning/10 text-warning",
-    icon: <Clock className="h-3 w-3" />,
-  },
-  approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
   signed: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
 
   // Error states
@@ -36,14 +43,14 @@ const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> =
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  planning: "规划中",
+  draft: "编写中",
+  in_review: "审核中",
+  approved: "已通过",
+  archived: "已归档",
+  pending: "未开始",
+  reviewing: "审核中",
   writing: "编写中",
   review: "审核中",
-  finalizing: "定稿中",
-  archived: "已归档",
-  not_started: "未开始",
-  pending_review: "待审核",
-  approved: "已通过",
   signed: "已签发",
   error: "错误",
   failed: "失败",
@@ -53,8 +60,8 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
   let config = STATUS_CONFIG[status] ?? STATUS_CONFIG.error!;
   const label = STATUS_LABELS[status] ?? status;
 
-  // Chapter "writing" uses Pencil icon instead of spinning Loader2
-  if (type === "chapter" && status === "writing") {
+  // Chapter draft (writing) uses Pencil icon instead of spinning Loader2
+  if (type === "chapter" && (status === "draft" || status === "writing")) {
     config = { ...config, icon: <Pencil className="h-3 w-3" /> };
   }
 

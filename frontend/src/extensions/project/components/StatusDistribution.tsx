@@ -17,10 +17,11 @@ const STATUS_ITEMS: {
   dotColor: string;
   accent: StatusAccent;
 }[] = [
-  { key: "draft", label: "待编写", dotColor: "bg-muted-foreground", accent: "slate" },
-  { key: "writing", label: "编写中", dotColor: "bg-primary", accent: "blue" },
-  { key: "review", label: "审核中", dotColor: "bg-warning", accent: "amber" },
-  { key: "completed", label: "已完成", dotColor: "bg-success", accent: "emerald" },
+  // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
+  { key: "pending", label: "未开始", dotColor: "bg-muted-foreground", accent: "slate" },
+  { key: "draft", label: "编写中", dotColor: "bg-primary", accent: "blue" },
+  { key: "reviewing", label: "审核中", dotColor: "bg-warning", accent: "amber" },
+  { key: "approved", label: "已完成", dotColor: "bg-success", accent: "emerald" },
 ];
 
 const RING_CLS: Record<StatusAccent, string> = {
@@ -33,7 +34,7 @@ const RING_CLS: Record<StatusAccent, string> = {
 export function StatusDistribution({ chapters }: StatusDistributionProps) {
   const { counts, totalCount } = useMemo(() => {
     const flat = flattenChapters(chapters);
-    const map = { draft: 0, writing: 0, review: 0, completed: 0 } as Record<ChapterStatus, number>;
+    const map = { pending: 0, draft: 0, reviewing: 0, approved: 0 } as Record<ChapterStatus, number>;
     for (const ch of flat) {
       map[inferStatus(ch)]++;
     }
@@ -51,13 +52,13 @@ export function StatusDistribution({ chapters }: StatusDistributionProps) {
               className="relative flex items-center gap-2 px-3 py-1.5 rounded-lg border border-transparent"
               style={{ color: "var(--cyber-text-muted)" }}
             >
-              {item.key === "writing" && (
+              {item.key === "draft" && (
                 <span className="w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10 animate-ping absolute" />
               )}
               <span className={`w-2.5 h-2.5 rounded-full ${item.dotColor} ring-2 ${RING_CLS[item.accent]}`} />
               <span>{item.label}</span>
               <span className="font-bold px-1 rounded bg-muted text-muted-foreground text-[10px]">
-                {item.key === "completed" ? `${count}/${totalCount}` : count}
+                {item.key === "approved" ? `${count}/${totalCount}` : count}
               </span>
             </div>
           );

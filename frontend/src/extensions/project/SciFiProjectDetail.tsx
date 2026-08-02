@@ -40,7 +40,7 @@ import { aggregateWordCount, flattenChapters, inferStatus } from "@/extensions/p
 
 // ── Local UI types (derived from API types) ──
 
-type ChapterStatus = "draft" | "writing" | "review" | "completed";
+type ChapterStatus = "pending" | "draft" | "reviewing" | "approved"; // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
 
 interface SciFiProjectDetailProps {
   projectId: string;
@@ -49,23 +49,23 @@ interface SciFiProjectDetailProps {
 // ── Status helpers ──
 
 const STATUS_LABELS: Record<ChapterStatus, string> = {
-  draft: "待编写",
-  writing: "编写中",
-  review: "审核中",
-  completed: "已完成",
+  pending: "未开始", // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
+  draft: "编写中",
+  reviewing: "审核中",
+  approved: "已完成",
 };
 
 function mapToSciFiStatus(status: string): ChapterStatus {
   const s = inferStatus({ status } as ProjectChapter);
-  if (s === "draft" || s === "writing" || s === "review" || s === "completed") return s;
-  return "draft";
+  if (s === "pending" || s === "draft" || s === "reviewing" || s === "approved") return s;
+  return "pending";
 }
 
 function statusBadgeClass(status: ChapterStatus): string {
   switch (status) {
-    case "completed": return "bg-success/10 text-success border border-success/20";
-    case "review": return "bg-warning/10 text-warning";
-    case "writing": return "bg-primary/10 text-primary";
+    case "approved": return "bg-success/10 text-success border border-success/20";
+    case "reviewing": return "bg-warning/10 text-warning";
+    case "draft": return "bg-primary/10 text-primary";
     default: return "bg-muted text-muted-foreground";
   }
 }
@@ -150,8 +150,8 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
     return flatChapters.find((ch) => ch.id === selectedChapterId) ?? flatChapters[0] ?? null;
   }, [flatChapters, selectedChapterId]);
 
-  const activeCount = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "writing").length;
-  const completedCount = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "completed").length;
+  const activeCount = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "draft").length;
+  const completedCount = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "approved").length;
   const totalCount = flatChapters.length;
   const totalWords = useMemo(() => {
     if (!project?.chapters) return 0;
@@ -161,20 +161,15 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
   // ── Workflow phase progression (mirrors reference 4-phase flow) ──
   // phaseIndex = number of completed phases (0..4); phase at `phaseIndex` is active.
   const phaseIndex = (() => {
+    // EAI-CUSTOM: canonical project status (ADR 2026-08-02 P4).
     switch (project?.status) {
-      case "setup":
-      case "outline":
-        return 0;
-      case "writing":
-      case "editing":
-        return 1;
-      case "approval":
-        return 2;
-      case "active":
-        return 3;
-      case "completed":
+      case "draft":
+        return 1; // 生产阶段（AI 初稿 + 人工修改）
+      case "in_review":
+        return 2; // 已提交审批
+      case "approved":
       case "archived":
-        return 4;
+        return 4; // 完成
       default:
         return 1;
     }
@@ -471,10 +466,10 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
         <div className="themed-card-sci rounded-xl p-3 flex flex-wrap items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-4 flex-wrap">
             {([
-              ["draft", "待编写", "bg-muted-foreground", "slate"],
-              ["writing", "编写中", "bg-primary", "blue"],
-              ["review", "审核中", "bg-warning", "amber"],
-              ["completed", "已完成", "bg-success", "emerald"],
+              ["pending", "未开始", "bg-muted-foreground", "slate"],
+              ["draft", "编写中", "bg-primary", "blue"],
+              ["reviewing", "审核中", "bg-warning", "amber"],
+              ["approved", "已完成", "bg-success", "emerald"],
             ] as const).map(([status, label, dotColor, accent]) => {
               const count = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === status).length;
               const isActive = statusFilter === status;
@@ -506,13 +501,13 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                   }`}
                   style={!isActive ? { color: "var(--cyber-text-muted)" } : undefined}
                 >
-                  {status === "writing" && (
+                  {status === "draft" && (
                     <span className="w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10 animate-ping absolute" />
                   )}
                   <span className={`w-2.5 h-2.5 rounded-full ${dotColor} ring-2 ${ringCls[accent]}`} />
                   <span>{label}</span>
                   <span className="font-bold px-1 rounded bg-muted text-muted-foreground text-[10px]">
-                    {status === "completed" ? `${count}/${totalCount}` : count}
+                    {status === "approved" ? `${count}/${totalCount}` : count}
                   </span>
                 </button>
               );
@@ -719,7 +714,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                                     </span>
                                   )}
                                   <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${statusBadgeClass(status)}`}>
-                                    {status === "completed"
+                                    {status === "approved"
                                       ? `已完成 ${Math.round((ch.wordCountCurrent / Math.max(ch.wordCountTarget, 1)) * 100)}%`
                                       : STATUS_LABELS[status]}
                                   </span>
@@ -738,13 +733,13 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                   ) : (
                     /* Kanban view */
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start min-h-[380px]">
-                      {(["draft", "writing", "review", "completed"] as ChapterStatus[]).map((colStatus) => {
+                      {(["pending", "draft", "reviewing", "approved"] as ChapterStatus[]).map((colStatus) => {
                         const colCards = flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === colStatus);
                         const colColors: Record<ChapterStatus, { border: string; bg: string; text: string }> = {
-                          draft: { border: "border-border", bg: "bg-muted/30", text: "text-muted-foreground" },
-                          writing: { border: "border-primary/20", bg: "bg-primary/5", text: "text-primary" },
-                          review: { border: "border-warning/20", bg: "bg-warning/5", text: "text-warning" },
-                          completed: { border: "border-success/20", bg: "bg-success/5", text: "text-success" },
+                          pending: { border: "border-border", bg: "bg-muted/30", text: "text-muted-foreground" },
+                          draft: { border: "border-primary/20", bg: "bg-primary/5", text: "text-primary" },
+                          reviewing: { border: "border-warning/20", bg: "bg-warning/5", text: "text-warning" },
+                          approved: { border: "border-success/20", bg: "bg-success/5", text: "text-success" },
                         };
                         return (
                           <div key={colStatus} className={`themed-card-sci rounded-xl p-3 flex flex-col gap-3 min-h-[350px] ${colColors[colStatus].border}`}>
@@ -778,13 +773,13 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                                   <div className="flex flex-col gap-1 mt-1 font-cyber text-[8px]" style={{ color: "var(--cyber-text-muted)" }}>
                                     <div className="flex items-center justify-between font-mono">
                                       <span>Progress:</span>
-                                      <span className={colStatus === "completed" ? "text-success font-bold" : "text-primary font-bold"}>
+                                      <span className={colStatus === "approved" ? "text-success font-bold" : "text-primary font-bold"}>
                                         {ch.wordCountTarget > 0 ? Math.round((ch.wordCountCurrent / ch.wordCountTarget) * 100) : 0}%
                                       </span>
                                     </div>
                                     <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                                       <div
-                                        className={`h-full rounded-full transition-all duration-500 ${colStatus === "completed" ? "bg-success" : "bg-primary"}`}
+                                        className={`h-full rounded-full transition-all duration-500 ${colStatus === "approved" ? "bg-success" : "bg-primary"}`}
                                         style={{ width: `${Math.min(ch.wordCountTarget > 0 ? (ch.wordCountCurrent / ch.wordCountTarget) * 100 : 0, 100)}%` }}
                                       />
                                     </div>
@@ -834,7 +829,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                           <span className="font-cyber font-bold opacity-80 mr-1.5">{ch.sortOrder || ch.id.slice(0, 4)}</span>
                           <span>{ch.title}</span>
                         </div>
-                        {mapToSciFiStatus(ch.status) === "completed" && <Check className="w-3.5 h-3.5 text-success shrink-0" />}
+                        {mapToSciFiStatus(ch.status) === "approved" && <Check className="w-3.5 h-3.5 text-success shrink-0" />}
                       </button>
                     ))}
                   </div>
@@ -984,7 +979,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                         <span className="font-cyber text-success font-bold block mb-1">&gt; AUDIT STATUS:</span>
                         <span>已完成章节: {completedCount}/{totalCount}</span>
                         <span className="mx-2">•</span>
-                        <span>审核中: {flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "review").length}</span>
+                        <span>审核中: {flatChapters.filter((ch) => mapToSciFiStatus(ch.status) === "reviewing").length}</span>
                       </div>
                     </div>
                   </div>

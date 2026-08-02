@@ -13,10 +13,11 @@ export interface KanbanBoardProps {
 }
 
 const COLUMNS = [
-  { id: "draft", label: "待编写", color: "border-t-muted-foreground" },
-  { id: "writing", label: "编写中", color: "border-t-primary" },
-  { id: "review", label: "审核中", color: "border-t-warning" },
-  { id: "completed", label: "已完成", color: "border-t-success" },
+  // EAI-CUSTOM: canonical columns (ADR 2026-08-02 P4)
+  { id: "pending", label: "未开始", color: "border-t-muted-foreground" },
+  { id: "draft", label: "编写中", color: "border-t-primary" },
+  { id: "reviewing", label: "审核中", color: "border-t-warning" },
+  { id: "approved", label: "已完成", color: "border-t-success" },
 ] as const;
 
 export function KanbanBoard({ cards, onCardMove, onCardEdit: _onCardEdit }: KanbanBoardProps) {

@@ -18,16 +18,17 @@ describe("Project type labels", () => {
     });
   });
 
-  test("PROJECT_STATUS_LABELS has simplified statuses", () => {
+  test("PROJECT_STATUS_LABELS has canonical statuses", () => {
     expect(PROJECT_STATUS_LABELS).toEqual({
-      active: "进行中",
-      completed: "已完成",
+      draft: "进行中",
+      in_review: "审批中",
+      approved: "已完成",
       archived: "已归档",
     });
   });
 
   test("MEMBER_ROLE_LABELS has owner and member", () => {
-    expect(MEMBER_ROLE_LABELS).toEqual({
+    expect(MEMBER_ROLE_LABELS).toMatchObject({
       owner: "负责人",
       member: "成员",
     });

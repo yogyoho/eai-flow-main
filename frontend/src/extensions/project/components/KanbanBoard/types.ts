@@ -1,7 +1,7 @@
 export interface KanbanCardData {
   id: string;
   title: string;
-  status: "draft" | "writing" | "review" | "completed";
+  status: "pending" | "draft" | "reviewing" | "approved"; // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
   assignee?: string;
   wordCount?: number;
   targetWordCount?: number;
