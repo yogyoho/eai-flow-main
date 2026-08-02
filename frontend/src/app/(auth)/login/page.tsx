@@ -176,6 +176,15 @@ export default function LoginPage() {
               ))}
             </div>
 
+            {/* EAI-CUSTOM: SSO 登录入口（通用 OIDC 第三门面） */}
+            <Link
+              href="/api/extensions/auth/oidc/start?provider=keycloak"
+              prefetch={false}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              企业统一登录（SSO）
+            </Link>
+
             {error && (
               <p className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2 mb-4">
                 {error}
