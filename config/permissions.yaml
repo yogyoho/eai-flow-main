@@ -89,7 +89,7 @@ modules:
       - { id: "knowledge_dept", display_name: "本部门的知识库", rule_template: { or: [{ owner_id: "$identity.user_id" }, { dept_id IN: "$identity.dept_ids" }] } }
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
 
-  # ─── 知识工厂（8 个 tab）───
+  # ─── 知识工厂（9 个 tab ↔ 9 个 page id）───
   knowledge_factory:
     display_name: "知识工厂"
     nav_id: "nav:knowledge-factory"
@@ -100,6 +100,10 @@ modules:
           - { id: "kf:read", display_name: "查看知识工厂" }
           - { id: "kf:template:edit", display_name: "编辑模板" }
           - { id: "kf:template:publish", display_name: "发布模板" }
+      - id: "kf:page:extraction"
+        display_name: "模板抽取"
+        operations:
+          - { id: "kf:read", display_name: "查看知识工厂" }
       - id: "kf:page:template"
         display_name: "模板编辑"
         operations:
