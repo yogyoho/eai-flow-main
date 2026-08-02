@@ -107,8 +107,10 @@ export const projectApi = {
 
   /** Open a chapter's associated document. Returns basic doc info for tab switch. */
   openChapter: async (projectId: string, chapterId: string): Promise<{ documentId: string; chapterId: string }> => {
+    // EAI-CUSTOM: 后端 /open 是 POST 路由，必须显式 method POST（否则 405 Method Not Allowed）
     const data = await authFetch<{ document_id: string; chapter_id: string }>(
       `${API_BASE}/projects/${projectId}/chapters/${chapterId}/open`,
+      { method: "POST" },
     );
     return { documentId: data.document_id, chapterId: data.chapter_id };
   },

@@ -474,7 +474,7 @@ async def open_chapter_document(
     doc = result.scalar_one_or_none()
 
     if doc:
-        return _doc_info(doc)
+        return _doc_info(doc, chapter_id=chapter.id)
 
     # Priority 2: a finalized document whose content contains this chapter as a heading.
     # Use broad match — AI may generate headings like "## 1.2 Design Title" or "## A.2 Title".
@@ -487,7 +487,7 @@ async def open_chapter_document(
     doc2 = result2.scalar_one_or_none()
 
     if doc2:
-        return _doc_info(doc2)
+        return _doc_info(doc2, chapter_id=chapter.id)
 
     # Priority 3: a file_ref document whose content contains the chapter title.
     # AI-generated reports have all chapters in a single .md file on disk.
@@ -505,7 +505,7 @@ async def open_chapter_document(
                 try:
                     text = file_path.read_text(encoding="utf-8")
                     if chapter.title in text:
-                        return _doc_info(doc3)
+                        return _doc_info(doc3, chapter_id=chapter.id)
                 except (OSError, UnicodeDecodeError):
                     pass
 
@@ -523,13 +523,19 @@ async def open_chapter_document(
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-    return _doc_info(doc)
+    return _doc_info(doc, chapter_id=chapter.id)
 
 
-def _doc_info(doc) -> dict:
-    """Format an AIDocument for the frontend."""
+def _doc_info(doc, *, chapter_id=None) -> dict:
+    """Format an AIDocument for the frontend.
+
+    EAI-CUSTOM: 双存储对账修复——补 document_id（=id）与 chapter_id 字段，
+    供前端 openChapter 契约消费（projectApi.openChapter 期望 {document_id, chapter_id}）。
+    """
     return {
         "id": str(doc.id),
+        "document_id": str(doc.id),  # 前端 openChapter 契约期望的字段
+        "chapter_id": str(chapter_id) if chapter_id else None,
         "title": doc.title,
         "content": doc.content,
         "status": doc.status or "active",
