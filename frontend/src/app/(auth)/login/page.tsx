@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
+  const [hasSsoProvider, setHasSsoProvider] = useState(false);
 
   useEffect(() => {
     const hasRedirect =
@@ -39,6 +40,14 @@ export default function LoginPage() {
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [countdown]);
+
+  useEffect(() => {
+    // EAI-CUSTOM: 仅当配置了 OIDC provider 时显示 SSO 按钮（避免未启用时的死按钮 404）
+    fetch("/api/v1/auth/providers", { credentials: "include" })
+      .then((r) => r.json().catch(() => ({ providers: [] })))
+      .then((data) => setHasSsoProvider(Array.isArray(data?.providers) && data.providers.length > 0))
+      .catch(() => setHasSsoProvider(false));
+  }, []);
 
   const redirectAfterLogin = () => {
     const redirectUrl =
@@ -176,14 +185,16 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* EAI-CUSTOM: SSO 登录入口（通用 OIDC 第三门面） */}
-            <Link
-              href="/api/extensions/auth/oidc/start?provider=keycloak"
-              prefetch={false}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
-            >
-              企业统一登录（SSO）
-            </Link>
+            {/* EAI-CUSTOM: SSO 登录入口（通用 OIDC 第三门面，仅当配置了 provider 时显示） */}
+            {hasSsoProvider && (
+              <Link
+                href="/api/extensions/auth/oidc/start?provider=keycloak"
+                prefetch={false}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                企业统一登录（SSO）
+              </Link>
+            )}
 
             {error && (
               <p className="text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2 mb-4">
