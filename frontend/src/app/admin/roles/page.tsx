@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
+import { resolveVisiblePages, serializePages } from "@/extensions/role/pageVisibility";
 import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
@@ -243,6 +244,8 @@ function PermissionPanel({
   modules,
   enabledNavs,
   onNavToggle,
+  enabledPages,
+  onPageToggle,
 }: {
   selected: string[];
   onChange: (perms: string[]) => void;
@@ -253,6 +256,10 @@ function PermissionPanel({
   enabledNavs?: Set<string>;
   /** EAI-CUSTOM: called when a module nav toggle changes */
   onNavToggle?: (navId: string, enabled: boolean) => void;
+  /** EAI-CUSTOM: set of visible page ids (sub-page visibility) */
+  enabledPages?: Set<string>;
+  /** EAI-CUSTOM: called when a sub-page visibility toggle changes */
+  onPageToggle?: (pageId: string, enabled: boolean) => void;
 }) {
   const defaultEnabledNavs = enabledNavs ?? new Set(ALL_NAV_IDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -397,44 +404,67 @@ function PermissionPanel({
                       {hasPages ? (
                         mod.pages!.map((page) => {
                           const pageHasOps = page.operations.length > 0;
+                          const pageOpIds = page.operations.map((op) => op.id);
+                          const pageSelected = selected.filter((k) => pageOpIds.includes(k)).length;
+                          const pageTotal = pageOpIds.length;
+                          const pageVisible = enabledPages ? enabledPages.has(page.id) : true;
                           return (
                             <div key={page.id} className="mb-2 last:mb-0">
-                              {/* Page header */}
+                              {/* Page header: icon + name + visible switch (right after text) + count */}
                               <div className="flex items-center gap-2 py-2 px-1 text-sm font-semibold text-muted-foreground">
                                 <FileText className="w-3.5 h-3.5 shrink-0 opacity-60" />
                                 <span className="truncate">{page.display_name}</span>
+                                {onPageToggle && (
+                                  <span className={cn("flex items-center gap-1.5 ml-1 shrink-0", readonly ? "opacity-50 pointer-events-none" : "")}>
+                                    <span className={cn("text-xs", pageVisible ? "text-primary" : "text-muted-foreground/50")}>
+                                      {pageVisible ? "可见" : "不可见"}
+                                    </span>
+                                    <Switch
+                                      checked={pageVisible}
+                                      onCheckedChange={(c) => onPageToggle(page.id, c)}
+                                      disabled={readonly}
+                                    />
+                                  </span>
+                                )}
+                                {pageTotal > 0 && (
+                                  <span className="text-xs tabular-nums text-muted-foreground/60 ml-1">{pageSelected}/{pageTotal}</span>
+                                )}
                               </div>
-                              {/* Operations grid */}
-                              {pageHasOps ? (
-                                <div className="grid gap-1.5" style={gridStyle}>
-                                  {page.operations.map((op) => {
-                                    const isChecked = selected.includes(op.id);
-                                    return (
-                                      <label key={op.id}
-                                        className={cn(
-                                          "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
-                                          readonly ? "cursor-default" : "cursor-pointer",
-                                          isChecked
-                                            ? "bg-primary/[0.04] border border-primary/10"
-                                            : "border border-transparent hover:bg-accent/50 hover:border-border",
-                                        )}>
-                                        <input type="checkbox" checked={isChecked}
-                                          onChange={() => togglePerm(op.id)} disabled={readonly}
-                                          className="sr-only peer" />
-                                        <PermCheckbox checked={isChecked} disabled={readonly} />
-                                        <span className={cn(
-                                          "truncate transition-colors duration-200 leading-tight",
-                                          readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
-                                        )}>
-                                          {op.display_name}
-                                        </span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="text-xs text-muted-foreground/50 px-1 pb-2">暂无操作项</div>
-                              )}
+                              {/* Operations grid — grayed + locked when page hidden */}
+                              <div className={cn(pageVisible ? "" : "opacity-40 pointer-events-none")}>
+                                {pageHasOps ? (
+                                  <div className="grid gap-1.5" style={gridStyle}>
+                                    {page.operations.map((op) => {
+                                      const isChecked = selected.includes(op.id);
+                                      return (
+                                        <label key={op.id}
+                                          className={cn(
+                                            "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                                            readonly ? "cursor-default" : "cursor-pointer",
+                                            isChecked
+                                              ? "bg-primary/[0.04] border border-primary/10"
+                                              : "border border-transparent hover:bg-accent/50 hover:border-border",
+                                          )}>
+                                          <input type="checkbox" checked={isChecked}
+                                            onChange={() => togglePerm(op.id)} disabled={readonly}
+                                            className="sr-only peer" />
+                                          <PermCheckbox checked={isChecked} disabled={readonly} />
+                                          <span className={cn(
+                                            "truncate transition-colors duration-200 leading-tight",
+                                            readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
+                                          )}>
+                                            {op.display_name}
+                                          </span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground/50 px-1 pb-2">
+                                    {pageVisible ? "暂无操作项" : "仅控制 tab 显隐"}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })
@@ -1048,10 +1078,17 @@ export default function AdminRolesPage() {
   });
   /* EAI-CUSTOM: which nav modules are visible for the selected role (detail view) */
   const [detailNavSet, setDetailNavSet] = useState<Set<string>>(new Set());  // EAI-CUSTOM: starts empty, populated by loadData/handleSelectRole
+  /* EAI-CUSTOM: which sub-pages are visible for the selected role (detail view) */
+  const [detailPagesSet, setDetailPagesSet] = useState<Set<string>>(new Set());
 
   // EAI-CUSTOM (U4): 数据权限面板初始化 — deny-by-default：仅当角色 data_scopes 真实匹配某 module 的 scope 时才生成条目（无匹配则无该 module 条目，绝不虚构授权）
   const initDataScopes = (role: Role) => {
     setDataScopeSelections(resolveDataScopeSelections(registryModules || [], role.data_scopes));
+  };
+
+  // EAI-CUSTOM (T3): 子页面可见性初始化 — 把 role.pages（"*"/缺失=全可见）解析为可见页面 id 集合
+  const initPageVisibility = (role: Role) => {
+    setDetailPagesSet(resolveVisiblePages(registryModules || [], role.pages));
   };
 
   /* ── Data loading ────────────────────────────────────────── */
@@ -1075,6 +1112,8 @@ export default function AdminRolesPage() {
         }
         // EAI-CUSTOM (U4): sync data scope selections when role data refreshes
         if (next) initDataScopes(next);
+        // EAI-CUSTOM (T3): sync sub-page visibility when role data refreshes
+        if (next) initPageVisibility(next);
         return next;
       });
     } catch (err) {
@@ -1097,6 +1136,7 @@ export default function AdminRolesPage() {
   useEffect(() => {
     if (registryModules && selectedRole) {
       initDataScopes(selectedRole);
+      initPageVisibility(selectedRole);
     }
   }, [registryModules, selectedRole]);
 
@@ -1192,6 +1232,8 @@ export default function AdminRolesPage() {
     }
     // EAI-CUSTOM (U4): initialize data scope selections from role data (切换角色重置)
     initDataScopes(role);
+    // EAI-CUSTOM (T3): initialize sub-page visibility from role data (切换角色重置)
+    initPageVisibility(role);
   };
 
   const handleTabChange = (tab: "permissions" | "datascope" | "policies" | "users") => {
@@ -1467,6 +1509,19 @@ export default function AdminRolesPage() {
                           await roleApi.update(selectedRole.id, { nav: newNavs });
                         } catch (err: unknown) {
                           alert(err instanceof Error ? err.message : "更新导航可见性失败");
+                        }
+                      }}
+                      enabledPages={detailPagesSet}
+                      onPageToggle={async (pageId, enabled) => {
+                        const next = new Set(detailPagesSet);
+                        enabled ? next.add(pageId) : next.delete(pageId);
+                        setDetailPagesSet(next);
+                        if (selectedRole && !selectedRole.is_system) {
+                          try {
+                            await roleApi.update(selectedRole.id, { pages: serializePages(next, registryModules || []) });
+                          } catch (err: unknown) {
+                            alert(err instanceof Error ? err.message : "更新页面可见性失败");
+                          }
                         }
                       }}
                       onChange={async (perms) => {

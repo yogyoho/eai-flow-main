@@ -90,6 +90,8 @@ export interface Role {
   nav?: string[];
   /** EAI-CUSTOM: data scope ids resolved from registry */
   data_scopes?: string[];
+  /** EAI-CUSTOM: sub-page visibility ids resolved from registry ("*" = all) */
+  pages?: string[];
 }
 
 export interface RoleListResponse {
@@ -126,6 +128,8 @@ export interface UpdateRoleRequest {
   nav?: string[];
   /** EAI-CUSTOM: data scope ids persisted to overlay via write-through */
   data_scopes?: string[];
+  /** EAI-CUSTOM: sub-page visibility ids */
+  pages?: string[];
 }
 
 export interface RoleHierarchyResponse {
