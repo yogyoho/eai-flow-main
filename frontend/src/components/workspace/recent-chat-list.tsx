@@ -56,6 +56,7 @@ import type { AgentThread, AgentThreadState } from "@/core/threads/types";
 import {
   channelSourceOfThread,
   pathOfThread,
+  sortPinnedThreads,
   titleOfThread,
 } from "@/core/threads/utils";
 import { env } from "@/env";
@@ -79,7 +80,7 @@ export function RecentChatList() {
     isFetchingNextPage,
   } = useInfiniteThreads();
   const threads = useMemo(
-    () => infiniteThreads?.pages.flat() ?? [],
+    () => sortPinnedThreads(infiniteThreads?.pages.flat() ?? []),
     [infiniteThreads],
   );
 
