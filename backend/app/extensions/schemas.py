@@ -203,6 +203,8 @@ class RoleUpdate(BaseModel):
     nav: list[str] | None = None
     # EAI-CUSTOM: data scopes (persisted to overlay via write-through)
     data_scopes: list[str] | None = None
+    # EAI-CUSTOM: sub-page visibility ids (persisted to overlay via write-through)
+    pages: list[str] | None = None
 
 
 class RoleResponse(RoleBase):
@@ -219,6 +221,8 @@ class RoleResponse(RoleBase):
     nav: list[str] = []
     # EAI-CUSTOM: data scopes resolved from registry (yaml+overlay)
     data_scopes: list[str] = []
+    # EAI-CUSTOM: sub-page visibility ids resolved from registry
+    pages: list[str] = []
 
 
 class RoleListResponse(BaseModel):

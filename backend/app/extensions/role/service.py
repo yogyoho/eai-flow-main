@@ -178,6 +178,13 @@ class RoleService:
             if invalid:
                 raise ValueError(f"Unknown data scope ids: {invalid}")
             entry["data_scopes"] = list(data.data_scopes)
+        # EAI-CUSTOM (T1): sub-page visibility ids 写透到 overlay（先校验 page id 必须存在于 registry，未知 id 一律拒绝）
+        if data.pages is not None:
+            registry = get_permission_registry()
+            invalid_pages = [pid for pid in data.pages if pid != "*" and not registry.page_id_exists(pid)]
+            if invalid_pages:
+                raise ValueError(f"Unknown page ids: {invalid_pages}")
+            entry["pages"] = list(data.pages)
         store.write(overlay, expect_mtime=mtime_before)
         store.notify_registry_reload()
         registry = get_permission_registry()
@@ -283,6 +290,8 @@ class RoleService:
             created_at=role.created_at,
             nav=role.nav or [],
             data_scopes=registry.get_data_scopes_for_role(role.code),
+            # EAI-CUSTOM: sub-page visibility ids resolved from registry
+            pages=registry.get_page_ids_for_role(role.code),
         )
 
 

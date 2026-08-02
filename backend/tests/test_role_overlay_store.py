@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid as uuid_mod
+from datetime import datetime
 
 import pytest
 
@@ -111,6 +112,16 @@ class _FakeRegistry:
 
     def reload(self):
         pass
+
+    # EAI-CUSTOM: sub-page visibility (pages) fake registry members
+    page_ids: set[str] = set()
+    role_pages: dict[str, list[str]] = {}
+
+    def page_id_exists(self, page_id):
+        return page_id in getattr(self, "page_ids", set())
+
+    def get_page_ids_for_role(self, code):
+        return getattr(self, "role_pages", {}).get(code, [])
 
 
 def test_update_role_builtin_preserves_registry_defaults(tmp_path, monkeypatch):
@@ -344,3 +355,50 @@ def test_write_falls_back_to_copy_on_bind_mount(tmp_path, monkeypatch):
     data = store.read()
     assert "x" in data["roles"]  # write landed via copy2 fallback
     assert len(copied) == 1  # copy2 was used exactly once
+
+
+def test_update_role_persists_pages(tmp_path, monkeypatch):
+    """update_role 写透 pages 到 overlay；校验未知 page id 拒绝。"""
+    overlay_path = tmp_path / "roles_custom.yaml"
+    overlay_path.write_text("roles: {}\ndisabled_roles: []\n", encoding="utf-8")
+    store = RoleOverlayStore(overlay_path=str(overlay_path))
+    monkeypatch.setattr(RoleService, "_store", store)
+
+    fake_registry = _FakeRegistry()
+    fake_registry.page_ids = {"kf:page:sample", "kf:page:law"}
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+    monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
+
+    role = Role(
+        id=uuid_mod.uuid4(), name="部门主管", code="dept_head",
+        permissions=["kb:read"], is_system=False, level=50, description=None, nav=[],
+    )
+    fake_db = _FakeDb()
+
+    result = asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(pages=["kf:page:sample"])))
+    entry = store.read()["roles"]["dept_head"]
+    assert entry["pages"] == ["kf:page:sample"]
+    assert result is not None and result.code == "dept_head"
+
+    with pytest.raises(ValueError):
+        asyncio.run(RoleService.update_role(fake_db, role, RoleUpdate(pages=["bogus:page"])))
+    entry2 = store.read()["roles"]["dept_head"]
+    assert entry2["pages"] == ["kf:page:sample"]
+
+
+def test_to_response_merges_pages(tmp_path, monkeypatch):
+    from app.extensions.role.service import RoleService
+
+    fake_registry = _FakeRegistry()
+    fake_registry.role_pages = {"dept_head": ["*"]}
+    monkeypatch.setattr("app.extensions.role.service.get_permission_registry", lambda: fake_registry)
+
+    # 瞬时 Role 的 created_at 默认在 flush 时才填充，此处显式提供避免 RoleResponse 校验失败
+    role = Role(
+        id=uuid_mod.uuid4(), name="部门主管", code="dept_head",
+        permissions=["kb:read"], is_system=False, level=50, description=None, nav=[],
+        created_at=datetime.now(),
+    )
+    fake_db = _FakeDb()
+    resp = asyncio.run(RoleService.to_response(fake_db, role))
+    assert resp.pages == ["*"]

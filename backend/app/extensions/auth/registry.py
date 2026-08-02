@@ -213,6 +213,15 @@ class PermissionRegistry:
     def list_all_permissions(self) -> list[PermissionPoint]:
         return list(self._all_permissions.values())
 
+    # EAI-CUSTOM: sub-page visibility —— 校验某个 page id 是否由任一导航模块定义
+    def page_id_exists(self, page_id: str) -> bool:
+        """True if a module defines this page id (across all nav modules)."""
+        for mp in self.modules.values():
+            for p in mp.pages:
+                if p.id == page_id:
+                    return True
+        return False
+
     def list_admin_only_permissions(self) -> list[PermissionPoint]:
         return list(self._admin_only)
 
