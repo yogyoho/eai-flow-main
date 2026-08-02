@@ -7,7 +7,10 @@ import { getGatewayConfig } from "./gateway-config";
 import { STATIC_WEBSITE_USER } from "./static-user";
 import { type AuthResult, userSchema } from "./types";
 
-const SSR_AUTH_TIMEOUT_MS = 5_000;
+// EAI-CUSTOM: bumped 5s → 15s. The gateway periodically stalls the event loop
+// (wechat long-poll cycle, pre-existing) up to ~15s; 5s made SSR /auth/me abort
+// and log "This operation was aborted" on page loads. 15s covers typical stalls.
+const SSR_AUTH_TIMEOUT_MS = 15_000;
 
 /**
  * Fetch the authenticated user from the gateway using the request's cookies.
