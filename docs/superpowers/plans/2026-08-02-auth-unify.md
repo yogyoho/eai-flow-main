@@ -694,32 +694,33 @@ git commit -m "feat(auth): 密码登录门面（username→email→gateway 验�
 class TestOtpEndpoints:
     @pytest.mark.asyncio
     async def test_otp_send_known_email(self, monkeypatch):
-        from app.extensions.auth import routers
         from app.extensions.models import User
 
         db = AsyncMock()
         user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
                     password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
-        monkeypatch.setattr(routers, "create_otp", AsyncMock(return_value=None))
+        # otp_send 函数体内是 `from app.extensions.auth.otp import create_otp`（惰性导入），
+        # 所以必须 patch app.extensions.auth.otp.create_otp，而不是 routers 模块属性。
+        mock_create = AsyncMock(return_value=None)
+        monkeypatch.setattr("app.extensions.auth.otp.create_otp", mock_create)
 
         from app.extensions.auth.routers import OtpSendRequest, otp_send
         result = await otp_send(_make_request(), OtpSendRequest(email="zhangsan@eai-flow.com"), db)
         assert result.sent is True
-        routers.create_otp.assert_awaited_once()
+        mock_create.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_otp_send_unknown_email_uniform_response(self, monkeypatch):
-        from app.extensions.auth import routers
-
         db = AsyncMock()
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: None)
-        monkeypatch.setattr(routers, "create_otp", AsyncMock(return_value=None))
+        mock_create = AsyncMock(return_value=None)
+        monkeypatch.setattr("app.extensions.auth.otp.create_otp", mock_create)
 
         from app.extensions.auth.routers import OtpSendRequest, otp_send
         result = await otp_send(_make_request(), OtpSendRequest(email="nobody@eai-flow.com"), db)
         assert result.sent is True  # anti-enumeration
-        routers.create_otp.assert_not_awaited()
+        mock_create.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_otp_login_success(self, monkeypatch):
@@ -730,8 +731,9 @@ class TestOtpEndpoints:
         user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
                     password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
-        monkeypatch.setattr(routers, "verify_otp", AsyncMock(return_value=True))
-        monkeypatch.setattr(routers, "_issue_gateway_session", AsyncMock(
+        # login_otp 函数体内是 `from app.extensions.auth.otp import verify_otp`（惰性导入）。
+        monkeypatch.setattr("app.extensions.auth.otp.verify_otp", AsyncMock(return_value=True))
+        monkeypatch.setattr("app.extensions.auth.routers._issue_gateway_session", AsyncMock(
             return_value=routers.FacadeLoginResponse(expires_in=86400)))
 
         from fastapi import Response
@@ -741,14 +743,7 @@ class TestOtpEndpoints:
 
     @pytest.mark.asyncio
     async def test_otp_login_bad_code_401(self, monkeypatch):
-        from app.extensions.auth import routers
-        from app.extensions.models import User
-
-        db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
-        db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
-        monkeypatch.setattr(routers, "verify_otp", AsyncMock(return_value=False))
+        monkeypatch.setattr("app.extensions.auth.otp.verify_otp", AsyncMock(return_value=False))
 
         from fastapi import HTTPException
         from app.extensions.auth.routers import OtpLoginRequest, login_otp
