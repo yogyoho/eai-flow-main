@@ -229,13 +229,32 @@ class AIDocumentService:
         return await AIDocumentService.to_response(doc)
 
     @staticmethod
+    def _is_text_mime(mime: str | None) -> bool:
+        """文本 mime 判定：text/* 及常见文本 application 类型；None/'' → False。
+
+        EAI-CUSTOM: 从直接映射重构中恢复的助手（原被删，检测逻辑前移到前端 isBinaryFile）。
+        """
+        if not mime:
+            return False
+        if mime.startswith("text/"):
+            return True
+        return mime in {
+            "application/json",
+            "application/xml",
+            "application/javascript",
+            "application/x-yaml",
+            "application/x-sh",
+            "application/x-python",
+            "image/svg+xml",
+        }
+
+    @staticmethod
     async def move_to_documents(db: AsyncSession, doc: AIDocument) -> AIDocument:
         """Move a file_ref document to '我的文档' by reading file content into DB."""
         if doc.doc_type != "file_ref":
             return doc
         if doc.file_ref_path and os.path.exists(doc.file_ref_path):
-            text_mimes = {"text/markdown", "text/plain", "text/html", "text/x-rst"}
-            if doc.file_mime in text_mimes:
+            if AIDocumentService._is_text_mime(doc.file_mime):
                 with open(doc.file_ref_path, "r", encoding="utf-8", errors="replace") as f:
                     doc.content = f.read()
             else:

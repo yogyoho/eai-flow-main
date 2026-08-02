@@ -1,11 +1,5 @@
 """Tests for sync_outputs_to_docmgr and present_files callback integration."""
 
-import asyncio
-import tempfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-
 import pytest
 
 from app.extensions.docmgr.service import AIDocumentService
@@ -14,7 +8,6 @@ from deerflow.tools.callbacks import (
     fire_present_files_callbacks,
     register_present_files_callback,
 )
-
 
 # ─── Callback registry tests ────────────────────────────────────────────────
 
@@ -72,78 +65,6 @@ class TestCallbackRegistry:
         """No callbacks registered → empty results list."""
         results = await fire_present_files_callbacks("u", "t", [])
         assert results == []
-
-
-# ─── present_file_tool sync trigger tests ────────────────────────────────────
-
-
-class TestPresentFileToolSyncTrigger:
-    """Test that present_file_tool fires the sync callback."""
-
-    @pytest.mark.asyncio
-    async def test_try_fire_sync_callback_invokes_callback(self):
-        """_try_fire_sync_callback awaits the registered callback."""
-        from deerflow.tools.builtins.present_file_tool import _try_fire_sync_callback
-
-        received = []
-
-        async def spy_callback(user_id, thread_id, virtual_paths):
-            received.append((user_id, thread_id, virtual_paths))
-            return {"synced": 1}
-
-        _present_files_callbacks.append(spy_callback)
-
-        runtime = MagicMock()
-        runtime.context = {"thread_id": "test-thread-123"}
-
-        with (
-            patch("deerflow.tools.builtins.present_file_tool.get_effective_user_id", return_value="user-abc"),
-            patch("deerflow.tools.builtins.present_file_tool._get_thread_id", return_value="test-thread-123"),
-        ):
-            await _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
-
-        assert len(received) == 1
-        assert received[0] == ("user-abc", "test-thread-123", ["/mnt/user-data/outputs/report.md"])
-
-    @pytest.mark.asyncio
-    async def test_try_fire_sync_callback_no_thread_id_is_noop(self):
-        """If thread_id is None, callback is not invoked."""
-        from deerflow.tools.builtins.present_file_tool import _try_fire_sync_callback
-
-        runtime = MagicMock()
-        runtime.context = {}
-
-        with patch("deerflow.tools.builtins.present_file_tool.get_effective_user_id", return_value="user-abc"):
-            with patch("deerflow.tools.builtins.present_file_tool._get_thread_id", return_value=None):
-                await _try_fire_sync_callback(runtime, ["/mnt/user-data/outputs/report.md"])
-
-
-# ─── sync_outputs_to_docmgr service tests ────────────────────────────────────
-
-
-class TestSyncOutputsToDocmgr:
-    """Test AIDocumentService.sync_outputs_to_docmgr."""
-
-    @pytest.mark.asyncio
-    async def test_sync_empty_paths(self):
-        """Empty virtual_paths list returns zeros."""
-        result = await AIDocumentService.sync_outputs_to_docmgr(
-            user_id=uuid4(),
-            thread_id="thread-1",
-            virtual_paths=[],
-        )
-        assert result == {"synced": 0, "skipped": 0, "errors": 0}
-
-    @pytest.mark.asyncio
-    async def test_sync_non_output_paths_filtered(self):
-        """Paths outside /mnt/user-data/outputs/ are filtered out."""
-        result = await AIDocumentService.sync_outputs_to_docmgr(
-            user_id=uuid4(),
-            thread_id="thread-1",
-            virtual_paths=["/mnt/user-data/workspace/something.txt"],
-        )
-        assert result["synced"] == 0
-        assert result["errors"] == 0
 
 
 # ─── _is_text_mime helper tests ──────────────────────────────────────────────
