@@ -437,11 +437,15 @@ class TestPasswordLogin:
 
         provider = MagicMock()
         provider.authenticate = fake_authenticate
-        monkeypatch.setattr(routers, "get_local_provider", lambda: provider)
+        # _issue_gateway_session 会 await provider.get_user_by_email()，必须是 AsyncMock，
+        # 且 gw_user 要带真实 token_version=0 才可被 jwt.encode 序列化。
+        provider.get_user_by_email = AsyncMock(return_value=gw_user)
+        # login 与 _issue_gateway_session 体内都是 `from app.gateway.deps import get_local_provider`
+        #（惰性导入），所以必须 patch app.gateway.deps 上的名字，而不是 routers 模块属性。
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
 
         from fastapi import Response
         from app.extensions.auth.routers import LoginRequest  # reuse existing schema
-        from starlette.datastructures import Headers
 
         resp = Response()
         from app.extensions.auth.routers import login
@@ -464,7 +468,7 @@ class TestPasswordLogin:
 
         provider = MagicMock()
         provider.authenticate = fake_authenticate
-        monkeypatch.setattr(routers, "get_local_provider", lambda: provider)
+        monkeypatch.setattr("app.gateway.deps.get_local_provider", lambda: provider)
         # Keep the self-heal resync a fast no-op (avoids a real argon2 hash in tests).
         monkeypatch.setattr("app.extensions.user.sync.sync_user_created", AsyncMock())
 
