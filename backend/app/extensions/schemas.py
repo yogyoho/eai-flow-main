@@ -736,3 +736,32 @@ class PersonalDocStarRequest(BaseModel):
 class PersonalDocShareRequest(BaseModel):
     rel_path: str = Field(..., min_length=1, max_length=500)
     shared: bool
+
+
+# ============== Personal Doc Versions ==============
+# EAI-CUSTOM: 个人文档版本历史（C10）——AI 反复改稿后可回退。
+
+
+class PersonalVersionCreateRequest(BaseModel):
+    rel_path: str = Field(..., min_length=1, max_length=500)
+    content: str
+    label: str | None = Field(None, max_length=200)
+
+
+class PersonalVersionListItem(BaseModel):
+    id: UUID
+    label: str | None
+    created_at: datetime
+    preview: str
+    content_length: int
+
+
+class PersonalVersionListResponse(BaseModel):
+    versions: list[PersonalVersionListItem]
+
+
+class PersonalVersionDetailResponse(BaseModel):
+    id: UUID
+    label: str | None
+    created_at: datetime
+    content: str

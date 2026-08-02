@@ -15,6 +15,7 @@ import { useModels } from "@/core/models/hooks";
 import { useStream } from "@langchain/langgraph-sdk/react";
 
 import { SafeStreamdown } from "@/core/streamdown/components";
+import { docmgrApi } from "../api";
 import type { PersonalBlockNoteEditorRef, DocAnchor, DocOperation } from "./PersonalBlockNoteEditor";
 
 // ponytail: persist user messages in localStorage so they survive page refresh.
@@ -165,10 +166,10 @@ function WelcomePage() {
       </div>
       <div className="text-base font-semibold text-foreground mb-6">文档 AI 助手</div>
 
-      <div className="w-full text-left space-y-4 text-sm text-muted-foreground">
+      <div className="w-full text-center space-y-4 text-sm text-muted-foreground">
         <div>
           <div className="font-medium text-foreground mb-1.5">内容协作</div>
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1 text-xs list-none p-0">
             <li>"给第3节加一段安全措施"</li>
             <li>"把设计参数表格改成文字描述"</li>
             <li>"在文档末尾补充结论"</li>
@@ -176,7 +177,7 @@ function WelcomePage() {
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">文档审查</div>
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1 text-xs list-none p-0">
             <li>"检查公式编号是否连续"</li>
             <li>"这段计算逻辑有没有问题"</li>
             <li>"全文的术语使用是否统一"</li>
@@ -184,7 +185,7 @@ function WelcomePage() {
         </div>
         <div>
           <div className="font-medium text-foreground mb-1.5">格式修正（自动应用）</div>
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1 text-xs list-none p-0">
             <li>"统一中英文之间的空格"</li>
             <li>"修正标题层级"</li>
           </ul>
@@ -246,6 +247,7 @@ function ConfirmCard({
   onApply,
   onPreview,
   onSkip,
+  onUndo,
 }: {
   operation: DocOperation;
   onApply: () => void;
@@ -342,33 +344,50 @@ function OperationCards({
   editorRef: React.RefObject<PersonalBlockNoteEditorRef | null>;
   mode: AIMode;
 }) {
-  // Auto mode: apply all immediately, show notification
+  // ponytail: hooks 必须无条件调用（原实现 useRef 在 auto 提前 return 之后 → Rules-of-Hooks 违规，
+  // ask↔auto 切换会抛 "Rendered more hooks than during the previous render"）。
+  const snapshotRef = useRef<any[] | null>(null);
+  const [autoError, setAutoError] = useState<string | null>(null);
+
+  // Auto mode: apply all immediately, show notification with undo.
+  // ponytail: auto 应用失败不再静默中断——先快照（可整批撤销），applyOperations 抛错时捕获并展示。
   useEffect(() => {
     if (mode === "auto" && operations.length > 0) {
-      editorRef.current?.applyOperations(operations);
+      snapshotRef.current = editorRef.current?.snapshotBlocks() ?? null;
+      setAutoError(null);
+      try {
+        editorRef.current?.applyOperations(operations);
+      } catch (e: any) {
+        setAutoError(e?.message || "操作失败，部分内容可能未应用");
+      }
     }
   }, [operations, editorRef, mode]);
+
+  // Shared undo: restore the pre-apply snapshot (auto batch or ask-mode first apply).
+  const handleUndo = () => {
+    if (snapshotRef.current && editorRef.current) {
+      editorRef.current.restoreBlocks(snapshotRef.current);
+      snapshotRef.current = null;
+    }
+  };
 
   if (mode === "auto") {
     return (
       <div className="space-y-2 mt-3">
-        <AutoNotifyCard operations={operations} onUndo={() => { /* TBD */ }} />
+        {autoError && (
+          <div className="text-xs text-red-600 bg-red-50/30 dark:bg-red-950/10 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900/20">
+            ⚠️ {autoError}
+          </div>
+        )}
+        <AutoNotifyCard operations={operations} onUndo={handleUndo} />
       </div>
     );
   }
 
   // Ask mode: confirm cards
-  // ponytail: save document snapshot before first apply for undo.
-  const snapshotRef = useRef<any[] | null>(null);
   const takeSnapshot = () => {
     if (!snapshotRef.current) {
       snapshotRef.current = editorRef.current?.snapshotBlocks() ?? null;
-    }
-  };
-  const handleUndo = () => {
-    if (snapshotRef.current && editorRef.current) {
-      editorRef.current.restoreBlocks(snapshotRef.current);
-      snapshotRef.current = null;
     }
   };
 
@@ -399,7 +418,7 @@ interface DocAIAgentPanelProps {
   subThreadId: string | null;
   ensureThread: () => Promise<string>;
   isCreating: boolean;
-  resetThread: () => void;
+  resetThread: () => Promise<void>;
   onClearHistory: () => void;
 }
 
@@ -493,6 +512,11 @@ export default function DocAIAgentPanel({
         body: JSON.stringify({ rel_path: docRelPath, content: cleanContent }),
       });
 
+      // C10: AI 消息提交前把当前内容存为版本快照（改稿后可回退）。失败不阻塞主流程。
+      try {
+        await docmgrApi.createPersonalVersion(threadId, { rel_path: docRelPath, content: cleanContent, label: "AI 编辑前快照" });
+      } catch { /* 版本快照失败不影响 AI 对话 */ }
+
       await ensureThread();
       pendingRef.current = { message, modelName };
       setSubmitTick((v) => v + 1);
@@ -536,11 +560,11 @@ export default function DocAIAgentPanel({
   }, [subThreadId, streamLoading, submitTick, editorRef, streamState]);
 
   // ── new chat ──────────────────────────────────────────────────────
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     streamState?.stop?.();
     if (subThreadId) clearUserMessages(subThreadId);
-    resetThread();
     setUserMessages([]);
+    await resetThread();  // 原子操作：清除旧线程 + 创建新线程，subThreadId 永不为 null
     onClearHistory();
   };
 
@@ -612,6 +636,9 @@ export default function DocAIAgentPanel({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
+          userMessages.length === 0 && allMessages.length === 0 ? (
+            <WelcomePage />
+          ) : (
           <div className="p-4 space-y-4">
             {/* Interleaved Q&A: 问1 答1 问2 答2 ... */}
             {(() => {
@@ -664,6 +691,12 @@ export default function DocAIAgentPanel({
                 生成中...
               </div>
             )}
+          </div>
+          )
+        ) : isCreating ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+            准备中...
           </div>
         ) : (
           <WelcomePage />

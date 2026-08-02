@@ -35,6 +35,9 @@ from app.extensions.schemas import (
     PersonalDocShareRequest,
     PersonalDocStarRequest,
     PersonalOutputsResponse,
+    PersonalVersionCreateRequest,
+    PersonalVersionDetailResponse,
+    PersonalVersionListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -846,3 +849,60 @@ async def save_personal_content(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return {"ok": True}
+
+
+# ── EAI-CUSTOM (C10): 个人文档版本历史 ──────────────────────────────────────
+
+
+@router.post("/personal-docs/{thread_id}/versions")
+async def create_personal_version(
+    thread_id: str,
+    data: PersonalVersionCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),
+):
+    """Create a content snapshot for a personal doc (manual save or pre-AI-edit)."""
+    vid = await AIDocumentService.create_personal_version(
+        db, current_user.id, thread_id, data.rel_path, data.content, data.label,
+    )
+    await db.commit()
+    return {"ok": True, "id": str(vid)}
+
+
+@router.get("/personal-docs/{thread_id}/versions", response_model=PersonalVersionListResponse)
+async def list_personal_versions(
+    thread_id: str,
+    rel_path: str = Query(..., min_length=1, max_length=500),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),
+):
+    """List version snapshots for a personal doc, newest first."""
+    versions = await AIDocumentService.list_personal_versions(db, current_user.id, thread_id, rel_path)
+    return {"versions": versions}
+
+
+@router.get("/personal-docs/versions/{version_id}", response_model=PersonalVersionDetailResponse)
+async def get_personal_version(
+    version_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),
+):
+    """Fetch a single version's full content (preview)."""
+    v = await AIDocumentService.get_personal_version(db, current_user.id, version_id)
+    if v is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
+    return v
+
+
+@router.post("/personal-docs/versions/{version_id}/restore")
+async def restore_personal_version(
+    version_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),
+):
+    """Restore a version: write its content back to the outputs file."""
+    result = await AIDocumentService.restore_personal_version(db, current_user.id, version_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
+    await db.commit()
+    return {"ok": True, "content": result["content"], "thread_id": result["thread_id"], "rel_path": result["rel_path"]}

@@ -563,6 +563,127 @@ class AIDocumentService:
 
         await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))
 
+    # ── EAI-CUSTOM (C10): 个人文档版本历史 ────────────────────────────────
+
+    _PERSONAL_VERSION_LIMIT = 20
+
+    @staticmethod
+    async def create_personal_version(
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        content: str,
+        label: str | None = None,
+    ) -> UUID:
+        """Create a content snapshot; cap per-file history at 20 (delete oldest)."""
+        from sqlalchemy import delete as sa_delete
+
+        from app.extensions.models import PersonalDocVersion
+
+        version = PersonalDocVersion(
+            user_id=user_id, thread_id=thread_id, rel_path=rel_path, content=content, label=label,
+        )
+        db.add(version)
+        await db.flush()
+        # 每文件保留最新 N 条，超出的旧版本删除
+        stmt = (
+            select(PersonalDocVersion.id)
+            .where(
+                PersonalDocVersion.user_id == user_id,
+                PersonalDocVersion.thread_id == thread_id,
+                PersonalDocVersion.rel_path == rel_path,
+            )
+            .order_by(PersonalDocVersion.created_at.desc())
+            .offset(AIDocumentService._PERSONAL_VERSION_LIMIT)
+        )
+        old_ids = (await db.execute(stmt)).scalars().all()
+        if old_ids:
+            await db.execute(sa_delete(PersonalDocVersion).where(PersonalDocVersion.id.in_(old_ids)))
+        return version.id
+
+    @staticmethod
+    async def list_personal_versions(
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        rel_path: str,
+    ) -> list[dict]:
+        """List versions newest-first with content preview."""
+        from app.extensions.models import PersonalDocVersion
+
+        rows = (
+            await db.execute(
+                select(PersonalDocVersion)
+                .where(
+                    PersonalDocVersion.user_id == user_id,
+                    PersonalDocVersion.thread_id == thread_id,
+                    PersonalDocVersion.rel_path == rel_path,
+                )
+                .order_by(PersonalDocVersion.created_at.desc())
+            )
+        ).scalars().all()
+        return [
+            {
+                "id": v.id,
+                "label": v.label,
+                "created_at": v.created_at,
+                "preview": (v.content or "")[:120],
+                "content_length": len(v.content or ""),
+            }
+            for v in rows
+        ]
+
+    @staticmethod
+    async def get_personal_version(
+        db: AsyncSession,
+        user_id: UUID,
+        version_id: UUID,
+    ) -> dict | None:
+        """Fetch a single version scoped by user."""
+        from app.extensions.models import PersonalDocVersion
+
+        v = (
+            await db.execute(
+                select(PersonalDocVersion).where(
+                    PersonalDocVersion.id == version_id,
+                    PersonalDocVersion.user_id == user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if v is None:
+            return None
+        return {
+            "id": v.id,
+            "label": v.label,
+            "created_at": v.created_at,
+            "content": v.content,
+            "thread_id": v.thread_id,
+            "rel_path": v.rel_path,
+        }
+
+    @staticmethod
+    async def restore_personal_version(
+        db: AsyncSession,
+        user_id: UUID,
+        version_id: UUID,
+    ) -> dict | None:
+        """Restore: write the version's content back to the outputs file."""
+        from app.extensions.models import PersonalDocVersion
+
+        v = (
+            await db.execute(
+                select(PersonalDocVersion).where(
+                    PersonalDocVersion.id == version_id,
+                    PersonalDocVersion.user_id == user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if v is None:
+            return None
+        await AIDocumentService.write_personal_output(db, user_id, v.thread_id, v.rel_path, v.content)
+        return {"content": v.content, "thread_id": v.thread_id, "rel_path": v.rel_path}
+
     @staticmethod
     async def sync_thread_files(
         db: AsyncSession,

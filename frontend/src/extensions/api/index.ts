@@ -715,6 +715,26 @@ export const docmgrApi = {
   /** 写回线程 outputs/ 文件（编辑器保存）。 */
   savePersonalContent: (threadId: string, data: { rel_path: string; content: string }) =>
     request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`, { method: "PUT", body: JSON.stringify(data) }),
+
+  // ── C10 版本历史 ───────────────────────────────────────────────────
+  createPersonalVersion: (threadId: string, data: { rel_path: string; content: string; label?: string }) =>
+    request<{ ok: boolean; id: string }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/versions`, { method: "POST", body: JSON.stringify(data) }),
+
+  listPersonalVersions: (threadId: string, relPath: string) =>
+    request<{ versions: Array<{ id: string; label: string | null; created_at: string; preview: string; content_length: number }> }>(
+      `/docmgr/personal-docs/${encodeURIComponent(threadId)}/versions?rel_path=${encodeURIComponent(relPath)}`,
+    ),
+
+  getPersonalVersion: (versionId: string) =>
+    request<{ id: string; label: string | null; created_at: string; content: string }>(
+      `/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}`,
+    ),
+
+  restorePersonalVersion: (versionId: string) =>
+    request<{ ok: boolean; content: string; thread_id: string; rel_path: string }>(
+      `/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}/restore`,
+      { method: "POST" },
+    ),
 };
 
 // ===== Folder API =====

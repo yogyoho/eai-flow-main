@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
   CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, Archive,
-  Trash2, Wand2, X,
+  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, Archive, AlertCircle,
+  Trash2, Wand2, X, Undo2, Redo2, Maximize, Minimize, ChevronUp, History,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +36,8 @@ import ShareDialog from "./ShareDialog";
 import DocAIAgentPanel from "./DocAIAgentPanel";
 import PersonalBlockNoteEditor, { type PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
 import { useDocAIThread } from "./useDocAIThread";
+import { computeDocStats } from "./utils/docEditorUtils";
+import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
@@ -1194,6 +1196,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [aiPanelKey, setAiPanelKey] = useState(0);
   const [panelWidth, setPanelWidth] = useState(420);
@@ -1205,6 +1208,22 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const titleRef = useRef(title);
   titleRef.current = title;
+  // 最近一次待保存的保存逻辑（闭包最新 content），供 unmount flush 用。
+  const flushPendingRef = useRef<() => void>(() => {});
+
+  // ── B 组: 字数统计 / 查找替换 / 全屏 ────────────────────────────────
+  const [docStats, setDocStats] = useState({ words: 0, chars: 0 });
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [findMatches, setFindMatches] = useState<Array<{ blockId: string; blockIndex: number; count: number }>>([]);
+  const [activeMatch, setActiveMatch] = useState(-1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const editorAreaRef = useRef<HTMLDivElement>(null);
+
+  // ── C10: 版本历史 ────────────────────────────────────────────────────
+  const [showVersions, setShowVersions] = useState(false);
+  const [editorKey, setEditorKey] = useState(0); // 恢复版本后强制重挂载编辑器重新 seed
 
   // AI sub-thread persisted at editor level — survives panel close/reopen
   const aiThreadId = personalFile?.thread_id ?? docId ?? "default";
@@ -1247,8 +1266,11 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
 
   const scheduleSave = useCallback((content: string) => {
     setSaved(false);
+    setSaveError(null);
+    setDocStats(computeDocStats(content));
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
+    // 具体保存逻辑闭包最新 content；unmount flush 与防抖超时都走它。
+    const doSave = async () => {
       setSaving(true);
       try {
         if (personalFile) {
@@ -1256,15 +1278,25 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
           let saveContent = content;
           if (getLanguageFromName(personalFile.title)) {
             const m = content.match(/^```[^\n]*\n([\s\S]*)\n```\s*$/);
-            if (m) saveContent = m[1];
+            if (m) saveContent = m[1]!;
           }
           await docmgrApi.savePersonalContent(personalFile.thread_id, { rel_path: personalFile.rel_path, content: saveContent });
         } else if (docId) {
           await docmgrApi.update(docId, { title: titleRef.current, content });
         }
         setSaved(true);
+        setSaveError(null);
         setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+      } catch (e: any) {
+        // 保存失败不再静默 —— 顶部栏展示错误，用户可继续编辑触发重试
+        setSaveError(e?.message || "保存失败，请重试");
+        console.error("[docmgr] save failed:", e);
       } finally { setSaving(false); }
+    };
+    flushPendingRef.current = () => { void doSave(); };
+    saveTimer.current = setTimeout(() => {
+      flushPendingRef.current = () => {};
+      void doSave();
     }, 1500);
   }, [docId, personalFile]);
 
@@ -1278,6 +1310,91 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
       setSaved(true);
       setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
     } finally { setSaving(false); }
+  };
+
+  // 防抖窗口内卸载（关闭编辑器/切档/刷新）时 flush 最近一次待保存内容，避免丢未落盘编辑
+  useEffect(() => {
+    return () => {
+      clearTimeout(saveTimer.current);
+      flushPendingRef.current();
+      flushPendingRef.current = () => {};
+    };
+  }, []);
+
+  // 有未保存内容时，浏览器刷新/关闭给出提示
+  useEffect(() => {
+    if (saved) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [saved]);
+
+  // 全屏状态跟随 Fullscreen API
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  // 查找: 打开或 query 变化时实时搜索（个人 BlockNote 编辑器）
+  const runFind = (target = 0) => {
+    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const q = findQuery.trim();
+    if (!q || !bn?.findText) { setFindMatches([]); setActiveMatch(-1); return; }
+    const m = bn.findText(q);
+    setFindMatches(m);
+    if (!m.length) { setActiveMatch(-1); return; }
+    const idx = Math.min(target, m.length - 1);
+    setActiveMatch(idx);
+    bn.scrollToBlock?.(m[idx]!.blockId);
+  };
+  useEffect(() => {
+    if (findOpen) runFind();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [findQuery, findOpen]);
+
+  const goMatch = (delta: number) => {
+    if (!findMatches.length) return;
+    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const next = (activeMatch + delta + findMatches.length) % findMatches.length;
+    setActiveMatch(next);
+    bn?.scrollToBlock?.(findMatches[next]!.blockId);
+  };
+
+  const replaceOne = () => {
+    if (activeMatch < 0 || !findMatches.length) return;
+    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const q = findQuery.trim();
+    if (!q || !bn?.replaceInBlock) return;
+    bn.replaceInBlock(findMatches[activeMatch]!.blockId, q, replaceText);
+    runFind(activeMatch); // 替换后刷新匹配列表，尽量停留在同一位置
+  };
+
+  const replaceAll = () => {
+    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const q = findQuery.trim();
+    if (!q || !bn?.replaceInBlock) return;
+    for (const m of findMatches) bn.replaceInBlock(m.blockId, q, replaceText);
+    setFindQuery("");
+    setFindOpen(false);
+  };
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.();
+    } else {
+      void editorAreaRef.current?.requestFullscreen?.();
+    }
+  };
+
+  // C10: 版本恢复后，用恢复内容重载编辑器（key 变更触发 PersonalBlockNoteEditor 重新 seed）
+  const handleRestored = (content: string) => {
+    setDoc((d) => (d ? { ...d, content } : d));
+    setEditorKey((k) => k + 1);
+    setDocStats(computeDocStats(content));
   };
 
   const handleExport = async (fmt: "md" | "docx") => {
@@ -1305,6 +1422,8 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
     URL.revokeObjectURL(url);
   };
 
+  // 项目文档用 CollabEditor（无 undo/redo/find 能力），个人文档用 PersonalBlockNoteEditor
+  const isCollab = !!doc?.project_id;
   if (loading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">加载中...</div>;
 
   return (
@@ -1329,17 +1448,44 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             />
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2 select-none">
-              {saving ? (
-                <><Loader2 className="w-3.5 h-3.5 animate-spin" />保存中...</>
+            <span className="text-xs text-muted-foreground mr-1 select-none whitespace-nowrap">{docStats.words} 字 · {docStats.chars} 字符</span>
+            <span className="flex items-center gap-1.5 text-xs mr-2 select-none">
+              {saveError ? (
+                <span className="flex items-center gap-1.5 text-red-600" title={saveError}>
+                  <AlertCircle className="w-3.5 h-3.5" />{saveError}
+                </span>
+              ) : saving ? (
+                <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="w-3.5 h-3.5 animate-spin" />保存中...</span>
               ) : savedAt ? (
-                <><CheckCircle2 className="w-3.5 h-3.5 text-success" />已保存于 {savedAt}</>
+                <span className="flex items-center gap-1.5 text-muted-foreground"><CheckCircle2 className="w-3.5 h-3.5 text-success" />已保存于 {savedAt}</span>
               ) : null}
             </span>
+            <Button variant="ghost" size="icon" disabled={isCollab} onClick={() => (editorRef.current as any)?.undo?.()} title="撤销 (Ctrl+Z)">
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" disabled={isCollab} onClick={() => (editorRef.current as any)?.redo?.()} title="重做 (Ctrl+Y)">
+              <Redo2 className="w-4 h-4" />
+            </Button>
+            {!isCollab && (
+              <Button variant={findOpen ? "secondary" : "ghost"} size="icon" onClick={() => setFindOpen((v) => !v)} title="查找 / 替换">
+                <Search className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={toggleFullscreen} title={isFullscreen ? "退出全屏" : "全屏专注"}>
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </Button>
+            {!isCollab && (
+              <Button variant="ghost" size="icon" onClick={() => setShowVersions(true)} title="版本历史">
+                <History className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               variant={showAI ? "default" : "ghost"}
               size="sm"
-              onClick={() => setShowAI((v) => !v)}
+              onClick={() => {
+                if (!showAI) ensureThread();
+                setShowAI((v) => !v);
+              }}
             >
               AI 助手
             </Button>
@@ -1355,7 +1501,43 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
           </div>
         </div>
       </div>
-      <div className="flex-1 flex overflow-hidden">
+      {findOpen && (
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 border-b border-border text-xs bg-muted/20"
+          onKeyDown={(e) => { if (e.key === "Escape") setFindOpen(false); }}
+        >
+          <Input
+            value={findQuery}
+            onChange={(e) => setFindQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); goMatch(1); } }}
+            placeholder="查找"
+            className="h-7 w-44 text-xs"
+            autoFocus
+          />
+          <Input
+            value={replaceText}
+            onChange={(e) => setReplaceText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); replaceOne(); } }}
+            placeholder="替换为"
+            className="h-7 w-32 text-xs"
+          />
+          <span className="text-muted-foreground shrink-0 min-w-[3em] text-center">
+            {findMatches.length > 0 ? `${activeMatch + 1}/${findMatches.length}` : "无结果"}
+          </span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goMatch(-1)} disabled={!findMatches.length} title="上一个 (Shift+Enter)">
+            <ChevronUp className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goMatch(1)} disabled={!findMatches.length} title="下一个 (Enter)">
+            <ChevronDown className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={replaceOne} disabled={!findMatches.length}>替换</Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={replaceAll} disabled={!findMatches.length}>全部替换</Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={() => setFindOpen(false)} title="关闭 (Esc)">
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
+      <div className="flex-1 flex overflow-hidden" ref={editorAreaRef}>
         <div className="flex-1 flex flex-col overflow-hidden">
           {doc !== null && (
             doc.project_id ? (
@@ -1369,6 +1551,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
               />
             ) : (
               <PersonalBlockNoteEditor
+                key={editorKey}
                 ref={editorRef as React.Ref<PersonalBlockNoteEditorRef>}
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
@@ -1434,6 +1617,16 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
         </AnimatePresence>
       </div>
       <ExportDocxDialog docId={docId} docTitle={title} content={exportContent} open={showExportDialog} onOpenChange={setShowExportDialog} />
+      {!isCollab && (
+        <VersionHistoryDialog
+          threadId={personalFile?.thread_id ?? docId ?? ""}
+          relPath={personalFile?.rel_path ?? `${title}.md`}
+          open={showVersions}
+          onOpenChange={setShowVersions}
+          onRestored={handleRestored}
+          getCurrentContent={async () => (await editorRef.current?.getMarkdown()) ?? ""}
+        />
+      )}
     </div>
   );
 }

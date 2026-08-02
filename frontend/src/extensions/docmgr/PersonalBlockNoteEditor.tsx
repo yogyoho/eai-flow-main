@@ -26,6 +26,9 @@ import "highlight.js/styles/github.css";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 
+import { convertInlineMathInContent, prepareBlocksForMarkdownExport, TEXT_BLOCK_TYPES, transformMathInBlocks } from "./utils/mathBlocks";
+import { replaceTextInContent } from "./utils/docEditorUtils";
+
 // ── Synchronous code block highlighting via lowlight ────────────────────
 // ponytail: lowlight (highlight.js AST API) is synchronous — no async,
 // no WASM, no "mismatched transaction". all grammars are pre-registered.
@@ -188,6 +191,15 @@ export interface PersonalBlockNoteEditorRef {
   snapshotBlocks: () => any[];
   /** Restore blocks from a saved snapshot. */
   restoreBlocks: (blocks: any[]) => void;
+  /** Undo / redo the last editor transaction（Ctrl+Z/Y 的 UI 入口）。 */
+  undo: () => void;
+  redo: () => void;
+  /** Find all top-level blocks whose text contains query. Returns { blockId, blockIndex, count }. */
+  findText: (query: string) => Array<{ blockId: string; blockIndex: number; count: number }>;
+  /** Replace query in one block's text nodes. Returns replaced count. */
+  replaceInBlock: (blockId: string, query: string, replacement: string) => number;
+  /** Scroll to and flash-highlight a block by id. */
+  scrollToBlock: (blockId: string) => boolean;
 }
 
 interface PersonalBlockNoteEditorProps {
@@ -242,235 +254,8 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
       extensions: [AIExtension({ transport: aiTransport }), highlightExtension],
     });
 
-    // Block types that carry inline content (text nodes that may contain $...$).
-    const TEXT_BLOCK_TYPES = new Set(["paragraph", "bulletListItem", "numberedListItem", "checkListItem"]);
-
-    // ponytail: shared inline $...$ → latex content conversion.
-    // Returns { content, changed }. Does NOT mutate; caller applies updateBlock.
-    const convertInlineMathInContent = useCallback(
-      (content: any[]): { content: any[]; changed: boolean } => {
-        let changed = false;
-        const newContent: any[] = [];
-        for (const node of content) {
-          if (node.type !== "text" || !node.text) {
-            newContent.push(node);
-            continue;
-          }
-          const text: string = node.text;
-          const parts = text.split(/(\$[^$\n]+\$)/g);
-          if (parts.every((p: string) => !/^\$[^$\n]+\$$/.test(p))) {
-            newContent.push(node);
-            continue;
-          }
-          changed = true;
-          for (const part of parts) {
-            const m = part.match(/^\$([^$\n]+)\$$/);
-            if (m) {
-              newContent.push({ type: "latex", props: { latex: m[1].trim(), displayMode: false } });
-            } else if (part) {
-              newContent.push({ ...node, text: part });
-            }
-          }
-        }
-        return { content: newContent, changed };
-      },
-      [],
-    );
-
-    // ── Math markdown round-trip helpers ──────────────────────────────
-    // ponytail: @defensestation/blocknote-math defines no toMarkdown for equation/latex
-    // (only toExternalHTML). blocksToMarkdownLossy silently skips "content: none" types,
-    // so formulas vanish from saved markdown → broken on re-entry.
-    // Fix: before calling blocksToMarkdownLossy, create a copy of the blocks with
-    // equation→paragraph ($$...$$) and latex→text ($...$) so the export is correct.
-    // Does NOT mutate editor state — operates on a shallow copy.
-    const prepareBlocksForMarkdownExport = useCallback(
-      (blocks: any[]): any[] => {
-        return blocks.map((block: any) => {
-          // equation block → paragraph with $$latex$$
-          if (block.type === "equation") {
-            const latex: string = block.props?.latex ?? "";
-            return {
-              type: "paragraph",
-              props: {},
-              content: [{ type: "text", text: `$$${latex}$$`, styles: {} }],
-              children: block.children ?? [],
-              id: block.id,
-            };
-          }
-          // table: scan cells for latex inline content → $latex$
-          if (
-            block.type === "table" &&
-            block.content?.type === "tableContent" &&
-            Array.isArray(block.content?.rows)
-          ) {
-            const tc = block.content;
-            const newRows = tc.rows.map((row: any) => ({
-              ...row,
-              cells: (row.cells ?? []).map((cell: any) => {
-                if (!cell || !Array.isArray(cell.content)) return cell;
-                let changed = false;
-                const newContent = cell.content.map((node: any) => {
-                  if (node.type === "latex") {
-                    changed = true;
-                    return {
-                      type: "text",
-                      text: `$${node.props?.latex ?? ""}$`,
-                      styles: {},
-                    };
-                  }
-                  return node;
-                });
-                return changed ? { ...cell, content: newContent } : cell;
-              }),
-            }));
-            return { ...block, content: { ...tc, rows: newRows } };
-          }
-          // paragraph / heading: scan for latex inline content → $latex$
-          if (Array.isArray(block.content)) {
-            let changed = false;
-            const newContent = block.content.map((node: any) => {
-              if (node.type === "latex") {
-                changed = true;
-                return {
-                  type: "text",
-                  text: `$${node.props?.latex ?? ""}$`,
-                  styles: {},
-                };
-              }
-              return node;
-            });
-            return changed ? { ...block, content: newContent } : block;
-          }
-          return block;
-        });
-      },
-      [],
-    );
-
-    // Transform BlockNote-parsed blocks: convert $$...$$ paragraphs into equation blocks,
-    // and convert $...$ inline text into latex inline content.
-    // BlockNote's built-in markdown parser doesn't know about custom math block types.
-    const transformMathInBlocks = useCallback(
-      (blocks: any[]) => {
-        const result: any[] = [];
-        for (const block of blocks) {
-          if (TEXT_BLOCK_TYPES.has(block.type) && Array.isArray(block.content)) {
-            const fullText = block.content
-              .filter((c: any) => c.type === "text")
-              .map((c: any) => c.text || "")
-              .reduce((acc: string, c: string) => acc + c, "");
-
-            // Check if the ENTIRE paragraph is a $$...$$ block equation
-            const blockMatch = fullText.match(/^\$\$([\s\S]*?)\$\$$/);
-            if (blockMatch && block.content.every((c: any) => c.type === "text" || !c.text?.trim())) {
-              result.push({ type: "equation", props: { latex: blockMatch[1].trim() } });
-              continue;
-            }
-
-            // Handle inline $...$ within text blocks (paragraph, list items)
-            const { content: newContent, changed } = convertInlineMathInContent(block.content);
-            result.push(changed ? { ...block, content: newContent } : block);
-            continue;
-          }
-          // Handle table blocks: scan cells for $...$ inline math
-          if (block.type === "table" && block.content?.type === "tableContent" && Array.isArray(block.content?.rows)) {
-            const tc = block.content;
-            const newRows = tc.rows.map((row: any) => ({
-              ...row,
-              cells: (row.cells || []).map((cell: any) => {
-                // cell = { type: "tableCell", content: [...], props: {...} }
-                if (!cell || !Array.isArray(cell.content)) return cell;
-                let changed = false;
-                const newContent = cell.content
-                  .map((node: any) => {
-                    if (node.type !== "text" || !node.text) return [node];
-                    const text: string = node.text;
-                    const parts = text.split(/(\$[^$]+\$)/g);
-                    if (parts.every((p: string) => !/^\$[^$]+\$$/.test(p))) return [node];
-                    changed = true;
-                    return parts.map((part: string) => {
-                      const m = part.match(/^\$([^$]+)\$$/);
-                      return m
-                        ? { type: "latex", props: { latex: m[1].trim(), displayMode: false } }
-                        : part ? { ...node, text: part } : null;
-                    }).filter(Boolean);
-                  })
-                  .flat();
-                return changed ? { ...cell, content: newContent } : cell;
-              }),
-            }));
-            result.push({ ...block, content: { ...tc, rows: newRows } });
-            continue;
-          }
-          result.push(block);
-        }
-
-        // ── Second pass: merge multi-paragraph $$...$$ into equation blocks ──
-        // ponytail: AI-generated markdown often has $$ on its own line with
-        // blank lines around the content, producing three separate paragraphs
-        // ($$ / content / $$). The single-paragraph regex above can't match
-        // across blocks. Scan consecutive paragraphs, merge $$...$$ spans.
-        const merged: any[] = [];
-        let i = 0;
-        while (i < result.length) {
-          const block = result[i];
-          if (
-            block.type === "paragraph" &&
-            Array.isArray(block.content) &&
-            block.content.length === 1 &&
-            block.content[0]?.type === "text"
-          ) {
-            const trimmed = (block.content[0].text || "").trim();
-            if (trimmed === "$$") {
-              // Opening $$ found — collect content until closing $$
-              const contentParts: string[] = [];
-              let j = i + 1;
-              let found = false;
-              while (j < result.length) {
-                const nb = result[j];
-                if (
-                  nb.type === "paragraph" &&
-                  Array.isArray(nb.content) &&
-                  nb.content.length === 1 &&
-                  nb.content[0]?.type === "text"
-                ) {
-                  const nt = (nb.content[0].text || "").trim();
-                  if (nt === "$$") {
-                    found = true;
-                    break;
-                  }
-                }
-                // Collect block text as part of the equation content
-                if (nb.type === "paragraph" && Array.isArray(nb.content)) {
-                  contentParts.push(
-                    nb.content
-                      .filter((c: any) => c.type === "text")
-                      .map((c: any) => c.text || "")
-                      .join(""),
-                  );
-                } else if (nb.type === "equation") {
-                  contentParts.push(`$$${nb.props?.latex ?? ""}$$`);
-                }
-                j++;
-              }
-              if (found && contentParts.length > 0) {
-                const latex = contentParts.join("\n").trim();
-                if (latex) {
-                  merged.push({ type: "equation", props: { latex } });
-                  i = j + 1;
-                  continue;
-                }
-              }
-            }
-          }
-          merged.push(block);
-          i++;
-        }
-        return merged;
-      },
-      [],
-    );
+    // 数学公式块转换逻辑已抽到 utils/mathBlocks.ts（EAI-CUSTOM，含标题内联公式修复 $V_s$）。
+    // TEXT_BLOCK_TYPES / convertInlineMathInContent / prepareBlocksForMarkdownExport / transformMathInBlocks 来自该模块。
 
     // Auto-save + heading extraction on change
     const rebuildHeadings = useCallback(() => {
@@ -648,6 +433,39 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
       restoreBlocks: (blocks: any[]) => {
         editor.replaceBlocks(editor.document.map((b) => b.id), blocks);
       },
+
+      undo: () => editor.undo(),
+      redo: () => editor.redo(),
+
+      findText: (query: string) => {
+        const q = query.trim();
+        if (!q) return [];
+        const matches: Array<{ blockId: string; blockIndex: number; count: number }> = [];
+        editor.document.forEach((b: any, blockIndex: number) => {
+          const text = getBlockText(b);
+          if (!text) return;
+          const count = text.split(q).length - 1;
+          if (count > 0) matches.push({ blockId: b.id, blockIndex, count });
+        });
+        return matches;
+      },
+
+      replaceInBlock: (blockId: string, query: string, replacement: string) => {
+        const block = editor.document.find((b: any) => b.id === blockId);
+        if (!block || !query || !Array.isArray(block.content)) return 0;
+        const { content: newContent, replaced } = replaceTextInContent(block.content, query, replacement);
+        if (replaced > 0) editor.updateBlock(block, { content: newContent } as any);
+        return replaced;
+      },
+
+      scrollToBlock: (blockId: string) => {
+        const el = document.querySelector(`[data-id="${blockId}"]`);
+        if (!el) return false;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+        setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+        return true;
+      },
     }));
 
     // AI menu items — same pattern as getCollabAIMenuItems
@@ -693,8 +511,6 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
       async (query: string) => {
         const defaults = getDefaultReactSlashMenuItems(editor);
         const mathRaw = getMathSlashMenuItems(editor);
-        // Debug: log to verify items are generated
-        if (mathRaw.length) console.log('[PersonalBN] math items:', mathRaw.map((m: any) => m.title));
         return [...defaults, ...mathRaw];
       },
       [editor],
