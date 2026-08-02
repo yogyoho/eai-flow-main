@@ -51,3 +51,35 @@ class TestOtpModel:
         row = OtpCode(email="a@b.com", code_hash="x", expires_at=datetime.now(UTC))
         assert row.email == "a@b.com"
         assert row.used_at is None
+
+
+class TestOtpCore:
+    def test_generate_code_is_numeric_length(self):
+        from app.extensions.auth.otp import generate_code
+
+        code = generate_code(6)
+        assert len(code) == 6
+        assert code.isdigit()
+
+    def test_code_is_valid_rejects_wrong_and_expired(self):
+        from app.extensions.auth.jwt import hash_password
+        from app.extensions.auth.otp import code_is_valid
+        from app.extensions.models import OtpCode
+
+        row = OtpCode(email="a@b.com", code_hash=hash_password("123456"), expires_at=datetime.now(UTC) + timedelta(minutes=5))
+        assert code_is_valid(row, "123456", datetime.now(UTC)) is True
+        assert code_is_valid(row, "000000", datetime.now(UTC)) is False
+
+        expired = OtpCode(email="a@b.com", code_hash=hash_password("123456"), expires_at=datetime.now(UTC) - timedelta(minutes=1))
+        assert code_is_valid(expired, "123456", datetime.now(UTC)) is False
+
+    @pytest.mark.asyncio
+    async def test_send_otp_echoes_when_smtp_disabled(self, monkeypatch):
+        from app.extensions.auth import otp
+        from app.extensions.config import ExtensionsConfig
+
+        # Force SMTP-disabled config for the module singleton (auto-restored by monkeypatch).
+        monkeypatch.setattr("app.extensions.config._extensions_config", ExtensionsConfig())
+
+        code = await otp.send_otp_email("a@b.com", "123456")
+        assert code == "123456"
