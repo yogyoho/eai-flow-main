@@ -202,7 +202,9 @@ class PermissionRegistry:
                 "is_system": role_data.get("is_system", False),
                 "level": role_data.get("level", 10),
                 "nav": list(role_data.get("nav") or []),
-                "pages": list(role_data.get("pages") or []),
+                # EAI-CUSTOM: 缺 pages 键默认全可见（["*"]），与前端 resolveVisiblePages(undefined)=全可见 一致；
+                # 显式 pages: [] 才是"全不可见"。避免"面板显示全开但运行时全隐藏"的分歧。
+                "pages": list(role_data["pages"]) if "pages" in role_data else ["*"],
                 "permissions": list(role_data.get("permissions") or []),
                 "data_scopes": list(role_data.get("data_scopes") or []),
             }
@@ -292,7 +294,9 @@ class PermissionRegistry:
                 "is_system": role_data.get("is_system", False),
                 "level": role_data.get("level", 10),
                 "nav": list(role_data.get("nav") or []),
-                "pages": list(role_data.get("pages") or []),
+                # EAI-CUSTOM: 缺 pages 键默认全可见（["*"]），与前端 resolveVisiblePages(undefined)=全可见 一致；
+                # 显式 pages: [] 才是"全不可见"。避免"面板显示全开但运行时全隐藏"的分歧。
+                "pages": list(role_data["pages"]) if "pages" in role_data else ["*"],
                 "permissions": list(role_data.get("permissions") or []),
                 "data_scopes": list(role_data.get("data_scopes") or []),
             }

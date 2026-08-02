@@ -155,9 +155,10 @@ class RoleService:
                 "permissions": list(defaults.get("permissions") or role.permissions or []),
                 "nav": defaults.get("nav") or role.nav or [],
                 "data_scopes": defaults.get("data_scopes") or [],
-                # EAI-CUSTOM (T1 review C1): 必须 seed pages，否则首次编辑内置角色
-                # 合成条目缺 pages → overlay 合并后该角色 pages 变 [] → 所有子页面 tab 消失
-                "pages": defaults.get("pages") or [],
+                # EAI-CUSTOM (T1 review C1 + final): 必须 seed pages，否则首次编辑内置角色
+                # 合成条目缺 pages → overlay 合并后该角色 pages 变 [] → 所有子页面 tab 消失。
+                # 缺 pages 默认 ["*"]（全可见），与 registry._parse_roles 默认一致。
+                "pages": defaults.get("pages") or ["*"],
                 "is_system": defaults.get("is_system", bool(role.is_system)),
                 "level": defaults.get("level", role.level or 10),
                 "description": defaults.get("description", role.description),
