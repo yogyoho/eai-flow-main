@@ -301,6 +301,11 @@ CORS is same-origin by default when requests enter through nginx on port 2026. S
 
 Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runtime, all other `/api/*` → Gateway REST APIs.
 
+### EAI 统一认证门面（EAI-CUSTOM）
+- 登录入口收敛到 `app/extensions/auth/routers.py`：`POST /api/extensions/auth/login`（工号或 email + 密码）与 `POST /api/extensions/auth/otp/send` + `POST /api/extensions/auth/login/otp`（邮箱验证码）。
+- extensions PostgreSQL 是组织目录真源（工号/部门/角色/启停）；Gateway 是会话层。密码验证委托 `get_local_provider().authenticate()`（argon2，admin 建号/改密时由 `app/extensions/user/sync.py` 镜像），会话用上游 `create_access_token` 签发 HttpOnly cookie —— 零上游代码改动。
+- 无自注册（`/register` 已禁用，返回 403）；验证码存 `otp_codes` 表（bcrypt 哈希、单次使用、TTL 5 分钟）；SMTP 配置见 `EAI_SMTP_*` 环境变量（`SmtpConfig`/`OtpConfig` in `app/extensions/config.py`）。
+
 ### Sandbox System (`packages/harness/deerflow/sandbox/`)
 
 **Interface**: Abstract `Sandbox` with `execute_command`, `read_file`, `write_file`, `list_dir`
