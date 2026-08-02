@@ -33,6 +33,8 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     # OAuth endpoints are public (redirect flow + provider callback).
     "/api/v1/auth/oauth/",
     "/api/v1/auth/callback/",
+    # EAI-CUSTOM: EAI SSO OIDC 发起/回调（无会话时也要可达）
+    "/api/extensions/auth/oidc/",
 )
 
 # Exact auth paths that are public (login/register/status check).

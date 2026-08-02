@@ -227,3 +227,20 @@ class TestCallbackEndpoint:
         with pytest.raises(HTTPException) as exc:
             await sso.sso_callback(real_req, "keycloak", resp, code="c", state="st", db=db)
         assert exc.value.status_code == 401  # 仅预建号，不自动建
+
+
+class TestMount:
+    def test_sso_router_mounted(self):
+        from app.extensions.auth.routers import router
+
+        paths = {r.path for r in router.routes}
+        # include_router 会拼接父前缀(/api/extensions/auth) + 子前缀(/oidc)，
+        # 故挂在 auth router 上的实际路径为全路径。
+        assert "/api/extensions/auth/oidc/start" in paths
+        assert "/api/extensions/auth/oidc/callback/{provider}" in paths
+
+    def test_oidc_prefix_is_public(self):
+        from app.gateway.auth_middleware import _is_public
+
+        assert _is_public("/api/extensions/auth/oidc/start") is True
+        assert _is_public("/api/extensions/auth/oidc/callback/keycloak") is True

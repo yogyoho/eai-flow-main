@@ -298,3 +298,9 @@ async def get_me(current_user: CurrentUser = Depends(get_current_user), db: Asyn
 async def register(request: UserCreate, db: AsyncSession = Depends(get_db)):
     """EAI-CUSTOM: 企业无自注册 —— 用户由管理员统一创建."""
     return MessageResponse(message="Registration is disabled; contact an administrator to create an account.", success=False)
+
+
+# EAI-CUSTOM: 挂载 SSO 子路由（OIDC 第三登录门面）
+from app.extensions.auth.sso import sso_router  # noqa: E402
+
+router.include_router(sso_router)
