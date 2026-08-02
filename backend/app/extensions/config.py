@@ -62,6 +62,55 @@ class JWTConfig(BaseModel):
         )
 
 
+class SmtpConfig(BaseModel):
+    """SMTP 配置：用于 OTP 验证码邮件的发送（EAI-CUSTOM 认证门面）。"""
+
+    host: str = Field(default="")
+    port: int = Field(default=465)
+    user: str = Field(default="")
+    password: str = Field(default="")
+    from_addr: str = Field(default="no-reply@eai-flow.com")
+    use_tls: bool = Field(default=True)
+    enabled: bool = Field(default=False)
+
+    @property
+    def usable(self) -> bool:
+        """SMTP 是否可用：需显式启用且配置了主机地址。"""
+        return self.enabled and bool(self.host)
+
+    @classmethod
+    def from_env(cls) -> "SmtpConfig":
+        """从环境变量读取 SMTP 配置（EAI_SMTP_*）。"""
+        return cls(
+            host=os.getenv("EAI_SMTP_HOST", ""),
+            port=int(os.getenv("EAI_SMTP_PORT", "465")),
+            user=os.getenv("EAI_SMTP_USER", ""),
+            password=os.getenv("EAI_SMTP_PASSWORD", ""),
+            from_addr=os.getenv("EAI_SMTP_FROM", "no-reply@eai-flow.com"),
+            use_tls=os.getenv("EAI_SMTP_TLS", "true").lower() == "true",
+            enabled=os.getenv("EAI_SMTP_ENABLED", "false").lower() == "true",
+        )
+
+
+class OtpConfig(BaseModel):
+    """OTP 登录配置（EAI-CUSTOM 认证门面）。"""
+
+    length: int = Field(default=6, ge=4, le=10)
+    ttl_seconds: int = Field(default=300, ge=60)
+    send_cooldown_seconds: int = Field(default=60, ge=10)
+    max_per_ip_per_hour: int = Field(default=20)
+
+    @classmethod
+    def from_env(cls) -> "OtpConfig":
+        """从环境变量读取 OTP 配置（EAI_OTP_*）。"""
+        return cls(
+            length=int(os.getenv("EAI_OTP_LENGTH", "6")),
+            ttl_seconds=int(os.getenv("EAI_OTP_TTL_SECONDS", "300")),
+            send_cooldown_seconds=int(os.getenv("EAI_OTP_SEND_COOLDOWN_SECONDS", "60")),
+            max_per_ip_per_hour=int(os.getenv("EAI_OTP_MAX_PER_IP_HOUR", "20")),
+        )
+
+
 class RAGFlowConfig(BaseModel):
     """RAGFlow configuration."""
 
@@ -145,6 +194,8 @@ class ExtensionsConfig(BaseModel):
     ragflow: RAGFlowConfig = Field(default_factory=RAGFlowConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     law: LawConfig = Field(default_factory=LawConfig)
+    smtp: SmtpConfig = Field(default_factory=SmtpConfig)
+    otp: OtpConfig = Field(default_factory=OtpConfig)
 
     @classmethod
     def from_config(cls, config: dict) -> "ExtensionsConfig":
@@ -161,6 +212,8 @@ class ExtensionsConfig(BaseModel):
             ragflow=RAGFlowConfig.from_env(),
             storage=StorageConfig.from_env(),
             law=LawConfig.from_env(),
+            smtp=SmtpConfig.from_env(),
+            otp=OtpConfig.from_env(),
         )
 
 
