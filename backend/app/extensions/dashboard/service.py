@@ -123,7 +123,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
             .where(
                 ProjectChapter.project_id == pid,
                 ProjectChapter.assigned_to == user_id,
-                ProjectChapter.status.in_(["draft", "writing"]),
+                ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             )
         )
         chapter_result = await db.execute(chapter_stmt)
@@ -160,7 +160,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
             proj_stmt = select(ReportProject).where(ReportProject.id == member.project_id)
             proj_result = await db.execute(proj_stmt)
             proj = proj_result.scalar_one_or_none()
-            if not proj or proj.status not in ("in_progress",):
+            if not proj or proj.status not in ("draft", "in_review"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                 continue
             phase_node = phase_key.replace("phase-", "phase-")
             if proj.current_phase_node == phase_node:
@@ -290,7 +290,7 @@ async def _count_pending_tasks(db: AsyncSession, user_id: UUID, project_id: UUID
     chapter_count_stmt = select(func.count()).select_from(ProjectChapter).where(
         ProjectChapter.project_id == project_id,
         ProjectChapter.assigned_to == user_id,
-        ProjectChapter.status.in_(["draft", "writing"]),
+        ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
     )
     chapter_count = (await db.execute(chapter_count_stmt)).scalar_one()
 
@@ -323,7 +323,7 @@ async def _compute_project_progress(db: AsyncSession, project_id: UUID) -> int:
 
     done_stmt = select(func.count()).select_from(ProjectChapter).where(
         ProjectChapter.project_id == project_id,
-        ProjectChapter.status == "completed",
+        ProjectChapter.status.in_(["reviewing", "approved"]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
     )
     done = (await db.execute(done_stmt)).scalar_one()
 
@@ -358,7 +358,7 @@ async def get_my_stats(db: AsyncSession, user_id: UUID) -> MyStatsResponse:
         writing_stmt = select(func.count()).select_from(ProjectChapter).where(
             ProjectChapter.project_id.in_(project_ids),
             ProjectChapter.assigned_to == user_id,
-            ProjectChapter.status.in_(["draft", "writing"]),
+            ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         )
         pending_writing = (await db.execute(writing_stmt)).scalar_one()
 

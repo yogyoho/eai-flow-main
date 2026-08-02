@@ -200,7 +200,7 @@ async def _sync_chapters_to_doc_space(
     ch_result = await db.execute(
         select(ProjectChapter)
         .where(ProjectChapter.project_id == uuid.UUID(project_id))
-        .where(ProjectChapter.status.in_(("draft", "completed", "approved")))
+        .where(ProjectChapter.status.in_(("draft", "reviewing", "approved")))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         .where(ProjectChapter.content.isnot(None))
         .where(_func.length(ProjectChapter.content) > 0)
         .order_by(ProjectChapter.sort_order)
@@ -265,7 +265,7 @@ async def notify_workflow_complete(project_id: str) -> dict:
         await db.execute(
             update(ReportProject)
             .where(ReportProject.id == uuid.UUID(project_id))
-            .values(status="completed")
+            .values(status="approved")  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         )
 
         result = await db.execute(

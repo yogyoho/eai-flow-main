@@ -33,12 +33,8 @@ class TestValidationConstants:
     # (business_dictionaries table, category="report_type"). No hardcoded list to validate.
 
     def test_project_statuses(self):
-        # Project status is workflow-driven; the validator allows the full
-        # lifecycle set (routers/service set "active"/"in_progress" on the model).
-        assert VALID_PROJECT_STATUSES == [
-            "setup", "outline", "writing", "editing", "approval",
-            "in_progress", "active", "completed", "archived",
-        ]
+        # EAI-CUSTOM: canonical single-state set (ADR 2026-08-02).
+        assert VALID_PROJECT_STATUSES == ["draft", "in_review", "approved", "archived"]
 
     def test_member_roles_expanded(self):
         assert VALID_MEMBER_ROLES == ["owner", "manager", "editor", "reviewer", "approver", "member"]
@@ -139,7 +135,7 @@ class TestProjectOut:
     def test_defaults(self):
         uid = uuid4()
         p = ProjectOut(id=uid, name="Test", report_type="other")
-        assert p.status == "active"
+        assert p.status == "draft"  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         assert p.members == []
         assert p.chapters == []
         assert p.chapter_count == 0
@@ -157,7 +153,7 @@ class TestProjectListItem:
         assert p.chapter_count == 0
         assert p.member_count == 0
         assert p.template_name is None
-        assert p.status == "active"
+        assert p.status == "draft"  # EAI-CUSTOM: canonical (ADR 2026-08-02)
 
     def test_with_template_name(self):
         uid = uuid4()

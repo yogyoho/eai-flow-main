@@ -218,7 +218,7 @@ async def list_projects(
                 func.count(ProjectChapter.id).label("total"),
                 func.sum(
                     func.cast(
-                        ProjectChapter.status.in_(("completed", "approved")),
+                        ProjectChapter.status.in_(("reviewing", "approved")),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                         Integer,
                     )
                 ).label("completed"),
@@ -568,7 +568,7 @@ async def create_project(
         created_by=created_by,
         template_id=template_id,
         workflow_id=workflow_id,
-        status="active",
+        status="draft",  # EAI-CUSTOM: canonical status (ADR 2026-08-02)
     )
     db.add(project)
     await db.flush()
@@ -631,7 +631,7 @@ async def copy_project(
         created_by=created_by,
         template_id=source.template_id,
         workflow_id=source.workflow_id if copy_workflow else None,
-        status="active",
+        status="draft",  # EAI-CUSTOM: canonical status (ADR 2026-08-02)
     )
     db.add(new_project)
     await db.flush()
@@ -733,7 +733,10 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
 
     Scans AIDocuments linked to this project and updates:
     - Chapter word_count_current (from document content length)
-    - Chapter status (pending → writing if content exists)
+
+    EAI-CUSTOM: never writes chapter status here — the previous `status="writing"`
+    clobber destroyed agent/status signal on every sync (ADR 2026-08-02). Status
+    is owned by the chapter state machine; this function only refreshes counts.
     """
     from sqlalchemy import func as sa_func, update as sa_update
 
@@ -781,10 +784,7 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
             await db.execute(
                 sa_update(ProjectChapter)
                 .where(ProjectChapter.id == cid)
-                .values(
-                    word_count_current=words,
-                    status="writing",
-                )
+                .values(word_count_current=words)
             )
     elif doc_count > 0:
         # No chapter-specific docs, but project has documents.
@@ -803,10 +803,7 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
             await db.execute(
                 sa_update(ProjectChapter)
                 .where(ProjectChapter.id == cid)
-                .values(
-                    word_count_current=words_per_chapter,
-                    status="writing",
-                )
+                .values(word_count_current=words_per_chapter)
             )
 
     await db.flush()
@@ -883,7 +880,7 @@ async def _auto_assign_org_bindings(db: AsyncSession, project: ReportProject, wo
 
 
 async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut | None:
-    from .schemas import validate_status_transition
+    from .schemas import normalize_project_status, validate_status_transition
 
     stmt = select(ReportProject).where(ReportProject.id == project_id)
     result = await db.execute(stmt)
@@ -897,6 +894,10 @@ async def update_project(db: AsyncSession, project_id, **kwargs) -> ProjectOut |
         err = validate_status_transition(project.status, new_status)
         if err:
             raise HTTPException(status_code=400, detail=err)
+        # EAI-CUSTOM: store canonical value (ADR 2026-08-02). Legacy producers
+        # (frontend PATCH until P4) send setup/outline/... — normalize to the
+        # canonical value so the DB CHECK constraint is never violated.
+        kwargs["status"] = normalize_project_status(new_status)
 
     for k, v in kwargs.items():
         if v is not None:
@@ -1050,7 +1051,7 @@ async def approval_action(
         steps = all_steps.scalars().all()
         if all(s.status == "approved" for s in steps):
             project = await _get_project_or_404(db, project_id)
-            project.status = "completed"
+            project.status = "approved"  # EAI-CUSTOM: canonical (ADR 2026-08-02)
 
     elif action == "reject":
         workflow.status = "rejected"
@@ -1294,7 +1295,7 @@ async def get_phase_board(db: AsyncSession, project_id: UUID, phase_node: str) -
         })
 
     total = len(filtered_chapters)
-    completed = sum(1 for c in filtered_chapters if c.status == "completed")
+    completed = sum(1 for c in filtered_chapters if c.status in ("reviewing", "approved"))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
 
     return {
         "phase_node": phase_node,

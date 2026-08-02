@@ -217,26 +217,39 @@ class TestRejectionRollbackIntegration:
 
 
 class TestChapterLifecycle:
-    """Full chapter lifecycle: pending → draft → completed → approved → (rollback)→ pending."""
+    """Canonical chapter lifecycle (ADR 2026-08-02): pending → draft → reviewing → approved, with reviewing → draft (reject) and approved → draft (rework)."""
 
     def test_full_happy_path_transitions(self):
         from app.extensions.writing.state_machine import validate_chapter_transition
 
         assert validate_chapter_transition("pending", "draft") is None
-        assert validate_chapter_transition("draft", "completed") is None
-        assert validate_chapter_transition("completed", "approved") is None
+        assert validate_chapter_transition("draft", "reviewing") is None
+        assert validate_chapter_transition("reviewing", "approved") is None
+
+    def test_tier1_direct_approval(self):
+        from app.extensions.writing.state_machine import validate_chapter_transition
+
+        # Tier-1 (no review gate): draft may go straight to approved.
+        assert validate_chapter_transition("draft", "approved") is None
 
     def test_rejection_rollback_path(self):
         from app.extensions.writing.state_machine import validate_chapter_transition
 
-        assert validate_chapter_transition("completed", "pending") is None
-        assert validate_chapter_transition("approved", "pending") is None
+        # Rejection = event that returns the chapter to 'draft' with feedback.
+        assert validate_chapter_transition("reviewing", "draft") is None
+        # Post-approval rework mirrors the project-level re-open.
+        assert validate_chapter_transition("approved", "draft") is None
 
-    def test_error_retry_path(self):
-        from app.extensions.writing.state_machine import validate_chapter_transition
+    def test_error_state_removed(self):
+        # EAI-CUSTOM: 'error'/'completed' removed (ADR 2026-08-02). AI-failure
+        # retry is re-derived from an empty draft (word_count_current == 0);
+        # failed chapters stay 'pending' so generation can rerun.
+        from app.extensions.writing.state_machine import ChapterStatus
 
-        assert validate_chapter_transition("error", "draft") is None
-        assert validate_chapter_transition("error", "pending") is None
+        values = {c.value for c in ChapterStatus}
+        assert "error" not in values
+        assert "completed" not in values
+        assert {"pending", "draft", "reviewing", "approved"} <= values
 
 
 # ── Finalize Integration Tests ───────────────────────────────────────────────
@@ -246,7 +259,7 @@ class TestFinalizeIntegration:
     def test_preconditions_blocked_when_reviews_not_approved(self):
         from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
 
-        chapters = [{"id": "c1", "title": "Ch1", "status": "completed"}]
+        chapters = [{"id": "c1", "title": "Ch1", "status": "reviewing"}]  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         result = check_preconditions(chapters, reviews_approved=False)
         assert result.status == FinalizeStatus.BLOCKED
 
@@ -254,7 +267,7 @@ class TestFinalizeIntegration:
         from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
 
         chapters = [
-            {"id": "c1", "title": "Ch1", "status": "completed"},
+            {"id": "c1", "title": "Ch1", "status": "reviewing"},  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             {"id": "c2", "title": "Ch2", "status": "pending"},
         ]
         result = check_preconditions(chapters, reviews_approved=True)
@@ -264,7 +277,7 @@ class TestFinalizeIntegration:
         from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
 
         chapters = [
-            {"id": "c1", "title": "Ch1", "status": "completed"},
+            {"id": "c1", "title": "Ch1", "status": "reviewing"},  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             {"id": "c2", "title": "Ch2", "status": "approved"},
         ]
         result = check_preconditions(chapters, reviews_approved=True)
@@ -273,7 +286,7 @@ class TestFinalizeIntegration:
     def test_preconditions_warnings_for_unresolved_comments(self):
         from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
 
-        chapters = [{"id": "c1", "title": "Ch1", "status": "completed"}]
+        chapters = [{"id": "c1", "title": "Ch1", "status": "reviewing"}]  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         result = check_preconditions(chapters, reviews_approved=True, unresolved_comments=3)
         assert result.status == FinalizeStatus.WARNINGS
         assert any("评论" in w for w in result.warnings)

@@ -69,9 +69,11 @@ async def aggregate_todos(
                 'word_count_target', ch.word_count_target,
                 'word_count_current', ch.word_count_current
             ) AS context,
-            CASE ch.status
-                WHEN 'error' THEN '重试生成'
-                WHEN 'draft' THEN '继续编辑'
+            CASE
+                -- EAI-CUSTOM: 'error' removed (ADR 2026-08-02); retry re-derived
+                -- from an empty draft (word_count_current == 0).
+                WHEN ch.status = 'draft' AND ch.word_count_current = 0 THEN '重试生成'
+                WHEN ch.status = 'draft' THEN '继续编辑'
                 ELSE '开始撰写'
             END AS action_label,
             '/projects/' || p.id::text || '/edit?chapter=' || ch.id::text AS action_route,
@@ -80,7 +82,7 @@ async def aggregate_todos(
         FROM project_chapters ch
         JOIN report_projects p ON p.id = ch.project_id
         WHERE ch.assigned_to = :user_id
-          AND ch.status IN ('pending', 'draft', 'error')
+          AND ch.status IN ('pending', 'draft')
           AND (:project_id IS NULL OR p.id = :project_id)
 
         UNION ALL

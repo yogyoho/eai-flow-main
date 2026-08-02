@@ -11,7 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # Report types are now managed via the business_dictionaries table (category="report_type")
 # and enforced by the frontend dropdown. No hardcoded validation list — the DB is the source of truth.
 
-VALID_PROJECT_STATUSES = ["setup", "outline", "writing", "editing", "approval", "in_progress", "active", "completed", "archived"]
+# EAI-CUSTOM: 2026-08-02 single-state consolidation (ADR
+# docs/superpowers/specs/2026-08-02-writing-project-single-state.md).
+# Canonical project status: {draft, in_review, approved}. 'archived' remains a
+# status value until the orthogonal archived_at switch lands (ADR §9).
+VALID_PROJECT_STATUSES = ["draft", "in_review", "approved", "archived"]
 
 VALID_MEMBER_ROLES = ["owner", "manager", "editor", "reviewer", "approver", "member"]
 
@@ -25,28 +29,50 @@ VALID_DUTY_KEYS = {"leader", "writer", "dept_reviewer", "company_reviewer", "lea
 # ── State transitions ──
 
 VALID_STATE_TRANSITIONS: dict[str, set[str]] = {
-    "setup": {"outline", "active", "in_progress"},
-    "outline": {"writing", "setup"},
-    "writing": {"editing", "setup"},
-    "editing": {"approval", "writing", "setup"},
-    "approval": {"completed", "editing"},
-    "in_progress": {"editing", "approval", "completed", "active"},
-    "active": {"setup", "in_progress", "completed", "archived"},
-    "completed": {"archived", "setup"},
-    "archived": {"setup"},
+    "draft": {"in_review", "approved", "archived"},
+    "in_review": {"draft", "approved", "archived"},
+    "approved": {"in_review", "archived"},
+    "archived": {"draft"},  # unarchive path while the status-field switch is in place
 }
+
+# EAI-CUSTOM migration shim: legacy project statuses -> canonical.
+# Kept only until the P4 switch removes legacy producers; do not grow this map.
+LEGACY_PROJECT_STATUS_MAP: dict[str, str] = {
+    "setup": "draft",
+    "outline": "draft",
+    "writing": "draft",
+    "editing": "draft",
+    "in_progress": "draft",
+    "active": "draft",
+    "approval": "in_review",
+    "completed": "approved",
+}
+
+
+def normalize_project_status(value: str) -> str:
+    """Map a legacy project status to the canonical set.
+
+    Unknown values are returned unchanged so callers can reject them against
+    VALID_PROJECT_STATUSES (no silent default).
+    """
+    if value in VALID_PROJECT_STATUSES:
+        return value
+    return LEGACY_PROJECT_STATUS_MAP.get(value, value)
 
 
 def validate_status_transition(current: str, target: str) -> str | None:
     """Return error message if transition is invalid, None if valid.
 
-    Admin/bypass callers can ignore the result; this is a guard for
-    normal state-machine progression.
+    Both current and target are normalized to canonical values, so the machine
+    accepts legacy producers until the P4 switch removes them. Admin/bypass
+    callers can ignore the result; this is a guard for normal progression.
     """
-    if target not in VALID_PROJECT_STATUSES:
+    cur = normalize_project_status(current)
+    tgt = normalize_project_status(target)
+    if tgt not in VALID_PROJECT_STATUSES:
         return f"Unknown status: {target!r}"
-    allowed = VALID_STATE_TRANSITIONS.get(current, set())
-    if target not in allowed:
+    allowed = VALID_STATE_TRANSITIONS.get(cur, set())
+    if tgt not in allowed:
         return f"Cannot transition from {current!r} to {target!r}"
     return None
 
@@ -160,7 +186,7 @@ class ProjectOut(BaseModel):
     name: str
     report_type: str
     template_id: UUID | None = None
-    status: str = "active"
+    status: str = "draft"
     thread_id: str | None = None
     created_by: UUID | None = None
     members: list[MemberOut] = Field(default_factory=list)
@@ -181,7 +207,7 @@ class ProjectListItem(BaseModel):
     id: UUID
     name: str
     report_type: str
-    status: str = "active"
+    status: str = "draft"
     template_id: UUID | None = None
     template_name: str | None = None
     chapter_count: int = 0

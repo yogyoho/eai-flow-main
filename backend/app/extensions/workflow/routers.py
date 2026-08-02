@@ -497,7 +497,7 @@ async def get_workflow_status_endpoint(
                             ProjectChapter.phase_node,
                             func.count(ProjectChapter.id).label("total"),
                             func.sum(
-                                func.cast(ProjectChapter.status.in_(("completed", "approved", "reviewed")), Integer)
+                                func.cast(ProjectChapter.status.in_(("reviewing", "approved")), Integer)  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                             ).label("done"),
                         )
                         .where(ProjectChapter.project_id == project_id)
@@ -577,7 +577,7 @@ async def get_workflow_status_endpoint(
                     ProjectChapter.phase_node,
                     func.count(ProjectChapter.id).label("total"),
                     func.sum(
-                        func.cast(ProjectChapter.status.in_(("completed", "approved", "reviewed")), Integer)
+                        func.cast(ProjectChapter.status.in_(("reviewing", "approved")), Integer)  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                     ).label("done"),
                 )
                 .where(ProjectChapter.project_id == project_id)
@@ -670,7 +670,7 @@ async def start_workflow(
     if workflow_id:
         project.workflow_id = body.workflow_id
         project.temporal_workflow_id = workflow_id
-        project.status = "in_progress"
+        project.status = "draft"  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         await db.commit()
         return {"status": "started", "temporal_workflow_id": workflow_id}
     else:

@@ -44,6 +44,9 @@ async def execute_rollback(db, plan: dict):
         )
 
     # 2. Reset chapters in the rollback phase
+    # EAI-CUSTOM: canonical statuses (ADR 2026-08-02) — rolled-back chapters
+    # return to 'draft' (they have content, need rework); legacy 'reviewed'
+    # folded into 'approved'.
     if plan.get("chapters_to_reset"):
         await db.execute(
             sa_update(ProjectChapter)
@@ -51,8 +54,8 @@ async def execute_rollback(db, plan: dict):
             .where(ProjectChapter.id.in_(
                 uuid.UUID(cid) for cid in plan["chapters_to_reset"]
             ))
-            .where(ProjectChapter.status.in_(("completed", "approved", "reviewed")))
-            .values(status="pending")
+            .where(ProjectChapter.status.in_(("reviewing", "approved")))
+            .values(status="draft")
         )
 
     # 3. Move project to rollback target

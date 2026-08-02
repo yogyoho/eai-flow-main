@@ -102,7 +102,7 @@ class EndNodeExecutor:
             "completion_actions": {
                 "type": "object",
                 "properties": {
-                    "set_project_status": {"type": "string", "default": "completed"},
+                    "set_project_status": {"type": "string", "default": "approved"},
                     "merge_documents": {"type": "boolean", "default": True},
                     "notify_roles": {
                         "type": "array",
@@ -125,7 +125,20 @@ class EndNodeExecutor:
         from app.extensions.models import ReportProject
         import uuid
 
-        new_status = actions.get("set_project_status", "completed")
+        # EAI-CUSTOM: canonical project status (ADR 2026-08-02). The value comes
+        # from workflow graph config (free-form) — normalize to canonical and
+        # reject anything outside the canonical set instead of writing garbage.
+        from app.extensions.project.schemas import (
+            VALID_PROJECT_STATUSES,
+            normalize_project_status,
+        )
+
+        new_status = normalize_project_status(actions.get("set_project_status", "approved"))
+        if new_status not in VALID_PROJECT_STATUSES:
+            return NodeResult(
+                status="error",
+                output={"error": f"Invalid project status: {new_status!r}"},
+            )
 
         async with get_db_context() as db:
             project = await db.get(ReportProject, uuid.UUID(ctx.project_id))

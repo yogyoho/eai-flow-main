@@ -198,7 +198,7 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
         incomplete_chapters: list[str] = []
         for ch_id, ch_status, ch_title in status_result.all():
             total += 1
-            if ch_status in ("completed", "approved"):
+            if ch_status in ("reviewing", "approved"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                 completed += 1
             else:
                 pending += 1
@@ -327,7 +327,7 @@ async def handle_rejection(
             update(ProjectChapter)
             .where(ProjectChapter.project_id == uuid.UUID(project_id))
             .where(ProjectChapter.phase_node == rollback_to)
-            .where(ProjectChapter.status.in_(("completed", "approved", "reviewed")))
+            .where(ProjectChapter.status.in_(("reviewing", "approved")))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             .values(status="pending")
         )
 

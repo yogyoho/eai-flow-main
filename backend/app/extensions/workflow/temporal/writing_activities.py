@@ -252,8 +252,9 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
             from app.extensions.workflow.metrics import record_ai_generation_success
             record_ai_generation_success(project_id=project_id, chapter_id=chapter_id)
         else:
-            # Record failure on the chapter so the UI can surface it
-            chapter.status = "error"
+            # EAI-CUSTOM: 'error' is no longer a chapter status (ADR 2026-08-02).
+            # On failure keep the chapter at 'pending' (so a retry re-derives it)
+            # and surface the failure via generation_hint + metrics only.
             chapter.generation_hint = (chapter.generation_hint or "") + f"\n[AI generation failed: {error_code}]"
             await db.commit()
             from app.extensions.workflow.metrics import record_ai_generation_failure
@@ -322,7 +323,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
         if strategy == GenerationStrategy.BATCH:
             # Parallel generation for all chapters (simple reports)
             for ch in chapters:
-                if ch.status not in ("pending", "error"):
+                if ch.status != "pending":  # EAI-CUSTOM: 'error' removed (ADR 2026-08-02)
                     results.append({"chapter_id": str(ch.id), "status": ch.status, "reason": "skipped"})
                     continue
                 content, error_code = await _generate_content(_build_writing_prompt(ch))
@@ -331,7 +332,6 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                     ch.status = "draft"
                     ch.word_count_current = len(content)
                 else:
-                    ch.status = "error"
                     ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
                 results.append({"chapter_id": str(ch.id), "status": ch.status})
             await db.commit()
@@ -342,7 +342,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                 for batch in batches:
                     batch_chapters = [c for c in chapters if c.title in batch]
                     for ch in batch_chapters:
-                        if ch.status not in ("pending", "error"):
+                        if ch.status != "pending":  # EAI-CUSTOM: 'error' removed (ADR 2026-08-02)
                             results.append({"chapter_id": str(ch.id), "status": ch.status, "reason": "skipped"})
                             continue
                         content, error_code = await _generate_content(_build_writing_prompt(ch))
@@ -351,14 +351,13 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                             ch.status = "draft"
                             ch.word_count_current = len(content)
                         else:
-                            ch.status = "error"
                             ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
                         results.append({"chapter_id": str(ch.id), "status": ch.status})
                     await db.commit()  # Commit after each batch so subsequent batches see updated data
             else:
                 # No template sections — fall back to simple sequential
                 for ch in chapters:
-                    if ch.status not in ("pending", "error"):
+                    if ch.status != "pending":  # EAI-CUSTOM: 'error' removed (ADR 2026-08-02)
                         continue
                     content, error_code = await _generate_content(_build_writing_prompt(ch))
                     if content:
@@ -366,7 +365,6 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
                         ch.status = "draft"
                         ch.word_count_current = len(content)
                     else:
-                        ch.status = "error"
                         ch.generation_hint = (ch.generation_hint or "") + f"\n[AI failed: {error_code}]"
                     results.append({"chapter_id": str(ch.id), "status": ch.status})
                 await db.commit()

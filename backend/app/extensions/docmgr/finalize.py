@@ -44,7 +44,7 @@ def check_preconditions(
         errors.append("审核尚未全部通过，无法定稿")
         return PreconditionResult(status=FinalizeStatus.BLOCKED, errors=errors)
 
-    incomplete = [c for c in chapters if c["status"] not in ("completed", "approved")]
+    incomplete = [c for c in chapters if c["status"] not in ("reviewing", "approved")]  # EAI-CUSTOM: canonical (ADR 2026-08-02)
     if incomplete:
         titles = ", ".join(c["title"] for c in incomplete)
         errors.append(f"以下章节未完成: {titles}")
@@ -83,7 +83,7 @@ async def execute_finalize(
     ch_result = await db.execute(
         select(ProjectChapter)
         .where(ProjectChapter.project_id == project_id)
-        .where(ProjectChapter.status.in_(("completed", "approved")))
+        .where(ProjectChapter.status.in_(("reviewing", "approved")))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         .where(ProjectChapter.content.isnot(None))
         .where(_func.length(ProjectChapter.content) > 0)
         .order_by(ProjectChapter.sort_order)
@@ -158,12 +158,12 @@ async def execute_finalize(
     await db.execute(
         sa_update(ProjectChapter)
         .where(ProjectChapter.project_id == project_id)
-        .where(ProjectChapter.status.in_(("completed", "approved")))
+        .where(ProjectChapter.status.in_(("reviewing", "approved")))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         .values(status="approved")
     )
 
-    # ── Mark project as completed ──
-    project.status = "completed"
+    # ── Mark project as approved (canonical, ADR 2026-08-02) ──
+    project.status = "approved"
 
     await db.commit()
     await db.refresh(final_doc)

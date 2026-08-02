@@ -5,7 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -151,7 +151,7 @@ async def create_project(
                     if proj:
                         proj.workflow_id = body.workflow_id
                         proj.temporal_workflow_id = workflow_id_result
-                        proj.status = "in_progress"
+                        proj.status = "draft"  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                         await db.commit()
         except Exception as exc:  # Auto-start is best-effort; project is still created
             import logging as _logging
@@ -434,6 +434,22 @@ async def _check_phase_access(
 class ChapterStatusUpdate(BaseModel):
     status: str
 
+    @field_validator("status")
+    @classmethod
+    def _canonical_status(cls, v: str) -> str:
+        # EAI-CUSTOM: canonical chapter status (ADR 2026-08-02). Legacy values
+        # (writing/completed/rejected/...) are normalized to the canonical set so
+        # the DB CHECK constraint is never violated during the P4 transition.
+        from app.extensions.writing.state_machine import (
+            VALID_CHAPTER_TRANSITIONS,
+            normalize_chapter_status,
+        )
+
+        normalized = normalize_chapter_status(v)
+        if normalized not in VALID_CHAPTER_TRANSITIONS:
+            raise ValueError(f"Invalid chapter status: {v!r}")
+        return normalized
+
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/open")
 async def open_chapter_for_editing(
@@ -466,10 +482,31 @@ async def update_chapter_status(
     user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a chapter's status (e.g. pending → writing → in_review → completed)."""
+    """Update a chapter's status (pending → draft → reviewing → approved).
+
+    EAI-CUSTOM: status is canonicalized + transition-validated (ADR 2026-08-02).
+    Same-state writes are allowed as no-ops so legacy frontend flows that write
+    an already-set status do not 400.
+    """
     await _check_phase_access(db, project_id, chapter_id, user)
 
     from app.extensions.models import ProjectChapter
+    from app.extensions.writing.state_machine import validate_chapter_transition
+
+    cur = await db.execute(
+        select(ProjectChapter.status).where(
+            ProjectChapter.id == chapter_id,
+            ProjectChapter.project_id == project_id,
+        )
+    )
+    cur_status = cur.scalar_one_or_none()
+    if cur_status is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    if body.status != cur_status:
+        err = validate_chapter_transition(cur_status, body.status)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
 
     stmt = (
         ProjectChapter.__table__.update()
@@ -613,7 +650,7 @@ async def get_phase_completion(
 
     for c in all_chapters:
         if c.id in leaf_chapter_ids:
-            if c.status in ("completed", "approved"):
+            if c.status in ("reviewing", "approved"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                 completed += 1
             else:
                 pending += 1
@@ -792,7 +829,9 @@ async def complete_current_phase(
         select(
             _sf.count(ProjectChapter.id).label("total"),
             _sf.sum(_sf.cast(
-                ProjectChapter.status.in_(["completed", "approved"]), Integer
+                # EAI-CUSTOM: canonical (ADR 2026-08-02)
+                ProjectChapter.status.in_(["reviewing", "approved"]),
+                Integer,
             )).label("done"),
         )
         .where(ProjectChapter.project_id == project_id)
@@ -895,14 +934,15 @@ async def get_phase_status(
                     phase_label = node_label
 
             # Determine available actions based on current state
-            if current_phase and project.status in ("in_progress", "active"):
+            if current_phase and project.status in ("draft", "in_review"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                 available_actions.append("complete_phase")
-            if not current_phase and project.status in ("active", "in_progress"):
+            if not current_phase and project.status in ("draft",):
                 available_actions.append("start_workflow")
 
     # Determine workflow status
+    # EAI-CUSTOM: canonical project status mapping (ADR 2026-08-02).
     wf_status = "idle"
-    if project.status == "completed":
+    if project.status == "approved":
         wf_status = "completed"
     elif project.temporal_workflow_id:
         try:
@@ -911,9 +951,9 @@ async def get_phase_status(
             if temporal_status:
                 wf_status = temporal_status.get("status", "idle")
             else:
-                wf_status = "running" if project.status == "in_progress" else "idle"
+                wf_status = "running" if project.status in ("draft", "in_review") else "idle"
         except Exception:
-            wf_status = "running" if project.status == "in_progress" else "idle"
+            wf_status = "running" if project.status in ("draft", "in_review") else "idle"
 
     return PhaseStatusResponse(
         project_id=str(project_id),
@@ -1081,7 +1121,8 @@ async def get_project_stats(
             func.coalesce(
                 func.sum(
                     func.cast(
-                        ProjectChapter.status.in_(["completed", "approved"]),
+                        # EAI-CUSTOM: canonical (ADR 2026-08-02)
+                        ProjectChapter.status.in_(["reviewing", "approved"]),
                         Integer,
                     )
                 ), 0
@@ -1217,7 +1258,7 @@ async def finalize_document(
             .where(ProjectChapter.id == _UUID(chapter_uuid))
             .where(ProjectChapter.project_id == project_id)
             .values(
-                status="completed",
+                status="approved",  # EAI-CUSTOM: canonical (ADR 2026-08-02)
                 word_count_current=ProjectChapter.word_count_current + word_count,
             )
         )

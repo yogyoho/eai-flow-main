@@ -199,7 +199,7 @@ async def init_task(node_id: str, project_id: str, config: dict | None = None) -
                     select(ProjectChapter)
                     .where(ProjectChapter.project_id == uuid.UUID(project_id))
                     .where(ProjectChapter.assigned_to.is_(None))
-                    .where(ProjectChapter.status.in_(("pending", "draft", "error")))
+                    .where(ProjectChapter.status.in_(("pending", "draft")))  # EAI-CUSTOM: 'error' removed (ADR 2026-08-02)
                     .order_by(ProjectChapter.sort_order)
                 )
                 for idx, ch in enumerate(ch_result.scalars().all()):

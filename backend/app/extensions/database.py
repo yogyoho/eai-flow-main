@@ -799,12 +799,13 @@ async def migrate_db() -> None:
                 name VARCHAR(255) NOT NULL,
                 report_type VARCHAR(100) NOT NULL,
                 template_id UUID REFERENCES extraction_templates(id),
-                status VARCHAR(20) NOT NULL DEFAULT 'setup',
+                status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- EAI-CUSTOM: canonical (ADR 2026-08-02)
                 current_stage INT NOT NULL DEFAULT 1,
                 thread_id VARCHAR(100),
                 created_by UUID REFERENCES users(id),
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                CONSTRAINT ck_report_projects_status CHECK (status IN ('draft','in_review','approved','archived'))
             )
         """))
         await conn.execute(text(
@@ -822,7 +823,7 @@ async def migrate_db() -> None:
                 title VARCHAR(500) NOT NULL,
                 level INT NOT NULL DEFAULT 1,
                 sort_order INT NOT NULL DEFAULT 0,
-                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- EAI-CUSTOM: canonical (ADR 2026-08-02)
                 content TEXT,
                 assigned_to UUID REFERENCES users(id),
                 word_count_target INT NOT NULL DEFAULT 3000,
@@ -830,7 +831,8 @@ async def migrate_db() -> None:
                 purpose TEXT,
                 generation_hint TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                CONSTRAINT ck_project_chapters_status CHECK (status IN ('pending','draft','reviewing','approved'))
             )
         """))
         await conn.execute(text(
@@ -1340,6 +1342,49 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
+        """))
+
+        # ── EAI-CUSTOM: single-state consolidation (ADR 2026-08-02) ──
+        # Backfill legacy project/chapter statuses to the canonical set, then add
+        # DB CHECK constraints as the enforcement backstop for writers that
+        # bypass service-layer validation. Idempotent — safe on every startup.
+        await conn.execute(text("""
+            UPDATE report_projects SET status = CASE status
+                WHEN 'completed' THEN 'approved'
+                WHEN 'approval'  THEN 'in_review'
+                ELSE 'draft'
+            END WHERE status <> 'archived'
+        """))
+        await conn.execute(text("""
+            UPDATE project_chapters SET status = CASE status
+                WHEN 'pending'     THEN 'pending'
+                WHEN 'draft'       THEN 'draft'
+                WHEN 'writing'     THEN 'draft'
+                WHEN 'rejected'    THEN 'draft'
+                WHEN 'editing'     THEN 'draft'
+                WHEN 'in_progress' THEN 'draft'
+                WHEN 'error'       THEN 'draft'
+                WHEN 'review'      THEN 'reviewing'
+                WHEN 'in_review'   THEN 'reviewing'
+                WHEN 'completed'   THEN 'reviewing'
+                WHEN 'reviewed'    THEN 'approved'
+                WHEN 'approved'    THEN 'approved'
+                WHEN 'signed'      THEN 'approved'
+                ELSE 'draft'
+            END
+        """))
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_report_projects_status') THEN
+                    ALTER TABLE report_projects ADD CONSTRAINT ck_report_projects_status
+                        CHECK (status IN ('draft','in_review','approved','archived'));
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_project_chapters_status') THEN
+                    ALTER TABLE project_chapters ADD CONSTRAINT ck_project_chapters_status
+                        CHECK (status IN ('pending','draft','reviewing','approved'));
+                END IF;
+            END $$;
         """))
 
 

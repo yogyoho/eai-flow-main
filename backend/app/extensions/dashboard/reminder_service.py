@@ -85,7 +85,7 @@ async def check_deadline_reminders(db: AsyncSession) -> dict:
         proj_stmt = select(ReportProject).where(ReportProject.id == tl.project_id)
         proj_result = await db.execute(proj_stmt)
         project = proj_result.scalar_one_or_none()
-        if not project or project.status not in ("in_progress", "active"):
+        if not project or project.status not in ("draft", "in_review"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             continue
 
         # Get phase label from workflow graph
@@ -159,7 +159,7 @@ async def check_deadline_reminders(db: AsyncSession) -> dict:
         proj_stmt = select(ReportProject).where(ReportProject.id == tl.project_id)
         proj_result = await db.execute(proj_stmt)
         project = proj_result.scalar_one_or_none()
-        if not project or project.status not in ("in_progress", "active"):
+        if not project or project.status not in ("draft", "in_review"):  # EAI-CUSTOM: canonical (ADR 2026-08-02)
             continue
 
         for i, ms in enumerate(tl.milestones):
