@@ -69,6 +69,11 @@ detect-thread-boundaries:
 detect-blocking-io:
 	@$(MAKE) -C backend detect-blocking-io
 
+# 上游同步后检查：同步的文件是否引用了未同步的缺失模块（部分同步残留）。
+# 用法：每次 `git pull` 上游 / 批量同步后跑 `make sync-check`，0=一致。
+sync-check:
+	@$(PYTHON) ./scripts/check_import_consistency.py
+
 config:
 	@$(PYTHON) ./scripts/configure.py
 
