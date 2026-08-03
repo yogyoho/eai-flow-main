@@ -534,6 +534,27 @@ async def _find_target_run_id(
     raise HTTPException(status_code=409, detail="Could not find source run for assistant message")
 
 
+class _LineageCheckpointerAdapter:
+    """Adapt the raw checkpointer so the lineage walk can read ancestor tuples.
+
+    EAI-CUSTOM: ``find_checkpoint_before_message`` reads each ancestor via
+    ``accessor.aget`` and expects a tuple-like snapshot (``config``,
+    ``metadata``, ``checkpoint``, ``parent_config``). The raw checkpointer's
+    ``aget`` returns only the raw checkpoint payload dict
+    (``AsyncBaseCheckpointSaver.aget`` returns ``tuple.checkpoint``), which is
+    not walkable — every ancestor read failed ``_checkpoint_exists`` and
+    regenerate returned "Could not safely resolve the checkpoint before the
+    target user message". ``aget_tuple`` returns the full ``CheckpointTuple``
+    the walk needs.
+    """
+
+    def __init__(self, checkpointer: Any) -> None:
+        self._checkpointer = checkpointer
+
+    async def aget(self, config: dict[str, Any]) -> Any:
+        return await self._checkpointer.aget_tuple(config)
+
+
 async def _find_base_checkpoint_before_human(
     thread_id: str,
     human_message_id: str,
@@ -542,14 +563,16 @@ async def _find_base_checkpoint_before_human(
     head_checkpoint: Any | None = None,
 ) -> Any:
     # EAI-CUSTOM: 上游用 build_thread_checkpoint_state_accessor（materialized state-accessor，
-    # 暴露 .aget/.ahistory）。EAI regenerate 仍走原始 checkpointer：它有 .aget（可供 lineage 行走），
-    # 但无 .ahistory，故 chronological 回落沿用 .alist（与 EAI 既有路径一致）。
+    # 暴露 .aget/.ahistory）。EAI regenerate 仍走原始 checkpointer：它无 .ahistory，chronological
+    # 回落沿用 .alist（与 EAI 既有路径一致）；lineage 行走经 _LineageCheckpointerAdapter 走
+    # .aget_tuple —— 原始 .aget 只返回 checkpoint payload dict，不能走 lineage（曾导致
+    # "Could not safely resolve the checkpoint before the target user message" 409）。
     checkpointer = get_checkpointer(request)
     base_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
     if head_checkpoint is not None:
         try:
             return await find_checkpoint_before_message(
-                checkpointer,
+                _LineageCheckpointerAdapter(checkpointer),
                 head_checkpoint,
                 human_message_id,
                 max_depth=REGENERATE_HISTORY_RAW_SCAN_LIMIT,
@@ -1083,11 +1106,20 @@ async def list_thread_messages(
 ) -> list[dict]:
     """Return displayable messages for a thread (across all runs), with feedback attached."""
     event_store = get_run_event_store(request)
-    messages = await event_store.list_messages(thread_id, limit=limit, before_seq=before_seq, after_seq=after_seq)
 
     # Resolve the caller once; it is needed both to scope the feedback query
     # below and to list the thread's runs for turn-duration injection.
     user_id = await get_current_user(request)
+    run_mgr = get_run_manager(request)
+    hidden_run_ids = await _default_history_hidden_run_ids(run_mgr, thread_id, user_id=user_id)
+    # EAI-CUSTOM: plain feed mirrors /messages/page — filter hidden runs
+    # (regenerate superseded / edit-rerun invisible or failed attempts) and
+    # middleware control rows so the displayable feed stays consistent.
+    messages = [
+        row
+        for row in await event_store.list_messages(thread_id, limit=limit, before_seq=before_seq, after_seq=after_seq)
+        if not _is_middleware_message_row(row) and row.get("run_id") not in hidden_run_ids
+    ]
 
     # Find the last AI message per run_id. AI messages are persisted by
     # RunJournal with event_type "llm.ai.response" (see runtime/journal.py);
