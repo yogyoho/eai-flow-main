@@ -1297,12 +1297,18 @@ export default function AdminRolesPage() {
   }, []);
 
   /* ── Handlers ────────────────────────────────────────────── */
-  const filteredRoles = searchQuery
+  // EAI-CUSTOM: 角色列表排序 —— 超级管理员(is_system)置顶，其余按 level 降序、同名按 name 升序
+  const filteredRoles = (searchQuery
     ? roles.filter((r) =>
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.code || "").toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : roles;
+    : roles).slice().sort((a, b) => {
+    if (a.is_system !== b.is_system) return a.is_system ? -1 : 1;
+    const lb = (b.level ?? 0) - (a.level ?? 0);
+    if (lb !== 0) return lb;
+    return a.name.localeCompare(b.name, "zh-CN");
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1474,7 +1480,7 @@ export default function AdminRolesPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
           {filteredRoles.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4 text-center">暂无角色</div>
           ) : (
@@ -1619,7 +1625,7 @@ export default function AdminRolesPage() {
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-muted/20">
+            <div className="flex-1 min-h-0 overflow-y-auto p-8 bg-muted/20">
               <AnimatePresence mode="wait">
                 {activeTab === "permissions" ? (
                   <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
