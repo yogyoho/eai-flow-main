@@ -12,6 +12,7 @@ from app.gateway.routers import threads
 from deerflow.config.paths import Paths
 from deerflow.persistence.thread_meta import InvalidMetadataFilterError
 from deerflow.persistence.thread_meta.memory import THREADS_NS, MemoryThreadMetaStore
+from deerflow.runtime.events.store import make_run_event_store
 
 _ISO_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 
@@ -60,6 +61,10 @@ def _build_thread_app() -> tuple[FastAPI, InMemoryStore, InMemorySaver]:
     app.state.store = store
     app.state.checkpointer = checkpointer
     app.state.thread_store = _PermissiveThreadMetaStore(store)
+    # EAI-CUSTOM: upstream threads.py resolves state through build_checkpoint_state_accessor
+    # -> get_run_context -> get_run_event_store. The aligned router needs this
+    # app.state wired like the production lifespan does.
+    app.state.run_event_store = make_run_event_store()
     app.include_router(threads.router)
     return app, store, checkpointer
 
@@ -138,7 +143,10 @@ def test_delete_thread_route_rejects_invalid_thread_id(tmp_path):
     assert response.status_code == 404
 
 
-def test_delete_thread_route_returns_422_for_route_safe_invalid_id(tmp_path):
+def test_delete_thread_route_returns_200_for_route_safe_legacy_id(tmp_path):
+    # EAI-CUSTOM: aligned with upstream — delete_thread_data validates
+    # internally and skips local filesystem cleanup for legacy IDs (returns
+    # success) instead of 422. The 422 expectation was pre-alignment.
     paths = Paths(tmp_path)
 
     app = make_authed_test_app()
@@ -148,8 +156,8 @@ def test_delete_thread_route_returns_422_for_route_safe_invalid_id(tmp_path):
         with TestClient(app) as client:
             response = client.delete("/api/threads/thread.with.dot")
 
-    assert response.status_code == 422
-    assert "Invalid thread_id" in response.json()["detail"]
+    assert response.status_code == 200
+    assert "Skipped local data cleanup" in response.json()["message"]
 
 
 def test_delete_thread_data_returns_generic_500_error(tmp_path):

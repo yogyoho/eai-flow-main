@@ -123,7 +123,10 @@ export default function AgentChatPage() {
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {
         let body = "Conversation finished";
-        const lastMessage = state.messages[state.messages.length - 1];
+        // EAI-CUSTOM: upstream uses state.messages[...] unguarded; a run that
+        // ends in an error state (LLM retries exhausted) has no messages channel
+        // and crashes the notification handler. Guard it.
+        const lastMessage = state.messages?.at(-1);
         if (lastMessage) {
           const textContent = textOfMessage(lastMessage);
           if (textContent) {
@@ -139,8 +142,13 @@ export default function AgentChatPage() {
   });
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
-      const sendPromise = sendMessage(threadId, message, { agent_name });
+    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
+      const sendPromise = sendMessage(
+        threadId,
+        message,
+        { agent_name },
+        options,
+      );
       if (message.files.length > 0) {
         return sendPromise;
       }

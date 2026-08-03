@@ -38,7 +38,12 @@ import {
   getAgent,
 } from "@/core/agents/api";
 import { useI18n } from "@/core/i18n/hooks";
-import { useThreadStream } from "@/core/threads/hooks";
+import {
+  buildHumanInputResponseText,
+  type HumanInputRequest,
+  type HumanInputResponse,
+} from "@/core/messages/human-input";
+import { hasToolResult, useThreadStream } from "@/core/threads/hooks";
 import { uuid } from "@/core/utils/uuid";
 import { isIMEComposing } from "@/lib/ime";
 import { cn } from "@/lib/utils";
@@ -92,13 +97,14 @@ export default function NewAgentPage() {
       mode: "flash",
       is_bootstrap: true,
     },
-    onFinish() {
-      if (!agent && setupAgentStatus === "requested") {
-        setSetupAgentStatus("idle");
+    onFinish(state) {
+      if (agent || setupAgentStatus !== "requested") {
+        return;
       }
-    },
-    onToolEnd({ name }) {
-      if (name !== "setup_agent" || !agentName) return;
+      if (!agentName || !hasToolResult(state.messages, "setup_agent")) {
+        setSetupAgentStatus("idle");
+        return;
+      }
       setSetupAgentStatus("completed");
       void getAgentWithRetry(agentName).then((fetched) => {
         if (fetched) {
@@ -216,6 +222,35 @@ export default function NewAgentPage() {
       );
     },
     [agentName, sendMessage, thread.isLoading, threadId],
+  );
+
+  const handleSubmitHumanInput = useCallback(
+    async (request: HumanInputRequest, response: HumanInputResponse) => {
+      if (!agentName) {
+        return false;
+      }
+
+      let sent = false;
+      await sendMessage(
+        threadId,
+        {
+          text: buildHumanInputResponseText(request, response),
+          files: [],
+        },
+        { agent_name: agentName },
+        {
+          additionalKwargs: {
+            hide_from_ui: true,
+            human_input_response: response,
+          },
+          onSent: () => {
+            sent = true;
+          },
+        },
+      );
+      return sent;
+    },
+    [agentName, sendMessage, threadId],
   );
 
   const handleSaveAgent = useCallback(async () => {
@@ -365,6 +400,9 @@ export default function NewAgentPage() {
                 className={cn("size-full", showSaveHint ? "pt-4" : "pt-10")}
                 threadId={threadId}
                 thread={thread}
+                onSubmitHumanInput={
+                  agentName ? handleSubmitHumanInput : undefined
+                }
               />
             </div>
 
@@ -394,6 +432,7 @@ export default function NewAgentPage() {
                   </div>
                 ) : (
                   <PromptInput
+                    disabled={thread.isLoading}
                     onSubmit={({ text }) => void handleChatSubmit(text)}
                   >
                     <PromptInputTextarea

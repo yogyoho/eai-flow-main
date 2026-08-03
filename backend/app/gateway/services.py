@@ -11,7 +11,7 @@ import asyncio
 import json
 import logging
 import re
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
 from types import SimpleNamespace
 from typing import Any
 
@@ -40,11 +40,13 @@ from deerflow.runtime import (
     RunRecord,
     RunStatus,
     StreamBridge,
+    ThreadOperationKind,
     UnsupportedStrategyError,
+    build_state_mutation_graph,
     run_agent,
 )
 from deerflow.runtime.checkpoint_mode import inject_checkpoint_mode
-from deerflow.runtime.checkpoint_state import CheckpointStateAccessor
+from deerflow.runtime.checkpoint_state import CheckpointStateAccessor, graph_state_schema
 from deerflow.runtime.goal import goal_thread_lock
 from deerflow.runtime.journal import build_checkpoint_history_seed_events
 from deerflow.runtime.runs.naming import resolve_root_run_name
@@ -1129,3 +1131,95 @@ async def wait_for_run_completion(
         if not completed and record.status in (RunStatus.pending, RunStatus.running):
             if record.on_disconnect == DisconnectMode.cancel:
                 await run_mgr.cancel(record.run_id)
+
+
+# ---------------------------------------------------------------------------
+# EAI-CUSTOM: three functions ported verbatim from upstream bytedance/main
+# (8659fca8) to satisfy the aligned threads.py materialized-state accessor.
+# threads.py (aligned) imports build_checkpoint_state_mutation_accessor,
+# build_thread_checkpoint_state_mutation_accessor and reserve_checkpoint_write
+# from this module. The rest of services.py is left untouched to preserve the
+# local permissive normalize_stream_modes / _state_accessor_graph variants.
+# ---------------------------------------------------------------------------
+
+
+async def reserve_checkpoint_write(
+    request: Request,
+    thread_id: str,
+    *,
+    user_id: str | None = None,
+) -> AsyncIterator[None]:
+    """Serialize an out-of-run checkpoint writer against all thread operations."""
+    run_manager = get_run_manager(request)
+    async with goal_thread_lock(thread_id):
+        async with run_manager.reserve_thread_operation(
+            thread_id,
+            kind=ThreadOperationKind.checkpoint_write,
+            user_id=user_id,
+        ):
+            yield
+
+
+def build_checkpoint_state_mutation_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    as_node: str,
+    checkpoint_id: str | None = None,
+    state_schema: Any | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Build a state-only graph whose writer node finishes immediately.
+
+    ``state_schema`` should be the thread's effective schema (from
+    :func:`graph_state_schema` on the assistant graph) whenever the write
+    carries materialized state; with the base-schema fallback, channels
+    contributed by custom middleware are silently discarded.
+    """
+    mode = getattr(request.app.state, "checkpoint_channel_mode", "full")
+    config: dict[str, Any] = {
+        "configurable": {
+            "thread_id": thread_id,
+            "checkpoint_ns": "",
+        }
+    }
+    if checkpoint_id is not None:
+        config["configurable"]["checkpoint_id"] = checkpoint_id
+    inject_checkpoint_mode(config, mode)
+
+    graph = build_state_mutation_graph(as_node, mode, state_schema)
+    accessor = CheckpointStateAccessor.bind(
+        graph,
+        get_checkpointer(request),
+        store=getattr(request.app.state, "store", None),
+        mode=mode,
+    )
+    return accessor, config
+
+
+async def build_thread_checkpoint_state_mutation_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    as_node: str,
+    checkpoint_id: str | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Mutation accessor compiled with the thread's effective state schema.
+
+    Derives the schema through :func:`build_thread_checkpoint_state_accessor`
+    so writes carrying materialized state do not silently discard
+    extension-owned channels.
+    """
+    read_accessor, _read_config = await build_thread_checkpoint_state_accessor(
+        request,
+        thread_id=thread_id,
+        checkpoint_id=checkpoint_id,
+        fail_closed=True,
+    )
+    state_schema = graph_state_schema(getattr(read_accessor, "graph", None))
+    return build_checkpoint_state_mutation_accessor(
+        request,
+        thread_id=thread_id,
+        as_node=as_node,
+        checkpoint_id=checkpoint_id,
+        state_schema=state_schema,
+    )

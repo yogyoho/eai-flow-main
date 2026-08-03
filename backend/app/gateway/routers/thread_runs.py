@@ -34,7 +34,8 @@ from app.gateway.checkpoint_lineage import (
 )
 from app.gateway.deps import get_checkpointer, get_current_user, get_feedback_repo, get_run_event_store, get_run_manager, get_run_store, get_stream_bridge
 from app.gateway.pagination import trim_run_message_page
-from app.gateway.services import sse_consumer, start_run, wait_for_run_completion
+from app.gateway.run_models import RunCreateRequest
+from app.gateway.services import build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
 from app.gateway.utils import sanitize_log_param
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
 from deerflow.runtime import CancelOutcome, RunRecord, RunStatus, serialize_channel_values_for_api
@@ -115,29 +116,6 @@ def stamp_turn_duration_on_last_ai(messages, run_durations: dict[str, int]) -> N
 # ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
-
-
-class RunCreateRequest(BaseModel):
-    assistant_id: str | None = Field(default=None, description="Agent / assistant to use")
-    input: dict[str, Any] | None = Field(default=None, description="Graph input (e.g. {messages: [...]})")
-    command: dict[str, Any] | None = Field(default=None, description="LangGraph Command")
-    metadata: dict[str, Any] | None = Field(default=None, description="Run metadata")
-    config: dict[str, Any] | None = Field(default=None, description="RunnableConfig overrides")
-    context: dict[str, Any] | None = Field(default=None, description="DeerFlow context overrides (model_name, thinking_enabled, etc.)")
-    webhook: str | None = Field(default=None, description="Completion callback URL")
-    checkpoint_id: str | None = Field(default=None, description="Resume from checkpoint")
-    checkpoint: dict[str, Any] | None = Field(default=None, description="Full checkpoint object")
-    interrupt_before: list[str] | Literal["*"] | None = Field(default=None, description="Nodes to interrupt before")
-    interrupt_after: list[str] | Literal["*"] | None = Field(default=None, description="Nodes to interrupt after")
-    stream_mode: list[str] | str | None = Field(default=None, description="Stream mode(s)")
-    stream_subgraphs: bool = Field(default=False, description="Include subgraph events")
-    stream_resumable: bool | None = Field(default=None, description="SSE resumable mode")
-    on_disconnect: Literal["cancel", "continue"] = Field(default="cancel", description="Behaviour on SSE disconnect")
-    on_completion: Literal["delete", "keep"] = Field(default="keep", description="Delete temp thread on completion")
-    multitask_strategy: Literal["reject", "rollback", "interrupt", "enqueue"] = Field(default="reject", description="Concurrency strategy")
-    after_seconds: float | None = Field(default=None, description="Delayed execution")
-    if_not_exists: Literal["reject", "create"] = Field(default="create", description="Thread creation policy")
-    feedback_keys: list[str] | None = Field(default=None, description="LangSmith feedback keys")
 
 
 class RegeneratePrepareRequest(BaseModel):
@@ -571,17 +549,13 @@ async def _find_base_checkpoint_before_human(
     *,
     head_checkpoint: Any | None = None,
 ) -> Any:
-    # EAI-CUSTOM: 上游用 build_thread_checkpoint_state_accessor（materialized state-accessor，
-    # 暴露 .aget/.ahistory）。EAI regenerate 仍走原始 checkpointer：它无 .ahistory，chronological
-    # 回落沿用 .alist（与 EAI 既有路径一致）；lineage 行走经 _LineageCheckpointerAdapter 走
-    # .aget_tuple —— 原始 .aget 只返回 checkpoint payload dict，不能走 lineage（曾导致
-    # "Could not safely resolve the checkpoint before the target user message" 409）。
-    checkpointer = get_checkpointer(request)
-    base_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    # EAI-CUSTOM→上游: delta 模式下原始 checkpointer 的 channel_values 无 messages（增量存储），
+    # lineage 走 + chronological 回落都改用 materialized state-accessor（.aget/.ahistory 重建消息），对齐上游。
+    accessor, base_config = await build_thread_checkpoint_state_accessor(request, thread_id=thread_id)
     if head_checkpoint is not None:
         try:
             return await find_checkpoint_before_message(
-                _LineageCheckpointerAdapter(checkpointer),
+                accessor,
                 head_checkpoint,
                 human_message_id,
                 max_depth=REGENERATE_HISTORY_RAW_SCAN_LIMIT,
@@ -601,7 +575,7 @@ async def _find_base_checkpoint_before_human(
             )
             raise HTTPException(status_code=409, detail=_UNSAFE_REGENERATE_LINEAGE_DETAIL) from exc
     try:
-        raw_checkpoints = [item async for item in checkpointer.alist(base_config, limit=REGENERATE_HISTORY_RAW_SCAN_LIMIT)]
+        raw_checkpoints = await accessor.ahistory(base_config, limit=REGENERATE_HISTORY_RAW_SCAN_LIMIT)
         checkpoints = [item for item in raw_checkpoints if not _is_duration_only_checkpoint(item)]
     except Exception as exc:
         logger.exception("Failed to list checkpoints for regenerate thread %s", thread_id)
@@ -683,11 +657,11 @@ async def _find_interrupted_target_run_id(
 
 
 async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: Request) -> RegeneratePrepareResponse:
-    # EAI-CUSTOM: 原始 checkpointer（aget_tuple）路径，上游用 materialized state-accessor（accessor.aget）。
-    checkpointer = get_checkpointer(request)
-    latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    # EAI-CUSTOM→上游: delta 模式下 raw checkpointer 的 channel_values 无 messages（增量存储），
+    # 改用 materialized state-accessor（accessor.aget 回放 delta 重建消息），对齐上游。
+    accessor, latest_config = await build_thread_checkpoint_state_accessor(request, thread_id=thread_id)
     try:
-        latest_checkpoint = await checkpointer.aget_tuple(latest_config)
+        latest_checkpoint = await accessor.aget(latest_config)
     except Exception as exc:
         logger.exception("Failed to read latest checkpoint for regenerate thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to read latest checkpoint") from exc
@@ -695,7 +669,7 @@ async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: 
     if not latest_checkpoint_id:
         raise HTTPException(status_code=404, detail=f"Thread {thread_id} has no checkpoint")
 
-    messages = _checkpoint_messages(latest_checkpoint)
+    messages = _checkpoint_values(latest_checkpoint).get("messages", [])
     target_index = next((i for i, message in enumerate(messages) if _message_id(message) == message_id), None)
     if target_index is None:
         # 响应在 LLM 调用中被中断时，可能已在 live stream 可见但从未落 checkpoint。
@@ -772,11 +746,10 @@ async def _prepare_edit_regenerate_payload(
     if not normalized_text:
         raise HTTPException(status_code=409, detail="Edited message cannot be empty")
 
-    # EAI-CUSTOM: 原始 checkpointer（aget_tuple）路径，上游用 materialized state-accessor（accessor.aget）。
-    checkpointer = get_checkpointer(request)
-    latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+    # EAI-CUSTOM→上游: delta 模式下 raw checkpointer 读不到消息，改用 materialized state-accessor。
+    accessor, latest_config = await build_thread_checkpoint_state_accessor(request, thread_id=thread_id)
     try:
-        latest_checkpoint = await checkpointer.aget_tuple(latest_config)
+        latest_checkpoint = await accessor.aget(latest_config)
     except Exception as exc:
         logger.exception("Failed to read latest checkpoint for edit replay thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to read latest checkpoint") from exc
@@ -784,7 +757,7 @@ async def _prepare_edit_regenerate_payload(
     if not latest_checkpoint_id:
         raise HTTPException(status_code=404, detail=f"Thread {thread_id} has no checkpoint")
 
-    messages = _checkpoint_messages(latest_checkpoint)
+    messages = _checkpoint_values(latest_checkpoint).get("messages", [])
     if _has_active_goal(latest_checkpoint):
         raise HTTPException(status_code=409, detail="Cannot edit while a goal is active")
 

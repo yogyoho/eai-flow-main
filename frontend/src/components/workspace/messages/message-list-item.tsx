@@ -31,6 +31,7 @@ import { Task, TaskTrigger } from "@/components/ai-elements/task";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+// EAI-CUSTOM: import path differs from upstream (../tooltip).
 import { Tooltip } from "@/components/workspace/tooltip";
 import {
   deleteFeedback,
@@ -51,6 +52,8 @@ import {
   stripUploadedFilesTag,
   type FileInMessage,
 } from "@/core/messages/utils";
+// EAI-CUSTOM: useRehypeSplitWordsIntoSpans is an EAI-only CJK word-splitting
+// rehype plugin (upstream has no equivalent module).
 import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import { readReferenceMessageContexts } from "@/core/sidecar";
 import {
@@ -146,6 +149,7 @@ export function MessageListItem({
   threadId,
   artifactPaths = [],
   showCopyButton = true,
+  showWorkspaceChanges = false,
   canEdit = false,
   isEditPending = false,
   onEditAndRegenerate,
@@ -159,9 +163,14 @@ export function MessageListItem({
   feedback?: FeedbackData | null;
   runId?: string;
   showCopyButton?: boolean;
+  // EAI-CUSTOM: re-add upstream #4559 per-run gating that the EAI reversion
+  // dropped. MessageList owns which assistant bubble is the run's anchor and
+  // passes this flag; without it every AI message would render the badge.
+  showWorkspaceChanges?: boolean;
   canEdit?: boolean;
   isEditPending?: boolean;
   onEditAndRegenerate?: (replacementText: string) => void | Promise<boolean>;
+  // EAI-CUSTOM: turnStartTime prop for the live turn-duration wiring.
   turnStartTime?: number | null;
 }) {
   const { t } = useI18n();
@@ -216,6 +225,7 @@ export function MessageListItem({
         threadId={threadId}
         artifactPaths={artifactPaths}
         runId={runId}
+        showWorkspaceChanges={showWorkspaceChanges}
         turnStartTime={turnStartTime}
         editState={
           isHuman && isEditing
@@ -272,6 +282,10 @@ export function MessageListItem({
 /**
  * Custom image component that handles artifact URLs
  */
+// EAI-CUSTOM: MessageImage re-introduced in the EAI reversion. The maxWidth is
+// applied via inline style (upstream #4446) because Tailwind JIT never emits
+// interpolated arbitrary values like `max-w-[${maxWidth}]`; lazy+decoding are
+// also restored from upstream.
 function MessageImage({
   src,
   alt,
@@ -286,21 +300,44 @@ function MessageImage({
 }) {
   if (!src) return null;
 
-  const imgClassName = cn("overflow-hidden rounded-lg", `max-w-[${maxWidth}]`);
+  const imgClassName = cn("overflow-hidden rounded-lg");
+  const imgStyle = { maxWidth };
 
   if (typeof src !== "string") {
-    return <img className={imgClassName} src={src} alt={alt} {...props} />;
+    return (
+      <img
+        className={imgClassName}
+        style={imgStyle}
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        {...props}
+      />
+    );
   }
 
   const url = resolveMessageImageURL(src, threadId, artifactPaths);
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
-      <img className={imgClassName} src={url} alt={alt} {...props} />
+      <img
+        className={imgClassName}
+        style={imgStyle}
+        src={url}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        {...props}
+      />
     </a>
   );
 }
 
+// EAI-CUSTOM: per-(threadId,messageId) turn-duration cache. Upstream renders run
+// duration as run-scoped metadata outside MessageListItem; EAI caches
+// additional_kwargs.turn_duration client-side to keep the reasoning disclosure
+// visible and stable across renders.
 const clientTurnDurations = new Map<string, number>();
 
 function HumanMessageText({ content }: { content: string }) {
@@ -346,6 +383,9 @@ function MessageContent_({
   threadId,
   artifactPaths,
   runId,
+  showWorkspaceChanges = false,
+  // EAI-CUSTOM: turnStartTime feeds the live turn-duration wiring below
+  // (startTimeProp/duration/onTurnDurationChange); upstream has no such prop.
   turnStartTime,
   editState,
 }: {
@@ -355,6 +395,7 @@ function MessageContent_({
   threadId: string;
   artifactPaths: readonly string[];
   runId?: string;
+  showWorkspaceChanges?: boolean;
   turnStartTime?: number | null;
   editState?: {
     draft: string;
@@ -365,6 +406,8 @@ function MessageContent_({
     onSubmit: () => void | Promise<void>;
   };
 }) {
+  // EAI-CUSTOM: CJK word-split rehype plugin (fade-in word animation) and
+  // turn-duration cache wiring — both absent from upstream MessageListItem.
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const { t } = useI18n();
   const isHuman = message.type === "human";
@@ -407,6 +450,8 @@ function MessageContent_({
     };
   }, [threadId]);
 
+  // EAI-CUSTOM: wasLoading keeps the reasoning disclosure visible after a
+  // turn settles so the duration badge does not collapse the card.
   const [wasLoading, setWasLoading] = useState(isLoading);
   useEffect(() => {
     if (isLoading) setWasLoading(true);
@@ -487,6 +532,7 @@ function MessageContent_({
   if (!isHuman && reasoningContent && !rawContent) {
     return (
       <AIElementMessageContent className={className}>
+        {/* EAI-CUSTOM: live turn-duration wiring (upstream renders duration elsewhere). */}
         <Reasoning
           isStreaming={isLoading}
           startTimeProp={turnStartTime}
@@ -578,6 +624,8 @@ function MessageContent_({
   return (
     <AIElementMessageContent className={className}>
       {filesList}
+      {/* EAI-CUSTOM: wasLoading/turnDuration keep the reasoning disclosure
+          visible and show live turn duration (upstream <Shimmer>+getThinkingMessage). */}
       {!isHuman &&
         (!!reasoningContent || wasLoading || turnDuration !== undefined) && (
           <Reasoning
@@ -592,6 +640,7 @@ function MessageContent_({
             )}
           </Reasoning>
         )}
+      {/* EAI-CUSTOM: passes the EAI CJK word-split rehype plugins. */}
       <MarkdownContent
         content={contentToDisplay}
         isLoading={isLoading}
@@ -600,7 +649,7 @@ function MessageContent_({
         components={components}
       />
       <CitationSourcesPanel sources={citationSources} />
-      {message.type === "ai" && (
+      {message.type === "ai" && showWorkspaceChanges && (
         <WorkspaceChangeBadge
           threadId={threadId}
           runId={runId}

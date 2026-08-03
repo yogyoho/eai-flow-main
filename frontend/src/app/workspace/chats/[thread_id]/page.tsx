@@ -153,7 +153,10 @@ export default function ChatPage() {
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {
         let body = "Conversation finished";
-        const lastMessage = state.messages.at(-1);
+        // EAI-CUSTOM: upstream uses state.messages.at(-1) unguarded; a run that
+        // ends in an error state (LLM retries exhausted) has no messages channel
+        // and crashes the notification handler. Guard it.
+        const lastMessage = state.messages?.at(-1);
         if (lastMessage) {
           const textContent = textOfMessage(lastMessage);
           if (textContent) {
