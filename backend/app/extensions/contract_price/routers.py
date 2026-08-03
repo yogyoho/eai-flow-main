@@ -64,7 +64,7 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_documents(db, keyword, parse_status, skip, limit)
     return Page[DocumentOut](items=items, total=total, skip=skip, limit=limit)
@@ -74,7 +74,7 @@ async def list_documents(
 async def delete_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     doc = await db.get(CpaDocument, doc_id)
     if doc is None:
@@ -91,7 +91,7 @@ async def update_document(
     doc_id: UUID,
     body: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Manual补 fallback: fill project name/location (and doc metadata) the
     front-page OCR regex couldn't anchor. Used by the ContractsView editor."""
@@ -106,7 +106,7 @@ async def confirm_document(
     doc_id: UUID,
     body: DocumentConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Confirm-gate: mark a parsed document confirmed/skipped so the cluster
     phase will include it."""
@@ -120,7 +120,7 @@ async def confirm_document(
 async def confirm_all_documents(
     body: DocumentConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Batch confirm-gate: set every pending parsed document to the given status."""
     count = await crud.confirm_all_documents(db, body.confirm_status)
@@ -131,7 +131,7 @@ async def confirm_all_documents(
 async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Upload a contract to the independent cpa-contracts MinIO bucket.
 
@@ -173,7 +173,7 @@ async def get_preview(
     doc_id: UUID,
     page: int,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Stream a page's OCR preview PNG from MinIO (for the traceback overlay)."""
     doc = await db.get(CpaDocument, doc_id)
@@ -191,7 +191,7 @@ async def reparse_document(
     doc_id: UUID,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Re-parse a single document by force (bypass SHA-256 cache), preserving doc_id.
 
@@ -233,7 +233,7 @@ async def list_clusters(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_clusters(db, cluster_status, category, skip, limit)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
@@ -243,7 +243,7 @@ async def list_clusters(
 async def get_cluster(
     cluster_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     cluster = await crud.get_cluster_with_items(db, cluster_id)
     if cluster is None:
@@ -256,7 +256,7 @@ async def confirm_cluster(
     cluster_id: UUID,
     body: ClusterConfirm,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         cluster = await crud.confirm_cluster(
@@ -274,7 +274,7 @@ async def reject_cluster(
     cluster_id: UUID,
     body: ClusterConfirm,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Reject a cluster (manual curation — drops it from confirmed stats)."""
     try:
@@ -291,7 +291,7 @@ async def update_cluster(
     cluster_id: UUID,
     body: ClusterUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Edit a cluster's display fields (category / representative_name)."""
     cluster = await crud.update_cluster(db, cluster_id, body.model_dump(exclude_unset=True))
@@ -304,7 +304,7 @@ async def update_cluster(
 async def merge_clusters(
     body: ClusterMerge,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     try:
         new_cluster = await crud.merge_clusters(
@@ -322,7 +322,7 @@ async def move_item(
     item_id: UUID,
     body: ItemMove,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     item = await crud.move_item(db, item_id, body.target_cluster_id)
     if item is None:
@@ -336,7 +336,7 @@ async def move_item(
 @router.get("/items/contracts")
 async def list_item_contracts(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Distinct source_contract_no with item counts (items-page filter options)."""
     return await crud.list_item_contracts(db)
@@ -353,7 +353,7 @@ async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_items(
         db, goods_name, source_contract_no, cluster_id, run_id, only_outliers, validation_status, skip, limit
@@ -366,7 +366,7 @@ async def update_item(
     item_id: UUID,
     body: ItemUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     item = await crud.update_item(db, item_id, body.model_dump(exclude_unset=True))
     if item is None:
@@ -378,7 +378,7 @@ async def update_item(
 async def delete_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     deleted = await crud.delete_item(db, item_id)
     if not deleted:
@@ -389,7 +389,7 @@ async def delete_item(
 async def batch_delete_items(
     body: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     count = await crud.delete_items_batch(db, body.item_ids)
     return {"deleted": count}
@@ -399,7 +399,7 @@ async def batch_delete_items(
 async def batch_validate_items(
     body: BatchDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Batch set validation_status (ok) for selected items."""
     count = await crud.batch_validate_items(db, body.item_ids)
@@ -410,7 +410,7 @@ async def batch_validate_items(
 async def delete_items_by_run(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     count = await crud.delete_items_by_run(db, run_id)
     return {"deleted": count}
@@ -425,7 +425,7 @@ async def list_runs(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     items, total = await crud.list_runs(db, run_status, skip, limit)
     return Page[RunOut](items=items, total=total, skip=skip, limit=limit)
@@ -435,7 +435,7 @@ async def list_runs(
 async def download_run_excel(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     run = await crud.get_run(db, run_id)
     if run is None:
@@ -449,7 +449,7 @@ async def download_run_excel(
 async def delete_run(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     ok = await crud.delete_run(db, run_id)
     if not ok:
@@ -461,14 +461,14 @@ async def delete_run(
 
 
 @router.get("/config", response_model=ConfigOut)
-async def get_config(_: CurrentUser = Depends(require_permission("cpa:read"))):  # EAI-CUSTOM: Add permission check
+async def get_config(_: CurrentUser = Depends(require_permission("system:access"))):  # EAI-CUSTOM: Add permission check
     return crud.load_config()
 
 
 @router.put("/config", response_model=ConfigOut)
 async def update_config(
     body: ConfigUpdate,
-    _: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     return crud.save_config(body)
 
@@ -479,7 +479,7 @@ async def update_config(
 @router.get("/dashboard", response_model=DashboardOut)
 async def dashboard(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     counts = await crud.dashboard_counts(db)
     recent, _ = await crud.list_runs(db, limit=5)
@@ -498,7 +498,7 @@ async def contract_price_analysis(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Cross-contract goods price analysis: box plot stats, supplier comparison,
     trend by date, price histogram, and paginated detail table."""
@@ -513,7 +513,7 @@ async def trigger_pipeline(
     body: PipelineRunRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Kick off a parse-phase run in the background; returns the run id immediately."""
     await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
@@ -541,7 +541,7 @@ async def trigger_cluster(
     body: PipelineRunRequest,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(require_permission("cpa:import")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Phase 2: cluster all parsed documents' items in the background (no confirm gate)."""
     await crud.cleanup_stale_runs(db)  # self-heal orphaned 'running' runs
@@ -565,7 +565,7 @@ async def trigger_cluster(
 async def pipeline_status(
     run_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("cpa:read")),  # EAI-CUSTOM: Add permission check
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     run = await crud.get_run(db, run_id)
     if run is None:
