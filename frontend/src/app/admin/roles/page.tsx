@@ -703,7 +703,9 @@ function PermissionPanel({
 
 /* ── Matrix Overview: roles x permission categories ─────────── */
 function RoleMatrixOverview({ roles, modules }: { roles: Role[]; modules?: RegistryModule[] | null }) {
-  const categories = modules && modules.length > 0 ? modulesToCategories(modules) : PERMISSION_CATEGORIES;
+  // EAI-CUSTOM: 矩阵同样隐藏无可配权限的模块（app_center）
+  const matrixModules = modules && modules.length > 0 ? modules.filter((m) => !shouldHideModule(m)) : modules;
+  const categories = matrixModules && matrixModules.length > 0 ? modulesToCategories(matrixModules) : PERMISSION_CATEGORIES;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse">
