@@ -27,7 +27,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const validIds = tabs.map(t => t.id);
     if (validIds.length > 0 && !validIds.includes(activeTab)) {
-      setActiveTab(validIds[0]);
+      setActiveTab(validIds[0]!);
     }
   }, [tabs, activeTab]);
 

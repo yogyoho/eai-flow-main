@@ -103,8 +103,8 @@ export function ComplianceRules({
   const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(null);
 
   // 动态字典（从 /rule-dictionaries 加载，失败时 fallback 到 types.ts 硬编码常量）
-  const [dictIndustries, setDictIndustries] = useState<{ value: string; label: string }[]>(INDUSTRIES as readonly { value: string; label: string }[]);
-  const [dictReportTypes, setDictReportTypes] = useState<{ value: string; label: string }[]>(REPORT_TYPES as readonly { value: string; label: string }[]);
+  const [dictIndustries, setDictIndustries] = useState<{ value: string; label: string }[]>([...INDUSTRIES]);
+  const [dictReportTypes, setDictReportTypes] = useState<{ value: string; label: string }[]>([...REPORT_TYPES]);
 
   useEffect(() => {
     kfApi.getRuleDictionaries()

@@ -15,6 +15,7 @@ import {
 import { MessageList } from "@/components/workspace/messages/message-list";
 import { resolveArtifactURL } from "@/core/artifacts/utils";
 import { useThreadStream } from "@/core/threads/hooks";
+import type { AgentThreadState } from "@/core/threads/types";
 
 // model-viewer is a web component — client-only to avoid Next SSR.
 const ModelViewer = dynamic(() => import("./ModelViewer"), {
@@ -24,10 +25,6 @@ const ModelViewer = dynamic(() => import("./ModelViewer"), {
 
 interface ArtifactLike {
   filepath?: string;
-}
-
-interface ThreadStateLike {
-  values?: { artifacts?: ArtifactLike[] };
 }
 
 const cadContext = {
@@ -48,9 +45,9 @@ export function CadDesigner() {
     setThreadId(crypto.randomUUID());
   }, []);
 
-  const onFinish = useCallback((state: ThreadStateLike | undefined) => {
+  const onFinish = useCallback((state: AgentThreadState) => {
     setBusy(false);
-    const arts = (state?.values?.artifacts ?? []) as ArtifactLike[];
+    const arts = (state.artifacts ?? []) as unknown as ArtifactLike[];
     // Pick the latest artifacts (multi-turn: later turns append)
     const glbArts = arts.filter((a) => a.filepath?.endsWith(".glb"));
     const stepArts = arts.filter(

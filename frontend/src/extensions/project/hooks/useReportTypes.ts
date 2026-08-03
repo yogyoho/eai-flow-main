@@ -100,7 +100,7 @@ export function getReportTypeColor(value: string | null | undefined): string {
     hash = ((hash << 5) - hash) + value.charCodeAt(i);
     hash |= 0;
   }
-  return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length];
+  return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length]!;
 }
 
 export function getReportTypeIcon(label: string | null | undefined): string {

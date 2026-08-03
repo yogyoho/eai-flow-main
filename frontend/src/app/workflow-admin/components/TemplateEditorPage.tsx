@@ -80,7 +80,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         setOrgBindings(def.orgBindings || {});
         if (def.graphJson) {
           // Auto-migrate legacy v1 flat graphs to v2
-          const raw = def.graphJson as Record<string, unknown>;
+          const raw = def.graphJson as unknown as Record<string, unknown>;
           let graph: WorkflowGraph;
           if (isLegacyGraph(raw)) {
             graph = migrateLegacyToUnified(raw as Parameters<typeof migrateLegacyToUnified>[0]);

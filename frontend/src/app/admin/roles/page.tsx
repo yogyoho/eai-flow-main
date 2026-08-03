@@ -1107,7 +1107,7 @@ function PolicyEditForm({
   const removeCondition = (i: number) => onChange({ ...form, conditions: form.conditions.filter((_, idx) => idx !== i) });
   const updateCondition = (i: number, f: Partial<PolicyCondition>) => {
     const conds = [...form.conditions];
-    conds[i] = { ...conds[i], ...f };
+    conds[i] = { ...conds[i]!, ...f };
     onChange({ ...form, conditions: conds });
   };
 
@@ -1115,7 +1115,7 @@ function PolicyEditForm({
   const removeGrant = (i: number) => onChange({ ...form, grants: form.grants.filter((_, idx) => idx !== i) });
   const updateGrant = (i: number, f: Partial<PolicyGrant>) => {
     const grs = [...form.grants];
-    grs[i] = { ...grs[i], ...f };
+    grs[i] = { ...grs[i]!, ...f };
     onChange({ ...form, grants: grs });
   };
 

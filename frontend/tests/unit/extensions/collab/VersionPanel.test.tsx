@@ -182,6 +182,7 @@ test("toggling diff mode shows DiffViewer", async () => {
     to_created_at: null,
     diff_blocks: [{ type: "added", content: "new content from diff" }],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   await render(<VersionPanel {...defaultProps({ diffResult })} />);

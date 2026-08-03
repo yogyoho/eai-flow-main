@@ -44,7 +44,7 @@ export function BoxPlot({ data }: BoxPlotProps) {
   const cx = W / 2;
   const boxHalf = 60;
 
-  const gridVals = [];
+  const gridVals: number[] = [];
   const steps = 4;
   for (let i = 0; i <= steps; i++) {
     const v = scaleMin + (scaleRange * i) / steps;

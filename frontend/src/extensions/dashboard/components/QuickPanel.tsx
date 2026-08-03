@@ -53,7 +53,7 @@ export function QuickPanel() {
           {activeConsole ? (
             <span className="text-shadow-glow">&gt; EXEC: {activeConsole}</span>
           ) : hoveredIndex !== null ? (
-            <span>&gt; CAPABILITY: {entries[hoveredIndex].info}</span>
+            <span>&gt; CAPABILITY: {entries[hoveredIndex]!.info}</span>
           ) : (
             <span className="text-slate-500">&gt; TERMINAL READY // WAITING FOR SELECTION</span>
           )}

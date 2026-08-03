@@ -77,7 +77,7 @@ describe("TraceabilityExtension — Plugin structure", () => {
   });
 
   it("should have a plugin key named 'traceability'", () => {
-    expect(traceabilityPluginKey.key).toContain("traceability");
+    expect((traceabilityPluginKey as unknown as { key: string }).key).toContain("traceability");
   });
 
   it("should initialise with empty decorations and sources", () => {
@@ -197,7 +197,7 @@ describe("TraceabilityExtension — Decoration content", () => {
     expect(deco.from).toBeGreaterThan(0);
     expect(deco.to).toBeGreaterThan(deco.from);
 
-    const attrs = deco.type.attrs as Record<string, unknown>;
+    const attrs = (deco as unknown as { type: { attrs: Record<string, unknown> } }).type.attrs;
     expect(attrs.style).toBeDefined();
     expect(typeof attrs.style).toBe("string");
     expect(attrs.style as string).toContain("background-color");
@@ -236,7 +236,7 @@ describe("TraceabilityExtension — Decoration content", () => {
       });
       const newState = state.apply(tr);
       const decos = traceabilityPluginKey.getState(newState)!.decorations.find();
-      return (decos[0]!.type.attrs as Record<string, unknown>).style as string;
+      return ((decos[0]! as unknown as { type: { attrs: Record<string, unknown> } }).type.attrs as Record<string, unknown>).style as string;
     });
 
     // Each style string should be unique (different colors per type)

@@ -1,7 +1,7 @@
 /** 四阶段管线 */
 import type { WorkflowGraph } from "../types";
 
-function makeSubTasks(sid: string, label: string): WorkflowGraph["subGraphs"][string] {
+function makeSubTasks(sid: string, label: string): WorkflowGraph["mainGraph"] {
   return {
     nodes: [
       { id: `${sid}-ai`, type: "ai_generate", position: { x: 300, y: 50 }, data: { label: `AI 生成${label}报告`, aiAssist: true } },

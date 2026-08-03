@@ -54,7 +54,7 @@ function render(element: React.ReactElement) {
 }
 
 test("renders all review type buttons", async () => {
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   const html = container!.innerHTML;
   expect(html).toContain("全面审查");
@@ -64,13 +64,13 @@ test("renders all review type buttons", async () => {
 });
 
 test("renders '开始审查' button", async () => {
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   expect(container!.textContent).toContain("开始审查");
 });
 
 test("clicking review type button changes selection", async () => {
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   // The "style" button should be present - find it and click it
   const buttons = container!.querySelectorAll("button");
@@ -89,7 +89,7 @@ test("clicking review type button changes selection", async () => {
 test("clicking '开始审查' triggers API call with correct params", async () => {
   mockAiReview.mockResolvedValue({ overall_score: 85, summary: "Good", comments: [] });
 
-  await render(<AIDocumentReview docId="doc-123" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-123" documentContent="" onInsertComment={vi.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -109,7 +109,7 @@ test("shows loading state during review", async () => {
   let resolveReview: (value: unknown) => void;
   mockAiReview.mockReturnValue(new Promise((resolve) => { resolveReview = resolve; }));
 
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -136,7 +136,7 @@ test("shows review results after successful API call", async () => {
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -153,7 +153,7 @@ test("shows review results after successful API call", async () => {
 test("shows error message on API failure", async () => {
   mockAiReview.mockRejectedValue(new Error("Network error"));
 
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -175,7 +175,7 @@ test("clicking '插入为评论' calls onInsertComment", async () => {
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={onInsertComment} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={onInsertComment} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -205,7 +205,7 @@ test("calls onInsertComment with null block_id when block_id is not provided", a
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" onInsertComment={onInsertComment} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={onInsertComment} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));

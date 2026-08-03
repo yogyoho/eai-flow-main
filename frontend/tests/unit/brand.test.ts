@@ -1,4 +1,4 @@
-import { describe, expect, it } from "rstest";
+import { describe, expect, it } from "vitest";
 
 import { BRAND_FOOTER, BRAND_NAME } from "@/brand";
 

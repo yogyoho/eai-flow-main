@@ -6,7 +6,7 @@ import {
   ChevronRight,
   Download,
   FileUp,
-  LayoutTemplate,
+  LayoutTemplate as LayoutTemplateIcon,
   List,
   Loader2,
   RotateCcw,
@@ -134,7 +134,7 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: "template", label: "排版模板", icon: <LayoutTemplate className="w-3.5 h-3.5" /> },
+  { id: "template", label: "排版模板", icon: <LayoutTemplateIcon className="w-3.5 h-3.5" /> },
   { id: "page", label: "页面设置", icon: <span className="text-[10px] font-bold">⬜</span> },
   { id: "body", label: "正文样式", icon: <span className="text-[10px] font-bold">T</span> },
   { id: "headings", label: "标题样式", icon: <span className="text-[10px] font-bold">H</span> },
@@ -605,7 +605,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
               {/* Section: Template selection */}
               <div data-section="template" ref={(el) => { sectionRefs.current.template = el; }}>
-                <SectionTitle icon={<LayoutTemplate className="w-4 h-4" />}>排版模板</SectionTitle>
+                <SectionTitle icon={<LayoutTemplateIcon className="w-4 h-4" />}>排版模板</SectionTitle>
                 <div className="space-y-3 mt-3">
                   <div>
                     <FieldLabel>选择排版模板</FieldLabel>

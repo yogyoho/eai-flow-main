@@ -550,7 +550,7 @@ export default function DocAIAgentPanel({
 
         streamState.submit(
           { messages: [{ type: "human", content: prompt }] },
-          { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 },
+          { configurable: { ...(mn ? { model_name: mn } : {}) }, recursion_limit: 250 } as any,
         );
       } catch (e: any) {
         const msg = e?.message || "";
@@ -657,7 +657,7 @@ export default function DocAIAgentPanel({
               const items: Array<{ type: "human"; text: string; idx: number } | { type: "ai"; msg: any }> = [];
               let aiIdx = 0;
               for (let i = 0; i < Math.max(userMessages.length, aiMsgs.length); i++) {
-                if (i < userMessages.length) items.push({ type: "human", text: userMessages[i], idx: i });
+                if (i < userMessages.length) items.push({ type: "human", text: userMessages[i]!, idx: i });
                 if (aiIdx < aiMsgs.length) items.push({ type: "ai", msg: aiMsgs[aiIdx++] });
               }
               return items.map((item) => {

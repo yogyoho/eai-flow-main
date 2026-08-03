@@ -38,8 +38,8 @@ interface InlineState {
  * 注册在 paragraph 之前，确保 markdown-it 先处理数学再处理段落
  */
 function mathBlockRule(state: BlockState, startLine: number, endLine: number, silent: boolean): boolean {
-  const start = state.bMarks[startLine] + state.tShift[startLine];
-  const max = state.eMarks[startLine];
+  const start = state.bMarks[startLine]! + state.tShift[startLine]!;
+  const max = state.eMarks[startLine]!;
 
   // 必须以 $$ 开头
   if (start + 2 > max) return false;
@@ -71,7 +71,7 @@ function mathBlockRule(state: BlockState, startLine: number, endLine: number, si
   if (afterDelim) lines.push(afterDelim);
 
   while (nextLine < endLine) {
-    const ls = state.bMarks[nextLine] + state.tShift[nextLine];
+    const ls = state.bMarks[nextLine]! + state.tShift[nextLine]!;
     const le = state.eMarks[nextLine];
     const lt = state.src.slice(ls, le).trim();
     if (lt === "$$") {
@@ -114,7 +114,7 @@ function mathInlineRule(state: InlineState, silent: boolean): boolean {
   // $ 后第一个字符必须非空白
   const startPos = state.pos + 1;
   if (startPos >= state.posMax) return false;
-  if (/\s/.test(state.src[startPos])) return false;
+  if (/\s/.test(state.src[startPos]!)) return false;
 
   // 找闭合 $（不跨行）
   let end = -1;
@@ -128,7 +128,7 @@ function mathInlineRule(state: InlineState, silent: boolean): boolean {
         if (next >= 0x30 && next <= 0x39) continue; // $5 跳过
       }
       // 闭合 $ 前必须非空白
-      if (/\s/.test(state.src[i - 1])) return false;
+      if (/\s/.test(state.src[i - 1]!)) return false;
       end = i;
       break;
     }

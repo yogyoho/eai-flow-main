@@ -65,15 +65,15 @@ export function levenshteinDistance(a: string, b: string): number {
   const dp = new Uint16Array(n + 1);
   for (let j = 0; j <= n; j++) dp[j] = j;
   for (let i = 1; i <= m; i++) {
-    let prev = dp[0];
+    let prev = dp[0]!;
     dp[0] = i;
     for (let j = 1; j <= n; j++) {
-      const temp = dp[j];
-      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      const temp = dp[j]!;
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j]!, dp[j - 1]!);
       prev = temp;
     }
   }
-  return dp[n];
+  return dp[n]!;
 }
 
 // ponytail: extract all text from any block type (paragraph, heading, list item,
@@ -259,9 +259,16 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
 
     // Auto-save + heading extraction on change
     const rebuildHeadings = useCallback(() => {
-      const h = editor.document
-        .filter((b: { type?: string }) => b.type === "heading")
-        .map((b: { id: string; props?: Record<string, unknown>; content?: Array<{ text?: string }> }) => ({
+      const h = (
+        editor.document as unknown as Array<{
+          id: string;
+          type?: string;
+          props?: Record<string, unknown>;
+          content?: Array<{ text?: string }>;
+        }>
+      )
+        .filter((b) => b.type === "heading")
+        .map((b) => ({
           id: b.id,
           level: (b.props?.level as number) || 1,
           text: b.content?.map((c) => c.text || "").join("") || "",
@@ -317,7 +324,7 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
                       return parts.map((part: string) => {
                         const m = part.match(/^\$([^$\n]+)\$$/);
                         return m
-                          ? { type: "latex", props: { latex: m[1].trim(), displayMode: false } }
+                          ? { type: "latex", props: { latex: m[1]!.trim(), displayMode: false } }
                           : part ? { ...node, text: part } : null;
                       }).filter(Boolean);
                     }).flat();

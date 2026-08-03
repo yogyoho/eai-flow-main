@@ -6,7 +6,7 @@ const {
   createEmptyRuleDraft,
   parseCommaSeparatedInput,
   validateRuleDraft,
-} = await import("./rule-form-utils.ts");
+} = await import("./rule-form-utils");
 
 test("buildRuleCreatePayload normalizes names and nationwide region", () => {
   const draft = createEmptyRuleDraft();

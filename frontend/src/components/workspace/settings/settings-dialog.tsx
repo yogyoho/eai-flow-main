@@ -28,14 +28,15 @@ import { WechatSettingsPage } from "@/components/workspace/settings/wechat-setti
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
-type SettingsSection =
+export type SettingsSection =
   | "account"
   | "wechat"
   | "channels"
   | "memory"
   | "tools"
   | "skills"
-  | "notification";
+  | "notification"
+  | "appearance"; // EAI-CUSTOM: appearance section (appearance-settings-page)
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
   defaultSection?: SettingsSection;

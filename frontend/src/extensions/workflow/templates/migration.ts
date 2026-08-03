@@ -4,7 +4,7 @@
  * sub_workflow, notify) for migration purposes. These are mapped to the modern
  * 6-type set (subflow, task, review, ai_generate, condition, merge).
  */
-import type { WorkflowGraph, DAGNode } from "../types";
+import type { WorkflowGraph, DAGNode, DAGNodeType } from "../types";
 
 /**
  * Convert a legacy v1 flat graph to v2 unified graph.
@@ -53,7 +53,7 @@ export function migrateLegacyToUnified(legacy: { nodes?: { id: string; type: str
   for (const tn of taskNodes) {
     const sid = taskToSub[tn.id] ?? mainNodes[0]!.id;
     const sg = subGraphs[sid]!;
-    sg.nodes.push({ id: tn.id, type: typeMap[tn.type] ?? "task", position: tn.position, data: { label: (tn.data?.label as string) ?? tn.type } as DAGNode["data"] });
+    sg.nodes.push({ id: tn.id, type: (typeMap[tn.type] ?? "task") as DAGNodeType, position: tn.position, data: { label: (tn.data?.label as string) ?? tn.type } as DAGNode["data"] });
   }
 
   // Route edges

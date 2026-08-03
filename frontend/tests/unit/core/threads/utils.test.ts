@@ -1,7 +1,6 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import { expect, test } from "vitest";
 
-import { pathOfThread } from "@/core/threads/utils";
 import {
   channelSourceOfThread,
   pathOfThread,

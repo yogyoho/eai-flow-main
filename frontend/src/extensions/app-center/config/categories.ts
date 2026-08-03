@@ -113,5 +113,5 @@ export function getDomainAccent(
   }
   const idx = domainOrder.indexOf(key);
   if (idx === -1) return "blue"; // fallback
-  return ACCENT_PALETTE[idx % ACCENT_PALETTE.length];
+  return ACCENT_PALETTE[idx % ACCENT_PALETTE.length]!;
 }

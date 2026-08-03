@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 const { buildRuleUpdatePayload, formatValidationConfig, getRegionLabel } =
-  await import("./rule-detail-utils.ts");
+  await import("./rule-detail-utils");
 
 test("buildRuleUpdatePayload normalizes nationwide, sections, and validation config", () => {
   const payload = buildRuleUpdatePayload({

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { mapRuleOverviewResponse } = await import("./rule-overview-utils.ts");
+const { mapRuleOverviewResponse } = await import("./rule-overview-utils");
 
 test("mapRuleOverviewResponse maps nested snake_case payload to camelCase", () => {
   const overview = mapRuleOverviewResponse({

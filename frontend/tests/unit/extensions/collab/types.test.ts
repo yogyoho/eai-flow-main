@@ -54,6 +54,7 @@ test("VersionDiffResponse interface has expected shape", () => {
       { type: "changed", content: "modified", from_content: "old", to_content: "modified" },
     ],
     ai_summary: "AI detected 3 changes",
+    legacy_notice: null,
   };
 
   expect(diff.from_version).toBe(1);
@@ -77,6 +78,7 @@ test("VersionDiffResponse allows null optional fields", () => {
     to_created_at: null,
     diff_blocks: [],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   expect(diff.from_summary).toBeNull();
@@ -97,6 +99,7 @@ test("VersionDiffResponse diff_block supports block_id field", () => {
       { type: "added", content: "new", block_id: "block-1" },
     ],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   expect(diff.diff_blocks[0]?.block_id).toBe("block-1");

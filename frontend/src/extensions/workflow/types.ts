@@ -209,6 +209,8 @@ export interface WorkflowNodeStatus {
   chapterCompleted?: number | null;
   reviewTotal?: number | null;
   reviewApproved?: number | null;
+  parentPhaseId?: string | null;
+  reviewMode?: ReviewMode;
 }
 
 export interface WorkflowStatusResponse {

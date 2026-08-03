@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { mergeRuleDictionaries, getDictionaryLabel } = await import("./rule-dictionary-utils.ts");
+const { mergeRuleDictionaries, getDictionaryLabel } = await import("./rule-dictionary-utils");
 
 test("mergeRuleDictionaries falls back to defaults when remote dictionaries are incomplete", () => {
   const dictionaries = mergeRuleDictionaries({

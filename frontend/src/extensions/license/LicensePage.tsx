@@ -152,7 +152,7 @@ export default function LicensePage() {
           </div>
           <div>
             <dt className="text-gray-500">到期时间</dt>
-            <dd>{formatDate(status?.expires_at)}</dd>
+            <dd>{formatDate(status?.expires_at ?? null)}</dd>
           </div>
           <div>
             <dt className="text-gray-500">用户数</dt>

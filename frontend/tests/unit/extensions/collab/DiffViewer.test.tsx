@@ -56,6 +56,7 @@ test("renders version arrows header with from/to version numbers", async () => {
     to_created_at: null,
     diff_blocks: [],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   await render(<DiffViewer diff={diff} loading={false} />);
@@ -74,6 +75,7 @@ test("renders AI summary when present", async () => {
     to_created_at: null,
     diff_blocks: [],
     ai_summary: "AI summary of changes",
+    legacy_notice: null,
   };
 
   await render(<DiffViewer diff={diff} loading={false} />);
@@ -95,6 +97,7 @@ test("renders diff blocks with correct content", async () => {
       { type: "changed", content: "modified line", from_content: "original", to_content: "modified line" },
     ],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   await render(<DiffViewer diff={diff} loading={false} />);
@@ -125,6 +128,7 @@ test("renders 'no differences' message when diff_blocks is empty", async () => {
     to_created_at: null,
     diff_blocks: [],
     ai_summary: null,
+    legacy_notice: null,
   };
 
   await render(<DiffViewer diff={diff} loading={false} />);

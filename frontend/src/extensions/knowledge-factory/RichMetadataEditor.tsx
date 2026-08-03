@@ -47,7 +47,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={TableIcon} label="表格定义" color="text-blue-500"
         count={section.tableSchemas?.length || 0}
-        open={openMap.tables} onToggle={() => toggle("tables")}
+        open={openMap.tables ?? false} onToggle={() => toggle("tables")}
       >
         {(section.tableSchemas || []).map((t, i) => (
           <ItemRow key={i} onDelete={() => update("tableSchemas", (section.tableSchemas || []).filter((_, j) => j !== i))}>
@@ -63,7 +63,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Image} label="图片需求" color="text-green-500"
         count={section.figureRequirements?.length || 0}
-        open={openMap.figures} onToggle={() => toggle("figures")}
+        open={openMap.figures ?? false} onToggle={() => toggle("figures")}
       >
         {(section.figureRequirements || []).map((f, i) => (
           <ItemRow key={i} onDelete={() => update("figureRequirements", (section.figureRequirements || []).filter((_, j) => j !== i))}>
@@ -79,7 +79,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={FunctionSquare} label="公式引用" color="text-purple-500"
         count={section.formulaReferences?.length || 0}
-        open={openMap.formulas} onToggle={() => toggle("formulas")}
+        open={openMap.formulas ?? false} onToggle={() => toggle("formulas")}
       >
         {(section.formulaReferences || []).map((f, i) => (
           <ItemRow key={i} onDelete={() => update("formulaReferences", (section.formulaReferences || []).filter((_, j) => j !== i))}>
@@ -94,7 +94,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Cog} label="计算脚本" color="text-orange-500"
         count={section.calcScriptBindings?.length || 0}
-        open={openMap.calc} onToggle={() => toggle("calc")}
+        open={openMap.calc ?? false} onToggle={() => toggle("calc")}
       >
         {(section.calcScriptBindings || []).map((c, i) => (
           <ItemRow key={i} onDelete={() => update("calcScriptBindings", (section.calcScriptBindings || []).filter((_, j) => j !== i))}>
@@ -110,7 +110,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Ruler} label="章节剖面" color="text-cyan-500"
         count={section.subSectionProfile ? 1 : 0}
-        open={openMap.profile} onToggle={() => toggle("profile")}
+        open={openMap.profile ?? false} onToggle={() => toggle("profile")}
       >
         {section.subSectionProfile && (
           <div className="flex items-center gap-2 px-1">
@@ -143,7 +143,7 @@ function editItem(
   patch: Record<string, unknown>,
   onChange: (u: Partial<EditorSection>) => void,
 ) {
-  const arr = [...(section[field] || [])] as Record<string, unknown>[];
+  const arr = [...(section[field] || [])] as unknown as Record<string, unknown>[];
   arr[index] = { ...arr[index], ...patch };
   onChange({ [field]: arr } as Partial<EditorSection>);
 }

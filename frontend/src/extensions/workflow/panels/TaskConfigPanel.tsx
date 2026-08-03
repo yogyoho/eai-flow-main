@@ -6,14 +6,14 @@ import { useState } from "react";
 import { AdminSelect } from "@/components/ui/admin-select";
 import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 
-import type { WorkflowNodeData, ReviewerBinding, ReviewMode, NotificationConfig } from "../types";
+import type { TaskNodeData, ReviewerBinding, ReviewMode, NotificationConfig } from "../types";
 
 import { NotificationsConfigPanel } from "./NotificationsConfigPanel";
 
 interface TaskConfigPanelProps {
-  data: WorkflowNodeData;
+  data: TaskNodeData;
   nodeId?: string;
-  onUpdate: (partial: Partial<WorkflowNodeData>) => void;
+  onUpdate: (partial: Partial<TaskNodeData>) => void;
   orgDeptCode?: string;
   onOrgBindingChange?: (nodeId: string, deptCode: string | null) => void;
   deptOptions?: { value: string; label: string }[];

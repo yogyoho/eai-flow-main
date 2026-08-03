@@ -10,7 +10,7 @@ export function TaskPanel() {
   const { data, isLoading } = useMyTasks();
   const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
   const tasks = data?.tasks ?? [];
-  const pendingCount = tasks.filter(t => t.type !== "completed").length; // ponytail: all shown tasks are pending in our system
+  const pendingCount = tasks.length; // ponytail: task.type union has no 'completed' — every task is pending
   const filteredTasks = activeTab === "completed" ? [] : tasks;
 
   if (isLoading) {

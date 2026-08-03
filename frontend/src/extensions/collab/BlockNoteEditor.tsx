@@ -121,7 +121,7 @@ function CommentToolbarButton({ editor, onOpen }: {
     onOpen(range);
     // Dismiss the formatting toolbar once React has flushed the popover
     setTimeout(() => {
-      const editable = document.querySelector('[contenteditable="true"]');
+      const editable = document.querySelector<HTMLElement>('[contenteditable="true"]');
       editable?.blur();
     }, 80);
   };
@@ -232,7 +232,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
     const dismissToolbar = () => {
       window.getSelection()?.removeAllRanges();
       // Blur the editor's contenteditable element to dismiss the formatting toolbar
-      const editable = document.querySelector('[contenteditable="true"]');
+      const editable = document.querySelector<HTMLElement>('[contenteditable="true"]');
       editable?.blur();
     };
 
@@ -599,7 +599,7 @@ export const BlockNoteEditor = forwardRef<BlockNoteEditorRef, BlockNoteEditorPro
                 Always render the anchor (Radix needs a stable ref), and
                 pass the RefObject itself (not .current). */}
             <Popover open={commentOpen} onOpenChange={handleCommentOpenChange} modal={false}>
-              <PopoverAnchor virtualRef={popoverVirtualRef} />
+              <PopoverAnchor virtualRef={popoverVirtualRef as React.RefObject<{ getBoundingClientRect: () => DOMRect }>} />
               <PopoverContent className="w-72" align="center" side="bottom" sideOffset={8}>
                 <div className="space-y-3">
                   <p className="text-sm font-medium">添加评论</p>

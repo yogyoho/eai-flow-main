@@ -62,7 +62,7 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
   const handleFileSelect = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".md") && !file.name.endsWith(".markdown") && !file.type !== "text/markdown") {
+    if (!file.name.endsWith(".md") && !file.name.endsWith(".markdown") && file.type !== "text/markdown") {
       // Accept anyway — some systems don't set MIME for .md
     }
     setMarkdownFile(file);

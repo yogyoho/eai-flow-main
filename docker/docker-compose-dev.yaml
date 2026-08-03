@@ -99,6 +99,8 @@ services:
     volumes:
       - ../frontend/src:/app/frontend/src
       - ../frontend/public:/app/frontend/public
+      # EAI-CUSTOM: bind-mount tests/ so `pnpm typecheck`/`pnpm test` see host tests (without this the image-baked tests/ goes stale and diverges from src/)
+      - ../frontend/tests:/app/frontend/tests
       - ../frontend/next.config.js:/app/frontend/next.config.js:ro
       - ../logs:/app/logs
       # Mount pnpm store for caching

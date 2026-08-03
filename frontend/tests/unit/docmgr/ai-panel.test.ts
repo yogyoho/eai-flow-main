@@ -191,14 +191,14 @@ describe("parseOperations", () => {
     expect(result.parseError).toBeNull();
     expect(result.operations).not.toBeNull();
     expect(result.operations!.length).toBe(1);
-    expect(result.operations![0].op).toBe("replace");
+    expect(result.operations![0]!.op).toBe("replace");
   });
 
   test("single quotes normalized to double quotes", () => {
     const input = "---OPERATIONS---\n[{'op':'delete','anchor':'test'}]";
     const result = parseOperations(input);
     expect(result.parseError).toBeNull();
-    expect(result.operations![0].op).toBe("delete");
+    expect(result.operations![0]!.op).toBe("delete");
   });
 
   test("multiple operations", () => {
@@ -211,9 +211,9 @@ describe("parseOperations", () => {
     const result = parseOperations(input);
     expect(result.parseError).toBeNull();
     expect(result.operations!.length).toBe(3);
-    expect(result.operations![0].op).toBe("replace");
-    expect(result.operations![1].op).toBe("append");
-    expect(result.operations![2].op).toBe("delete");
+    expect(result.operations![0]!.op).toBe("replace");
+    expect(result.operations![1]!.op).toBe("append");
+    expect(result.operations![2]!.op).toBe("delete");
   });
 
   test("operations parsed from JSON", () => {
@@ -224,8 +224,8 @@ describe("parseOperations", () => {
     const input = "文本。\n\n---OPERATIONS---\n" + JSON.stringify(ops);
     const result = parseOperations(input);
     expect(result.operations!.length).toBe(2);
-    expect(result.operations![0].op).toBe("replace");
-    expect(result.operations![1].op).toBe("append");
+    expect(result.operations![0]!.op).toBe("replace");
+    expect(result.operations![1]!.op).toBe("append");
   });
 });
 

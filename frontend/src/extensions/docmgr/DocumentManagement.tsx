@@ -309,9 +309,11 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     file_ref_path: file.rel_path,
     source_thread_id: thread.thread_id,
     updated_at: file.modified_at,
+    user_id: file.user_id ?? "",
+    created_at: file.created_at ?? file.modified_at ?? "",
     is_starred: file.starred,
     is_shared: file.shared,
-    content: null,
+    content: undefined,
     folder: thread.display_name,
     status: "active",
   });
@@ -1546,7 +1548,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
             doc.project_id ? (
               <CollabEditor
                 ref={editorRef as React.Ref<CollabEditorRef>}
-                documentId={docId}
+                documentId={docId ?? ""}
                 initialContent={doc.content ?? ""}
                 projectId={doc.project_id}
                 onChange={scheduleSave}
