@@ -96,44 +96,23 @@ modules:
     nav_id: "nav:knowledge-factory"
     pages:
       - id: "kf:page:sample"
-        display_name: "样例管理/模板抽取"
-        operations:
-          - { id: "kf:read", display_name: "查看知识工厂" }
-          - { id: "kf:template:edit", display_name: "编辑模板" }
-          - { id: "kf:template:publish", display_name: "发布模板" }
+        display_name: "样例管理"
       - id: "kf:page:extraction"
         display_name: "模板抽取"
-        operations:
-          - { id: "kf:read", display_name: "查看知识工厂" }
       - id: "kf:page:template"
         display_name: "模板编辑"
-        operations:
-          - { id: "kf:read", display_name: "查看知识工厂" }
-          - { id: "kf:template:edit", display_name: "编辑模板" }
       - id: "kf:page:law"
         display_name: "法规标准"
-        operations:
-          - { id: "kf:law:read", display_name: "查看法规" }
-          - { id: "kf:law:edit", display_name: "编辑法规" }
       - id: "kf:page:compliance"
         display_name: "合规规则"
-        operations:
-          - { id: "kf:compliance:edit", display_name: "编辑合规规则" }
       - id: "kf:page:version"
         display_name: "版本管理"
-        operations: []
       - id: "kf:page:quality"
         display_name: "质量评估"
-        operations: []
       - id: "kf:page:scrape"
         display_name: "网页爬取"
-        operations:
-          - { id: "kf:scrape:read", display_name: "查看网页抓取" }
-          - { id: "kf:scrape:execute", display_name: "执行网页抓取" }
       - id: "kf:page:dict"
         display_name: "业务字典"
-        operations:
-          - { id: "kf:dict:edit", display_name: "编辑业务字典" }
 
   # ─── 合同价格分析（应用中心 → 采购管理）───
   contract_price:
@@ -289,9 +268,6 @@ roles:
       - approval:submit
       - approval:view
       - chapter:review
-      - kf:read
-      - kf:scrape:read
-      - kf:law:read
     data_scopes: ["knowledge_dept", "cpa_dept", "project_member"]
 
   project_manager:
