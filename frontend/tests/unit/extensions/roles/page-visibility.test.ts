@@ -50,14 +50,14 @@ describe("single-page fold + hidden modules", () => {
   });
   it("module with 0 or 2+ pages does not fold", () => {
     expect(isSinglePageModule(emptyMod)).toBe(false);
-    expect(isSinglePageModule(mods[0])).toBe(false);
+    expect(isSinglePageModule(mods[0]!)).toBe(false);
   });
   it("module with no pages (app_center) is hidden", () => {
     expect(shouldHideModule(emptyMod)).toBe(true);
   });
   it("module with pages is not hidden", () => {
     expect(shouldHideModule(singlePageMod)).toBe(false);
-    expect(shouldHideModule(mods[0])).toBe(false);
+    expect(shouldHideModule(mods[0]!)).toBe(false);
   });
 });
 
