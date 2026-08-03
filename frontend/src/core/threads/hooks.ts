@@ -163,6 +163,7 @@ export function buildThreadSubmitMessages({
 const EMPTY_MESSAGES: Message[] = [];
 const EMPTY_RUN_MESSAGES: RunMessage[] = [];
 const EMPTY_MESSAGE_IDENTITIES: readonly string[] = [];
+const INJECTED_USER_MESSAGE_ID_SUFFIX = "__user";
 
 const EMPTY_THREAD_VALUES: AgentThreadState = {
   title: "",
@@ -189,7 +190,17 @@ function messageIdentity(message: Message): string | undefined {
     return `tool:${message.tool_call_id}`;
   }
   if (typeof message.id === "string" && message.id.length > 0) {
-    return `message:${message.id}`;
+    // DynamicContextMiddleware replaces the submitted HumanMessage(id=X) with
+    // a hidden SystemMessage(id=X) and the real HumanMessage(id=X__user).
+    // Treat those human copies as one UI message so a committed render ledger
+    // cannot retain X beside the later checkpoint copy X__user.
+    const messageId =
+      message.type === "human" &&
+      message.id.endsWith(INJECTED_USER_MESSAGE_ID_SUFFIX)
+        ? message.id.slice(0, -INJECTED_USER_MESSAGE_ID_SUFFIX.length) ||
+          message.id
+        : message.id;
+    return `message:${messageId}`;
   }
   return undefined;
 }
@@ -576,6 +587,59 @@ export function mergeMessages(
     }
     return message;
   });
+}
+
+/**
+ * Keep messages from a locally submitted turn behind that turn's user input.
+ * LangGraph `messages-tuple` events can publish the first AI/tool steps before
+ * the `values` event containing the user message. Those steps are not part of
+ * the pre-submit baseline, so move only that visible pending segment behind the
+ * first new human message without disturbing established history or hidden
+ * checkpoint controls. The caller keeps the baseline after stream completion
+ * because the SDK may retain its transient event order until the next submit.
+ */
+export function restoreLocalTurnMessageOrder(
+  messages: Message[],
+  baselineMessageIdentities: ReadonlySet<string>,
+): Message[] {
+  const pendingHumanIndex = messages.findIndex((message) => {
+    const identity = messageIdentity(message);
+    return (
+      message.type === "human" &&
+      !isHiddenFromUIMessage(message) &&
+      identity !== undefined &&
+      !baselineMessageIdentities.has(identity)
+    );
+  });
+  if (pendingHumanIndex <= 0) {
+    return messages;
+  }
+
+  const stablePrefix: Message[] = [];
+  const earlyPendingSteps: Message[] = [];
+  for (const message of messages.slice(0, pendingHumanIndex)) {
+    const identity = messageIdentity(message);
+    const isVisiblePendingStep =
+      (message.type === "ai" || message.type === "tool") &&
+      !isHiddenFromUIMessage(message) &&
+      identity !== undefined &&
+      !baselineMessageIdentities.has(identity);
+    if (isVisiblePendingStep) {
+      earlyPendingSteps.push(message);
+    } else {
+      stablePrefix.push(message);
+    }
+  }
+  if (earlyPendingSteps.length === 0) {
+    return messages;
+  }
+
+  return [
+    ...stablePrefix,
+    messages[pendingHumanIndex]!,
+    ...earlyPendingSteps,
+    ...messages.slice(pendingHumanIndex + 1),
+  ];
 }
 
 /**
@@ -1372,6 +1436,12 @@ export function useThreadStream({
   const threadIdRef = useRef<string | null>(threadId ?? null);
   const startedRef = useRef(false);
   const pendingUsageBaselineMessageIdsRef = useRef<Set<string>>(new Set());
+  // Non-null only after a turn submitted by this mounted client. Keep it after
+  // finish/stop/error because the SDK can retain its transient event order in
+  // the settled frame. The next local submit replaces it and a thread switch or
+  // replay gap clears it. An empty set is meaningful for a new thread and must
+  // not be confused with a reconnect that has no local turn anchor.
+  const localTurnOrderBaselineIdentitiesRef = useRef<Set<string> | null>(null);
   const pendingPreparedReplayRef = useRef<PendingPreparedReplayMask | null>(
     null,
   );
@@ -1612,6 +1682,7 @@ export function useThreadStream({
         transientHistoryThreadIdRef.current = null;
         summarizedRef.current = new Set<string>();
         pendingUsageBaselineMessageIdsRef.current = new Set();
+        localTurnOrderBaselineIdentitiesRef.current = null;
         tasksRef.current = {};
         setTasks({});
         invalidateStoppedThreadCaches(queryClient, threadIdRef.current, isMock);
@@ -1779,6 +1850,7 @@ export function useThreadStream({
     };
     summarizedRef.current = new Set<string>();
     pendingUsageBaselineMessageIdsRef.current = new Set();
+    localTurnOrderBaselineIdentitiesRef.current = null;
     pendingPreparedReplayRef.current = null;
     setPendingSupersededRunIds(new Set());
     setPendingSupersededMessageIds(new Set());
@@ -1879,6 +1951,9 @@ export function useThreadStream({
         persistedMessages
           .map(messageIdentity)
           .filter((id): id is string => Boolean(id)),
+      );
+      localTurnOrderBaselineIdentitiesRef.current = new Set(
+        pendingUsageBaselineMessageIdsRef.current,
       );
 
       // Build optimistic files list with uploading status
@@ -2082,6 +2157,9 @@ export function useThreadStream({
         persistedMessages
           .map(messageIdentity)
           .filter((id): id is string => Boolean(id)),
+      );
+      localTurnOrderBaselineIdentitiesRef.current = new Set(
+        pendingUsageBaselineMessageIdsRef.current,
       );
       setLiveMessagesThreadId(threadId);
       listeners.current.onSend?.(threadId);
@@ -2329,11 +2407,15 @@ export function useThreadStream({
       transientHistoryOrder,
       previouslyRenderedOrder,
     );
-    return mergeMessages(
+    const merged = mergeMessages(
       effectiveHistory,
       renderMessages,
       visibleOptimisticMessages,
     );
+    const localTurnOrderBaseline = localTurnOrderBaselineIdentitiesRef.current;
+    return localTurnOrderBaseline === null
+      ? merged
+      : restoreLocalTurnMessageOrder(merged, localTurnOrderBaseline);
   }, [
     previouslyRenderedOrder,
     renderMessages,
