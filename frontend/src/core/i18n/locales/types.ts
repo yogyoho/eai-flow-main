@@ -581,6 +581,11 @@ export interface Translations {
     updateTodo: (content: string) => string;
     removeTodo: (content: string) => string;
   };
+  contextUsage: {
+    label: string;
+    title: string;
+    badgeAriaLabel: (percentage: string) => string;
+  };
 
   // Shortcuts
   shortcuts: {

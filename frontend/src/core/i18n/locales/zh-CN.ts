@@ -671,6 +671,11 @@ export const zhCN: Translations = {
     updateTodo: (content: string) => `更新 To-do：${content}`,
     removeTodo: (content: string) => `移除 To-do：${content}`,
   },
+  contextUsage: {
+    label: "上下文",
+    title: "上下文窗口",
+    badgeAriaLabel: (percentage: string) => `上下文窗口已用 ${percentage}%`,
+  },
 
   // Shortcuts
   shortcuts: {

@@ -24,7 +24,9 @@ from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
 
 from app.gateway.authz import require_permission
+from app.gateway.context_usage import build_context_usage
 from app.gateway.checkpoint_lineage import (
+
     CheckpointLineageError,
     CheckpointParentMissingError,
     find_checkpoint_before_message,
@@ -200,6 +202,12 @@ class ThreadTokenUsageCallerBreakdown(BaseModel):
     middleware: int = 0
 
 
+class ThreadContextUsage(BaseModel):
+    token_count: int = 0
+    max_context_tokens: int | None = None
+    percentage: float | None = None
+
+
 class ThreadTokenUsageResponse(BaseModel):
     thread_id: str
     total_tokens: int = 0
@@ -208,6 +216,7 @@ class ThreadTokenUsageResponse(BaseModel):
     total_runs: int = 0
     by_model: dict[str, ThreadTokenUsageModelBreakdown] = Field(default_factory=dict)
     by_caller: ThreadTokenUsageCallerBreakdown = Field(default_factory=ThreadTokenUsageCallerBreakdown)
+    context_usage: ThreadContextUsage | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1403,4 +1412,5 @@ async def thread_token_usage(
         agg = await run_store.aggregate_tokens_by_thread(thread_id, include_active=True)
     else:
         agg = await run_store.aggregate_tokens_by_thread(thread_id)
-    return ThreadTokenUsageResponse(thread_id=thread_id, **agg)
+    context_usage = await build_context_usage(request, thread_id, run_store)
+    return ThreadTokenUsageResponse(thread_id=thread_id, context_usage=context_usage, **agg)

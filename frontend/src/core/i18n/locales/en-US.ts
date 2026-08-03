@@ -698,6 +698,12 @@ export const enUS: Translations = {
     updateTodo: (content: string) => `Update To-do: ${content}`,
     removeTodo: (content: string) => `Remove To-do: ${content}`,
   },
+  contextUsage: {
+    label: "Context",
+    title: "Context window",
+    badgeAriaLabel: (percentage: string) =>
+      `Context window ${percentage}% full`,
+  },
 
   // Shortcuts
   shortcuts: {

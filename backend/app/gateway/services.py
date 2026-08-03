@@ -476,6 +476,53 @@ def build_checkpoint_state_accessor(
     return accessor, config
 
 
+async def resolve_thread_assistant_id(
+    request: Request,
+    thread_id: str,
+    *,
+    fail_closed: bool = False,
+) -> str | None:
+    """Return the assistant_id recorded in thread metadata, or ``None``.
+
+    Missing records degrade to ``None`` (the default lead agent). Store
+    failures do the same for read callers, while mutation callers set
+    ``fail_closed`` so they cannot compile a write graph with the wrong schema.
+    """
+    from app.gateway.deps import get_thread_store
+
+    try:
+        thread_store = get_thread_store(request)
+        record = await thread_store.get(thread_id)
+    except Exception:
+        logger.warning("Failed to resolve assistant_id for thread %s", thread_id, exc_info=True)
+        if fail_closed:
+            raise
+        return None
+    return record.get("assistant_id") if isinstance(record, dict) else None
+
+
+async def build_thread_checkpoint_state_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    checkpoint_id: str | None = None,
+    fail_closed: bool = False,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Single resolution boundary for state endpoints.
+
+    Thread metadata -> assistant_id -> effective assistant graph. Materializing
+    with the default lead schema would drop channels contributed by a custom
+    ``AgentMiddleware.state_schema`` from the response.
+    """
+    assistant_id = await resolve_thread_assistant_id(request, thread_id, fail_closed=fail_closed)
+    return build_checkpoint_state_accessor(
+        request,
+        thread_id=thread_id,
+        assistant_id=assistant_id,
+        checkpoint_id=checkpoint_id,
+    )
+
+
 async def ensure_checkpoint_history_seeded(
     request: Request,
     *,
