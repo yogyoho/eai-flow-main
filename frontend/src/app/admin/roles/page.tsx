@@ -174,6 +174,15 @@ function getAllFallbackPermKeys(): string[] {
   return PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.key));
 }
 
+/** 通配符展开：["*"] 表示全部权限，展开为所有操作 id（tree + direct + fallback）。 */
+function expandWildcardPerms(perms: string[] | undefined, modules?: RegistryModule[] | null): string[] {
+  if (!perms || !perms.includes("*")) return perms ?? [];
+  if (modules && modules.length > 0) {
+    return hasPageTree(modules) ? getAllTreePermKeys(modules) : getAllPermKeys(modules);
+  }
+  return getAllFallbackPermKeys();
+}
+
 
 /* ── EAI-CUSTOM: Module key → nav_id mapping ─────────────── */
 const MODULE_NAV_MAP: Record<string, string> = {
@@ -270,6 +279,8 @@ function PermissionPanel({
   const visibleModules: RegistryModule[] = isTree ? treeModules.filter((m) => !shouldHideModule(m)) : [];
   const categories = !isTree && modules && modules.length > 0 ? modulesToCategories(modules) : (!isTree ? PERMISSION_CATEGORIES : []);
   const allPerms = isTree ? getAllTreePermKeys(treeModules) : (modules && modules.length > 0 ? getAllPermKeys(modules) : getAllFallbackPermKeys());
+  // EAI-CUSTOM: 通配符展开 —— superadmin permissions=["*"] 表示全部权限，面板应全部勾选显示（resolveVisiblePages 对 pages 的 "*" 同理）
+  const effectiveSelected = selected.includes("*") ? allPerms : selected;
 
   // Initialise expanded state
   useEffect(() => {
@@ -289,14 +300,14 @@ function PermissionPanel({
 
   const togglePerm = (key: string) => {
     if (readonly) return;
-    onChange(selected.includes(key) ? selected.filter((p) => p !== key) : [...selected, key]);
+    onChange(effectiveSelected.includes(key) ? effectiveSelected.filter((p) => p !== key) : [...effectiveSelected, key]);
   };
 
   const toggleCategory = (keys: string[]) => {
     if (readonly) return;
-    const allSelected = keys.every((k) => selected.includes(k));
-    if (allSelected) onChange(selected.filter((p) => !keys.includes(p)));
-    else onChange([...new Set([...selected, ...keys])]);
+    const allSelected = keys.every((k) => effectiveSelected.includes(k));
+    if (allSelected) onChange(effectiveSelected.filter((p) => !keys.includes(p)));
+    else onChange([...new Set([...effectiveSelected, ...keys])]);
   };
 
   // EAI-CUSTOM: 搜索 —— 匹配操作/模块名 → 自动展开命中模块 + 高亮
@@ -386,8 +397,8 @@ function PermissionPanel({
           const directOpIds: string[] = mod.permissions.map((p) => p.id);
           const allOpIds = Array.from(new Set([...pageOpIds, ...directOpIds]));
           const totalOps = allOpIds.length;
-          const selectedCount = selected.filter((k) => allOpIds.includes(k)).length;
-          const allCatSelected = totalOps > 0 && allOpIds.every((k) => selected.includes(k));
+          const selectedCount = effectiveSelected.filter((k) => allOpIds.includes(k)).length;
+          const allCatSelected = totalOps > 0 && allOpIds.every((k) => effectiveSelected.includes(k));
           const ratio = totalOps > 0 ? selectedCount / totalOps : 0;
           const Icon = getModuleIcon(mod.key);
           const navId = getNavIdForModule(mod.key);
@@ -509,7 +520,7 @@ function PermissionPanel({
                         <div className="grid gap-1.5" style={gridStyle}>
                           {singlePage.operations.length > 0 ? (
                             singlePage.operations.map((op) => {
-                              const isChecked = selected.includes(op.id);
+                              const isChecked = effectiveSelected.includes(op.id);
                               return (
                                 <label key={op.id}
                                   className={cn(
@@ -540,7 +551,7 @@ function PermissionPanel({
                         mod.pages!.map((page) => {
                           const pageHasOps = page.operations.length > 0;
                           const pageOpIds = page.operations.map((op) => op.id);
-                          const pageSelected = selected.filter((k) => pageOpIds.includes(k)).length;
+                          const pageSelected = effectiveSelected.filter((k) => pageOpIds.includes(k)).length;
                           const pageTotal = pageOpIds.length;
                           const pageVisible = enabledPages ? enabledPages.has(page.id) : true;
                           return (
@@ -574,7 +585,7 @@ function PermissionPanel({
                                 {pageHasOps ? (
                                   <div className="grid gap-1.5" style={gridStyle}>
                                     {page.operations.map((op) => {
-                                      const isChecked = selected.includes(op.id);
+                                      const isChecked = effectiveSelected.includes(op.id);
                                       return (
                                         <label key={op.id}
                                           className={cn(
@@ -612,7 +623,7 @@ function PermissionPanel({
                         totalOps > 0 ? (
                           <div className="grid gap-1.5" style={gridStyle}>
                             {mod.permissions.map((perm) => {
-                              const isChecked = selected.includes(perm.id);
+                              const isChecked = effectiveSelected.includes(perm.id);
                               return (
                                 <label key={perm.id}
                                   className={cn(
@@ -653,8 +664,8 @@ function PermissionPanel({
           const Icon = category.icon;
           const isExpanded = expandedCats.has(category.name);
           const catKeys = category.permissions.map((p) => p.key);
-          const selectedCount = selected.filter((p) => catKeys.includes(p)).length;
-          const allCatSelected = catKeys.every((k) => selected.includes(k));
+          const selectedCount = effectiveSelected.filter((p) => catKeys.includes(p)).length;
+          const allCatSelected = catKeys.every((k) => effectiveSelected.includes(k));
           const ratio = selectedCount / category.permissions.length;
 
           return (
@@ -710,7 +721,7 @@ function PermissionPanel({
                     <div className="px-3 pb-3 pt-1 grid gap-1.5"
                       style={{ gridTemplateColumns: compact ? "repeat(auto-fill, minmax(145px, 1fr))" : "repeat(auto-fill, minmax(185px, 1fr))" }}>
                       {category.permissions.map((perm) => {
-                        const isChecked = selected.includes(perm.key);
+                        const isChecked = effectiveSelected.includes(perm.key);
                         return (
                           <label key={perm.key}
                             className={cn(
@@ -776,7 +787,9 @@ function RoleMatrixOverview({ roles, modules }: { roles: Role[]; modules?: Regis
               </td>
               {categories.map((cat) => {
                 const catKeys = cat.permissions.map((p) => p.key);
-                const count = catKeys.filter((k) => (role.permissions || []).includes(k)).length;
+                // EAI-CUSTOM: 通配符展开 —— superadmin permissions=["*"] 视为全部权限
+                const rolePerms = expandWildcardPerms(role.permissions, modules);
+                const count = catKeys.filter((k) => rolePerms.includes(k)).length;
                 const total = catKeys.length;
                 const ratio = total > 0 ? count / total : 0;
                 return (
@@ -1510,7 +1523,8 @@ export default function AdminRolesPage() {
                       <Users className="w-3 h-3" /> {assignments[role.id] ?? 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Key className="w-3 h-3" /> {role.permissions?.length ?? 0} 权限
+                      {/* EAI-CUSTOM: 通配符展开 —— superadmin permissions=["*"] 显示全部权限数 */}
+                      <Key className="w-3 h-3" /> {expandWildcardPerms(role.permissions, registryModules).length} 权限
                     </span>
                   </div>
                 </button>
