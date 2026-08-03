@@ -13,7 +13,6 @@ import {
   useCallback,
   useMemo,
   useState,
-  useEffect,
   type ImgHTMLAttributes,
 } from "react";
 
@@ -27,12 +26,11 @@ import {
   Reasoning,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Task, TaskTrigger } from "@/components/ai-elements/task";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-// EAI-CUSTOM: import path differs from upstream (../tooltip).
-import { Tooltip } from "@/components/workspace/tooltip";
 import {
   deleteFeedback,
   upsertFeedback,
@@ -52,9 +50,6 @@ import {
   stripUploadedFilesTag,
   type FileInMessage,
 } from "@/core/messages/utils";
-// EAI-CUSTOM: useRehypeSplitWordsIntoSpans is an EAI-only CJK word-splitting
-// rehype plugin (upstream has no equivalent module).
-import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import { readReferenceMessageContexts } from "@/core/sidecar";
 import {
   parseSlashSkillReference,
@@ -69,6 +64,7 @@ import { CitationSourcesPanel } from "../citations/citation-sources-panel";
 import { CopyButton } from "../copy-button";
 import { ReferenceAttachmentSummary } from "../sidecar/reference-attachments";
 import { SlashSkillChip } from "../slash-skill-chip";
+import { Tooltip } from "../tooltip";
 
 import { MarkdownContent } from "./markdown-content";
 import { createMarkdownLinkComponent } from "./markdown-link";
@@ -153,7 +149,6 @@ export function MessageListItem({
   canEdit = false,
   isEditPending = false,
   onEditAndRegenerate,
-  turnStartTime,
 }: {
   className?: string;
   message: Message;
@@ -163,15 +158,10 @@ export function MessageListItem({
   feedback?: FeedbackData | null;
   runId?: string;
   showCopyButton?: boolean;
-  // EAI-CUSTOM: re-add upstream #4559 per-run gating that the EAI reversion
-  // dropped. MessageList owns which assistant bubble is the run's anchor and
-  // passes this flag; without it every AI message would render the badge.
   showWorkspaceChanges?: boolean;
   canEdit?: boolean;
   isEditPending?: boolean;
   onEditAndRegenerate?: (replacementText: string) => void | Promise<boolean>;
-  // EAI-CUSTOM: turnStartTime prop for the live turn-duration wiring.
-  turnStartTime?: number | null;
 }) {
   const { t } = useI18n();
   const isHuman = message.type === "human";
@@ -226,7 +216,6 @@ export function MessageListItem({
         artifactPaths={artifactPaths}
         runId={runId}
         showWorkspaceChanges={showWorkspaceChanges}
-        turnStartTime={turnStartTime}
         editState={
           isHuman && isEditing
             ? {
@@ -282,10 +271,6 @@ export function MessageListItem({
 /**
  * Custom image component that handles artifact URLs
  */
-// EAI-CUSTOM: MessageImage re-introduced in the EAI reversion. The maxWidth is
-// applied via inline style (upstream #4446) because Tailwind JIT never emits
-// interpolated arbitrary values like `max-w-[${maxWidth}]`; lazy+decoding are
-// also restored from upstream.
 function MessageImage({
   src,
   alt,
@@ -300,19 +285,22 @@ function MessageImage({
 }) {
   if (!src) return null;
 
-  const imgClassName = cn("overflow-hidden rounded-lg");
-  const imgStyle = { maxWidth };
+  // `maxWidth` is applied inline rather than through a `max-w-[${maxWidth}]`
+  // class: Tailwind's JIT only generates utilities it can find as literal
+  // source tokens, so an interpolated arbitrary value would never be emitted.
+  const imgClassName = cn("overflow-hidden rounded-lg", props.className);
+  const imgStyle: React.CSSProperties = { maxWidth, ...props.style };
 
   if (typeof src !== "string") {
     return (
       <img
+        {...props}
         className={imgClassName}
         style={imgStyle}
         src={src}
         alt={alt}
         loading="lazy"
         decoding="async"
-        {...props}
       />
     );
   }
@@ -322,23 +310,17 @@ function MessageImage({
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
       <img
+        {...props}
         className={imgClassName}
         style={imgStyle}
         src={url}
         alt={alt}
         loading="lazy"
         decoding="async"
-        {...props}
       />
     </a>
   );
 }
-
-// EAI-CUSTOM: per-(threadId,messageId) turn-duration cache. Upstream renders run
-// duration as run-scoped metadata outside MessageListItem; EAI caches
-// additional_kwargs.turn_duration client-side to keep the reasoning disclosure
-// visible and stable across renders.
-const clientTurnDurations = new Map<string, number>();
 
 function HumanMessageText({ content }: { content: string }) {
   // `parseSlashSkillReference` is a pure regex gate (no data subscription), so
@@ -384,9 +366,6 @@ function MessageContent_({
   artifactPaths,
   runId,
   showWorkspaceChanges = false,
-  // EAI-CUSTOM: turnStartTime feeds the live turn-duration wiring below
-  // (startTimeProp/duration/onTurnDurationChange); upstream has no such prop.
-  turnStartTime,
   editState,
 }: {
   className?: string;
@@ -396,7 +375,6 @@ function MessageContent_({
   artifactPaths: readonly string[];
   runId?: string;
   showWorkspaceChanges?: boolean;
-  turnStartTime?: number | null;
   editState?: {
     draft: string;
     disabled: boolean;
@@ -406,56 +384,17 @@ function MessageContent_({
     onSubmit: () => void | Promise<void>;
   };
 }) {
-  // EAI-CUSTOM: CJK word-split rehype plugin (fade-in word animation) and
-  // turn-duration cache wiring — both absent from upstream MessageListItem.
-  const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const { t } = useI18n();
   const isHuman = message.type === "human";
-  const rawTurnDuration = message.additional_kwargs?.turn_duration as
-    | number
-    | undefined;
-
-  const [cachedDuration, setCachedDuration] = useState<number | undefined>(
-    () =>
-      message.id
-        ? clientTurnDurations.get(`${threadId}:${message.id}`)
-        : undefined,
+  const getReasoningMessage = useCallback(
+    (isStreaming: boolean) =>
+      isStreaming ? (
+        <Shimmer duration={1}>{t.runDuration.reasoning}</Shimmer>
+      ) : (
+        t.runDuration.reasoning
+      ),
+    [t.runDuration.reasoning],
   );
-  const turnDuration = rawTurnDuration ?? cachedDuration;
-
-  useEffect(() => {
-    if (rawTurnDuration !== undefined && message.id) {
-      clientTurnDurations.set(`${threadId}:${message.id}`, rawTurnDuration);
-      setCachedDuration(rawTurnDuration);
-    }
-  }, [rawTurnDuration, message.id, threadId]);
-
-  const handleDurationChange = useCallback(
-    (d: number | undefined) => {
-      if (d !== undefined && message.id) {
-        clientTurnDurations.set(`${threadId}:${message.id}`, d);
-        setCachedDuration(d);
-      }
-    },
-    [message.id, threadId],
-  );
-
-  useEffect(() => {
-    return () => {
-      for (const key of clientTurnDurations.keys()) {
-        if (key.startsWith(`${threadId}:`)) {
-          clientTurnDurations.delete(key);
-        }
-      }
-    };
-  }, [threadId]);
-
-  // EAI-CUSTOM: wasLoading keeps the reasoning disclosure visible after a
-  // turn settles so the duration badge does not collapse the card.
-  const [wasLoading, setWasLoading] = useState(isLoading);
-  useEffect(() => {
-    if (isLoading) setWasLoading(true);
-  }, [isLoading]);
   const components = useMemo(
     () => ({
       img: (props: ImgHTMLAttributes<HTMLImageElement>) => (
@@ -477,8 +416,11 @@ function MessageContent_({
   const files = useMemo(() => {
     const files = message.additional_kwargs?.files;
     if (!Array.isArray(files) || files.length === 0) {
-      if (rawContent.includes("<uploaded_files>")) {
-        // If the content contains the <uploaded_files> tag, we return the parsed files from the content for backward compatibility.
+      if (
+        rawContent.includes("<current_uploads>") ||
+        rawContent.includes("<uploaded_files>")
+      ) {
+        // If the content contains an upload context tag, we return the parsed files from the content for backward compatibility.
         return parseUploadedFiles(rawContent);
       }
       return null;
@@ -532,14 +474,8 @@ function MessageContent_({
   if (!isHuman && reasoningContent && !rawContent) {
     return (
       <AIElementMessageContent className={className}>
-        {/* EAI-CUSTOM: live turn-duration wiring (upstream renders duration elsewhere). */}
-        <Reasoning
-          isStreaming={isLoading}
-          startTimeProp={turnStartTime}
-          duration={turnDuration}
-          onTurnDurationChange={handleDurationChange}
-        >
-          <ReasoningTrigger />
+        <Reasoning isStreaming={isLoading}>
+          <ReasoningTrigger getThinkingMessage={getReasoningMessage} />
           <SafeReasoningContent>{reasoningContent}</SafeReasoningContent>
         </Reasoning>
       </AIElementMessageContent>
@@ -624,27 +560,15 @@ function MessageContent_({
   return (
     <AIElementMessageContent className={className}>
       {filesList}
-      {/* EAI-CUSTOM: wasLoading/turnDuration keep the reasoning disclosure
-          visible and show live turn duration (upstream <Shimmer>+getThinkingMessage). */}
-      {!isHuman &&
-        (!!reasoningContent || wasLoading || turnDuration !== undefined) && (
-          <Reasoning
-            isStreaming={isLoading}
-            startTimeProp={turnStartTime}
-            duration={turnDuration}
-            onTurnDurationChange={handleDurationChange}
-          >
-            <ReasoningTrigger hasContent={!!reasoningContent} />
-            {reasoningContent && (
-              <SafeReasoningContent>{reasoningContent}</SafeReasoningContent>
-            )}
-          </Reasoning>
-        )}
-      {/* EAI-CUSTOM: passes the EAI CJK word-split rehype plugins. */}
+      {reasoningContent && (
+        <Reasoning isStreaming={isLoading}>
+          <ReasoningTrigger getThinkingMessage={getReasoningMessage} />
+          <SafeReasoningContent>{reasoningContent}</SafeReasoningContent>
+        </Reasoning>
+      )}
       <MarkdownContent
         content={contentToDisplay}
         isLoading={isLoading}
-        rehypePlugins={rehypePlugins}
         className="my-3"
         components={components}
       />
@@ -793,6 +717,8 @@ function RichFileCard({
         <img
           src={fileUrl}
           alt={file.filename}
+          loading="lazy"
+          decoding="async"
           className="h-32 w-auto max-w-60 object-cover transition-transform group-hover:scale-105"
         />
       </a>

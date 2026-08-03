@@ -6,11 +6,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { VirtualThreadList } from "@/components/workspace/thread-list-virtualizer";
 import {
   ThreadChannelBadge,
   ThreadChannelIcon,
 } from "@/components/workspace/thread-channel-source";
+import { VirtualThreadList } from "@/components/workspace/thread-list-virtualizer";
 import {
   WorkspaceBody,
   WorkspaceContainer,

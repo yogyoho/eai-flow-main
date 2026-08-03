@@ -41,7 +41,10 @@ import {
   filterThreadSearchResults,
   type ThreadSearchParams,
 } from "./thread-search-query";
-import { threadTokenUsageQueryKey } from "./token-usage";
+import {
+  retainThreadTokenUsagePlaceholder,
+  threadTokenUsageQueryKey,
+} from "./token-usage";
 import type {
   AgentThread,
   AgentThreadState,
@@ -1436,12 +1439,6 @@ export function useThreadStream({
   const threadIdRef = useRef<string | null>(threadId ?? null);
   const startedRef = useRef(false);
   const pendingUsageBaselineMessageIdsRef = useRef<Set<string>>(new Set());
-  // Non-null only after a turn submitted by this mounted client. Keep it after
-  // finish/stop/error because the SDK can retain its transient event order in
-  // the settled frame. The next local submit replaces it and a thread switch or
-  // replay gap clears it. An empty set is meaningful for a new thread and must
-  // not be confused with a reconnect that has no local turn anchor.
-  const localTurnOrderBaselineIdentitiesRef = useRef<Set<string> | null>(null);
   const pendingPreparedReplayRef = useRef<PendingPreparedReplayMask | null>(
     null,
   );
@@ -1802,6 +1799,12 @@ export function useThreadStream({
   const latestMessageCountsRef = useRef({ humanMessageCount });
   const sendInFlightRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
+  // Non-null only after a turn submitted by this mounted client. Keep it after
+  // finish/stop/error because the SDK can retain its transient event order in
+  // the settled frame. The next local submit replaces it and a thread switch or
+  // replay gap clears it. An empty set is meaningful for a new thread and must
+  // not be confused with a reconnect that has no local turn anchor.
+  const localTurnOrderBaselineIdentitiesRef = useRef<Set<string> | null>(null);
   // Current-stream lifecycle bridge for messages removed from the checkpoint
   // tail before the canonical run-event page refetch observes the journal
   // flush. It is never appended into useThreadHistory's persisted pages.
@@ -2121,6 +2124,7 @@ export function useThreadStream({
         setOptimisticThreadId(null);
         setLiveMessagesThreadId(null);
         setIsUploading(false);
+        localTurnOrderBaselineIdentitiesRef.current = null;
         throw error;
       } finally {
         sendInFlightRef.current = false;
@@ -2247,6 +2251,7 @@ export function useThreadStream({
         setOptimisticMessages([]);
         setOptimisticThreadId(null);
         setLiveMessagesThreadId(null);
+        localTurnOrderBaselineIdentitiesRef.current = null;
         if (preparedSupersededRunId) {
           const supersededRunId = preparedSupersededRunId;
           pendingPreparedReplayRef.current = null;
@@ -2481,6 +2486,11 @@ type ThreadHistoryOptions = {
   pendingSupersededRunIds?: ReadonlySet<string>;
 };
 
+export const THREAD_HISTORY_QUERY_POLICY = {
+  refetchOnWindowFocus: false,
+  staleTime: 5 * 60 * 1_000,
+} as const;
+
 export function useThreadHistory(
   threadId: string,
   { enabled = true, pendingSupersededRunIds }: ThreadHistoryOptions = {},
@@ -2492,6 +2502,7 @@ export function useThreadHistory(
     ReturnType<typeof threadHistoryQueryKey>,
     number | null
   >({
+    ...THREAD_HISTORY_QUERY_POLICY,
     queryKey: threadHistoryQueryKey(threadId),
     enabled: enabled && Boolean(threadId),
     initialPageParam: null,
@@ -2853,6 +2864,10 @@ export function useThreadTokenUsage(
     enabled: enabled && Boolean(threadId),
     retry: false,
     refetchOnWindowFocus: false,
+    // Keep same-thread data visible during refetches without carrying usage
+    // from the previous route into a newly selected thread.
+    placeholderData: (previous) =>
+      retainThreadTokenUsagePlaceholder(previous, threadId),
   });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ import {
   useSpecificChatMode,
   useThreadChat,
 } from "@/components/workspace/chats";
+import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
 import {
@@ -32,7 +33,6 @@ import {
 import { ThreadScheduledTasksLink } from "@/components/workspace/thread-scheduled-tasks-link";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
-import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { useActiveGoal } from "@/components/workspace/use-active-goal";
 import { Welcome } from "@/components/workspace/welcome";
@@ -75,10 +75,11 @@ export default function ChatPage() {
   const [isWelcomeMode, setIsWelcomeMode] = useState(isNewThread);
   const [settings, setSettings] = useThreadSettings(threadId);
   const [localSettings, setLocalSettings] = useLocalSettings();
+  const { enabled: browserControlEnabled } = useBrowserControlEnabled();
   const { tokenUsageEnabled } = useModels();
   const threadTokenUsage = useThreadTokenUsage(
     isNewThread || isMock ? undefined : threadId,
-    { enabled: tokenUsageEnabled && !isMock },
+    { enabled: !isMock },
   );
   const threadMetadata = useThreadMetadata(threadId, {
     enabled: !isNewThread && !isMock,
@@ -87,27 +88,9 @@ export default function ChatPage() {
   const branchThread = useBranchThread();
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const contextUsage = selectContextUsage(threadTokenUsage.data);
-  const { enabled: browserControlEnabled } = useBrowserControlEnabled();
-  const browserEnabled = !isNewThread && browserControlEnabled;
   const mountedRef = useRef(false);
   const [pageReady, setPageReady] = useState(false);
   useSpecificChatMode();
-
-  // EAI: parse project context from URL params
-  const searchParams = useSearchParams();
-  const fromProject = searchParams.get("from") === "project";
-  const projectContext = fromProject
-    ? {
-        projectId: searchParams.get("projectId") ?? "",
-        projectName: decodeURIComponent(searchParams.get("projectName") ?? ""),
-        stage: Number(searchParams.get("stage")) || 3,
-        chapterId: searchParams.get("chapterId"),
-        chapterName: searchParams.get("chapterName")
-          ? decodeURIComponent(searchParams.get("chapterName")!)
-          : null,
-        mode: (searchParams.get("mode") ?? "") || "writing",
-      }
-    : null;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -289,6 +272,7 @@ export default function ChatPage() {
     ? localSettings.tokenUsage.inlineMode
     : "off";
   const hasTodos = (thread.values.todos?.length ?? 0) > 0;
+  const browserEnabled = !isNewThread && browserControlEnabled;
   const { activeGoal, hasGoal, setLocalGoal } = useActiveGoal(
     threadId,
     thread.values.goal,
@@ -331,20 +315,24 @@ export default function ChatPage() {
                 {!isNewThread && (
                   <ThreadScheduledTasksLink threadId={threadId} />
                 )}
-                {browserEnabled && <BrowserTrigger />}
-                <ContextUsageBadge contextUsage={contextUsage} />
-                <TokenUsageIndicator
-                  threadId={isNewThread ? undefined : threadId}
-                  backendUsage={backendTokenUsage}
-                  enabled={tokenUsageEnabled}
-                  messages={thread.messages}
-                  pendingMessages={pendingUsageMessages}
-                  preferences={localSettings.tokenUsage}
-                  onPreferencesChange={(preferences) =>
-                    setLocalSettings("tokenUsage", preferences)
-                  }
-                />
+                {tokenUsageEnabled ? (
+                  <TokenUsageIndicator
+                    threadId={isNewThread ? undefined : threadId}
+                    backendUsage={backendTokenUsage}
+                    contextUsage={contextUsage}
+                    enabled={tokenUsageEnabled}
+                    messages={thread.messages}
+                    pendingMessages={pendingUsageMessages}
+                    preferences={localSettings.tokenUsage}
+                    onPreferencesChange={(preferences) =>
+                      setLocalSettings("tokenUsage", preferences)
+                    }
+                  />
+                ) : (
+                  <ContextUsageBadge contextUsage={contextUsage} />
+                )}
                 <SidecarTrigger />
+                {browserEnabled && <BrowserTrigger />}
                 <ExportTrigger threadId={threadId} />
                 <ArtifactTrigger />
               </div>
@@ -375,6 +363,7 @@ export default function ChatPage() {
                     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
                     !isUploading &&
                     !thread.isLoading &&
+                    !branchThread.isPending &&
                     !hasGoal &&
                     !hasOpenHumanInputCard
                   }
@@ -462,7 +451,6 @@ export default function ChatPage() {
                         isMock ||
                         env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
                         isUploading ||
-                        hasOpenHumanInputCard ||
                         (!isNewThread && isHistoryLoading)
                       }
                       onContextChange={(context) =>

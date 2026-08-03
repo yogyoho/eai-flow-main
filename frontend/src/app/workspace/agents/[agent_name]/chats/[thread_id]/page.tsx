@@ -77,7 +77,7 @@ export default function AgentChatPage() {
   const { tokenUsageEnabled } = useModels();
   const threadTokenUsage = useThreadTokenUsage(
     isNewThread || isMock ? undefined : threadId,
-    { enabled: tokenUsageEnabled && !isMock },
+    { enabled: !isMock },
   );
   const threadMetadata = useThreadMetadata(threadId, {
     enabled: !isNewThread && !isMock,
@@ -111,14 +111,14 @@ export default function AgentChatPage() {
       setIsWelcomeMode(false);
     },
     onStart: (createdThreadId) => {
-      setThreadId(createdThreadId);
-      setIsNewThread(false);
       // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
       history.replaceState(
         null,
         "",
         `/workspace/agents/${agent_name}/chats/${createdThreadId}`,
       );
+      setThreadId(createdThreadId);
+      setIsNewThread(false);
     },
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {
@@ -140,26 +140,6 @@ export default function AgentChatPage() {
       }
     },
   });
-
-  const handleSubmit = useCallback(
-    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
-      const sendPromise = sendMessage(
-        threadId,
-        message,
-        { agent_name },
-        options,
-      );
-      if (message.files.length > 0) {
-        return sendPromise;
-      }
-      void sendPromise;
-    },
-    [sendMessage, threadId, agent_name],
-  );
-
-  const handleStop = useCallback(async () => {
-    await thread.stop();
-  }, [thread]);
 
   const hasThreadMessages = thread.messages.length > 0;
 
@@ -189,6 +169,22 @@ export default function AgentChatPage() {
     threadMetadata.isLoading,
   ]);
 
+  const handleSubmit = useCallback(
+    (message: PromptInputMessage, options?: InputBoxSubmitOptions) => {
+      const sendPromise = sendMessage(
+        threadId,
+        message,
+        { agent_name },
+        options,
+      );
+      if (message.files.length > 0) {
+        return sendPromise;
+      }
+      void sendPromise;
+    },
+    [sendMessage, threadId, agent_name],
+  );
+
   const handleSubmitHumanInput = useCallback(
     async (request: HumanInputRequest, response: HumanInputResponse) => {
       let sent = false;
@@ -214,6 +210,9 @@ export default function AgentChatPage() {
     [agent_name, sendMessage, threadId],
   );
 
+  const handleStop = useCallback(async () => {
+    await thread.stop();
+  }, [thread]);
   const handleRegenerate = useCallback(
     (messageId: string, supersededMessageIds: string[]) =>
       regenerateMessage(threadId, messageId, supersededMessageIds),
@@ -252,181 +251,188 @@ export default function AgentChatPage() {
         <ChatBox threadId={threadId}>
           <div className="relative flex size-full min-h-0 justify-between">
             <header
-            className={cn(
-              "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center gap-2 px-4",
-              isWelcomeMode
-                ? "bg-background/0 backdrop-blur-none"
-                : "bg-background/80 shadow-xs backdrop-blur",
-            )}
-          >
-            <SidebarTrigger className="md:hidden" />
-            {/* Agent badge */}
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
-              <BotIcon className="text-primary h-3.5 w-3.5" />
-              <span className="hidden max-w-24 truncate text-xs font-medium sm:inline sm:max-w-none">
-                {agent?.name ?? agent_name}
-              </span>
-            </div>
-
-            <div className="flex w-full items-center text-sm font-medium">
-              <ThreadTitle threadId={threadId} thread={thread} />
-            </div>
-            <div className="mr-4 flex items-center">
-              <Tooltip content={t.agents.newChat}>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    router.push(`/workspace/agents/${agent_name}/chats/new`);
-                  }}
-                >
-                  <PlusSquare /> {t.agents.newChat}
-                </Button>
-              </Tooltip>
-              {tokenUsageEnabled ? (
-                <TokenUsageIndicator
-                  threadId={isNewThread ? undefined : threadId}
-                  backendUsage={backendTokenUsage}
-                  contextUsage={contextUsage}
-                  enabled={tokenUsageEnabled}
-                  messages={thread.messages}
-                  pendingMessages={pendingUsageMessages}
-                  preferences={localSettings.tokenUsage}
-                  onPreferencesChange={(preferences) =>
-                    setLocalSettings("tokenUsage", preferences)
-                  }
-                />
-              ) : (
-                <ContextUsageBadge contextUsage={contextUsage} />
-              )}
-              <SidecarTrigger />
-              <ExportTrigger threadId={threadId} />
-              <ArtifactTrigger />
-            </div>
-          </header>
-
-          <main className="flex min-h-0 max-w-full grow flex-col">
-            <div className="flex min-h-0 flex-1 justify-center">
-              <MessageList
-                className={cn("size-full", !isWelcomeMode && "pt-10")}
-                testId="main-message-list"
-                threadId={threadId}
-                thread={thread}
-                paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
-                hasMoreHistory={hasMoreHistory}
-                loadMoreHistory={loadMoreHistory}
-                isHistoryLoading={isHistoryLoading}
-                tokenUsageInlineMode={tokenUsageInlineMode}
-                canRegenerate={
-                  !isNewThread &&
-                  !isMock &&
-                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
-                  !isUploading &&
-                  !thread.isLoading
-                }
-                onRegenerateMessage={handleRegenerate}
-                canEdit={
-                  !isNewThread &&
-                  !isMock &&
-                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
-                  !isUploading &&
-                  !thread.isLoading &&
-                  !hasGoal &&
-                  !hasOpenHumanInputCard
-                }
-                onEditAndRegenerateMessage={handleEditAndRegenerate}
-                onSubmitHumanInput={
-                  isMock || env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"
-                    ? undefined
-                    : handleSubmitHumanInput
-                }
-              />
-            </div>
-
-            <div
               className={cn(
-                "right-0 bottom-0 left-0 z-30 flex justify-center px-4",
-                isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
+                "absolute top-0 right-0 left-0 z-30 flex h-12 shrink-0 items-center gap-2 px-2 sm:px-4",
+                isWelcomeMode
+                  ? "bg-background/0 backdrop-blur-none"
+                  : "bg-background/80 shadow-xs backdrop-blur",
               )}
             >
+              <SidebarTrigger className="md:hidden" />
+              {/* Agent badge */}
+              <div className="flex min-w-0 shrink-0 items-center gap-1.5 rounded-md border px-2 py-1">
+                <BotIcon className="text-primary h-3.5 w-3.5" />
+                <span className="hidden max-w-24 truncate text-xs font-medium sm:inline sm:max-w-none">
+                  {agent?.name ?? agent_name}
+                </span>
+              </div>
+
+              <div className="flex min-w-0 flex-1 items-center text-sm font-medium">
+                <ThreadTitle threadId={threadId} thread={thread} />
+              </div>
+              <div className="flex shrink-0 items-center sm:mr-4">
+                <Tooltip content={t.agents.newChat}>
+                  <Button
+                    className="px-2 sm:px-3"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      router.push(`/workspace/agents/${agent_name}/chats/new`);
+                    }}
+                  >
+                    <PlusSquare />
+                    <span className="hidden sm:inline">{t.agents.newChat}</span>
+                  </Button>
+                </Tooltip>
+                {tokenUsageEnabled ? (
+                  <TokenUsageIndicator
+                    threadId={isNewThread ? undefined : threadId}
+                    backendUsage={backendTokenUsage}
+                    contextUsage={contextUsage}
+                    enabled={tokenUsageEnabled}
+                    messages={thread.messages}
+                    pendingMessages={pendingUsageMessages}
+                    preferences={localSettings.tokenUsage}
+                    onPreferencesChange={(preferences) =>
+                      setLocalSettings("tokenUsage", preferences)
+                    }
+                  />
+                ) : (
+                  <ContextUsageBadge contextUsage={contextUsage} />
+                )}
+                <SidecarTrigger />
+                <ExportTrigger threadId={threadId} />
+                <ArtifactTrigger />
+              </div>
+            </header>
+
+            <main className="flex min-h-0 max-w-full grow flex-col">
+              <div className="flex min-h-0 flex-1 justify-center">
+                <MessageList
+                  className={cn("size-full", !isWelcomeMode && "pt-10")}
+                  testId="main-message-list"
+                  threadId={threadId}
+                  thread={thread}
+                  paddingBottom={MESSAGE_LIST_DEFAULT_PADDING_BOTTOM}
+                  hasMoreHistory={hasMoreHistory}
+                  loadMoreHistory={loadMoreHistory}
+                  isHistoryLoading={isHistoryLoading}
+                  tokenUsageInlineMode={tokenUsageInlineMode}
+                  canRegenerate={
+                    !isNewThread &&
+                    !isMock &&
+                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
+                    !isUploading &&
+                    !thread.isLoading
+                  }
+                  onRegenerateMessage={handleRegenerate}
+                  canEdit={
+                    !isNewThread &&
+                    !isMock &&
+                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" &&
+                    !isUploading &&
+                    !thread.isLoading &&
+                    !hasGoal &&
+                    !hasOpenHumanInputCard
+                  }
+                  onEditAndRegenerateMessage={handleEditAndRegenerate}
+                  onSubmitHumanInput={
+                    isMock || env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"
+                      ? undefined
+                      : handleSubmitHumanInput
+                  }
+                />
+              </div>
+
               <div
                 className={cn(
-                  "relative w-full",
-                  isWelcomeMode && "-translate-y-[calc(50vh-96px)]",
-                  isWelcomeMode
-                    ? "max-w-(--container-width-sm)"
-                    : "max-w-(--container-width-md)",
+                  "right-0 bottom-0 left-0 z-30 flex justify-center px-3 sm:px-4",
+                  isWelcomeMode ? "absolute" : "relative shrink-0 pb-4",
                 )}
               >
-                {(hasGoal || hasTodos) && (
-                  <div
-                    className={cn(
-                      "right-0 left-0 z-0",
-                      isWelcomeMode ? "absolute -top-4" : "relative",
-                    )}
-                  >
+                <div
+                  className={cn(
+                    "relative w-full",
+                    isWelcomeMode &&
+                      "-translate-y-[calc(50vh-48px)] sm:-translate-y-[calc(50vh-96px)]",
+                    isWelcomeMode
+                      ? "max-w-(--container-width-sm)"
+                      : "max-w-(--container-width-md)",
+                  )}
+                >
+                  {(hasGoal || hasTodos) && (
                     <div
                       className={cn(
-                        "right-0 bottom-0 left-0 flex flex-col",
-                        isWelcomeMode ? "absolute" : "relative",
+                        "right-0 left-0 z-0",
+                        isWelcomeMode ? "absolute -top-4" : "relative",
                       )}
                     >
-                      {activeGoal && <GoalStatus goal={activeGoal} />}
-                      <TodoList
-                        className="bg-background/5"
-                        todos={thread.values.todos ?? []}
-                        hidden={false}
-                      />
+                      <div
+                        className={cn(
+                          "right-0 bottom-0 left-0 flex flex-col",
+                          isWelcomeMode ? "absolute" : "relative",
+                        )}
+                      >
+                        {activeGoal && <GoalStatus goal={activeGoal} />}
+                        {hasTodos && (
+                          <TodoList
+                            className="bg-background/5"
+                            todos={thread.values.todos ?? []}
+                            hidden={false}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                <InputBox
-                  className={cn(
-                    "bg-background/5 w-full",
-                    isWelcomeMode && "-translate-y-2 sm:-translate-y-4",
                   )}
-                  isWelcomeMode={isWelcomeMode}
-                  threadId={threadId}
-                  draftThreadId={isNewThread ? "new" : threadId}
-                  draftAgentName={agent_name}
-                  defaultModelName={agent?.model}
-                  autoFocus={isWelcomeMode}
-                  status={
-                    thread.error
-                      ? "error"
-                      : thread.isLoading
-                        ? "streaming"
-                        : "ready"
-                  }
-                  context={settings.context}
-                  extraHeader={
-                    isWelcomeMode &&
-                    !hasGoal &&
-                    !hasTodos && (
-                      <AgentWelcome agent={agent} agentName={agent_name} />
-                    )
-                  }
-                  disabled={
-                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
-                    isUploading ||
-                    (!isNewThread && isHistoryLoading)
-                  }
-                  onContextChange={(context) => setSettings("context", context)}
-                  onGoalChange={setLocalGoal}
-                  onSubmit={handleSubmit}
-                  onStop={handleStop}
-                />
-                {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
-                  <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
-                    {t.common.notAvailableInDemoMode}
-                  </div>
-                )}
+
+                  <InputBox
+                    className={cn(
+                      "bg-background/5 w-full",
+                      isWelcomeMode && "-translate-y-2 sm:-translate-y-4",
+                    )}
+                    isWelcomeMode={isWelcomeMode}
+                    threadId={threadId}
+                    draftThreadId={isNewThread ? "new" : threadId}
+                    draftAgentName={agent_name}
+                    defaultModelName={agent?.model}
+                    autoFocus={isWelcomeMode}
+                    status={
+                      thread.error
+                        ? "error"
+                        : thread.isLoading
+                          ? "streaming"
+                          : "ready"
+                    }
+                    context={settings.context}
+                    extraHeader={
+                      isWelcomeMode &&
+                      !hasGoal &&
+                      !hasTodos && (
+                        <AgentWelcome agent={agent} agentName={agent_name} />
+                      )
+                    }
+                    disabled={
+                      env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
+                      isUploading ||
+                      (!isNewThread && isHistoryLoading)
+                    }
+                    onContextChange={(context) =>
+                      setSettings("context", context)
+                    }
+                    onGoalChange={setLocalGoal}
+                    onSubmit={handleSubmit}
+                    onStop={handleStop}
+                  />
+                  {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
+                    <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">
+                      {t.common.notAvailableInDemoMode}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </main>
-        </div>
-      </ChatBox>
+            </main>
+          </div>
+        </ChatBox>
       </SidecarProvider>
     </ThreadContext.Provider>
   );
