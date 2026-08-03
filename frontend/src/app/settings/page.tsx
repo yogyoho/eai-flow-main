@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { useI18n } from "@/core/i18n/hooks";
 import { DataSourceManager } from "@/extensions/data-source/DataSourceManager";
 import LicensePage from "@/extensions/license/LicensePage";
-import PluginMarketplace from "@/extensions/plugin/PluginMarketplace";
 
 
 import { BasicSettings } from "./basic-settings";
@@ -21,7 +20,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: "basic", label: t.settings.sections.basic, pageId: "settings:page:general" },
     { id: "data-sources", label: "数据源", pageId: "settings:page:datasource" },
-    // { id: "plugins", pageId: "settings:page:plugins", label: "插件" },   // 插件系统容器化改造中，暂时下线入口
     { id: "license", label: "许可证", pageId: "settings:page:license" },
   ].filter(tab => canPage(tab.pageId));
 
@@ -84,19 +82,6 @@ export default function SettingsPage() {
               <DataSourceManager />
             </Suspense>
           )}
-          {/* 插件系统容器化改造中，暂时下线入口
-          {activeTab === "plugins" && (
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  加载中...
-                </div>
-              }
-            >
-              <PluginMarketplace />
-            </Suspense>
-          )}
-          */}
           {activeTab === "license" && (
             <div className="p-6">
               <div className="max-w-4xl mx-auto">
