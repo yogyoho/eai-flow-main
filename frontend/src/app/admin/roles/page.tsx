@@ -263,6 +263,7 @@ function PermissionPanel({
 }) {
   const defaultEnabledNavs = enabledNavs ?? new Set(ALL_NAV_IDS);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const isTree = hasPageTree(modules);
   const treeModules: RegistryModule[] = isTree ? modules! : [];
   // EAI-CUSTOM: 隐藏无可配权限的模块（app_center pages=[] 始终可见无可配项 → 整卡隐藏）
@@ -298,6 +299,40 @@ function PermissionPanel({
     else onChange([...new Set([...selected, ...keys])]);
   };
 
+  // EAI-CUSTOM: 搜索 —— 匹配操作/模块名 → 自动展开命中模块 + 高亮
+  const q = searchQuery.trim().toLowerCase();
+  const highlight = (text: string): React.ReactNode => {
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx < 0) return text;
+    return (<>
+      {text.slice(0, idx)}
+      <mark className="bg-primary/20 text-primary rounded-sm px-0.5">{text.slice(idx, idx + q.length)}</mark>
+      {text.slice(idx + q.length)}
+    </>);
+  };
+  useEffect(() => {
+    if (!q) return;
+    if (isTree) {
+      const hitModules = visibleModules.filter((mod) => {
+        const pageOps = (mod.pages ?? []).flatMap((pg) => pg.operations.map((op) => op.id));
+        const directOps = mod.permissions.map((p) => p.id);
+        return [...pageOps, ...directOps].some((id) =>
+          id.toLowerCase().includes(q) || (mod.display_name || "").toLowerCase().includes(q));
+      });
+      if (hitModules.length > 0) {
+        setExpandedCats(new Set(hitModules.map((m) => m.key)));
+      }
+    } else {
+      const hitCats = categories.filter((c) =>
+        c.permissions.some((p) => p.key.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)));
+      if (hitCats.length > 0) {
+        setExpandedCats(new Set(hitCats.map((c) => c.name)));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
   const gridStyle = compact
     ? { gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))" }
     : { gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))" };
@@ -305,7 +340,7 @@ function PermissionPanel({
   return (
     <div className="space-y-3">
       {!readonly && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
           <button type="button" onClick={() => onChange(allPerms)}
             className="group flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-foreground/80 bg-background border border-border rounded-lg hover:border-primary/40 hover:text-primary hover:bg-primary/[0.04] transition-all duration-200">
             <PermCheckbox checked={false} />
@@ -314,6 +349,26 @@ function PermissionPanel({
           <button type="button" onClick={() => onChange([])}
             className="px-3.5 py-1.5 text-xs font-medium text-muted-foreground bg-background border border-border rounded-lg hover:border-destructive/30 hover:text-destructive/80 hover:bg-destructive/[0.03] transition-all duration-200">
             清空
+          </button>
+          <div className="relative flex-1 min-w-[160px] max-w-xs ml-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索操作..."
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <button type="button" onClick={() => {
+            if (isTree) setExpandedCats(new Set(visibleModules.map((m) => m.key)));
+            else setExpandedCats(new Set(categories.map((c) => c.name)));
+          }}
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-background border border-border rounded-lg hover:border-primary/40 hover:text-primary transition-colors">
+            全部展开
+          </button>
+          <button type="button" onClick={() => setExpandedCats(new Set())}
+            className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-background border border-border rounded-lg hover:border-primary/40 hover:text-primary transition-colors">
+            全部收起
           </button>
         </div>
       )}
@@ -353,7 +408,7 @@ function PermissionPanel({
                     <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 && moduleVisible ? "text-primary" : "text-muted-foreground")} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground text-sm">{mod.display_name}</div>
+                    <div className="font-medium text-foreground text-sm">{highlight(mod.display_name)}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className={cn("text-xs tabular-nums", moduleVisible ? "text-muted-foreground" : "text-muted-foreground/50")}>{selectedCount}/{totalOps}</span>
                       <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
@@ -428,7 +483,7 @@ function PermissionPanel({
                                     "truncate transition-colors duration-200 leading-tight",
                                     readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
                                   )}>
-                                    {op.display_name}
+                                    {highlight(op.display_name)}
                                   </span>
                                 </label>
                               );
@@ -449,7 +504,7 @@ function PermissionPanel({
                               {/* Page header: icon + name + visible switch (right after text) + count */}
                               <div className="flex items-center gap-2 py-2 px-1 text-sm font-semibold text-muted-foreground">
                                 <FileText className="w-3.5 h-3.5 shrink-0 opacity-60" />
-                                <span className="truncate">{page.display_name}</span>
+                                <span className="truncate">{highlight(page.display_name)}</span>
                                 {onPageToggle && (
                                   <button
                                     type="button"
@@ -531,7 +586,7 @@ function PermissionPanel({
                                     "truncate transition-colors duration-200 leading-tight",
                                     readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
                                   )}>
-                                    {perm.display_name}
+                                    {highlight(perm.display_name)}
                                   </span>
                                 </label>
                               );
