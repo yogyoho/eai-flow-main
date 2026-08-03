@@ -23,7 +23,6 @@ from app.extensions.knowledge_factory.routers import router as knowledge_factory
 from app.extensions.law import router as law_router
 from app.extensions.license.routers import router as license_router
 from app.extensions.output.routers import router as output_router
-from app.extensions.plugin.routers import router as plugin_router
 from app.extensions.project import router as project_router
 from app.extensions.role.routers import router as role_router
 from app.extensions.workspace import router as workspace_router  # EAI-CUSTOM: Collab Workspace
@@ -599,7 +598,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Data source management API (stub)
     app.include_router(data_source_router)
-    app.include_router(plugin_router)
 
     # App-center API is mounted at /api/extensions/app-center
     app.include_router(app_center_router)

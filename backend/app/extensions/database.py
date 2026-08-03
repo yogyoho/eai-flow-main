@@ -1561,14 +1561,6 @@ async def seed_db() -> None:
             except Exception as e:
                 logger.warning(f"Failed to seed layout templates: {e}")
 
-            # Seed built-in plugins for the plugin marketplace
-            try:
-                from app.extensions.plugin.seed import seed_builtin_plugins
-
-                await seed_builtin_plugins(session)
-            except Exception as e:
-                logger.warning(f"Failed to seed built-in plugins: {e}")
-
             # Seed app-center domains + apps
             try:
                 # Domains
