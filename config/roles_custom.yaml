@@ -1,7 +1,105 @@
-# 角色自定义 overlay —— 覆盖 permissions.yaml 中的内置角色定义，或新增自定义角色。
-# 合并规则：同 code 整体覆盖内置定义；自定义角色只存在于本文件。
-# 删除内置角色 = 加入 disabled_roles 列表（不移除 permissions.yaml 中的定义）。
-# 本文件由角色管理 UI 写透维护（RoleService.create/update/delete/copy），也可手工编辑。
-# 变更通过 mtime 热重载即时生效（下一请求）。
-roles: {}
+roles:
+  project_manager:
+    display_name: 项目经理
+    permissions:
+    - '#inherit:dept_head'
+    - dashboard:view
+    - project:edit
+    - member:add
+    - member:remove
+    - chapter:write_any
+    - ai:start_writing
+    - outline:edit
+    - settings:edit
+    - export:generate
+    - approval:submit
+    - approval:review
+    nav:
+    - nav:writing
+    - nav:projects
+    - nav:docmgr
+    - nav:knowledge
+    - nav:output
+    - nav:app-center
+    - nav:knowledge-factory
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - cpa_dept
+    is_system: false
+    level: 60
+    description: null
+    pages:
+    - writing:page:chat
+    - projects:page:list
+    - docmgr:page:browse
+    - knowledge:page:browse
+    - kf:page:sample
+    - kf:page:extraction
+    - kf:page:template
+    - kf:page:law
+    - kf:page:compliance
+    - kf:page:version
+    - kf:page:quality
+    - kf:page:scrape
+    - kf:page:dict
+    - cpa:page:overview
+    - cpa:page:contracts
+    - cpa:page:items
+    - cpa:page:clusters
+    - cpa:page:tasks
+    - cpa:page:settings
+    - output:page:index
+    - workflow-admin:page:index
+    - admin:page:users
+    - admin:page:roles
+    - admin:page:departments
+    - admin:page:app-center
+    - settings:page:general
+    - settings:page:datasource
+    - settings:page:license
+  dept_head:
+    display_name: 部门负责人
+    permissions:
+    - approval:approve
+    - approval:submit
+    - approval:view
+    - chapter:review
+    - cpa:import
+    - cpa:read
+    - doc:read
+    - doc:upload
+    - kb:create
+    - kb:delete
+    - kb:read
+    - kb:update
+    - kb:upload
+    - kf:law:read
+    - kf:read
+    - kf:scrape:read
+    - model:read
+    - project:create
+    - project:read
+    - system:access
+    - workflow:read
+    - dashboard:view
+    nav:
+    - nav:dashboard
+    - nav:writing
+    - nav:projects
+    - nav:docmgr
+    - nav:knowledge
+    - nav:knowledge-factory
+    - nav:contract-price
+    - nav:output
+    - nav:app-center
+    data_scopes:
+    - knowledge_dept
+    - cpa_dept
+    - project_member
+    pages:
+    - '*'
+    is_system: false
+    level: 50
+    description: null
 disabled_roles: []
