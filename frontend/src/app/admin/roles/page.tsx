@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
-import { isSinglePageModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
+import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
@@ -392,6 +392,13 @@ function PermissionPanel({
           const Icon = getModuleIcon(mod.key);
           const navId = getNavIdForModule(mod.key);
           const moduleVisible = navId ? defaultEnabledNavs.has(navId) : true;
+          // EAI-CUSTOM: 可见性纯模块（所有子页无操作）→ 扁平子页网格，计数按可见子页数
+          const visibilityOnly = isVisibilityOnlyModule(mod);
+          const pageCount = mod.pages ? mod.pages.length : 0;
+          const visiblePageCount = mod.pages
+            ? mod.pages.filter((pg) => (enabledPages ? enabledPages.has(pg.id) : true)).length
+            : 0;
+          const pageRatio = pageCount > 0 ? visiblePageCount / pageCount : 0;
 
           return (
             <div key={mod.key} className="bg-card rounded-xl border border-border overflow-hidden">
@@ -401,21 +408,23 @@ function PermissionPanel({
                   className="flex-1 flex items-center gap-3 p-4 hover:bg-accent/60 transition-colors text-left">
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
-                    selectedCount > 0 && moduleVisible
+                    (visibilityOnly ? visiblePageCount > 0 : selectedCount > 0) && moduleVisible
                       ? "bg-primary/10 border border-primary/20"
                       : "bg-muted border border-border",
                   )}>
-                    <Icon className={cn("w-4 h-4 transition-colors duration-200", selectedCount > 0 && moduleVisible ? "text-primary" : "text-muted-foreground")} />
+                    <Icon className={cn("w-4 h-4 transition-colors duration-200", (visibilityOnly ? visiblePageCount > 0 : selectedCount > 0) && moduleVisible ? "text-primary" : "text-muted-foreground")} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground text-sm">{highlight(mod.display_name)}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={cn("text-xs tabular-nums", moduleVisible ? "text-muted-foreground" : "text-muted-foreground/50")}>{selectedCount}/{totalOps}</span>
+                      <span className={cn("text-xs tabular-nums", moduleVisible ? "text-muted-foreground" : "text-muted-foreground/50")}>
+                        {visibilityOnly ? `可见 ${visiblePageCount}/${pageCount} 子页` : `${selectedCount}/${totalOps}`}
+                      </span>
                       <span className="relative h-1 flex-1 max-w-[80px] bg-muted rounded-full overflow-hidden">
                         <motion.span
                           className={cn("absolute inset-y-0 left-0 rounded-full", moduleVisible ? "bg-primary" : "bg-muted-foreground/30")}
                           initial={false}
-                          animate={{ width: `${ratio * 100}%` }}
+                          animate={{ width: `${(visibilityOnly ? pageRatio : ratio) * 100}%` }}
                           transition={{ duration: 0.3, ease: "easeOut" }}
                         />
                       </span>
@@ -427,7 +436,7 @@ function PermissionPanel({
                     </motion.div>
                   </div>
                 </button>
-                {!readonly && totalOps > 0 && (
+                {!readonly && totalOps > 0 && !visibilityOnly && (
                   <button type="button" onClick={() => { if (moduleVisible) toggleCategory(allOpIds); }}
                     disabled={!moduleVisible}
                     className={cn(
@@ -460,7 +469,42 @@ function PermissionPanel({
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                     {/* EAI-CUSTOM: gray out + disable interaction when module not visible */}
                     <div className={cn("px-3 pb-3 pt-1", !moduleVisible && "opacity-50 pointer-events-none")}>
-                      {singlePage ? (
+                      {visibilityOnly && onPageToggle ? (
+                        /* 可见性纯模块：扁平子页卡片网格，每卡 = 名称 + 可见 Tag */
+                        <div className="grid gap-1.5" style={gridStyle}>
+                          {mod.pages!.map((page) => {
+                            const pageVisible = enabledPages ? enabledPages.has(page.id) : true;
+                            return (
+                              <button
+                                key={page.id}
+                                type="button"
+                                onClick={() => { if (!readonly) onPageToggle(page.id, !pageVisible); }}
+                                disabled={readonly}
+                                className={cn(
+                                  "flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                                  readonly ? "cursor-default" : "cursor-pointer",
+                                  pageVisible
+                                    ? "bg-primary/[0.04] border border-primary/10"
+                                    : "border border-transparent hover:bg-accent/50 hover:border-border",
+                                )}
+                              >
+                                <span className={cn("truncate leading-tight", readonly ? "text-muted-foreground" : pageVisible ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground")}>
+                                  {highlight(page.display_name)}
+                                </span>
+                                <span className={cn(
+                                  "ml-auto shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium border",
+                                  pageVisible
+                                    ? "bg-primary/10 text-primary border-primary/20"
+                                    : "bg-muted text-muted-foreground border-transparent",
+                                )}>
+                                  <span className={cn("w-1.5 h-1.5 rounded-full", pageVisible ? "bg-primary" : "bg-muted-foreground/50")} />
+                                  {pageVisible ? "可见" : "不可见"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : singlePage ? (
                         /* 单页模块：折叠两级，直接渲染该页操作网格（无子页行） */
                         <div className="grid gap-1.5" style={gridStyle}>
                           {singlePage.operations.length > 0 ? (
