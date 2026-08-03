@@ -61,28 +61,58 @@ roles:
   dept_head:
     display_name: 部门负责人
     permissions:
-    - approval:approve
-    - approval:submit
-    - approval:view
-    - chapter:review
-    - cpa:import
-    - cpa:read
-    - doc:read
-    - doc:upload
-    - kb:create
-    - kb:delete
-    - kb:read
-    - kb:update
-    - kb:upload
-    - kf:law:read
-    - kf:read
-    - kf:scrape:read
+    - dashboard:view
     - model:read
     - project:create
+    - project:edit
+    - project:delete
     - project:read
-    - system:access
+    - member:add
+    - member:remove
+    - chapter:write_own
+    - chapter:write_any
+    - chapter:review
+    - chapter:review_any
+    - approval:submit
+    - approval:review
+    - approval:approve
+    - approval:view
+    - ai:start_writing
+    - outline:edit
+    - settings:edit
+    - export:generate
+    - version:rollback
     - workflow:read
-    - dashboard:view
+    - workflow:start
+    - workflow:cancel
+    - workflow:edit
+    - chapter:view_all
+    - ai:stop_writing
+    - doc:read
+    - doc:upload
+    - doc:delete
+    - kb:read
+    - kb:create
+    - kb:update
+    - kb:delete
+    - kb:upload
+    - cpa:read
+    - cpa:import
+    - project:advance
+    - user:read
+    - user:create
+    - user:update
+    - user:delete
+    - role:read
+    - role:create
+    - role:update
+    - role:delete
+    - department:create
+    - department:update
+    - department:delete
+    - app_center:manage
+    - system:access
+    - license:manage
     nav:
     - nav:dashboard
     - nav:writing
