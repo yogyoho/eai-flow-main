@@ -337,7 +337,7 @@ function StatsCard({
     sky:     { light: "bg-sky-50 border-sky-200 text-sky-600", dark: "dark:bg-sky-500/10 dark:border-sky-500/20 dark:text-sky-400", glow: "dark:shadow-sky-500/10" },
     primary: { light: "bg-primary/10 border-primary/20 text-primary", dark: "dark:bg-primary/10 dark:border-primary/20 dark:text-primary", glow: "dark:shadow-primary/10" },
   };
-  const a = accentColors[accent] ?? accentColors.primary;
+  const a = (accentColors[accent] ?? accentColors.primary)!;
 
   return (
     <motion.div
