@@ -1,5 +1,11 @@
 """Lightweight callback registry for cross-layer communication.
 
+EAI-CUSTOM: 本文件为 EAI 新增模块(非上游 deer-flow 的一部分)。因 harness 层(``deerflow.*``)
+不可 import app 层(``app.*``,由 test_harness_boundary.py 守护),本注册表让 app 层注册回调、
+harness 层在 ``present_files`` 工具执行后触发——用于把产出文件同步进 docmgr 文档空间
+(AIDocument 后端回调自动同步)。升级/差分时按 ``EAI-CUSTOM`` 识别整个文件;若上游原生提供
+等价的 harness↔app 跨层钩子,或 docmgr 同步不再需要,则删去本文件。
+
 The harness layer (``deerflow.*``) cannot import the app layer (``app.*``).
 This module provides a simple registry where the app layer can register
 callbacks that the harness layer invokes at specific hook points.
