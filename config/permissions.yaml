@@ -49,12 +49,13 @@ modules:
           - { id: "outline:edit", display_name: "编辑大纲" }
           - { id: "settings:edit", display_name: "编辑项目设置" }
           - { id: "export:generate", display_name: "生成导出" }
-          - { id: "source:view", display_name: "查看来源" }
           - { id: "version:rollback", display_name: "版本回滚" }
           - { id: "workflow:read", display_name: "查看工作流" }
           - { id: "workflow:start", display_name: "启动工作流" }
           - { id: "workflow:cancel", display_name: "取消工作流" }
           - { id: "workflow:edit", display_name: "编辑工作流" }
+          - { id: "chapter:view_all", display_name: "查看全部章节/来源" }
+          - { id: "ai:stop_writing", display_name: "停止 AI 写作" }
     data_scopes:
       - { id: "project_member", display_name: "参与的项目", rule_template: { id IN: "$identity.member_projects" } }
       - { id: "project_all", display_name: "全部项目", rule_template: {} }
@@ -149,8 +150,7 @@ modules:
           - { id: "cpa:import", display_name: "导入合同" }
       - id: "cpa:page:items"
         display_name: "分项校验"
-        operations:
-          - { id: "cpa:cluster", display_name: "执行聚类分析" }
+        operations: []
       - id: "cpa:page:clusters"
         display_name: "分组审核"
         operations: []
@@ -159,8 +159,7 @@ modules:
         operations: []
       - id: "cpa:page:settings"
         display_name: "配置"
-        operations:
-          - { id: "cpa:export", display_name: "导出分析结果" }
+        operations: []
     data_scopes:
       - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
       - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
@@ -185,9 +184,7 @@ modules:
         display_name: "流程管理"
         operations:
           - { id: "workflow:read", display_name: "查看工作流" }
-          - { id: "workflow:start", display_name: "启动工作流" }
-          - { id: "workflow:cancel", display_name: "取消工作流" }
-          - { id: "workflow:edit", display_name: "编辑工作流" }
+          - { id: "project:advance", display_name: "推进工作流" }
 
   # ─── 系统管理 ───
   admin:
@@ -292,7 +289,6 @@ roles:
       - approval:submit
       - approval:view
       - chapter:review
-      - source:view
       - kf:read
       - kf:scrape:read
       - kf:law:read
@@ -341,7 +337,6 @@ roles:
       - chapter:write_own
       - chapter:review
       - ai:start_writing
-      - source:view
       - workflow:read
     data_scopes: ["project_member", "knowledge_dept"]
 
@@ -359,7 +354,6 @@ roles:
       - system:access
       - chapter:review
       - approval:review
-      - source:view
       - workflow:read
     data_scopes: ["project_member", "knowledge_dept"]
 
