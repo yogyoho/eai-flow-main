@@ -441,11 +441,6 @@ function PermissionPanel({
                       </span>
                     </div>
                   </div>
-                  <div className="ml-auto mr-2">
-                    <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    </motion.div>
-                  </div>
                 </button>
                 {!readonly && totalOps > 0 && !visibilityOnly && (
                   <button type="button" onClick={() => { if (moduleVisible) toggleCategory(allOpIds); }}
@@ -471,6 +466,17 @@ function PermissionPanel({
                     />
                   </div>
                 )}
+                {/* EAI-CUSTOM: 展开/收起箭头置于卡片最右侧 */}
+                <button
+                  type="button"
+                  onClick={() => toggleCat(mod.key)}
+                  className="flex items-center justify-center w-10 h-full shrink-0 mr-1 text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors rounded-lg"
+                  title={isExpanded ? "收起" : "展开"}
+                >
+                  <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
+                    <ChevronDown className="w-4 h-4" />
+                  </motion.div>
+                </button>
               </div>
 
               {/* Expanded content: pages with their operations */}
@@ -695,11 +701,6 @@ function PermissionPanel({
                       </span>
                     </div>
                   </div>
-                  <div className="ml-auto mr-2">
-                    <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    </motion.div>
-                  </div>
                 </button>
                 {!readonly && (
                   <button type="button" onClick={() => toggleCategory(catKeys)}
@@ -712,6 +713,17 @@ function PermissionPanel({
                     {allCatSelected ? "取消全选" : "全选本组"}
                   </button>
                 )}
+                {/* EAI-CUSTOM: 展开/收起箭头置于卡片最右侧 */}
+                <button
+                  type="button"
+                  onClick={() => toggleCat(category.name)}
+                  className="flex items-center justify-center w-10 h-full shrink-0 mr-1 text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors rounded-lg"
+                  title={isExpanded ? "收起" : "展开"}
+                >
+                  <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
+                    <ChevronDown className="w-4 h-4" />
+                  </motion.div>
+                </button>
               </div>
 
               <AnimatePresence>
