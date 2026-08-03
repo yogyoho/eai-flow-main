@@ -71,9 +71,8 @@ postgres = [
 redis = ["redis>=5.0.0"]
 pymupdf = ["pymupdf4llm>=0.0.17"]
 boxlite = ["boxlite>=0.9.7"]
-# Tenki cloud sandbox provider (deerflow.community.tenki). Optional so a default
-# install stays free of the Tenki SDK; only pulled in when the provider is used.
-tenki = ["tenki-sandbox>=0.4.0"]
+# EAI: tenki extra 暂缓移植 — 恢复需 `uv lock` 重生成(flaky 网络上会卡死);
+# community/tenki 源码已恢复,等 stable 网络再走 `uv lock` + 加回本 extra。见 bug 记录。
 # Agent observability (Monocle). Optional so a default install stays free of the
 # OpenTelemetry stack; only pulled in when MONOCLE_TRACING is used.
 monocle = ["monocle_apptrace>=0.8.8"]
@@ -81,8 +80,8 @@ monocle = ["monocle_apptrace>=0.8.8"]
 # so the core harness install stays lean; import is lazy inside the private
 # Playwright loop. After install, run `playwright install chromium` once.
 browser = ["playwright>=1.40"]
-# Optional Chinese tokenization for the FTS5 memory retrieval adapter.
-memory-zh = ["jieba>=0.42.1"]
+# EAI: memory-zh extra 暂缓移植(同 tenki,需 `uv lock`);EAI 未启用 DeerMem FTS5 中文检索。
+# 恢复:stable 网络下 `uv lock` 后加回 memory-zh = ["jieba>=0.42.1"]。见 bug 记录。
 
 [build-system]
 requires = ["hatchling"]
