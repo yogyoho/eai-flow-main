@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allPageIds, isSinglePageModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
+import { allPageIds, isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import type { RegistryModule } from "@/extensions/types";
 
 const mods: RegistryModule[] = [
@@ -58,5 +58,35 @@ describe("single-page fold + hidden modules", () => {
   it("module with pages is not hidden", () => {
     expect(shouldHideModule(singlePageMod)).toBe(false);
     expect(shouldHideModule(mods[0])).toBe(false);
+  });
+});
+
+describe("visibility-only module", () => {
+  const kfMod: RegistryModule = {
+    key: "knowledge_factory", display_name: "知识工厂",
+    pages: [
+      { id: "kf:page:sample", display_name: "样例管理", operations: [] },
+      { id: "kf:page:law", display_name: "法规标准", operations: [] },
+    ],
+    permissions: [], data_scopes: [],
+  };
+
+  it("module whose pages all have no operations is visibility-only", () => {
+    expect(isVisibilityOnlyModule(kfMod)).toBe(true);
+  });
+  it("module with any page having operations is NOT visibility-only", () => {
+    expect(isVisibilityOnlyModule(singlePageMod)).toBe(false);
+    const withOps: RegistryModule = {
+      key: "mixed", display_name: "混合",
+      pages: [
+        { id: "p:ops", display_name: "有操作", operations: [{ id: "x:read", display_name: "查看" }] },
+        { id: "p:none", display_name: "无操作", operations: [] },
+      ],
+      permissions: [], data_scopes: [],
+    };
+    expect(isVisibilityOnlyModule(withOps)).toBe(false);
+  });
+  it("module with no pages is NOT visibility-only", () => {
+    expect(isVisibilityOnlyModule(emptyMod)).toBe(false);
   });
 });

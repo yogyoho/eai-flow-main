@@ -40,3 +40,8 @@ export function isSinglePageModule(mod: RegistryModule): boolean {
 export function shouldHideModule(mod: RegistryModule): boolean {
   return !mod.pages || mod.pages.length === 0;
 }
+
+/** 可见性纯模块：pages 非空且全部子页无操作 → 只控制子页可见性，无操作网格。 */
+export function isVisibilityOnlyModule(mod: RegistryModule): boolean {
+  return !!mod.pages && mod.pages.length > 0 && mod.pages.every((p) => p.operations.length === 0);
+}
