@@ -30,3 +30,13 @@ export function serializePages(visible: Set<string>, modules: RegistryModule[]):
   }
   return [...visible];
 }
+
+/** 模块只有 1 个 page → 面板折叠为两级（跳过中间子页行）。 */
+export function isSinglePageModule(mod: RegistryModule): boolean {
+  return !!mod.pages && mod.pages.length === 1;
+}
+
+/** 模块无可配权限（无 pages 且无直接 permissions）→ 整卡隐藏。 */
+export function shouldHideModule(mod: RegistryModule): boolean {
+  return !mod.pages || mod.pages.length === 0;
+}

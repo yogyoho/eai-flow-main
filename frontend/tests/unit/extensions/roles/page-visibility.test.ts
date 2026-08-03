@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allPageIds, resolveVisiblePages, serializePages } from "@/extensions/role/pageVisibility";
+import { allPageIds, isSinglePageModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import type { RegistryModule } from "@/extensions/types";
 
 const mods: RegistryModule[] = [
@@ -9,6 +9,14 @@ const mods: RegistryModule[] = [
     { id: "kf:page:law", display_name: "法规标准", operations: [] },
   ], permissions: [], data_scopes: [] },
 ];
+
+const singlePageMod: RegistryModule = {
+  key: "dashboard", display_name: "工作台",
+  pages: [{ id: "dashboard:page:overview", display_name: "工作台概览", operations: [{ id: "dashboard:view", display_name: "查看工作台" }] }],
+  permissions: [], data_scopes: [],
+};
+
+const emptyMod: RegistryModule = { key: "app_center", display_name: "应用中心", pages: [], permissions: [], data_scopes: [] };
 
 describe("page visibility helpers", () => {
   it("allPageIds collects page ids", () => {
@@ -33,5 +41,22 @@ describe("page visibility helpers", () => {
   });
   it("serializePages empty set → [] (none visible)", () => {
     expect(serializePages(new Set(), mods)).toEqual([]);
+  });
+});
+
+describe("single-page fold + hidden modules", () => {
+  it("module with exactly 1 page folds to 2 levels", () => {
+    expect(isSinglePageModule(singlePageMod)).toBe(true);
+  });
+  it("module with 0 or 2+ pages does not fold", () => {
+    expect(isSinglePageModule(emptyMod)).toBe(false);
+    expect(isSinglePageModule(mods[0])).toBe(false);
+  });
+  it("module with no pages (app_center) is hidden", () => {
+    expect(shouldHideModule(emptyMod)).toBe(true);
+  });
+  it("module with pages is not hidden", () => {
+    expect(shouldHideModule(singlePageMod)).toBe(false);
+    expect(shouldHideModule(mods[0])).toBe(false);
   });
 });

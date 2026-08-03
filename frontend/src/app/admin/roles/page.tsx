@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
-import { resolveVisiblePages, serializePages } from "@/extensions/role/pageVisibility";
+import { isSinglePageModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
@@ -265,6 +265,8 @@ function PermissionPanel({
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const isTree = hasPageTree(modules);
   const treeModules: RegistryModule[] = isTree ? modules! : [];
+  // EAI-CUSTOM: 隐藏无可配权限的模块（app_center pages=[] 始终可见无可配项 → 整卡隐藏）
+  const visibleModules: RegistryModule[] = isTree ? treeModules.filter((m) => !shouldHideModule(m)) : [];
   const categories = !isTree && modules && modules.length > 0 ? modulesToCategories(modules) : (!isTree ? PERMISSION_CATEGORIES : []);
   const allPerms = isTree ? getAllTreePermKeys(treeModules) : (modules && modules.length > 0 ? getAllPermKeys(modules) : getAllFallbackPermKeys());
 
@@ -316,13 +318,15 @@ function PermissionPanel({
         </div>
       )}
 
-      {isTree && treeModules.length > 0 ? (
+      {isTree && visibleModules.length > 0 ? (
         /* ── 3-level tree rendering (v3 modules with pages) ── */
-        treeModules.map((mod) => {
+        visibleModules.map((mod) => {
           const isExpanded = expandedCats.has(mod.key);
 
           // Collect all operation IDs under this module (across all pages + direct)
           const hasPages = !!(mod.pages && mod.pages.length > 0);
+          // EAI-CUSTOM: 单页模块折叠两级 —— 取唯一 page 供直接渲染
+          const singlePage = isSinglePageModule(mod) && mod.pages ? mod.pages[0] : undefined;
           const pageOpIds: string[] = mod.pages ? mod.pages.flatMap((pg) => pg.operations.map((op) => op.id)) : [];
           const directOpIds: string[] = mod.permissions.map((p) => p.id);
           const allOpIds = Array.from(new Set([...pageOpIds, ...directOpIds]));
@@ -401,7 +405,39 @@ function PermissionPanel({
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                     {/* EAI-CUSTOM: gray out + disable interaction when module not visible */}
                     <div className={cn("px-3 pb-3 pt-1", !moduleVisible && "opacity-50 pointer-events-none")}>
-                      {hasPages ? (
+                      {singlePage ? (
+                        /* 单页模块：折叠两级，直接渲染该页操作网格（无子页行） */
+                        <div className="grid gap-1.5" style={gridStyle}>
+                          {singlePage.operations.length > 0 ? (
+                            singlePage.operations.map((op) => {
+                              const isChecked = selected.includes(op.id);
+                              return (
+                                <label key={op.id}
+                                  className={cn(
+                                    "group/perm flex items-center gap-2.5 text-sm p-2 rounded-lg transition-all duration-200 min-w-0 select-none",
+                                    readonly ? "cursor-default" : "cursor-pointer",
+                                    isChecked
+                                      ? "bg-primary/[0.04] border border-primary/10"
+                                      : "border border-transparent hover:bg-accent/50 hover:border-border",
+                                  )}>
+                                  <input type="checkbox" checked={isChecked}
+                                    onChange={() => togglePerm(op.id)} disabled={readonly}
+                                    className="sr-only peer" />
+                                  <PermCheckbox checked={isChecked} disabled={readonly} />
+                                  <span className={cn(
+                                    "truncate transition-colors duration-200 leading-tight",
+                                    readonly ? "text-muted-foreground" : isChecked ? "text-foreground font-medium" : "text-foreground/70 group-hover/perm:text-foreground",
+                                  )}>
+                                    {op.display_name}
+                                  </span>
+                                </label>
+                              );
+                            })
+                          ) : (
+                            <div className="text-xs text-muted-foreground/50 px-1 py-2">暂无操作项</div>
+                          )}
+                        </div>
+                      ) : hasPages ? (
                         mod.pages!.map((page) => {
                           const pageHasOps = page.operations.length > 0;
                           const pageOpIds = page.operations.map((op) => op.id);
