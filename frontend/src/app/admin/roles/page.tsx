@@ -451,16 +451,20 @@ function PermissionPanel({
                                 <FileText className="w-3.5 h-3.5 shrink-0 opacity-60" />
                                 <span className="truncate">{page.display_name}</span>
                                 {onPageToggle && (
-                                  <span className={cn("flex items-center gap-1.5 ml-1 shrink-0", readonly ? "opacity-50 pointer-events-none" : "")}>
-                                    <span className={cn("text-xs", pageVisible ? "text-primary" : "text-muted-foreground/50")}>
-                                      {pageVisible ? "可见" : "不可见"}
-                                    </span>
-                                    <Switch
-                                      checked={pageVisible}
-                                      onCheckedChange={(c) => onPageToggle(page.id, c)}
-                                      disabled={readonly}
-                                    />
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => { if (!readonly) onPageToggle(page.id, !pageVisible); }}
+                                    disabled={readonly}
+                                    className={cn(
+                                      "ml-1 shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium border transition-colors",
+                                      pageVisible
+                                        ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                                        : "bg-muted text-muted-foreground border-transparent hover:bg-accent hover:text-foreground",
+                                    )}
+                                  >
+                                    <span className={cn("w-1.5 h-1.5 rounded-full", pageVisible ? "bg-primary" : "bg-muted-foreground/50")} />
+                                    {pageVisible ? "可见" : "不可见"}
+                                  </button>
                                 )}
                                 {pageTotal > 0 && (
                                   <span className="text-xs tabular-nums text-muted-foreground/60 ml-1">{pageSelected}/{pageTotal}</span>
