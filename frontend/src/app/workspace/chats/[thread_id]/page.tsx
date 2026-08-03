@@ -8,6 +8,7 @@ import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
+import { BrowserTrigger } from "@/components/workspace/browser-view";
 import {
   ChatBox,
   useSpecificChatMode,
@@ -35,6 +36,7 @@ import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { useActiveGoal } from "@/components/workspace/use-active-goal";
 import { Welcome } from "@/components/workspace/welcome";
+import { useBrowserControlEnabled } from "@/core/features";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   buildHumanInputResponseText,
@@ -85,6 +87,8 @@ export default function ChatPage() {
   const branchThread = useBranchThread();
   const backendTokenUsage = threadTokenUsageToTokenUsage(threadTokenUsage.data);
   const contextUsage = selectContextUsage(threadTokenUsage.data);
+  const { enabled: browserControlEnabled } = useBrowserControlEnabled();
+  const browserEnabled = !isNewThread && browserControlEnabled;
   const mountedRef = useRef(false);
   const [pageReady, setPageReady] = useState(false);
   useSpecificChatMode();
@@ -300,7 +304,7 @@ export default function ChatPage() {
         context={settings.context}
         isMock={isMock}
       >
-        <ChatBox threadId={threadId}>
+        <ChatBox threadId={threadId} browserEnabled={browserEnabled}>
           <div className="relative flex size-full min-h-0 justify-between">
             <header
               className={cn(
@@ -318,6 +322,7 @@ export default function ChatPage() {
                 {!isNewThread && (
                   <ThreadScheduledTasksLink threadId={threadId} />
                 )}
+                {browserEnabled && <BrowserTrigger />}
                 <ContextUsageBadge contextUsage={contextUsage} />
                 <TokenUsageIndicator
                   threadId={isNewThread ? undefined : threadId}
