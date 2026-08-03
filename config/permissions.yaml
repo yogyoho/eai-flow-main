@@ -121,12 +121,8 @@ modules:
     pages:
       - id: "cpa:page:overview"
         display_name: "总览"
-        operations:
-          - { id: "cpa:read", display_name: "查看合同价格" }
       - id: "cpa:page:contracts"
         display_name: "合同解析"
-        operations:
-          - { id: "cpa:import", display_name: "导入合同" }
       - id: "cpa:page:items"
         display_name: "分项校验"
         operations: []
@@ -262,8 +258,6 @@ roles:
       - model:read
       - system:access
       - workflow:read
-      - cpa:read
-      - cpa:import
       - approval:approve
       - approval:submit
       - approval:view
