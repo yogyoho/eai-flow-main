@@ -61,58 +61,56 @@ roles:
   dept_head:
     display_name: 部门负责人
     permissions:
-    - dashboard:view
-    - model:read
-    - project:create
-    - project:edit
-    - project:delete
-    - project:read
-    - member:add
-    - member:remove
-    - chapter:write_own
-    - chapter:write_any
+    - ai:start_writing
+    - ai:stop_writing
+    - app_center:manage
+    - approval:approve
+    - approval:review
+    - approval:submit
+    - approval:view
     - chapter:review
     - chapter:review_any
-    - approval:submit
-    - approval:review
-    - approval:approve
-    - approval:view
-    - ai:start_writing
-    - outline:edit
-    - settings:edit
-    - export:generate
-    - version:rollback
-    - workflow:read
-    - workflow:start
-    - workflow:cancel
-    - workflow:edit
     - chapter:view_all
-    - ai:stop_writing
+    - chapter:write_any
+    - chapter:write_own
+    - dashboard:view
+    - department:create
+    - department:delete
+    - department:update
+    - doc:delete
     - doc:read
     - doc:upload
-    - doc:delete
-    - kb:read
+    - export:generate
     - kb:create
-    - kb:update
     - kb:delete
+    - kb:read
+    - kb:update
     - kb:upload
-    - cpa:read
-    - cpa:import
-    - project:advance
-    - user:read
-    - user:create
-    - user:update
-    - user:delete
-    - role:read
-    - role:create
-    - role:update
-    - role:delete
-    - department:create
-    - department:update
-    - department:delete
-    - app_center:manage
-    - system:access
     - license:manage
+    - member:add
+    - member:remove
+    - model:read
+    - outline:edit
+    - project:advance
+    - project:create
+    - project:delete
+    - project:edit
+    - project:read
+    - role:create
+    - role:delete
+    - role:read
+    - role:update
+    - settings:edit
+    - system:access
+    - user:create
+    - user:delete
+    - user:read
+    - user:update
+    - version:rollback
+    - workflow:cancel
+    - workflow:edit
+    - workflow:read
+    - workflow:start
     nav:
     - nav:dashboard
     - nav:writing
