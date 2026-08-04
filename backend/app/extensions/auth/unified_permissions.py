@@ -155,6 +155,43 @@ async def _resolve_project_role_str(
     return role.value if role else None
 
 
+def require_project_member():
+    """Dependency: caller must be a member of the path's project (or superadmin).
+
+    Read-level access gate for endpoints under ``/projects/{project_id}/...``.
+    Verifies a ``ProjectMember`` row exists for the request's ``project_id``
+    (EAI-CUSTOM Task 12: closes IDOR on read endpoints that previously only
+    checked ``system:access``). Superadmin bypasses via :func:`is_superadmin`.
+    """
+    async def _check(
+        request: Request,
+        current_user: CurrentUser = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> CurrentUser:
+        from app.extensions.auth.admin import is_superadmin
+
+        if await is_superadmin(db, current_user.id):
+            return current_user
+        project_id = request.path_params.get("project_id")
+        if project_id is None:
+            raise HTTPException(status_code=400, detail="project_id required in path")
+        from uuid import UUID as _UUID
+
+        try:
+            pid = _UUID(str(project_id))
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Invalid project_id")
+        stmt = select(ProjectMember).where(
+            ProjectMember.project_id == pid,
+            ProjectMember.user_id == current_user.id,
+        )
+        if (await db.execute(stmt)).scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a project member")
+        return current_user
+
+    return _check
+
+
 def require_resource_permission(action: str):
     """Compat shim: unified_permissions check; returns project role string (old signature).
 

@@ -16,7 +16,7 @@ from app.extensions.database import get_db
 from app.extensions.models import ProjectMember, ReportProject, Role, User
 from app.extensions.schemas import CurrentUser
 
-from app.extensions.auth.unified_permissions import require_resource_permission
+from app.extensions.auth.unified_permissions import require_project_member, require_resource_permission
 from .schemas import (
     ApprovalActionRequest,
     ApprovalStatusOut,
@@ -301,7 +301,7 @@ async def sync_project_docs(
 async def get_project_files(
     project_id: UUID,
     request: Request,
-    user: CurrentUserWithAccess,
+    _member: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     csrf_token = request.cookies.get("csrf_token")
@@ -600,7 +600,7 @@ async def get_approval_status(
 async def get_phase_board(
     project_id: UUID,
     phase_node: str,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     """Get phase board data: chapters + members for a specific phase."""
@@ -614,7 +614,7 @@ async def get_phase_board(
 async def get_phase_completion(
     project_id: UUID,
     phase_node: str,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     """Check phase completion status — how many chapters are done vs pending.
@@ -735,7 +735,7 @@ async def log_activity(
 @router.get("/projects/{project_id}/activities")
 async def get_project_activities(
     project_id: UUID,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -782,7 +782,7 @@ async def get_project_activities(
 async def get_phase_readiness(
     project_id: UUID,
     phase_node: str,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     """Check if all required roles for a phase are filled by project members."""
@@ -911,7 +911,7 @@ class PhaseStatusResponse(BaseModel):
 @router.get("/projects/{project_id}/phase-status", response_model=PhaseStatusResponse)
 async def get_phase_status(
     project_id: UUID,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     """Get current workflow phase and available actions for the project.
@@ -1002,7 +1002,8 @@ async def update_document_status(
     project_id: UUID,
     doc_id: UUID,
     body: DocumentStatusUpdate,
-    user: CurrentUserWithAccess = None,
+    _role: str = Depends(require_resource_permission("chapter:write_any")),
+    _user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a project document's lifecycle status (draft/intermediate/review/final)."""
@@ -1030,6 +1031,7 @@ class MergeDocumentsRequest(BaseModel):
 async def merge_project_documents(
     project_id: UUID,
     body: MergeDocumentsRequest,
+    _role: str = Depends(require_resource_permission("chapter:write_any")),
     user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -1101,7 +1103,7 @@ class ProjectStatsResponse(BaseModel):
 @router.get("/projects/{project_id}/stats", response_model=ProjectStatsResponse)
 async def get_project_stats(
     project_id: UUID,
-    _user: CurrentUserWithAccess,
+    _user: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
     """Get aggregated project statistics from AIDocument and ProjectChapter tables.
@@ -1186,7 +1188,8 @@ class FinalizeDocumentResponse(BaseModel):
 async def finalize_document(
     project_id: UUID,
     body: FinalizeDocumentRequest,
-    user: CurrentUserWithAccess = None,
+    _role: str = Depends(require_resource_permission("chapter:write_any")),
+    _user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a document as final and parse its markdown to update chapter progress.

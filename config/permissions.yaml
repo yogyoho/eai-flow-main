@@ -57,7 +57,7 @@ modules:
           - { id: "chapter:view_all", display_name: "查看全部章节/来源" }
           - { id: "ai:stop_writing", display_name: "停止 AI 写作" }
     data_scopes:
-      - { id: "project_member", display_name: "参与的项目", rule_template: { id IN: "$identity.member_projects" } }
+      - { id: "project_member", display_name: "参与的项目", rule_template: { or: [ { id IN: "$identity.member_projects" }, { created_by: "$identity.user_id" } ] } }
       - { id: "project_all", display_name: "全部项目", rule_template: {} }
 
   # ─── 文档空间 ───
