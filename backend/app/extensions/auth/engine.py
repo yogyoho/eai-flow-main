@@ -203,12 +203,19 @@ class UnifiedPermissionEngine:
         if not (permission in allowed or f"{prefix}:*" in allowed):
             return False
         # 3. deny-overrides: any matching policy that denies this exact perm or the module wildcard
+        if self.find_deny_policy_name(identity, permission) is not None:
+            return False
+        return True
+
+    def find_deny_policy_name(self, identity: AttributeSet, permission: str) -> str | None:
+        """Return the name of the first matching policy that denies this permission (exact or module-wildcard), else None."""
+        prefix = permission.split(":", 1)[0]
         for p in self._policies:
             if evaluate_policy_conditions(p.conditions, identity):
                 denied = p.grants.get("deny_permissions") or []
                 if permission in denied or f"{prefix}:*" in denied:
-                    return False
-        return True
+                    return p.name
+        return None
 
     def list_permissions(self, identity: AttributeSet) -> set[str]:
         role_code = identity.role_code or ""

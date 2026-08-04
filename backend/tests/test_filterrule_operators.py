@@ -125,3 +125,13 @@ def test_list_permissions_superadmin_returns_all_and_ignores_deny():
     sup = AttributeSet(user_id="s", username="s", role_code="super")
     perms = eng.list_permissions(sup)
     assert perms == {"kb:read", "kb:create"}   # superadmin immune
+
+
+def test_find_deny_policy_name():
+    from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
+    from app.extensions.auth.identity import AttributeSet
+    eng = UnifiedPermissionEngine(role_permissions={"r": {"kb:read"}},
+        policies=[Policy(name="block_delete", priority=0, conditions={}, grants={"deny_permissions": ["kb:delete"]})])
+    idn = AttributeSet(user_id="u", username="u", role_code="r")
+    assert eng.find_deny_policy_name(idn, "kb:delete") == "block_delete"
+    assert eng.find_deny_policy_name(idn, "kb:read") is None

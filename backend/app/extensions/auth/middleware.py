@@ -204,29 +204,14 @@ def require_permission(permission: str):
         # Engine: cached per request
         engine = get_cached_engine()
         if engine is None:
-            # Load ABAC policies from DB (global, dynamic — kept as data)
-            from app.extensions.auth.engine import Policy as EnginePolicy
-            from app.extensions.auth.models import Policy as PolicyModel
-
-            policy_result = await db.execute(
-                select(PolicyModel)
-                .where(PolicyModel.enabled == True)  # noqa: E712
-                .order_by(PolicyModel.priority)
-            )
-            policies = [
-                EnginePolicy(
-                    name=p.name,
-                    priority=p.priority,
-                    conditions=p.conditions,
-                    grants=p.grants,
-                )
-                for p in policy_result.scalars().all()
-            ]
+            # EAI-CUSTOM: Load ABAC policies via shared loader (single source for
+            # require_permission + /me + with_data_scope — fixes /me drift bug).
+            from app.extensions.auth.policy_loader import load_active_policies
 
             engine = UnifiedPermissionEngine(
                 role_permissions=role_permissions,
                 all_permission_ids=all_ids,
-                policies=policies,
+                policies=await load_active_policies(db),
             )
             set_cached_engine(engine)
 
@@ -255,10 +240,17 @@ def require_permission(permission: str):
             )
 
         if not engine.check(identity, permission):
-            logger.warning(
-                "Permission check failed: user=%s role=%s lacks '%s'",
-                current_user.id, identity.role_code, permission,
-            )
+            deny_policy = engine.find_deny_policy_name(identity, permission)
+            if deny_policy:
+                logger.warning(
+                    "Permission denied by policy: user=%s role=%s perm='%s' denied_by='%s'",
+                    current_user.id, identity.role_code, permission, deny_policy,
+                )
+            else:
+                logger.warning(
+                    "Permission check failed: user=%s role=%s lacks '%s'",
+                    current_user.id, identity.role_code, permission,
+                )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission denied: {permission}",

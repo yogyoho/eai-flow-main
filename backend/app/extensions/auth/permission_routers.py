@@ -76,9 +76,15 @@ async def get_my_permissions(
     }
     all_ids = {p.id for p in registry.list_all_permissions()}
 
+    # EAI-CUSTOM: Load active ABAC policies via shared loader so /me matches
+    # require_permission enforcement exactly (fixes /me drift bug — previously
+    # /me omitted policy-granted and policy-denied permissions).
+    from app.extensions.auth.policy_loader import load_active_policies
+
     engine = UnifiedPermissionEngine(
         role_permissions=role_permissions,
         all_permission_ids=all_ids,
+        policies=await load_active_policies(db),
     )
 
     permissions = sorted(engine.list_permissions(identity))
