@@ -80,8 +80,8 @@ monocle = ["monocle_apptrace>=0.8.8"]
 # so the core harness install stays lean; import is lazy inside the private
 # Playwright loop. After install, run `playwright install chromium` once.
 browser = ["playwright>=1.40"]
-# EAI: memory-zh extra 暂缓 — uv lock/add 在本机网络解析卡死(3 试:全量 lock/offline/uv add 全失败,虽 pypi curl 200)。
-# 待 stable 网络再走 `uv lock` 加回 memory-zh = ["jieba>=0.42.1"]。见 bug-1012。
+# Optional Chinese tokenization for the FTS5 memory retrieval adapter.
+memory-zh = ["jieba>=0.42.1"]
 
 [build-system]
 requires = ["hatchling"]
