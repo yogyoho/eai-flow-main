@@ -132,6 +132,47 @@ class Policy:
     grants: dict
 
 
+def evaluate_policy_conditions(conditions: dict, identity: AttributeSet) -> bool:
+    """Evaluate an ABAC policy condition tree against an identity.
+
+    Shared single-source evaluator used by UnifiedPermissionEngine, require_permission,
+    /me, and with_data_scope. Empty conditions = match all (True).
+    """
+    if not conditions:
+        return True
+
+    if "and" in conditions:
+        return all(evaluate_policy_conditions(c, identity) for c in conditions["and"])
+    if "or" in conditions:
+        return any(evaluate_policy_conditions(c, identity) for c in conditions["or"])
+
+    attr_name = conditions.get("attr", "")
+    op = conditions.get("op", "eq")
+    expected = conditions.get("value")
+
+    attr_value = identity.get_attr(attr_name)
+
+    operators = {
+        "eq": lambda a, v: a == v,
+        "neq": lambda a, v: a != v,
+        "gt": lambda a, v: a is not None and a > v,
+        "gte": lambda a, v: a is not None and a >= v,
+        "lt": lambda a, v: a is not None and a < v,
+        "lte": lambda a, v: a is not None and a <= v,
+        "contains": lambda a, v: v in a if isinstance(a, (list, str)) else False,
+        "not_contains": lambda a, v: v not in a if isinstance(a, (list, str)) else False,
+        "in": lambda a, v: a in v if isinstance(v, (list, tuple)) else False,
+        "not_in": lambda a, v: a not in v if isinstance(v, (list, tuple)) else False,
+    }
+
+    evaluator = operators.get(op)
+    if evaluator is None:
+        logger.warning("Unknown operator '%s' in policy condition", op)
+        return False
+
+    return evaluator(attr_value, expected)
+
+
 class UnifiedPermissionEngine:
     """ABAC-lite engine. Evaluation order: * wildcard -> direct role perm -> ABAC policies -> deny."""
 
@@ -160,7 +201,7 @@ class UnifiedPermissionEngine:
 
         # 3. ABAC policies
         for policy in self._policies:
-            if self._evaluate_conditions(policy.conditions, identity):
+            if evaluate_policy_conditions(policy.conditions, identity):
                 if permission in (policy.grants.get("permissions") or []):
                     return True
 
@@ -177,43 +218,8 @@ class UnifiedPermissionEngine:
         result = set(role_perms)
 
         for policy in self._policies:
-            if self._evaluate_conditions(policy.conditions, identity):
+            if evaluate_policy_conditions(policy.conditions, identity):
                 for p in policy.grants.get("permissions") or []:
                     result.add(p)
 
         return result
-
-    def _evaluate_conditions(self, conditions: dict, identity: AttributeSet) -> bool:
-        if not conditions:
-            return True
-
-        if "and" in conditions:
-            return all(self._evaluate_conditions(c, identity) for c in conditions["and"])
-        if "or" in conditions:
-            return any(self._evaluate_conditions(c, identity) for c in conditions["or"])
-
-        attr_name = conditions.get("attr", "")
-        op = conditions.get("op", "eq")
-        expected = conditions.get("value")
-
-        attr_value = identity.get_attr(attr_name)
-
-        operators = {
-            "eq": lambda a, v: a == v,
-            "neq": lambda a, v: a != v,
-            "gt": lambda a, v: a is not None and a > v,
-            "gte": lambda a, v: a is not None and a >= v,
-            "lt": lambda a, v: a is not None and a < v,
-            "lte": lambda a, v: a is not None and a <= v,
-            "contains": lambda a, v: v in a if isinstance(a, (list, str)) else False,
-            "not_contains": lambda a, v: v not in a if isinstance(a, (list, str)) else False,
-            "in": lambda a, v: a in v if isinstance(v, (list, tuple)) else False,
-            "not_in": lambda a, v: a not in v if isinstance(v, (list, tuple)) else False,
-        }
-
-        evaluator = operators.get(op)
-        if evaluator is None:
-            logger.warning("Unknown operator '%s' in policy condition", op)
-            return False
-
-        return evaluator(attr_value, expected)

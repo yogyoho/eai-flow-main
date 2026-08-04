@@ -51,3 +51,11 @@ def test_or_composite_compiles():
     rule = FilterRule(operator="or", children=[owner, public])
     s = str(rule.to_sqlalchemy(KnowledgeBase, {"owner_id": KnowledgeBase.owner_id, "access_type": KnowledgeBase.access_type}).compile(compile_kwargs={"literal_binds": False})).upper()
     assert " OR " in s and "OWNER_ID" in s and "ACCESS_TYPE" in s
+
+
+def test_evaluate_policy_conditions_module_function():
+    from app.extensions.auth.engine import evaluate_policy_conditions
+    idn = AttributeSet(user_id="u1", username="u1", role_level=50)
+    assert evaluate_policy_conditions({"attr": "role_level", "op": "gte", "value": 40}, idn) is True
+    assert evaluate_policy_conditions({"attr": "role_level", "op": "gte", "value": 60}, idn) is False
+    assert evaluate_policy_conditions({}, idn) is True   # empty conditions = match all
