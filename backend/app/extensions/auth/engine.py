@@ -190,23 +190,25 @@ class UnifiedPermissionEngine:
         role_code = identity.role_code or ""
         role_perms = self._role_permissions.get(role_code, set())
 
-        # 1. Wildcard
+        # 1. Superadmin wildcard — deny never applies
         if "*" in role_perms:
             return True
 
-        # 2. Direct match + module wildcard
         prefix = permission.split(":", 1)[0]
-        if permission in role_perms or f"{prefix}:*" in role_perms:
-            return True
-
-        # 3. ABAC policies
-        for policy in self._policies:
-            if evaluate_policy_conditions(policy.conditions, identity):
-                if permission in (policy.grants.get("permissions") or []):
-                    return True
-
-        # 4. Deny
-        return False
+        # 2. Collect allow: role perms + matching policy allow-grants
+        allowed = set(role_perms)
+        for p in self._policies:
+            if evaluate_policy_conditions(p.conditions, identity):
+                allowed.update(p.grants.get("permissions") or [])
+        if not (permission in allowed or f"{prefix}:*" in allowed):
+            return False
+        # 3. deny-overrides: any matching policy that denies this exact perm or the module wildcard
+        for p in self._policies:
+            if evaluate_policy_conditions(p.conditions, identity):
+                denied = p.grants.get("deny_permissions") or []
+                if permission in denied or f"{prefix}:*" in denied:
+                    return False
+        return True
 
     def list_permissions(self, identity: AttributeSet) -> set[str]:
         role_code = identity.role_code or ""
