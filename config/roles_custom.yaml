@@ -26,6 +26,8 @@ roles:
     - project_member
     - knowledge_dept
     - cpa_dept
+    - doc_owner
+    - doc_project_member
     is_system: false
     level: 60
     description: null
@@ -125,6 +127,8 @@ roles:
     - knowledge_dept
     - cpa_dept
     - project_member
+    - doc_owner
+    - doc_project_member
     pages:
     - '*'
     is_system: false

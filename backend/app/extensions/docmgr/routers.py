@@ -12,7 +12,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user, require_permission
+from app.extensions.auth.engine import FilterRule
+from app.extensions.auth.middleware import get_current_user, require_permission, with_data_scope
 from app.extensions.database import get_db
 from app.extensions.docmgr.folder_service import FolderService
 from app.extensions.docmgr.service import AIDocumentService
@@ -82,6 +83,11 @@ async def list_documents(
     limit: int = Query(12, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+    # EAI-CUSTOM (Task 13): scope from ABAC engine — for roles bound to
+    # doc_owner + doc_project_member this reproduces the prior
+    # (user_id == caller OR project_id IN member_projects) clause; superadmin
+    # gets allow_all; future deny_data_scopes can narrow this further.
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
     """List all documents for the current user."""
     documents, total = await AIDocumentService.list_docs(
@@ -97,6 +103,7 @@ async def list_documents(
         q=q,
         skip=skip,
         limit=limit,
+        scope=scope,
     )
     return AIDocumentListResponse(
         documents=[await AIDocumentService.to_response(doc) for doc in documents],

@@ -71,6 +71,14 @@ modules:
           - { id: "doc:read", display_name: "查看文档" }
           - { id: "doc:upload", display_name: "上传文档" }
           - { id: "doc:delete", display_name: "删除文档" }
+    # EAI-CUSTOM (Task 13): docmgr data_scopes — union of doc_owner + doc_project_member
+    # reproduces the prior hand-rolled visibility clause in list_docs exactly:
+    #   (user_id == caller) OR (project_id IN member_projects)
+    # Routing the predicate through the scope engine enables future deny_data_scopes
+    # narrowing on documents without changing the no-deny visibility.
+    data_scopes:
+      - { id: "doc_owner", display_name: "我的文档", rule_template: { user_id: "$identity.user_id" } }
+      - { id: "doc_project_member", display_name: "项目内文档", rule_template: { project_id IN: "$identity.member_projects" } }
 
   # ─── 知识库 ───
   knowledge:
@@ -262,7 +270,7 @@ roles:
       - approval:submit
       - approval:view
       - chapter:review
-    data_scopes: ["knowledge_dept", "cpa_dept", "project_member"]
+    data_scopes: ["knowledge_dept", "cpa_dept", "project_member", "doc_owner", "doc_project_member"]
 
   project_manager:
     display_name: "项目经理"
@@ -290,7 +298,7 @@ roles:
       - export:generate
       - approval:submit
       - approval:review
-    data_scopes: ["project_member", "knowledge_dept", "cpa_dept"]
+    data_scopes: ["project_member", "knowledge_dept", "cpa_dept", "doc_owner", "doc_project_member"]
 
   writer:
     display_name: "撰写人"
@@ -308,7 +316,7 @@ roles:
       - chapter:review
       - ai:start_writing
       - workflow:read
-    data_scopes: ["project_member", "knowledge_dept"]
+    data_scopes: ["project_member", "knowledge_dept", "doc_owner", "doc_project_member"]
 
   reviewer:
     display_name: "审核员"
@@ -325,7 +333,7 @@ roles:
       - chapter:review
       - approval:review
       - workflow:read
-    data_scopes: ["project_member", "knowledge_dept"]
+    data_scopes: ["project_member", "knowledge_dept", "doc_owner", "doc_project_member"]
 
   # 最小可信基线：新自动桥接用户的默认权限（yaml 权威）
   # registry `user` role now grants only [kb:read, doc:read, model:read, system:access]
@@ -342,7 +350,7 @@ roles:
       - doc:read
       - model:read
       - system:access
-    data_scopes: ["knowledge_public", "project_member"]
+    data_scopes: ["knowledge_public", "project_member", "doc_owner", "doc_project_member"]
 
 # ── 项目级角色 → 权限映射（原 role_permissions 表 / DEFAULT_ROLE_PERMISSIONS 常量）──
 project_roles:

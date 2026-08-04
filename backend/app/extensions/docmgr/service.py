@@ -6,6 +6,7 @@ import mimetypes
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -17,6 +18,10 @@ from app.extensions.schemas import (
     AIDocumentResponse,
     AIDocumentUpdate,
 )
+
+if TYPE_CHECKING:
+    # Type-only import — avoids a runtime import cycle at module load time.
+    from app.extensions.auth.engine import FilterRule
 
 logger = logging.getLogger(__name__)
 
@@ -38,18 +43,37 @@ class AIDocumentService:
         q: str | None = None,
         skip: int = 0,
         limit: int = 12,
+        scope: "FilterRule | None" = None,
     ) -> tuple[list[AIDocument], int]:
         """List documents with filters.
 
         Shows user's own documents plus documents from projects the user is a member of.
         project_scope: "personal" = no project, "project" = has project, None = both.
         project_id: filter to a specific project (takes precedence over project_scope).
+
+        EAI-CUSTOM (Task 13): When *scope* is provided (router path), the visibility
+        predicate is taken from the ABAC data-scope engine. For roles bound to
+        doc_owner + doc_project_member (the default for every role carrying
+        doc:read), the produced SQL is identical to the hand-rolled clause below:
+            (user_id == caller) OR (project_id IN member_projects)
+        — identity.member_projects is populated from the same ProjectMember query.
+        When *scope* is None (tests, internal callers), the original hand-rolled
+        clause runs unchanged for backward compatibility.
         """
-        # Base visibility: own docs OR docs from user's projects
-        own_docs = AIDocument.user_id == user_id
-        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
-        project_docs = AIDocument.project_id.in_(my_project_ids)
-        visibility_filter = or_(own_docs, project_docs)
+        if scope is not None:
+            # Route through the scope engine so deny_data_scopes can later narrow
+            # document visibility. Superadmin gets allow_all via with_data_scope.
+            column_map = {
+                "user_id": AIDocument.user_id,
+                "project_id": AIDocument.project_id,
+            }
+            visibility_filter = scope.to_sqlalchemy(AIDocument, column_map)
+        else:
+            # Backward-compat branch — original hand-rolled visibility clause.
+            own_docs = AIDocument.user_id == user_id
+            my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+            project_docs = AIDocument.project_id.in_(my_project_ids)
+            visibility_filter = or_(own_docs, project_docs)
 
         query = select(AIDocument).where(visibility_filter)
         count_query = select(func.count(AIDocument.id)).where(visibility_filter)
