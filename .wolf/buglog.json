@@ -15478,6 +15478,1154 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-08-03T05:19:43.252Z"
+    },
+    {
+      "id": "bug-952",
+      "timestamp": "2026-08-03T05:58:32.082Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/components/workspace/messages/message-list-item.tsx",
+      "root_cause": "Condition was: if (rawContent.includes(\"<uploaded_files>\")",
+      "fix": "Changed to: if (\n        rawContent.includes(\"<current_uploads>\")",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T05:58:32.082Z"
+    },
+    {
+      "id": "bug-953",
+      "timestamp": "2026-08-03T08:28:30.321Z",
+      "error_message": "Significant refactor of ",
+      "file": "config/permissions.yaml",
+      "root_cause": "22 lines replaced/restructured",
+      "fix": "Rewrote 44→23 lines (22 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T08:28:30.321Z"
+    },
+    {
+      "id": "bug-954",
+      "timestamp": "2026-08-03T08:46:20.579Z",
+      "error_message": "CSS fix: width",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "width: `${ratio * 100 → `${(visibilityOnly ? pageRatio : ratio) * 100",
+      "fix": "Changed width: `${ratio * 100 → `${(visibilityOnly ? pageRatio : ratio) * 100",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T08:46:20.579Z"
+    },
+    {
+      "id": "bug-955",
+      "timestamp": "2026-08-03T09:28:20.520Z",
+      "error_message": "Significant refactor of ",
+      "file": "config/permissions.yaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 11→7 lines (4 removed) | Also: - cpa:read; - cpa:import",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T09:28:39.916Z"
+    },
+    {
+      "id": "bug-956",
+      "timestamp": "2026-08-03T09:48:41.982Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Had \"flex-1 overflow-y-auto p-8 bg-muted/20\"",
+      "fix": "Changed to \"flex-1 min-h-0 overflow-y-auto p-8 bg-muted/20\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T09:48:54.628Z"
+    },
+    {
+      "id": "bug-957",
+      "timestamp": "2026-08-03T09:53:17.991Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/shell/ShellLayout.tsx",
+      "root_cause": "Had \"flex-1 overflow-y-auto\"",
+      "fix": "Changed to \"flex-1 min-h-0 overflow-y-auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T09:53:17.991Z"
+    },
+    {
+      "id": "bug-958",
+      "timestamp": "2026-08-03T10:07:35.813Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T10:07:35.813Z"
+    },
+    {
+      "id": "bug-959",
+      "timestamp": "2026-08-03T10:11:15.674Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/styles/globals.css",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T10:11:15.674Z"
+    },
+    {
+      "id": "bug-960",
+      "timestamp": "2026-08-03T16:50:00Z",
+      "error_message": "角色管理 tab 内部下部留白太大（页面级滚动把面板内容顶出视口）",
+      "file": "frontend/src/extensions/shell/ShellLayout.tsx; frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "ShellLayout 用 h-screen(100vh) 在文档流中，内层 overflow-y-auto 的 tabContent(2252px 内容) 把 documentElement.scrollHeight 撑到 2459，产生页面级滚动条，PageDown/滚轮落在 document 而非 tabContent 内部，面板被顶出视口露出大片空白。",
+      "fix": "ShellLayout 根容器 h-screen 改为 fixed inset-0 overflow-hidden（脱离文档流隔离内部滚动），外层 main 加 min-h-0；roles page 两个 overflow-y-auto 容器(左列表+tab内容)加 min-h-0。实测 htmlScrollH 从 2459 降到 682，PageDown/ArrowDown 滚动落在 tabContent 内部(winY=0)。",
+      "tags": [
+        "roles-ui",
+        "layout",
+        "scroll",
+        "flexbox",
+        "fixed-inset-0"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T16:50:00Z"
+    },
+    {
+      "id": "bug-961",
+      "timestamp": "2026-08-03T10:18:34.360Z",
+      "error_message": "Wrong reference: selected should be effectiveSelected",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Used \"selected\" instead of \"effectiveSelected\"",
+      "fix": "Changed selected → effectiveSelected",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-08-03T10:19:33.463Z"
+    },
+    {
+      "id": "bug-962",
+      "timestamp": "2026-08-03T10:20:13.228Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T10:20:13.228Z"
+    },
+    {
+      "id": "bug-963",
+      "timestamp": "2026-08-03T10:20:56.544Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T10:20:56.544Z"
+    },
+    {
+      "id": "bug-961",
+      "timestamp": "2026-08-03T17:05:00Z",
+      "error_message": "超级管理员只显示1项权限，权限面板/矩阵全不勾选（实际拥有全部权限）",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "superadmin 的 permissions=[\"*\"] 是通配符，前端 PermissionPanel 用 selected.includes(op.id) 判断勾选，\"*\" 不匹配任何具体操作 id → 面板/矩阵/列表全部按未选中显示（列表显示 permissions.length=1）",
+      "fix": "新增 expandWildcardPerms() 把 [\"*\"] 展开为全部操作 id；PermissionPanel 用 effectiveSelected(=通配符时 allPerms) 做勾选判断与计数；矩阵单元格与角色列表权限数也用展开结果。实测面板 52/52 全勾选，角色列表超级管理员显示 50 权限，矩阵有操作点的模块全满",
+      "tags": [
+        "roles-ui",
+        "wildcard",
+        "superadmin",
+        "permissions",
+        "expand"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T17:05:00Z"
+    },
+    {
+      "id": "bug-965",
+      "timestamp": "2026-08-03T10:25:52.403Z",
+      "error_message": "CSS fix: duration",
+      "file": "frontend/src/app/admin/roles/page.tsx",
+      "root_cause": "duration: 0.2 → 0.3, ease: \"easeOut\"",
+      "fix": "Changed duration: 0.2 → 0.3, ease: \"easeOut\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-08-03T10:26:25.021Z"
+    },
+    {
+      "id": "bug-966",
+      "timestamp": "2026-08-03T10:31:30.498Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workspace/agents/[agent_name]/chats/[thread_id]/page.tsx",
+      "root_cause": "Had \"absolute top-0 right-0 left-0 z-30 flex h-12 shri",
+      "fix": "Changed to \"absolute top-0 right-0 left-0 z-30 flex h-12 shri",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-08-03T10:31:54.287Z"
+    },
+    {
+      "id": "bug-967",
+      "timestamp": "2026-08-03T10:57:22.140Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/chat-page-upstream-gap-2026-08-03.md",
+      "root_cause": "Had `loading/decoding`",
+      "fix": "Changed to `agents/[agent_name]/chats/[thread_id]/page.tsx`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T10:57:22.140Z"
+    },
+    {
+      "id": "bug-968",
+      "timestamp": "2026-08-03T11:13:03.166Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/workspace/agents/[agent_name]/chats/[thread_id]/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T11:13:03.166Z"
+    },
+    {
+      "id": "bug-696",
+      "timestamp": "2026-08-03T00:00:00Z",
+      "error_message": "projectContext parsed from URL but never passed downstream — writing-project context (projectId/projectName/stage/chapterId/chapterName/mode) computed in chats/[thread_id]/page.tsx then discarded",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx:99-110",
+      "root_cause": "useSearchParams parses 7 params into projectContext (line 99-110) but the variable is never read anywhere in the file (only 1 occurrence = its own declaration). Not passed to useThreadStream, sendMessage additionalKwargs, any child component, or useSpecificChatMode (which only handles mode=skill). Agent variant page (agents/[agent_name]/chats/[thread_id]/page.tsx) parses nothing. Emit side (ProjectList.tsx:290 / ProjectWorkspace.tsx:312 / SciFiProjectDetail.tsx:267) only sends from/projectId/projectName, never stage/chapterId/chapterName/mode. Entire chain emit(half) -> parse(full) -> noop is broken.",
+      "fix": "NOT YET FIXED. Wiring needed: decide intended consumer (sendMessage additionalKwargs to backend, thread metadata via Gateway, or UI banner) and pass projectContext there; have emitters send the full param set; add parsing to the agent variant page.",
+      "tags": [
+        "frontend",
+        "dead-code",
+        "writing-project",
+        "projectContext",
+        "chat-page",
+        "url-params",
+        "data-flow"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T00:00:00Z"
+    },
+    {
+      "id": "bug-697",
+      "timestamp": "2026-08-03T00:00:00Z",
+      "error_message": "项目上下文永远到不了 agent — DynamicContextMiddleware 读端被 upstream-sync 回退,不再读 project-context.json,写端仍在写(写而不读),agent 不知道在为哪个项目/章节写作",
+      "file": "backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py",
+      "root_cause": "commit 2ceba00aa 曾为 DynamicContextMiddleware 加入 project_context 读取(project-context.json -> <project_context> 注入首条 HumanMessage)与测试;后续 upstream-sync 回退 commit 07d3f68a1/6de630470 把 harness 恢复到 upstream clean,丢掉读取逻辑。写端 app/extensions/project/service.py::_write_project_context(经 enter_project service.py:398/409 调用)仍在写 thread_dir/project-context.json,但 backend/packages/harness 内零消费者(grep project-context.json/project_context 无匹配)。测试 test_project_context_injected_via_runtime_user_id(test_dynamic_context_middleware.py:97)与 test_project_context_thread_id_falls_back_to_configurable(:149)仍断言 <project_context> 注入(:144/:191),会失败。前端 chats/[thread_id]/page.tsx projectContext URL 解析也死(bug-696),是同一断链的并行死尝试。",
+      "fix": "FIXED 2026-08-03(走选项 a,re-port 回 harness,带 EAI-CUSTOM 三重标注):dynamic_context_middleware.py 新增 _resolve_thread_id(读 runtime.context,miss 回退 get_config().configurable.thread_id)+ _get_project_context(resolve_runtime_user_id 解析 user_id → 读 thread_dir/project-context.json → 拼 <project_context>);_build_full_reminder 加 thread_id 参,首轮把 <project_context> 拼进 SystemMessage 的 date_reminder;before_agent/abefore_agent 在 event-loop 解析 thread_id 后穿透(abefore_agent 经 to_thread —— get_config contextvar 过不了线程边界,故必须先解析)。验证:2 个 project_context 测试 FAIL→PASS;ruff check/format 干净;AST blocking-IO 检测未标记本文件。注:同文件另有 6 个 memory/midnight 测试在 HEAD 即挂(读真实 memory.json 未 mock),非本次回归。",
+      "tags": [
+        "backend",
+        "harness",
+        "regression",
+        "upstream-sync",
+        "project-context",
+        "DynamicContextMiddleware",
+        "writing-project",
+        "dead-code"
+      ],
+      "related_bugs": [
+        "bug-696"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T00:00:00Z"
+    },
+    {
+      "id": "bug-971",
+      "timestamp": "2026-08-03T12:45:43.332Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:45:43.332Z"
+    },
+    {
+      "id": "bug-972",
+      "timestamp": "2026-08-03T12:45:49.775Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "Had \"@/components/ui/sidebar\"",
+      "fix": "Changed to \"@/components/ui/page-loading-overlay\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:45:49.775Z"
+    },
+    {
+      "id": "bug-973",
+      "timestamp": "2026-08-03T12:46:04.763Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "No early return/throw for edge case: isHistoryLoading",
+      "fix": "Added guard clause: if (isHistoryLoading)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:46:04.763Z"
+    },
+    {
+      "id": "bug-974",
+      "timestamp": "2026-08-03T12:46:11.669Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/app/workspace/chats/[thread_id]/page.tsx",
+      "root_cause": "Was returning: (",
+      "fix": "Now returns: <PageLoadingOverlay text=\"加载对话中...\" />;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:46:11.669Z"
+    },
+    {
+      "id": "bug-975",
+      "timestamp": "2026-08-03T12:47:31.938Z",
+      "error_message": "Null/undefined access in ",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/chat-page-upstream-gap-2026-08-03.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:47:31.938Z"
+    },
+    {
+      "id": "bug-976",
+      "timestamp": "2026-08-03T12:53:40.014Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/chat-page-upstream-gap-2026-08-03.md",
+      "root_cause": "Had `chats/[thread_id]/page.tsx`",
+      "fix": "Changed to `core/threads/hooks.ts`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T12:53:40.014Z"
+    },
+    {
+      "id": "bug-977",
+      "timestamp": "2026-08-03T13:36:48.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/core/threads/message-merge.test.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→5 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T13:36:48.908Z"
+    },
+    {
+      "id": "bug-978",
+      "timestamp": "2026-08-03T13:46:32.394Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/harness-core-upstream-gap-2026-08-03.md",
+      "root_cause": "Had `tenki`",
+      "fix": "Changed to `uv sync`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T13:46:32.394Z"
+    },
+    {
+      "id": "bug-979",
+      "timestamp": "2026-08-03T14:01:36.216Z",
+      "error_message": "Wrong reference: onInsertComment should be documentContent",
+      "file": "frontend/tests/unit/extensions/collab/AIDocumentReview.test.tsx",
+      "root_cause": "Used \"onInsertComment\" instead of \"documentContent\"",
+      "fix": "Changed onInsertComment → documentContent",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:01:36.216Z"
+    },
+    {
+      "id": "bug-980",
+      "timestamp": "2026-08-03T14:01:42.806Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/brand.test.ts",
+      "root_cause": "Had \"rstest\"",
+      "fix": "Changed to \"vitest\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:01:42.806Z"
+    },
+    {
+      "id": "bug-981",
+      "timestamp": "2026-08-03T14:01:55.575Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/extensions/collab/traceability-extension.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: const attrs = (deco as unknown as { type: { attrs: Record<st",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T14:01:58.716Z"
+    },
+    {
+      "id": "bug-982",
+      "timestamp": "2026-08-03T14:02:01.934Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/tests/unit/extensions/collab/traceability-extension.test.ts",
+      "root_cause": "Was returning: (decos[0]!.type.attrs as Record<string, unknown>).",
+      "fix": "Now returns: ((decos[0]! as unknown as { type: { attrs: Record<",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:02:01.934Z"
+    },
+    {
+      "id": "bug-983",
+      "timestamp": "2026-08-03T14:02:38.265Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/rule-detail-utils.test.ts",
+      "root_cause": "Had \"./rule-detail-utils.ts\"",
+      "fix": "Changed to \"./rule-detail-utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:02:38.265Z"
+    },
+    {
+      "id": "bug-984",
+      "timestamp": "2026-08-03T14:02:42.243Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/rule-form-utils.test.ts",
+      "root_cause": "Had \"./rule-form-utils.ts\"",
+      "fix": "Changed to \"./rule-form-utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:02:42.243Z"
+    },
+    {
+      "id": "bug-985",
+      "timestamp": "2026-08-03T14:03:10.535Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/rule-dictionary-utils.test.ts",
+      "root_cause": "Had \"./rule-dictionary-utils.ts\"",
+      "fix": "Changed to \"./rule-dictionary-utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:03:10.535Z"
+    },
+    {
+      "id": "bug-986",
+      "timestamp": "2026-08-03T14:03:13.879Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/rule-import-utils.test.ts",
+      "root_cause": "Had \"./rule-import-utils.ts\"",
+      "fix": "Changed to \"./rule-import-utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:03:13.879Z"
+    },
+    {
+      "id": "bug-987",
+      "timestamp": "2026-08-03T14:03:16.976Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/rule-overview-utils.test.ts",
+      "root_cause": "Had \"./rule-overview-utils.ts\"",
+      "fix": "Changed to \"./rule-overview-utils\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:03:16.976Z"
+    },
+    {
+      "id": "bug-988",
+      "timestamp": "2026-08-03T14:14:10.768Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/workflow/templates/four-phase.ts",
+      "root_cause": "Had \"subGraphs\"",
+      "fix": "Changed to \"mainGraph\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:14:10.768Z"
+    },
+    {
+      "id": "bug-989",
+      "timestamp": "2026-08-03T14:14:45.302Z",
+      "error_message": "Wrong reference: WorkflowNodeData should be TaskNodeData",
+      "file": "frontend/src/extensions/workflow/panels/TaskConfigPanel.tsx",
+      "root_cause": "Used \"WorkflowNodeData\" instead of \"TaskNodeData\"",
+      "fix": "Changed WorkflowNodeData → TaskNodeData",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:14:45.302Z"
+    },
+    {
+      "id": "bug-990",
+      "timestamp": "2026-08-03T14:14:53.434Z",
+      "error_message": "CSS fix: data, onUpdate",
+      "file": "frontend/src/extensions/workflow/panels/TaskConfigPanel.tsx",
+      "root_cause": "data: WorkflowNodeData → TaskNodeData; onUpdate: (partial: Partial<WorkflowNodeData>) => void → (partial: Partial<TaskNodeData>) => void",
+      "fix": "Changed data: WorkflowNodeData → TaskNodeData; onUpdate: (partial: Partial<WorkflowNodeData>) => void → (partial: Partial<TaskNodeData>) => void",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:14:53.434Z"
+    },
+    {
+      "id": "bug-991",
+      "timestamp": "2026-08-03T14:16:19.901Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/app-center/config/categories.ts",
+      "root_cause": "Was returning: ACCENT_PALETTE[idx % ACCENT_PALETTE.length];",
+      "fix": "Now returns: ACCENT_PALETTE[idx % ACCENT_PALETTE.length]!;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:19.901Z"
+    },
+    {
+      "id": "bug-992",
+      "timestamp": "2026-08-03T14:16:23.830Z",
+      "error_message": "CSS fix: CAPABILITY",
+      "file": "frontend/src/extensions/dashboard/components/QuickPanel.tsx",
+      "root_cause": "CAPABILITY: {entries[hoveredIndex].info → {entries[hoveredIndex]!.info",
+      "fix": "Changed CAPABILITY: {entries[hoveredIndex].info → {entries[hoveredIndex]!.info",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:23.830Z"
+    },
+    {
+      "id": "bug-993",
+      "timestamp": "2026-08-03T14:16:29.254Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/dashboard/components/TaskPanel.tsx",
+      "root_cause": "Had \"completed\"",
+      "fix": "Changed to 'completed'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:29.254Z"
+    },
+    {
+      "id": "bug-994",
+      "timestamp": "2026-08-03T14:16:33.054Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/license/LicensePage.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:33.054Z"
+    },
+    {
+      "id": "bug-995",
+      "timestamp": "2026-08-03T14:16:42.888Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/project/hooks/useReportTypes.ts",
+      "root_cause": "Was returning: COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.lengt",
+      "fix": "Now returns: COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.lengt",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:42.888Z"
+    },
+    {
+      "id": "bug-996",
+      "timestamp": "2026-08-03T14:16:53.299Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/BoxPlot.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:53.299Z"
+    },
+    {
+      "id": "bug-997",
+      "timestamp": "2026-08-03T14:16:58.652Z",
+      "error_message": "Wrong reference: never should be string",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Used \"never\" instead of \"string\"",
+      "fix": "Changed never → string",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:16:58.652Z"
+    },
+    {
+      "id": "bug-998",
+      "timestamp": "2026-08-03T14:20:14.172Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/docmgr/extensions/mathMarkdownIt.ts",
+      "root_cause": "Condition was: if (/\\s/.test(state.src[startPos])",
+      "fix": "Changed to: if (/\\s/.test(state.src[startPos]!)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T14:20:18.494Z"
+    },
+    {
+      "id": "bug-999",
+      "timestamp": "2026-08-03T14:20:33.051Z",
+      "error_message": "CSS fix: type",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "type: \"human\", text: userMessages[i], idx: i → \"human\", text: userMessages[i]!, idx: i",
+      "fix": "Changed type: \"human\", text: userMessages[i], idx: i → \"human\", text: userMessages[i]!, idx: i",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:20:33.051Z"
+    },
+    {
+      "id": "bug-1000",
+      "timestamp": "2026-08-03T14:21:44.706Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: open={openMap.figures ?? false} | Also: open={openMap.formulas ?? false} | Also: open={openMap.calc ?? false} | Also: open={openMap.profile ?? false}",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-08-03T14:22:21.636Z"
+    },
+    {
+      "id": "bug-1001",
+      "timestamp": "2026-08-03T14:22:35.164Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:22:35.164Z"
+    },
+    {
+      "id": "bug-1002",
+      "timestamp": "2026-08-03T14:24:19.827Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/cad-design/components/CadDesigner.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:24:19.827Z"
+    },
+    {
+      "id": "bug-1003",
+      "timestamp": "2026-08-03T14:24:26.251Z",
+      "error_message": "CSS fix: state",
+      "file": "frontend/src/extensions/cad-design/components/CadDesigner.tsx",
+      "root_cause": "state: ThreadStateLike | undefined) => { → AgentThreadState) => {",
+      "fix": "Changed state: ThreadStateLike | undefined) => { → AgentThreadState) => {",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:24:26.251Z"
+    },
+    {
+      "id": "bug-1004",
+      "timestamp": "2026-08-03T14:27:25.828Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:27:25.828Z"
+    },
+    {
+      "id": "bug-1005",
+      "timestamp": "2026-08-03T14:27:32.160Z",
+      "error_message": "Wrong reference: List should be as",
+      "file": "frontend/src/extensions/docmgr/ExportDocxDialog.tsx",
+      "root_cause": "Used \"List\" instead of \"as\"",
+      "fix": "Changed List → as",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-08-03T14:27:47.612Z"
+    },
+    {
+      "id": "bug-1006",
+      "timestamp": "2026-08-03T14:27:54.584Z",
+      "error_message": "CSS fix: prev",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "prev: 1 + Math.min(prev, dp[j], dp[j - 1]) → 1 + Math.min(prev, dp[j]!, dp[j - 1]!)",
+      "fix": "Changed prev: 1 + Math.min(prev, dp[j], dp[j - 1]) → 1 + Math.min(prev, dp[j]!, dp[j - 1]!)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T14:28:11.950Z"
+    },
+    {
+      "id": "bug-1007",
+      "timestamp": "2026-08-03T14:28:00.587Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Was returning: dp[n];",
+      "fix": "Now returns: dp[n]!;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:28:00.587Z"
+    },
+    {
+      "id": "bug-1008",
+      "timestamp": "2026-08-03T14:28:06.744Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:28:06.744Z"
+    },
+    {
+      "id": "bug-1009",
+      "timestamp": "2026-08-03T14:28:20.053Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: user_id: file.user_id ?? \"\",; created_at: file.created_at ?? file.modified_at ?? \"\",",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-03T14:28:48.693Z"
+    },
+    {
+      "id": "bug-1010",
+      "timestamp": "2026-08-03T14:30:16.065Z",
+      "error_message": "Wrong reference: null should be undefined",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Used \"null\" instead of \"undefined\"",
+      "fix": "Changed null → undefined",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T14:30:16.065Z"
+    },
+    {
+      "id": "bug-1011",
+      "timestamp": "2026-08-03T15:16:55.777Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/pyproject.toml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "toml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T15:16:55.777Z"
+    },
+    {
+      "id": "bug-1012",
+      "timestamp": "2026-08-03T15:25:00.000Z",
+      "error_message": "gateway 全端点 502 — /api/v1/auth/me 502、/health 502;SSR 报 [SSR auth] /api/v1/auth/me responded 502;容器 Up 但 8001 不监听、docker logs 空",
+      "file": "backend/packages/harness/pyproject.toml (tenki/memory-zh extras) + backend/uv.lock",
+      "root_cause": "harness commit 548eaeaa5 恢复 tenki/memory-zh extras 到 pyproject.toml,但 uv.lock 无这两个包 → pyproject/锁不一致。gateway entrypoint 每次启动跑 `uv sync --all-packages`,检测锁过期→重新解析(需网络)→撞 flaky 网络→卡死→uvicorn 永不启动→8001 不监听→nginx 全 502。dev-entrypoint.sh 把输出重定向到 /app/logs/gateway.log(非 docker logs),故 docker logs 空难发现。",
+      "fix": "回退 tenki/memory-zh extras(commit 2ea2c66d0,community/tenki 源码保留)。pyproject 重新匹配 uv.lock→uv sync no-op→gateway 正常启动(health=200 验证)。临时期曾用 .venv 直拉 uvicorn 绕过(band-aid)。遗留:stable 网络下走 `uv lock` 重生成含 extras 的锁再加回。",
+      "tags": [
+        "uv-sync",
+        "uv-lock",
+        "flaky-network",
+        "gateway-502",
+        "pyproject-lock-mismatch",
+        "deferred",
+        "harness"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T15:25:00.000Z"
+    },
+    {
+      "id": "bug-1013",
+      "timestamp": "2026-08-03T15:26:43.133Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/[lang]/docs/layout.tsx",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 23→6 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T15:26:43.134Z"
+    },
+    {
+      "id": "bug-1014",
+      "timestamp": "2026-08-03T15:26:46.962Z",
+      "error_message": "Wrong reference: formatPageRoute should be buildLocalizedDocsPageMap",
+      "file": "frontend/src/app/[lang]/docs/layout.tsx",
+      "root_cause": "Used \"formatPageRoute\" instead of \"buildLocalizedDocsPageMap\"",
+      "fix": "Changed formatPageRoute → buildLocalizedDocsPageMap",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-03T15:26:46.962Z"
+    },
+    {
+      "id": "bug-1015",
+      "timestamp": "2026-08-04T00:00:00.000Z",
+      "error_message": "离线部署自动生成的 .env / config.yaml 内容大面积缺失，系统无法启动；最终从开发环境手动拷贝这两个文件覆盖才跑起来",
+      "file": "scripts/generate-config.sh",
+      "root_cause": "generate-config.sh 的 .env 是硬编码最小模板（仅 DEER_FLOW_ROOT/BETTER_AUTH_SECRET/PORT/EXTENSIONS_DB_*/DEER_FLOW_TRUSTED_ORIGINS/RAGFLOW_* 等十来个变量），开发环境 .env 中其余变量生成时全部丢失；叠加旧包 config.yaml 最小覆盖 bug（缺 sandbox 段，见 cutover.md 坑3）导致 gateway crash。",
+      "fix": "运行中系统：把服务器上手动修正后的 .env/config.yaml/extensions_config.json 视为 pinned 真相源，后续配置改动原地编辑+重启，禁止再跑 install.sh/deploy.sh（二者会调 generate-config 覆盖配置）。delta 升级 upgrade.sh 安全：config_hash 基于 deploy.conf.example（静态），正常不触发重生成。待办：补全 generate-config.sh 的 .env 模板为 dev .env 超集，或改为从 dev .env 继承。",
+      "tags": [
+        "offline-deploy",
+        "generate-config",
+        "config",
+        "env",
+        "production",
+        "deployment"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T00:00:00.000Z"
+    },
+    {
+      "id": "bug-1016",
+      "timestamp": "2026-08-04T04:14:28.789Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/pyproject.toml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "toml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T04:14:28.789Z"
+    },
+    {
+      "id": "bug-1017",
+      "timestamp": "2026-08-04T04:14:55.908Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/generate-config.sh",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 24→55 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T04:14:55.908Z"
+    },
+    {
+      "id": "bug-1018",
+      "timestamp": "2026-08-04T00:00:00.000Z",
+      "error_message": "离线全新部署后，gateway 容器重建会丢失全部对话线程/checkpoint",
+      "file": "deploy/offline/config.yaml",
+      "root_cause": "离线模板 deploy/offline/config.yaml:263 的 checkpointer.connection_string 仍是 /tmp/deerflow/checkpoints.db（容器可写层、无卷）。bug-877 早在 dev 根 config.yaml 修成持久路径 /app/backend/.deer-flow/data/checkpoints.db，但离线模板是手维护副本、未同步 → 离线部署照旧丢线程。",
+      "fix": "改为 /app/backend/.deer-flow/data/checkpoints.db（bind-mount ./data 持久），对齐 dev 根 config.yaml；加 EAI-CUSTOM 注释。",
+      "tags": [
+        "offline-deploy",
+        "config",
+        "checkpointer",
+        "data-loss",
+        "drift"
+      ],
+      "related_bugs": [
+        "bug-877"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T00:00:00.000Z"
+    },
+    {
+      "id": "bug-1019",
+      "timestamp": "2026-08-04T00:00:00.000Z",
+      "error_message": "升级（重建 gateway 容器）后 license 失效，进 7 天宽限期或锁定",
+      "file": "deploy/offline/docker-compose.yaml",
+      "root_cause": "license.lic 由 import_license() 写到容器内 /app/license.lic（project_root/license.lic，非任何挂载卷）。upgrade.sh 的 docker compose up -d 在 gateway 镜像变化时重建容器 → license 文件丢失。machine_id 在 ./data/machine_id（持久）、宽限期时间戳也在 ./data，唯独 license 文件不在持久层。",
+      "fix": "①docker-compose.yaml gateway 加 LICENSE_FILE_PATH=/app/backend/.deer-flow/license.lic（映射持久 ./data）。②license/service.py 的 import_license() 改为优先写 LICENSE_FILE_PATH（未设回落 project_root/license.lic 旧行为），UI 导入直接落持久卷、无需手动 docker cp；verify() 本就先读 LICENSE_FILE_PATH。③修复前的老系统一次性 docker cp /app/license.lic→./data/license.lic rescue。见 MANUAL-UPGRADE §4。",
+      "tags": [
+        "offline-deploy",
+        "license",
+        "persistence",
+        "production",
+        "upgrade"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T00:00:00.000Z"
+    },
+    {
+      "id": "bug-1020",
+      "timestamp": "2026-08-04T04:24:14.360Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/pyproject.toml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "toml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T04:24:14.360Z"
+    },
+    {
+      "id": "bug-1021",
+      "timestamp": "2026-08-04T04:25:46.084Z",
+      "error_message": "Significant refactor of ",
+      "file": "deploy/offline/MANUAL-DEPLOY.md",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 15→13 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-04T04:25:46.084Z"
     }
   ]
 }

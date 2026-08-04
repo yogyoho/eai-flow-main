@@ -390,9 +390,17 @@ class LicenseService:
         db.add(license_record)
         await db.commit()
 
-        # Write license file to disk so verify() can read it
-        project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
-        license_file = project_root / "license.lic"
+        # Write license file to disk so verify() can read it.
+        # EAI-CUSTOM: 优先写 LICENSE_FILE_PATH（生产设为 /app/backend/.deer-flow/license.lic，
+        # 映射持久 ./data 卷）—— UI 导入的 license 直接落持久卷，容器重建不丢（bug-1019）。
+        # 未设该环境变量时维持旧行为（project_root/license.lic，向后兼容）。
+        license_path_env = os.getenv("LICENSE_FILE_PATH", "")
+        if license_path_env:
+            license_file = Path(license_path_env)
+        else:
+            project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+            license_file = project_root / "license.lic"
+        license_file.parent.mkdir(parents=True, exist_ok=True)
         license_file.write_text(jwt_raw)
 
         # Clear grace period on successful import

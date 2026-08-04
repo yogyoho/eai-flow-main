@@ -339,7 +339,9 @@ PY
 
     # 生成新 manifest + 存入历史
     VERSION_TAG="v${DATE}-$(git rev-parse --short HEAD)"
-    CFG_HASH=$(sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
+    # EAI-CUSTOM: hash 实际 deploy.conf（用户的真实配置输入），缺失才回落到模板。
+    # 旧实现 hash 静态 deploy.conf.example → 永远不变 → upgrade.sh 永不触发配置重生成。
+    CFG_HASH=$(sha256sum deploy.conf 2>/dev/null | cut -d' ' -f1 || sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
     MANIFEST="${OUTPUT_DIR}/manifest.json"
     "${PYTHON}" - "$VERSION_TAG" "$DATE" "$CFG_HASH" "$MANIFEST" "${ALL_DELTA[@]}" <<'PY'
 import json, subprocess, sys
@@ -843,7 +845,8 @@ echo ""
 # ── manifest.json: 版本号 + 各镜像 digest（供 --delta 比对与 IMAGE_TAG 回滚记录）──
 # EAI-CUSTOM: 镜像打版本 tag，支持按版本回滚与增量升级比对。
 VERSION_TAG="v${DATE}-$(git rev-parse --short HEAD)"
-CFG_HASH=$(sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
+# EAI-CUSTOM: hash 实际 deploy.conf（用户的真实配置输入），缺失才回落到模板。
+CFG_HASH=$(sha256sum deploy.conf 2>/dev/null | cut -d' ' -f1 || sha256sum deploy/offline/deploy.conf.example 2>/dev/null | cut -d' ' -f1 || echo unknown)
 MANIFEST="${OUTPUT_DIR}/manifest.json"
 ALL_IMGS=("${BUILT_IMAGE_NAMES[@]}" "${PUBLIC_IMAGES[@]}")
 "${PYTHON}" - "$VERSION_TAG" "$DATE" "$CFG_HASH" "$MANIFEST" "${ALL_IMGS[@]}" <<'PY'

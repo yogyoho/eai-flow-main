@@ -260,7 +260,9 @@ suggestions:
   enabled: true
 checkpointer:
   type: sqlite
-  connection_string: /tmp/deerflow/checkpoints.db
+  # EAI-CUSTOM: 必须落在持久目录 /app/backend/.deer-flow/data（bind-mount ./data），
+  # 否则容器重建会丢全部线程/checkpoint（见 buglog bug-877）。与开发环境根 config.yaml 保持一致。
+  connection_string: /app/backend/.deer-flow/data/checkpoints.db
 database:
   backend: sqlite
   sqlite_dir: /app/backend/.deer-flow/data
