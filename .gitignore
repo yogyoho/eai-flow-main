@@ -25,10 +25,13 @@ venv/
 
 # Configuration files
 config.yaml
-# EAI-CUSTOM: the shipped offline config IS version-controlled (deployment artifact, like compose files)
-!deploy/offline/config.yaml
 mcp_config.json
 extensions_config.json
+# EAI-CUSTOM: the shipped offline config IS version-controlled (deployment artifact, like compose files).
+# Negations MUST come after the ignore patterns above (gitignore: last matching pattern wins),
+# otherwise the bare `extensions_config.json` pattern below re-ignores the negated path.
+!deploy/offline/config.yaml
+!deploy/offline/extensions_config.json
 
 # IDE
 .idea/
