@@ -478,6 +478,7 @@ class ChapterStatusUpdate(BaseModel):
 async def open_chapter_for_editing(
     project_id: UUID,
     chapter_id: UUID,
+    _member: CurrentUser = Depends(require_project_member()),
     user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -486,6 +487,10 @@ async def open_chapter_for_editing(
     Creates (or finds) an AIDocument seeded with chapter content,
     so the BlockNote collaborative editor can edit it.
     Returns the document info needed by DocCollabView.
+
+    EAI-CUSTOM (Task 12 follow-up): ``require_project_member()`` gates membership
+    (superadmin-bypassing) on top of the in-handler ``_check_phase_access`` phase
+    scope check — closes IDOR where a non-member without an active phase could pass.
     """
     await _check_phase_access(db, project_id, chapter_id, user)
 
@@ -812,6 +817,7 @@ class PhaseCompleteRequest(BaseModel):
 async def complete_current_phase(
     project_id: UUID,
     body: PhaseCompleteRequest | None = None,
+    _role: str = Depends(require_resource_permission("project:edit")),
     user: CurrentUserWithAccess = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -819,6 +825,9 @@ async def complete_current_phase(
 
     Sends a phase_complete signal to the running Temporal workflow,
     which triggers advance_phase and proceeds to the next node.
+
+    EAI-CUSTOM (Task 12 follow-up): gated by ``project:edit`` (owner/phase_lead)
+    to close IDOR — previously only ``system:access`` was checked.
     """
     from app.extensions.models import ReportProject
     from app.extensions.workflow.temporal.client import send_signal as _send_signal
