@@ -10,6 +10,7 @@ import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.admin import is_superadmin
 from app.extensions.auth.engine import FilterRule
 from app.extensions.auth.middleware import require_permission, with_data_scope
 from app.extensions.config import get_extensions_config
@@ -54,14 +55,24 @@ async def list_ragflow_embedding_models(
         return {"models": [], "error": str(e)}
 
 
-def _can_access_kb(kb: KnowledgeBase, current_user: CurrentUser) -> bool:
-    if kb.owner_id == current_user.id:
-        return True
-    if kb.access_type == "public":
-        return True
-    if kb.access_type == "dept":
-        return bool(current_user.dept_id and kb.allowed_depts and current_user.dept_id in kb.allowed_depts)
-    return False
+async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule) -> KnowledgeBase | None:
+    """Load a KB by id ONLY if the given visibility scope permits it.
+
+    EAI-CUSTOM: unifies by-id access with the list endpoint's
+    `with_data_scope("knowledge")` FilterRule so list and by-id enforce identical
+    visibility (owner OR public OR dept-overlap, or allow_all for superadmin).
+    Returns None if the KB does not exist or is out of scope; callers raise 404
+    to avoid existence leakage.
+    """
+    from sqlalchemy import select as sa_select
+
+    column_map = {
+        "owner_id": KnowledgeBase.owner_id,
+        "access_type": KnowledgeBase.access_type,
+        "allowed_depts": KnowledgeBase.allowed_depts,
+    }
+    q = sa_select(KnowledgeBase).where(KnowledgeBase.id == kb_id).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
+    return (await db.execute(q)).scalar_one_or_none()
 
 
 def _extract_score(chunk: dict) -> float | None:
@@ -85,8 +96,6 @@ async def list_knowledge_bases(
 ):
     # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering
     # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
-    from app.extensions.auth.admin import is_superadmin
-
     is_admin = await is_superadmin(db, current_user.id)
 
     from sqlalchemy import select as sa_select
@@ -101,9 +110,7 @@ async def list_knowledge_bases(
             "access_type": KnowledgeBase.access_type,
             "allowed_depts": KnowledgeBase.allowed_depts,
         }
-        query = sa_select(KnowledgeBase).where(
-            scope.to_sqlalchemy(KnowledgeBase, column_map)
-        )
+        query = sa_select(KnowledgeBase).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
 
     # Count total before pagination
     from sqlalchemy import func
@@ -111,9 +118,7 @@ async def list_knowledge_bases(
     if is_admin:
         count_query = sa_select(func.count(KnowledgeBase.id))
     else:
-        count_query = sa_select(func.count(KnowledgeBase.id)).where(
-            scope.to_sqlalchemy(KnowledgeBase, column_map)
-        )
+        count_query = sa_select(func.count(KnowledgeBase.id)).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
@@ -142,12 +147,11 @@ async def get_knowledge_base(
     kb_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -157,11 +161,13 @@ async def update_knowledge_base(
     data: KnowledgeBaseUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if kb.owner_id != current_user.id and current_user.role_name not in ["超级管理员", "admin"]:
+    # EAI-CUSTOM (I11): registry-backed admin bypass replaces brittle role_name string match
+    if kb.owner_id != current_user.id and not await is_superadmin(db, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     kb = await KnowledgeBaseService.update_kb(db, kb, data)
     return KnowledgeBaseService.to_response(kb)
@@ -172,11 +178,13 @@ async def delete_knowledge_base(
     kb_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:delete")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if kb.owner_id != current_user.id and current_user.role_name not in ["超级管理员", "admin"]:
+    # EAI-CUSTOM (I11): registry-backed admin bypass replaces brittle role_name string match
+    if kb.owner_id != current_user.id and not await is_superadmin(db, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     await KnowledgeBaseService.delete_kb(db, kb)
     return MessageResponse(message="Knowledge base deleted successfully")
@@ -189,12 +197,11 @@ async def upload_document(
     chunk_config: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:upload")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     chunk_cfg = None
     if chunk_config:
@@ -237,12 +244,11 @@ async def list_documents(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     docs, total = await DocumentService.list_docs(db, kb_id, skip=skip, limit=limit)
 
@@ -271,12 +277,11 @@ async def delete_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:upload")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -292,13 +297,12 @@ async def list_document_chunks(
     size: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
     """List chunks of a document (from RAGFlow)."""
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -330,13 +334,12 @@ async def chat_with_knowledge_base(
     request: RAGChatRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
     """Chat with a knowledge base using RAGFlow."""
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     if not kb.ragflow_dataset_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge base not synced to RAGFlow")
@@ -378,6 +381,7 @@ async def federated_search(
     request: RAGFederatedSearchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
     """Federated search across multiple knowledge bases."""
     config = get_extensions_config()
@@ -386,7 +390,15 @@ async def federated_search(
 
     from sqlalchemy import select
 
-    stmt = select(KnowledgeBase).where(KnowledgeBase.id.in_(request.kb_ids))
+    # EAI-CUSTOM (I11): apply the SAME visibility scope the list endpoint uses.
+    # A requested kb_id that is missing OR out of scope surfaces as 404 (no
+    # existence leakage), replacing the prior per-kb 403 from _can_access_kb.
+    column_map = {
+        "owner_id": KnowledgeBase.owner_id,
+        "access_type": KnowledgeBase.access_type,
+        "allowed_depts": KnowledgeBase.allowed_depts,
+    }
+    stmt = select(KnowledgeBase).where(KnowledgeBase.id.in_(request.kb_ids)).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
     result = await db.execute(stmt)
     kbs = {kb.id: kb for kb in result.scalars().all()}
 
@@ -397,8 +409,6 @@ async def federated_search(
     kb_list = [kbs[kb_id] for kb_id in request.kb_ids]
 
     for kb in kb_list:
-        if not _can_access_kb(kb, current_user):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         if not kb.ragflow_dataset_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge base not synced to RAGFlow")
 
@@ -454,13 +464,12 @@ async def get_knowledge_base_status(
     kb_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
     """Get knowledge base sync status from RAGFlow."""
-    kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
-    if not kb:
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    if not _can_access_kb(kb, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     status_info = await KnowledgeBaseService.sync_kb_status(kb)
     return status_info
