@@ -214,14 +214,26 @@ class UnifiedPermissionEngine:
         role_code = identity.role_code or ""
         role_perms = self._role_permissions.get(role_code, set())
 
+        # Superadmin — deny never applies
         if "*" in role_perms:
             return set(self._all_permission_ids)
 
-        result = set(role_perms)
+        def expand(perms):
+            out = set()
+            for p in perms:
+                if p == "*":
+                    out |= set(self._all_permission_ids)
+                elif p.endswith(":*"):
+                    prefix = p[:-1]  # keep trailing ':' so 'kb:*' -> prefix 'kb:'
+                    out |= {x for x in self._all_permission_ids if x.startswith(prefix)}
+                else:
+                    out.add(p)
+            return out
 
-        for policy in self._policies:
-            if evaluate_policy_conditions(policy.conditions, identity):
-                for p in policy.grants.get("permissions") or []:
-                    result.add(p)
-
-        return result
+        allowed = expand(role_perms)
+        denied = set()
+        for pol in self._policies:
+            if evaluate_policy_conditions(pol.conditions, identity):
+                allowed |= expand(pol.grants.get("permissions") or [])
+                denied |= expand(pol.grants.get("deny_permissions") or [])
+        return allowed - denied

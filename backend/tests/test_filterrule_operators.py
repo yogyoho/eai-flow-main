@@ -99,3 +99,29 @@ def test_check_allow_still_works_no_deny():
     eng = _engine_with(deny=[], role_perms={"kb:read"})
     assert eng.check(idn, "kb:read") is True
     assert eng.check(idn, "kb:write") is False
+
+
+def test_list_permissions_expands_and_subtracts_deny():
+    from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
+    from app.extensions.auth.identity import AttributeSet
+    eng = UnifiedPermissionEngine(
+        role_permissions={"r": {"kb:*"}},
+        all_permission_ids={"kb:read", "kb:create", "kb:delete"},
+        policies=[Policy(name="d", priority=0, conditions={}, grants={"deny_permissions": ["kb:delete"]})],
+    )
+    idn = AttributeSet(user_id="u", username="u", role_code="r")
+    perms = eng.list_permissions(idn)
+    assert "kb:read" in perms and "kb:create" in perms and "kb:delete" not in perms
+
+
+def test_list_permissions_superadmin_returns_all_and_ignores_deny():
+    from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
+    from app.extensions.auth.identity import AttributeSet
+    eng = UnifiedPermissionEngine(
+        role_permissions={"super": {"*"}},
+        all_permission_ids={"kb:read", "kb:create"},
+        policies=[Policy(name="d", priority=0, conditions={}, grants={"deny_permissions": ["kb:read"]})],
+    )
+    sup = AttributeSet(user_id="s", username="s", role_code="super")
+    perms = eng.list_permissions(sup)
+    assert perms == {"kb:read", "kb:create"}   # superadmin immune
