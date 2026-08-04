@@ -20,6 +20,8 @@ def test_knowledge_dept_scope_uses_allowed_depts_overlap():
     rule = FilterRule.from_template(ds.rule_template, idn)
     colmap = {"access_type": KnowledgeBase.access_type, "allowed_depts": KnowledgeBase.allowed_depts, "owner_id": KnowledgeBase.owner_id}
     sql = str(rule.to_sqlalchemy(KnowledgeBase, colmap).compile(compile_kwargs={"literal_binds": False})).lower()
+    # knowledge_dept = owner OR (dept-shared): must contain owner_id, the access_type='dept' check, AND the overlap
+    assert "owner_id" in sql
     assert "access_type" in sql and "dept" in sql
     assert "allowed_depts" in sql and "&&" in sql   # the overlap operator is present
 
