@@ -99,6 +99,7 @@ async def list_knowledge_bases(
         column_map = {
             "owner_id": KnowledgeBase.owner_id,
             "access_type": KnowledgeBase.access_type,
+            "allowed_depts": KnowledgeBase.allowed_depts,
         }
         query = sa_select(KnowledgeBase).where(
             scope.to_sqlalchemy(KnowledgeBase, column_map)

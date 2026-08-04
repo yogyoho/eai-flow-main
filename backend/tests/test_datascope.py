@@ -63,8 +63,11 @@ class TestDataScopeEngine:
         # Uses the actual permissions.yaml in the project
         engine = DataScopeEngine.from_registry()
         # Should have at least knowledge, contract_price, project scopes
+        # EAI-CUSTOM: dept_ids are UUIDs in production (UserDepartment.dept_id);
+        # the overlap-based knowledge_dept scope coerces str→UUID at parse time.
+        import uuid as _uuid
         idn = AttributeSet(user_id="u1", username="test",
-                           role_code="writer", dept_ids=["d1"])
+                           role_code="writer", dept_ids=[str(_uuid.uuid4())])
         rule = engine.get_data_scope(idn, "knowledge")
         # writer has knowledge_dept scope
         assert rule is not None

@@ -86,9 +86,9 @@ modules:
           - { id: "kb:delete", display_name: "删除知识库" }
           - { id: "kb:upload", display_name: "上传文档" }
     data_scopes:
-      - { id: "knowledge_owner", display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
-      - { id: "knowledge_dept", display_name: "本部门的知识库", rule_template: { or: [{ owner_id: "$identity.user_id" }, { dept_id IN: "$identity.dept_ids" }] } }
+      - { id: "knowledge_owner",  display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
+      - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } }
 
   # ─── 知识工厂（9 个 tab ↔ 9 个 page id）───
   knowledge_factory:
