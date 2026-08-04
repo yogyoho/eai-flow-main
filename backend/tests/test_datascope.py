@@ -135,3 +135,31 @@ roles:
     identity = AttributeSet(user_id="1", username="u", role_code="manager")
     rule = engine.get_data_scope(identity, "projects")
     assert rule.operator == "allow_all"
+
+
+def test_get_data_scope_with_deny_composes_and_not():
+    from app.extensions.auth.datascope import DataScopeEngine
+    from app.extensions.auth.identity import AttributeSet
+    from app.extensions.auth.registry import DataScope
+    scopes = {"knowledge": [
+        DataScope(id="knowledge_owner", display_name="o", rule_template={"owner_id": "$identity.user_id"}, module="knowledge"),
+        DataScope(id="knowledge_public", display_name="p", rule_template={"access_type": "public"}, module="knowledge"),
+    ]}
+    idn = AttributeSet(user_id="u1", username="u1")
+    eng = DataScopeEngine(scopes, role_data_scopes={"r": ["knowledge_owner", "knowledge_public"]})
+    rule = eng.get_data_scope(idn, "knowledge", deny_scope_ids={"knowledge_public"})
+    assert rule.operator == "and"
+    assert rule.children[1].operator == "not"   # AND NOT public
+
+
+def test_get_data_scope_no_deny_returns_allow_unchanged():
+    from app.extensions.auth.datascope import DataScopeEngine
+    from app.extensions.auth.identity import AttributeSet
+    from app.extensions.auth.registry import DataScope
+    scopes = {"knowledge": [DataScope(id="knowledge_owner", display_name="o", rule_template={"owner_id": "$identity.user_id"}, module="knowledge")]}
+    idn = AttributeSet(user_id="u1", username="u1")
+    eng = DataScopeEngine(scopes, role_data_scopes={"r": ["knowledge_owner"]})
+    rule = eng.get_data_scope(idn, "knowledge")                      # no deny
+    rule2 = eng.get_data_scope(idn, "knowledge", deny_scope_ids=set())  # empty deny
+    # both equal the plain allow union (owner eq rule); NOT an 'and' wrapper
+    assert rule.operator != "and" and rule2.operator != "and"

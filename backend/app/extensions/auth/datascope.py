@@ -36,16 +36,26 @@ class DataScopeEngine:
 
         return cls(scopes_by_resource, role_data_scopes)
 
-    def get_data_scope(self, identity: AttributeSet, resource_type: str) -> FilterRule:
-        """Return a FilterRule for what this identity can see of resource_type."""
+    def build_scope_union(
+        self,
+        identity: AttributeSet,
+        resource_type: str,
+        scope_ids,
+    ) -> FilterRule:
+        """Build an OR-union of FilterRules for the given scope_ids.
+
+        Shared combiner used by both the allow path (scopes granted to the
+        identity's role) and the deny path (scopes blocked by active policies).
+        ``scope_ids`` is an explicit iterable of DataScope ids; it replaces the
+        old inline read of ``self._role_data_scopes`` so allow and deny share
+        identical union semantics.
+        """
         scopes = self._scopes_by_resource.get(resource_type)
         if not scopes:
             return FilterRule(operator="none_allow")
 
-        role_code = identity.role_code or ""
-        allowed_scope_ids = self._role_data_scopes.get(role_code, [])
-
-        applicable = [s for s in scopes if s.id in allowed_scope_ids]
+        scope_id_set = set(scope_ids or [])
+        applicable = [s for s in scopes if s.id in scope_id_set]
         if not applicable:
             return FilterRule(operator="none_allow")
 
@@ -61,3 +71,32 @@ class DataScopeEngine:
         if len(children) == 1:
             return children[0]
         return FilterRule(operator="or", children=children)
+
+    def get_data_scope(
+        self,
+        identity: AttributeSet,
+        resource_type: str,
+        deny_scope_ids=None,
+    ) -> FilterRule:
+        """Return a FilterRule for what this identity can see of resource_type.
+
+        When ``deny_scope_ids`` resolves to a non-empty deny rule, the result
+        is ``allow_rule AND NOT deny_rule``. Empty / unset deny returns the
+        plain allow union unchanged. A deny that matches an empty-template
+        (allow_all) scope collapses to ``none_allow`` (deny everything).
+        """
+        deny_scope_ids = deny_scope_ids or set()
+        allow_rule = self.build_scope_union(
+            identity,
+            resource_type,
+            self._role_data_scopes.get(identity.role_code or "", []),
+        )
+        deny_rule = self.build_scope_union(identity, resource_type, deny_scope_ids)
+        if deny_rule.operator == "none_allow":
+            return allow_rule                       # no applicable deny
+        if deny_rule.operator == "allow_all":
+            return FilterRule(operator="none_allow")  # deny matched empty-template scope = deny all
+        return FilterRule(
+            operator="and",
+            children=[allow_rule, FilterRule(operator="not", children=[deny_rule])],
+        )
