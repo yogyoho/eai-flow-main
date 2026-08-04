@@ -71,8 +71,8 @@ postgres = [
 redis = ["redis>=5.0.0"]
 pymupdf = ["pymupdf4llm>=0.0.17"]
 boxlite = ["boxlite>=0.9.7"]
-# EAI: tenki extra 暂缓移植 — 恢复需 `uv lock` 重生成(flaky 网络上会卡死);
-# community/tenki 源码已恢复,等 stable 网络再走 `uv lock` + 加回本 extra。见 bug 记录。
+# EAI: tenki extra 不移植 — Tenki 是云沙箱 provider,EAI 企业内网部署无云沙箱场景、用不上。
+# community/tenki 源码已与上游对齐(保留),仅不启用 extra。
 # Agent observability (Monocle). Optional so a default install stays free of the
 # OpenTelemetry stack; only pulled in when MONOCLE_TRACING is used.
 monocle = ["monocle_apptrace>=0.8.8"]
