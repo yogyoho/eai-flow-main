@@ -339,6 +339,10 @@ from app.extensions.auth.engine import FilterRule
 def with_data_scope(resource_type: str):
     """FastAPI dependency: inject a FilterRule for data-level access control.
 
+    Superadmin (is_system or '*' perms) gets allow_all (built-in bypass).
+    Otherwise: allow scopes from registry, MINUS deny_data_scopes from active
+    ABAC policies whose conditions match the identity.
+
     Usage:
         @router.get("/knowledge-bases")
         async def list_kbs(
@@ -352,11 +356,21 @@ def with_data_scope(resource_type: str):
         current_user: CurrentUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> FilterRule:
+        from app.extensions.auth.engine import evaluate_policy_conditions
         from app.extensions.auth.identity import get_identity_provider
+        from app.extensions.auth.policy_loader import load_active_policies
+        from app.extensions.auth.registry import get_permission_registry
 
-        engine = DataScopeEngine.from_registry()
-        provider = get_identity_provider()
-        identity = await provider.resolve(current_user.id, db)
-        return engine.get_data_scope(identity, resource_type)
+        identity = await get_identity_provider().resolve(current_user.id, db)
+        reg = get_permission_registry()
+        defaults = reg.get_role_defaults(identity.role_code)
+        resolved = reg.resolve_role_permissions(identity.role_code or "")
+        if (defaults and defaults.get("is_system")) or "*" in resolved:
+            return FilterRule(operator="allow_all")  # superadmin double-exemption, built-in
+        deny_ids = set()
+        for p in await load_active_policies(db):
+            if evaluate_policy_conditions(p.conditions, identity):
+                deny_ids.update(p.grants.get("deny_data_scopes") or [])
+        return DataScopeEngine.from_registry().get_data_scope(identity, resource_type, deny_ids)
 
     return _scope
