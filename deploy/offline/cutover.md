@@ -76,7 +76,7 @@ vi deploy.conf
 ```bash
 cd "$OLD"
 docker compose -p eai-prod -f docker/docker-compose.yaml \
-  -f docker/docker-compose.extensions.yaml -f docker/docker-compose.temporal.yaml \
+  -f docker/docker-compose.extensions.yaml \
   -f docker/docker-compose.ragflow.yaml down        # 无 -v！卷保留
 ```
 
@@ -102,7 +102,7 @@ curl http://localhost:4026/api/license/status
 cp "$BK/.env" "$BK/config.yaml" "$OLD/"          # 还原旧配置到旧部署目录
 # 若旧 :latest 镜像已被覆盖，从旧离线包重 load；否则直接起旧服务：
 cd "$OLD" && docker compose -p eai-prod -f docker/docker-compose.yaml \
-  -f docker/docker-compose.extensions.yaml -f docker/docker-compose.temporal.yaml \
+  -f docker/docker-compose.extensions.yaml \
   -f docker/docker-compose.ragflow.yaml up -d
 ```
 
@@ -127,7 +127,7 @@ cd /opt/eai-flow-offline-<新版本>
 tar xzf /opt/eai-backup-<日期>/data.tgz          # 解出旧 data/（含 deerflow.db + threads）
 ls -la data/data/deerflow.db                      # 确认在位
 docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml \
-  -f docker/docker-compose.temporal.yaml -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
+  -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
 ```
 恢复后用**旧 admin** 登录（密码是旧部署设的，不是 Admin@2026；忘了见坑 2 重置法）。
 
@@ -158,7 +158,7 @@ con.commit(); print('reset rows:', cur.rowcount)
 ```bash
 mkdir -p /tmp/cfg && tar xzf /opt/eai-flow-offline-*.tar.gz -C /tmp/cfg config.yaml && cp /tmp/cfg/config.yaml config.yaml
 docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml \
-  -f docker/docker-compose.temporal.yaml -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
+  -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
 ```
 
 ---

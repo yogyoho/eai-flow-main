@@ -425,8 +425,6 @@ echo ""
 mkdir -p "${OUTPUT_DIR}/docker/nginx"
 cp "deploy/offline/docker-compose.yaml"            "${OUTPUT_DIR}/docker/"
 cp "deploy/offline/docker-compose.extensions.yaml" "${OUTPUT_DIR}/docker/"
-cp "deploy/offline/docker-compose.temporal.yaml"   "${OUTPUT_DIR}/docker/"
-cp "deploy/offline/docker-compose.mcp-cad.yaml"    "${OUTPUT_DIR}/docker/"
 if [ "$WITH_RAGFLOW" = true ]; then
     cp "deploy/offline/docker-compose.ragflow.yaml" "${OUTPUT_DIR}/docker/"
 fi
@@ -732,9 +730,7 @@ start_services() {
     # Add extension compose files if present (all use image: not build:)
     for f in \
         docker/docker-compose.extensions.yaml \
-        docker/docker-compose.temporal.yaml \
         docker/docker-compose.ragflow.yaml \
-        docker/docker-compose.mcp-cad.yaml \
         docker/docker-compose.business.yaml; do
         if [ -f "$f" ]; then
             COMPOSE_CMD="${COMPOSE_CMD} -f ${f}"

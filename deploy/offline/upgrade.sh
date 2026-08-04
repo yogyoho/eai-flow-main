@@ -14,7 +14,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$SCRIPT_DIR"
 P=eai-prod
-COMPOSE=(-f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml -f docker/docker-compose.temporal.yaml -f docker/docker-compose.ragflow.yaml -f docker/docker-compose.mcp-cad.yaml)
+COMPOSE=(-f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml -f docker/docker-compose.ragflow.yaml)
 DELTA_DIR="${1:-delta}"
 
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; N='\033[0m'

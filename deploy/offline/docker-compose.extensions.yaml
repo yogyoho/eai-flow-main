@@ -1,7 +1,16 @@
 # =============================================================================
-# EAI-Flow 生产离线部署 — 扩展服务
+# EAI-Flow 生产离线部署 — 扩展服务（次级常驻服务合集）
 # =============================================================================
-# 包含: PostgreSQL 数据库 + 协同编辑 WebSocket 服务器
+# 本文件聚合所有「非核心、非 RAGFlow」的常驻服务（原 temporal.yaml +
+# mcp-cad.yaml 已并入，减少 compose 文件数）。包含：
+#   - postgres-ext : Extensions 主库（用户/文档/知识库/合同价/license镜像）
+#   - collab       : 协同编辑 WebSocket（Hocuspocus）
+#   - temporal     : 工作流引擎（可选；不启用工作流可注释掉）
+#   - cad / text-to-cad / ocr / cad-viewer : CAD 解析/生成 + 合同价 OCR + 3D 预览
+#   - browserless  : 无头 Chrome（可选，默认注释；供 web_fetch/web_capture 渲染 JS 页）
+# 核心服务（nginx/frontend/gateway）在 docker-compose.yaml；RAGFlow 栈在
+# docker-compose.ragflow.yaml（独立，保留 --no-ragflow 可选性）。
+# =============================================================================
 
 services:
   # ── Extensions PostgreSQL ──────────────────────────────────────────────────
@@ -44,6 +53,127 @@ services:
     networks:
       - prod-eai-flow-net
     restart: unless-stopped
+
+  # ── Knowledge Factory MCP Server (HTTP 长驻,与 dev 对齐) ───────────────────
+  # 独立长驻 HTTP 进程,避免 stdio 冷启动竞态(agent 高频发现工具时反复 fork 子进程
+  # + import 重依赖 + 连 DB 超时 → "knowledge factory unavailable")。
+  # 复用 gateway 镜像(后端已含 http_server 模块);MCP_TRANSPORT/HOST/PORT 走
+  # environment(与 cad/text-to-cad 一致),加入 prod-eai-flow-net 供 gateway 访问。
+  knowledge-factory:
+    image: deer-flow-gateway:${IMAGE_TAG:-latest}
+    container_name: prod-eai-flow-knowledge-factory
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    command: sh -c "cd backend && PYTHONPATH=. uv run --no-sync python -m app.extensions.knowledge_factory.mcp_server.http_server"
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8765
+      - KF_DATABASE_URL=postgresql+asyncpg://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+  # ── Temporal 工作流引擎 ────────────────────────────────────────────────────
+  # 不使用工作流模块可整段注释掉。首次部署若 postgres 数据卷非空，需手动补建
+  # temporal 角色（见 MANUAL-DEPLOY 步骤 14 / cutover.md 坑4）。
+  temporal:
+    image: temporalio/auto-setup:1.27.0
+    container_name: prod-eai-flow-temporal
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal_password
+      - POSTGRES_SEEDS=postgres-ext
+    networks:
+      - prod-eai-flow-net
+    ports:
+      - "${TEMPORAL_PORT:-17233}:7233"
+    restart: unless-stopped
+
+  # ── 合同价格 OCR (rapid-layout + rapid-table + rapidocr) ──────────────────
+  # 模型已烘焙进镜像，完全离线可用，无需运行时下载。
+  ocr:
+    image: eai-flow-ocr:latest
+    container_name: prod-eai-flow-ocr
+    environment:
+      - OCR_HOST=0.0.0.0
+      - OCR_PORT=8010
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+    
+  # ── CAD Comprehension MCP (ezdxf) ─────────────────────────────────────────
+  # 服务名必须保持 cad/text-to-cad/ocr —— 与 extensions_config.json 的 MCP url
+  # (http://cad:8003/mcp, http://text-to-cad:8004/mcp) 和 gateway 环境变量
+  # OCR_SERVICE_URL=http://ocr:8010 对齐（Docker DNS 按服务名解析）。
+  # cad / text-to-cad / cad-viewer 共享 ./data（容器内 /data）。
+  cad:
+    image: eai-flow-cad:latest
+    container_name: prod-eai-flow-cad
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8003
+      - CAD_DATA_ROOT=/data
+    volumes:
+      - ./data:/data:rw
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+  # ── text-to-cad MCP (build123d + OCP) ─────────────────────────────────────
+  text-to-cad:
+    image: eai-flow-text-to-cad:latest
+    container_name: prod-eai-flow-text-to-cad
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8004
+      - CAD_DATA_ROOT=/data
+    volumes:
+      - ./data:/data:rw
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+  # ── CAD Viewer (Node, pre-built three.js UI) ──────────────────────────────
+  # 用户浏览器直接访问 :4178 查看 STEP/GLB/STL。专用生产服务器用默认 4178；
+  # 与开发环境 (eai-docker) 同机共存则改为 14178 避免冲突。
+  cad-viewer:
+    image: eai-flow-cad-viewer:latest
+    container_name: prod-eai-flow-cad-viewer
+    volumes:
+      - ./data:/data:rw
+    ports:
+      - "${CAD_VIEWER_PORT:-4178}:4178"
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
+  # ── Browserless（无头 Chrome，供 web_fetch/web_capture 渲染 JS 网页）──────
+  # EAI-CUSTOM: 可选服务，默认注释。理由：(1) 离线部署中 web_fetch/web_capture
+  # 主要用于抓内网页面（外网页面无外网抓不到）；(2) offline-export 是 local-only，
+  # 若把 browserless/chrome:1 加进 PUBLIC_IMAGES 而开发机没 pull，导出会硬失败。
+  # 需要时启用步骤：
+  #   1. 取消下面整段注释；
+  #   2. 开发机执行 docker pull browserless/chrome:1（必须是 v1 API；:latest 是 v2，API 不兼容）；
+  #   3. 把 "browserless/chrome:1" 加入 scripts/offline-export.sh 的 PUBLIC_IMAGES；
+  #   4. config.yaml 的 web_fetch/web_capture base_url 已是 http://browserless:3000。
+  # browserless:
+  #   image: browserless/chrome:1
+  #   container_name: prod-eai-flow-browserless
+  #   environment:
+  #     - MAX_CONCURRENT_SESSIONS=10
+  #     - TOKEN=${BROWSERLESS_TOKEN:-}
+  #   networks:
+  #     - prod-eai-flow-net
+  #   restart: unless-stopped
 
 volumes:
   prod-postgres-ext-data:

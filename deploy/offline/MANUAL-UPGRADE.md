@@ -23,9 +23,7 @@ cd /opt/eai-flow-offline                                          # 你的部署
 export COMPOSE="docker compose -p eai-prod \
   -f docker/docker-compose.yaml \
   -f docker/docker-compose.extensions.yaml \
-  -f docker/docker-compose.temporal.yaml \
-  -f docker/docker-compose.ragflow.yaml \
-  -f docker/docker-compose.mcp-cad.yaml"
+  -f docker/docker-compose.ragflow.yaml"
 ```
 
 > 之后本手册服务器侧命令都写成 `$COMPOSE restart gateway` 这样的短形式。

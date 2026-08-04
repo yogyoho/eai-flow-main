@@ -24,12 +24,12 @@ cd /opt/eai-flow-offline
 export COMPOSE="docker compose -p eai-prod \
   -f docker/docker-compose.yaml \
   -f docker/docker-compose.extensions.yaml \
-  -f docker/docker-compose.temporal.yaml \
-  -f docker/docker-compose.ragflow.yaml \
-  -f docker/docker-compose.mcp-cad.yaml"
+  -f docker/docker-compose.ragflow.yaml"
 ```
 
 > 之后服务器侧命令都写成 `$COMPOSE ps` 这样的短形式。
+>
+> **关于 compose 文件**：生产部署只有 3 个 —— 核心 `docker-compose.yaml`（nginx/frontend/gateway）、`docker-compose.extensions.yaml`（postgres-ext/collab/temporal/cad/text-to-cad/ocr/cad-viewer 等次级服务合集）、`docker-compose.ragflow.yaml`（知识库栈，独立）。**browserless**（无头 Chrome，供 web_fetch/web_capture 渲染 JS 页）在 extensions.yaml 里默认注释 —— 离线部署通常用不到（web 工具需外网），需要时按文件内注释启用（开发机 `docker pull browserless/chrome:1` + 取消注释 + 加入导出镜像清单）。
 
 ---
 

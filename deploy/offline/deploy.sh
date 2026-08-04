@@ -17,13 +17,11 @@ cd "$SCRIPT_DIR"
 PROJECT_NAME="eai-prod"
 NETWORK_NAME="${PROJECT_NAME}_eai-flow-net"
 
-# Compose 文件列表（核心 + 扩展 + Temporal + RAGFlow + MCP/CAD 四服务）
+# Compose 文件列表（核心 + 扩展服务合集 + RAGFlow；temporal/mcp-cad 已并入 extensions）
 COMPOSE_FILES=(
   -f docker-compose.yaml
   -f docker-compose.extensions.yaml
-  -f docker-compose.temporal.yaml
   -f docker-compose.ragflow.yaml
-  -f docker-compose.mcp-cad.yaml
 )
 
 RED='\033[0;31m'
