@@ -5,7 +5,7 @@ import {
   Search, Plus, Shield, Lock, Pencil, Trash2, Users, X,
   ChevronDown, Brain, Database, Puzzle, Wrench,
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
-  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical,
+  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -18,7 +18,7 @@ import {
 import { permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
-import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
+import { toDenyInfo, toEngineConditions, toEngineGrants, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
   RegistryModule, PermissionItem,
@@ -912,6 +912,16 @@ function DataScopePanel({
 }
 
 /* ── Policies Panel ────────────────────────────────────────── */
+// EAI-CUSTOM (T14): 策略编辑态 shape —— 在原 allow 字段外承载 deny 集合。
+// deny 权限支持精确（kb:delete）与模块通配（kb:*）；deny 数据范围 id 必须在 registry 已声明。
+type PolicyEditState = {
+  name: string;
+  conditions: PolicyCondition[];
+  grants: PolicyGrant[];
+  denyPermissions: string[];
+  denyDataScopes: string[];
+};
+
 function PoliciesPanel({
   policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules,
 }: {
@@ -924,24 +934,37 @@ function PoliciesPanel({
   modules: RegistryModule[];
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] }>({
-    name: "", conditions: [], grants: [],
+  const [editForm, setEditForm] = useState<PolicyEditState>({
+    name: "", conditions: [], grants: [], denyPermissions: [], denyDataScopes: [],
   });
 
   const startEdit = useCallback((policy?: PolicyItem) => {
     if (policy) {
       setEditingId(policy.id);
-      // EAI-CUSTOM: 后端返回 conditions/grants 为引擎 dict，编辑前转回 UI 数组（toUIConditions/toGrantArray 对数组幂等）
-      setEditForm({ name: policy.name, conditions: toUIConditions(policy.conditions), grants: toGrantArray(policy.grants) });
+      // EAI-CUSTOM: 后端返回 conditions/grants 为引擎 dict，编辑前转回 UI 数组（toUIConditions/toGrantArray 对数组幂等）；
+      // T14: deny 集合在 loadPolicies 已用 toDenyInfo 抽到 policy.denyPermissions/denyDataScopes，直接透传
+      setEditForm({
+        name: policy.name,
+        conditions: toUIConditions(policy.conditions),
+        grants: toGrantArray(policy.grants),
+        denyPermissions: [...(policy.denyPermissions ?? [])],
+        denyDataScopes: [...(policy.denyDataScopes ?? [])],
+      });
     } else {
       setEditingId("__new__");
-      setEditForm({ name: "", conditions: [{ attribute: "", operator: "=", value: "" }], grants: [{ permission: "" }] });
+      setEditForm({
+        name: "",
+        conditions: [{ attribute: "", operator: "=", value: "" }],
+        grants: [{ permission: "" }],
+        denyPermissions: [],
+        denyDataScopes: [],
+      });
     }
   }, []);
 
   const cancelEdit = useCallback(() => {
     setEditingId(null);
-    setEditForm({ name: "", conditions: [], grants: [] });
+    setEditForm({ name: "", conditions: [], grants: [], denyPermissions: [], denyDataScopes: [] });
   }, []);
 
   const handleSave = useCallback(() => {
@@ -951,6 +974,8 @@ function PoliciesPanel({
       enabled: true,
       conditions: editForm.conditions,
       grants: editForm.grants,
+      denyPermissions: editForm.denyPermissions,
+      denyDataScopes: editForm.denyDataScopes,
     });
     cancelEdit();
   }, [editingId, editForm, onSave, cancelEdit]);
@@ -998,6 +1023,7 @@ function PoliciesPanel({
               onSave={handleSave}
               onCancel={cancelEdit}
               allPermissions={allPermissions}
+              modules={modules}
             />
           ) : (
             <PolicyRow
@@ -1020,6 +1046,7 @@ function PoliciesPanel({
             onSave={handleSave}
             onCancel={cancelEdit}
             allPermissions={allPermissions}
+            modules={modules}
           />
         </div>
       )}
@@ -1067,7 +1094,7 @@ function PolicyRow({
         </div>
       </div>
       {/* Conditions summary */}
-      {policy.conditions.length > 0 && (
+      {policy.conditions.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {policy.conditions.map((c, i) => (
             <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
@@ -1075,18 +1102,55 @@ function PolicyRow({
             </span>
           ))}
         </div>
+      ) : (
+        // EAI-CUSTOM (T14): 空条件 = 引擎无条件=作用于所有非超管用户，显式提示避免误读为"未配置"
+        <div className="mt-2">
+          <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground border border-dashed border-border">
+            （全局·所有非超管用户）
+          </span>
+        </div>
       )}
-      {/* Grants summary */}
+      {/* Grants summary (allow) */}
       {grantList.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {grantList.map((g, i) => {
             const permLabel = allPermissions.find((p) => p.id === g.permission)?.display_name || g.permission;
             return (
+              // EAI-CUSTOM (T14): 删除 grant.data_scope 显示 —— 引擎不消费 grants.data_scope，
+              // 数据级 deny 走 deny_data_scopes；保留旧数据兼容但不再展示误导性后缀
               <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-primary/[0.06] text-primary border border-primary/10 font-medium">
-                {permLabel}{g.data_scope ? ` (${g.data_scope})` : ""}
+                {permLabel}
               </span>
             );
           })}
+        </div>
+      )}
+      {/* Deny summary (T14) — warning 色，与 allow 视觉区分 */}
+      {(policy.denyPermissions?.length ?? 0) > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-warning font-medium inline-flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />拒绝权限:
+          </span>
+          {policy.denyPermissions!.map((perm, i) => {
+            const permLabel = allPermissions.find((p) => p.id === perm)?.display_name || perm;
+            return (
+              <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/30 font-medium">
+                {permLabel}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      {(policy.denyDataScopes?.length ?? 0) > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-warning font-medium inline-flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />拒绝范围:
+          </span>
+          {policy.denyDataScopes!.map((scope, i) => (
+            <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/30 font-mono">
+              {scope}
+            </span>
+          ))}
         </div>
       )}
     </div>
@@ -1095,13 +1159,14 @@ function PolicyRow({
 
 /* ── Policy Edit Form ──────────────────────────────────────── */
 function PolicyEditForm({
-  form, onChange, onSave, onCancel, allPermissions,
+  form, onChange, onSave, onCancel, allPermissions, modules,
 }: {
-  form: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] };
-  onChange: (f: { name: string; conditions: PolicyCondition[]; grants: PolicyGrant[] }) => void;
+  form: PolicyEditState;
+  onChange: (f: PolicyEditState) => void;
   onSave: () => void;
   onCancel: () => void;
   allPermissions: PermissionItem[];
+  modules: RegistryModule[];
 }) {
   const addCondition = () => onChange({ ...form, conditions: [...form.conditions, { attribute: "", operator: "=", value: "" }] });
   const removeCondition = (i: number) => onChange({ ...form, conditions: form.conditions.filter((_, idx) => idx !== i) });
@@ -1119,8 +1184,34 @@ function PolicyEditForm({
     onChange({ ...form, grants: grs });
   };
 
+  // EAI-CUSTOM (T14): deny 权限 tag 输入框的临时文本态。deny 权限支持精确（kb:delete）
+  // 与模块通配（kb:*），故不能用 allow 那种 Select 下拉——需要自由文本。
+  const [denyPermInput, setDenyPermInput] = useState("");
+  const addDenyPermission = () => {
+    const v = denyPermInput.trim();
+    if (v && !form.denyPermissions.includes(v)) {
+      onChange({ ...form, denyPermissions: [...form.denyPermissions, v] });
+    }
+    setDenyPermInput("");
+  };
+  const removeDenyPermission = (perm: string) =>
+    onChange({ ...form, denyPermissions: form.denyPermissions.filter((p) => p !== perm) });
+
+  const toggleDenyDataScope = (scopeId: string) => {
+    const has = form.denyDataScopes.includes(scopeId);
+    onChange({
+      ...form,
+      denyDataScopes: has
+        ? form.denyDataScopes.filter((s) => s !== scopeId)
+        : [...form.denyDataScopes, scopeId],
+    });
+  };
+
   const ATTR_OPTIONS = ["tags", "role_level", "dept_id", "user_id"];  // 移除 email_domain（AttributeSet 无此属性）
   const OP_OPTIONS = ["=", "!=", "contains", ">=", "<=", "in", "not_in"];
+
+  // T14: 仅有 data_scopes 声明的 module 才出现到 deny 数据范围多选里
+  const scopeModules = modules.filter((m) => m.data_scopes && m.data_scopes.length > 0);
 
   return (
     <div className="space-y-4">
@@ -1197,6 +1288,128 @@ function PolicyEditForm({
               </button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Deny (T14) — warning 色，与 allow 视觉区分；无二次确认（设计决策：警告色 + 审计日志即可） */}
+      <div className="rounded-lg border border-warning/40 bg-warning/[0.04] p-3 space-y-3">
+        <div className="flex items-center gap-1.5 text-warning">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          <span className="text-xs font-semibold">拒绝 (Deny)</span>
+          <span className="text-[10px] text-warning/70 font-normal">命中即拒绝，优先于 allow</span>
+        </div>
+
+        {/* 拒绝权限 — 精确 (kb:delete) 或模块通配 (kb:*) */}
+        <div>
+          <label className="block text-[11px] font-medium text-foreground/80 mb-1">拒绝权限</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={denyPermInput}
+              onChange={(e) => setDenyPermInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDenyPermission(); } }}
+              placeholder="例如 kb:delete 或 kb:*"
+              className="flex-1 h-8 px-2 bg-background border border-warning/30 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-warning/40"
+            />
+            <button
+              type="button"
+              onClick={addDenyPermission}
+              className="h-8 px-2.5 text-xs font-medium text-warning bg-warning/10 border border-warning/30 rounded hover:bg-warning/20 transition-colors"
+            >
+              + 添加
+            </button>
+          </div>
+          {form.denyPermissions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {form.denyPermissions.map((perm) => {
+                const permLabel = allPermissions.find((p) => p.id === perm)?.display_name || perm;
+                return (
+                  <span
+                    key={perm}
+                    className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning border border-warning/30 font-medium"
+                  >
+                    {permLabel}
+                    <button
+                      type="button"
+                      onClick={() => removeDenyPermission(perm)}
+                      className="hover:text-warning/70 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {/* 快捷选择 —— 从 registry 已声明的权限中点选追加，便于发现可用 id */}
+          {allPermissions.length > 0 && (
+            <div className="mt-1.5">
+              <Select
+                value="__none__"
+                onValueChange={(v) => {
+                  if (v !== "__none__" && !form.denyPermissions.includes(v)) {
+                    onChange({ ...form, denyPermissions: [...form.denyPermissions, v] });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full h-7 text-[11px] border-warning/20">
+                  <SelectValue placeholder="从已声明权限中选择追加…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__"><span className="text-muted-foreground">不追加</span></SelectItem>
+                  {allPermissions
+                    .filter((p) => !form.denyPermissions.includes(p.id))
+                    .map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        {/* 拒绝数据范围 —— 复用 registry 声明的 data_scopes，按 module 分组多选 */}
+        <div>
+          <label className="block text-[11px] font-medium text-foreground/80 mb-1">拒绝数据范围</label>
+          {scopeModules.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic">registry 暂无已声明的 data_scope</p>
+          ) : (
+            <div className="space-y-2">
+              {scopeModules.map((module) => (
+                <div key={module.key} className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground w-20 shrink-0 truncate" title={module.display_name}>
+                    {module.display_name}
+                  </span>
+                  {module.data_scopes.map((scope) => {
+                    const isSelected = form.denyDataScopes.includes(scope.id);
+                    return (
+                      <label
+                        key={scope.id}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] cursor-pointer transition-colors",
+                          isSelected
+                            ? "bg-warning/10 border-warning/40 text-warning font-medium"
+                            : "border-border text-muted-foreground hover:border-warning/30",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleDenyDataScope(scope.id)}
+                          className="sr-only"
+                        />
+                        <span className={cn(
+                          "w-3 h-3 border flex items-center justify-center shrink-0 rounded-[2px]",
+                          isSelected ? "bg-warning border-warning" : "border-muted-foreground/40",
+                        )}>
+                          {isSelected && <span className="text-white text-[8px] leading-none">✓</span>}
+                        </span>
+                        <span>{scope.display_name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1312,7 +1525,18 @@ export default function AdminRolesPage() {
     try {
       const res = await permissionsApi.listPolicies();
       // EAI-CUSTOM: 后端存储条件为引擎 dict {and:[...]}，加载时转回 UI 数组，保证 PolicyRow/startEdit 读数组可用
-      setPolicies((res.policies || []).map((p) => ({ ...p, conditions: toUIConditions(p.conditions), grants: toGrantArray(p.grants) })));
+      setPolicies((res.policies || []).map((p) => {
+        // EAI-CUSTOM (T14): allow 走 toGrantArray；deny 两键用 toDenyInfo 抽出挂到 PolicyItem，
+        // 供 PolicyRow 展示与 startEdit 透传到编辑态。引擎 dict 是单事实源，UI 不另存。
+        const deny = toDenyInfo(p.grants);
+        return {
+          ...p,
+          conditions: toUIConditions(p.conditions),
+          grants: toGrantArray(p.grants),
+          denyPermissions: deny.denyPermissions,
+          denyDataScopes: deny.denyDataScopes,
+        };
+      }));
     } catch (err) {
       console.error("Failed to load policies:", err);
       setPolicies([]);
@@ -1440,19 +1664,38 @@ export default function AdminRolesPage() {
 
   const handlePolicySave = async (policy: PolicyItem) => {
     try {
-      // EAI-CUSTOM: 保存时把 UI 条件/授权数组转成引擎 dict 形式（后端 Pydantic conditions/grants 均为 dict；引擎 {and:[{attr,op,value}]} / grants={permissions:[...]}）
+      // EAI-CUSTOM (T14): allow 走 toEngineConditions/toEngineGrants；deny 经 toEngineGrants 拼到 grants dict
+      // (deny_permissions/​deny_data_scopes)。后端 policy_routers._validate_grants (T9) 校验形状 + scope id 已声明。
       const payload = {
         name: policy.name,
         conditions: toEngineConditions(policy.conditions),
-        grants: { permissions: policy.grants.map((g) => g.permission).filter(Boolean) },
+        grants: toEngineGrants(
+          policy.grants.map((g) => g.permission).filter(Boolean),
+          policy.denyPermissions ?? [],
+          policy.denyDataScopes ?? [],
+        ),
       };
       if (policy.id) {
         await permissionsApi.updatePolicy(policy.id, payload);
-        setPolicies((prev) => prev.map((p) => p.id === policy.id ? { ...p, name: policy.name, conditions: policy.conditions, grants: policy.grants } : p));
+        setPolicies((prev) => prev.map((p) => p.id === policy.id ? {
+          ...p,
+          name: policy.name,
+          conditions: policy.conditions,
+          grants: policy.grants,
+          denyPermissions: policy.denyPermissions,
+          denyDataScopes: policy.denyDataScopes,
+        } : p));
       } else {
         const created = await permissionsApi.createPolicy({ ...payload, enabled: true });
-        // EAI-CUSTOM: 后端返回完整行（conditions/grants 为引擎 dict），转回 UI 数组再入列表
-        setPolicies((prev) => [...prev, { ...created, conditions: toUIConditions(created.conditions), grants: toGrantArray(created.grants) }]);
+        // EAI-CUSTOM: 后端返回完整行（conditions/grants 为引擎 dict），转回 UI 数组再入列表；T14: deny 同步抽出
+        const createdDeny = toDenyInfo(created.grants);
+        setPolicies((prev) => [...prev, {
+          ...created,
+          conditions: toUIConditions(created.conditions),
+          grants: toGrantArray(created.grants),
+          denyPermissions: createdDeny.denyPermissions,
+          denyDataScopes: createdDeny.denyDataScopes,
+        }]);
       }
     } catch (err) {
       console.error("Failed to save policy:", err);

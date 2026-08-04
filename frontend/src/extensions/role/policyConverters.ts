@@ -61,3 +61,35 @@ export function toGrantArray(g: unknown): PolicyGrant[] {
   }
   return [];
 }
+
+/**
+ * EAI-CUSTOM (T14): UI deny 集合 + allow 权限 → 引擎 grants dict。
+ * 引擎 grants={permissions:[...], deny_permissions:[...], deny_data_scopes:[...]}。
+ * deny_permissions 支持精确（kb:delete）和模块通配（kb:*）；
+ * deny_data_scopes 内的 id 必须在 registry 已声明（后端 policy_routers._validate_grants 校验，见 T9）。
+ * 始终下发三个键（即便为空数组），避免后端默认值歧义。
+ */
+export function toEngineGrants(
+  allowPerms: string[],
+  denyPerms: string[],
+  denyScopes: string[],
+): Record<string, unknown> {
+  return {
+    permissions: allowPerms,
+    deny_permissions: denyPerms,
+    deny_data_scopes: denyScopes,
+  };
+}
+
+/**
+ * EAI-CUSTOM (T14): 引擎 grants dict → UI deny 信息。
+ * 仅取 deny_permissions / deny_data_scopes；allow 部分用 toGrantArray。
+ * 不修改 toGrantArray 的签名（保持现有调用点不变，least disruption）。
+ */
+export function toDenyInfo(g: unknown): { denyPermissions: string[]; denyDataScopes: string[] } {
+  if (!g || typeof g !== "object") return { denyPermissions: [], denyDataScopes: [] };
+  const obj = g as { deny_permissions?: unknown; deny_data_scopes?: unknown };
+  const dp = Array.isArray(obj.deny_permissions) ? obj.deny_permissions.map((p) => String(p)) : [];
+  const ds = Array.isArray(obj.deny_data_scopes) ? obj.deny_data_scopes.map((s) => String(s)) : [];
+  return { denyPermissions: dp, denyDataScopes: ds };
+}

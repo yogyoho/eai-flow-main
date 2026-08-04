@@ -194,6 +194,11 @@ export interface PolicyItem {
   enabled: boolean;
   conditions: PolicyCondition[];
   grants: PolicyGrant[];
+  // EAI-CUSTOM (T14): UI-only deny fields. 后端把 deny 存在 grants dict 内
+  // (deny_permissions / deny_data_scopes)；加载时由 toDenyInfo 抽出挂到这里，
+  // 保存时由 toEngineGrants 拼回 grants dict。允许 undefined 以兼容旧调用点。
+  denyPermissions?: string[];
+  denyDataScopes?: string[];
   role_id?: string;
   created_at?: string;
   updated_at?: string;
