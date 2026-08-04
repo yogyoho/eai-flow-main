@@ -82,44 +82,43 @@ class FilterRule:
         Uses column_map for explicit field-to-column mapping; falls back to
         getattr(model, field) for auto-resolution.
         """
-        from sqlalchemy import and_, or_
+        from sqlalchemy import and_, not_, or_
 
         column_map = column_map or {}
 
+        # Composite operators — no field, recurse into children (must precede column resolution)
+        if self.operator == "and" and self.children:
+            return and_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
+        if self.operator == "or" and self.children:
+            return or_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
+        if self.operator == "not" and self.children:
+            return not_(self.children[0].to_sqlalchemy(model, column_map))
+
+        # Leaf operators
         if self.operator == "none_allow":
             return sqlalchemy_false()  # WHERE FALSE
-
         if self.operator == "allow_all":
             return sqlalchemy_true()  # WHERE TRUE
 
-        # Resolve column: column_map takes priority, fall back to model attribute
+        # Resolve column for field-based leaves
         col = None
         if column_map and self.field in column_map:
             col = column_map[self.field]
         elif self.field and hasattr(model, self.field):
             col = getattr(model, self.field)
-
         if col is None:
             return sqlalchemy_false()  # Unknown field — deny by default
 
         if self.operator == "eq":
             return col == self.value
-
         if self.operator == "in":
             if not self.value:
                 return sqlalchemy_false()
             return col.in_(self.value)
-
         if self.operator == "overlap":
             if not self.value:
                 return sqlalchemy_false()
             return col.overlap(self.value)  # PG && ; col must be an ARRAY column
-
-        if self.operator == "and" and self.children:
-            return and_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
-
-        if self.operator == "or" and self.children:
-            return or_(*[c.to_sqlalchemy(model, column_map) for c in self.children])
 
         return sqlalchemy_false()
 
