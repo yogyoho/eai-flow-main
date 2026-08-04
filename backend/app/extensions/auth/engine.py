@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -48,13 +49,11 @@ class FilterRule:
                     return cls(operator="none_allow")
                 return cls(operator="in", field=field, value=resolved if isinstance(resolved, list) else [resolved])
             if " OVERLAP" in key:
-                import uuid as _uuid
-
                 field = key[: key.rfind(" OVERLAP")].strip()
                 resolved = cls._resolve(raw_value, identity)
                 if not resolved:
                     return cls(operator="none_allow")  # identity has no such attr -> intersection empty -> deny
-                coerced = [_uuid.UUID(x) for x in resolved] if isinstance(resolved[0], str) else list(resolved)
+                coerced = [uuid.UUID(x) for x in resolved] if isinstance(resolved[0], str) else list(resolved)
                 return cls(operator="overlap", field=field, value=coerced)
             else:
                 resolved = cls._resolve(raw_value, identity)
@@ -112,10 +111,7 @@ class FilterRule:
             return col.in_(self.value)
 
         if self.operator == "overlap":
-            col = column_map.get(self.field) if column_map else None
-            if col is None and self.field and hasattr(model, self.field):
-                col = getattr(model, self.field)
-            if col is None or not self.value:
+            if not self.value:
                 return sqlalchemy_false()
             return col.overlap(self.value)  # PG && ; col must be an ARRAY column
 
