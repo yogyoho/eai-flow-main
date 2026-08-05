@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""逐字溯源校验 + 锚可达性 + 覆盖检查。
+"""逐字溯源校验 + 锚可达性 + 覆盖检查（两层：大纲+映射）。
 
 三件事：
-1. 锚可达：mapping 里每个 para/para_run/table 锚都能在 structure 里找到（否则契约漂移/源变了）。
-2. 逐字溯源：report 里每个被抄录块（排除标题行/表格行/[需计算]/[⚠] 标记）必须是源语料的子串
-   （空格/换行归一化后比对，容忍表格单元格空白差异）。
-3. 覆盖：每个 fire 小节必须有源或显式标 template/compute，杜绝静默漏抄。
+1. 锚可达：mapping 里每个 verbatim 节的 para/range/table 锚都能在 structure 里找到。
+2. 逐字溯源：report 里每个被抄录块必须是源语料的子串（空格/换行归一化后比对）。
+3. 完整性：大纲里每个 verbatim 节必须有非空 sources——杜绝静默漏抄（空章节）。
 """
 import json
 import re
@@ -31,8 +30,6 @@ def _is_decorative(block):
         return True
     if b.startswith("##") or b.startswith("# "):
         return True
-    # NOTE: markdown table blocks (|...|) are NOT decorative — their cell text
-    # must be grounded too, otherwise a swapped table value slips through.
     if b.startswith("[需") or b.startswith("[⚠"):
         return True
     if b.startswith("<!--"):
@@ -43,23 +40,14 @@ def _is_decorative(block):
 
 
 def _search_text(block):
-    """Return text used for substring grounding.
-
-    - Strip citation comments (``<!-- 源:... -->``) appended by extract.py —
-      they are metadata, not source content, so they must not be matched.
-    - For a markdown table block, also strip the pipe/separator-row formatting
-      so the concatenated cell values can be matched against the corpus.
-    """
     b = block.strip()
     if b.startswith("|"):
         cells = []
         for line in b.splitlines():
             line = line.strip()
-            # only true markdown-table rows; skips trailing <!-- 源 --> comments
             if not line or not line.startswith("|"):
                 continue
             row_cells = [c.strip() for c in line.strip("|").split("|")]
-            # separator row like |---|---| -> every cell is dashes/empty
             if row_cells and all(c == "" or set(c) <= set("-") for c in row_cells):
                 continue
             cells.extend(row_cells)
@@ -69,21 +57,25 @@ def _search_text(block):
     return "\n".join(lines)
 
 
-def check(report_md, structure, mapping):
+def check(report_md, structure, outline, mapping):
     paras, tables = structure["paras"], structure["tables"]
-    # 1. anchor resolvability (index-based or table-based)
     missing = []
     n_paras = len(paras)
-    for sec in mapping["sections"]:
-        for src in sec.get("sources", []) or []:
+    sections = outline.get("sections", [])
+    sources_by_idx = mapping.get("sources", [])
+
+    # 1. 锚可达（仅 verbatim 节）
+    for idx, sec in enumerate(sections):
+        if sec.get("class") != "verbatim":
+            continue
+        sources = sources_by_idx[idx] if idx < len(sources_by_idx) else []
+        sources = sources or []
+        for src in sources:
             ok = False
             kind = src.get("kind", "")
-            # backward-compat: "para_run" is the pre-migration name for "range"
             if kind in ("para", "range", "para_run"):
                 idxs = src.get("paras", [])
-                # require non-negative integer indices within bounds
                 ok = (idxs and all(isinstance(i, int) and 0 <= i < n_paras for i in idxs))
-                # also verify the paragraph at each index has non-empty text
                 if ok:
                     ok = all(paras[i].get("text", "").strip() for i in idxs)
             elif kind == "table":
@@ -91,7 +83,8 @@ def check(report_md, structure, mapping):
             if not ok:
                 label = src.get("no") or str(src.get("paras", src))
                 missing.append((sec["fire"], label))
-    # 2. grounding
+
+    # 2. 逐字溯源
     corp = _norm(corpus(structure))
     blocks = [b.strip() for b in re.split(r"\n\s*\n", report_md)]
     checked = grounded = 0
@@ -106,12 +99,15 @@ def check(report_md, structure, mapping):
         else:
             failed.append(b[:48])
     rate = grounded / checked if checked else 0.0
-    # 3. coverage
-    uncovered = [sec["fire"] for sec in mapping["sections"]
-                 if sec.get("class") == "verbatim" and not sec.get("sources")]
-    # 4. conflict assertions (e.g. §5.1 must contain DN200, must not contain DN150)
+
+    # 3. 完整性：大纲每个 verbatim 节必须有非空 sources
+    uncovered = [sec["fire"] for idx, sec in enumerate(sections)
+                 if sec.get("class") == "verbatim"
+                 and not (sources_by_idx[idx] if idx < len(sources_by_idx) else [])]
+
+    # 4. 冲突断言（如 §5.1 必须含 DN200、不得含 DN150）
     conflict_failures = []
-    for sec in mapping["sections"]:
+    for sec in sections:
         for ca in sec.get("conflict_assertions", []) or []:
             mc = ca.get("must_contain")
             mnc = ca.get("must_not_contain")
@@ -119,6 +115,7 @@ def check(report_md, structure, mapping):
                 conflict_failures.append((sec["fire"], "missing", mc))
             if mnc and mnc in report_md:
                 conflict_failures.append((sec["fire"], "unexpected", mnc))
+
     return {
         "grounded": grounded, "checked": checked, "rate": rate,
         "missing_anchors": missing, "uncovered_sections": uncovered,
@@ -128,22 +125,17 @@ def check(report_md, structure, mapping):
 
 
 def main(argv):
-    if len(argv) != 3:
-        print("usage: grounding_check.py <report.md> <structure.json> <mapping.json|.yaml>", file=sys.stderr)
+    if len(argv) != 4:
+        print("usage: grounding_check.py <report.md> <structure.json> <outline.json> <mapping.json>", file=sys.stderr)
         return 2
     report = Path(argv[0]).read_text(encoding="utf-8")
     structure = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
-    # try JSON (stdlib) first, fall back to YAML (needs PyYAML)
-    mp = Path(argv[2])
-    mp_text = mp.read_text(encoding="utf-8")
-    if mp.suffix == ".json":
-        mapping = json.loads(mp_text)
-    else:
-        import yaml
-        mapping = yaml.safe_load(mp_text)
-    res = check(report, structure, mapping)
+    outline = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
+    mapping = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
+    res = check(report, structure, outline, mapping)
     print(json.dumps(res, ensure_ascii=False, indent=2))
-    return 0 if (res["rate"] >= 0.85 and not res["missing_anchors"] and not res["conflict_failures"]) else 1
+    return 0 if (res["rate"] >= 0.85 and not res["missing_anchors"]
+                 and not res["uncovered_sections"] and not res["conflict_failures"]) else 1
 
 
 if __name__ == "__main__":

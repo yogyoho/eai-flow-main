@@ -200,3 +200,27 @@ def test_two_layer_para_run_alias():
     mapping = {"sources": [None, [{"kind": "para_run", "paras": [0, 1]}], None, None]}
     out, _ = extract.extract(struct, outline, mapping)
     assert "起" in out and "承" in out and "合" not in out
+
+
+import grounding_check
+
+
+def test_grounding_two_layer_and_completeness():
+    struct = _mini_struct()
+    outline = _mini_outline()
+    mapping = {"sources": [None, [{"kind": "range", "paras": [0, 1]}], None, None]}
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    assert res["rate"] >= 0.5
+    assert res["missing_anchors"] == []
+    # 完整性：verbatim 节必须有 source
+    assert res["uncovered_sections"] == []
+
+
+def test_grounding_completeness_flags_missing_verbatim_source():
+    struct = _mini_struct()
+    outline = _mini_outline()
+    mapping = {"sources": [None, None, None, None]}  # 1.1 verbatim 无 source
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    assert any("1.1 设计依据" in s for s in res["uncovered_sections"])
