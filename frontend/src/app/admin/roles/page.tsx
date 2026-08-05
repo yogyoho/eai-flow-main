@@ -980,7 +980,12 @@ function PoliciesPanel({
     cancelEdit();
   }, [editingId, editForm, onSave, cancelEdit]);
 
-  const allPermissions = modules.flatMap((m) => m.permissions);
+  // Dedupe by id: the same permission point (e.g. export:generate) can be declared
+  // under multiple modules; the dropdown keys SelectItems by p.id, so duplicates
+  // would trigger React "two children with the same key".
+  const allPermissions = modules
+    .flatMap((m) => m.permissions)
+    .filter((p, i, arr) => p && arr.findIndex((q) => q.id === p.id) === i);
 
   if (policiesLoading) {
     return (
