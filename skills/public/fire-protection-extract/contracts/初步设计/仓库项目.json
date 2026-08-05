@@ -1,11 +1,35 @@
 {
   "sources": [
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          656,
+          661
+        ]
+      }
+    ],
     null,
     null,
-    null,
-    null,
-    null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          671,
+          672
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          673,
+          674
+        ]
+      }
+    ],
     [
       {
         "kind": "para",
@@ -15,9 +39,33 @@
       }
     ],
     null,
-    null,
-    null,
-    null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          678,
+          679
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          680,
+          681
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          682,
+          684
+        ]
+      }
+    ],
     [
       {
         "kind": "para",
@@ -32,21 +80,117 @@
     ],
     null,
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          689,
+          693
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          694,
+          697
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          698,
+          699
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          700,
+          703
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          704,
+          708
+        ]
+      }
+    ],
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          710,
+          712
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          713,
+          716
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          717,
+          718
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          719,
+          720
+        ]
+      }
+    ],
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          722,
+          723
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          724,
+          727
+        ]
+      }
+    ],
     null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          732,
+          733
+        ]
+      }
+    ],
     [
       {
         "kind": "para",
@@ -64,10 +208,18 @@
       }
     ],
     null,
-    null
+    [
+      {
+        "kind": "range",
+        "paras": [
+          728,
+          729
+        ]
+      }
+    ]
   ],
   "_stage": "初步设计",
-  "_saved_at": "2026-08-05T20:31:56.902582",
+  "_saved_at": "2026-08-05T22:03:15.593568",
   "_fingerprint": {
     "heading_texts": [
       "总 目 录",

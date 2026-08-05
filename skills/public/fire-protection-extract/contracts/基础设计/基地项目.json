@@ -102,19 +102,111 @@
       }
     ],
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          514,
+          516
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          517,
+          530
+        ]
+      }
+    ],
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          300,
+          304
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          305,
+          315
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          318,
+          330
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          402,
+          459
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          460,
+          476
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          477,
+          512
+        ]
+      }
+    ],
     null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          641,
+          645
+        ]
+      },
+      {
+        "kind": "table",
+        "no": "表7.1-1"
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          646,
+          650
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          653,
+          679
+        ]
+      }
+    ],
     [
       {
         "kind": "para",
@@ -179,15 +271,79 @@
       }
     ],
     null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          569,
+          570
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          571,
+          577
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          578,
+          581
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          582,
+          584
+        ]
+      }
+    ],
     null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
+    [
+      {
+        "kind": "range",
+        "paras": [
+          587,
+          588
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          589,
+          590
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          591,
+          592
+        ]
+      }
+    ],
+    [
+      {
+        "kind": "range",
+        "paras": [
+          593,
+          595
+        ]
+      }
+    ],
     [
       {
         "kind": "para",
@@ -208,7 +364,7 @@
     ]
   ],
   "_stage": "基础设计",
-  "_saved_at": "2026-08-05T20:31:56.604765",
+  "_saved_at": "2026-08-05T22:03:15.528924",
   "_fingerprint": {
     "heading_texts": [
       "项目名",
