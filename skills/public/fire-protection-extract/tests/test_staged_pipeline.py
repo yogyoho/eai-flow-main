@@ -106,3 +106,18 @@ def test_detect_both_markers_treats_ambiguous_as_default():
     # 封面同页含两词时，优先精确段落命中；命中歧义 → 默认
     struct = {"paras": [{"i": 0, "text": "初步设计及基础设计说明"}]}
     assert detect_stage.detect_from_struct(struct) == detect_stage.DEFAULT_STAGE
+
+
+def test_detect_from_headings_fallback():
+    # 标题兜底：paras 无标记，标记只在 headings 里
+    struct = {"paras": [{"i": 0, "text": "项目名"}, {"i": 1, "text": "第一册 说明书"}], "headings": [{"level": 1, "text": "初步设计", "para_i": 1}]}
+    assert detect_stage.detect_from_struct(struct) == "初步设计"
+
+
+def test_detect_para_precedes_heading():
+    # para 优先于 heading：paras 说基础设计、headings 说初步设计 → 取 paras
+    struct = {
+        "paras": [{"i": 0, "text": "项目名"}, {"i": 1, "text": "基础设计"}, {"i": 2, "text": "第一册 说明书"}],
+        "headings": [{"level": 1, "text": "初步设计", "para_i": 2}],
+    }
+    assert detect_stage.detect_from_struct(struct) == "基础设计"
