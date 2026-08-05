@@ -117,6 +117,7 @@ python "${SKILL_DIR}/scripts/gen_passport.py" "$PASSPORT" "$PROJECT" "$REPORT" "
   echo "⚠ passport 生成失败" >&2
 
 # 覆盖 report_status 为 run.sh 门限结果（rate≥0.85 且 MISS==0）
-python -c "import json,sys; p=json.load(open('$PASSPORT',encoding='utf-8')); p['report_status']='$REPORT_STATUS'; json.dump(p,open('$PASSPORT','w',encoding='utf-8'),ensure_ascii=False,indent=2)" 2>/dev/null || true
+# 注：路径必须作为 argv 传入（MSYS/GitBash 会把 /d/.. 转成 D:/..），内嵌进 -c 字符串会打不开
+python -c "import json,sys; p=json.load(open(sys.argv[1],encoding='utf-8')); p['report_status']=sys.argv[2]; json.dump(p,open(sys.argv[1],'w',encoding='utf-8'),ensure_ascii=False,indent=2)" "$PASSPORT" "$REPORT_STATUS" 2>/dev/null || true
 
 echo "REPORT_${REPORT_STATUS}: ${REPORT}"
