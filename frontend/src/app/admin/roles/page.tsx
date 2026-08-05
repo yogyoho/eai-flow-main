@@ -33,6 +33,9 @@ const ATTR_LABELS: Record<string, string> = {
   role_level: "角色级别", dept_id: "部门ID", dept_ids: "部门ID（多值）", member_projects: "参与项目",
   user_id: "用户ID",
 };
+
+// EAI-CUSTOM (标签池): 常用标签池 —— 派生 role:/dept: 标签 + 可编辑的业务标签（按需增删）
+const COMMON_TAGS = ["vip", "外包", "试用"];
 const OP_LABELS: Record<string, string> = {
   "=": "等于", "!=": "不等于", ">=": "大于等于", "<=": "小于等于",
   contains: "包含", in: "属于", not_in: "不属于",
@@ -1354,6 +1357,14 @@ function PolicyEditForm({
       case "dept_id": return depts.map((d) => ({ value: d.id, label: d.name }));
       case "dept_ids": return depts.map((d) => ({ value: d.id, label: d.name }));               // EAI-CUSTOM (P0): 多值部门
       case "member_projects": return projects.map((p) => ({ value: p.id, label: p.name }));     // EAI-CUSTOM (P0): 多值项目成员
+      case "tags": {
+        // EAI-CUSTOM (标签池): 派生 role:/dept: 标签（与后端 DefaultTagResolver 对齐）+ COMMON_TAGS 业务标签
+        return [
+          ...(roles || []).map((r) => ({ value: `role:${r.code}`, label: `角色:${r.name || r.code}` })),
+          ...depts.map((d) => ({ value: `dept:${d.name}`, label: `部门:${d.name}` })),
+          ...COMMON_TAGS.map((t) => ({ value: t, label: t })),
+        ];
+      }
       default: return [];
     }
   };

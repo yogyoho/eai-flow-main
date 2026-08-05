@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.models import ProjectMember, Role, User, UserDepartment
+from app.extensions.models import Department, ProjectMember, Role, User, UserDepartment
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,34 @@ class TagResolver(Protocol):
     async def resolve(self, user_id: str, db: AsyncSession) -> dict:
         """Return {tags: [...], labels: {...}, extra: {...}}."""
         ...
+
+
+class DefaultTagResolver:
+    """从用户角色/部门派生默认标签（role:<code> / dept:<name>）——不改 schema，给 identity.tags 真实值。
+
+    EAI-CUSTOM (标签池): 若无其它显式标签源，用户至少拥有角色与部门的自动标签，
+    供策略 conditions 的 tags 属性使用（如 tags contains role:dept_head）。
+    """
+
+    name = "default-tags"
+
+    async def resolve(self, user_id: str, db: AsyncSession) -> dict:
+        tags: list[str] = []
+        stmt = select(User).where(User.id == user_id)
+        user = (await db.execute(stmt)).scalar_one_or_none()
+        if user is None:
+            return {"tags": [], "labels": {}, "extra": {}}
+        if user.role_id:
+            role = await db.get(Role, user.role_id)
+            if role and role.code:
+                tags.append(f"role:{role.code}")
+        stmt = select(UserDepartment).where(UserDepartment.user_id == user.id)
+        uds = (await db.execute(stmt)).scalars().all()
+        for ud in uds:
+            dept = await db.get(Department, ud.dept_id)
+            if dept and dept.name:
+                tags.append(f"dept:{dept.name}")
+        return {"tags": tags, "labels": {}, "extra": {}}
 
 
 class IdentityProvider:
@@ -140,4 +168,6 @@ def get_identity_provider() -> IdentityProvider:
     global _identity_provider
     if _identity_provider is None:
         _identity_provider = IdentityProvider()
+        # EAI-CUSTOM (标签池): 注册默认派生标签 resolver（role:* / dept:*），生产默认启用
+        _identity_provider.register_tag_resolver(DefaultTagResolver())
     return _identity_provider
