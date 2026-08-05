@@ -934,7 +934,7 @@ type PolicyEditState = {
 };
 
 function PoliciesPanel({
-  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules, roles,
+  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules, roles, roleNav, rolePages, onToggleNav, onTogglePage,
 }: {
   policies: PolicyItem[];
   policiesLoading: boolean;
@@ -944,6 +944,10 @@ function PoliciesPanel({
   onSave: (policy: PolicyItem) => void;
   modules: RegistryModule[];
   roles: Role[];
+  roleNav: Set<string>;
+  rolePages: Set<string>;
+  onToggleNav: (navId: string, enabled: boolean) => void;
+  onTogglePage: (pageId: string, enabled: boolean) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PolicyEditState>({
@@ -1042,6 +1046,10 @@ function PoliciesPanel({
               allPermissions={allPermissions}
               modules={modules}
               roles={roles}
+              roleNav={roleNav}
+              rolePages={rolePages}
+              onToggleNav={onToggleNav}
+              onTogglePage={onTogglePage}
             />
           ) : (
             <PolicyRow
@@ -1066,6 +1074,10 @@ function PoliciesPanel({
             allPermissions={allPermissions}
             modules={modules}
             roles={roles}
+            roleNav={roleNav}
+            rolePages={rolePages}
+            onToggleNav={onToggleNav}
+            onTogglePage={onTogglePage}
           />
         </div>
       )}
@@ -1179,13 +1191,17 @@ function PolicyRow({
 /* ── Policy Edit Form ──────────────────────────────────────── */
 /** EAI-CUSTOM: 授权权限选择对话框 —— 按 页面(模块) → 子页 → 操作 三级浏览单选（替代扁平下拉） */
 function GrantPermissionDialog({
-  open, onOpenChange, modules, selected, onSelect,
+  open, onOpenChange, modules, selected, onSelect, roleNav, rolePages, onToggleNav, onTogglePage,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   modules: RegistryModule[];
   selected?: string;
   onSelect: (permissionId: string) => void;
+  roleNav: Set<string>;
+  rolePages: Set<string>;
+  onToggleNav: (navId: string, enabled: boolean) => void;
+  onTogglePage: (pageId: string, enabled: boolean) => void;
 }) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -1194,49 +1210,76 @@ function GrantPermissionDialog({
   const toggleExpand = (key: string) => setExpanded((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   const match = (op: OperationItem) => !search || op.display_name.includes(search) || op.id.includes(search);
   const isExpanded = (key: string) => expanded.has(key) || !!search; // 搜索时自动展开
+  // 可见/不可见 pill —— 页面(模块)与子页共用，点击回写角色 nav/pages
+  const visPill = (visible: boolean, onToggle: () => void) => (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      className={cn(
+        "ml-auto shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors",
+        visible ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20" : "bg-muted text-muted-foreground border-transparent hover:bg-accent",
+      )}
+    >
+      <span className={cn("w-1 h-1 rounded-full", visible ? "bg-primary" : "bg-muted-foreground/50")} />
+      {visible ? "可见" : "不可见"}
+    </button>
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>选择授权权限</DialogTitle>
-          <DialogDescription>按 页面 → 子页 → 操作 三级浏览，单选一个操作权限</DialogDescription>
+          <DialogDescription>按 页面 → 子页 → 操作 浏览；页面/子页可切换可见性（回写角色配置）</DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-2">
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索权限名称或代码…" className="h-8 text-xs" />
         </div>
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-1">
-          {modules.filter((m) => !search || m.display_name.includes(search) || (m.pages ?? []).some((pg) => pg.operations.some(match))).map((mod) => (
-            <div key={mod.key} className="border-b border-border/60 py-1.5 last:border-0">
-              <button type="button" onClick={() => toggleExpand(mod.key)} className="flex items-center gap-1.5 w-full text-sm font-semibold text-foreground py-1 hover:text-primary transition-colors">
-                <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isExpanded(mod.key) && "rotate-90")} />
-                {mod.display_name}
-              </button>
-              {isExpanded(mod.key) && (mod.pages ?? []).map((page) => (
-                <div key={page.id} className="ml-5 mb-2">
-                  <div className="text-xs font-medium text-muted-foreground">{page.display_name}</div>
-                  {page.operations.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {page.operations.filter(match).map((op) => (
-                        <button
-                          key={op.id}
-                          type="button"
-                          onClick={() => setLocalSel(op.id)}
-                          className={cn(
-                            "text-[11px] px-2 py-1 rounded border transition-colors",
-                            localSel === op.id ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                          )}
-                        >
-                          {op.display_name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-muted-foreground/50">暂无操作项</div>
-                  )}
+          {modules.filter((m) => !search || m.display_name.includes(search) || (m.pages ?? []).some((pg) => pg.operations.some(match))).map((mod) => {
+            const navId = getNavIdForModule(mod.key);
+            const modVisible = navId ? roleNav.has(navId) : true;
+            return (
+              <div key={mod.key} className="border-b border-border/60 py-1.5 last:border-0">
+                <div className="flex items-center gap-1.5 w-full">
+                  <button type="button" onClick={() => toggleExpand(mod.key)} className="flex items-center gap-1.5 flex-1 text-sm font-semibold text-foreground py-1 hover:text-primary transition-colors">
+                    <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isExpanded(mod.key) && "rotate-90")} />
+                    {mod.display_name}
+                  </button>
+                  {navId && visPill(modVisible, () => onToggleNav(navId, !modVisible))}
                 </div>
-              ))}
-            </div>
-          ))}
+                {isExpanded(mod.key) && (mod.pages ?? []).map((page) => {
+                  const pageVisible = rolePages.has(page.id);
+                  return (
+                    <div key={page.id} className="ml-5 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">{page.display_name}</span>
+                        {visPill(pageVisible, () => onTogglePage(page.id, !pageVisible))}
+                      </div>
+                      {page.operations.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {page.operations.filter(match).map((op) => (
+                            <button
+                              key={op.id}
+                              type="button"
+                              onClick={() => setLocalSel(op.id)}
+                              className={cn(
+                                "text-[11px] px-2 py-1 rounded border transition-colors",
+                                localSel === op.id ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                              )}
+                            >
+                              {op.display_name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-muted-foreground/50">暂无操作项</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
         <DialogFooter className="px-6 pb-4 gap-2">
           <button type="button" onClick={() => onOpenChange(false)} className="h-8 px-4 text-xs font-medium border border-input rounded-lg hover:bg-accent transition-colors">取消</button>
@@ -1248,7 +1291,7 @@ function GrantPermissionDialog({
 }
 
 function PolicyEditForm({
-  form, onChange, onSave, onCancel, allPermissions, modules, roles,
+  form, onChange, onSave, onCancel, allPermissions, modules, roles, roleNav, rolePages, onToggleNav, onTogglePage,
 }: {
   form: PolicyEditState;
   onChange: (f: PolicyEditState) => void;
@@ -1257,6 +1300,10 @@ function PolicyEditForm({
   allPermissions: PermissionItem[];
   modules: RegistryModule[];
   roles: Role[];
+  roleNav: Set<string>;
+  rolePages: Set<string>;
+  onToggleNav: (navId: string, enabled: boolean) => void;
+  onTogglePage: (pageId: string, enabled: boolean) => void;
 }) {
   // EAI-CUSTOM: 条件值下拉建议 —— 按所选属性给 datalist 选项（可输入可点选），避免纯手输体验差。
   // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
@@ -1487,6 +1534,10 @@ function PolicyEditForm({
         modules={modules}
         selected={grantPicker !== null ? form.grants[grantPicker]?.permission : undefined}
         onSelect={(pid) => { if (grantPicker !== null) updateGrant(grantPicker, { permission: pid }); setGrantPicker(null); }}
+        roleNav={roleNav}
+        rolePages={rolePages}
+        onToggleNav={onToggleNav}
+        onTogglePage={onTogglePage}
       />
 
       {/* Deny (T14) — warning 色，与 allow 视觉区分；无二次确认（设计决策：警告色 + 审计日志即可） */}
@@ -2175,6 +2226,23 @@ export default function AdminRolesPage() {
                       onSave={handlePolicySave}
                       modules={modules}
                       roles={roles}
+                      roleNav={detailNavSet}
+                      rolePages={detailPagesSet}
+                      onToggleNav={async (navId, enabled) => {
+                        const newNavs = enabled ? [...detailNavSet, navId] : [...detailNavSet].filter(n => n !== navId);
+                        setDetailNavSet(new Set(newNavs));
+                        try { await roleApi.update(selectedRole.id, { nav: newNavs }); }
+                        catch (err: unknown) { alert(err instanceof Error ? err.message : "更新导航可见性失败"); }
+                      }}
+                      onTogglePage={async (pageId, enabled) => {
+                        const next = new Set(detailPagesSet);
+                        enabled ? next.add(pageId) : next.delete(pageId);
+                        setDetailPagesSet(next);
+                        if (selectedRole && !selectedRole.is_system) {
+                          try { await roleApi.update(selectedRole.id, { pages: serializePages(next, registryModules || []) }); }
+                          catch (err: unknown) { alert(err instanceof Error ? err.message : "更新页面可见性失败"); }
+                        }
+                      }}
                     />
                   </motion.div>
                 ) : (
