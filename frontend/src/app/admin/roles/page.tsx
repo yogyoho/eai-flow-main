@@ -3,12 +3,13 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Plus, Shield, Lock, Pencil, Trash2, Users, X,
-  ChevronDown, Brain, Database, Puzzle, Wrench,
+  ChevronDown, ChevronRight, Brain, Database, Puzzle, Wrench,
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
   LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { Switch } from "@/components/ui/switch";
@@ -21,7 +22,7 @@ import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serial
 import { toDenyInfo, toEngineConditions, toEngineGrants, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
-  RegistryModule, PermissionItem, Department,
+  RegistryModule, PermissionItem, Department, OperationItem,
   PolicyItem, PolicyCondition, PolicyGrant,
 } from "@/extensions/types";
 import { cn } from "@/lib/utils";
@@ -1176,6 +1177,76 @@ function PolicyRow({
 }
 
 /* ── Policy Edit Form ──────────────────────────────────────── */
+/** EAI-CUSTOM: 授权权限选择对话框 —— 按 页面(模块) → 子页 → 操作 三级浏览单选（替代扁平下拉） */
+function GrantPermissionDialog({
+  open, onOpenChange, modules, selected, onSelect,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  modules: RegistryModule[];
+  selected?: string;
+  onSelect: (permissionId: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [localSel, setLocalSel] = useState<string>(selected || "");
+  useEffect(() => { if (open) setLocalSel(selected || ""); }, [open, selected]);
+  const toggleExpand = (key: string) => setExpanded((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  const match = (op: OperationItem) => !search || op.display_name.includes(search) || op.id.includes(search);
+  const isExpanded = (key: string) => expanded.has(key) || !!search; // 搜索时自动展开
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>选择授权权限</DialogTitle>
+          <DialogDescription>按 页面 → 子页 → 操作 三级浏览，单选一个操作权限</DialogDescription>
+        </DialogHeader>
+        <div className="px-6 pb-2">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索权限名称或代码…" className="h-8 text-xs" />
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-1">
+          {modules.filter((m) => !search || m.display_name.includes(search) || (m.pages ?? []).some((pg) => pg.operations.some(match))).map((mod) => (
+            <div key={mod.key} className="border-b border-border/60 py-1.5 last:border-0">
+              <button type="button" onClick={() => toggleExpand(mod.key)} className="flex items-center gap-1.5 w-full text-sm font-semibold text-foreground py-1 hover:text-primary transition-colors">
+                <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isExpanded(mod.key) && "rotate-90")} />
+                {mod.display_name}
+              </button>
+              {isExpanded(mod.key) && (mod.pages ?? []).map((page) => (
+                <div key={page.id} className="ml-5 mb-2">
+                  <div className="text-xs font-medium text-muted-foreground">{page.display_name}</div>
+                  {page.operations.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {page.operations.filter(match).map((op) => (
+                        <button
+                          key={op.id}
+                          type="button"
+                          onClick={() => setLocalSel(op.id)}
+                          className={cn(
+                            "text-[11px] px-2 py-1 rounded border transition-colors",
+                            localSel === op.id ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                          )}
+                        >
+                          {op.display_name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground/50">暂无操作项</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <DialogFooter className="px-6 pb-4 gap-2">
+          <button type="button" onClick={() => onOpenChange(false)} className="h-8 px-4 text-xs font-medium border border-input rounded-lg hover:bg-accent transition-colors">取消</button>
+          <button type="button" disabled={!localSel} onClick={() => { onSelect(localSel); onOpenChange(false); }} className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">确认</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PolicyEditForm({
   form, onChange, onSave, onCancel, allPermissions, modules, roles,
 }: {
@@ -1208,6 +1279,8 @@ function PolicyEditForm({
     setChipOpens((o) => ({ ...o, [i]: false }));
   };
   const removeChip = (i: number, v: string) => updateCondition(i, { value: chipsOf(i).filter((x) => x !== v).join(",") });
+  // EAI-CUSTOM: 授权权限选择器 —— 三级对话框（页面→子页→操作），grantPicker 记录打开的行
+  const [grantPicker, setGrantPicker] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
     userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
@@ -1387,13 +1460,19 @@ function PolicyEditForm({
         <div className="space-y-2">
           {form.grants.map((g, i) => (
             <div key={i} className="flex items-center gap-2">
-              <Select value={g.permission || "__none__"} onValueChange={(v) => updateGrant(i, { permission: v === "__none__" ? "" : v })}>
-                <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="选择权限" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__"><span className="text-muted-foreground">选择权限</span></SelectItem>
-                  {allPermissions.map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {/* EAI-CUSTOM: 三级权限对话框（页面→子页→操作）替代扁平下拉 */}
+              <button
+                type="button"
+                onClick={() => setGrantPicker(i)}
+                className="w-[180px] h-8 px-2 text-xs flex items-center justify-between gap-1 bg-background border border-input rounded hover:border-primary/40 transition-colors"
+              >
+                <span className="truncate text-left">
+                  {g.permission
+                    ? (allPermissions.find((p) => p.id === g.permission)?.display_name || g.permission)
+                    : <span className="text-muted-foreground">选择权限（三级）</span>}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              </button>
               <button onClick={() => removeGrant(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1401,6 +1480,14 @@ function PolicyEditForm({
           ))}
         </div>
       </div>
+
+      <GrantPermissionDialog
+        open={grantPicker !== null}
+        onOpenChange={(o) => { if (!o) setGrantPicker(null); }}
+        modules={modules}
+        selected={grantPicker !== null ? form.grants[grantPicker]?.permission : undefined}
+        onSelect={(pid) => { if (grantPicker !== null) updateGrant(grantPicker, { permission: pid }); setGrantPicker(null); }}
+      />
 
       {/* Deny (T14) — warning 色，与 allow 视觉区分；无二次确认（设计决策：警告色 + 审计日志即可） */}
       <div className="rounded-lg border border-warning/40 bg-warning/[0.04] p-3 space-y-3">
