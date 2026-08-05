@@ -45,7 +45,8 @@ print(f'generated {len(got)} sections; sample body {len(exp)}; missing: {missing
 sys.exit(0 if not missing else 1)
 PY
   if grep -q "\[⚠未找到" "$report"; then echo "✗ 仍有[⚠未找到]"; return 1; fi
-  grep -q "grounding_rate: 0.8" "$TMP/$proj.log" || true
+  # run.sh 门限：grounding≥0.85 且 missing+uncovered+conflict==0 才打印 REPORT_READY
+  if ! grep -q "REPORT_READY:" "$TMP/$proj.log"; then echo "✗ 未达 REPORT_READY (grounding<0.85 或失配非0)"; return 1; fi
   echo "✓ $proj OK"
 }
 
