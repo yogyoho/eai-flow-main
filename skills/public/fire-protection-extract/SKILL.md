@@ -41,7 +41,7 @@ description: |
 消防设计专篇按设计阶段区分大纲：**初步设计 7 章** / **基础设计 8 章**，由 `references/stage-outlines/{阶段}.json` 锁定（标题逐字对齐样例，不得自创章节）。
 
 1. 用户请求里显式写了「初步设计」「基础设计」→ 作为 `run.sh` 第 3 参传入（显式覆盖）。
-2. 否则 run.sh 自动从源说明书首段识别（"初步设计"/"基础设计" 字样）。
+2. 否则 run.sh 自动从源说明书前 60 段+标题识别（"初步设计"/"基础设计" 字样，见 detect_stage.py）。
 3. 阶段不同 → 大纲不同 → 抽取映射（sources）也不同，E3 按所选阶段大纲的 `guide[]` 生成。
 
 ---
@@ -89,47 +89,30 @@ for no, t in struct.get('tables', {}).items():
     title = t.get('title', '')[:60]
     print(f'{no}: {title}')
 
-# 3. 对每个 fire spec section 搜索最佳匹配段落（基于标题关键词）
+# 3. 对所选阶段大纲的每个 verbatim 节，用其 guide[] 关键词批量搜索最佳段落
 print()
-print('=== KEYWORD SEARCH ===')
-keywords_list = [
-    ('设计依据', ['设计依据', '委托书', '可研']),
-    ('项目位置', ['区域位置', '地理位置', '项目地点']),
-    ('建设规模', ['建设规模', '储存', '万吨']),
-    ('建设内容', ['设计范围', '建设内容']),
-    ('建设性质', ['建设性质', '改扩建', '新建']),
-    ('气象条件', ['气象', '自然条件', '气温', '风压']),
-    ('消防站', ['消防站', '消防队']),
-    ('火灾危险性', ['火灾危险', '生产类别', '丙类']),
-    ('总平面布置', ['总平面', '平面布置', '防火间距']),
-    ('防雷', ['防雷', '接地', '接闪']),
-    ('供电', ['供电', '配电', '用电负荷']),
-    ('建构筑物', ['建筑', '结构', '耐火等级', '防火门']),
-    ('通风', ['通风', '排烟', '暖通', '换气']),
-    ('消防给水', ['消防水', '消火栓', '消防水量']),
-    ('灭火器', ['灭火器', '消防器材']),
-    ('火灾报警', ['火灾报警', '感烟', '感温', '声光']),
-    ('视频监控', ['视频监控', '安防监控', '摄像机']),
-    ('灭火救援', ['消防道路', '消防通道', '转弯半径']),
-    ('投资概算', ['投资', '概算', '万元']),
-    ('图纸表格', ['附图', '附表', '图纸']),
-]
-for label, kws in keywords_list:
+print('=== GUIDE SEARCH ===')
+outline = json.loads(open('<OUTLINE_PATH>', 'r', encoding='utf-8').read())
+for sec in outline.get('sections', []):
+    if sec.get('class') != 'verbatim':
+        continue
+    label = sec['fire']
     found = []
-    for p in struct['paras']:
-        if any(k in p['text'] for k in kws):
-            found.append((p['i'], p['text'][:100]))
-            if len(found) >= 3:
-                break
-    if found:
-        print(f'{label}:')
-        for pi, pt in found:
-            print(f'  ¶{pi}: {pt}')
-    else:
-        print(f'{label}: NO MATCH')
+    for kw in sec.get('guide', []):
+        for p in struct['paras']:
+            if kw in p['text']:
+                found.append((p['i'], p['text'][:100], kw))
+                if len(found) >= 6:
+                    break
+        if len(found) >= 6:
+            break
+    print(f'{label}:')
+    for pi, pt, kw in found[:6]:
+        print(f'  ¶{pi} [{kw}]: {pt}')
     print()
 "
 ```
+- `<OUTLINE_PATH>` 换成所选阶段大纲路径（run.sh 输出 `OUTLINE:` 行）。搜索词取大纲每节 `guide[]`，不是硬编码列表。
 
 **3b. 基于批量输出生成 mapping 契约**
 
@@ -180,7 +163,7 @@ present_files(filepaths=[
 ])
 ```
 
-**若 run.sh 输出 `REPORT_NEEDS_REVIEW`（grounding<0.85 或含 `[⚠未找到]` 或 missing/uncovered/conflict 非 0）→ 必须提示用户「E5 校准或 E3 重跑」，不得直接交付。**
+**若 run.sh 输出 `REPORT_NEEDS_REVIEW`（grounding<0.85 或含 `[⚠未找到]` 或 missing/uncovered/conflict 非 0）→ 必须提示用户「E5 校准（仅旧格式契约可用）或 E3 重跑（两层格式）」，不得直接交付。**
 
 **相关性扫描（C方案——标记疑似无关内容）：**
 读报告，对每个 section 检查内容是否和该 section 标题主题相关。
@@ -207,6 +190,8 @@ present_files(filepaths=[
 
 以下步骤**不是默认流程的一部分**。只有当用户在后续对话轮次中明确请求时才执行。
 
+**⚠ E5/E6 当前仅兼容旧版 sections 格式契约。两层格式（{"sources":[...]}）契约下会空转，待后续迁移——新契约的校准请走 E3 重跑生成新映射。**
+
 **E6 校准视图**（用户说"生成校准视图"/"校准报告"时）
 ```bash
 python /mnt/skills/public/fire-protection-extract/scripts/calibration_view.py \
@@ -219,6 +204,8 @@ HTML 页面用颜色标记每个 section 的状态（✅ 正常 / ⚠ 需校准�
 **如果报告有少量 `[⚠未找到]`（≤5 处且契约已存在）→ 运行 E5 自动校准：**
 
 ### 第 5 步（E5）：自动校准失配锚
+
+**⚠ E5/E6 当前仅兼容旧版 sections 格式契约。两层格式（{"sources":[...]}）契约下会空转，待后续迁移——新契约的校准请走 E3 重跑生成新映射。**
 
 当 run.sh 显示已有契约但仍有少量失配时，用 auto_calibrate.py 自动修复：
 
@@ -274,14 +261,14 @@ cat <WORK_DIR>/<项目名>_mapping.json | \
 - **不要跳过 E3 契约生成**——如果 run.sh 输出 CONTRACT_NEEDED，必须先建契约再重跑。
 - **E3 生成契约时不要编造内容**——找不到匹配的段落就标记 `[⚠未找到]`。
 - **E5 校准只接受高置信度提案**——低置信度的锚可能抄错段，宁可不修不要修错。
-- **不要新增 mapping 模板里没有的章节**——报告章节结构以 fire_spec_mapping.json 为准。不要自己编题目（如"设计难点及对策"）、不要加分析评论——每条 verbatim 内容必须有明确 source 锚定到源文档段落。
+- **不要新增所选阶段大纲里没有的章节**——报告章节结构以 `references/stage-outlines/{阶段}.json` 为准（初步设计 7 章 / 基础设计 8 章），不要自创章节标题；不要加分析评论——每条 verbatim 内容必须有明确 source 锚定到源文档段落。
 - **不要逐锚搜索**——E3 用批量脚本一次获取全部信息。对每个 section 单独开 bash 搜索是死循环，触发工具限制会导致管线未跑完。
 - **不要 synthesise/总结/改写**——摘抄 = 逐字复制源段落。不得用自己的话重写、不得加"对策"、"分析"、不得把多个段落合并成一节评论。
 
 ## 参考文件
 - `references/extractor_rules.md` — 锚点选取/防抄错规则
 - `references/stage-outlines/` — 阶段大纲（初步设计 7 章 / 基础设计 8 章）
-- `references/fire_spec_mapping.json` — 契约模板（消防专篇标准章节结构）
+- `references/fire_spec_mapping.json` — 遗留基础设计模板（仅测试使用；权威结构以 stage-outlines 为准）
 - `scripts/run.sh` — 流水线入口
 - `scripts/contract_store.py` — 契约库管理
 - `scripts/auto_calibrate.py` — 锚自动校准（E5）

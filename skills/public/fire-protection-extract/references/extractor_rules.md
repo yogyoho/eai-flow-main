@@ -14,10 +14,10 @@
 
 verbatim 节的 source 三种 kind（全部索引锚定，不做字符串匹配）：
 - `para` `{"kind":"para","paras":[i]}`：逐字复制第 i 段。
-- `range` `{"kind":"range","paras":[a,b]}`：闭区间逐段复制（a≤b）。`para_run` 是旧别名，仅格式校验兜底，新契约禁用。
+- `range` `{"kind":"range","paras":[a,b]}`：闭区间逐段复制（a≤b）。`para_run` 是旧别名，extract.py 会兜底转换为 range，新契约禁用。
 - `table` `{"kind":"table","no":"表号"}`：整表复制（表号如 `表3.1-1`）。
 
-⛔ 旧字符串锚（`anchor`/`from`/`to`）已废弃：extract.py/grounding_check.py 不再做字符串匹配，`contract_store.validate_format` 拒绝旧格式并硬失败（CONTRACT_ERROR）。
+⛔ 旧字符串锚（`anchor`/`from`/`to`）已废弃：extract.py/grounding_check.py 不再做字符串匹配。旧字符串锚契约会被 `find_best` 跳过（表现为 CONTRACT_NEEDED），或 save 时被 `CONTRACT_FORMAT_MISMATCH` 拒绝；两层格式契约请走 E3 重跑。
 
 ## 防抄错
 1. 索引锚定（按大纲 sections[] 顺序 + 段号/表号定位，非相似度、非字符串匹配）→ 防抄错段/错表。
