@@ -26,22 +26,39 @@ def test_sample_pipeline_meets_acceptance(tmp_path):
                     str(SAMPLE), str(struct_path)], check=True)
     structure = json.loads(struct_path.read_text(encoding="utf-8"))
     assert len(structure["paras"]) > 500, "expected a real design spec, not a stub"
-    # 2. extract
+    # 2. two-layer inputs: split the legacy single-file mapping into an outline
+    #    (skeleton sections) + sources aligned 1:1 by section index.
+    legacy = json.loads(MAPPING.read_text(encoding="utf-8"))
+    outline_path = tmp_path / "outline.json"
+    mapping_path = tmp_path / "mapping.json"
+    outline = {
+        "report_title": legacy["report_title"],
+        "templates": legacy.get("templates", {}),
+        "sections": [
+            {k: v for k, v in sec.items() if k not in ("sources", "conflict_assertions")}
+            for sec in legacy["sections"]
+        ],
+    }
+    sources = [sec.get("sources") for sec in legacy["sections"]]
+    outline_path.write_text(json.dumps(outline, ensure_ascii=False, indent=2), encoding="utf-8")
+    mapping_path.write_text(json.dumps({"sources": sources}, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 3. extract: two-layer 5-arg CLI <struct> <outline> <mapping> <report> <project_name>
     subprocess.run([sys.executable, str(ROOT / "scripts" / "extract.py"),
-                    str(struct_path), str(MAPPING), str(report_path)], check=True)
+                    str(struct_path), str(outline_path), str(mapping_path),
+                    str(report_path), "基地项目"], check=True)
     report = report_path.read_text(encoding="utf-8")
-    # 3. acceptance: conflict field correct (§9.2 消防, not §9.1 给水)
+    # 4. acceptance: conflict field correct (§9.2 消防, not §9.1 给水)
     assert "30L/s" in report and "DN200" in report
     assert "生活用水量8L/s" not in report and "DN150" not in report
-    # 4. acceptance: compute section not fabricated
+    # 5. acceptance: compute section not fabricated
     assert "[需计算]" in report
-    # 5. grounding
+    # 6. grounding
     from scripts.grounding_check import check
     mapping = json.loads(MAPPING.read_text(encoding="utf-8"))
     res = check(report, structure, mapping)
     assert not res["missing_anchors"], f"unresolved anchors: {res['missing_anchors'][:5]}"
     assert res["rate"] >= 0.85, f"grounding rate {res['rate']:.2%} < 85%; failures: {res['failed_samples']}"
-    # 6. regression: §8 must NOT dump the whole spec body. The original mapping
+    # 7. regression: §8 must NOT dump the whole spec body. The original mapping
     #    used para_run "区域位置图"→"设备一览表"; "设备一览表" first appears deep
     #    in the body (¶847), so the run captured ~744 paragraphs and inflated the
     #    report to ~37k chars. "有线电视系统" (cable TV) is out of scope for a fire

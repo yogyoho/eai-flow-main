@@ -62,6 +62,8 @@ def extract(structure, outline, mapping):
         src_ref = sec.get("source_label", "设计说明书")
         sources = sources_by_idx[idx] if idx < len(sources_by_idx) else []
         sources = sources or []
+        if not isinstance(sources, list):  # 非列表源（如 dict/str）一律视为无源，防逐字遍历报错
+            sources = []
         if not sources:
             lines.append("[⚠未找到段落]")
             lines.append("")
@@ -75,7 +77,7 @@ def extract(structure, outline, mapping):
                 lines.append(p["text"])
                 lines.append(f"> 源: {src_ref} ¶{p['i']}")
                 citations.append((sec["fire"], "¶", p["i"], str(idxs[0])))
-            elif resolved_kind == "range" and idxs and len(idxs) >= 2 and 0 <= idxs[0] < n_paras and idxs[1] < n_paras:
+            elif resolved_kind == "range" and idxs and len(idxs) >= 2 and 0 <= idxs[0] < n_paras and 0 <= idxs[1] < n_paras and idxs[0] <= idxs[1]:
                 start, end = idxs[0], idxs[1]
                 for p in paras[start:end + 1]:
                     lines.append(p["text"])

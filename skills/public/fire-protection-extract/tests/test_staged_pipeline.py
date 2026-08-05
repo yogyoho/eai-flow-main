@@ -167,3 +167,36 @@ def test_two_layer_missing_sources_mark_not_found():
     mapping = {"sources": [None, None, None, None]}
     out, _ = extract.extract(_mini_struct(), _mini_outline(), mapping)
     assert "[⚠未找到段落" in out
+
+
+def test_two_layer_para_source():
+    outline = _mini_outline()
+    struct = {"paras": [{"i": 0, "text": "单段依据"}], "tables": {}}
+    mapping = {"sources": [None, [{"kind": "para", "paras": [0]}], None, None]}
+    out, _ = extract.extract(struct, outline, mapping)
+    assert "单段依据" in out
+    assert "> 源: 设计说明书 ¶0" in out
+
+
+def test_two_layer_table_source():
+    outline = _mini_outline()
+    struct = {
+        "paras": [],
+        "tables": {"表2-1": {"rows": [["列1", "列2"], ["v1", "v2"]]}},
+    }
+    mapping = {"sources": [None, [{"kind": "table", "no": "表2-1"}], None, None]}
+    out, _ = extract.extract(struct, outline, mapping)
+    assert "v1" in out and "v2" in out
+    assert "> 源: 设计说明书 表2-1" in out
+    # 缺失表 → 显式标记
+    mapping2 = {"sources": [None, [{"kind": "table", "no": "表9-9"}], None, None]}
+    out2, _ = extract.extract(struct, outline, mapping2)
+    assert "[⚠未找到表: 表9-9]" in out2
+
+
+def test_two_layer_para_run_alias():
+    outline = _mini_outline()
+    struct = {"paras": [{"i": 0, "text": "起"}, {"i": 1, "text": "承"}, {"i": 2, "text": "合"}], "tables": {}}
+    mapping = {"sources": [None, [{"kind": "para_run", "paras": [0, 1]}], None, None]}
+    out, _ = extract.extract(struct, outline, mapping)
+    assert "起" in out and "承" in out and "合" not in out
