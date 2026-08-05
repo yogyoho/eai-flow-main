@@ -36,18 +36,30 @@ export function toUIConditions(conds: unknown): PolicyCondition[] {
   if (Array.isArray(conds)) return conds as PolicyCondition[];
   if (!conds || typeof conds !== "object") return [];
   const obj = conds as Record<string, unknown>;
-  if (!Array.isArray(obj.and)) {
-    if (Array.isArray(obj.or)) {
-      // EAI-CUSTOM: or 树无法在 UI 行编辑器表达，退回空条件（空=全量）。显式警告，别静默丢条件。
-      console.warn("策略条件包含 'or' 树，UI 编辑器不支持，已按空条件处理");
-    }
+  if (Array.isArray(obj.and)) {
+    return (obj.and as Array<Record<string, unknown>>).map((c) => ({
+      attribute: (c.attr as string) ?? "",
+      operator: (ENGINE_TO_UI_OP[c.op as string] ?? (c.op as string)) ?? "=",
+      value: Array.isArray(c.value) ? c.value.join(", ") : ((c.value as string) ?? ""),
+    }));
+  }
+  if (Array.isArray(obj.or)) {
+    // EAI-CUSTOM: or 树无法在 UI 行编辑器表达，退回空条件（空=全量）。显式警告，别静默丢条件。
+    console.warn("策略条件包含 'or' 树，UI 编辑器不支持，已按空条件处理");
     return [];
   }
-  return (obj.and as Array<Record<string, unknown>>).map((c) => ({
-    attribute: (c.attr as string) ?? "",
-    operator: (ENGINE_TO_UI_OP[c.op as string] ?? (c.op as string)) ?? "=",
-    value: Array.isArray(c.value) ? c.value.join(", ") : ((c.value as string) ?? ""),
-  }));
+  // EAI-CUSTOM: 单条件 {attr, op, value} —— 引擎 evaluate_policy_conditions 支持直接单条件（非 and/or 包裹），
+  // API/脚本/旧数据可产生该 shape；UI 也要能显示/编辑，否则 PolicyRow 误显"全局"且编辑会丢条件。
+  if (typeof obj.attr === "string" && obj.attr) {
+    return [
+      {
+        attribute: obj.attr,
+        operator: (ENGINE_TO_UI_OP[obj.op as string] ?? (obj.op as string)) ?? "=",
+        value: Array.isArray(obj.value) ? (obj.value as unknown[]).join(", ") : ((obj.value as string) ?? ""),
+      },
+    ];
+  }
+  return [];
 }
 
 /** 引擎授权 dict → UI 授权数组（dict={permissions:[...]} 或已是数组都接受；其余 → []） */

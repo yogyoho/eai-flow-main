@@ -65,6 +65,18 @@ describe("toUIConditions (引擎 dict → UI 数组)", () => {
     warn.mockRestore();
   });
 
+  it("单条件 {attr, op, value}（API/脚本创建，非 and 包裹）→ 单行 UI 条件", () => {
+    expect(toUIConditions({ attr: "role_code", op: "eq", value: "dept_head" })).toEqual([
+      { attribute: "role_code", operator: "=", value: "dept_head" },
+    ]);
+  });
+
+  it("单条件 in 值数组 join 成逗号字符串", () => {
+    expect(toUIConditions({ attr: "dept_ids", op: "in", value: ["d1", "d2"] })).toEqual([
+      { attribute: "dept_ids", operator: "in", value: "d1, d2" },
+    ]);
+  });
+
   it("非 dict / 垃圾输入 → []", () => {
     expect(toUIConditions(null)).toEqual([]);
     expect(toUIConditions("x")).toEqual([]);
