@@ -236,7 +236,10 @@ export const userApi = {
     request<MessageResponse>(`/users/${id}`, { method: "DELETE" }),
 
   resetPassword: (id: string, newPassword: string) =>
-    request<MessageResponse>(`/users/${id}/reset-password?new_password=${newPassword}`, { method: "POST" }),
+    request<MessageResponse>(`/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ new_password: newPassword }),
+    }),
 
   // Multi-department APIs
   getDepartments: (id: string) =>
@@ -303,7 +306,8 @@ export const permissionsApi = {
   },
   createPolicy: async (data: PolicyCreateRequest) => {
     const res = await fetch(`${PERM_API_BASE}/policies`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      // EAI-CUSTOM: 裸 fetch 必须带 withCsrf —— 否则后端 CSRF 中间件 403（策略 UI 保存一直失败的根因）
+      method: "POST", headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
       body: JSON.stringify(data), credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
@@ -311,7 +315,7 @@ export const permissionsApi = {
   },
   updatePolicy: async (id: string, data: Partial<PolicyCreateRequest>) => {
     const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
+      method: "PUT", headers: withCsrf({ "Content-Type": "application/json" }, "PUT"),
       body: JSON.stringify(data), credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
@@ -319,7 +323,7 @@ export const permissionsApi = {
   },
   deletePolicy: async (id: string) => {
     const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
-      method: "DELETE", credentials: "include",
+      method: "DELETE", headers: withCsrf({}, "DELETE"), credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<MessageResponse>;

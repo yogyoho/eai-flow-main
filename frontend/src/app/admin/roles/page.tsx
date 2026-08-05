@@ -15,16 +15,26 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { permissionsApi, roleApi, userApi } from "@/extensions/api";
+import { deptApi, permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import { toDenyInfo, toEngineConditions, toEngineGrants, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 import type {
   Role, CreateRoleRequest, UpdateRoleRequest, User,
-  RegistryModule, PermissionItem,
+  RegistryModule, PermissionItem, Department,
   PolicyItem, PolicyCondition, PolicyGrant,
 } from "@/extensions/types";
 import { cn } from "@/lib/utils";
+
+// EAI-CUSTOM: 策略条件属性/操作符中文标签 —— key 保持引擎值，仅展示用中文（下拉 + PolicyRow 共用）
+const ATTR_LABELS: Record<string, string> = {
+  role_code: "角色代码", username: "用户名", tags: "标签",
+  role_level: "角色级别", dept_id: "部门ID", user_id: "用户ID",
+};
+const OP_LABELS: Record<string, string> = {
+  "=": "等于", "!=": "不等于", ">=": "大于等于", "<=": "小于等于",
+  contains: "包含", in: "属于", not_in: "不属于",
+};
 
 /* ── Fallback permission categories (used when registry not loaded) ── */
 const PERMISSION_CATEGORIES = [
@@ -923,7 +933,7 @@ type PolicyEditState = {
 };
 
 function PoliciesPanel({
-  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules,
+  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules, roles,
 }: {
   policies: PolicyItem[];
   policiesLoading: boolean;
@@ -932,6 +942,7 @@ function PoliciesPanel({
   onAdd: () => void;
   onSave: (policy: PolicyItem) => void;
   modules: RegistryModule[];
+  roles: Role[];
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PolicyEditState>({
@@ -1029,6 +1040,7 @@ function PoliciesPanel({
               onCancel={cancelEdit}
               allPermissions={allPermissions}
               modules={modules}
+              roles={roles}
             />
           ) : (
             <PolicyRow
@@ -1052,6 +1064,7 @@ function PoliciesPanel({
             onCancel={cancelEdit}
             allPermissions={allPermissions}
             modules={modules}
+            roles={roles}
           />
         </div>
       )}
@@ -1103,7 +1116,7 @@ function PolicyRow({
         <div className="mt-2 flex flex-wrap gap-1.5">
           {policy.conditions.map((c, i) => (
             <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-              {c.attribute || "?"} {c.operator} {c.value || "?"}
+              {(ATTR_LABELS[c.attribute] ?? c.attribute) || "?"} {OP_LABELS[c.operator] ?? c.operator} {c.value || "?"}
             </span>
           ))}
         </div>
@@ -1164,7 +1177,7 @@ function PolicyRow({
 
 /* ── Policy Edit Form ──────────────────────────────────────── */
 function PolicyEditForm({
-  form, onChange, onSave, onCancel, allPermissions, modules,
+  form, onChange, onSave, onCancel, allPermissions, modules, roles,
 }: {
   form: PolicyEditState;
   onChange: (f: PolicyEditState) => void;
@@ -1172,7 +1185,29 @@ function PolicyEditForm({
   onCancel: () => void;
   allPermissions: PermissionItem[];
   modules: RegistryModule[];
+  roles: Role[];
 }) {
+  // EAI-CUSTOM: 条件值下拉建议 —— 按所选属性给 datalist 选项（可输入可点选），避免纯手输体验差。
+  // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
+  const [users, setUsers] = useState<User[]>([]);
+  const [depts, setDepts] = useState<Department[]>([]);
+  useEffect(() => {
+    let active = true;
+    userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
+    deptApi.list().then((r) => { if (active) setDepts(r.departments ?? []); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const attrValueOptions = (attr: string): { value: string; label: string }[] => {
+    switch (attr) {
+      case "role_code": return (roles || []).map((r) => ({ value: r.code, label: r.name || r.code }));
+      case "role_level": return Array.from(new Set((roles || []).map((r) => String(r.level ?? "")).filter(Boolean))).sort().map((lv) => ({ value: lv, label: lv }));
+      case "username": return users.map((u) => ({ value: u.username, label: u.full_name || u.username }));
+      case "user_id": return users.map((u) => ({ value: u.id, label: u.full_name || u.username }));
+      case "dept_id": return depts.map((d) => ({ value: d.id, label: d.name }));
+      default: return [];
+    }
+  };
   const addCondition = () => onChange({ ...form, conditions: [...form.conditions, { attribute: "", operator: "=", value: "" }] });
   const removeCondition = (i: number) => onChange({ ...form, conditions: form.conditions.filter((_, idx) => idx !== i) });
   const updateCondition = (i: number, f: Partial<PolicyCondition>) => {
@@ -1248,22 +1283,41 @@ function PolicyEditForm({
                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="属性" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__"><span className="text-muted-foreground">选择属性</span></SelectItem>
-                  {ATTR_OPTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                  {ATTR_OPTIONS.map((a) => <SelectItem key={a} value={a}>{ATTR_LABELS[a] ?? a}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={c.operator} onValueChange={(v) => updateCondition(i, { operator: v })}>
                 <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{OP_LABELS[o] ?? o}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <input
-                type="text"
-                value={c.value}
-                onChange={(e) => updateCondition(i, { value: e.target.value })}
-                placeholder="值"
-                className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+              {attrValueOptions(c.attribute).length > 0 ? (
+                <>
+                  {/* EAI-CUSTOM: 值可下拉选择（datalist）——原生，可输入可点选；选项按所选属性取 */}
+                  <input
+                    list={`cond-val-${i}`}
+                    type="text"
+                    value={c.value}
+                    onChange={(e) => updateCondition(i, { value: e.target.value })}
+                    placeholder="值（可下拉选择）"
+                    className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <datalist id={`cond-val-${i}`}>
+                    {attrValueOptions(c.attribute).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </datalist>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={c.value}
+                  onChange={(e) => updateCondition(i, { value: e.target.value })}
+                  placeholder="值"
+                  className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              )}
               <button onClick={() => removeCondition(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1983,6 +2037,7 @@ export default function AdminRolesPage() {
                       onAdd={loadPolicies}
                       onSave={handlePolicySave}
                       modules={modules}
+                      roles={roles}
                     />
                   </motion.div>
                 ) : (
