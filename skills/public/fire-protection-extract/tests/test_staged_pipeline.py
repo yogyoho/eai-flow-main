@@ -224,3 +224,24 @@ def test_grounding_completeness_flags_missing_verbatim_source():
     report, _ = extract.extract(struct, outline, mapping)
     res = grounding_check.check(report, struct, outline, mapping)
     assert any("1.1 设计依据" in s for s in res["uncovered_sections"])
+
+
+def test_reversed_range_is_missing_anchor():
+    # 反序 range：extract 会标 [⚠未找到]，check 必须报 missing_anchor（不得 PASS）
+    struct = {"paras": [{"i": 0, "text": "A"}, {"i": 1, "text": "B"}, {"i": 2, "text": "C"}], "tables": {}}
+    outline = {"report_title": "{项目名} 消防设计专篇", "templates": {},
+               "sections": [{"fire": "1 概况", "class": "verbatim"}]}
+    mapping = {"sources": [[{"kind": "range", "paras": [2, 0]}]]}
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    assert res["missing_anchors"], "反序range必须被判定为缺失锚"
+
+
+def test_non_list_sources_does_not_crash():
+    struct = {"paras": [{"i": 0, "text": "A"}], "tables": {}}
+    outline = {"report_title": "{项目名} 消防设计专篇", "templates": {},
+               "sections": [{"fire": "1 概况", "class": "verbatim"}]}
+    mapping = {"sources": ["junk"]}  # 非列表 → 不应崩溃
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    assert isinstance(res["uncovered_sections"], list)

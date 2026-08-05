@@ -70,14 +70,23 @@ def check(report_md, structure, outline, mapping):
             continue
         sources = sources_by_idx[idx] if idx < len(sources_by_idx) else []
         sources = sources or []
+        if not isinstance(sources, list):  # 非列表源（如 dict/str）一律视为无源，防逐字遍历报错
+            sources = []
         for src in sources:
             ok = False
             kind = src.get("kind", "")
             if kind in ("para", "range", "para_run"):
                 idxs = src.get("paras", [])
-                ok = (idxs and all(isinstance(i, int) and 0 <= i < n_paras for i in idxs))
+                # 语义与 extract.py 对齐：range 需 len>=2 且正序；para 只用 idxs[0]
+                if kind in ("range", "para_run"):
+                    ok = (len(idxs) >= 2 and all(isinstance(i, int) and 0 <= i < n_paras for i in idxs)
+                          and idxs[0] <= idxs[1])
+                    used = idxs[:2]
+                else:  # para — extract uses only idxs[0]
+                    ok = (len(idxs) >= 1 and isinstance(idxs[0], int) and 0 <= idxs[0] < n_paras)
+                    used = [idxs[0]]
                 if ok:
-                    ok = all(paras[i].get("text", "").strip() for i in idxs)
+                    ok = all(paras[i].get("text", "").strip() for i in used)
             elif kind == "table":
                 ok = src.get("no", "") in tables
             if not ok:
