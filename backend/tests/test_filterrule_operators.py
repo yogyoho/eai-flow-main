@@ -18,6 +18,14 @@ def test_overlap_empty_identity_attr_denies():
     assert rule.operator == "none_allow"
 
 
+def test_overlap_malformed_dept_id_denies():
+    # EAI-CUSTOM (M3): a malformed (non-UUID) dept_id string must NOT raise —
+    # it should yield none_allow (deny, safe default) instead of a 500.
+    idn = AttributeSet(user_id="u1", username="u1", dept_ids=["not-a-valid-uuid"])
+    rule = FilterRule.from_template({"allowed_depts OVERLAP": "$identity.dept_ids"}, idn)
+    assert rule.operator == "none_allow"
+
+
 def test_overlap_to_sqlalchemy_uses_array_overlap():
     from app.extensions.models import KnowledgeBase
 

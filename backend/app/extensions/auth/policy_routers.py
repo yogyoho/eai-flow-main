@@ -21,6 +21,8 @@ router = APIRouter(prefix="/api/policies", tags=["policies"])
 # EAI-CUSTOM (T9): 校验 policy grants 形状 —— deny_permissions/permissions 必须是字符串列表，
 # deny_data_scopes 中的每个 id 必须在 registry 中已声明（与 role/service.py:184 data_scopes 写透校验一致）。
 # 防止管理员保存引用了不存在 data scope 的策略（这类策略会静默永不匹配）。
+# EAI-CUSTOM (M4): deny_permissions 的非通配 id 也必须校验存在（防止管理员 typo 如
+# "kb:delet" 被静默接受、永不匹配）。通配（以 ":*" 结尾）放行；其它走 registry 查找。
 def _validate_grants(grants: dict, registry) -> None:
     """Validate the shape of a policy grants dict. Raises HTTPException(400) on bad input."""
     if not isinstance(grants, dict):
@@ -29,6 +31,14 @@ def _validate_grants(grants: dict, registry) -> None:
         v = grants.get(key)
         if v is not None and (not isinstance(v, list) or not all(isinstance(x, str) for x in v)):
             raise HTTPException(status_code=400, detail=f"{key} must be a list of strings")
+    deny_perms = grants.get("deny_permissions")
+    if deny_perms is not None:
+        for pid in deny_perms:
+            # Wildcards (e.g. "kb:*") pass through — module-level deny, resolved at match time.
+            if pid.endswith(":*"):
+                continue
+            if registry.get_permission(pid) is None:
+                raise HTTPException(status_code=400, detail=f"Unknown permission id: {pid}")
     deny_scopes = grants.get("deny_data_scopes")
     if deny_scopes is not None:
         if not isinstance(deny_scopes, list) or not all(isinstance(x, str) for x in deny_scopes):

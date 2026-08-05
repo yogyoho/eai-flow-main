@@ -42,3 +42,21 @@ class TestValidateGrants:
         with pytest.raises(HTTPException) as exc:
             _validate_grants({"deny_permissions": "kb:delete"}, reg)  # str, not list
         assert exc.value.status_code == 400
+
+    # EAI-CUSTOM (M4): deny_permissions non-wildcard ids must be real permission points.
+    def test_validate_grants_rejects_unknown_deny_permission_id(self):
+        reg = get_permission_registry()
+        # unknown non-wildcard id -> 400
+        with pytest.raises(HTTPException) as exc:
+            _validate_grants({"deny_permissions": ["kb:nonexistent"]}, reg)
+        assert exc.value.status_code == 400
+
+    def test_validate_grants_allows_wildcard_deny_permission(self):
+        reg = get_permission_registry()
+        # module wildcard passes through (not registry-checked)
+        _validate_grants({"deny_permissions": ["kb:*"]}, reg)
+
+    def test_validate_grants_allows_known_deny_permission_id(self):
+        reg = get_permission_registry()
+        # a real permission id (kb:read is declared in the knowledge module) passes
+        _validate_grants({"deny_permissions": ["kb:read"]}, reg)

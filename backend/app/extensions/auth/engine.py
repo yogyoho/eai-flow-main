@@ -53,7 +53,14 @@ class FilterRule:
                 resolved = cls._resolve(raw_value, identity)
                 if not resolved:
                     return cls(operator="none_allow")  # identity has no such attr -> intersection empty -> deny
-                coerced = [uuid.UUID(x) for x in resolved] if isinstance(resolved[0], str) else list(resolved)
+                # EAI-CUSTOM (M3): defensive UUID coercion. ``identity.dept_ids`` is
+                # always populated with UUID-strings today (identity.py), but a
+                # malformed value would otherwise raise ValueError → HTTP 500.
+                # Fall back to deny (none_allow) — the safe default — instead.
+                try:
+                    coerced = [uuid.UUID(x) for x in resolved] if isinstance(resolved[0], str) else list(resolved)
+                except (ValueError, TypeError):
+                    return cls(operator="none_allow")
                 return cls(operator="overlap", field=field, value=coerced)
             else:
                 resolved = cls._resolve(raw_value, identity)
