@@ -1212,7 +1212,9 @@ function PolicyEditForm({
     });
   };
 
-  const ATTR_OPTIONS = ["tags", "role_level", "dept_id", "user_id"];  // 移除 email_domain（AttributeSet 无此属性）
+  // EAI-CUSTOM: 条件属性白名单与引擎 AttributeSet 对齐（role_code/username 均为有效 identity 属性）。
+  // 缺则 API/脚本建的 role_code 等条件在编辑下拉里显示空，保存会丢 attr。
+  const ATTR_OPTIONS = ["role_code", "username", "tags", "role_level", "dept_id", "user_id"];
   const OP_OPTIONS = ["=", "!=", "contains", ">=", "<=", "in", "not_in"];
 
   // T14: 仅有 data_scopes 声明的 module 才出现到 deny 数据范围多选里
