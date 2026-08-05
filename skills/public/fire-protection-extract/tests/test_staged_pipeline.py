@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 OUTLINES = Path(__file__).resolve().parents[1] / "references" / "stage-outlines"
@@ -57,3 +58,24 @@ def test_container_sections_have_no_guide():
         for sec in o["sections"]:
             if sec["class"] == "heading":
                 assert "guide" not in sec
+
+
+def test_container_sections_have_heading_level():
+    """X.Y-depth 容器节必须有 heading_level=3，否则渲染成顶级章节。"""
+    for stage in ("初步设计", "基础设计"):
+        o = _load(stage)
+        for sec in o["sections"]:
+            fire = sec["fire"]
+            if sec["class"] == "heading" and re.match(r"^\d+\.\d+($|\s)", fire):
+                assert sec.get("heading_level") == 3, f"{stage}: {fire} 容器节缺 heading_level=3"
+            elif sec["class"] == "heading" and re.match(r"^\d+\s", fire):
+                assert "heading_level" not in sec, f"{stage}: 顶级章节 {fire} 不应设 heading_level"
+
+
+def test_verbatim_sections_have_guide():
+    """每个 verbatim 节必须有非空 guide（E3 搜索锚点提示，缺了会空章节）。"""
+    for stage in ("初步设计", "基础设计"):
+        o = _load(stage)
+        for sec in o["sections"]:
+            if sec["class"] == "verbatim":
+                assert sec.get("guide"), f"{stage}: verbatim 节 {sec['fire']} 缺 guide"
