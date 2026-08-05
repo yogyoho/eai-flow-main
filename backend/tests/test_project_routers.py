@@ -120,7 +120,10 @@ class TestGetProject:
 
         pid = uuid4()
         project = ProjectOut(id=pid, name="Test", report_type="other")
-        with patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value=project):
+        # EAI-CUSTOM (L1): get_project now goes through _load_project_scoped
+        # (scope FilterRule) BEFORE service.get_project. Patch both so the
+        # test validates route wiring without depending on DB state.
+        with patch("app.extensions.project.routers._load_project_scoped", new_callable=AsyncMock, return_value=MagicMock()), patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value=project):
             response = client.get(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 200
@@ -128,7 +131,16 @@ class TestGetProject:
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value=None):
+        # Project out of scope or missing → _load_project_scoped returns None → 404
+        with patch("app.extensions.project.routers._load_project_scoped", new_callable=AsyncMock, return_value=None):
+            response = client.get(f"/api/extensions/project/projects/{pid}")
+
+        assert response.status_code == 404
+
+    def test_returns_404_when_service_finds_nothing(self, client):
+        """If _load_project_scoped passes but service.get_project returns None, still 404."""
+        pid = uuid4()
+        with patch("app.extensions.project.routers._load_project_scoped", new_callable=AsyncMock, return_value=MagicMock()), patch("app.extensions.project.service.get_project", new_callable=AsyncMock, return_value=None):
             response = client.get(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 404
@@ -162,8 +174,7 @@ class TestUpdateProject:
 
         pid = uuid4()
         project = ProjectOut(id=pid, name="Updated", report_type="other", status="completed")
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=project):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=project):
             response = client.patch(
                 f"/api/extensions/project/projects/{pid}",
                 json={"status": "completed"},
@@ -173,8 +184,7 @@ class TestUpdateProject:
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=None):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.update_project", new_callable=AsyncMock, return_value=None):
             response = client.patch(
                 f"/api/extensions/project/projects/{pid}",
                 json={"status": "completed"},
@@ -189,16 +199,14 @@ class TestUpdateProject:
 class TestDeleteProject:
     def test_deletes_existing(self, client):
         pid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=True):
             response = client.delete(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 204
 
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.delete_project", new_callable=AsyncMock, return_value=False):
             response = client.delete(f"/api/extensions/project/projects/{pid}")
 
         assert response.status_code == 404
@@ -264,8 +272,7 @@ class TestAddMember:
     def test_adds_member(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=True):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/members",
                 json={"user_id": str(uid), "role": "member"},
@@ -276,8 +283,7 @@ class TestAddMember:
     def test_returns_404_for_missing_project(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.add_member", new_callable=AsyncMock, return_value=False):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/members",
                 json={"user_id": str(uid), "role": "member"},
@@ -293,8 +299,7 @@ class TestRemoveMember:
     def test_removes_member(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=True):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=True):
             response = client.delete(f"/api/extensions/project/projects/{pid}/members/{uid}")
 
         assert response.status_code == 204
@@ -302,8 +307,7 @@ class TestRemoveMember:
     def test_returns_404_for_missing(self, client):
         pid = uuid4()
         uid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=False):
+        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), patch("app.extensions.project.service.remove_member", new_callable=AsyncMock, return_value=False):
             response = client.delete(f"/api/extensions/project/projects/{pid}/members/{uid}")
 
         assert response.status_code == 404
@@ -382,8 +386,10 @@ class TestRoleBasedAccess:
     def test_member_can_review_approval(self, client):
         pid = uuid4()
         wid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value=None), \
-             patch("app.extensions.project.service.approval_action", new_callable=AsyncMock, return_value={"status": "approved"}):
+        with (
+            patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value=None),
+            patch("app.extensions.project.service.approval_action", new_callable=AsyncMock, return_value={"status": "approved"}),
+        ):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/approval-action",
                 json={"workflow_id": str(wid), "action": "approve"},
@@ -392,8 +398,10 @@ class TestRoleBasedAccess:
 
     def test_member_can_view_approval_status(self, client):
         pid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value=None), \
-             patch("app.extensions.project.service.get_approval_status", new_callable=AsyncMock, return_value={"project_id": str(pid), "current_step": None, "total_steps": 0, "steps": [], "all_approved": False}):
+        with (
+            patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value=None),
+            patch("app.extensions.project.service.get_approval_status", new_callable=AsyncMock, return_value={"project_id": str(pid), "current_step": None, "total_steps": 0, "steps": [], "all_approved": False}),
+        ):
             response = client.get(f"/api/extensions/project/projects/{pid}/approval-status")
         assert response.status_code == 410  # endpoint deprecated — returns 410 Gone
 
@@ -412,8 +420,10 @@ class TestRoleBasedAccess:
 
     def test_owner_can_submit_approval(self, client):
         pid = uuid4()
-        with patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"), \
-             patch("app.extensions.project.service.submit_approval", new_callable=AsyncMock, return_value={"project_id": str(pid), "status": "approval", "step_count": 1}):
+        with (
+            patch("app.extensions.auth.unified_permissions.resolve_user_project_role", new_callable=AsyncMock, return_value="owner"),
+            patch("app.extensions.project.service.submit_approval", new_callable=AsyncMock, return_value={"project_id": str(pid), "status": "approval", "step_count": 1}),
+        ):
             response = client.post(
                 f"/api/extensions/project/projects/{pid}/submit-approval",
                 json={"steps": [{"step_order": 1, "step_name": "Review", "reviewer_id": str(uuid4())}]},

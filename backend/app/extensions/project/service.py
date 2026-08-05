@@ -1,5 +1,8 @@
 """Database-backed service for report project management."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -15,6 +18,9 @@ from app.extensions.models import (
     ReportProject,
     User,
 )
+
+if TYPE_CHECKING:
+    from app.extensions.auth.engine import FilterRule
 
 from .schemas import (
     ChapterOut,
@@ -154,19 +160,31 @@ async def list_projects(
     search: str | None = None,
     skip: int = 0,
     limit: int = 50,
+    scope: "FilterRule | None" = None,
 ) -> tuple[list[ProjectListItem], int]:
     # EAI-CUSTOM: archived is the orthogonal archived_at bucket (ADR P5) — default
     # list hides archived projects via archived_at IS NULL.
     query = select(ReportProject).where(ReportProject.archived_at.is_(None))
     count_query = select(func.count(ReportProject.id)).where(ReportProject.archived_at.is_(None))
 
-    if user_id and not is_admin:
-        member_exists = (
-            select(ProjectMember.id)
-            .where(ProjectMember.project_id == ReportProject.id, ProjectMember.user_id == user_id)
-            .correlate(ReportProject)
-            .exists()
-        )
+    # EAI-CUSTOM (L1): when a data-scope FilterRule is provided by the caller
+    # (route wires `Depends(with_data_scope("projects"))`), use it as the
+    # visibility predicate INSTEAD of the legacy hand-rolled
+    # `(created_by == user_id OR ProjectMember subquery)` clause. The
+    # `project_member` scope template in permissions.yaml is
+    #   { or: [ { id IN: $identity.member_projects }, { created_by: $identity.user_id } ] }
+    # which is behaviorally equivalent to the old clause (same rows for the
+    # no-deny case). Superadmin's allow_all is a no-op filter, so the is_admin
+    # branch below is bypassed uniformly. When `scope` is None (other service
+    # callers / unit tests), keep the legacy hand-rolled clause for backward
+    # compatibility — the `user_id`/`is_admin` knobs still drive it.
+    if scope is not None:
+        column_map = {"id": ReportProject.id, "created_by": ReportProject.created_by}
+        scope_filter = scope.to_sqlalchemy(ReportProject, column_map)
+        query = query.where(scope_filter)
+        count_query = count_query.where(scope_filter)
+    elif user_id and not is_admin:
+        member_exists = select(ProjectMember.id).where(ProjectMember.project_id == ReportProject.id, ProjectMember.user_id == user_id).correlate(ReportProject).exists()
         user_filter = or_(ReportProject.created_by == user_id, member_exists)
         query = query.where(user_filter)
         count_query = count_query.where(user_filter)
@@ -235,11 +253,7 @@ async def list_projects(
     # Batch query: member counts per project
     member_stats: dict = {}
     if project_ids:
-        m_stmt = (
-            select(ProjectMember.project_id, func.count(ProjectMember.id).label("count"))
-            .where(ProjectMember.project_id.in_(project_ids))
-            .group_by(ProjectMember.project_id)
-        )
+        m_stmt = select(ProjectMember.project_id, func.count(ProjectMember.id).label("count")).where(ProjectMember.project_id.in_(project_ids)).group_by(ProjectMember.project_id)
         m_result = await db.execute(m_stmt)
         member_stats = dict(m_result.all())
 
@@ -248,6 +262,7 @@ async def list_projects(
     template_names: dict = {}
     if template_ids:
         from app.extensions.knowledge_factory.models import ExtractionTemplate
+
         tmpl_stmt = select(ExtractionTemplate.id, ExtractionTemplate.name).where(ExtractionTemplate.id.in_(template_ids))
         tmpl_result = await db.execute(tmpl_stmt)
         template_names = dict(tmpl_result.all())
@@ -258,23 +273,25 @@ async def list_projects(
         done = stats["completed"]
         pct = round(done / cc * 100, 1) if cc > 0 else 0.0
 
-        items.append(ProjectListItem(
-            id=p.id,
-            name=p.name,
-            report_type=p.report_type,
-            status=p.status,
-            template_id=p.template_id,
-            template_name=template_names.get(p.template_id) if p.template_id else None,
-            chapter_count=cc,
-            completed_chapter_count=done,
-            progress_percentage=pct,
-            member_count=member_stats.get(p.id, 0),
-            created_by=p.created_by,
-            created_by_name=creator_names.get(p.created_by) if p.created_by else None,
-            created_by_dept=creator_depts.get(p.created_by) if p.created_by else None,
-            created_at=p.created_at,
-            updated_at=p.updated_at,
-        ))
+        items.append(
+            ProjectListItem(
+                id=p.id,
+                name=p.name,
+                report_type=p.report_type,
+                status=p.status,
+                template_id=p.template_id,
+                template_name=template_names.get(p.template_id) if p.template_id else None,
+                chapter_count=cc,
+                completed_chapter_count=done,
+                progress_percentage=pct,
+                member_count=member_stats.get(p.id, 0),
+                created_by=p.created_by,
+                created_by_name=creator_names.get(p.created_by) if p.created_by else None,
+                created_by_dept=creator_depts.get(p.created_by) if p.created_by else None,
+                created_at=p.created_at,
+                updated_at=p.updated_at,
+            )
+        )
 
     return items, total
 
@@ -319,14 +336,16 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
     mem_result = await db.execute(mem_stmt)
     members = []
     for m in mem_result.scalars().all():
-        members.append(MemberOut(
-            id=m.id,
-            project_id=m.project_id,
-            user_id=m.user_id,
-            username=await _resolve_username(db, m.user_id),
-            role=m.role,
-            created_at=m.created_at,
-        ))
+        members.append(
+            MemberOut(
+                id=m.id,
+                project_id=m.project_id,
+                user_id=m.user_id,
+                username=await _resolve_username(db, m.user_id),
+                role=m.role,
+                created_at=m.created_at,
+            )
+        )
 
     return ProjectOut(
         id=project.id,
@@ -376,6 +395,7 @@ async def enter_project(
     template_context = {}
     if project.template_id:
         from app.extensions.knowledge_factory.models import ExtractionTemplate
+
         tmpl = await db.get(ExtractionTemplate, project.template_id)
         if tmpl:
             template_context = {
@@ -503,11 +523,15 @@ async def open_chapter_document(
 
     # Priority 2: a finalized document whose content contains this chapter as a heading.
     # Use broad match — AI may generate headings like "## 1.2 Design Title" or "## A.2 Title".
-    stmt2 = select(AIDocument).where(
-        AIDocument.project_id == project_id,
-        AIDocument.status.in_(["final", "active"]),
-        AIDocument.content.ilike(f"%{chapter.title}%"),
-    ).limit(1)
+    stmt2 = (
+        select(AIDocument)
+        .where(
+            AIDocument.project_id == project_id,
+            AIDocument.status.in_(["final", "active"]),
+            AIDocument.content.ilike(f"%{chapter.title}%"),
+        )
+        .limit(1)
+    )
     result2 = await db.execute(stmt2)
     doc2 = result2.scalar_one_or_none()
 
@@ -516,15 +540,20 @@ async def open_chapter_document(
 
     # Priority 3: a file_ref document whose content contains the chapter title.
     # AI-generated reports have all chapters in a single .md file on disk.
-    stmt3 = select(AIDocument).where(
-        AIDocument.project_id == project_id,
-        AIDocument.status.in_(["final", "active"]),
-        AIDocument.doc_type == "file_ref",
-    ).limit(10)
+    stmt3 = (
+        select(AIDocument)
+        .where(
+            AIDocument.project_id == project_id,
+            AIDocument.status.in_(["final", "active"]),
+            AIDocument.doc_type == "file_ref",
+        )
+        .limit(10)
+    )
     result3 = await db.execute(stmt3)
     for doc3 in result3.scalars().all():
         if doc3.file_ref_path:
             from pathlib import Path
+
             file_path = Path(doc3.file_ref_path)
             if file_path.exists():
                 try:
@@ -690,11 +719,7 @@ async def copy_project(
 
     # Copy outline (chapters)
     if copy_outline:
-        stmt = (
-            select(ProjectChapter)
-            .where(ProjectChapter.project_id == source_project_id)
-            .order_by(ProjectChapter.sort_order)
-        )
+        stmt = select(ProjectChapter).where(ProjectChapter.project_id == source_project_id).order_by(ProjectChapter.sort_order)
         result = await db.execute(stmt)
         source_chapters = result.scalars().all()
 
@@ -780,6 +805,7 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
         elif doc.file_ref_path:
             # file_ref documents — read from disk
             from pathlib import Path
+
             fp = Path(doc.file_ref_path)
             if fp.exists():
                 try:
@@ -788,11 +814,7 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
                     pass
 
     # Mark chapters as "writing" if they have associated documents
-    chapters_with_docs = (
-        select(AIDocument.chapter_id)
-        .where(AIDocument.project_id == project_id, AIDocument.chapter_id.isnot(None))
-        .distinct()
-    )
+    chapters_with_docs = select(AIDocument.chapter_id).where(AIDocument.project_id == project_id, AIDocument.chapter_id.isnot(None)).distinct()
     result = await db.execute(chapters_with_docs)
     chapter_ids = [row[0] for row in result.all()]
 
@@ -806,30 +828,17 @@ async def _refresh_project_stats(db: AsyncSession, project_id) -> None:
             r = await db.execute(word_stmt)
             words = r.scalar_one() or 0
 
-            await db.execute(
-                sa_update(ProjectChapter)
-                .where(ProjectChapter.id == cid)
-                .values(word_count_current=words)
-            )
+            await db.execute(sa_update(ProjectChapter).where(ProjectChapter.id == cid).values(word_count_current=words))
     elif doc_count > 0:
         # No chapter-specific docs, but project has documents.
         # Distribute word count evenly across first N chapters.
-        ch_stmt = (
-            select(ProjectChapter.id)
-            .where(ProjectChapter.project_id == project_id)
-            .order_by(ProjectChapter.sort_order)
-            .limit(min(doc_count, 34))
-        )
+        ch_stmt = select(ProjectChapter.id).where(ProjectChapter.project_id == project_id).order_by(ProjectChapter.sort_order).limit(min(doc_count, 34))
         result = await db.execute(ch_stmt)
         all_ch_ids = [row[0] for row in result.all()]
         words_per_chapter = total_words // max(len(all_ch_ids), 1) if total_words else 0
 
         for cid in all_ch_ids:
-            await db.execute(
-                sa_update(ProjectChapter)
-                .where(ProjectChapter.id == cid)
-                .values(word_count_current=words_per_chapter)
-            )
+            await db.execute(sa_update(ProjectChapter).where(ProjectChapter.id == cid).values(word_count_current=words_per_chapter))
 
     await db.flush()
 
@@ -964,11 +973,8 @@ async def delete_project(db: AsyncSession, project_id) -> bool:
     # the ai_documents FK currently lacks ON DELETE SET NULL in some databases.
     from app.extensions.models import AIDocument
     from sqlalchemy import update as sa_update
-    await db.execute(
-        sa_update(AIDocument)
-        .where(AIDocument.project_id == project_id)
-        .values(project_id=None)
-    )
+
+    await db.execute(sa_update(AIDocument).where(AIDocument.project_id == project_id).values(project_id=None))
 
     await db.delete(project)
     await db.flush()
@@ -1013,7 +1019,12 @@ async def remove_member(db: AsyncSession, project_id, user_id) -> bool:
 
 
 async def update_member(
-    db: AsyncSession, project_id, user_id, *, role: str | None = None, phase_duties: dict | None = None,
+    db: AsyncSession,
+    project_id,
+    user_id,
+    *,
+    role: str | None = None,
+    phase_duties: dict | None = None,
 ) -> bool:
     """Update a project member's role and/or phase_duties."""
     stmt = select(ProjectMember).where(
@@ -1036,14 +1047,14 @@ async def update_member(
 
 
 async def submit_approval(
-    db: AsyncSession, project_id: UUID, manager_id: UUID,
+    db: AsyncSession,
+    project_id: UUID,
+    manager_id: UUID,
     steps: list[dict],
 ) -> dict:
     project = await _get_project_or_404(db, project_id)
 
-    existing = await db.execute(
-        select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id)
-    )
+    existing = await db.execute(select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id))
     for wf in existing.scalars().all():
         await db.delete(wf)
 
@@ -1063,8 +1074,12 @@ async def submit_approval(
 
 
 async def approval_action(
-    db: AsyncSession, project_id: UUID, workflow_id: UUID,
-    reviewer_id: UUID, action: str, comment: str | None,
+    db: AsyncSession,
+    project_id: UUID,
+    workflow_id: UUID,
+    reviewer_id: UUID,
+    action: str,
+    comment: str | None,
     is_admin: bool = False,
 ) -> dict:
     workflow = await db.get(ApprovalWorkflow, workflow_id)
@@ -1088,11 +1103,7 @@ async def approval_action(
 
     if action == "approve":
         workflow.status = "approved"
-        all_steps = await db.execute(
-            select(ApprovalWorkflow)
-            .where(ApprovalWorkflow.project_id == project_id)
-            .order_by(ApprovalWorkflow.step_order)
-        )
+        all_steps = await db.execute(select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id).order_by(ApprovalWorkflow.step_order))
         steps = all_steps.scalars().all()
         if all(s.status == "approved" for s in steps):
             project = await _get_project_or_404(db, project_id)
@@ -1116,12 +1127,7 @@ async def approval_action(
 async def get_approval_status(db: AsyncSession, project_id: UUID) -> dict:
     from sqlalchemy.orm import selectinload
 
-    all_steps = await db.execute(
-        select(ApprovalWorkflow)
-        .where(ApprovalWorkflow.project_id == project_id)
-        .options(selectinload(ApprovalWorkflow.records))
-        .order_by(ApprovalWorkflow.step_order)
-    )
+    all_steps = await db.execute(select(ApprovalWorkflow).where(ApprovalWorkflow.project_id == project_id).options(selectinload(ApprovalWorkflow.records)).order_by(ApprovalWorkflow.step_order))
     steps = all_steps.scalars().all()
 
     current_step = None
@@ -1173,9 +1179,7 @@ async def _auto_parse_sources(db: AsyncSession, chapter_id, content: str) -> Non
     if not parsed:
         return
 
-    await db.execute(
-        ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id)
-    )
+    await db.execute(ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id))
 
     for s in parsed:
         source = ContentSource(
@@ -1230,21 +1234,24 @@ async def get_project_files(db: AsyncSession, project_id, *, cookies=None, csrf_
 
     # 2. Also include synced AIDocument records for this project
     from app.extensions.models import AIDocument
+
     doc_stmt = select(AIDocument).where(
         AIDocument.project_id == project_id,
         AIDocument.file_ref_path.isnot(None),
     )
     doc_result = await db.execute(doc_stmt)
     for doc in doc_result.scalars().all():
-        files.append({
-            "name": doc.title or "Untitled",
-            "size": doc.file_size,
-            "mime_type": doc.file_mime,
-            "thread_id": doc.source_thread_id,
-            "member": "AI",
-            "updated_at": str(doc.updated_at) if doc.updated_at else None,
-            "source": "aidocument",
-        })
+        files.append(
+            {
+                "name": doc.title or "Untitled",
+                "size": doc.file_size,
+                "mime_type": doc.file_mime,
+                "thread_id": doc.source_thread_id,
+                "member": "AI",
+                "updated_at": str(doc.updated_at) if doc.updated_at else None,
+                "source": "aidocument",
+            }
+        )
 
     return files
 
@@ -1271,9 +1278,13 @@ async def get_phase_board(db: AsyncSession, project_id: UUID, phase_node: str) -
                     break
 
     # Get chapters — optionally filter by phase's chapter_range if defined in the graph node
-    chapter_stmt = select(ProjectChapter).where(
-        ProjectChapter.project_id == project_id,
-    ).order_by(ProjectChapter.sort_order)
+    chapter_stmt = (
+        select(ProjectChapter)
+        .where(
+            ProjectChapter.project_id == project_id,
+        )
+        .order_by(ProjectChapter.sort_order)
+    )
     chapter_result = await db.execute(chapter_stmt)
     all_chapters = chapter_result.scalars().all()
 
@@ -1294,10 +1305,7 @@ async def get_phase_board(db: AsyncSession, project_id: UUID, phase_node: str) -
                         if 0 <= start_idx < len(level1_chapters) and 0 < end_idx <= len(level1_chapters):
                             selected_ids = {c.id for c in level1_chapters[start_idx:end_idx]}
                             # Include children of selected chapters too
-                            filtered_chapters = [
-                                c for c in all_chapters
-                                if c.id in selected_ids or c.parent_id in selected_ids
-                            ]
+                            filtered_chapters = [c for c in all_chapters if c.id in selected_ids or c.parent_id in selected_ids]
                     break
 
     # Build assigned names map
@@ -1332,12 +1340,14 @@ async def get_phase_board(db: AsyncSession, project_id: UUID, phase_node: str) -
         if m.phase_duties and phase_node in m.phase_duties:
             duty = m.phase_duties[phase_node].get("duty")
         username = await _resolve_username(db, m.user_id)
-        members_out.append({
-            "user_id": m.user_id,
-            "username": username,
-            "role": m.role,
-            "duty": duty,
-        })
+        members_out.append(
+            {
+                "user_id": m.user_id,
+                "username": username,
+                "role": m.role,
+                "duty": duty,
+            }
+        )
 
     total = len(filtered_chapters)
     completed = sum(1 for c in filtered_chapters if c.status in ("reviewing", "approved"))  # EAI-CUSTOM: canonical (ADR 2026-08-02)
@@ -1365,12 +1375,7 @@ async def batch_assign_chapters(
         if not chapter_id:
             continue
 
-        stmt = (
-            ProjectChapter.__table__.update()
-            .where(ProjectChapter.id == chapter_id)
-            .where(ProjectChapter.project_id == project_id)
-            .values(assigned_to=assigned_to)
-        )
+        stmt = ProjectChapter.__table__.update().where(ProjectChapter.id == chapter_id).where(ProjectChapter.project_id == project_id).values(assigned_to=assigned_to)
         result = await db.execute(stmt)
         updated += result.rowcount
 

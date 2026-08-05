@@ -11,9 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from app.extensions.auth.middleware import require_permission
+from app.extensions.auth.engine import FilterRule
+from app.extensions.auth.middleware import require_permission, with_data_scope
 from app.extensions.database import get_db
-from app.extensions.models import ProjectMember, ReportProject, Role, User
+from app.extensions.models import ReportProject, Role, User
 from app.extensions.schemas import CurrentUser
 
 from app.extensions.auth.unified_permissions import require_project_member, require_resource_permission
@@ -41,6 +42,25 @@ CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("syste
 ProjectCreator = Annotated[CurrentUser, Depends(require_permission("project:create"))]
 
 
+async def _load_project_scoped(
+    db: AsyncSession,
+    project_id: UUID,
+    scope: FilterRule,
+) -> ReportProject | None:
+    """Load a project row by id ONLY if the given visibility scope permits it.
+
+    EAI-CUSTOM (L1): mirrors ``_load_kb_scoped`` in knowledge routers — unifies
+    by-id access with the list endpoint's ``with_data_scope("projects")``
+    FilterRule so list and by-id enforce identical visibility (created_by OR
+    member_projects, or allow_all for superadmin). Returns None if the project
+    does not exist or is out of scope; callers raise 404 to avoid existence
+    leakage (closes M6: non-members now get 404, not 403).
+    """
+    column_map = {"id": ReportProject.id, "created_by": ReportProject.created_by}
+    q = select(ReportProject).where(ReportProject.id == project_id).where(scope.to_sqlalchemy(ReportProject, column_map))
+    return (await db.execute(q)).scalar_one_or_none()
+
+
 # ── Projects ──
 
 
@@ -53,15 +73,22 @@ async def list_projects(
     search: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    scope: FilterRule = Depends(with_data_scope("projects")),
 ):
-    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
-    from app.extensions.auth.admin import is_superadmin
-
-    is_admin = await is_superadmin(db, user.id)
-
+    # EAI-CUSTOM (L1): visibility is now driven by the data-scope FilterRule
+    # (allow_all for superadmin; OR-union of the role's project scopes
+    # otherwise). The legacy is_admin/user_id knobs are kept for the
+    # scope=None path inside service.list_projects (used by other callers /
+    # tests) but are no-ops here when a scope is supplied.
     items, total = await service.list_projects(
-        db, user_id=user.id, is_admin=is_admin,
-        status=status_filter, report_type=report_type, search=search, skip=skip, limit=limit,
+        db,
+        user_id=user.id,
+        status=status_filter,
+        report_type=report_type,
+        search=search,
+        skip=skip,
+        limit=limit,
+        scope=scope,
     )
     return ProjectListResponse(items=items, total=total)
 
@@ -71,24 +98,15 @@ async def get_project(
     project_id: UUID,
     user: CurrentUserWithAccess,
     db: AsyncSession = Depends(get_db),
+    scope: FilterRule = Depends(with_data_scope("projects")),
 ):
-    # Check admin status — admins can see any project
-    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
-    from app.extensions.auth.admin import is_superadmin
-
-    is_admin = await is_superadmin(db, user.id)
-
-    if not is_admin:
-        # Verify membership
-        member_check = await db.execute(
-            select(ProjectMember).where(
-                ProjectMember.project_id == project_id,
-                ProjectMember.user_id == user.id,
-            )
-        )
-        is_member = member_check.scalar_one_or_none() is not None
-        if not is_member:
-            raise HTTPException(status_code=403, detail="You are not a member of this project")
+    # EAI-CUSTOM (L1): by-id access now goes through the same scope FilterRule
+    # as list (mirrors knowledge routers' _load_kb_scoped). Existence leak
+    # closed: non-members get 404 (not 403) so out-of-scope ids are
+    # indistinguishable from missing ones.
+    project = await _load_project_scoped(db, project_id, scope)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     result = await service.get_project(db, project_id)
     if not result:
@@ -105,11 +123,13 @@ async def create_project(
     # FK existence checks for template and workflow
     if body.template_id:
         from app.extensions.knowledge_factory.models import ExtractionTemplate
+
         tmpl = await db.get(ExtractionTemplate, body.template_id)
         if not tmpl:
             raise HTTPException(status_code=422, detail=f"Template {body.template_id} not found")
     if body.workflow_id:
         from app.extensions.workflow.models import WorkflowDefinition
+
         wf = await db.get(WorkflowDefinition, body.workflow_id)
         if not wf:
             raise HTTPException(status_code=422, detail=f"Workflow definition {body.workflow_id} not found")
@@ -147,6 +167,7 @@ async def create_project(
                 )
                 if workflow_id_result:
                     from app.extensions.models import ReportProject
+
                     proj = await db.get(ReportProject, project.id)
                     if proj:
                         proj.workflow_id = body.workflow_id
@@ -180,8 +201,12 @@ async def copy_project(
     if not result:
         raise HTTPException(status_code=404, detail="Source project not found")
     await log_activity(
-        db, result.id, _user.id, "project.copied",
-        target_type="project", target_id=str(body.source_project_id),
+        db,
+        result.id,
+        _user.id,
+        "project.copied",
+        target_type="project",
+        target_id=str(body.source_project_id),
         detail=f"Copied from project as '{body.name}'",
     )
     return result
@@ -254,8 +279,11 @@ async def enter_project(
     csrf_token = request.cookies.get("csrf_token")
     try:
         result = await service.enter_project(
-            db, project_id, user.id,
-            cookies=request.cookies, csrf_token=csrf_token,
+            db,
+            project_id,
+            user.id,
+            cookies=request.cookies,
+            csrf_token=csrf_token,
         )
         return result
     except ValueError as e:
@@ -290,7 +318,10 @@ async def sync_project_docs(
 
     try:
         sync_result = await service.sync_project_thread_docs(
-            db, project_id=project_id, user_id=user.id, thread_id=thread_id,
+            db,
+            project_id=project_id,
+            user_id=user.id,
+            thread_id=thread_id,
         )
         return sync_result
     except Exception as e:
@@ -306,7 +337,10 @@ async def get_project_files(
 ):
     csrf_token = request.cookies.get("csrf_token")
     return await service.get_project_files(
-        db, project_id, cookies=request.cookies, csrf_token=csrf_token,
+        db,
+        project_id,
+        cookies=request.cookies,
+        csrf_token=csrf_token,
     )
 
 
@@ -373,8 +407,7 @@ async def add_member(
     ok = await service.add_member(db, project_id, body.user_id, body.role)
     if not ok:
         raise HTTPException(status_code=404, detail="Project not found")
-    await log_activity(db, project_id, _user.id, "member.added", target_type="member", target_id=str(body.user_id),
-                       detail=f"Added member with role '{body.role}'")
+    await log_activity(db, project_id, _user.id, "member.added", target_type="member", target_id=str(body.user_id), detail=f"Added member with role '{body.role}'")
 
 
 @router.delete(
@@ -418,7 +451,10 @@ async def update_member(
 
 
 async def _check_phase_access(
-    db: AsyncSession, project_id: UUID, chapter_id: UUID, user: CurrentUser,
+    db: AsyncSession,
+    project_id: UUID,
+    chapter_id: UUID,
+    user: CurrentUser,
 ) -> None:
     """Check that the user can edit the given chapter within its phase scope.
 
@@ -454,8 +490,7 @@ async def _check_phase_access(
     if chapter.phase_node and chapter.phase_node != project.current_phase_node:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Cannot edit chapters in phase '{chapter.phase_node}'. "
-                   f"Current active phase is '{project.current_phase_node}'.",
+            detail=f"Cannot edit chapters in phase '{chapter.phase_node}'. Current active phase is '{project.current_phase_node}'.",
         )
 
 
@@ -536,19 +571,12 @@ async def update_chapter_status(
         if err:
             raise HTTPException(status_code=400, detail=err)
 
-    stmt = (
-        ProjectChapter.__table__.update()
-        .where(ProjectChapter.id == chapter_id)
-        .where(ProjectChapter.project_id == project_id)
-        .values(status=body.status)
-    )
+    stmt = ProjectChapter.__table__.update().where(ProjectChapter.id == chapter_id).where(ProjectChapter.project_id == project_id).values(status=body.status)
     result = await db.execute(stmt)
     await db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Chapter not found")
-    await log_activity(db, project_id, user.id, "chapter.status_updated",
-                       target_type="chapter", target_id=str(chapter_id),
-                       detail=f"Status changed to '{body.status}'")
+    await log_activity(db, project_id, user.id, "chapter.status_updated", target_type="chapter", target_id=str(chapter_id), detail=f"Status changed to '{body.status}'")
     return {"success": True}
 
 
@@ -634,11 +662,7 @@ async def get_phase_completion(
         raise HTTPException(status_code=404, detail="Project not found")
 
     # Get all level-1 chapters for the project
-    stmt = (
-        select(ProjectChapter)
-        .where(ProjectChapter.project_id == project_id)
-        .order_by(ProjectChapter.sort_order)
-    )
+    stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id).order_by(ProjectChapter.sort_order)
     result = await db.execute(stmt)
     all_chapters = result.scalars().all()
 
@@ -655,10 +679,7 @@ async def get_phase_completion(
                         start_idx, end_idx = cr
                         if 0 <= start_idx < len(level1) and 0 < end_idx <= len(level1):
                             selected_ids = {c.id for c in level1[start_idx:end_idx]}
-                            scoped_chapters = [
-                                c for c in all_chapters
-                                if c.id in selected_ids or c.parent_id in selected_ids
-                            ]
+                            scoped_chapters = [c for c in all_chapters if c.id in selected_ids or c.parent_id in selected_ids]
                     break
 
     # Also include chapters tagged with phase_node
@@ -748,14 +769,7 @@ async def get_project_activities(
     """Get activity log for a project — who did what when."""
     from app.extensions.models import ActivityLog, User as ExtUser
 
-    stmt = (
-        select(ActivityLog, ExtUser.username, ExtUser.full_name)
-        .outerjoin(ExtUser, ActivityLog.user_id == ExtUser.id)
-        .where(ActivityLog.project_id == project_id)
-        .order_by(ActivityLog.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+    stmt = select(ActivityLog, ExtUser.username, ExtUser.full_name).outerjoin(ExtUser, ActivityLog.user_id == ExtUser.id).where(ActivityLog.project_id == project_id).order_by(ActivityLog.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -765,17 +779,19 @@ async def get_project_activities(
 
     items = []
     for log, username, full_name in rows:
-        items.append({
-            "id": str(log.id),
-            "project_id": str(log.project_id),
-            "user_id": str(log.user_id) if log.user_id else None,
-            "user_name": full_name or username or "System",
-            "action": log.action,
-            "target_type": log.target_type,
-            "target_id": log.target_id,
-            "detail": log.detail,
-            "created_at": log.created_at.isoformat() if log.created_at else None,
-        })
+        items.append(
+            {
+                "id": str(log.id),
+                "project_id": str(log.project_id),
+                "user_id": str(log.user_id) if log.user_id else None,
+                "user_name": full_name or username or "System",
+                "action": log.action,
+                "target_type": log.target_type,
+                "target_id": log.target_id,
+                "detail": log.detail,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+            }
+        )
 
     return {"items": items, "total": total}
 
@@ -810,6 +826,7 @@ async def get_approval_records(
 
 class PhaseCompleteRequest(BaseModel):
     """Request to mark the current phase as complete and advance the workflow."""
+
     comment: str | None = None
 
 
@@ -857,14 +874,17 @@ async def complete_current_phase(
     # instead of sending a signal that the workflow will reject.
     from app.extensions.models import ProjectChapter
     from sqlalchemy import func as _sf
+
     ch_stmt = (
         select(
             _sf.count(ProjectChapter.id).label("total"),
-            _sf.sum(_sf.cast(
-                # EAI-CUSTOM: canonical (ADR 2026-08-02)
-                ProjectChapter.status.in_(["reviewing", "approved"]),
-                Integer,
-            )).label("done"),
+            _sf.sum(
+                _sf.cast(
+                    # EAI-CUSTOM: canonical (ADR 2026-08-02)
+                    ProjectChapter.status.in_(["reviewing", "approved"]),
+                    Integer,
+                )
+            ).label("done"),
         )
         .where(ProjectChapter.project_id == project_id)
         .where(ProjectChapter.level == 1)
@@ -875,11 +895,7 @@ async def complete_current_phase(
     if chapter_total > 0 and chapter_done < chapter_total:
         raise HTTPException(
             status_code=409,
-            detail=(
-                f"章节尚未全部完成 ({chapter_done}/{chapter_total})，"
-                f"共{chapter_total}章，已完成{chapter_done}章，"
-                f"请先完成所有章节的修改确认后再提交"
-            ),
+            detail=(f"章节尚未全部完成 ({chapter_done}/{chapter_total})，共{chapter_total}章，已完成{chapter_done}章，请先完成所有章节的修改确认后再提交"),
         )
 
     try:
@@ -893,8 +909,12 @@ async def complete_current_phase(
         raise HTTPException(status_code=503, detail=f"Workflow signal failed: {str(e)}")
 
     await log_activity(
-        db, project_id, user.id, "phase.completed",
-        target_type="phase", target_id=current_phase,
+        db,
+        project_id,
+        user.id,
+        "phase.completed",
+        target_type="phase",
+        target_id=current_phase,
         detail=f"Marked phase '{phase_label}' as complete",
     )
 
@@ -908,6 +928,7 @@ async def complete_current_phase(
 
 class PhaseStatusResponse(BaseModel):
     """Current workflow phase status with available user actions."""
+
     project_id: str
     workflow_id: str | None = None
     current_phase_node: str | None = None
@@ -957,11 +978,13 @@ async def get_phase_status(
                 node_id = node["id"]
                 node_type = node.get("type", "phase")
                 node_label = node.get("data", {}).get("label", node_id)
-                nodes.append({
-                    "node_id": node_id,
-                    "node_type": node_type,
-                    "label": node_label,
-                })
+                nodes.append(
+                    {
+                        "node_id": node_id,
+                        "node_type": node_type,
+                        "label": node_label,
+                    }
+                )
                 if node_id == current_phase:
                     phase_label = node_label
 
@@ -979,6 +1002,7 @@ async def get_phase_status(
     elif project.temporal_workflow_id:
         try:
             from app.extensions.workflow.temporal.client import get_workflow_status as _get_wf_status
+
             temporal_status = await _get_wf_status(str(project_id))
             if temporal_status:
                 wf_status = temporal_status.get("status", "idle")
@@ -1003,6 +1027,7 @@ async def get_phase_status(
 
 class DocumentStatusUpdate(BaseModel):
     """Request to update an AIDocument status."""
+
     status: str  # draft | intermediate | review | final
 
 
@@ -1021,6 +1046,7 @@ async def update_document_status(
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
 
     from app.extensions.models import AIDocument
+
     doc = await db.get(AIDocument, doc_id)
     if not doc or doc.project_id != project_id:
         raise HTTPException(status_code=404, detail="Document not found in this project")
@@ -1032,6 +1058,7 @@ async def update_document_status(
 
 class MergeDocumentsRequest(BaseModel):
     """Request to merge multiple AIDocuments into a final document."""
+
     doc_ids: list[UUID] = Field(..., min_length=2, description="Ordered list of document IDs to merge")
     title: str = Field(..., min_length=1, max_length=255, description="Title for the merged document")
 
@@ -1101,6 +1128,7 @@ async def merge_project_documents(
 
 class ProjectStatsResponse(BaseModel):
     """Aggregated project statistics for the overview cards."""
+
     document_count: int = 0
     document_total_size: int = 0
     chapter_count: int = 0
@@ -1126,44 +1154,40 @@ async def get_project_stats(
     # Document stats from AIDocument table — include draft, final, and active
     # documents. Previously only counted status="final", which missed workflow-
     # synced draft reports and made the overview show 0 files.
-    doc_stmt = (
-        select(
-            func.count(AIDocument.id).label("count"),
-            func.coalesce(func.sum(AIDocument.file_size), 0).label("total_size"),
-        )
-        .where(
-            AIDocument.project_id == project_id,
-            AIDocument.status.in_(["draft", "active", "final"]),
-        )
+    doc_stmt = select(
+        func.count(AIDocument.id).label("count"),
+        func.coalesce(func.sum(AIDocument.file_size), 0).label("total_size"),
+    ).where(
+        AIDocument.project_id == project_id,
+        AIDocument.status.in_(["draft", "active", "final"]),
     )
     doc_result = await db.execute(doc_stmt)
     doc_row = doc_result.one()
 
     # Chapter stats from ProjectChapter table
-    ch_stmt = (
-        select(
-            func.count(ProjectChapter.id).label("total"),
-            func.coalesce(func.sum(ProjectChapter.word_count_current), 0).label("words"),
-            func.coalesce(
-                func.sum(
-                    func.cast(
-                        ProjectChapter.status.in_(["draft", "reviewing"]),  # EAI-CUSTOM: canonical (ADR P5)
-                        Integer,
-                    )
-                ), 0
-            ).label("active_count"),
-            func.coalesce(
-                func.sum(
-                    func.cast(
-                        # EAI-CUSTOM: canonical (ADR 2026-08-02)
-                        ProjectChapter.status.in_(["reviewing", "approved"]),
-                        Integer,
-                    )
-                ), 0
-            ).label("completed_count"),
-        )
-        .where(ProjectChapter.project_id == project_id)
-    )
+    ch_stmt = select(
+        func.count(ProjectChapter.id).label("total"),
+        func.coalesce(func.sum(ProjectChapter.word_count_current), 0).label("words"),
+        func.coalesce(
+            func.sum(
+                func.cast(
+                    ProjectChapter.status.in_(["draft", "reviewing"]),  # EAI-CUSTOM: canonical (ADR P5)
+                    Integer,
+                )
+            ),
+            0,
+        ).label("active_count"),
+        func.coalesce(
+            func.sum(
+                func.cast(
+                    # EAI-CUSTOM: canonical (ADR 2026-08-02)
+                    ProjectChapter.status.in_(["reviewing", "approved"]),
+                    Integer,
+                )
+            ),
+            0,
+        ).label("completed_count"),
+    ).where(ProjectChapter.project_id == project_id)
     ch_result = await db.execute(ch_stmt)
     ch_row = ch_result.one()
 
@@ -1182,11 +1206,13 @@ async def get_project_stats(
 
 class FinalizeDocumentRequest(BaseModel):
     """Request to mark a document as final and sync chapter progress."""
+
     doc_id: UUID
 
 
 class FinalizeDocumentResponse(BaseModel):
     """Response after finalizing a document."""
+
     doc_id: str
     status: str
     matched_chapters: int = 0
@@ -1226,6 +1252,7 @@ async def finalize_document(
     content = doc.content or ""
     if not content and doc.file_ref_path:
         from pathlib import Path
+
         file_path = Path(doc.file_ref_path)
         if file_path.exists():
             try:
@@ -1236,9 +1263,7 @@ async def finalize_document(
     if not content:
         doc.status = "final"
         await db.commit()
-        return FinalizeDocumentResponse(
-            doc_id=str(doc.id), status=doc.status, matched_chapters=0
-        )
+        return FinalizeDocumentResponse(doc_id=str(doc.id), status=doc.status, matched_chapters=0)
 
     # Set status to final
     doc.status = "final"
@@ -1265,6 +1290,7 @@ async def finalize_document(
 
         # Build a lookup from normalized chapter title -> actual DB UUID
         from .chapter_matching import _normalize
+
         ch_stmt = select(ProjectChapter).where(ProjectChapter.project_id == project_id)
         ch_result = await db.execute(ch_stmt)
         for ch in ch_result.scalars().all():
@@ -1284,6 +1310,7 @@ async def finalize_document(
 
         # Look up the actual chapter UUID from the project's chapters
         from .chapter_matching import _normalize
+
         chapter_uuid = all_project_chapters.get(_normalize(match["title"]))
         if not chapter_uuid:
             continue
