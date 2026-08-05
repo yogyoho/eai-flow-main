@@ -5,12 +5,13 @@ description = "DeerFlow agent harness framework"
 requires-python = ">=3.12"
 dependencies = [
     "agent-client-protocol>=0.4.0",
-    # EAI: pinned min to 0.0.19 (upstream 0.0.30). Bumping to 0.0.30 blocks `uv sync`
-    # on this network (commit 4549fe5b4). uv.lock still resolves 0.0.30 and the
-    # container runs 0.0.30, so runtime matches upstream — do NOT raise this during
-    # upstream sync without first confirming `uv sync` succeeds.
-    "agent-sandbox>=0.0.19",
+    "agent-sandbox>=0.0.30",
     "croniter>=6.0.0",
+    # Exact pin by design (extension-system version contract): the host pins
+    # the contract version it implements, extensions declare ranges. A range
+    # here would let pip resolve a newer contract package than this harness
+    # implements, making newer extensions look supported at runtime.
+    "deerflow-extension-api==0.1.0",
     "dotenv>=0.9.9",
     "exa-py>=1.0.0",
     "httpx>=0.28.0",
@@ -43,7 +44,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0,<3.0",
     "aiosqlite>=0.19",
     "alembic>=1.13",
-    "cryptography>=48.0.1",
+    "cryptography>=50.0.0",
     "e2b-code-interpreter>=2.8.0",
 ]
 

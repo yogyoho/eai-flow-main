@@ -74,7 +74,8 @@ constraint-dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/harness"]
+members = ["packages/harness", "packages/extension-api"]
 
 [tool.uv.sources]
 deerflow-harness = { workspace = true }
+deerflow-extension-api = { workspace = true }
