@@ -10,7 +10,6 @@ from scripts.contract_store import (
     save_contract,
     load_contract,
     find_best,
-    list_contracts,
 )
 
 
@@ -82,18 +81,18 @@ def test_save_load_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(cs, "CONTRACTS_DIR", tmp_path / "contracts")
     monkeypatch.setattr(cs, "INDEX_PATH", tmp_path / "contracts" / "_index.json")
 
-    mapping = {"report_title": "test", "sections": []}
+    mapping = {"report_title": "test", "sources": []}
     structure = {"headings": [{"level": 1, "text": "概述", "para_i": 0}], "tables": {}, "paras": []}
-    save_contract("test_project", mapping, structure)
+    save_contract("test_project", "基础设计", mapping, structure)
 
-    loaded = load_contract("test_project")
+    loaded = load_contract("test_project", "基础设计")
     assert loaded is not None
     assert loaded["report_title"] == "test"
     assert "_fingerprint" in loaded
 
 
 def test_load_not_found():
-    assert load_contract("nonexistent") is None
+    assert load_contract("nonexistent", "基础设计") is None
 
 
 def test_save_overwrites(tmp_path, monkeypatch):
@@ -101,11 +100,11 @@ def test_save_overwrites(tmp_path, monkeypatch):
     monkeypatch.setattr(cs, "CONTRACTS_DIR", tmp_path / "contracts")
     monkeypatch.setattr(cs, "INDEX_PATH", tmp_path / "contracts" / "_index.json")
 
-    save_contract("proj", {"report_title": "v1", "sections": []},
+    save_contract("proj", "基础设计", {"report_title": "v1", "sources": []},
                   {"headings": [], "tables": {}, "paras": []})
-    save_contract("proj", {"report_title": "v2", "sections": []},
+    save_contract("proj", "基础设计", {"report_title": "v2", "sources": []},
                   {"headings": [], "tables": {}, "paras": []})
-    assert load_contract("proj")["report_title"] == "v2"
+    assert load_contract("proj", "基础设计")["report_title"] == "v2"
 
 
 # ── find_best ──────────────────────────────────────────────────
@@ -122,10 +121,10 @@ def test_find_best_match(tmp_path, monkeypatch):
     monkeypatch.setattr(cs, "INDEX_PATH", tmp_path / "contracts" / "_index.json")
 
     s1 = {"headings": [{"level": 1, "text": "消防设施", "para_i": 0}], "tables": {}, "paras": []}
-    save_contract("fire_project", {"report_title": "fire", "sections": []}, s1)
+    save_contract("fire_project", "基础设计", {"report_title": "fire", "sources": []}, s1)
 
     s2 = {"headings": [{"level": 1, "text": "消防系统", "para_i": 0}], "tables": {}, "paras": []}
-    result = find_best(s2, min_similarity=0.1)
+    result = find_best(s2, stage="基础设计", min_similarity=0.1)
     assert result is not None
     name, mapping, sim = result
     assert name == "fire_project"
@@ -139,19 +138,21 @@ def test_find_best_below_threshold(tmp_path, monkeypatch):
     monkeypatch.setattr(cs, "INDEX_PATH", tmp_path / "contracts" / "_index.json")
 
     s1 = {"headings": [{"level": 1, "text": "消防设施", "para_i": 0}], "tables": {}, "paras": []}
-    save_contract("fire", {"report_title": "x", "sections": []}, s1)
+    save_contract("fire", "基础设计", {"report_title": "x", "sources": []}, s1)
 
     s2 = {"headings": [{"level": 1, "text": "环境保护", "para_i": 0}], "tables": {}, "paras": []}
-    assert find_best(s2, min_similarity=0.9) is None  # very different topics
+    assert find_best(s2, stage="基础设计", min_similarity=0.9) is None  # very different topics
 
 
-# ── list ───────────────────────────────────────────────────────
+# ── index ──────────────────────────────────────────────────────
 
-def test_list_contracts(tmp_path, monkeypatch):
+def test_index_grouped_by_stage(tmp_path, monkeypatch):
     import scripts.contract_store as cs
     monkeypatch.setattr(cs, "CONTRACTS_DIR", tmp_path / "contracts")
     monkeypatch.setattr(cs, "INDEX_PATH", tmp_path / "contracts" / "_index.json")
 
-    assert list_contracts() == []
-    save_contract("a", {"report_title": "a", "sections": []}, {"headings": [], "tables": {}, "paras": []})
-    assert len(list_contracts()) == 1
+    assert cs._read_index() == {}
+    save_contract("a", "基础设计", {"sources": []}, {"headings": [], "tables": {}, "paras": []})
+    index = cs._read_index()
+    assert "基础设计" in index
+    assert "a" in index["基础设计"]
