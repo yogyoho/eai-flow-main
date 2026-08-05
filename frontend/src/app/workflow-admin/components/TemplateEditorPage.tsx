@@ -8,8 +8,9 @@ import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
+// EAI-CUSTOM (F4): 以 /me 的 is_admin 判超管（替代 role_name 显示名）
+import { usePermission } from "@/core/permissions";
 import { deptApi } from "@/extensions/api/index";
-import { useAuth } from "@/extensions/hooks/useAuth";
 import { useReportTypes } from "@/extensions/project/hooks/useReportTypes";
 import { workflowApi } from "@/extensions/workflow/api";
 import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
@@ -28,8 +29,7 @@ interface TemplateEditorPageProps {
 
 export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const router = useRouter();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role_name === "Super Admin";
+  const { is_admin: isSuperAdmin } = usePermission();
 
   const { options: reportTypeOptions } = useReportTypes();
 

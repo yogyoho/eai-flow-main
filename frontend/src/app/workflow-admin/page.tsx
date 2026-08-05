@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
-import { useAuth } from "@/extensions/hooks/useAuth";
+// EAI-CUSTOM (F4): 以 /me 的 is_admin 判超管（替代 role_name 显示名）
+import { usePermission } from "@/core/permissions";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
 import type { ReportType } from "@/extensions/project/types";
 import { workflowApi } from "@/extensions/workflow/api";
@@ -37,8 +38,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; co
 };
 
 export default function AdminTemplatesPage() {
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role_name === "Super Admin";
+  const { is_admin: isSuperAdmin } = usePermission();
   const [templates, setTemplates] = useState<WorkflowDefinitionListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
