@@ -121,3 +121,49 @@ def test_detect_para_precedes_heading():
         "headings": [{"level": 1, "text": "初步设计", "para_i": 2}],
     }
     assert detect_stage.detect_from_struct(struct) == "基础设计"
+
+
+def _mini_outline():
+    return {
+        "report_title": "{项目名} 消防设计专篇",
+        "sections": [
+            {"fire": "1 设计依据", "class": "heading"},
+            {"fire": "1.1 设计依据", "class": "verbatim", "heading_level": 3},
+            {"fire": "1.2 标准", "class": "template", "heading_level": 3, "template": "gb_standards"},
+            {"fire": "7 投资概算", "class": "compute", "note": "无数据"},
+        ],
+        "templates": {"gb_standards": "GB50016-2014"},
+    }
+
+
+def _mini_struct():
+    return {"paras": [{"i": 0, "text": "依据A"}, {"i": 1, "text": "依据B"}, {"i": 2, "text": "无关段"}], "tables": {}}
+
+
+def _mini_mapping():
+    return {"sources": [None, [{"kind": "range", "paras": [0, 1]}], None, None]}
+
+
+import extract
+
+
+def test_two_layer_extract_merges_outline_and_sources():
+    out, _ = extract.extract(_mini_struct(), _mini_outline(), _mini_mapping())
+    assert "1 设计依据" in out
+    assert "1.1 设计依据" in out
+    assert "依据A" in out and "依据B" in out
+    assert "无关段" not in out          # 未锚定的段落不得抄入
+    assert "GB50016-2014" in out        # template 从大纲取
+    assert "[需计算] 无数据" in out
+
+
+def test_two_layer_title_uses_project_name():
+    report = extract.build_report(_mini_struct(), _mini_outline(), _mini_mapping(), project_name="吉林石化新装置")
+    assert report.startswith("# 吉林石化新装置 消防设计专篇")
+    assert "XX" not in report.splitlines()[0]
+
+
+def test_two_layer_missing_sources_mark_not_found():
+    mapping = {"sources": [None, None, None, None]}
+    out, _ = extract.extract(_mini_struct(), _mini_outline(), mapping)
+    assert "[⚠未找到段落" in out
