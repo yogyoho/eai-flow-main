@@ -100,13 +100,15 @@ def validate_format(mapping):
 
 
 def save_contract(name, stage, mapping, structure):
+    if not name or not stage or any(ch in name + stage for ch in ("..", "/", "\\")):
+        raise ValueError(f"非法契约名/阶段: {name!r} {stage!r}")
     _ensure_dir()
     contract_dir = CONTRACTS_DIR / stage
     contract_dir.mkdir(parents=True, exist_ok=True)
     contract_path = contract_dir / f"{name}.json"
     fp = fingerprint_from_structure(structure)
     contract = dict(mapping)
-    contract.setdefault("_stage", stage)
+    contract["_stage"] = stage
     contract["_saved_at"] = datetime.now().isoformat()
     contract["_fingerprint"] = fp
     tmp_path = contract_path.with_suffix(".tmp")
@@ -126,13 +128,6 @@ def load_contract(name, stage):
         return None
 
 
-def _stage_of(name, index):
-    for st, names in index.items():
-        if name in names:
-            return st
-    return None
-
-
 def find_best(structure, stage=None, min_similarity=0.3):
     """找到 best-matching contract。同分时取 _saved_at 最新者；旧格式契约跳过。"""
     index = _read_index()
@@ -144,6 +139,8 @@ def find_best(structure, stage=None, min_similarity=0.3):
     best_stage = None
     for st in stages:
         for name, stored_fp in index.get(st, {}).items():
+            if not isinstance(stored_fp, dict):
+                continue  # 旧扁平索引残留（Task 7 重建前），跳过
             sim = _combined_similarity(target_fp, stored_fp)
             if sim < min_similarity or sim < best_sim:
                 continue
@@ -173,8 +170,12 @@ def main(argv):
             print("usage: contract_store.py save <stage> <name> <structure.json>", file=sys.stderr)
             return 2
         stage, name = argv[1], argv[2]
-        structure = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
-        mapping = json.loads(sys.stdin.read())
+        try:
+            structure = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
+            mapping = json.loads(sys.stdin.read())
+        except json.JSONDecodeError as e:
+            print(f"CONTRACT_PARSE_ERROR: {e}", file=sys.stderr)
+            return 3
         err = validate_format(mapping)
         if err:
             print(f"CONTRACT_FORMAT_MISMATCH: {err}", file=sys.stderr)
@@ -190,24 +191,28 @@ def main(argv):
         mapping = load_contract(argv[2], argv[1])
         if mapping:
             print(json.dumps(mapping, ensure_ascii=False, indent=2))
-        else:
-            print("NOT_FOUND")
-        return 0
+            return 0
+        print("NOT_FOUND")
+        return 4
     if cmd == "find":
         # usage: find <stage> <structure.json>
         if len(argv) != 3:
             print("usage: contract_store.py find <stage> <structure.json>", file=sys.stderr)
             return 2
-        structure = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
+        try:
+            structure = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"CONTRACT_PARSE_ERROR: {e}", file=sys.stderr)
+            return 3
         result = find_best(structure, stage=argv[1])
         if result:
             name, mapping, sim = result
             out = {k: v for k, v in mapping.items() if not k.startswith("_")}
             print(json.dumps({"name": name, "similarity": round(sim, 3), "mapping": out},
                              ensure_ascii=False, indent=2))
-        else:
-            print("NO_MATCH")
-        return 0
+            return 0
+        print("NO_MATCH")
+        return 4
     if cmd == "list":
         for st, names in _read_index().items():
             for name in names:

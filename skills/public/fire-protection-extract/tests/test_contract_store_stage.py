@@ -58,3 +58,25 @@ def test_format_validation_rejects_old_anchor():
     assert err, "旧字符串锚格式必须被识别为不合法"
     good = {"sources": [[{"kind": "range", "paras": [0, 1]}]]}
     assert contract_store.validate_format(good) is None
+
+
+def test_format_validation_rejects_top_level_old_anchor():
+    old_top = {"sources": [[{"kind": "para", "anchor": "xxx"}]]}
+    assert contract_store.validate_format(old_top) is not None
+    good = {"sources": [[{"kind": "range", "paras": [0, 1]}], None]}
+    assert contract_store.validate_format(good) is None
+
+
+def test_find_skips_old_format_contract():
+    old = {"sections": [{"sources": [{"kind": "para", "anchor": "xxx"}]}]}
+    struct = _struct()
+    contract_store.save_contract("旧格式", "基础设计", old, struct)
+    assert contract_store.find_best(struct, stage="基础设计") is None
+
+
+def test_find_all_stages_when_stage_none():
+    s1 = _struct()
+    contract_store.save_contract("A", "初步设计", {"sources": []}, s1)
+    contract_store.save_contract("B", "基础设计", {"sources": []}, s1)
+    name, _, _ = contract_store.find_best(s1, stage=None)
+    assert name in ("A", "B")
