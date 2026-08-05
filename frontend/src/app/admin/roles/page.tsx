@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { deptApi, permissionsApi, roleApi, userApi } from "@/extensions/api";
+import { deptApi, permissionsApi, projectApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import { toDenyInfo, toEngineConditions, toEngineGrants, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
@@ -30,7 +30,8 @@ import { cn } from "@/lib/utils";
 // EAI-CUSTOM: 策略条件属性/操作符中文标签 —— key 保持引擎值，仅展示用中文（下拉 + PolicyRow 共用）
 const ATTR_LABELS: Record<string, string> = {
   role_code: "角色代码", username: "用户名", tags: "标签",
-  role_level: "角色级别", dept_id: "部门ID", user_id: "用户ID",
+  role_level: "角色级别", dept_id: "部门ID", dept_ids: "部门ID（多值）", member_projects: "参与项目",
+  user_id: "用户ID",
 };
 const OP_LABELS: Record<string, string> = {
   "=": "等于", "!=": "不等于", ">=": "大于等于", "<=": "小于等于",
@@ -1309,6 +1310,7 @@ function PolicyEditForm({
   // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
   const [users, setUsers] = useState<User[]>([]);
   const [depts, setDepts] = useState<Department[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]); // EAI-CUSTOM (P0): member_projects 值选项
   // EAI-CUSTOM: 条件值 tag-input —— 徽章式（可输入可点选、徽章带叉可删）；单值操作符仅 1 个徽章，in/not_in 可多个
   const [chipDrafts, setChipDrafts] = useState<Record<number, string>>({});
   const [chipOpens, setChipOpens] = useState<Record<number, boolean>>({});
@@ -1332,6 +1334,7 @@ function PolicyEditForm({
     let active = true;
     userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
     deptApi.list().then((r) => { if (active) setDepts(r.departments ?? []); }).catch(() => {});
+    projectApi.list({ limit: 500 }).then((r) => { if (active) setProjects(r.projects ?? []); }).catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -1342,6 +1345,8 @@ function PolicyEditForm({
       case "username": return users.map((u) => ({ value: u.username, label: u.full_name || u.username }));
       case "user_id": return users.map((u) => ({ value: u.id, label: u.full_name || u.username }));
       case "dept_id": return depts.map((d) => ({ value: d.id, label: d.name }));
+      case "dept_ids": return depts.map((d) => ({ value: d.id, label: d.name }));               // EAI-CUSTOM (P0): 多值部门
+      case "member_projects": return projects.map((p) => ({ value: p.id, label: p.name }));     // EAI-CUSTOM (P0): 多值项目成员
       default: return [];
     }
   };
@@ -1386,7 +1391,7 @@ function PolicyEditForm({
 
   // EAI-CUSTOM: 条件属性白名单与引擎 AttributeSet 对齐（role_code/username 均为有效 identity 属性）。
   // 缺则 API/脚本建的 role_code 等条件在编辑下拉里显示空，保存会丢 attr。
-  const ATTR_OPTIONS = ["role_code", "username", "tags", "role_level", "dept_id", "user_id"];
+  const ATTR_OPTIONS = ["role_code", "username", "tags", "role_level", "dept_id", "dept_ids", "member_projects", "user_id"];
   const OP_OPTIONS = ["=", "!=", "contains", ">=", "<=", "in", "not_in"];
 
   // T14: 仅有 data_scopes 声明的 module 才出现到 deny 数据范围多选里

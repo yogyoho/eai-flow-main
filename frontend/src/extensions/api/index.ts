@@ -352,6 +352,16 @@ export const deptApi = {
     request<MessageResponse>(`/departments/${id}`, { method: "DELETE" }),
 };
 
+// EAI-CUSTOM (P0): 项目列表 —— 供条件值 member_projects 选项
+export const projectApi = {
+  list: (params?: { skip?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.skip) query.set("skip", String(params.skip));
+    if (params?.limit) query.set("limit", String(params.limit));
+    return request<{ projects: Array<{ id: string; name: string }>; total: number }>(`/projects?${query}`);
+  },
+};
+
 // ===== Knowledge Base API =====
 
 export const kbApi = {
