@@ -1,0 +1,43 @@
+{
+  "stage": "初步设计",
+  "outline_version": "2026-08-05",
+  "report_title": "{项目名} 消防设计专篇",
+  "sections": [
+    {"fire": "1 设计依据", "class": "heading"},
+    {"fire": "1.1 设计依据的文件", "class": "verbatim", "heading_level": 3, "guide": ["设计依据", "委托书", "可研", "批复", "基础工程设计内容规定"]},
+    {"fire": "1.2 设计采用的主要消防技术标准和规范", "class": "template", "heading_level": 3, "template": "gb_standards"},
+    {"fire": "2 项目概述", "class": "heading"},
+    {"fire": "2.1 建设性质", "class": "verbatim", "heading_level": 3, "guide": ["建设性质", "新建", "改扩建"]},
+    {"fire": "2.2 设计范围", "class": "verbatim", "heading_level": 3, "guide": ["设计范围"]},
+    {"fire": "2.3 建设规模", "class": "verbatim", "heading_level": 3, "guide": ["建设规模", "储存", "库容"]},
+    {"fire": "2.4 工程的消防环境状况", "class": "heading"},
+    {"fire": "2.4.1 消防站情况", "class": "verbatim", "heading_level": 4, "guide": ["消防站", "消防队", "机动消防"]},
+    {"fire": "2.4.2 消防水水源及管网依托情况", "class": "verbatim", "heading_level": 4, "guide": ["消防水", "水源", "管网", "给水管线"]},
+    {"fire": "2.5 区域位置", "class": "verbatim", "heading_level": 3, "guide": ["区域位置", "地理位置", "厂址"]},
+    {"fire": "3 火灾危险性分析", "class": "verbatim", "guide": ["火灾危险性", "生产类别", "火灾危险", "中危险"]},
+    {"fire": "4 防火安全措施", "class": "heading"},
+    {"fire": "4.1 总平面布置", "class": "heading"},
+    {"fire": "4.1.1 装置的平面布置", "class": "verbatim", "heading_level": 4, "guide": ["平面布置", "库区", "贴邻"]},
+    {"fire": "4.1.2 防火间距", "class": "verbatim", "heading_level": 4, "guide": ["防火间距", "间距为"]},
+    {"fire": "4.1.3 消防通道", "class": "verbatim", "heading_level": 4, "guide": ["消防通道", "消防道路", "环形", "转弯半径"]},
+    {"fire": "4.2 安防监控系统", "class": "verbatim", "heading_level": 3, "guide": ["安防", "监控", "摄像机"]},
+    {"fire": "4.3 火灾报警系统", "class": "verbatim", "heading_level": 3, "guide": ["火灾报警", "探测器", "声光"]},
+    {"fire": "4.4 防雷、接地及照明系统", "class": "heading"},
+    {"fire": "4.4.1 防雷设计原则", "class": "verbatim", "heading_level": 4, "guide": ["防雷", "接闪", "避雷"]},
+    {"fire": "4.4.2 接地设计原则", "class": "verbatim", "heading_level": 4, "guide": ["接地", "接地电阻"]},
+    {"fire": "4.4.3 照明供电及控制", "class": "verbatim", "heading_level": 4, "guide": ["照明", "应急照明"]},
+    {"fire": "4.5 供电安全", "class": "verbatim", "heading_level": 3, "guide": ["供电", "配电", "用电负荷", "负荷等级"]},
+    {"fire": "4.6 建、构筑物防火", "class": "heading"},
+    {"fire": "4.6.1 建筑防火", "class": "verbatim", "heading_level": 4, "guide": ["围护结构", "外墙", "耐火", "防火门"]},
+    {"fire": "4.6.2 建、构筑物及钢结构的耐火保护", "class": "verbatim", "heading_level": 4, "guide": ["钢结构", "耐火保护", "防火涂料"]},
+    {"fire": "5 消防系统设计", "class": "heading"},
+    {"fire": "5.1 室外水消防系统", "class": "verbatim", "heading_level": 3, "guide": ["室外", "消防水", "消火栓", "消防给水"]},
+    {"fire": "5.2 室内水消防系统", "class": "verbatim", "heading_level": 3, "guide": ["室内", "消防水", "消火栓", "消防泵"]},
+    {"fire": "5.3 移动式灭火器", "class": "verbatim", "heading_level": 3, "guide": ["灭火器", "灭火器材"]},
+    {"fire": "6 消防设施专项投资概算", "class": "compute", "note": "说明书无此数据，标[需计算]，由人工/概算技能补，不伪造"},
+    {"fire": "7 图纸及表格", "class": "verbatim", "guide": ["附图", "附表", "图纸", "一览表"]}
+  ],
+  "templates": {
+    "gb_standards": "建筑设计防火规范                  GB50016-2006\n爆炸和火灾危险环境电力装置设计规范GB50058-92\n火灾自动报警系统设计规范          GB50116-98\n建筑灭火器配置设计规范            GB50140-2005\n石油化工静电接地设计规范          SH3097-2000\n建筑物防雷设计规范                GB50057-94 (2000年版)\n室外给水设计规范                 GB50013-2006\n建筑物电子信息系统防雷技术规范    GB50343-2004\n"
+  }
+}
