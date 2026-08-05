@@ -20,6 +20,8 @@ from pathlib import Path
 
 
 def find_para_index(struct, needle):
+    if not needle:
+        return None
     for p in struct.get("paras", []):
         if needle in p["text"]:
             return p["i"]
@@ -91,7 +93,16 @@ def align_to_outline(old_mapping, struct, outline):
         if not old_sec:
             sources.append(None)
             continue
-        converted = [c for c in (convert_source(s, struct) for s in old_sec.get("sources", []) or []) if c]
+        converted = []
+        dropped = []
+        for s in old_sec.get("sources", []) or []:
+            c = convert_source(s, struct)
+            if c:
+                converted.append(c)
+            else:
+                dropped.append(s)
+        if dropped:
+            print(f"  ⚠ {sec['fire']}: {len(dropped)} 个源无法转换(需E3)")
         cas = old_sec.get("conflict_assertions", []) or []
         if cas and converted:
             first = converted[0]
@@ -108,6 +119,9 @@ def main(argv):
         print("usage: migrate_contracts.py <旧契约.json> <struct.json> <阶段> <新大纲.json> <输出.json>", file=sys.stderr)
         return 2
     old = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
+    if "sections" not in old:
+        print(f"ALREADY_MIGRATED: {argv[0]} 已是两层格式，跳过", file=sys.stderr)
+        return 3
     struct = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
     stage = argv[2]
     outline = json.loads(Path(argv[3]).read_text(encoding="utf-8"))

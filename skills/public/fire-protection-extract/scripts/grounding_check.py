@@ -73,6 +73,8 @@ def check(report_md, structure, outline, mapping):
         if not isinstance(sources, list):  # 非列表源（如 dict/str）一律视为无源，防逐字遍历报错
             sources = []
         for src in sources:
+            if not isinstance(src, dict):
+                continue
             ok = False
             kind = src.get("kind", "")
             if kind in ("para", "range", "para_run"):
