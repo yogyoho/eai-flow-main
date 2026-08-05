@@ -63,75 +63,98 @@ roles:
   dept_head:
     display_name: 部门负责人
     permissions:
-    - ai:start_writing
-    - ai:stop_writing
-    - app_center:manage
+    - '#inherit:user'
+    - department:create
+    - department:update
+    - department:delete
+    - kb:create
+    - kb:upload
+    - kb:update
+    - kb:delete
+    - doc:upload
+    - doc:delete
+    - project:create
+    - project:read
     - approval:approve
-    - approval:review
     - approval:submit
     - approval:view
     - chapter:review
-    - chapter:review_any
-    - chapter:view_all
-    - chapter:write_any
-    - chapter:write_own
-    - dashboard:view
-    - department:create
-    - department:delete
-    - department:update
-    - doc:delete
-    - doc:read
-    - doc:upload
-    - export:generate
-    - kb:create
-    - kb:delete
-    - kb:read
-    - kb:update
-    - kb:upload
-    - license:manage
-    - member:add
-    - member:remove
-    - model:read
-    - outline:edit
-    - project:advance
-    - project:create
-    - project:delete
-    - project:edit
-    - project:read
-    - role:create
-    - role:delete
-    - role:read
-    - role:update
-    - settings:edit
-    - system:access
-    - user:create
-    - user:delete
-    - user:read
-    - user:update
-    - version:rollback
-    - workflow:cancel
-    - workflow:edit
     - workflow:read
-    - workflow:start
     nav:
     - nav:dashboard
     - nav:writing
     - nav:projects
     - nav:docmgr
     - nav:knowledge
-    - nav:knowledge-factory
     - nav:contract-price
     - nav:output
     - nav:app-center
+    - nav:settings
+    - nav:knowledge-factory
     data_scopes:
+    - project_member
     - knowledge_dept
     - cpa_dept
-    - project_member
     - doc_owner
     - doc_project_member
     pages:
-    - '*'
+    - dashboard:page:overview
+    - writing:page:chat
+    - projects:page:list
+    - docmgr:page:browse
+    - knowledge:page:browse
+    - kf:page:sample
+    - kf:page:extraction
+    - kf:page:compliance
+    - kf:page:version
+    - kf:page:quality
+    - kf:page:scrape
+    - kf:page:dict
+    - cpa:page:overview
+    - cpa:page:contracts
+    - cpa:page:items
+    - cpa:page:clusters
+    - cpa:page:tasks
+    - cpa:page:settings
+    - output:page:index
+    - workflow-admin:page:index
+    - admin:page:users
+    - admin:page:roles
+    - admin:page:departments
+    - admin:page:app-center
+    - settings:page:general
+    - settings:page:datasource
+    - settings:page:license
     is_system: false
     level: 50
     description: null
+  reviewer:
+    display_name: 审核员
+    permissions:
+    - dashboard:view
+    - kb:read
+    - doc:read
+    - model:read
+    - system:access
+    - chapter:review
+    - approval:review
+    - workflow:read
+    nav:
+    - nav:dashboard
+    - nav:projects
+    - nav:knowledge
+    - nav:app-center
+    - nav:contract-price
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - doc_owner
+    - doc_project_member
+    pages:
+    - projects:page:list
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 20
+    description: 负责文档内容审核和批注
 disabled_roles: []
