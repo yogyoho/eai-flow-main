@@ -5,7 +5,7 @@ import {
   Search, Plus, Shield, Lock, Pencil, Trash2, Users, X,
   ChevronDown, Brain, Database, Puzzle, Wrench,
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
-  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle,
+  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle, ListChecks,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -1191,6 +1191,9 @@ function PolicyEditForm({
   // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
   const [users, setUsers] = useState<User[]>([]);
   const [depts, setDepts] = useState<Department[]>([]);
+  // EAI-CUSTOM: 条件值下拉 —— 有选项时值变 Select；freeValueRows 记录切到"手动输入"的行
+  const [freeValueRows, setFreeValueRows] = useState<Set<number>>(new Set());
+  const toggleFreeValue = (i: number) => setFreeValueRows((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; });
   useEffect(() => {
     let active = true;
     userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
@@ -1292,32 +1295,48 @@ function PolicyEditForm({
                   {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{OP_LABELS[o] ?? o}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {attrValueOptions(c.attribute).length > 0 ? (
-                <>
-                  {/* EAI-CUSTOM: 值可下拉选择（datalist）——原生，可输入可点选；选项按所选属性取 */}
-                  <input
-                    list={`cond-val-${i}`}
-                    type="text"
-                    value={c.value}
-                    onChange={(e) => updateCondition(i, { value: e.target.value })}
-                    placeholder="值（可下拉选择）"
-                    className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <datalist id={`cond-val-${i}`}>
-                    {attrValueOptions(c.attribute).map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </datalist>
-                </>
-              ) : (
-                <input
-                  type="text"
-                  value={c.value}
-                  onChange={(e) => updateCondition(i, { value: e.target.value })}
-                  placeholder="值"
-                  className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              )}
+              {(() => {
+                // EAI-CUSTOM: 条件值 —— 有选项时变真正的下拉框（Select），附"手动输入"逃生口；无选项保持自由输入
+                const opts = attrValueOptions(c.attribute);
+                if (opts.length === 0 || freeValueRows.has(i)) {
+                  return (
+                    <div className="flex-1 flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={c.value}
+                        onChange={(e) => updateCondition(i, { value: e.target.value })}
+                        placeholder="值"
+                        className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      {opts.length > 0 && (
+                        <button type="button" onClick={() => toggleFreeValue(i)} title="从列表选择" className="p-1 text-muted-foreground hover:text-primary transition-colors">
+                          <ListChecks className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+                const matched = opts.find((o) => o.value === c.value);
+                const isCustom = !!c.value && !matched;
+                return (
+                  <Select
+                    value={isCustom ? "__custom__" : (c.value || "__none__")}
+                    onValueChange={(v) => {
+                      if (v === "__manual__") { toggleFreeValue(i); return; }
+                      if (v === "__custom__") return; // 当前自定义值，no-op
+                      updateCondition(i, { value: v === "__none__" ? "" : v });
+                    }}
+                  >
+                    <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue placeholder="值" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__"><span className="text-muted-foreground">选择值</span></SelectItem>
+                      {isCustom && <SelectItem value="__custom__">自定义: {c.value}</SelectItem>}
+                      {opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      <SelectItem value="__manual__"><span className="text-muted-foreground">✎ 手动输入…</span></SelectItem>
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
               <button onClick={() => removeCondition(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
