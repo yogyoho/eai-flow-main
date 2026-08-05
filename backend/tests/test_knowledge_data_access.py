@@ -95,3 +95,110 @@ async def test_load_kb_scoped_owner_eq_composes_with_id_predicate():
     assert kb_id.hex in sql
     assert "owner_id" in sql and owner_id.hex in sql
     assert "false" not in sql  # no denial; both predicates are real filters
+
+
+# ---------------------------------------------------------------------------
+# M5: visibility matrix (replaces the deleted test_kb_access_visibility.py).
+# SQL-level composition only — no DB rows needed. Mirrors the real registry
+# scope templates so a regression in any one clause (owner / public / dept
+# overlap) surfaces as a failed assertion here.
+#
+# We assert BOTH (a) the FilterRule structure (operator/field/value), which
+# pins semantics precisely, and (b) the compiled SQL structure (column names
+# and operators), which pins the column_map wiring. Values are checked on the
+# rule object rather than in compiled SQL because the default test dialect
+# cannot render UUID literals and identity bakes values in at build time.
+# ---------------------------------------------------------------------------
+
+_KNOWLEDGE_COLMAP = {
+    "owner_id": KnowledgeBase.owner_id,
+    "access_type": KnowledgeBase.access_type,
+    "allowed_depts": KnowledgeBase.allowed_depts,
+}
+
+
+def _compile_sql(rule: FilterRule) -> str:
+    return str(rule.to_sqlalchemy(KnowledgeBase, _KNOWLEDGE_COLMAP).compile(compile_kwargs={"literal_binds": False})).lower()
+
+
+def test_knowledge_owner_scope_matches_owner_id():
+    """knowledge_owner → owner_id = <user> (sees own, incl. own private)."""
+    reg = get_permission_registry()
+    ds = reg.get_data_scope("knowledge_owner")
+    assert ds is not None
+    user_id = uuid.uuid4()
+    idn = AttributeSet(user_id=str(user_id), username="u", role_code="user")
+    rule = FilterRule.from_template(ds.rule_template, idn)
+    # structure: eq on owner_id with the identity's user_id
+    assert rule.operator == "eq" and rule.field == "owner_id"
+    assert rule.value == str(user_id)
+    # SQL: owner column present; access_type is NOT constrained (own private visible)
+    sql = _compile_sql(rule)
+    assert "owner_id" in sql
+    assert "access_type" not in sql
+
+
+def test_knowledge_public_scope_matches_access_type_public():
+    """knowledge_public → access_type = 'public' (sees public)."""
+    reg = get_permission_registry()
+    ds = reg.get_data_scope("knowledge_public")
+    assert ds is not None
+    idn = AttributeSet(user_id="u1", username="u", role_code="user")
+    rule = FilterRule.from_template(ds.rule_template, idn)
+    # structure: eq on access_type with literal 'public'
+    assert rule.operator == "eq" and rule.field == "access_type"
+    assert rule.value == "public"
+    sql = _compile_sql(rule)
+    assert "access_type" in sql
+
+
+def test_knowledge_dept_scope_matches_owner_or_dept_overlap():
+    """knowledge_dept → owner_id = <user> OR (access_type='dept' AND allowed_depts && <depts>)."""
+    reg = get_permission_registry()
+    ds = reg.get_data_scope("knowledge_dept")
+    assert ds is not None
+    dept = uuid.uuid4()
+    user_id = uuid.uuid4()
+    idn = AttributeSet(user_id=str(user_id), username="u", role_code="user", dept_ids=[str(dept)])
+    rule = FilterRule.from_template(ds.rule_template, idn)
+    # structure: OR of [owner-eq, AND(access_type=dept, overlap)]
+    assert rule.operator == "or"
+    assert len(rule.children) == 2
+    owner_branch, dept_branch = rule.children
+    assert owner_branch.operator == "eq" and owner_branch.field == "owner_id"
+    assert owner_branch.value == str(user_id)
+    assert dept_branch.operator == "and" and len(dept_branch.children) == 2
+    access_clause, overlap_clause = dept_branch.children
+    assert access_clause.operator == "eq" and access_clause.field == "access_type" and access_clause.value == "dept"
+    assert overlap_clause.operator == "overlap" and overlap_clause.field == "allowed_depts"
+    assert all(isinstance(x, uuid.UUID) for x in overlap_clause.value)  # str → UUID coercion happened
+    # SQL: all three clauses + the PG overlap operator appear
+    sql = _compile_sql(rule)
+    assert "owner_id" in sql and "access_type" in sql and "allowed_depts" in sql and "&&" in sql
+
+
+def test_knowledge_owner_plus_public_plus_dept_or_union():
+    """A role bound to owner+public+dept → OR-union of all three (the realistic case).
+
+    Mirrors how ``with_data_scope("knowledge")`` combines the role's granted
+    data_scopes via ``DataScopeEngine.build_scope_union``.
+    """
+    from app.extensions.auth.datascope import DataScopeEngine
+
+    user_id = uuid.uuid4()
+    dept = uuid.uuid4()
+    idn = AttributeSet(user_id=str(user_id), username="u", role_code="user", dept_ids=[str(dept)])
+    engine = DataScopeEngine.from_registry()
+    rule = engine.build_scope_union(idn, "knowledge", ["knowledge_owner", "knowledge_public", "knowledge_dept"])
+    # structure: OR of 3 distinct scope rules
+    assert rule.operator == "or"
+    assert len(rule.children) == 3
+    fields = {(c.operator, c.field) for c in rule.children}
+    # owner (eq, owner_id) + public (eq, access_type) + dept (or-composite)
+    assert ("eq", "owner_id") in fields
+    assert ("eq", "access_type") in fields
+    assert any(c.operator == "or" for c in rule.children)  # knowledge_dept composite
+    # SQL: OR-union of owner + access_type + allowed_depts overlap
+    sql = _compile_sql(rule)
+    assert " or " in sql
+    assert "owner_id" in sql and "access_type" in sql and "allowed_depts" in sql and "&&" in sql
