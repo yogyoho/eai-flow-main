@@ -16,6 +16,12 @@ const ENGINE_TO_UI_OP: Record<string, string> = {
 /** UI 条件数组 → 引擎 dict（空数组 → 空 dict，引擎视为无条件=全量；in/not_in 值按逗号拆成列表） */
 export function toEngineConditions(conds: PolicyCondition[]): Record<string, unknown> {
   if (!conds.length) return {};
+  // EAI-CUSTOM (P0): __or__ 只读标记 —— 还原原始 or 树，防保存丢条件
+  const orMarker = conds.find((c) => c.attribute === "__or__");
+  if (orMarker) {
+    try { return JSON.parse(orMarker.value || "{}") as Record<string, unknown>; }
+    catch { return {}; }
+  }
   return {
     and: conds.map((c) => {
       const op = UI_TO_ENGINE_OP[c.operator] ?? c.operator;
@@ -44,9 +50,9 @@ export function toUIConditions(conds: unknown): PolicyCondition[] {
     }));
   }
   if (Array.isArray(obj.or)) {
-    // EAI-CUSTOM: or 树无法在 UI 行编辑器表达，退回空条件（空=全量）。显式警告，别静默丢条件。
-    console.warn("策略条件包含 'or' 树，UI 编辑器不支持，已按空条件处理");
-    return [];
+    // EAI-CUSTOM (P0): or 树无法在 UI 行编辑器逐条编辑，改为 __or__ 只读标记承载原始条件，
+    // 防误显"全局"（旧实现退空）与保存丢条件。value 存 JSON.stringify(原始 or dict)。
+    return [{ attribute: "__or__", operator: "or", value: JSON.stringify(conds) }];
   }
   // EAI-CUSTOM: 单条件 {attr, op, value} —— 引擎 evaluate_policy_conditions 支持直接单条件（非 and/or 包裹），
   // API/脚本/旧数据可产生该 shape；UI 也要能显示/编辑，否则 PolicyRow 误显"全局"且编辑会丢条件。

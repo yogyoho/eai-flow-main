@@ -1129,9 +1129,16 @@ function PolicyRow({
       {policy.conditions.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {policy.conditions.map((c, i) => (
-            <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-              {(ATTR_LABELS[c.attribute] ?? c.attribute) || "?"} {OP_LABELS[c.operator] ?? c.operator} {c.value || "?"}
-            </span>
+            c.attribute === "__or__" ? (
+              // EAI-CUSTOM (P0): or 树只读徽章 —— 不误显"全局"
+              <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30 font-medium">
+                ⚠ 或(OR) 条件（只读）
+              </span>
+            ) : (
+              <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                {(ATTR_LABELS[c.attribute] ?? c.attribute) || "?"} {OP_LABELS[c.operator] ?? c.operator} {c.value || "?"}
+              </span>
+            )
           ))}
         </div>
       ) : (
@@ -1421,6 +1428,13 @@ function PolicyEditForm({
         <div className="space-y-2">
           {form.conditions.map((c, i) => (
             <div key={i} className="flex items-center gap-2">
+              {c.attribute === "__or__" ? (
+                // EAI-CUSTOM (P0): or 树只读徽章 —— 不可编辑，保存保留原条件
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                  ⚠ 或(OR) 条件（只读，保存将保留原条件）
+                </span>
+              ) : (
+                <>
               <Select value={c.attribute || "__none__"} onValueChange={(v) => updateCondition(i, { attribute: v === "__none__" ? "" : v })}>
                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="属性" /></SelectTrigger>
                 <SelectContent>
@@ -1493,7 +1507,9 @@ function PolicyEditForm({
                   </div>
                 );
               })()}
-              <button onClick={() => removeCondition(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+                </>
+              )}
+              <button onClick={() => removeCondition(i)} disabled={c.attribute === "__or__"} className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>

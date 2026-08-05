@@ -58,11 +58,17 @@ describe("toUIConditions (引擎 dict → UI 数组)", () => {
     expect(toUIConditions(arr)).toBe(arr);
   });
 
-  it("or 树 → [] 并 console.warn", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    expect(toUIConditions({ or: [{ attr: "a", op: "eq", value: "1" }] })).toEqual([]);
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
+  it("or 树 → __or__ 只读标记，可往返还原", () => {
+    const orTree = { or: [{ attr: "role_code", op: "eq", value: "dept_head" }, { attr: "user_id", op: "eq", value: "u1" }] };
+    const ui = toUIConditions(orTree);
+    expect(ui.length).toBe(1);
+    expect(ui[0]!.attribute).toBe("__or__");
+    expect(toEngineConditions(ui)).toEqual(orTree);
+  });
+
+  it("or 树不再退空条件（不误显全局）", () => {
+    const ui = toUIConditions({ or: [{ attr: "a", op: "eq", value: "1" }] });
+    expect(ui.length).toBeGreaterThan(0);
   });
 
   it("单条件 {attr, op, value}（API/脚本创建，非 and 包裹）→ 单行 UI 条件", () => {
