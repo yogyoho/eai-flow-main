@@ -1,5 +1,4 @@
 """引擎边界：inherit 环检测 / not 组合 / overlap 空值 / knowledge scopes / bare-* 写拦截。"""
-import uuid
 
 import pytest
 from fastapi import HTTPException

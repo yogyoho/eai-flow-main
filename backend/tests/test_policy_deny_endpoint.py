@@ -1,8 +1,8 @@
 """deny_permissions 策略 → 真实 HTTP 端点 403（Y 被拒 / Z 放行 / 超管豁免 / 空条件全员）。"""
 import pytest
-
-from rbac_helpers import build_app, fake_identity, make_user, patch_identity, policy_row, policy_rows_db
 from fastapi import APIRouter, Depends
+from rbac_helpers import build_app, fake_identity, make_user, patch_identity, policy_row, policy_rows_db
+
 from app.extensions.auth.middleware import require_permission
 
 probe = APIRouter()

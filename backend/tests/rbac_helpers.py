@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.extensions.auth.engine import FilterRule
 from app.extensions.auth.identity import AttributeSet
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.database import get_db
@@ -115,6 +114,7 @@ def smart_db(*, policy_rows: list | None = None, doc_row=None, kb_row=None, memb
         elif "ai_documents" in sql or "folders" in sql:
             result.scalar_one_or_none.return_value = doc_row
             result.scalars.return_value.all.return_value = [doc_row] if doc_row else []
+            result.all.return_value = [doc_row] if doc_row else []  # list_folders 用 result.all()
         elif "knowledge_bases" in sql:
             result.scalar_one_or_none.return_value = kb_row
             result.scalars.return_value.all.return_value = [kb_row] if kb_row else []
@@ -159,6 +159,10 @@ def build_app(router, *, user: CurrentUser | None = None, db=None) -> TestClient
 
 
 def capture_sql(db):
-    """取最近一次 db.execute 的编译 SQL（小写、含字面值）。"""
+    """取最近一次 db.execute 的编译 SQL（小写）。
+
+    不用 literal_binds——UUID 列与字符串比较无法内联渲染（CompileError）；
+    结构断言（列名/算子 token）足够。
+    """
     stmt = db.execute.await_args.args[0]
-    return str(stmt.compile(compile_kwargs={"literal_binds": True})).lower()
+    return str(stmt.compile()).lower()

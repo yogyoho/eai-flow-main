@@ -5,13 +5,13 @@ legacy 手写子句是 `OR ... IN`，无 "not in"。
 """
 import uuid
 
-import pytest
-
 from rbac_helpers import build_app, capture_sql, fake_identity, make_user, patch_identity, policy_row, smart_db
+
 from app.extensions.docmgr.collab_routers import router as collab_router
 from app.extensions.docmgr.routers import router as docmgr_router
 
 DID = uuid.uuid4()
+PID = uuid.uuid4()  # 身份成员项目 —— 空 member_projects 会让 IN [] 折叠成 false，deny 无法体现
 
 
 def _deny_db():
@@ -24,7 +24,7 @@ def _deny_db():
 
 def test_collab_by_id_scope_narrows(monkeypatch):
     """F2：collab by-id 查询必须含 scope 引擎的 deny 否定（deny 生效）。"""
-    patch_identity(monkeypatch, fake_identity(role_code="user"))
+    patch_identity(monkeypatch, fake_identity(role_code="user", member_projects=[str(PID)]))
     db = _deny_db()
     tc = build_app(collab_router, user=make_user(), db=db)
     r = tc.get(f"/api/extensions/docmgr/documents/{DID}/comments")
@@ -35,7 +35,7 @@ def test_collab_by_id_scope_narrows(monkeypatch):
 
 def test_list_folders_scope_narrows(monkeypatch):
     """F3：/folders 查询必须含 scope 引擎的 deny 否定（deny 生效）。"""
-    patch_identity(monkeypatch, fake_identity(role_code="user"))
+    patch_identity(monkeypatch, fake_identity(role_code="user", member_projects=[str(PID)]))
     db = _deny_db()
     tc = build_app(docmgr_router, user=make_user(), db=db)
     r = tc.get("/api/extensions/docmgr/folders")

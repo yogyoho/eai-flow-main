@@ -4,6 +4,7 @@
 以及 /me 与 require_permission 的一致性（deny 时端点 403）。
 """
 from rbac_helpers import build_app, fake_identity, make_user, patch_identity, policy_row, policy_rows_db
+
 from app.extensions.auth.permission_routers import router
 
 
@@ -35,6 +36,7 @@ def test_me_policy_grant_appears_and_deny_overrides(monkeypatch):
 
 def test_me_deny_consistent_with_endpoint_403(monkeypatch):
     from fastapi import APIRouter, Depends
+
     from app.extensions.auth.middleware import require_permission
 
     # 最小 gate 端点：与 /me 用同一 require_permission + 同一 policy 集

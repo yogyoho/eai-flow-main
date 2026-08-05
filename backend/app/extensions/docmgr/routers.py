@@ -4,7 +4,6 @@ import asyncio
 import json
 import logging
 import re
-from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.engine import FilterRule
-from app.extensions.auth.middleware import get_current_user, require_permission, with_data_scope
+from app.extensions.auth.middleware import require_permission, with_data_scope
 from app.extensions.database import get_db
 from app.extensions.docmgr.folder_service import FolderService
 from app.extensions.docmgr.service import AIDocumentService
@@ -25,11 +24,9 @@ from app.extensions.schemas import (
     AIDocumentResponse,
     AIDocumentUpdate,
     CurrentUser,
-    FolderCreate,
     FolderDeleteConfirm,
     FolderListResponse,
     FolderResponse,
-    FolderSortUpdate,
     FolderTreeResponse,
     FolderUpdate,
     MessageResponse,
@@ -437,9 +434,11 @@ async def list_folders(
     project_scope: str | None = Query(None, description="Filter: personal or project"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+    # EAI-CUSTOM (F3): 文件夹列表走 scope 引擎（deny 生效，超管 allow_all）
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
     """List all folders for the current user."""
-    folders = await AIDocumentService.list_folders(db, current_user.id, project_scope=project_scope)
+    folders = await AIDocumentService.list_folders(db, current_user.id, project_scope=project_scope, scope=scope)
     return FolderListResponse(folders=folders)
 
 

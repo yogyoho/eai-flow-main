@@ -1,7 +1,7 @@
 """deny_data_scopes 必须到达 knowledge 真实列表查询（engine 组合之外，走 with_data_scope 全链）。"""
 import pytest
-
 from rbac_helpers import fake_identity, make_user, patch_identity, policy_row, smart_db
+
 from app.extensions.auth.middleware import with_data_scope
 from app.extensions.models import KnowledgeBase
 

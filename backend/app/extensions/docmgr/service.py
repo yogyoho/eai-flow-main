@@ -4,7 +4,7 @@ import json
 import logging
 import mimetypes
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -243,12 +243,25 @@ class AIDocumentService:
         await db.commit()
 
     @staticmethod
-    async def list_folders(db: AsyncSession, user_id: UUID, project_scope: str | None = None) -> list[str]:
+    async def list_folders(
+        db: AsyncSession,
+        user_id: UUID,
+        project_scope: str | None = None,
+        scope: "FilterRule | None" = None,
+    ) -> list[str]:
         """List all folders for a user (own + project docs)."""
-        own_docs = AIDocument.user_id == user_id
-        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
-        project_docs = AIDocument.project_id.in_(my_project_ids)
-        visibility_filter = or_(own_docs, project_docs)
+        if scope is not None:
+            # EAI-CUSTOM (F3): 与 list_docs 同一 scope 引擎，deny_data_scopes 可窄化文件夹
+            column_map = {
+                "user_id": AIDocument.user_id,
+                "project_id": AIDocument.project_id,
+            }
+            visibility_filter = scope.to_sqlalchemy(AIDocument, column_map)
+        else:
+            own_docs = AIDocument.user_id == user_id
+            my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+            project_docs = AIDocument.project_id.in_(my_project_ids)
+            visibility_filter = or_(own_docs, project_docs)
 
         stmt = select(AIDocument.folder).where(visibility_filter)
 
@@ -317,7 +330,7 @@ class AIDocumentService:
             return doc
         if doc.file_ref_path and os.path.exists(doc.file_ref_path):
             if AIDocumentService._is_text_mime(doc.file_mime):
-                with open(doc.file_ref_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(doc.file_ref_path, encoding="utf-8", errors="replace") as f:
                     doc.content = f.read()
             else:
                 doc.content = json.dumps({"type": "binary_ref", "file_ref_path": doc.file_ref_path, "file_mime": doc.file_mime})
@@ -371,7 +384,7 @@ class AIDocumentService:
         file_size = os.path.getsize(doc.file_ref_path)
         if file_size > 10 * 1024 * 1024:  # 10MB limit
             return None
-        with open(doc.file_ref_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(doc.file_ref_path, encoding="utf-8", errors="replace") as f:
             return f.read()
 
     @staticmethod
@@ -384,7 +397,6 @@ class AIDocumentService:
         Gateway's SQLite file directly instead.
         """
         try:
-            import json
             import sqlite3
 
             from deerflow.config.paths import Paths
@@ -528,7 +540,7 @@ class AIDocumentService:
                     "rel_path": rel,
                     "size": st.st_size,
                     "mime": mime or "application/octet-stream",
-                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc),
+                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
                     "starred": starred,
                     "shared": shared,
                 })
@@ -558,8 +570,9 @@ class AIDocumentService:
     async def upsert_personal_star(
         db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, starred: bool,
     ) -> None:
-        from app.extensions.models import PersonalDocMeta
         from sqlalchemy.dialects.postgresql import insert
+
+        from app.extensions.models import PersonalDocMeta
 
         stmt = insert(PersonalDocMeta).values(
             user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_starred=starred,
@@ -583,8 +596,9 @@ class AIDocumentService:
     async def upsert_personal_share(
         db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, shared: bool,
     ) -> None:
-        from app.extensions.models import PersonalDocMeta
         from sqlalchemy.dialects.postgresql import insert
+
+        from app.extensions.models import PersonalDocMeta
 
         stmt = insert(PersonalDocMeta).values(
             user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_shared=shared,
@@ -871,8 +885,9 @@ class AIDocumentService:
         Returns (folder_id, folder_string) — folder_id may be None if no root
         folder exists or user not in extensions DB (falls back to folder_string only).
         """
-        from app.extensions.models import Folder
         from sqlalchemy.exc import IntegrityError as SAIntegrityError
+
+        from app.extensions.models import Folder
 
         # Find root folder (project or personal)
         if project_id:

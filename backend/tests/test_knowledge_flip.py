@@ -2,8 +2,8 @@
 import uuid
 
 import pytest
-
 from rbac_helpers import build_app, capture_sql, fake_identity, make_user, patch_identity, smart_db
+
 from app.extensions.auth.middleware import with_data_scope
 from app.extensions.knowledge.routers import router
 from app.extensions.models import KnowledgeBase

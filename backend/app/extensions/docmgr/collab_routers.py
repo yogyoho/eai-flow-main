@@ -5,7 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user
+from app.extensions.auth.engine import FilterRule
+from app.extensions.auth.middleware import get_current_user, with_data_scope
 from app.extensions.database import get_db
 from app.extensions.docmgr.collab_schemas import (
     AIReviewRequest,
@@ -33,8 +34,10 @@ async def list_comments(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎，deny_data_scopes 可窄化批注/版本接口
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return await CommentService.list_comments(db, doc_id)
@@ -46,8 +49,10 @@ async def create_comment(
     data: CommentCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎，deny_data_scopes 可窄化批注/版本接口
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return await CommentService.create_comment(
@@ -112,8 +117,10 @@ async def list_versions(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎，deny_data_scopes 可窄化批注/版本接口
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return await VersionService.list_versions(db, doc_id)
@@ -160,8 +167,10 @@ async def diff_versions(
     to_version: int = Query(..., alias="to", description="Target version number"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎，deny_data_scopes 可窄化批注/版本接口
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     result = await VersionService.diff_versions(db, doc_id, from_version, to_version)
@@ -176,8 +185,10 @@ async def get_version(
     version: int,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎，deny_data_scopes 可窄化批注/版本接口
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     result = await VersionService.get_version(db, doc_id, version)
@@ -236,8 +247,10 @@ async def ai_review_document(
     request: AIReviewRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
+    # EAI-CUSTOM (F2): by-id 复用 list 同 scope 引擎
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
-    doc = await AIDocumentService.get_by_id(db, request.doc_id, current_user.id)
+    doc = await AIDocumentService.get_by_id_scoped(db, request.doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 

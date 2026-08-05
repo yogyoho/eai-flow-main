@@ -1,7 +1,7 @@
 """with_data_scope 中间件依赖直调（现无直测）：超管 allow_all / deny 收集 / AND NOT deny。"""
 import pytest
-
 from rbac_helpers import fake_identity, make_user, patch_identity, policy_row, policy_rows_db
+
 from app.extensions.auth.engine import FilterRule
 from app.extensions.auth.middleware import with_data_scope
 
