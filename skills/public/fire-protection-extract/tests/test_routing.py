@@ -47,9 +47,7 @@ def test_v2_has_spec_exclusion():
         "v2 description must name extract as the alternative"
     )
     # Check the exclusion exists and isn't conditional
-    assert "不要使用本技能" in desc or "改用" in desc, (
-        "v2 must explicitly say 'don't use me' when spec uploaded"
-    )
+    assert "仅在用户未上传设计说明书" in desc or "不要使用本技能" in desc or "改用" in desc, "v2 必须声明仅在无说明书时使用/说明书时路由到 extract"
 
 
 def test_extract_has_spec_assertion():
@@ -116,7 +114,7 @@ def _route(has_spec: bool, prompt: str) -> str:
     # - If design spec uploaded → use extract, NOT v2
     # - If no design spec → use v2
     # Both descriptions start with "⛔" rules encoding this
-    v2_excludes_spec = "不要使用本技能" in v2_desc and "设计说明书" in v2_desc
+    v2_excludes_spec = ("仅在用户未上传设计说明书" in v2_desc or "不要使用本技能" in v2_desc) and "设计说明书" in v2_desc
     ext_prefers_spec = (
         "不使用 fire-protection-report-v2" in ext_desc
         or "不用 fire-protection-report-v2" in ext_desc

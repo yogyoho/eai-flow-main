@@ -36,14 +36,23 @@ description: |
 
 ---
 
+## 阶段判定（初步设计 / 基础设计）
+
+消防设计专篇按设计阶段区分大纲：**初步设计 7 章** / **基础设计 8 章**，由 `references/stage-outlines/{阶段}.json` 锁定（标题逐字对齐样例，不得自创章节）。
+
+1. 用户请求里显式写了「初步设计」「基础设计」→ 作为 `run.sh` 第 3 参传入（显式覆盖）。
+2. 否则 run.sh 自动从源说明书首段识别（"初步设计"/"基础设计" 字样）。
+3. 阶段不同 → 大纲不同 → 抽取映射（sources）也不同，E3 按所选阶段大纲的 `guide[]` 生成。
+
+---
+
 ## 你的操作流程
 
 ### 第 1 步：跑流水线
 ```bash
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
   bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
-  "/mnt/user-data/uploads/<设计说明书.docx>" \
-  "<项目名>"
+  "/mnt/user-data/uploads/<说明书.docx>" "<项目名>" [初步设计|基础设计]
 ```
 - 把 `<设计说明书.docx>` 换成 uploads/ 下实际文件名，`<项目名>` 换成项目名。
 - 终端最后一行 `REPORT_READY: <path>` 即成品路径。
@@ -53,8 +62,8 @@ WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
 **情况 A：run.sh 输出含 `✓ 使用契约: <name>`**
 → 契约库有匹配，报告已生成。跳到第 4 步展示成品。
 
-**情况 B：run.sh 输出含 `CONTRACT_NEEDED: <path>`**
-→ 这是新项目类型，契约库无匹配。执行第 3 步（E3 契约生成）。
+**情况 B：run.sh 输出含 `CONTRACT_NEEDED` 或 `CONTRACT_ERROR`（契约缺失/格式异常）**
+→ 都需要走 E3 生成新映射后重跑。**契约未就绪时 run.sh 已硬失败（exit 3），不会产出半成品报告。**
 
 ### 第 3 步（E3）：为新项目生成专属契约
 
@@ -124,23 +133,23 @@ for label, kws in keywords_list:
 
 **3b. 基于批量输出生成 mapping 契约**
 
-一次性读上面脚本的输出，对照 `references/fire_spec_mapping.json` 的章节模板，为每个 verbatim section 生成映射。
-**Mapping 新格式（段落索引，不用字符串锚）：**
-  - 单段: `{"kind": "para", "paras": [段落号]}`
-  - 区间: `{"kind": "range", "paras": [起始段, 结束段]}`
-  - 表格: `{"kind": "table", "no": "表号"}`
-  直接用 KEYWORD SEARCH 输出中的段落号填 `paras`，不编字符串锚
+一次性读上面脚本的输出，对照所选阶段大纲 `references/stage-outlines/{阶段}.json`，为每个 verbatim section 生成映射。
+**Mapping 新格式（与大纲按索引对齐，只存锚点）：**
+  ```
+  {"sources": [<第0节源列表>, <第1节源列表>, ...]}  # 与所选阶段大纲 sections[] 按索引 1:1
+  ```
+  verbatim 节填 `[{"kind":"para","paras":[i]}]` / `[{"kind":"range","paras":[a,b]}]` / `[{"kind":"table","no":"表号"}]`；heading/template/compute 节填 `null`。用 `guide[]` 关键词一次批量搜全。不编字符串锚。
 
 **3c. 写入、保存、重跑管线（必须执行，不可跳过）**
 
 ```bash
-# 1. 写 mapping
+# 1. 写 mapping（sources 与大纲 sections[] 按索引 1:1）
 write_file(<WORK_DIR>/<项目名>_mapping.json, <生成的JSON>)
 
-# 2. 保存到契约库
+# 2. 保存到契约库（save <阶段> <项目名> <structure.json>，mapping 从 stdin 读）
 cat <WORK_DIR>/<项目名>_mapping.json | \
   python /mnt/skills/public/fire-protection-extract/scripts/contract_store.py \
-  save "<项目名>" <STRUCT_PATH>
+  save "<阶段>" "<项目名>" <STRUCT_PATH>
 
 # 3. ⛔ 必须重跑 run.sh —— 报告只有这一条生成路径
 #    不要用你刚才分析 structure.json 时看到的段落自己写报告。
@@ -148,9 +157,7 @@ cat <WORK_DIR>/<项目名>_mapping.json | \
 #    你自己写的报告没有 grounding 保证——会编造出源文档不存在的数据。
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
   bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
-  "/mnt/user-data/uploads/<设计说明书.docx>" \
-  "<项目名>" \
-  "<项目名>"
+  "/mnt/user-data/uploads/<说明书.docx>" "<项目名>" "<阶段>"
 ```
 
 **4. 展示 run.sh 生成的报告**——不是你自己写的。报告路径在 `REPORT_READY:` 行。
@@ -172,6 +179,8 @@ present_files(filepaths=[
   "/mnt/user-data/outputs/<项目名>消防设计合规检查报告.md"
 ])
 ```
+
+**若 run.sh 输出 `REPORT_NEEDS_REVIEW`（grounding<0.85 或含 `[⚠未找到]` 或 missing/uncovered/conflict 非 0）→ 必须提示用户「E5 校准或 E3 重跑」，不得直接交付。**
 
 **相关性扫描（C方案——标记疑似无关内容）：**
 读报告，对每个 section 检查内容是否和该 section 标题主题相关。
@@ -229,20 +238,18 @@ python /mnt/skills/public/fire-protection-extract/scripts/auto_calibrate.py \
 - `confidence < 0.3`：低置信度，需要手动在 structure.json 中搜索正确段落
 
 **5c. 应用修复**
-用 `write_file` 更新 mapping JSON 中被接受的锚，然后重跑流水线：
+用 `write_file` 更新 mapping JSON 中被接受的锚，然后重跑流水线（带阶段参数）：
 ```bash
 WORK=/mnt/user-data/workspace OUT=/mnt/user-data/outputs \
   bash /mnt/skills/public/fire-protection-extract/scripts/run.sh \
-  "/mnt/user-data/uploads/<设计说明书.docx>" \
-  "<项目名>" \
-  "<项目名>"
+  "/mnt/user-data/uploads/<说明书.docx>" "<项目名>" "<阶段>"
 ```
 
 **5d. 保存更新后的契约**
 ```bash
 cat <WORK_DIR>/<项目名>_mapping.json | \
   python /mnt/skills/public/fire-protection-extract/scripts/contract_store.py \
-  save "<项目名>" <STRUCT_PATH>
+  save "<阶段>" "<项目名>" <STRUCT_PATH>
 ```
 
 ---
@@ -273,6 +280,7 @@ cat <WORK_DIR>/<项目名>_mapping.json | \
 
 ## 参考文件
 - `references/extractor_rules.md` — 锚点选取/防抄错规则
+- `references/stage-outlines/` — 阶段大纲（初步设计 7 章 / 基础设计 8 章）
 - `references/fire_spec_mapping.json` — 契约模板（消防专篇标准章节结构）
 - `scripts/run.sh` — 流水线入口
 - `scripts/contract_store.py` — 契约库管理
