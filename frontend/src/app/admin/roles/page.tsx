@@ -5,7 +5,7 @@ import {
   Search, Plus, Shield, Lock, Pencil, Trash2, Users, X,
   ChevronDown, Brain, Database, Puzzle, Wrench,
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
-  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle, ListChecks,
+  LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,7 +15,6 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { deptApi, permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
@@ -1192,9 +1191,23 @@ function PolicyEditForm({
   // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
   const [users, setUsers] = useState<User[]>([]);
   const [depts, setDepts] = useState<Department[]>([]);
-  // EAI-CUSTOM: 条件值下拉 —— 有选项时值变 Select；freeValueRows 记录切到"手动输入"的行
-  const [freeValueRows, setFreeValueRows] = useState<Set<number>>(new Set());
-  const toggleFreeValue = (i: number) => setFreeValueRows((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  // EAI-CUSTOM: 条件值 tag-input —— 徽章式（可输入可点选、徽章带叉可删）；单值操作符仅 1 个徽章，in/not_in 可多个
+  const [chipDrafts, setChipDrafts] = useState<Record<number, string>>({});
+  const [chipOpens, setChipOpens] = useState<Record<number, boolean>>({});
+  const chipsOf = (i: number): string[] => (form.conditions[i]?.value || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const isMultiRow = (i: number) => form.conditions[i]?.operator === "in" || form.conditions[i]?.operator === "not_in";
+  const addChip = (i: number, raw: string) => {
+    const v = String(raw ?? "").trim();
+    if (!v) return;
+    const opts = attrValueOptions(form.conditions[i]?.attribute || "");
+    const canonical = opts.find((o) => o.value === v)?.value ?? v;
+    const cur = chipsOf(i);
+    const next = isMultiRow(i) ? (cur.includes(canonical) ? cur : [...cur, canonical]) : [canonical];
+    updateCondition(i, { value: next.join(",") });
+    setChipDrafts((d) => ({ ...d, [i]: "" }));
+    setChipOpens((o) => ({ ...o, [i]: false }));
+  };
+  const removeChip = (i: number, v: string) => updateCondition(i, { value: chipsOf(i).filter((x) => x !== v).join(",") });
   useEffect(() => {
     let active = true;
     userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
@@ -1296,7 +1309,6 @@ function PolicyEditForm({
                   // EAI-CUSTOM: 切到单值操作符(=/!=/>=/<=/contains)时清空值，避免 in/not_in 的多值残留
                   const isMultiOp = v === "in" || v === "not_in";
                   updateCondition(i, { operator: v, value: isMultiOp ? c.value : "" });
-                  if (freeValueRows.has(i)) toggleFreeValue(i); // 退出手动输入，回到下拉/多选 UI
                 }}
               >
                 <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -1305,76 +1317,55 @@ function PolicyEditForm({
                 </SelectContent>
               </Select>
               {(() => {
-                // EAI-CUSTOM: 条件值三态 —— in/not_in 多选(Popover 勾选) | 单选 Select(+手动输入逃生口) | 无选项自由输入
+                // EAI-CUSTOM: 条件值 tag-input —— 徽章式（输入回车或点选建议添加；徽章带叉删除）；
+                // 单值操作符仅 1 个徽章，in/not_in 可多个（值=逗号连接，引擎 in/not_in 即列表）
                 const opts = attrValueOptions(c.attribute);
-                const isMulti = c.operator === "in" || c.operator === "not_in";
-                if (opts.length === 0 || freeValueRows.has(i)) {
-                  return (
-                    <div className="flex-1 flex items-center gap-1">
+                const chips = chipsOf(i);
+                const draft = chipDrafts[i] || "";
+                const filtered = opts.filter(
+                  (o) => !chips.includes(o.value) && (!draft || o.label.includes(draft) || o.value.includes(draft)),
+                );
+                const labelOf = (v: string) => opts.find((o) => o.value === v)?.label ?? v;
+                return (
+                  <div className="relative flex-1">
+                    <div className="flex items-center gap-1 flex-wrap min-h-8 px-2 py-0.5 bg-background border border-input rounded focus-within:ring-2 focus-within:ring-primary/50">
+                      {chips.map((v) => (
+                        <span key={v} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                          {labelOf(v)}
+                          <button type="button" onClick={() => removeChip(i, v)} title="删除" className="hover:text-destructive transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
                       <input
                         type="text"
-                        value={c.value}
-                        onChange={(e) => updateCondition(i, { value: e.target.value })}
-                        placeholder="值"
-                        className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="flex-1 min-w-[70px] h-6 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                        value={draft}
+                        placeholder={chips.length ? "" : "输入或选择值"}
+                        onChange={(e) => setChipDrafts((d) => ({ ...d, [i]: e.target.value }))}
+                        onFocus={() => setChipOpens((o) => ({ ...o, [i]: true }))}
+                        onBlur={() => setTimeout(() => setChipOpens((o) => ({ ...o, [i]: false })), 150)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); addChip(i, draft); }
+                          if (e.key === "Backspace" && !draft && chips.length) removeChip(i, chips[chips.length - 1]!);
+                        }}
                       />
-                      {opts.length > 0 && (
-                        <button type="button" onClick={() => toggleFreeValue(i)} title="从列表选择" className="p-1 text-muted-foreground hover:text-primary transition-colors">
-                          <ListChecks className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                     </div>
-                  );
-                }
-                if (isMulti) {
-                  // in/not_in：引擎值是列表（a in [..] / a not in [..]），UI 多选勾选，逗号连接
-                  const current = (c.value || "").split(",").map((s) => s.trim()).filter(Boolean);
-                  const toggleVal = (v: string) => {
-                    const next = current.includes(v) ? current.filter((x) => x !== v) : [...current, v];
-                    updateCondition(i, { value: next.join(",") });
-                  };
-                  return (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button type="button" className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs flex items-center justify-between gap-1 focus:outline-none focus:ring-2 focus:ring-primary/50">
-                          <span className="truncate text-left">
-                            {current.length
-                              ? current.map((v) => opts.find((o) => o.value === v)?.label ?? v).join("、")
-                              : "选择值（可多选）"}
-                          </span>
-                          <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-60 p-1.5 max-h-64 overflow-y-auto" align="start">
-                        {opts.map((o) => (
-                          <label key={o.value} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
-                            <input type="checkbox" checked={current.includes(o.value)} onChange={() => toggleVal(o.value)} className="accent-primary" />
+                    {chipOpens[i] && filtered.length > 0 && (
+                      <div className="absolute z-20 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-md py-1">
+                        {filtered.map((o) => (
+                          <button
+                            key={o.value}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); addChip(i, o.value); }}
+                            className="block w-full text-left px-3 py-1.5 text-xs hover:bg-accent"
+                          >
                             {o.label}
-                          </label>
+                          </button>
                         ))}
-                      </PopoverContent>
-                    </Popover>
-                  );
-                }
-                const matched = opts.find((o) => o.value === c.value);
-                const isCustom = !!c.value && !matched;
-                return (
-                  <Select
-                    value={isCustom ? "__custom__" : (c.value || "__none__")}
-                    onValueChange={(v) => {
-                      if (v === "__manual__") { toggleFreeValue(i); return; }
-                      if (v === "__custom__") return; // 当前自定义值，no-op
-                      updateCondition(i, { value: v === "__none__" ? "" : v });
-                    }}
-                  >
-                    <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue placeholder="值" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__"><span className="text-muted-foreground">选择值</span></SelectItem>
-                      {isCustom && <SelectItem value="__custom__">自定义: {c.value}</SelectItem>}
-                      {opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                      <SelectItem value="__manual__"><span className="text-muted-foreground">✎ 手动输入…</span></SelectItem>
-                    </SelectContent>
-                  </Select>
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
               <button onClick={() => removeCondition(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
