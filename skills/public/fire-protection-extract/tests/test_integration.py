@@ -52,10 +52,12 @@ def test_sample_pipeline_meets_acceptance(tmp_path):
     assert "生活用水量8L/s" not in report and "DN150" not in report
     # 5. acceptance: compute section not fabricated
     assert "[需计算]" in report
-    # 6. grounding
+    # 6. grounding: two-layer check — outline skeleton + sources aligned by section index
+    #    (reuse the same outline/mapping the extract CLI consumed above)
     from scripts.grounding_check import check
-    mapping = json.loads(MAPPING.read_text(encoding="utf-8"))
-    res = check(report, structure, mapping)
+    outline = json.loads(outline_path.read_text(encoding="utf-8"))
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    res = check(report, structure, outline, mapping)
     assert not res["missing_anchors"], f"unresolved anchors: {res['missing_anchors'][:5]}"
     assert res["rate"] >= 0.85, f"grounding rate {res['rate']:.2%} < 85%; failures: {res['failed_samples']}"
     # 7. regression: §8 must NOT dump the whole spec body. The original mapping
