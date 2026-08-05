@@ -114,9 +114,9 @@ def check(report_md, structure, outline, mapping):
                  if sec.get("class") == "verbatim"
                  and not (sources_by_idx[idx] if idx < len(sources_by_idx) else [])]
 
-    # 4. 冲突断言（如 §5.1 必须含 DN200、不得含 DN150）
+    # 4. 冲突断言（大纲节级 + 映射源级）
     conflict_failures = []
-    for sec in sections:
+    for idx, sec in enumerate(sections):
         for ca in sec.get("conflict_assertions", []) or []:
             mc = ca.get("must_contain")
             mnc = ca.get("must_not_contain")
@@ -124,6 +124,19 @@ def check(report_md, structure, outline, mapping):
                 conflict_failures.append((sec["fire"], "missing", mc))
             if mnc and mnc in report_md:
                 conflict_failures.append((sec["fire"], "unexpected", mnc))
+        # 映射源级：项目专属断言（如 §5.1 必须含 DN200、不得含 DN150）
+        sources = sources_by_idx[idx] if idx < len(sources_by_idx) else []
+        sources = sources or []
+        for src in sources:
+            if not isinstance(src, dict):
+                continue
+            for ca in src.get("conflict_assertions", []) or []:
+                mc = ca.get("must_contain")
+                mnc = ca.get("must_not_contain")
+                if mc and mc not in report_md:
+                    conflict_failures.append((sec["fire"], "missing", mc))
+                if mnc and mnc in report_md:
+                    conflict_failures.append((sec["fire"], "unexpected", mnc))
 
     return {
         "grounded": grounded, "checked": checked, "rate": rate,

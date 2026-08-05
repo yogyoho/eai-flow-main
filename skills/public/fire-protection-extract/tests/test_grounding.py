@@ -1,6 +1,7 @@
 from scripts.parse_spec import parse_spec
 from scripts.extract import build_report
 from scripts.grounding_check import check
+from scripts import extract, grounding_check
 
 
 def _mini_outline():
@@ -68,3 +69,16 @@ def test_conflict_assertions_checked(tiny_spec):
     outline["sections"][1]["conflict_assertions"] = [{"must_contain": "ZZZNOMATCH"}]
     res2 = check(build_report(s, outline, mapping), s, outline, mapping)
     assert len(res2["conflict_failures"]) == 1
+
+
+def test_conflict_assertions_from_mapping_source():
+    struct = {"paras": [{"i": 0, "text": "消防水量 DN200 系统 DN150"}, {"i": 1, "text": "给水 DN150"}], "tables": {}}
+    outline = {"report_title": "{项目名} 消防设计专篇", "templates": {},
+               "sections": [{"fire": "5.1 室外消防水系统", "class": "verbatim"}]}
+    # 源带 conflict_assertions：must_contain DN200（有）, must_not_contain DN150（也在被抄段里 → 违规）
+    mapping = {"sources": [[{"kind": "para", "paras": [0], "conflict_assertions": [
+        {"must_contain": "DN200", "must_not_contain": "DN150"}]}]]}
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    # 仅抄了 para 0（含 DN200 与 DN150）→ must_not_contain 违规应被捕获
+    assert any(ca[1] == "unexpected" and ca[2] == "DN150" for ca in res["conflict_failures"])
