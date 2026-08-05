@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { deptApi, permissionsApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
@@ -1289,15 +1290,24 @@ function PolicyEditForm({
                   {ATTR_OPTIONS.map((a) => <SelectItem key={a} value={a}>{ATTR_LABELS[a] ?? a}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select value={c.operator} onValueChange={(v) => updateCondition(i, { operator: v })}>
+              <Select
+                value={c.operator}
+                onValueChange={(v) => {
+                  // EAI-CUSTOM: 切到单值操作符(=/!=/>=/<=/contains)时清空值，避免 in/not_in 的多值残留
+                  const isMultiOp = v === "in" || v === "not_in";
+                  updateCondition(i, { operator: v, value: isMultiOp ? c.value : "" });
+                  if (freeValueRows.has(i)) toggleFreeValue(i); // 退出手动输入，回到下拉/多选 UI
+                }}
+              >
                 <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{OP_LABELS[o] ?? o}</SelectItem>)}
                 </SelectContent>
               </Select>
               {(() => {
-                // EAI-CUSTOM: 条件值 —— 有选项时变真正的下拉框（Select），附"手动输入"逃生口；无选项保持自由输入
+                // EAI-CUSTOM: 条件值三态 —— in/not_in 多选(Popover 勾选) | 单选 Select(+手动输入逃生口) | 无选项自由输入
                 const opts = attrValueOptions(c.attribute);
+                const isMulti = c.operator === "in" || c.operator === "not_in";
                 if (opts.length === 0 || freeValueRows.has(i)) {
                   return (
                     <div className="flex-1 flex items-center gap-1">
@@ -1314,6 +1324,36 @@ function PolicyEditForm({
                         </button>
                       )}
                     </div>
+                  );
+                }
+                if (isMulti) {
+                  // in/not_in：引擎值是列表（a in [..] / a not in [..]），UI 多选勾选，逗号连接
+                  const current = (c.value || "").split(",").map((s) => s.trim()).filter(Boolean);
+                  const toggleVal = (v: string) => {
+                    const next = current.includes(v) ? current.filter((x) => x !== v) : [...current, v];
+                    updateCondition(i, { value: next.join(",") });
+                  };
+                  return (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button type="button" className="flex-1 h-8 px-2 bg-background border border-input rounded text-xs flex items-center justify-between gap-1 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                          <span className="truncate text-left">
+                            {current.length
+                              ? current.map((v) => opts.find((o) => o.value === v)?.label ?? v).join("、")
+                              : "选择值（可多选）"}
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-60 p-1.5 max-h-64 overflow-y-auto" align="start">
+                        {opts.map((o) => (
+                          <label key={o.value} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                            <input type="checkbox" checked={current.includes(o.value)} onChange={() => toggleVal(o.value)} className="accent-primary" />
+                            {o.label}
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
                   );
                 }
                 const matched = opts.find((o) => o.value === c.value);
