@@ -71,7 +71,24 @@
 | docmgr `collab_routers`/`list_folders` 修复后 `scope=None` 回退分支 | 仅测试/内部调用用 | 保留 |
 | `DEFAULT_ROLE_PERMISSIONS` 死常量 | 未删/未标废弃 | 清理 |
 
-## 6. 风险与边界
+## 6. 附加：个性化策略 tab 独立功能测试（2026-08-05 补测）
+
+### 6.1 后端 API 全链路（curl，admin 会话）
+| 步骤 | 结果 |
+|---|---|
+| 创建策略（条件 `role_code=dept_head` + grant + deny_permissions + deny_data_scopes） | ✅ 201，全字段持久化 |
+| 列表 / 更新（改名 + deny 扩展）/ 删除 | ✅ 全部 200，持久化正确 |
+| 引擎条件匹配（`load_active_policies` + `evaluate_policy_conditions`） | ✅ dept_head→True / user→False |
+| **策略效果实机**：deny `[kb:delete, kb:update]` → 临时 dept_head 用户 `/me` 权限 **21→19**（两权限被移除，kb:create 保留） | ✅ 策略真实生效 |
+| UI 显示（grant + 拒绝权限 + 拒绝范围） | ✅ 正确渲染 |
+| 清理（策略/临时用户/gateway 镜像/重桥接 ghost） | ✅ 0 残留 |
+
+### 6.2 修复 1 个前端 bug + 1 个限制（浏览器实机复验通过）
+- **已修（commit `1af1c2b4e`）**：`toUIConditions` 丢弃单条件 `{attr,op,value}` 形状 → PolicyRow 误显"全局"且编辑丢条件。修复 + 2 单测（14/14 过）。
+  - **浏览器复验**：重建单条件策略（`role_level>=50`）→ 列表显示 **`role_level >= 50`**（不再"全局"）；编辑表单预填 **role_level / >= / 50** 三字段。✅ 端到端生效。
+- **发现限制（未修，产品决策）**：UI 条件编辑器 `ATTR_OPTIONS = ["tags","role_level","dept_id","user_id"]`（page.tsx:1215），**不含 `role_code`/`username`/`dept_ids`/`member_projects` 等引擎支持的属性**。API 创建属性 `role_code` 的策略 → 条件行渲染但 attribute 下拉为空；若编辑保存不改该字段，条件 `attr` 会被清空（静默失效）。**建议**：①把 `role_code`/`username` 等常见属性加入 ATTR_OPTIONS；或 ②对 UI 不支持的属性做只读展示防编辑丢条件。
+
+## 7. 风险与边界
 
 - **行为翻转预告**：F1 修复后 dept_head 权限集合 = 21（`#inherit:user` + 部门扩展），与提交版 53 条不同（收敛了 `user:*`/`role:*`/`license:manage`/`workflow:edit/start/cancel` 等近超管授权）。若业务上 dept_head 确需这些，需在 UI 里补勾选。
 - **测试隔离**：L1 全部走 mock DB + 真实 registry（仓库无 live-PG 基建，共享 dev DB 不做破坏性写入）；浏览器 E2E 创建了临时 dept_head 用户并已删除。
