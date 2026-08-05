@@ -116,12 +116,16 @@ async def get_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+    # EAI-CUSTOM (Task L2): by-id routes through the same scope engine as
+    # list_docs so deny_data_scopes narrows by-id fetches too. For roles bound
+    # to doc_owner + doc_project_member the compiled predicate is identical to
+    # the prior hand-rolled (user_id == caller OR project_id IN member_projects)
+    # clause; superadmin gets allow_all.
+    scope: FilterRule = Depends(with_data_scope("docmgr")),
 ):
     """Get a specific document by ID."""
-    document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-
-
-    if not document:
+    document = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
@@ -146,10 +150,11 @@ async def update_document(
     data: AIDocumentUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Update a document."""
-    document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not document:
+    document = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
@@ -164,10 +169,11 @@ async def delete_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:delete")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Delete a document."""
-    document = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not document:
+    document = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
@@ -183,10 +189,11 @@ async def move_document(
     request: MoveRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Move document to a folder or to My Documents."""
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not doc:
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     if request.to_documents:
         doc = await AIDocumentService.move_to_documents(db, doc)
@@ -201,10 +208,11 @@ async def rename_document(
     request: RenameRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Rename a document."""
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not doc:
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     doc = await AIDocumentService.rename(db, doc, request.title)
     return await AIDocumentService.to_response(doc)
@@ -226,10 +234,11 @@ async def preview_document(
     doc_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Read file content for preview."""
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not doc:
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     if doc.doc_type != "file_ref":
         return {"content": doc.content, "doc_type": doc.doc_type}
@@ -243,14 +252,15 @@ async def export_document(
     format: str = Query("md", description="Export format: md or docx"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Export a document as Markdown (.md) or Word (.docx) file."""
     from urllib.parse import quote
 
     from fastapi.responses import Response
 
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not doc:
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Resolve content: for file_ref docs, read from disk
@@ -310,14 +320,15 @@ async def export_document_with_layout(
     request: ExportRequest,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+    scope: FilterRule = Depends(with_data_scope("docmgr")),  # EAI-CUSTOM (Task L2)
 ):
     """Export a document as Word (.docx) with layout template and watermark."""
     from urllib.parse import quote
 
     from fastapi.responses import Response
 
-    doc = await AIDocumentService.get_by_id(db, doc_id, current_user.id)
-    if not doc:
+    doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
     content = doc.content

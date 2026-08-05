@@ -126,11 +126,49 @@ class AIDocumentService:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, doc_id: UUID, user_id: UUID) -> AIDocument | None:
-        """Get document by ID — accessible by owner or project member."""
+        """Get document by ID — accessible by owner or project member.
+
+        Backward-compat hand-rolled visibility clause; retained for internal
+        callers/tests that don't have a scope in hand. Router by-id endpoints
+        should call ``get_by_id_scoped`` instead so ``deny_data_scopes`` can
+        narrow by-id visibility (mirrors Task 13's ``list_docs`` wiring).
+        """
         own_docs = AIDocument.user_id == user_id
         my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
         project_docs = AIDocument.project_id.in_(my_project_ids)
         stmt = select(AIDocument).where(AIDocument.id == doc_id, or_(own_docs, project_docs))
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_id_scoped(
+        db: AsyncSession,
+        doc_id: UUID,
+        scope: "FilterRule",
+    ) -> AIDocument | None:
+        """Load a document by id ONLY if *scope* permits it.
+
+        EAI-CUSTOM (Task L2 / follow-up to Task 13): unifies by-id access with
+        ``list_docs``'s ``with_data_scope("docmgr")`` FilterRule so list and
+        by-id enforce identical visibility. For roles bound to
+        ``doc_owner`` + ``doc_project_member`` (the default for every role
+        carrying ``doc:read``), the compiled SQL is identical to the prior
+        hand-rolled clause:
+            (user_id == caller) OR (project_id IN member_projects)
+        Superadmin gets ``allow_all`` via ``with_data_scope``. Returns None if
+        the document does not exist or is out of scope; callers raise 404 to
+        avoid existence leakage. Mirrors ``_load_kb_scoped`` in
+        ``app/extensions/knowledge/routers.py``.
+        """
+        column_map = {
+            "user_id": AIDocument.user_id,
+            "project_id": AIDocument.project_id,
+        }
+        stmt = (
+            select(AIDocument)
+            .where(AIDocument.id == doc_id)
+            .where(scope.to_sqlalchemy(AIDocument, column_map))
+        )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
