@@ -86,7 +86,7 @@
 ### 6.2 修复 1 个前端 bug + 1 个限制（浏览器实机复验通过）
 - **已修（commit `1af1c2b4e`）**：`toUIConditions` 丢弃单条件 `{attr,op,value}` 形状 → PolicyRow 误显"全局"且编辑丢条件。修复 + 2 单测（14/14 过）。
   - **浏览器复验**：重建单条件策略（`role_level>=50`）→ 列表显示 **`role_level >= 50`**（不再"全局"）；编辑表单预填 **role_level / >= / 50** 三字段。✅ 端到端生效。
-- **发现限制（未修，产品决策）**：UI 条件编辑器 `ATTR_OPTIONS = ["tags","role_level","dept_id","user_id"]`（page.tsx:1215），**不含 `role_code`/`username`/`dept_ids`/`member_projects` 等引擎支持的属性**。API 创建属性 `role_code` 的策略 → 条件行渲染但 attribute 下拉为空；若编辑保存不改该字段，条件 `attr` 会被清空（静默失效）。**建议**：①把 `role_code`/`username` 等常见属性加入 ATTR_OPTIONS；或 ②对 UI 不支持的属性做只读展示防编辑丢条件。
+- **发现限制（已修，commit `897a3ec8f`）**：UI 条件编辑器 `ATTR_OPTIONS` 原仅 `["tags","role_level","dept_id","user_id"]`，不含 `role_code`/`username` 等引擎支持的属性 → API 建 role_code 策略时 attribute 下拉为空、编辑保存会清空 attr（静默失效）。**修复**：`role_code`/`username` 加入 ATTR_OPTIONS（与引擎 AttributeSet 对齐）。**浏览器复验**：role_code 策略列表显示 `role_code = dept_head`、编辑表单 attribute 下拉显示 `role_code`（不再为空），往返完整。
 
 ## 7. 风险与边界
 
