@@ -57,8 +57,8 @@ if [ "$FIND_RC" -eq 0 ]; then
   echo "$FIND_OUT" | python -c "import sys,json; m=json.load(sys.stdin)['mapping']; json.dump(m,sys.stdout,ensure_ascii=False,indent=2)" > "$MAPPING" 2>/dev/null || true
   echo "  ✓ 使用契约: ${FOUND}"
 elif [ "$FIND_RC" -eq 3 ]; then
-  echo "CONTRACT_FORMAT_MISMATCH: $FIND_OUT" >&2
-  echo "  → 该契约是旧字符串锚格式，需删除后重跑 E3 生成新契约" >&2
+  echo "CONTRACT_ERROR: $FIND_OUT" >&2
+  echo "  → 契约解析/格式异常，检查 struct.json 或重跑 E3" >&2
   exit 3
 elif [ "$FIND_RC" -eq 4 ]; then
   echo "CONTRACT_NEEDED: ${STRUCT}"
@@ -79,6 +79,10 @@ echo "[5/5] 逐字溯源校验..."
 GROUNDING_ERR_LOG="${WORK_DIR}/${PROJECT}_grounding_err.log"
 GROUNDING_OUT=$(python "${SKILL_DIR}/scripts/grounding_check.py" "$REPORT" "$STRUCT" "$OUTLINE" "$MAPPING" 2>"$GROUNDING_ERR_LOG") || true
 echo "$GROUNDING_OUT"
+if [ -z "$GROUNDING_OUT" ] && [ -s "$GROUNDING_ERR_LOG" ]; then
+  echo "⚠ grounding_check 异常，日志:" >&2
+  cat "$GROUNDING_ERR_LOG" >&2
+fi
 
 REPORT_STATUS="NEEDS_REVIEW"
 if echo "$GROUNDING_OUT" | grep -q '"rate"'; then
@@ -109,6 +113,10 @@ PASSPORT="${OUT_DIR}/${PROJECT}_passport.json"
 REPORT_CHARS=$(wc -m < "$REPORT" | tr -d ' ')
 GROUNDING_JSON=$(echo "$GROUNDING_OUT" | python -c "import sys,json; d=sys.stdin.read(); print(json.dumps(json.loads(d[d.find('{'):])))" 2>/dev/null || echo "{}")
 python "${SKILL_DIR}/scripts/gen_passport.py" "$PASSPORT" "$PROJECT" "$REPORT" "$COMPLIANCE" \
-  "${FOUND:-default}" "$GROUNDING_JSON" "$COMPLIANCE_STATUS" "$REPORT_CHARS" 2>&1
+  "${FOUND:-default}" "$GROUNDING_JSON" "$COMPLIANCE_STATUS" "$REPORT_CHARS" 2>&1 || \
+  echo "⚠ passport 生成失败" >&2
+
+# 覆盖 report_status 为 run.sh 门限结果（rate≥0.85 且 MISS==0）
+python -c "import json,sys; p=json.load(open('$PASSPORT',encoding='utf-8')); p['report_status']='$REPORT_STATUS'; json.dump(p,open('$PASSPORT','w',encoding='utf-8'),ensure_ascii=False,indent=2)" 2>/dev/null || true
 
 echo "REPORT_${REPORT_STATUS}: ${REPORT}"
