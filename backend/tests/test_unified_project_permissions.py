@@ -20,6 +20,24 @@ from app.extensions.auth.unified_permissions import (
 )
 from app.extensions.models.role_permission import ProjectRole
 
+
+@pytest.fixture(autouse=True)
+def _clear_permission_cache_between_tests():
+    """Clear the request-scoped permission engine/identity cache before each test.
+
+    require_resource_permission now routes its system:access base gate through
+    UnifiedPermissionEngine and shares the per-request ContextVar cache with
+    require_permission. Without this clear, an engine built in an earlier test
+    (e.g. one with no policies) would leak into a later test (e.g. the
+    deny-policy case) and mask the behavior under test.
+    """
+    from app.extensions.auth.cache import clear_permission_cache
+
+    clear_permission_cache()
+    yield
+    clear_permission_cache()
+
+
 # Shared registry yaml: superadmin (is_system) + user (system:access) roles,
 # plus project_roles for writer/reviewer.
 _SHARED_YAML = """
@@ -35,14 +53,21 @@ project_roles:
 
 
 class _FakeResult:
-    """Mimics a sqlalchemy Result for scalar_one_or_none()."""
+    """Mimics a sqlalchemy Result for scalar_one_or_none() / scalars().all()."""
 
-    def __init__(self, rows=None):
+    def __init__(self, rows=None, policy_rows=None):
         self._rows = list(rows or [])
-        self._it = iter(self._rows)
+        self._policy_rows = list(policy_rows or [])
 
     def scalar_one_or_none(self):
         return self._rows[0] if self._rows else None
+
+    def scalars(self):
+        # load_active_policies does `(await db.execute(...)).scalars().all()`.
+        return self
+
+    def all(self):
+        return self._policy_rows
 
 
 class _Member:
@@ -71,12 +96,18 @@ class _Request:
 
 
 class _FakeDb:
-    """Stub AsyncSession: returns the configured User/Role/member rows."""
+    """Stub AsyncSession: returns the configured User/Role/member rows.
 
-    def __init__(self, member=None, user=None, role=None):
+    Also feeds ``load_active_policies`` (called by require_resource_permission's
+    ABAC engine construction) — pass ``policies`` as duck-typed PolicyModel rows
+    (``SimpleNamespace(name=..., priority=..., conditions=..., grants=...)``).
+    """
+
+    def __init__(self, member=None, user=None, role=None, policies=None):
         self._member = member
         self._user = user or _User()
         self._role = role or _Role()
+        self._policies = list(policies or [])
 
     async def get(self, model, id_):
         name = getattr(model, "__name__", "")
@@ -87,8 +118,12 @@ class _FakeDb:
         return None
 
     async def execute(self, stmt, params=None):
-        # ProjectMember select returns the member row
-        return _FakeResult(rows=[self._member] if self._member else [])
+        # ProjectMember select returns the member row; the same Result also
+        # serves load_active_policies via .scalars().all().
+        return _FakeResult(
+            rows=[self._member] if self._member else [],
+            policy_rows=self._policies,
+        )
 
 
 def _make_registry(tmp_path, yaml_text=_SHARED_YAML):
@@ -270,3 +305,79 @@ def test_require_resource_permission_invalid_project_id_raises_400(tmp_path, mon
     with pytest.raises(HTTPException) as exc:
         asyncio.run(dep(current_user=_User(), request=_Request(project_id="not-a-uuid"), db=db))
     assert exc.value.status_code == 400
+
+
+# ── require_resource_permission: ABAC system:access gate (L3) ──
+
+
+def _policy_row(name, priority=0, conditions=None, grants=None):
+    """Duck-typed PolicyModel row — load_active_policies reads these attrs."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        name=name,
+        priority=priority,
+        conditions=conditions or {},
+        grants=grants or {},
+    )
+
+
+def test_require_resource_permission_system_access_passes_without_deny(tmp_path, monkeypatch):
+    """Role WITH system:access and NO deny policy → base gate passes (unchanged behavior).
+
+    A normal 'user' (system:access granted by role) is still allowed to reach the
+    project-role action check, which then returns the resolved role string.
+    """
+    reg = _make_registry(tmp_path)
+    _patch_registry_and_provider(monkeypatch, reg, role_code="user")
+
+    # No policies → engine.check(system:access) is True for the 'user' role.
+    db = _FakeDb(member=_Member(role="writer"), policies=[])
+    dep = require_resource_permission("chapter:write_own")
+    result = asyncio.run(dep(current_user=_User(), request=_Request(), db=db))
+    assert result == "writer"
+
+
+def test_require_resource_permission_system_access_blocked_by_deny_policy(tmp_path, monkeypatch):
+    """A policy that denies system:access now BLOCKS at the base gate (403).
+
+    This is the key new behavior: before L3 the base gate only checked role perms
+    (which include system:access for the 'user' role) and ignored ABAC policies,
+    so the deny pipeline had a hole here. Routing through engine.check honors the
+    deny — the project-role action check below is never reached.
+    """
+    reg = _make_registry(tmp_path)
+    _patch_registry_and_provider(monkeypatch, reg, role_code="user")
+
+    deny_policy = _policy_row(
+        name="block_system_access_for_user",
+        conditions={"attr": "role_code", "op": "eq", "value": "user"},
+        grants={"deny_permissions": ["system:access"]},
+    )
+    db = _FakeDb(member=_Member(role="writer"), policies=[deny_policy])
+    dep = require_resource_permission("chapter:write_own")
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(dep(current_user=_User(), request=_Request(), db=db))
+    assert exc.value.status_code == 403
+    # Base-gate 403 message, not the project-role action message:
+    assert "system:access" in exc.value.detail
+
+
+def test_require_resource_permission_superadmin_ignores_deny_policy(tmp_path, monkeypatch):
+    """Superadmin (is_system / '*') bypasses regardless of a deny policy.
+
+    The explicit is_system/'*' short-circuit returns 'owner' before the engine
+    is built, so a policy denying system:access cannot block superadmin.
+    """
+    reg = _make_registry(tmp_path)
+    _patch_registry_and_provider(monkeypatch, reg, role_code="superadmin")
+
+    deny_policy = _policy_row(
+        name="block_system_access_for_superadmin",
+        conditions={},  # match all
+        grants={"deny_permissions": ["system:access"]},
+    )
+    db = _FakeDb(member=_Member(role="reviewer"), policies=[deny_policy])
+    dep = require_resource_permission("project:edit")
+    result = asyncio.run(dep(current_user=_User(), request=_Request(), db=db))
+    assert result == "owner"

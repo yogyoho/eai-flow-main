@@ -202,23 +202,56 @@ def require_resource_permission(action: str):
         request: Request = ...,
         db: AsyncSession = Depends(get_db),
     ) -> str | None:
+        from app.extensions.auth.cache import (
+            get_cached_engine,
+            get_cached_identity,
+            set_cached_engine,
+            set_cached_identity,
+        )
+        from app.extensions.auth.engine import UnifiedPermissionEngine
         from app.extensions.auth.identity import get_identity_provider
+        from app.extensions.auth.policy_loader import load_active_policies
         from app.extensions.auth.registry import get_permission_registry
 
-        # Registry-based admin bypass (mirrors require_super_admin)
         registry = get_permission_registry()
         provider = get_identity_provider()
-        identity = await provider.resolve(current_user.id, db)
+
+        # Identity: resolve once per request and share with require_permission
+        # via the request-scoped ContextVar cache (mirrors require_permission).
+        identity = get_cached_identity()
+        if identity is None:
+            identity = await provider.resolve(current_user.id, db)
+            set_cached_identity(identity)
+
+        # Registry-based admin bypass (mirrors require_super_admin). Kept explicit
+        # so superadmin skips engine construction entirely.
         defaults = registry.get_role_defaults(identity.role_code)
         is_system = bool(defaults and defaults.get("is_system"))
         resolved = registry.resolve_role_permissions(identity.role_code or "")
         if is_system or "*" in resolved:
             return "owner"
 
-        # Base gate: every caller needs global system:access (mirrors the legacy
-        # require_permission("system:access") dependency the old shim used).
-        if "system:access" not in resolved:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Permission denied: system:access required")
+        # Base gate: every caller needs global system:access. Routed through the
+        # ABAC engine (EAI-CUSTOM L3) so a policy that denies system:access is
+        # honored here too — same engine construction / cache as require_permission.
+        # NOTE: the project-role ACTION check below stays registry-only by design
+        # (spec §4.1/§2) and is NOT routed through the ABAC engine.
+        engine = get_cached_engine()
+        if engine is None:
+            engine = UnifiedPermissionEngine(
+                role_permissions={
+                    code: registry.resolve_role_permissions(code)
+                    for code in registry.list_role_codes()
+                },
+                all_permission_ids={p.id for p in registry.list_all_permissions()},
+                policies=await load_active_policies(db),
+            )
+            set_cached_engine(engine)
+        if not engine.check(identity, "system:access"):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail="Permission denied: system:access required",
+            )
 
         project_id = request.path_params.get("project_id")
         if not project_id:
