@@ -94,31 +94,26 @@ async def list_knowledge_bases(
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
 ):
-    # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering
-    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
-    is_admin = await is_superadmin(db, current_user.id)
-
+    # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering.
+    # EAI-CUSTOM (M2): the prior `is_superadmin` branch is redundant —
+    # `with_data_scope("knowledge")` already returns `allow_all` for superadmin
+    # (Task 5), and `allow_all.to_sqlalchemy()` renders `true()` (a no-op WHERE),
+    # so a single scope-aware path covers both admin and non-admin cases.
+    from sqlalchemy import func
     from sqlalchemy import select as sa_select
 
     from app.extensions.models import KnowledgeBase
 
-    if is_admin:
-        query = sa_select(KnowledgeBase)
-    else:
-        column_map = {
-            "owner_id": KnowledgeBase.owner_id,
-            "access_type": KnowledgeBase.access_type,
-            "allowed_depts": KnowledgeBase.allowed_depts,
-        }
-        query = sa_select(KnowledgeBase).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
+    column_map = {
+        "owner_id": KnowledgeBase.owner_id,
+        "access_type": KnowledgeBase.access_type,
+        "allowed_depts": KnowledgeBase.allowed_depts,
+    }
+    scope_clause = scope.to_sqlalchemy(KnowledgeBase, column_map)
+    query = sa_select(KnowledgeBase).where(scope_clause)
 
     # Count total before pagination
-    from sqlalchemy import func
-
-    if is_admin:
-        count_query = sa_select(func.count(KnowledgeBase.id))
-    else:
-        count_query = sa_select(func.count(KnowledgeBase.id)).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
+    count_query = sa_select(func.count(KnowledgeBase.id)).where(scope_clause)
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
