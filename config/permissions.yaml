@@ -350,7 +350,10 @@ roles:
       - doc:read
       - model:read
       - system:access
-    data_scopes: ["knowledge_public", "project_member", "doc_owner", "doc_project_member"]
+    # EAI-CUSTOM (M1): knowledge_owner added so a user can see their OWN private KB
+    # (a freshly created KB defaults to access_type="private"). Without this, the
+    # owner could not list a KB they just created because only knowledge_public was granted.
+    data_scopes: ["knowledge_owner", "knowledge_public", "project_member", "doc_owner", "doc_project_member"]
 
 # ── 项目级角色 → 权限映射（原 role_permissions 表 / DEFAULT_ROLE_PERMISSIONS 常量）──
 project_roles:
