@@ -56,10 +56,10 @@ verbatim 节的 source 三种 kind（全部索引锚定，不做字符串匹配�
 ~~锚从「样本对」逐段比对得到，选源段里独一无二、抗改写的子串（含具体数值/编号/专有名词最佳）；mapping 存字符串 anchor/from/to。~~ ← 这条规则导致锚跨项目全部失配（基地项目→仓库项目：0%），且字符串匹配在 grounding 校验里不可溯源。**新模型 = 两层结构**：大纲锁章节骨架（永不漂移），mapping 只存与大纲按索引 1:1 对齐的段号/表号锚点。改项目 = 只重建 mapping，不动大纲。
 
 ## 依赖与格式
-- 映射契约同时提供 `.yaml`（人读/编辑）和 `.json`（机读，std-lib 零依赖）。
-  `extract.py` / `grounding_check.py` 优先读 `.json`；`.yaml` 需 PyYAML 才可读。
+- 两层映射契约（大纲与 mapping）均为 **JSON-only**（机读，std-lib 零依赖）。
+  `extract.py` / `grounding_check.py` 用标准库 `json` 读取；`contract_store.save_contract` 只写 `.json`，不产出 `.yaml`。
 - `parse_spec.py` 优先用 python-docx（结构好），装不上自动回退 zipfile+xml 标准库路径（永远可用）。
-- PyYAML (YAML 1.1) 会把裸键 `no`/`yes`/`on`/`off` 强制成布尔。契约里的表号键必须写成 quoted 形式 `"no":`（JSON 里无此问题）。
+- 若人工手写 YAML 编辑契约（仅调试用，store 不产出）：PyYAML (YAML 1.1) 会把裸键 `no`/`yes`/`on`/`off` 强制成布尔，表号键必须写成 quoted 形式 `"no":`。JSON 里无此问题。
 - `heading_level`（可选，默认 2）：控制 Markdown 标题级数。`2` = `##`，`3` = `###`。章节容器标题用默认 `##`，其下子节用 `###`。
   `class=heading` 的纯容器节不需要 `heading_level`（永远是 `##`）。
 - `source_label`（verbatim 节推荐填写）：溯源引用中显示的设计说明书出处，如 `设计说明书 §7 建筑与结构`。
