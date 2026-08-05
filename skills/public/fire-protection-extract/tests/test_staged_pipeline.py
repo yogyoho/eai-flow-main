@@ -1,6 +1,9 @@
 import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 OUTLINES = Path(__file__).resolve().parents[1] / "references" / "stage-outlines"
 
@@ -79,3 +82,27 @@ def test_verbatim_sections_have_guide():
         for sec in o["sections"]:
             if sec["class"] == "verbatim":
                 assert sec.get("guide"), f"{stage}: verbatim 节 {sec['fire']} 缺 guide"
+
+
+import detect_stage
+
+
+def test_detect_from_paras_initial():
+    struct = {"paras": [{"i": 0, "text": "项目名"}, {"i": 1, "text": "初步设计"}, {"i": 2, "text": "消防设计专篇"}]}
+    assert detect_stage.detect_from_struct(struct) == "初步设计"
+
+
+def test_detect_from_paras_basic():
+    struct = {"paras": [{"i": 0, "text": "项目名"}, {"i": 1, "text": "基础设计"}, {"i": 2, "text": "第一册 说明书"}]}
+    assert detect_stage.detect_from_struct(struct) == "基础设计"
+
+
+def test_detect_default_when_absent():
+    struct = {"paras": [{"i": 0, "text": "项目名"}, {"i": 1, "text": "消防设计专篇"}], "headings": []}
+    assert detect_stage.detect_from_struct(struct) == detect_stage.DEFAULT_STAGE
+
+
+def test_detect_both_markers_treats_ambiguous_as_default():
+    # 封面同页含两词时，优先精确段落命中；命中歧义 → 默认
+    struct = {"paras": [{"i": 0, "text": "初步设计及基础设计说明"}]}
+    assert detect_stage.detect_from_struct(struct) == detect_stage.DEFAULT_STAGE
