@@ -445,7 +445,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
         const coverTpl =
           coverPresetId && activeCoverPreset
             ? {
-                showLogo: false,
+                showLogo: activeCoverPreset.fields.some((f) => /logo/i.test(f.name)),
                 logoPosition: "center" as const,
                 showTitle: activeCoverPreset.fields.some((f) => /title/i.test(f.name)),
                 showClient: activeCoverPreset.fields.some((f) => /client|unit|业主|单位/i.test(f.name)),

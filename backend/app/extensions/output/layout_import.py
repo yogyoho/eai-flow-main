@@ -56,7 +56,7 @@ def _style_color(style, default: str) -> str:
     try:
         rgb = style.font.color.rgb
         if rgb is not None:
-            return str(rgb)
+            return f"#{rgb}"  # editor <input type="color"> requires #RRGGBB
     except Exception:
         pass
     return default

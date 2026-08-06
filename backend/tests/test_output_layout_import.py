@@ -65,6 +65,16 @@ def test_extracts_body_and_heading_fonts():
     assert h1["numbering"] == "decimal"
 
 
+def test_heading_color_has_hash_prefix():
+    """Extracted heading color must be #RRGGBB (editor <input type=color> rejects bare hex)."""
+    doc = Document()
+    from docx.shared import RGBColor
+
+    doc.styles["Heading 1"].font.color.rgb = RGBColor(0x2B, 0x57, 0x9A)
+    h1 = extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]
+    assert h1["color"] == "#2B579A"
+
+
 def test_table_style_present_only_when_table_exists():
     assert data_for(with_table=True)["table_styles"] is not None
     assert data_for(with_table=True)["table_styles"]["stripeRows"] is True
