@@ -211,7 +211,7 @@ class KnowledgeBaseGrant(Base):
     grantee_type: Mapped[str] = mapped_column(String(20), nullable=False)  # user | dept | role
     grantee_id: Mapped[str] = mapped_column(String(64), nullable=False)  # user/dept=UUID串; role=角色code
     permission: Mapped[str] = mapped_column(String(20), default="read")  # read | write
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # EAI-CUSTOM: tz-aware (asyncpg rejects aware→naive TIMESTAMP WITHOUT TIME ZONE)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
