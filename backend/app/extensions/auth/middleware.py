@@ -328,6 +328,16 @@ from app.extensions.auth.datascope import DataScopeEngine
 from app.extensions.auth.engine import FilterRule
 
 
+async def current_identity(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """EAI-CUSTOM: 解析当前用户的完整 AttributeSet（user_id/dept_ids/role_code 等）。"""
+    from app.extensions.auth.identity import get_identity_provider
+
+    return await get_identity_provider().resolve(current_user.id, db)
+
+
 def with_data_scope(resource_type: str):
     """FastAPI dependency: inject a FilterRule for data-level access control.
 

@@ -259,3 +259,74 @@ async def test_has_kb_grant_matches_and_permission_filter():
     res2.scalar_one_or_none.return_value = None
     db2.execute.return_value = res2
     assert await has_kb_grant(db2, kb_id, idn, "write") is False
+
+
+# ---------------------------------------------------------------------------
+# Task 4: _load_kb_scoped / list / federated 可见性 OR 组合
+# ---------------------------------------------------------------------------
+# 可见性 = 角色 scope OR 显式授权 EXISTS。显式授权仅当 identity 传入且 scope
+# 非 allow_all（超管全量）时 OR 进去。
+
+
+@pytest.mark.asyncio
+async def test_load_kb_scoped_identity_ors_grant_clause():
+    """传入 identity 且 scope 非 allow_all 时，OR 上 knowledge_base_grants EXISTS。"""
+    db = _capture_session()
+    idn = AttributeSet(user_id="u1", username="u1", role_code="dept_head", dept_ids=["d1"])
+    scope = FilterRule(operator="eq", field="owner_id", value=uuid.uuid4())
+    await _load_kb_scoped(db, uuid.uuid4(), scope, identity=idn)
+    sql = str(db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})).lower()
+    assert "knowledge_base_grants" in sql  # 显式授权 EXISTS 已 OR 进 WHERE
+    assert "u1" in sql  # grantee 匹配条件带上了 identity
+
+
+@pytest.mark.asyncio
+async def test_load_kb_scoped_identity_allow_all_skips_grant_clause():
+    """超管 allow_all 时不追加 grant 子查询（纯 scope 路径）。"""
+    db = _capture_session()
+    idn = AttributeSet(user_id="u1", username="u1", role_code="admin", dept_ids=["d1"])
+    scope = FilterRule(operator="allow_all")
+    kb_id = uuid.uuid4()
+    await _load_kb_scoped(db, kb_id, scope, identity=idn)
+    sql = str(db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})).lower()
+    assert kb_id.hex in sql
+    assert "knowledge_base_grants" not in sql  # allow_all 无例外子查询
+    assert "false" not in sql
+
+
+@pytest.mark.asyncio
+async def test_load_kb_scoped_no_identity_keeps_pure_scope():
+    """无 identity（向后兼容）时仍是纯 scope，无 grant 子查询。"""
+    db = _capture_session()
+    owner_id = uuid.uuid4()
+    scope = FilterRule(operator="eq", field="owner_id", value=owner_id)
+    kb_id = uuid.uuid4()
+    await _load_kb_scoped(db, kb_id, scope)
+    sql = str(db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})).lower()
+    assert kb_id.hex in sql and owner_id.hex in sql
+    assert "knowledge_base_grants" not in sql
+
+
+def test_list_scope_clause_ors_grant_for_non_allow_all():
+    """list 端点组合：scope 非 allow_all 时，最终子句 = scope OR 授权 EXISTS。"""
+    from sqlalchemy import or_ as sa_or
+
+    from app.extensions.knowledge.access import kb_grant_visible_clause
+
+    idn = AttributeSet(user_id="u1", username="u1", role_code="dept_head", dept_ids=["d1"])
+    scope = FilterRule(operator="eq", field="owner_id", value=uuid.uuid4())
+    scope_clause = scope.to_sqlalchemy(KnowledgeBase, _KNOWLEDGE_COLMAP)
+    if scope.operator != "allow_all":
+        scope_clause = sa_or(scope_clause, kb_grant_visible_clause(idn))
+    sql = str(scope_clause.compile(compile_kwargs={"literal_binds": True})).lower()
+    assert "owner_id" in sql
+    assert "knowledge_base_grants" in sql  # 授权 EXISTS 已 OR 进来
+
+
+def test_list_scope_clause_allow_all_keeps_pure_scope():
+    """list 端点组合：allow_all 时不追加授权子查询。"""
+    scope = FilterRule(operator="allow_all")
+    scope_clause = scope.to_sqlalchemy(KnowledgeBase, _KNOWLEDGE_COLMAP)
+    assert scope.operator == "allow_all"  # 触发跳过分支，保持纯 scope
+    sql = str(scope_clause.compile(compile_kwargs={"literal_binds": True})).lower()
+    assert "knowledge_base_grants" not in sql

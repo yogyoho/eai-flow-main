@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.admin import is_superadmin
 from app.extensions.auth.engine import FilterRule
-from app.extensions.auth.middleware import require_permission, with_data_scope
+from app.extensions.auth.identity import AttributeSet
+from app.extensions.auth.middleware import current_identity, require_permission, with_data_scope
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
@@ -55,23 +56,32 @@ async def list_ragflow_embedding_models(
         return {"models": [], "error": str(e)}
 
 
-async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule) -> KnowledgeBase | None:
+async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule, identity=None) -> KnowledgeBase | None:
     """Load a KB by id ONLY if the given visibility scope permits it.
 
     EAI-CUSTOM: unifies by-id access with the list endpoint's
     `with_data_scope("knowledge")` FilterRule so list and by-id enforce identical
     visibility (owner OR public OR dept-overlap, or allow_all for superadmin).
+    When ``identity`` is provided and the scope is not ``allow_all``, an explicit
+    per-KB grant (knowledge_base_grants) is OR'd in as a visibility exception.
     Returns None if the KB does not exist or is out of scope; callers raise 404
     to avoid existence leakage.
     """
+    from sqlalchemy import or_ as sa_or
     from sqlalchemy import select as sa_select
+
+    from app.extensions.knowledge.access import kb_grant_visible_clause
 
     column_map = {
         "owner_id": KnowledgeBase.owner_id,
         "access_type": KnowledgeBase.access_type,
         "allowed_depts": KnowledgeBase.allowed_depts,
     }
-    q = sa_select(KnowledgeBase).where(KnowledgeBase.id == kb_id).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
+    clause = scope.to_sqlalchemy(KnowledgeBase, column_map)
+    # EAI-CUSTOM: 显式授权为可见性 OR 例外（超管 allow_all 时跳过子查询）
+    if identity is not None and scope.operator != "allow_all":
+        clause = sa_or(clause, kb_grant_visible_clause(identity))
+    q = sa_select(KnowledgeBase).where(KnowledgeBase.id == kb_id).where(clause)
     return (await db.execute(q)).scalar_one_or_none()
 
 
@@ -93,6 +103,7 @@ async def list_knowledge_bases(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
     # EAI-CUSTOM: Use ABAC data scope engine instead of manual filtering.
     # EAI-CUSTOM (M2): the prior `is_superadmin` branch is redundant —
@@ -100,8 +111,10 @@ async def list_knowledge_bases(
     # (Task 5), and `allow_all.to_sqlalchemy()` renders `true()` (a no-op WHERE),
     # so a single scope-aware path covers both admin and non-admin cases.
     from sqlalchemy import func
+    from sqlalchemy import or_ as sa_or
     from sqlalchemy import select as sa_select
 
+    from app.extensions.knowledge.access import kb_grant_visible_clause
     from app.extensions.models import KnowledgeBase
 
     column_map = {
@@ -110,6 +123,9 @@ async def list_knowledge_bases(
         "allowed_depts": KnowledgeBase.allowed_depts,
     }
     scope_clause = scope.to_sqlalchemy(KnowledgeBase, column_map)
+    # EAI-CUSTOM: 显式授权为可见性 OR 例外（超管 allow_all 时跳过子查询）
+    if scope.operator != "allow_all":
+        scope_clause = sa_or(scope_clause, kb_grant_visible_clause(identity))
     query = sa_select(KnowledgeBase).where(scope_clause)
 
     # Count total before pagination
@@ -377,13 +393,17 @@ async def federated_search(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
     """Federated search across multiple knowledge bases."""
     config = get_extensions_config()
     if not config.ragflow.api_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="RAGFlow not configured")
 
+    from sqlalchemy import or_ as sa_or
     from sqlalchemy import select
+
+    from app.extensions.knowledge.access import kb_grant_visible_clause
 
     # EAI-CUSTOM (I11): apply the SAME visibility scope the list endpoint uses.
     # A requested kb_id that is missing OR out of scope surfaces as 404 (no
@@ -393,7 +413,11 @@ async def federated_search(
         "access_type": KnowledgeBase.access_type,
         "allowed_depts": KnowledgeBase.allowed_depts,
     }
-    stmt = select(KnowledgeBase).where(KnowledgeBase.id.in_(request.kb_ids)).where(scope.to_sqlalchemy(KnowledgeBase, column_map))
+    scope_clause = scope.to_sqlalchemy(KnowledgeBase, column_map)
+    # EAI-CUSTOM: 显式授权为可见性 OR 例外（超管 allow_all 时跳过子查询）
+    if scope.operator != "allow_all":
+        scope_clause = sa_or(scope_clause, kb_grant_visible_clause(identity))
+    stmt = select(KnowledgeBase).where(KnowledgeBase.id.in_(request.kb_ids)).where(scope_clause)
     result = await db.execute(stmt)
     kbs = {kb.id: kb for kb in result.scalars().all()}
 
