@@ -64,7 +64,7 @@ def test_extracts_body_and_heading_fonts():
     assert h1["level"] == 1
     assert h1["fontFamily"] == "SimHei"
     assert h1["fontSize"] == 16
-    assert h1["numbering"] == "decimal"
+    assert h1["numbering"] == "chinese"  # heading text "第一章 …" → chinese numbering
 
 
 def test_heading_color_has_hash_prefix():
@@ -227,6 +227,56 @@ def test_table_border_color_extracted_from_tblBorders():
     table._tbl.tblPr.append(borders)
     ts = extract_layout_from_docx(_docx_bytes(doc))["table_styles"]
     assert ts["borderColor"] == "#000000"
+
+
+def test_body_exact_line_spacing_mapped_to_multiple():
+    """Exact (固定值) line spacing Length is mapped to a multiple via exact_pt ÷ body_font_pt."""
+    doc = Document()
+    for txt in ("正文段落一。", "正文段落二。"):
+        p = doc.add_paragraph(txt)
+        p.runs[0].font.size = Pt(14)  # 四号
+        p.paragraph_format.line_spacing = Pt(28)  # 固定值 28pt → 28/14 = 2.0
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["lineHeight"] == 2.0
+
+
+def test_heading_weight_read_from_runs_not_style():
+    """Run-level bold must win over the (bold-by-default) Heading style."""
+    doc = Document()
+    h = doc.add_heading("第一章 概述", level=1)
+    h.runs[0].font.bold = False  # explicitly not-bold on the run; style is still bold
+    doc.add_paragraph("正文内容。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["fontWeight"] == 400
+
+
+def test_heading_numbering_chinese_from_text():
+    doc = Document()
+    doc.add_heading("第一章 项目概述", level=1)
+    doc.add_paragraph("正文。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["numbering"] == "chinese"
+
+
+def test_heading_numbering_decimal_from_text():
+    doc = Document()
+    doc.add_heading("1.1 项目概述", level=1)
+    doc.add_paragraph("正文。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["numbering"] == "decimal"
+
+
+def test_heading_numbering_none_when_plain():
+    doc = Document()
+    doc.add_heading("项目概述", level=1)  # no number pattern, no numPr
+    doc.add_paragraph("正文。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["numbering"] == "none"
+
+
+def test_header_logo_detected_from_image():
+    """An image (drawingml blip) in the header must set showLogo True (not hardcoded False)."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    run = doc.sections[0].header.paragraphs[0].add_run()
+    run._r.append(OxmlElement("a:blip"))  # minimal drawingml image marker
+    assert extract_layout_from_docx(_docx_bytes(doc))["header_footer"]["showLogo"] is True
 
 
 def test_figure_styles_null():

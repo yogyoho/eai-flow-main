@@ -17286,5 +17286,26 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-06"
+  },
+  {
+    "id": "bug-1100",
+    "timestamp": "2026-08-06",
+    "error_message": "从样例导入排版仍有4处遗漏：固定值行距回落/标题字重读样式/标题编号恒decimal/页眉logo恒false",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "同 bug-1099 同类剩余项：固定值(exact)行距未映射为倍数；标题字重读 style.font.bold 而非 run；标题编号硬编码 decimal 未识别中文/数字文本或 numPr；页眉 showLogo 硬编码 false 未检测 drawingml blip。",
+    "fix": "_para_line_spacing_multiple→_line_spacing_value(固定值 exact_pt÷字号→倍数)；新增 _dominant_run_bold(标题字重读run主导值,样式作fallback)；新增 _heading_numbering(文本 第一章/一、→chinese, 1./1.1→decimal, numPr→decimal, 否则 none)；_extract_header_footer 新增 _has_image 检测页眉 drawingml blip→showLogo。新增6回归测试(共30全绿)。",
+    "tags": [
+      "output",
+      "layout-import",
+      "docx",
+      "style-layer-vs-run-layer",
+      "hardcoded-default",
+      "extraction"
+    ],
+    "related_bugs": [
+      "bug-1099"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06"
   }
 ]

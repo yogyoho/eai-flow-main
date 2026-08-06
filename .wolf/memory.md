@@ -4793,3 +4793,12 @@
 | 20:49 | Edited backend/app/extensions/output/layout_import.py | inline fix | ~18 |
 | 20:50 | 样例逐项对照审计(run/段落层真实样例) | layout_import.py | 查出5漏网bug:行距/段后距/首行缩进/标题色/表边框色均读样式层或硬编码 | ~3k |
 | 20:53 | 修5字段改读run/段落/单元格层+5回归测试(共24) | layout_import.py,test | 24测试全绿,12字段逐项对照全中,bug-1099 | ~4k |
+| 20:58 | Session end: 7 writes across 2 files (test_output_layout_import.py, layout_import.py) | 1 reads | ~6171 tok |
+| 21:04 | Edited backend/tests/test_output_layout_import.py | 2→2 lines | ~33 |
+| 21:04 | Edited backend/tests/test_output_layout_import.py | modified test_body_exact_line_spacing_mapped_to_multiple() | ~601 |
+| 21:04 | Edited backend/app/extensions/output/layout_import.py | modified _line_spacing_value() | ~147 |
+| 21:05 | Edited backend/app/extensions/output/layout_import.py | modified _dominant_run_color() | ~571 |
+| 21:05 | Edited backend/app/extensions/output/layout_import.py | 4→3 lines | ~59 |
+| 21:05 | Edited backend/app/extensions/output/layout_import.py | modified range() | ~256 |
+| 21:05 | Edited backend/app/extensions/output/layout_import.py | modified _has_page_field() | ~192 |
+| 21:05 | 补4遗漏:固定值行距/标题字重/标题编号/页眉logo | layout_import.py,test | 6新回归(共30全绿),7字段逐项全中,bug-1100 | ~4k |

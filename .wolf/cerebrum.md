@@ -332,3 +332,9 @@
 
 ## [2026-08-06] Do-Not-Repeat (layout-import test methodology)
 - **绿测试 ≠ 正确行为**: TDD 夹具若与代码共享同一错误假设(都在样式层设值并在样式层断言),测试全绿但对真实文档(run/段落层设格式)错误——这正是用户查出多个 bug 而测试全绿的根因。**规则**: 排版/格式提取的回归测试,夹具必须在 run/段落/单元格层设格式(模拟用户选中文字改格式),断言提取值=实际层值,不要只在样式层设值;断言要具体(断言 `headerBg=="#FFFFFF"`,不要只断言 `table_styles is not None`)。
+
+## [2026-08-06] Key Learnings 补遗 (layout-import 遗漏批次)
+- **固定值/最小值行距映射**: paragraph.line_spacing 是 Length(非 float)即 exact/atLeast(固定值/最小值,中文报告常见)。编辑器 lineHeight 是小数倍数,无法直接表达 → 按 exact_pt ÷ 正文字号_pt 近似为倍数(28pt@14pt→2.0)。`_line_spacing_value(ls, body_pt)` 统一处理 float 与 Length。
+- **标题编号识别**: 中文报告通常把编号手打进标题文本(第一章/一、/1./1.1)而非用 Word 列表自动编号 → 先正则匹配文本(第X章|一、→chinese; ^\d[.)]|^\d.\d→decimal),再查 w:pPr/w:numPr(自动编号→decimal),都无→none。numId→abstractNum→lvlText 解析 decimal/天干/字母 的完整解析需 numbering.xml,ponytail 省略。
+- **页眉 logo 检测**: header part XML 里 `.//{drawingml}blip` 存在即有图 → showLogo=true(复用 _DRAWML 常量,同 cover 的 _para_has_image 思路)。
+- **标题字重**: 读 run 主导 bold(_dominant_run_bold),样式 bold 仅作 fallback;run 显式 False 能压过样式 True。

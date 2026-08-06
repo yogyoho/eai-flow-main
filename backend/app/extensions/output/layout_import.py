@@ -121,15 +121,16 @@ def _dominant(paragraphs, getter):
     return max(counts, key=counts.get) if counts else None
 
 
-def _para_line_spacing_multiple(p) -> float | None:
-    """Paragraph line spacing as a 'multiple' float (1.5, 1.73); None for exact/atLeast or unset.
+def _line_spacing_value(ls, body_pt: float | None) -> float | None:
+    """line_spacing (float 'multiple' e.g. 1.5, or Length 'exact/atLeast') → editor decimal multiple.
 
-    The editor's lineHeight field is a decimal multiple, so exact (固定值) spacing — common in
-    CN docs but not expressible as a multiple — falls back to the style/default upstream.
+    Exact/atLeast (固定值/最小值, common in CN docs) has no clean multiple form, so we approximate
+    as exact_pt ÷ body_font_pt — e.g. 固定值28pt at 14pt ≈ 2.0. Returns None when unset.
     """
-    ls = p.paragraph_format.line_spacing
-    if isinstance(ls, float):
+    if isinstance(ls, float) and ls:
         return round(ls, 2)
+    if ls is not None and body_pt:
+        return round(ls.pt / body_pt, 2)
     return None
 
 
@@ -160,6 +161,47 @@ def _dominant_run_color(paragraphs) -> str | None:
     return max(counts, key=counts.get) if counts else None
 
 
+def _dominant_run_bold(paragraphs) -> bool | None:
+    """Most common explicit run bold across paragraphs, or None (no run sets it)."""
+    counts: dict = {}
+    for p in paragraphs:
+        for run in p.runs:
+            try:
+                b = run.font.bold
+            except Exception:
+                b = None
+            if b is not None:
+                counts[b] = counts.get(b, 0) + 1
+    return max(counts, key=counts.get) if counts else None
+
+
+_HEADING_CN_RE = re.compile(r"^第[一二三四五六七八九十百零\d]+章|^[一二三四五六七八九十]+[、.．]")
+_HEADING_DEC_RE = re.compile(r"^\d+[.\)）]|^\d+\.\d+")
+
+
+def _heading_numbering(paragraphs) -> str:
+    """Best-effort heading numbering style: 'chinese' | 'decimal' | 'none'.
+
+    CN reports usually type the number into the heading text (第一章 / 一、 / 1. / 1.1) rather than
+    using Word's list auto-numbering, so we check the text first, then fall back to a w:numPr
+    (auto-numbered) check. ponytail: resolving numId→abstractNum→lvlText to distinguish decimal
+    from 天干/字母 auto-formats would need numbering.xml parsing; auto-numbered ⇒ 'decimal'.
+    """
+    for p in paragraphs:
+        text = p.text.strip()
+        if _HEADING_CN_RE.search(text):
+            return "chinese"
+        if _HEADING_DEC_RE.search(text):
+            return "decimal"
+        try:
+            pPr = p._p.find(qn("w:pPr"))
+            if pPr is not None and pPr.find(qn("w:numPr")) is not None:
+                return "decimal"
+        except Exception:
+            pass
+    return "none"
+
+
 def _tbl_border_color(table) -> str | None:
     """First non-auto border color from w:tblBorders (representative of all edges)."""
     try:
@@ -188,10 +230,9 @@ def _extract_body_styles(doc) -> dict:
 
     # Real docs set spacing/indent per-paragraph, not on the Normal style — sample the
     # dominant paragraph value, then fall back to the style / a sensible default.
-    line_spacing = _dominant(body, _para_line_spacing_multiple)
+    line_spacing = _dominant(body, lambda p: _line_spacing_value(p.paragraph_format.line_spacing, size))
     if line_spacing is None:
-        ls = pf.line_spacing
-        line_spacing = round(float(ls), 2) if isinstance(ls, float) and ls else 1.5
+        line_spacing = _line_spacing_value(pf.line_spacing, size) or 1.5
     space_after = _dominant(body, _para_space_after_pt)
     if space_after is None:
         sa = pf.space_after
@@ -217,17 +258,20 @@ def _extract_heading_styles(doc) -> list[dict]:
             style = doc.styles[f"Heading {level}"]
         except KeyError:
             continue
-        run_size, run_family = _dominant_run_font(_heading_paragraphs(doc, level))
+        hps = _heading_paragraphs(doc, level)
+        run_size, run_family = _dominant_run_font(hps)
         style_size = style.font.size.pt if style.font.size else None
         size = run_size or style_size
+        run_bold = _dominant_run_bold(hps)
+        bold = run_bold if run_bold is not None else bool(style.font.bold)
         out.append(
             {
                 "level": level,
                 "fontFamily": run_family or _style_font(style),
                 "fontSize": int(size) if size else defaults[level],
-                "fontWeight": 700 if style.font.bold else 400,
-                "color": _dominant_run_color(_heading_paragraphs(doc, level)) or _style_color(style, "#333333"),
-                "numbering": "decimal",
+                "fontWeight": 700 if bold else 400,
+                "color": _dominant_run_color(hps) or _style_color(style, "#333333"),
+                "numbering": _heading_numbering(hps),
             }
         )
     return out
@@ -328,11 +372,19 @@ def _extract_header_footer(doc) -> dict:
         except Exception:
             return False
 
+    def _has_image(part) -> bool:
+        if part is None:
+            return False
+        try:
+            return bool(part._element.findall(f".//{{{_DRAWML}}}blip"))
+        except Exception:
+            return False
+
     return {
         "headerText": _text(section.header),
         "footerText": _text(section.footer),
         "showPageNumber": _has_page_field(section.footer) or _has_page_field(section.header),
-        "showLogo": False,  # ponytail: header logo detection omitted
+        "showLogo": _has_image(section.header),
     }
 
 
