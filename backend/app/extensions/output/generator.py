@@ -192,10 +192,9 @@ def _replace_target_in_para(p_el, target: str, replacement: str) -> bool:
 def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -> None:
     """Inject the cover-master OOXML fragment at the body start, replacing variable
     slots with resolved project values and re-embedding base64 images."""
-    root = etree.fromstring(
-        f'<root xmlns:w="{_W_GEN}" xmlns:a="{_DRAWML_GEN}" xmlns:r="{_REL_GEN}">'
-        f"{master.get('xml', '')}</root>"
-    )
+    if not master.get("xml"):
+        return  # nothing to inject; also avoids persisting dangling image rels (I2)
+    root = etree.fromstring(f'<root xmlns:w="{_W_GEN}" xmlns:a="{_DRAWML_GEN}" xmlns:r="{_REL_GEN}">{master.get("xml", "")}</root>')
 
     slot_value = {
         "title": resolved.get("title"),
@@ -216,15 +215,25 @@ def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -
             _replace_target_in_para(p_el, target, str(repl))
 
     for img in master.get("images", []):
+        orig_rid = img.get("origRid")
+        blips = [b for b in root.iter(f"{{{_DRAWML_GEN}}}blip") if b.get(f"{{{_REL_GEN}}}embed") == orig_rid]
+        if not blips:
+            continue
         try:
             blob = base64.b64decode(img["b64"])
             # get_or_add_image returns (rId, Image) — rId already the relationship id.
             new_rid, _image = doc.part.get_or_add_image(BytesIO(blob))
-            for blip in root.iter(f"{{{_DRAWML_GEN}}}blip"):
-                if blip.get(f"{{{_REL_GEN}}}embed") == img.get("origRid"):
-                    blip.set(f"{{{_REL_GEN}}}embed", new_rid)
-        except Exception:  # image must never abort cover generation
-            pass
+            for blip in blips:
+                blip.set(f"{{{_REL_GEN}}}embed", new_rid)
+        except Exception:
+            # image must never abort cover generation — strip the orphan <w:drawing>
+            # so the emitted doc references no missing rId (would trigger Word repair).
+            for blip in blips:
+                drawing = blip.getparent()
+                while drawing is not None and drawing.tag != f"{{{_W_GEN}}}drawing":
+                    drawing = drawing.getparent()
+                if drawing is not None and drawing.getparent() is not None:
+                    drawing.getparent().remove(drawing)
 
     body = doc.element.body
     for child in reversed(list(root)):  # insert at 0 in reverse → original order
@@ -474,9 +483,11 @@ def _decode_math_placeholders(text: str) -> str:
         s = unescape(s)
         return re.sub(r"\\{2,}([a-zA-Z])", r"\\\1", s)
 
-    def blk(mo): return "$$" + _norm(mo.group(1)) + "$$"
+    def blk(mo):
+        return "$$" + _norm(mo.group(1)) + "$$"
 
-    def inl(mo): return "$" + _norm(mo.group(1)) + "$"
+    def inl(mo):
+        return "$" + _norm(mo.group(1)) + "$"
 
     # tolerate data-math-x and data-math-x="", both attribute orders, and inner whitespace/newlines
     text = re.sub(r'<div\b[^>]*?\bdata-math-block\b[^>]*?\bdata-latex="([^"]*)"[^>]*>[\s\S]*?</div>', blk, text)
@@ -487,34 +498,149 @@ def _decode_math_placeholders(text: str) -> str:
 
 
 _LATEX_SYMBOLS = {
-    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε", "varepsilon": "ε",
-    "zeta": "ζ", "eta": "η", "theta": "θ", "vartheta": "ϑ", "iota": "ι", "kappa": "κ",
-    "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ", "varrho": "ϱ",
-    "sigma": "σ", "varsigma": "ς", "tau": "τ", "upsilon": "υ", "phi": "φ", "varphi": "φ",
-    "chi": "χ", "psi": "ψ", "omega": "ω", "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ",
-    "Lambda": "Λ", "Xi": "Ξ", "Pi": "Π", "Sigma": "Σ", "Upsilon": "Υ", "Phi": "Φ",
-    "Psi": "Ψ", "Omega": "Ω", "times": "×", "cdot": "·", "div": "÷", "pm": "±", "mp": "∓",
-    "ast": "∗", "star": "⋆", "leq": "≤", "le": "≤", "geq": "≥", "ge": "≥", "neq": "≠",
-    "ne": "≠", "approx": "≈", "equiv": "≡", "sim": "∼", "propto": "∝", "infty": "∞",
-    "partial": "∂", "nabla": "∇", "sum": "∑", "int": "∫", "oint": "∮", "prod": "∏",
-    "bigcup": "∪", "bigcap": "∩", "forall": "∀", "exists": "∃", "in": "∈", "notin": "∉",
-    "subset": "⊂", "supset": "⊃", "cup": "∪", "cap": "∩", "emptyset": "∅", "rightarrow": "→",
-    "to": "→", "Rightarrow": "⇒", "rightarrow": "→", "leftarrow": "←", "Leftarrow": "⇐",
-    "leftrightarrow": "↔", "mapsto": "↦", "angle": "∠", "perp": "⊥", "parallel": "∥",
-    "circ": "∘", "bullet": "•", "prime": "′", "dagger": "†", "cdots": "⋯", "ldots": "…",
-    "dots": "…", "vdots": "⋮", "ddots": "⋱", "degree": "°", "hbar": "ℏ", "ell": "ℓ",
-    "quad": " ", "qquad": "  ",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "delta": "δ",
+    "epsilon": "ε",
+    "varepsilon": "ε",
+    "zeta": "ζ",
+    "eta": "η",
+    "theta": "θ",
+    "vartheta": "ϑ",
+    "iota": "ι",
+    "kappa": "κ",
+    "lambda": "λ",
+    "mu": "μ",
+    "nu": "ν",
+    "xi": "ξ",
+    "pi": "π",
+    "rho": "ρ",
+    "varrho": "ϱ",
+    "sigma": "σ",
+    "varsigma": "ς",
+    "tau": "τ",
+    "upsilon": "υ",
+    "phi": "φ",
+    "varphi": "φ",
+    "chi": "χ",
+    "psi": "ψ",
+    "omega": "ω",
+    "Gamma": "Γ",
+    "Delta": "Δ",
+    "Theta": "Θ",
+    "Lambda": "Λ",
+    "Xi": "Ξ",
+    "Pi": "Π",
+    "Sigma": "Σ",
+    "Upsilon": "Υ",
+    "Phi": "Φ",
+    "Psi": "Ψ",
+    "Omega": "Ω",
+    "times": "×",
+    "cdot": "·",
+    "div": "÷",
+    "pm": "±",
+    "mp": "∓",
+    "ast": "∗",
+    "star": "⋆",
+    "leq": "≤",
+    "le": "≤",
+    "geq": "≥",
+    "ge": "≥",
+    "neq": "≠",
+    "ne": "≠",
+    "approx": "≈",
+    "equiv": "≡",
+    "sim": "∼",
+    "propto": "∝",
+    "infty": "∞",
+    "partial": "∂",
+    "nabla": "∇",
+    "sum": "∑",
+    "int": "∫",
+    "oint": "∮",
+    "prod": "∏",
+    "bigcup": "∪",
+    "bigcap": "∩",
+    "forall": "∀",
+    "exists": "∃",
+    "in": "∈",
+    "notin": "∉",
+    "subset": "⊂",
+    "supset": "⊃",
+    "cup": "∪",
+    "cap": "∩",
+    "emptyset": "∅",
+    "rightarrow": "→",
+    "to": "→",
+    "Rightarrow": "⇒",
+    "leftarrow": "←",
+    "Leftarrow": "⇐",
+    "leftrightarrow": "↔",
+    "mapsto": "↦",
+    "angle": "∠",
+    "perp": "⊥",
+    "parallel": "∥",
+    "circ": "∘",
+    "bullet": "•",
+    "prime": "′",
+    "dagger": "†",
+    "cdots": "⋯",
+    "ldots": "…",
+    "dots": "…",
+    "vdots": "⋮",
+    "ddots": "⋱",
+    "degree": "°",
+    "hbar": "ℏ",
+    "ell": "ℓ",
+    "quad": " ",
+    "qquad": "  ",
 }
 
-_LATEX_TEXTY = frozenset({
-    "mathrm", "mathbf", "mathit", "mathcal", "mathbb", "mathfrak", "text",
-    "textrm", "textbf", "textit", "operatorname", "rm", "bf", "it", "boldsymbol", "vec", "hat", "bar", "tilde", "dot", "ddot",
-})
+_LATEX_TEXTY = frozenset(
+    {
+        "mathrm",
+        "mathbf",
+        "mathit",
+        "mathcal",
+        "mathbb",
+        "mathfrak",
+        "text",
+        "textrm",
+        "textbf",
+        "textit",
+        "operatorname",
+        "rm",
+        "bf",
+        "it",
+        "boldsymbol",
+        "vec",
+        "hat",
+        "bar",
+        "tilde",
+        "dot",
+        "ddot",
+    }
+)
 
-_LATEX_IGNORE = frozenset({
-    "left", "right", "big", "Big", "bigg", "Bigg", "displaystyle", "textstyle",
-    "scriptstyle", "limits", "nolimits", "operatorname", "ensuremath",
-})
+_LATEX_IGNORE = frozenset(
+    {
+        "left",
+        "right",
+        "big",
+        "Big",
+        "bigg",
+        "Bigg",
+        "displaystyle",
+        "textstyle",
+        "scriptstyle",
+        "limits",
+        "nolimits",
+        "operatorname",
+        "ensuremath",
+    }
+)
 
 
 class _LatexToOmml:
@@ -815,7 +941,6 @@ def _add_inline_text_plain(paragraph, text: str) -> None:
             run.font.size = Pt(9)
         else:
             paragraph.add_run(part)
-
 
 
 # ---------------------------------------------------------------------------

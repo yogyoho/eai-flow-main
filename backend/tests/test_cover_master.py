@@ -243,3 +243,34 @@ def test_render_cover_master_rewrites_image_embed():
 
     image_rids = [rid for rid, rel in doc.part.rels.items() if rel.reltype == RT.IMAGE]
     assert image_rids, "image should be re-embedded"
+    # M1: assert r:embed was actually rewritten to the new rId, not left stale.
+    blips = doc.element.body.findall(f".//{{{a}}}blip")
+    assert blips, "blip should remain in body"
+    assert blips[0].get(f"{{{r}}}embed") in image_rids, "r:embed should point to the re-embedded rId"
+    assert blips[0].get(f"{{{r}}}embed") != "rIdOld", "r:embed should have been rewritten"
+
+
+def test_render_cover_master_strips_orphan_image_on_failure():
+    """A master with an undecodable image b64: render strips the orphan <w:drawing>
+    so the doc carries no missing-relationship reference (Word-repair guard, I1)."""
+    from app.extensions.output.generator import _render_cover_master
+
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    master = {
+        "mode": "master",
+        "slots": [],
+        "sourceFile": "x",
+        "boundary": "before_toc",
+        "xml": (f'<w:p xmlns:w="{w}" xmlns:a="{a}" xmlns:r="{r}"><w:r><w:drawing><a:blip r:embed="rIdOld"/></w:drawing></w:r></w:p>'),
+        "images": [{"origRid": "rIdOld", "ext": "png", "b64": "AAAAA"}],  # bad padding → binascii.Error
+    }
+    doc = Document()
+    _render_cover_master(doc, master, {}, {})
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+
+    image_rids = [rid for rid, rel in doc.part.rels.items() if rel.reltype == RT.IMAGE]
+    assert not image_rids, "no image relationship should be created for a bad b64"
+    blips = doc.element.body.findall(f".//{{{a}}}blip")
+    assert not blips, "orphan blip (stale rIdOld) must be stripped, not left as a broken ref"
