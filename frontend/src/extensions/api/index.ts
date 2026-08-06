@@ -61,6 +61,8 @@ import type {
   KnowledgeBaseStatus,
   RAGChatRequest,
   RAGChatResponse,
+  KnowledgeBaseGrant,
+  KnowledgeBaseGrantCreate,
 } from "../types";
 
 // Folder types
@@ -437,6 +439,17 @@ export const kbApi = {
   // List available RAGFlow embedding models
   listEmbeddingModels: () =>
     request<{ models: string[]; error?: string }>("/knowledge-bases/ragflow/embedding-models"),
+
+  // Access grants (EAI-CUSTOM Task 7)
+  grants: {
+    list: (kbId: string) => request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
+    create: (kbId: string, data: KnowledgeBaseGrantCreate) =>
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, { method: "POST", body: JSON.stringify(data) }),
+    update: (kbId: string, grantId: string, data: { permission?: "read" | "write"; expires_at?: string | null }) =>
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    remove: (kbId: string, grantId: string) =>
+      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "DELETE" }),
+  },
 };
 
 // ===== Conversation API =====
@@ -1148,6 +1161,17 @@ export const kfApi = {
 
   deleteDoc: (kbId: string, docId: string) =>
     request<MessageResponse>(`/knowledge-bases/${kbId}/documents/${docId}`, { method: "DELETE" }),
+
+  // Access grants (EAI-CUSTOM Task 7)
+  grants: {
+    list: (kbId: string) => request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
+    create: (kbId: string, data: KnowledgeBaseGrantCreate) =>
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, { method: "POST", body: JSON.stringify(data) }),
+    update: (kbId: string, grantId: string, data: { permission?: "read" | "write"; expires_at?: string | null }) =>
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    remove: (kbId: string, grantId: string) =>
+      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "DELETE" }),
+  },
 
   // Batch upload
   uploadDocs: async (

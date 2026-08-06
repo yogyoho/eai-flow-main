@@ -39,6 +39,8 @@ export interface User {
   role_id?: string;
   role_name?: string;
   status: string;
+  // EAI-CUSTOM (标签池 A): 显式用户标签
+  tags?: string[];
   last_login_at?: string;
   created_at: string;
   updated_at: string;
@@ -60,6 +62,7 @@ export interface CreateUserRequest {
   dept_id?: string;
   dept_ids?: string[];
   role_id?: string;
+  tags?: string[];
 }
 
 export interface UpdateUserRequest {
@@ -71,6 +74,7 @@ export interface UpdateUserRequest {
   dept_id?: string;
   dept_ids?: string[];
   role_id?: string;
+  tags?: string[];
   status?: string;
   is_deleted?: boolean;
 }
@@ -366,6 +370,25 @@ export interface KnowledgeBaseStatus {
   document_count?: number;
   chunk_count?: number;
   message?: string;
+}
+
+// Knowledge base access grants (Task 7: grants)
+export interface KnowledgeBaseGrant {
+  id: string;
+  kb_id: string;
+  grantee_type: "user" | "dept" | "role";
+  grantee_id: string;
+  permission: "read" | "write";
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeBaseGrantCreate {
+  grantee_type: "user" | "dept" | "role";
+  grantee_id: string;
+  permission: "read" | "write";
+  expires_at?: string | null;
 }
 
 export interface MessageResponse {
