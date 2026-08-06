@@ -232,3 +232,30 @@ def test_kb_grant_visible_clause_sql_contains_grant_table_and_matches():
     assert "dept" in sql and "d1" in sql
     assert "dept_head" in sql
     assert "expires_at" in sql
+
+
+# ---------------------------------------------------------------------------
+# Task 3: has_kb_grant — 命中/未命中 + permission 过滤
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_has_kb_grant_matches_and_permission_filter():
+    from app.extensions.knowledge.access import has_kb_grant
+
+    idn = AttributeSet(user_id="u1", username="u1", role_code="dept_head", dept_ids=["d1"])
+    kb_id = uuid.uuid4()
+
+    # grant 命中（write）
+    db = AsyncMock()
+    res = MagicMock()
+    res.scalar_one_or_none.return_value = uuid.uuid4()
+    db.execute.return_value = res
+    assert await has_kb_grant(db, kb_id, idn, "write") is True
+
+    # 未命中
+    db2 = AsyncMock()
+    res2 = MagicMock()
+    res2.scalar_one_or_none.return_value = None
+    db2.execute.return_value = res2
+    assert await has_kb_grant(db2, kb_id, idn, "write") is False
