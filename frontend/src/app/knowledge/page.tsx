@@ -41,12 +41,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 // EAI-CUSTOM: button-level permission control
 import { PermissionProvider, usePermission } from "@/core/permissions";
-import { kbApi } from "@/extensions/api";
+import { kbApi, userApi, deptApi, roleApi } from "@/extensions/api";
 import type {
   KnowledgeBase,
   Document,
   CreateKnowledgeBaseRequest,
   UpdateKnowledgeBaseRequest,
+  KnowledgeBaseGrant,
+  User,
+  Role,
+  Department,
 } from "@/extensions/types";
 import { cn } from "@/lib/utils";
 
@@ -697,7 +701,7 @@ function KnowledgeBaseDetail({
   onKbUpdated?: (kb: KnowledgeBase) => void;
 }) {
   // EAI-CUSTOM: button-level permission check for upload/delete actions
-  const { can } = usePermission();
+  const { can, is_admin, identity } = usePermission();
   const [activeTab, setActiveTab] = useState<"test" | "config">("test");
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
@@ -719,6 +723,146 @@ function KnowledgeBaseDetail({
   });
   const [editLoading, setEditLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Data access grants (EAI-CUSTOM Task 8) ──────────────────────────────────
+  const canManageGrants = is_admin || kb.owner_id === identity.user_id;
+  const [kbGrants, setKbGrants] = useState<KnowledgeBaseGrant[]>([]);
+  const [grantUsers, setGrantUsers] = useState<User[]>([]);
+  const [grantDepts, setGrantDepts] = useState<Department[]>([]);
+  const [grantRoles, setGrantRoles] = useState<Role[]>([]);
+  const [showAddGrant, setShowAddGrant] = useState(false);
+  const [grantType, setGrantType] = useState<"user" | "dept" | "role">("user");
+  const [grantTargetId, setGrantTargetId] = useState("");
+  const [grantSearch, setGrantSearch] = useState("");
+  const [grantPermission, setGrantPermission] = useState<"read" | "write">("read");
+  const [grantExpires, setGrantExpires] = useState("");
+  const [grantSaving, setGrantSaving] = useState(false);
+
+  const loadGrants = useCallback(async () => {
+    try {
+      setKbGrants(await kbApi.grants.list(kb.id));
+    } catch {
+      setKbGrants([]);
+    }
+  }, [kb.id]);
+
+  const loadGrantTargets = useCallback(async () => {
+    try {
+      const [u, d, r] = await Promise.all([
+        userApi.list({ limit: 500 }),
+        deptApi.list({ limit: 500 }),
+        roleApi.list({ limit: 500 }),
+      ]);
+      setGrantUsers(u.users);
+      setGrantDepts(d.departments);
+      setGrantRoles(r.roles);
+    } catch {
+      // granteeName degrades to raw ids when lookups fail
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!canManageGrants) return;
+    void loadGrants();
+    void loadGrantTargets();
+  }, [canManageGrants, loadGrants, loadGrantTargets]);
+
+  const granteeName = useCallback(
+    (g: KnowledgeBaseGrant) => {
+      if (g.grantee_type === "user") {
+        const u = grantUsers.find((x) => x.id === g.grantee_id);
+        return u?.full_name || u?.username || g.grantee_id;
+      }
+      if (g.grantee_type === "dept") {
+        const d = grantDepts.find((x) => x.id === g.grantee_id);
+        return d?.name || d?.code || g.grantee_id;
+      }
+      const r = grantRoles.find((x) => x.id === g.grantee_id);
+      return r?.name || r?.code || g.grantee_id;
+    },
+    [grantUsers, grantDepts, grantRoles],
+  );
+
+  const openAddGrant = () => {
+    setGrantType("user");
+    setGrantTargetId("");
+    setGrantSearch("");
+    setGrantPermission("read");
+    setGrantExpires("");
+    setShowAddGrant(true);
+  };
+
+  const handleGrantTypeChange = (t: string) => {
+    setGrantType(t as "user" | "dept" | "role");
+    setGrantTargetId("");
+    setGrantSearch("");
+  };
+
+  const grantTargets = useMemo(() => {
+    const q = grantSearch.trim().toLowerCase();
+    if (grantType === "user") {
+      return grantUsers
+        .filter(
+          (u) =>
+            !q ||
+            u.username.toLowerCase().includes(q) ||
+            (u.full_name ?? "").toLowerCase().includes(q),
+        )
+        .map((u) => ({ id: u.id, label: u.full_name || u.username || u.id }));
+    }
+    if (grantType === "dept") {
+      return grantDepts
+        .filter(
+          (d) =>
+            !q ||
+            d.name.toLowerCase().includes(q) ||
+            (d.code ?? "").toLowerCase().includes(q),
+        )
+        .map((d) => ({ id: d.id, label: d.name || d.code || d.id }));
+    }
+    return grantRoles
+      .filter(
+        (r) =>
+          !q ||
+          r.name.toLowerCase().includes(q) ||
+          r.code.toLowerCase().includes(q),
+      )
+      .map((r) => ({ id: r.id, label: r.name || r.code }));
+  }, [grantType, grantSearch, grantUsers, grantDepts, grantRoles]);
+
+  const handleAddGrant = async () => {
+    if (!grantTargetId) {
+      toast("请选择要授权的对象", "error");
+      return;
+    }
+    setGrantSaving(true);
+    try {
+      await kbApi.grants.create(kb.id, {
+        grantee_type: grantType,
+        grantee_id: grantTargetId,
+        permission: grantPermission,
+        expires_at: grantExpires ? new Date(grantExpires).toISOString() : null,
+      });
+      toast("授权已添加", "success");
+      setShowAddGrant(false);
+      void loadGrants();
+    } catch (e: any) {
+      toast(e?.message ?? "添加授权失败", "error");
+    } finally {
+      setGrantSaving(false);
+    }
+  };
+
+  const removeGrant = async (g: KnowledgeBaseGrant) => {
+    if (!confirm(`确定要移除「${granteeName(g)}」的访问授权吗？`)) return;
+    try {
+      await kbApi.grants.remove(g.kb_id, g.id);
+      setKbGrants((prev) => prev.filter((x) => x.id !== g.id));
+      toast("授权已移除", "success");
+    } catch (e: any) {
+      toast(e?.message ?? "移除授权失败", "error");
+    }
+  };
 
   useEffect(() => {
     setEditForm({
@@ -1218,6 +1362,79 @@ function KnowledgeBaseDetail({
                   ))}
                 </div>
               </div>
+
+              {/* Data access grants (EAI-CUSTOM Task 8) — owner|admin only */}
+              {canManageGrants && (
+                <div className="space-y-4 rounded-xl border border-border bg-background p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      数据访问授权
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openAddGrant}
+                      className="rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                    >
+                      + 添加授权
+                    </button>
+                  </div>
+                  {kbGrants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      暂无显式授权。私有知识库可在此授权特定用户/部门/角色访问。
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {kbGrants.map((g) => (
+                        <div
+                          key={g.id}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <span
+                              className={cn(
+                                "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold",
+                                g.grantee_type === "user"
+                                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600"
+                                  : g.grantee_type === "dept"
+                                    ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600"
+                                    : "border-primary/20 bg-primary/10 text-primary",
+                              )}
+                            >
+                              {g.grantee_type === "user"
+                                ? "用户"
+                                : g.grantee_type === "dept"
+                                  ? "部门"
+                                  : "角色"}
+                            </span>
+                            <span className="truncate">{granteeName(g)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {g.permission === "write" ? "读写" : "只读"}
+                            </span>
+                            {g.expires_at && new Date(g.expires_at) < new Date() ? (
+                              <span className="text-xs text-muted-foreground/60">
+                                (已过期)
+                              </span>
+                            ) : g.expires_at ? (
+                              <span className="text-xs text-muted-foreground">
+                                至 {new Date(g.expires_at).toLocaleDateString()}
+                              </span>
+                            ) : null}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeGrant(g)}
+                            className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                            aria-label={`移除 ${granteeName(g)} 的授权`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1337,6 +1554,157 @@ function KnowledgeBaseDetail({
                 >
                   {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   保存
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Grant Modal (EAI-CUSTOM Task 8) */}
+      <AnimatePresence>
+        {showAddGrant && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setShowAddGrant(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-xl"
+            >
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <h3 className="text-lg font-semibold text-foreground">
+                  添加数据访问授权
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAddGrant(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="space-y-5 p-6">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    授权类型
+                  </label>
+                  <CustomSelect
+                    value={grantType}
+                    onChange={handleGrantTypeChange}
+                    options={[
+                      {
+                        value: "user",
+                        label: "用户",
+                        icon: <Search className="h-3.5 w-3.5" />,
+                      },
+                      {
+                        value: "dept",
+                        label: "部门",
+                        icon: <Database className="h-3.5 w-3.5" />,
+                      },
+                      {
+                        value: "role",
+                        label: "角色",
+                        icon: <Settings className="h-3.5 w-3.5" />,
+                      },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    授权对象 <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder={
+                      grantType === "user"
+                        ? "搜索用户..."
+                        : grantType === "dept"
+                          ? "搜索部门..."
+                          : "搜索角色..."
+                    }
+                    value={grantSearch}
+                    onChange={(e) => {
+                      setGrantSearch(e.target.value);
+                      setGrantTargetId("");
+                    }}
+                    className="w-full"
+                  />
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-border bg-background">
+                    {grantTargets.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                        未找到匹配项
+                      </p>
+                    ) : (
+                      grantTargets.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setGrantTargetId(t.id)}
+                          className={cn(
+                            "flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors",
+                            grantTargetId === t.id
+                              ? "bg-primary/10 font-medium text-primary"
+                              : "text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <span className="truncate">{t.label}</span>
+                          {grantTargetId === t.id && (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    权限
+                  </label>
+                  <CustomSelect
+                    value={grantPermission}
+                    onChange={(v) => setGrantPermission(v as "read" | "write")}
+                    options={[
+                      { value: "read", label: "只读" },
+                      { value: "write", label: "读写" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    过期时间{" "}
+                    <span className="font-normal text-muted-foreground">
+                      （可选）
+                    </span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={grantExpires}
+                    onChange={(e) => setGrantExpires(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddGrant(false)}
+                >
+                  取消
+                </Button>
+                <Button
+                  onClick={handleAddGrant}
+                  disabled={!grantTargetId || grantSaving}
+                >
+                  {grantSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  确认添加
                 </Button>
               </div>
             </motion.div>
