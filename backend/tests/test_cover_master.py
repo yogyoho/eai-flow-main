@@ -15,7 +15,9 @@ from docx.shared import Cm, Pt  # noqa: F401  # used in later tasks (B2+ layout 
 from app.extensions.output.layout_import import extract_layout_from_docx  # noqa: F401  # used in later tasks (B2+)
 from app.extensions.output.schemas import CoverMasterSchema, CoverSlotSchema
 
-SAMPLE = Path("backend/data/users/f8766d55-2b1b-422e-a945-5fcf268a8a39/knowledge/8376f624-95de-47b1-b871-0bb000b5a934/基地项目-消防设计专篇.docx")
+# __file__-relative so the test runs under the canonical `make test` (pytest from
+# backend/ cwd), not just from the repo root. parents[1] of backend/tests/*.py = backend/.
+SAMPLE = Path(__file__).resolve().parents[1] / "data/users/f8766d55-2b1b-422e-a945-5fcf268a8a39/knowledge/8376f624-95de-47b1-b871-0bb000b5a934/基地项目-消防设计专篇.docx"
 
 
 def _docx_bytes(doc: Document) -> bytes:
