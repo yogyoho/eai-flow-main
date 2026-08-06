@@ -444,6 +444,18 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
       // Save as template if checked
       if (saveAsTemplate && templateName.trim()) {
         const { outputApi } = await import("@/extensions/output/api");
+        // 封面：活动预设字段 → CoverTemplate 5 开关（尽力映射；预设值仍在导出时按 default_from 填）
+        const coverTpl =
+          coverPresetId && activeCoverPreset
+            ? {
+                showLogo: false,
+                logoPosition: "center" as const,
+                showTitle: activeCoverPreset.fields.some((f) => /title/i.test(f.name)),
+                showClient: activeCoverPreset.fields.some((f) => /client|unit|业主|单位/i.test(f.name)),
+                showDate: activeCoverPreset.fields.some((f) => /date/i.test(f.name)),
+                showProjectNumber: activeCoverPreset.fields.some((f) => /number|编号/i.test(f.name)),
+              }
+            : null;
         await outputApi.createTemplate({
           name: templateName.trim(),
           reportType: "general",
@@ -454,8 +466,8 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
           figureStyles,
           headerFooter,
           referenceStyle: "gb7714",
-          coverTemplate: null,
-          tocSettings: null,
+          coverTemplate: coverTpl,
+          tocSettings: withToc ? { maxDepth: tocDepth, showPageNumbers: true, leaderDots: true } : null,
           appendixRules: null,
         });
       }
@@ -525,7 +537,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
     } finally {
       setExporting(false);
     }
-  }, [docId, docTitle, content, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, withToc, tocDepth, coverPresetId, coverValues, onOpenChange]);
+  }, [docId, docTitle, content, saveAsTemplate, templateName, pageSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, watermark, withToc, tocDepth, coverPresetId, coverValues, activeCoverPreset, onOpenChange]);
 
   // ── Heading helpers ──
   const updateHeading = (index: number, field: keyof HeadingStyle, value: string | number) => {
