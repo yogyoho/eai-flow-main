@@ -287,6 +287,24 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coverTemplate?.showDate ?? false} onChange={(e) => setCoverTemplate({ ...(coverTemplate ?? { showLogo: true, logoPosition: "center" as const, showTitle: true, showClient: true, showDate: true, showProjectNumber: true }), showDate: e.target.checked })} className="rounded" /> 显示日期</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={coverTemplate?.showProjectNumber ?? false} onChange={(e) => setCoverTemplate({ ...(coverTemplate ?? { showLogo: true, logoPosition: "center" as const, showTitle: true, showClient: true, showDate: true, showProjectNumber: true }), showProjectNumber: e.target.checked })} className="rounded" /> 显示项目编号</label>
             </div>
+
+            {/* 极简封面预览 */}
+            {((coverTemplate?.showLogo ?? false) || (coverTemplate?.showTitle ?? false) || (coverTemplate?.showClient ?? false) || (coverTemplate?.showDate ?? false) || (coverTemplate?.showProjectNumber ?? false)) && (
+              <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">预览</p>
+                <div className="mx-auto max-w-[220px] space-y-2 text-center">
+                  {coverTemplate?.showLogo && (
+                    <div className="mx-auto flex h-10 w-16 items-center justify-center rounded bg-primary/10 text-[10px] text-muted-foreground">LOGO</div>
+                  )}
+                  {coverTemplate?.showTitle && <div className="text-base font-bold text-foreground">报告标题</div>}
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    {coverTemplate?.showClient && <div>建设单位：XXXX</div>}
+                    {coverTemplate?.showDate && <div>日期：2026-08</div>}
+                    {coverTemplate?.showProjectNumber && <div>项目编号：XXXX</div>}
+                  </div>
+                </div>
+              </div>
+            )}
           </Section>
 
           {/* 正文样式 */}
