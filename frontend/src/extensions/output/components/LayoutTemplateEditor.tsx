@@ -351,6 +351,44 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
             </div>
           </Section>
 
+          {/* 目录设置 */}
+          <Section title="目录设置">
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={tocSettings !== null}
+                  onChange={(e) => setTocSettings(e.target.checked ? { maxDepth: 3, showPageNumbers: true, leaderDots: true } : null)}
+                  className="rounded"
+                />
+                包含目录
+              </label>
+              {tocSettings && (
+                <>
+                  <div>
+                    <FieldLabel>收录级别</FieldLabel>
+                    <AdminSelect
+                      value={String(tocSettings.maxDepth)}
+                      onChange={(v) => setTocSettings({ ...tocSettings, maxDepth: Number(v) })}
+                      options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: `${n} 级` }))}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={tocSettings.showPageNumbers} onChange={(e) => setTocSettings({ ...tocSettings, showPageNumbers: e.target.checked })} className="rounded" />
+                      显示页码
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={tocSettings.leaderDots} onChange={(e) => setTocSettings({ ...tocSettings, leaderDots: e.target.checked })} className="rounded" />
+                      目录点线
+                    </label>
+                  </div>
+                </>
+              )}
+            </div>
+          </Section>
+
           {/* 参考文献与附录 */}
           <Section title="参考文献与附录">
             <div className="grid grid-cols-2 gap-4">
