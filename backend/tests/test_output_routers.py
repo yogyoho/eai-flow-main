@@ -16,6 +16,7 @@ def _fake_template():
         reference_style="gb7714",
         appendix_rules=None,
         cover_template={"showTitle": True},
+        cover_master=None,
         toc_settings={"maxDepth": 2},
     )
 

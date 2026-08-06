@@ -1240,6 +1240,11 @@ async def migrate_db() -> None:
             "ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"
         ))
 
+        # output: cover_master JSONB — create_all won't add columns to the pre-existing layout_templates table.
+        await conn.execute(text(
+            "ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_master JSONB"
+        ))
+
         # contract-price (cpa): project-level fields extracted from front-page
         # OCR text. Idempotent — create_all won't add columns to the pre-existing
         # cpa_documents table (populated by earlier pipeline runs).

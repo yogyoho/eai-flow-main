@@ -47,6 +47,7 @@ def _build_template_data(template) -> dict:
         "reference_style": template.reference_style,
         "appendix_rules": template.appendix_rules,
         "cover_template": template.cover_template,
+        "cover_master": template.cover_master,
         "toc_settings": template.toc_settings,
     }
 

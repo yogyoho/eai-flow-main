@@ -29,6 +29,23 @@ class CoverTemplateSchema(BaseModel):
     showProjectNumber: bool = True
 
 
+class CoverSlotSchema(BaseModel):
+    id: str
+    label: str
+    kind: str = "variable"
+    sampleValue: str
+    defaultFrom: str | None = None
+
+
+class CoverMasterSchema(BaseModel):
+    mode: str = "master"
+    xml: str
+    images: list[dict] = []
+    slots: list[CoverSlotSchema] = []
+    sourceFile: str = ""
+    boundary: str = "before_toc"
+
+
 class TocSettingsSchema(BaseModel):
     maxDepth: int = 3
     showPageNumbers: bool = True
@@ -85,6 +102,7 @@ class LayoutTemplateCreate(BaseModel):
     report_type: str = Field(..., min_length=1, max_length=100)
     page_settings: PageSettingsSchema
     cover_template: CoverTemplateSchema | None = None
+    cover_master: CoverMasterSchema | None = None
     toc_settings: TocSettingsSchema | None = None
     body_styles: BodyStylesSchema
     heading_styles: list[HeadingStyleSchema] = Field(default_factory=list)
@@ -100,6 +118,7 @@ class LayoutTemplateUpdate(BaseModel):
     report_type: str | None = Field(None, min_length=1, max_length=100)
     page_settings: PageSettingsSchema | None = None
     cover_template: CoverTemplateSchema | None = None
+    cover_master: CoverMasterSchema | None = None
     toc_settings: TocSettingsSchema | None = None
     body_styles: BodyStylesSchema | None = None
     heading_styles: list[HeadingStyleSchema] | None = None
@@ -119,6 +138,7 @@ class LayoutTemplateResponse(BaseModel):
     is_builtin: bool
     page_settings: dict
     cover_template: dict | None = None
+    cover_master: dict | None = None
     toc_settings: dict | None = None
     body_styles: dict
     heading_styles: list
