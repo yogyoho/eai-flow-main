@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from enum import Enum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -97,6 +98,8 @@ class UserBase(BaseModel):
     phone: str | None = Field(None, max_length=20)
     emp_no: str | None = Field(None, max_length=50)
     hire_date: date | None = None
+    # EAI-CUSTOM (标签池 A): 显式用户标签（admin 用户管理设置）
+    tags: list[str] | None = None
 
 
 class UserCreate(UserBase):
@@ -121,6 +124,7 @@ class UserUpdate(BaseModel):
     hire_date: date | None = None
     is_deleted: bool | None = None
     dept_ids: list[UUID] | None = None
+    tags: list[str] | None = None
 
 
 class UserResponse(UserBase):
@@ -132,6 +136,7 @@ class UserResponse(UserBase):
     dept_id: UUID | None = None
     dept_name: str | None = None
     dept_ids: list[UUID] = []
+    tags: list[str] = []
     primary_dept_id: UUID | None = None
     role_id: UUID | None = None
     role_name: str | None = None
@@ -661,6 +666,7 @@ class FolderListResponse(BaseModel):
 
 class FolderCreate(BaseModel):
     """Folder create schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
     parent_id: UUID | None = Field(None, description="Parent folder ID (null = root)")
     project_id: UUID | None = Field(None, description="Project ID to bind root folder")
@@ -668,16 +674,19 @@ class FolderCreate(BaseModel):
 
 class FolderUpdate(BaseModel):
     """Folder update schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
 
 
 class FolderSortUpdate(BaseModel):
     """Folder sort order update."""
+
     sort_order: int = Field(..., ge=0)
 
 
 class FolderResponse(BaseModel):
     """Folder response schema."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -695,11 +704,13 @@ class FolderResponse(BaseModel):
 
 class FolderTreeResponse(BaseModel):
     """Folder tree response."""
+
     folders: list[FolderResponse]
 
 
 class FolderDeleteConfirm(BaseModel):
     """Response showing what will be deleted."""
+
     folder_id: UUID
     folder_name: str
     subfolder_count: int
@@ -765,3 +776,37 @@ class PersonalVersionDetailResponse(BaseModel):
     label: str | None
     created_at: datetime
     content: str
+
+
+# ============== Knowledge Base Grant Schemas ==============
+# EAI-CUSTOM: 每-KB 显式授权 CRUD（实例级 ACL，与角色 data_scope 互补）。
+
+
+class KnowledgeBaseGrantCreate(BaseModel):
+    """Knowledge base grant create schema."""
+
+    grantee_type: Literal["user", "dept", "role"]
+    grantee_id: str = Field(..., min_length=1, max_length=64)
+    permission: Literal["read", "write"] = "read"
+    expires_at: datetime | None = None
+
+
+class KnowledgeBaseGrantUpdate(BaseModel):
+    """Knowledge base grant update schema."""
+
+    permission: Literal["read", "write"] | None = None
+    expires_at: datetime | None = None
+
+
+class KnowledgeBaseGrantResponse(BaseModel):
+    """Knowledge base grant response schema."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    kb_id: UUID
+    grantee_type: str
+    grantee_id: str
+    permission: str
+    expires_at: datetime | None = None
+    created_by: UUID | None = None
+    created_at: datetime

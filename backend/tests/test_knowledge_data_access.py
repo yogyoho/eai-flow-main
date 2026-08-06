@@ -349,3 +349,19 @@ async def test_has_kb_grant_write_filter_appends_permission():
     await has_kb_grant(db, uuid.uuid4(), idn, "write")
     sql = str(db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})).lower()
     assert "permission" in sql and "write" in sql
+
+
+# ---------------------------------------------------------------------------
+# Task 6: grants CRUD —— grantee role 分支校验
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_grantee_role_branch_rejects_unknown():
+    from fastapi import HTTPException
+
+    from app.extensions.knowledge.routers import _validate_grantee
+
+    with pytest.raises(HTTPException) as exc:
+        await _validate_grantee(AsyncMock(), "role", "no_such_role_code")
+    assert exc.value.status_code == 400

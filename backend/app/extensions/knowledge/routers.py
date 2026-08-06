@@ -18,12 +18,15 @@ from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
-from app.extensions.models import KnowledgeBase
+from app.extensions.models import KnowledgeBase, KnowledgeBaseGrant
 from app.extensions.schemas import (
     CurrentUser,
     DocumentListResponse,
     DocumentResponse,
     KnowledgeBaseCreate,
+    KnowledgeBaseGrantCreate,
+    KnowledgeBaseGrantResponse,
+    KnowledgeBaseGrantUpdate,
     KnowledgeBaseListResponse,
     KnowledgeBaseResponse,
     KnowledgeBaseUpdate,
@@ -210,6 +213,124 @@ async def delete_knowledge_base(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     await KnowledgeBaseService.delete_kb(db, kb)
     return MessageResponse(message="Knowledge base deleted successfully")
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base Grants CRUD (EAI-CUSTOM): 每-KB 显式授权管理（实例级 ACL）
+# ---------------------------------------------------------------------------
+
+
+async def _require_kb_owner(db, kb, current_user):
+    """Grant 管理门：KB owner 或超管，才可管理该 KB 的授权。"""
+    if kb.owner_id != current_user.id and not await is_superadmin(db, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+
+async def _validate_grantee(db: AsyncSession, grantee_type: str, grantee_id: str) -> None:
+    """校验 grantee 存在：user/dept 查目录表；role 查权限注册表角色 code。"""
+    if grantee_type in ("user", "dept"):
+        from sqlalchemy import select as sa_select
+
+        from app.extensions.models import Department, User
+
+        model = User if grantee_type == "user" else Department
+        stmt = sa_select(model.id).where(model.id == grantee_id)
+        if (await db.execute(stmt)).scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {grantee_type} id")
+    else:  # role
+        from app.extensions.auth.registry import get_permission_registry
+
+        if grantee_id not in get_permission_registry().list_role_codes():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role code")
+
+
+@router.get("/{kb_id}/grants", response_model=list[KnowledgeBaseGrantResponse])
+async def list_kb_grants(
+    kb_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:read")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+):
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    await _require_kb_owner(db, kb, current_user)
+    from sqlalchemy import select
+
+    stmt = select(KnowledgeBaseGrant).where(KnowledgeBaseGrant.kb_id == kb_id).order_by(KnowledgeBaseGrant.created_at)
+    return (await db.execute(stmt)).scalars().all()
+
+
+@router.post("/{kb_id}/grants", response_model=KnowledgeBaseGrantResponse, status_code=status.HTTP_201_CREATED)
+async def add_kb_grant(
+    kb_id: UUID,
+    data: KnowledgeBaseGrantCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+):
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    await _require_kb_owner(db, kb, current_user)
+    await _validate_grantee(db, data.grantee_type, data.grantee_id)
+    grant = KnowledgeBaseGrant(
+        kb_id=kb_id,
+        grantee_type=data.grantee_type,
+        grantee_id=data.grantee_id,
+        permission=data.permission,
+        expires_at=data.expires_at,
+        created_by=current_user.id,
+    )
+    db.add(grant)
+    await db.commit()
+    await db.refresh(grant)
+    return grant
+
+
+@router.patch("/{kb_id}/grants/{grant_id}", response_model=KnowledgeBaseGrantResponse)
+async def update_kb_grant(
+    kb_id: UUID,
+    grant_id: UUID,
+    data: KnowledgeBaseGrantUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+):
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    await _require_kb_owner(db, kb, current_user)
+    grant = await db.get(KnowledgeBaseGrant, grant_id)
+    if grant is None or grant.kb_id != kb_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
+    if data.permission is not None:
+        grant.permission = data.permission
+    if data.expires_at is not None:
+        grant.expires_at = data.expires_at
+    await db.commit()
+    await db.refresh(grant)
+    return grant
+
+
+@router.delete("/{kb_id}/grants/{grant_id}", response_model=MessageResponse)
+async def delete_kb_grant(
+    kb_id: UUID,
+    grant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+):
+    kb = await _load_kb_scoped(db, kb_id, scope)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    await _require_kb_owner(db, kb, current_user)
+    grant = await db.get(KnowledgeBaseGrant, grant_id)
+    if grant is None or grant.kb_id != kb_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
+    await db.delete(grant)
+    await db.commit()
+    return MessageResponse(message="Grant revoked")
 
 
 @router.post("/{kb_id}/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
