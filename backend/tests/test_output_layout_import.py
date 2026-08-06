@@ -279,6 +279,36 @@ def test_header_logo_detected_from_image():
     assert extract_layout_from_docx(_docx_bytes(doc))["header_footer"]["showLogo"] is True
 
 
+def test_header_footer_text_extracted_from_real_parts():
+    """Regression: header/footer text must be read from the real part paragraphs, not left empty."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    doc.sections[0].header.paragraphs[0].add_run("某公司消防设计专篇")
+    doc.sections[0].footer.paragraphs[0].add_run("第 X 页")
+    hf = extract_layout_from_docx(_docx_bytes(doc))["header_footer"]
+    assert hf["headerText"] == "某公司消防设计专篇"
+    assert hf["footerText"] == "第 X 页"
+
+
+def test_header_footer_page_number_detected_from_field():
+    """A PAGE field (w:fldSimple instr=PAGE) in the footer → showPageNumber True."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    fp = doc.sections[0].footer.paragraphs[0]
+    fld = OxmlElement("w:fldSimple")
+    fld.set(qn("w:instr"), "PAGE")
+    fp._p.append(fld)
+    assert extract_layout_from_docx(_docx_bytes(doc))["header_footer"]["showPageNumber"] is True
+
+
+def test_header_footer_page_number_false_when_no_field():
+    """No PAGE field anywhere → showPageNumber False (not a hardcoded True)."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    doc.sections[0].footer.paragraphs[0].add_run("固定文字页脚")  # plain text, no field
+    assert extract_layout_from_docx(_docx_bytes(doc))["header_footer"]["showPageNumber"] is False
+
+
 def test_figure_styles_null():
     assert data_for()["figure_styles"] is None
 
