@@ -202,3 +202,16 @@ def test_knowledge_owner_plus_public_plus_dept_or_union():
     sql = _compile_sql(rule)
     assert " or " in sql
     assert "owner_id" in sql and "access_type" in sql and "allowed_depts" in sql and "&&" in sql
+
+
+# ---------------------------------------------------------------------------
+# Task 1: KnowledgeBaseGrant 模型注册（每-KB 显式授权）
+# ---------------------------------------------------------------------------
+
+
+def test_knowledge_base_grant_model_registered():
+    from app.extensions.models import KnowledgeBaseGrant
+
+    assert KnowledgeBaseGrant.__tablename__ == "knowledge_base_grants"
+    cols = {c.name for c in KnowledgeBaseGrant.__table__.columns}
+    assert {"kb_id", "grantee_type", "grantee_id", "permission", "expires_at", "created_by", "created_at"} <= cols

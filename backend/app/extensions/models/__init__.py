@@ -199,6 +199,23 @@ class Document(Base):
 KnowledgeBase.documents: Mapped[list[Document]] = relationship("Document", back_populates="knowledge_base")
 
 
+class KnowledgeBaseGrant(Base):
+    """EAI-CUSTOM: 每-KB 显式授权（实例级 ACL）——与角色 data_scope 互补，授权为可见性 OR 例外。"""
+
+    __tablename__ = "knowledge_base_grants"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kb_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    grantee_type: Mapped[str] = mapped_column(String(20), nullable=False)  # user | dept | role
+    grantee_id: Mapped[str] = mapped_column(String(64), nullable=False)  # user/dept=UUID串; role=角色code
+    permission: Mapped[str] = mapped_column(String(20), default="read")  # read | write
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+
 class AIDocument(Base):
     """AI-generated document model for document space management."""
 
