@@ -1,6 +1,8 @@
 """Tests for cover-master OOXML passthrough + slot binding (B1)."""
 
-import base64  # noqa: F401  # used in later tasks (B2+ image encoding)
+import base64
+import struct
+import zlib
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -140,3 +142,43 @@ def test_extract_real_sample_cover_master():
     assert cm["boundary"] in ("before_toc", "before_first_heading")
     assert cm["sourceFile"] == "基地项目-消防设计专篇.docx"
     assert "title" in {s["id"] for s in cm["slots"]}
+
+
+def _png_bytes(w: int = 2, h: int = 2) -> bytes:
+    """A minimal valid grayscale PNG built with stdlib (python-docx rejects some
+    hand-encoded 1x1 strings; this is guaranteed parseable). Exercises the
+    image-extraction (a:blip → r:embed → blob → b64) chain."""
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0)  # 8-bit grayscale
+    raw = b"".join(b"\x00" + b"\xff" * w for _ in range(h))  # filter 0 + w white px per row
+    return sig + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+
+_PNG_BYTES = _png_bytes()
+
+
+def _make_image_cover_docx() -> bytes:
+    """Cover region with an inline image + client line, then 目录 marker + body."""
+    doc = Document()
+    doc.add_picture(BytesIO(_PNG_BYTES), width=Cm(3))  # cover image paragraph
+    doc.add_paragraph("建设单位：甲公司")
+    doc.add_paragraph("目录")  # TOC marker → before_toc boundary
+    doc.add_heading("第一章 概述", level=1)
+    return _docx_bytes(doc)
+
+
+def test_extract_cover_master_captures_image():
+    """The most novel extraction path (a:blip → related_parts → base64) must be covered."""
+    data = extract_layout_from_docx(_make_image_cover_docx(), source_file="logo.docx")
+    cm = data["cover_master"]
+    assert cm is not None
+    assert cm["boundary"] == "before_toc"
+    assert len(cm["images"]) == 1
+    img = cm["images"][0]
+    assert img["origRid"]  # non-empty rId
+    assert img["ext"] == "png"
+    assert base64.b64decode(img["b64"]) == _PNG_BYTES

@@ -548,11 +548,16 @@ def _style_id_sets(doc) -> tuple[set[str], set[str]]:
             sid = getattr(st, "style_id", None)
             if not sid:
                 continue
-            if name.startswith("heading"):
+            # Match canonical "Heading N" and localized "标题 N" (Chinese Word);
+            # else a localized first heading misses its boundary and the extractor
+            # gathers body content as a false cover.
+            if name.startswith("heading") or name.startswith("标题"):
                 heading_ids.add(sid)
             if "toc" in name:
                 toc_ids.add(sid)
-    except Exception:
+    except (KeyError, AttributeError):
+        # Realistic style-access failure modes only — a bare except would silently
+        # degrade heading/toc detection to text-only (miss a field-based TOC boundary).
         pass
     return heading_ids, toc_ids
 
