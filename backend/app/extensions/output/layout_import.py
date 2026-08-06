@@ -113,19 +113,20 @@ def _cell_shading_fill(tc) -> str | None:
     return _shd_fill(tc_pr.find(qn("w:shd")) if tc_pr is not None else None)
 
 
-def _style_firstrow_shading(table) -> str | None:
-    """Best-effort header-band fill from the table style's firstRow conditional format.
+def _style_conditional_shading(table, cond_type: str) -> str | None:
+    """Fill from a table style's conditional format (firstRow / band1Row / ...), best-effort.
 
     Covers the common Word case where picking a built-in table style bands the header
-    without writing per-cell shading. ponytail: ignores w:tblLook (assumes the band
-    applies); honor tblLook if a sample with a disabled first-row band mismatches.
+    or zebra-stripes rows without writing per-cell shading. ponytail: ignores w:tblLook
+    (assumes the conditional applies); honor tblLook if a sample whose band is disabled
+    mismatches.
     """
     try:
         style = table.style
         if style is None:
             return None
         for tsp in style.element.findall(qn("w:tblStylePr")):
-            if tsp.get(qn("w:type")) != "firstRow":
+            if tsp.get(qn("w:type")) != cond_type:
                 continue
             tc_pr = tsp.find(qn("w:tcPr"))
             fill = _shd_fill(tc_pr.find(qn("w:shd")) if tc_pr is not None else None)
@@ -162,15 +163,19 @@ def _extract_table_styles(doc) -> dict | None:
     except Exception:
         header_bg = None
     if not header_bg:
-        header_bg = _style_firstrow_shading(table)
+        header_bg = _style_conditional_shading(table, "firstRow")
     header_color = _header_text_color(table)
+    # Zebra striping only when the table style defines row banding; plain tables → off.
+    stripe = bool(
+        _style_conditional_shading(table, "band1Row") or _style_conditional_shading(table, "band2Row")
+    )
     return {
         # No fill detected → white (no-fill), never an invented blue. Real fill comes
         # from direct cell shading or the table style's firstRow band above.
         "headerBg": f"#{header_bg}" if header_bg else "#FFFFFF",
         "headerColor": header_color or "#333333",
         "borderColor": "#CCCCCC",
-        "stripeRows": True,  # ponytail: zebra striping not derivable from docx → default
+        "stripeRows": stripe,
     }
 
 

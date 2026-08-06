@@ -79,7 +79,8 @@ def test_heading_color_has_hash_prefix():
 
 def test_table_style_present_only_when_table_exists():
     assert data_for(with_table=True)["table_styles"] is not None
-    assert data_for(with_table=True)["table_styles"]["stripeRows"] is True
+    # plain table has no row banding → stripeRows must be False (not invented True)
+    assert data_for(with_table=True)["table_styles"]["stripeRows"] is False
     assert data_for()["table_styles"] is None
 
 
@@ -126,6 +127,28 @@ def test_table_style_firstrow_shading_extracted():
     """A table style with a firstRow band must yield the band fill (common Word case)."""
     ts = extract_layout_from_docx(_shaded_cell_table(style_firstrow_fill="C6E0B4"))["table_styles"]
     assert ts["headerBg"] == "#C6E0B4"
+
+
+def test_table_style_banding_enables_striping():
+    """stripeRows is True only when the table style defines row banding; plain → False."""
+    # plain table: no banding
+    assert data_for(with_table=True)["table_styles"]["stripeRows"] is False
+    # banded style: defines band1Row shading
+    doc = Document()
+    doc.add_heading("标题", level=1)
+    table = doc.add_table(rows=3, cols=2)
+    table.style = "Table Grid"
+    tsp = OxmlElement("w:tblStylePr")
+    tsp.set(qn("w:type"), "band1Row")
+    tc_pr = OxmlElement("w:tcPr")
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), "F2F2F2")
+    tc_pr.append(shd)
+    tsp.append(tc_pr)
+    table.style.element.append(tsp)
+    assert extract_layout_from_docx(_docx_bytes(doc))["table_styles"]["stripeRows"] is True
 
 
 def test_figure_styles_null():
