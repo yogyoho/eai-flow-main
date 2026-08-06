@@ -79,6 +79,20 @@ def test_no_cover_detected_for_plain_document():
     assert data_for()["cover_detected"] is False
 
 
+def test_cover_logo_position_left_for_default_left_alignment():
+    doc = Document()
+    s = doc.sections[0]
+    s.page_width = Cm(21.0)
+    s.page_height = Cm(29.7)
+    doc.add_paragraph("某化工项目消防设计专篇")  # no explicit alignment → None → left
+    doc.add_paragraph("建设单位：某某公司")
+    doc.add_paragraph("项目编号：P001")
+    doc.add_heading("第一章 概述", level=1)
+    data = extract_layout_from_docx(_docx_bytes(doc))
+    assert data["cover_detected"] is True
+    assert data["cover_template"]["logoPosition"] == "left"
+
+
 def test_cover_detected_for_first_page_cover():
     doc = Document()
     s = doc.sections[0]

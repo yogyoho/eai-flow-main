@@ -147,7 +147,7 @@ def _para_has_image(para) -> bool:
 
 
 def _para_align(para) -> str:
-    if para.alignment == WD_ALIGN_PARAGRAPH.LEFT:
+    if para.alignment in (None, WD_ALIGN_PARAGRAPH.LEFT):
         return "left"
     if para.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
         return "right"
