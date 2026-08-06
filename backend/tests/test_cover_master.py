@@ -182,3 +182,64 @@ def test_extract_cover_master_captures_image():
     assert img["origRid"]  # non-empty rId
     assert img["ext"] == "png"
     assert base64.b64decode(img["b64"]) == _PNG_BYTES
+
+
+# ── Task 3: generation ────────────────────────────────────────────────────
+
+
+def test_render_cover_master_round_trip_replaces_variable():
+    """Extract a master from a synthetic table-cover doc, render it into a fresh
+    doc with a different client value → client slot replaced, tables present."""
+    from app.extensions.output.generator import _render_cover_master
+
+    master = extract_layout_from_docx(_make_table_cover_docx())["cover_master"]
+    doc = Document()
+    _render_cover_master(doc, master, {"client": "乙公司"}, {})
+
+    assert len(doc.tables) == 2  # banner + 会签 both carried over
+    all_text = "\n".join(p.text for p in doc.paragraphs) + "\n" + "\n".join(c.text for t in doc.tables for r in t.rows for c in r.cells)
+    assert "乙公司" in all_text  # replaced
+    assert "甲公司" not in all_text  # old value gone
+    assert "消防设计专篇" in all_text  # banner title (literal) preserved
+
+
+def test_render_cover_master_literal_slot_not_replaced():
+    from app.extensions.output.generator import _render_cover_master
+
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    master = {
+        "mode": "master",
+        "images": [],
+        "sourceFile": "x",
+        "boundary": "before_toc",
+        "xml": f'<w:p xmlns:w="{w}"><w:r><w:t>建设单位：甲公司</w:t></w:r></w:p>',
+        "slots": [{"id": "client", "label": "建设单位", "kind": "literal", "sampleValue": "甲公司", "defaultFrom": "frontmatter:client"}],
+    }
+    doc = Document()
+    _render_cover_master(doc, master, {"client": "乙公司"}, {})
+    assert "甲公司" in "\n".join(p.text for p in doc.paragraphs)  # literal kept
+    assert "乙公司" not in "\n".join(p.text for p in doc.paragraphs)
+
+
+def test_render_cover_master_rewrites_image_embed():
+    """A master carrying one base64 image: render re-embeds it and rewrites r:embed."""
+    from app.extensions.output.generator import _render_cover_master
+
+    png_b64 = base64.b64encode(_PNG_BYTES).decode("ascii")  # valid PNG (bug-1113)
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    master = {
+        "mode": "master",
+        "slots": [],
+        "sourceFile": "x",
+        "boundary": "before_toc",
+        "xml": (f'<w:p xmlns:w="{w}" xmlns:a="{a}" xmlns:r="{r}"><w:r><w:drawing><a:blip r:embed="rIdOld"/></w:drawing></w:r></w:p>'),
+        "images": [{"origRid": "rIdOld", "ext": "png", "b64": png_b64}],
+    }
+    doc = Document()
+    _render_cover_master(doc, master, {}, {})
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+
+    image_rids = [rid for rid, rel in doc.part.rels.items() if rel.reltype == RT.IMAGE]
+    assert image_rids, "image should be re-embedded"

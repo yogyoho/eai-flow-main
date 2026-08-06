@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import base64
 import datetime
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt, RGBColor
+from lxml import etree
 
 # ---------------------------------------------------------------------------
 # Minimal markdown parser — produces a list of typed blocks
@@ -154,6 +158,77 @@ def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:
         _info_line("项目编号", cover_fields.get("project_number"))
     if ct.get("showDate"):
         _info_line("日期", cover_fields.get("date"))
+
+
+_W_GEN = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_DRAWML_GEN = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_REL_GEN = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def _replace_target_in_para(p_el, target: str, replacement: str) -> bool:
+    """Replace `target` with `replacement` across all <w:r>/<w:t> of a <w:p>,
+    keeping the first run's <w:rPr> and collapsing text into the first run.
+    ponytail: 段落级替换，段落内混合格式（多字体）会丢失——封面槽位通常是
+    整行/整格，影响可忽略；升级路径=按 run 边界细粒度替换。"""
+    # <w:t> is a grandchild of <w:p> (nested in <w:r>), so use descendant axis.
+    t_els = p_el.findall(f".//{{{_W_GEN}}}t")
+    full = "".join((t.text or "") for t in t_els)
+    if not target or target not in full:
+        return False
+    runs = p_el.findall(f"{{{_W_GEN}}}r")
+    if not runs:
+        return False
+    first = runs[0]
+    for run in runs:  # clear all w:t (keeps rPr/other children)
+        for t in run.findall(f"{{{_W_GEN}}}t"):
+            run.remove(t)
+    new_text = full.replace(target, replacement)
+    new_t = etree.SubElement(first, f"{{{_W_GEN}}}t")
+    new_t.text = new_text
+    new_t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    return True
+
+
+def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -> None:
+    """Inject the cover-master OOXML fragment at the body start, replacing variable
+    slots with resolved project values and re-embedding base64 images."""
+    root = etree.fromstring(
+        f'<root xmlns:w="{_W_GEN}" xmlns:a="{_DRAWML_GEN}" xmlns:r="{_REL_GEN}">'
+        f"{master.get('xml', '')}</root>"
+    )
+
+    slot_value = {
+        "title": resolved.get("title"),
+        "client": resolved.get("client"),
+        "project_number": resolved.get("project_number"),
+        "date": resolved.get("date"),
+        "project_name": frontmatter.get("project_name"),
+        "stage": frontmatter.get("stage"),
+    }
+    for slot in master.get("slots", []):
+        if slot.get("kind") != "variable":
+            continue
+        repl = slot_value.get(slot.get("id"))
+        target = slot.get("sampleValue")
+        if not repl or not target or str(repl) == target:
+            continue
+        for p_el in root.iter(f"{{{_W_GEN}}}p"):
+            _replace_target_in_para(p_el, target, str(repl))
+
+    for img in master.get("images", []):
+        try:
+            blob = base64.b64decode(img["b64"])
+            # get_or_add_image returns (rId, Image) — rId already the relationship id.
+            new_rid, _image = doc.part.get_or_add_image(BytesIO(blob))
+            for blip in root.iter(f"{{{_DRAWML_GEN}}}blip"):
+                if blip.get(f"{{{_REL_GEN}}}embed") == img.get("origRid"):
+                    blip.set(f"{{{_REL_GEN}}}embed", new_rid)
+        except Exception:  # image must never abort cover generation
+            pass
+
+    body = doc.element.body
+    for child in reversed(list(root)):  # insert at 0 in reverse → original order
+        body.insert(0, deepcopy(child))
 
 
 def _render_cover_preset(doc, preset: dict | None, values: dict | None) -> bool:
@@ -815,7 +890,8 @@ def generate_docx(
         if alignment is not None:
             pf.alignment = alignment
 
-    has_cover = bool(template_data.get("cover_template"))
+    cover_master = template_data.get("cover_master")
+    has_cover = bool(cover_master or template_data.get("cover_template"))
     has_toc = bool(template_data.get("toc_settings"))
     resolved_cover = _resolve_cover_fields(cover_fields or {}, frontmatter, blocks) if has_cover else {}
     numbers = _compute_heading_numbers(blocks, template_data.get("heading_styles", []))
@@ -823,7 +899,10 @@ def generate_docx(
     # === Section 0: COVER ===
     if has_cover:
         try:
-            _render_cover(doc, template_data.get("cover_template"), resolved_cover)
+            if cover_master and cover_master.get("mode") == "master":
+                _render_cover_master(doc, cover_master, resolved_cover, frontmatter)
+            else:
+                _render_cover(doc, template_data.get("cover_template"), resolved_cover)
         except Exception:  # cover must never abort generation
             pass
         doc.add_section(WD_SECTION.NEW_PAGE)
