@@ -9,6 +9,7 @@ export interface LayoutTemplate {
   isBuiltin: boolean;
   pageSettings: PageSettings;
   coverTemplate: CoverTemplate | null;
+  coverMaster: CoverMaster | null;
   tocSettings: TocSettings | null;
   bodyStyles: BodyStyles;
   headingStyles: HeadingStyle[];
@@ -37,6 +38,29 @@ export interface CoverTemplate {
   showClient: boolean;
   showDate: boolean;
   showProjectNumber: boolean;
+}
+
+export interface CoverSlot {
+  id: string;
+  label: string;
+  kind: "variable" | "literal";
+  sampleValue: string;
+  defaultFrom?: string | null;
+}
+
+export interface CoverMasterImage {
+  origRid: string;
+  ext: string;
+  b64: string;
+}
+
+export interface CoverMaster {
+  mode: "master";
+  xml: string;
+  images: CoverMasterImage[];
+  slots: CoverSlot[];
+  sourceFile: string;
+  boundary: string;
 }
 
 export interface TocSettings {

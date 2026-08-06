@@ -146,6 +146,7 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
         reportType,
         pageSettings,
         coverTemplate,
+        coverMaster: null,
         tocSettings,
         bodyStyles,
         headingStyles,

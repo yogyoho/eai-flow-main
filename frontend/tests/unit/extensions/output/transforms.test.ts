@@ -110,3 +110,37 @@ describe("transformTemplate", () => {
     expect(result).toHaveProperty("updatedAt");
   });
 });
+
+describe("transformTemplate cover_master", () => {
+  test("maps top-level cover_master → coverMaster (nested stays camelCase)", () => {
+    const data = {
+      id: "1",
+      name: "T",
+      report_type: "general",
+      is_builtin: false,
+      page_settings: { paperSize: "A4", orientation: "portrait", marginTop: 2.54, marginBottom: 2.54, marginLeft: 3.17, marginRight: 3.17 },
+      body_styles: { fontFamily: "宋体", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 6, firstLineIndent: 2 },
+      heading_styles: [],
+      reference_style: "gb7714",
+      created_at: "2026-08-07T00:00:00Z",
+      updated_at: "2026-08-07T00:00:00Z",
+      cover_master: {
+        mode: "master",
+        xml: "<w:p/>",
+        images: [],
+        slots: [{ id: "client", label: "建设单位", kind: "variable", sampleValue: "甲公司", defaultFrom: "frontmatter:client" }],
+        sourceFile: "x.docx",
+        boundary: "before_toc",
+      },
+    };
+    const tpl = transformTemplate(data);
+    expect(tpl.coverMaster).not.toBeNull();
+    expect(tpl.coverMaster?.sourceFile).toBe("x.docx");
+    expect(tpl.coverMaster?.slots[0]?.sampleValue).toBe("甲公司");
+  });
+
+  test("defaults coverMaster to null when absent", () => {
+    const tpl = transformTemplate({ id: "1", name: "T", report_type: "g", is_builtin: false, page_settings: {}, body_styles: {}, heading_styles: [], reference_style: "gb7714", created_at: "", updated_at: "" });
+    expect(tpl.coverMaster).toBeNull();
+  });
+});

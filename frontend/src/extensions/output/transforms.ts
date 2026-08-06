@@ -8,6 +8,7 @@ export function transformTemplate(data: Record<string, unknown>): LayoutTemplate
     isBuiltin: (data.is_builtin as boolean) ?? false,
     pageSettings: data.page_settings as LayoutTemplate["pageSettings"],
     coverTemplate: (data.cover_template as LayoutTemplate["coverTemplate"]) ?? null,
+    coverMaster: (data.cover_master as LayoutTemplate["coverMaster"]) ?? null,
     tocSettings: (data.toc_settings as LayoutTemplate["tocSettings"]) ?? null,
     bodyStyles: data.body_styles as LayoutTemplate["bodyStyles"],
     headingStyles: (data.heading_styles as LayoutTemplate["headingStyles"]) ?? [],

@@ -32,6 +32,7 @@ export const outputApi = {
       reference_style: tpl.referenceStyle ?? "gb7714",
     };
     if (tpl.coverTemplate) payload.cover_template = tpl.coverTemplate;
+    if (tpl.coverMaster) payload.cover_master = tpl.coverMaster;
     if (tpl.tocSettings) payload.toc_settings = tpl.tocSettings;
     if (tpl.tableStyles) payload.table_styles = tpl.tableStyles;
     if (tpl.figureStyles) payload.figure_styles = tpl.figureStyles;
@@ -53,6 +54,7 @@ export const outputApi = {
     if (tpl.bodyStyles !== undefined) payload.body_styles = tpl.bodyStyles;
     if (tpl.headingStyles !== undefined) payload.heading_styles = tpl.headingStyles;
     if (tpl.coverTemplate !== undefined) payload.cover_template = tpl.coverTemplate;
+    if (tpl.coverMaster !== undefined) payload.cover_master = tpl.coverMaster;
     if (tpl.tocSettings !== undefined) payload.toc_settings = tpl.tocSettings;
     if (tpl.tableStyles !== undefined) payload.table_styles = tpl.tableStyles;
     if (tpl.figureStyles !== undefined) payload.figure_styles = tpl.figureStyles;
