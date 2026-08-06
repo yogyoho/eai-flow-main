@@ -16,6 +16,12 @@ export const outputApi = {
     return transformTemplate(data);
   },
 
+  importLayout: async (file: File): Promise<Record<string, unknown>> => {
+    const form = new FormData();
+    form.append("file", file);
+    return authFormFetch<Record<string, unknown>>(`${API_BASE}/import-layout`, form);
+  },
+
   createTemplate: async (tpl: Omit<LayoutTemplate, "id" | "isBuiltin" | "createdAt" | "updatedAt">): Promise<LayoutTemplate> => {
     const payload: Record<string, unknown> = {
       name: tpl.name,
