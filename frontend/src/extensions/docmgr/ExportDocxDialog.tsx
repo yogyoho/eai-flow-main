@@ -2,8 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ChevronDown,
-  ChevronRight,
   Download,
   FileUp,
   LayoutTemplate as LayoutTemplateIcon,
@@ -33,7 +31,6 @@ import {
   type PageSettings,
   type TableStyles,
   type WatermarkType,
-  WATERMARK_LABELS,
 } from "@/extensions/output/types";
 import { cn } from "@/lib/utils";
 
@@ -316,7 +313,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
   useEffect(() => {
     if (!open) return;
     setLoadingTemplates(true);
-    import("@/extensions/output/api").then(({ outputApi }) => {
+    void import("@/extensions/output/api").then(({ outputApi }) => {
       outputApi
         .listTemplates()
         .then((t) => setTemplates(t))
