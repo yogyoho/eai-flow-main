@@ -330,3 +330,22 @@ def test_list_scope_clause_allow_all_keeps_pure_scope():
     assert scope.operator == "allow_all"  # 触发跳过分支，保持纯 scope
     sql = str(scope_clause.compile(compile_kwargs={"literal_binds": True})).lower()
     assert "knowledge_base_grants" not in sql
+
+
+# ---------------------------------------------------------------------------
+# Task 5: has_kb_grant write 过滤进入 SQL（写门 = owner | write-grantee | 超管）
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_has_kb_grant_write_filter_appends_permission():
+    from app.extensions.knowledge.access import has_kb_grant
+
+    idn = AttributeSet(user_id="u1", username="u1", role_code="r", dept_ids=[])
+    db = AsyncMock()
+    res = MagicMock()
+    res.scalar_one_or_none.return_value = None
+    db.execute.return_value = res
+    await has_kb_grant(db, uuid.uuid4(), idn, "write")
+    sql = str(db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True})).lower()
+    assert "permission" in sql and "write" in sql

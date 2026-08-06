@@ -159,8 +159,9 @@ async def get_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
     return KnowledgeBaseService.to_response(kb)
@@ -173,12 +174,17 @@ async def update_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:update")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    # EAI-CUSTOM (I11): registry-backed admin bypass replaces brittle role_name string match
-    if kb.owner_id != current_user.id and not await is_superadmin(db, current_user.id):
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM: 写门 = owner | write-grantee | 超管
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     kb = await KnowledgeBaseService.update_kb(db, kb, data)
     return KnowledgeBaseService.to_response(kb)
@@ -190,12 +196,17 @@ async def delete_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:delete")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    # EAI-CUSTOM (I11): registry-backed admin bypass replaces brittle role_name string match
-    if kb.owner_id != current_user.id and not await is_superadmin(db, current_user.id):
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM: 写门 = owner | write-grantee | 超管
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     await KnowledgeBaseService.delete_kb(db, kb)
     return MessageResponse(message="Knowledge base deleted successfully")
@@ -209,10 +220,18 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:upload")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM: 上传内容 = owner | write-grantee | 超管（堵住"上传未 owner 门"缺口）
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     chunk_cfg = None
     if chunk_config:
@@ -256,8 +275,9 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
@@ -289,10 +309,18 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:upload")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM: 删除文档 = owner | write-grantee | 超管
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -309,9 +337,10 @@ async def list_document_chunks(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
     """List chunks of a document (from RAGFlow)."""
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
     doc = await DocumentService.get_doc_by_id(db, doc_id)
@@ -346,9 +375,10 @@ async def chat_with_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
     """Chat with a knowledge base using RAGFlow."""
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
@@ -484,9 +514,10 @@ async def get_knowledge_base_status(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:read")),
     scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
 ):
     """Get knowledge base sync status from RAGFlow."""
-    kb = await _load_kb_scoped(db, kb_id, scope)
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
