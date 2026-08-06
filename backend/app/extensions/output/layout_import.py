@@ -8,12 +8,15 @@ LayoutTemplate-shaped dict (snake_case) consumed by the output/docmgr
 
 from __future__ import annotations
 
+import base64
 import re
+from copy import deepcopy
 from io import BytesIO
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+from lxml import etree
 
 _PAPER_DIMS = {
     "A4": (21.0, 29.7),
@@ -22,6 +25,10 @@ _PAPER_DIMS = {
     "letter": (21.59, 27.94),
 }
 _DRAWML = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_TOC_TEXT_RE = re.compile(r"^目\s*录$|^contents$", re.I)
+_DATE_RE = re.compile(r"\d{4}[-/年]\d{1,2}")
 
 
 def _to_cm(length) -> float:
@@ -531,6 +538,156 @@ def _detect_cover(doc) -> dict | None:
     return cover
 
 
+def _style_id_sets(doc) -> tuple[set[str], set[str]]:
+    """Precompute (heading_style_ids, toc_style_ids) from doc.styles."""
+    heading_ids: set[str] = set()
+    toc_ids: set[str] = set()
+    try:
+        for st in doc.styles:
+            name = (getattr(st, "name", "") or "").lower()
+            sid = getattr(st, "style_id", None)
+            if not sid:
+                continue
+            if name.startswith("heading"):
+                heading_ids.add(sid)
+            if "toc" in name:
+                toc_ids.add(sid)
+    except Exception:
+        pass
+    return heading_ids, toc_ids
+
+
+def _max_run_font_pt(p_el) -> float:
+    """Largest <w:sz w:val=...> (half-points) among runs in a <w:p> element."""
+    best = 0.0
+    for r in p_el.findall(f"{{{_W}}}r"):
+        rpr = r.find(f"{{{_W}}}rPr")
+        if rpr is None:
+            continue
+        sz = rpr.find(f"{{{_W}}}sz")
+        val = sz.get(f"{{{_W}}}val") if sz is not None else None
+        if val and val.isdigit():
+            best = max(best, int(val) / 2.0)
+    return best
+
+
+def _para_text(p_el) -> str:
+    return "".join((t.text or "") for t in p_el.iter(f"{{{_W}}}t"))
+
+
+def _prefill_cover_slots(cover_blocks) -> list[dict]:
+    """Prefill standard variable slots by scanning cover-region text. camelCase keys."""
+    paras: list[tuple] = []  # (p_el, text) incl. paragraphs inside tables
+    for b in cover_blocks:
+        for p in b.iter(f"{{{_W}}}p"):
+            txt = _para_text(p)
+            if txt.strip():
+                paras.append((p, txt))
+    full = "\n".join(t for _, t in paras)
+
+    slots: list[dict] = []
+
+    def add(slot_id: str, label: str, value, default_from: str | None = None) -> None:
+        if value:
+            slots.append({"id": slot_id, "label": label, "kind": "variable", "sampleValue": str(value).strip(), "defaultFrom": default_from})
+
+    # title: largest-font paragraph, else 专篇/报告书/计算书 keyword
+    title, best_sz = "", 0.0
+    for p, txt in paras:
+        sz = _max_run_font_pt(p)
+        if sz > best_sz and len(txt.strip()) >= 2:
+            best_sz, title = sz, txt.strip()
+    if not title:
+        m = re.search(r"(.{2,40}?(?:专篇|报告书|计算书|设计说明).{0,20})", full)
+        if m:
+            title = m.group(1).strip()
+    add("title", "报告标题", title, "doc_title")
+
+    m = re.search(r"项目名(?:称)?[:：\s]*(\S.{0,39})", full)
+    add("project_name", "项目名", m.group(1) if m else None)
+
+    m = re.search(r"(?:建设单位|业主单位|业主)[:：]\s*(\S.{0,39})", full)
+    add("client", "建设单位", m.group(1) if m else None, "frontmatter:client")
+
+    m = re.search(r"(?:项目编号|工程编号|编号)[:：]\s*(\S.{0,39})", full)
+    add("project_number", "项目编号", m.group(1) if m else None)
+
+    m = re.search(r"(?:设计阶段|阶段)[:：]\s*(\S.{0,29})", full)
+    add("stage", "设计阶段", m.group(1) if m else None)
+
+    m = _DATE_RE.search(full)
+    add("date", "日期", m.group(0) if m else None, "today")
+
+    return slots
+
+
+def _extract_cover_master(doc, source_file: str = "") -> dict | None:
+    """Extract the cover region (blocks before the TOC marker or first Heading) as
+    a reusable OOXML master + prefilled slots. Returns None when no meaningful
+    cover exists (degrades to the legacy cover_template fallback)."""
+    body = doc.element.body
+    heading_ids, toc_ids = _style_id_sets(doc)
+
+    cover_blocks: list = []
+    boundary: str | None = None
+
+    for child in body.iterchildren():
+        tag = child.tag
+        if tag == f"{{{_W}}}sectPr":  # final section properties — body content ended
+            break
+        if tag == f"{{{_W}}}p":
+            style_el = child.find(f"{{{_W}}}pPr/{{{_W}}}pStyle")
+            style_val = style_el.get(f"{{{_W}}}val") if style_el is not None else None
+            text = _para_text(child).strip()
+            if _TOC_TEXT_RE.match(text) or style_val in toc_ids:
+                boundary = "before_toc"
+                break
+            if style_val in heading_ids:
+                boundary = "before_first_heading"
+                break
+            cover_blocks.append(child)
+        elif tag == f"{{{_W}}}tbl":
+            cover_blocks.append(child)
+        # other elements (bookmarkStart, etc.) ignored
+
+    if boundary is None:
+        return None
+
+    has_table = any(b.tag == f"{{{_W}}}tbl" for b in cover_blocks)
+    has_text = any(_para_text(b).strip() for b in cover_blocks if b.tag == f"{{{_W}}}p")
+    if not has_table and not has_text:
+        return None
+
+    xml = "".join(etree.tostring(deepcopy(b), encoding="unicode") for b in cover_blocks)
+
+    images: list[dict] = []
+    seen: set[str] = set()
+    for b in cover_blocks:
+        for blip in b.iter(f"{{{_DRAWML}}}blip"):
+            rid = blip.get(f"{{{_REL}}}embed")
+            if not rid or rid in seen:
+                continue
+            seen.add(rid)
+            part = doc.part.related_parts.get(rid)
+            blob = getattr(part, "blob", None)
+            if not blob:
+                continue
+            ext = "png"
+            partname = getattr(part, "partname", None)
+            if partname and "." in str(partname):
+                ext = str(partname).rsplit(".", 1)[-1].lower()
+            images.append({"origRid": rid, "ext": ext, "b64": base64.b64encode(blob).decode("ascii")})
+
+    return {
+        "mode": "master",
+        "xml": xml,
+        "images": images,
+        "slots": _prefill_cover_slots(cover_blocks),
+        "sourceFile": source_file,
+        "boundary": boundary,
+    }
+
+
 def _is_caption(para) -> bool:
     """A figure-caption paragraph: Caption/题注 style, or text like 图1-1 / Figure 2."""
     if _CAPTION_STYLE_RE.search(para.style.name or ""):
@@ -574,7 +731,7 @@ def _extract_figure_styles(doc) -> dict | None:
     }
 
 
-def extract_layout_from_docx(data: bytes) -> dict:
+def extract_layout_from_docx(data: bytes, source_file: str = "") -> dict:
     """Parse a .docx byte stream → LayoutTemplate data subset (snake_case).
 
     Raises ValueError for non-.docx / unparseable input.
@@ -587,6 +744,7 @@ def extract_layout_from_docx(data: bytes) -> dict:
     section = doc.sections[0]
     paper, orientation = _paper_from_dimensions(_to_cm(section.page_width), _to_cm(section.page_height))
     cover = _detect_cover(doc)
+    cover_master = _extract_cover_master(doc, source_file=source_file)
 
     return {
         "page_settings": {
@@ -603,7 +761,8 @@ def extract_layout_from_docx(data: bytes) -> dict:
         "figure_styles": _extract_figure_styles(doc),
         "header_footer": _extract_header_footer(doc),
         "cover_template": cover,
-        "cover_detected": cover is not None,
+        "cover_master": cover_master,
+        "cover_detected": cover_master is not None or cover is not None,
     }
 
 
@@ -618,4 +777,4 @@ def validate_docx_upload(filename: str | None, data: bytes) -> dict:
         raise ValueError("仅支持 .docx 文件")
     if len(data) > 10 * 1024 * 1024:
         raise ValueError("文件不能超过 10MB")
-    return extract_layout_from_docx(data)
+    return extract_layout_from_docx(data, source_file=filename or "")
