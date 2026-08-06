@@ -343,3 +343,8 @@
 - **图表样式三项可从题注/正文文本检测**: captionPosition(标题位置)= 题注段落在图(image 段,_para_has_image)的下一段→below / 上一段→above;numbering(编号方式)= 题注文本 图1-1 / figure1-1(chapter)vs 图1 / figure1(continuous);showSource(显示来源)= 全文搜 数据来源/资料来源/图片来源/来源/source 正则。无图且无题注→返回 None,不动表单(同 cover_detected/table_styles 的"检测不到就不覆盖用户配置"原则)。
 - **题注识别**: CN 报告作者手打题注文本(图1-1/图1)而非用 Word Caption 样式 → 先正则匹配文本,样式(Caption/题注)仅作 fallback。`_is_caption(para)` = 样式名含 caption|题注 OR 文本匹配 `^(图|figure|fig)\s*[\d一二三四五六七八九十]+`。
 - **"接线存在但喂不进数据"是隐匿 bug 高发模式**: 前端 applyImported 早有 `if(ff) setFigureStyles(ff)`,但因后端恒返回 null 而成死分支,代码 review 看着像"已实现"。这类盲点单看任一端都合理,必须端到端(真实样例经 API 返回 → 字段非空)才能发现。同 bug-1099/1100 根因。
+
+## [2026-08-06] Key Learnings 补遗 (标题样式按实际使用级别输出)
+- **样式表里有 ≠ 文档用了**: Word 默认模板里 Heading 1-9 级样式全部存在,但一份文档可能只用 H1/H2。`_extract_heading_styles` 原先只查 `doc.styles["Heading N"]` 是否存在 → 为未使用的级别输出模板默认值(典型: level 4 的 Cambria 英文字体、level 3 的宋体16pt),污染表单。**规则**: 必须以"该级别有实际段落"为准(`hps=_heading_paragraphs(doc,level); if not hps: continue`),样式存在不等于文档使用。同 _extract_table_styles(_not doc.tables: return None_)、cover_detected 的"检测不到就不输出/不覆盖"原则。
+- **真实文档标题格式常只在样式层,run 层全空**: 实测 基地项目-消防设计专篇.docx 的 H1/H2 段落 run 层 size/ea/bold/color 全 None,格式完全由 Heading 样式定义。所以标题提取 run 层优先、样式层 fallback 的策略正确;只是级别筛选必须基于段落命中数。
+- **又一"绿测试≠正确"实例**: 旧 test_heading_color_has_hash_prefix 用空文档(只设 Heading 1 样式颜色、无任何段落)仍能绿,因代码假设"有样式就输出"。修复(要求有段落)后该夹具 IndexError 暴露。**规则**: 提取类回归测试的夹具必须模拟真实文档(有实际段落/表格内容),不能只设样式层就断言;否则测试与代码共享同一错误假设,对真实文档失效。

@@ -17330,5 +17330,30 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-06T21:55:00Z"
+  },
+  {
+    "id": "bug-1102",
+    "timestamp": "2026-08-06T22:40:00Z",
+    "error_message": "从样例导入排版:标题样式提取不正确——输出了文档未使用的标题级别(level 3/4),值为 Word 模板残留(如 level 4 英文字体 Cambria),灌入表单",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_extract_heading_styles 只检查 doc.styles[\"Heading N\"] 样式是否存在(Word 默认模板 1-9 级样式全在),不检查该级别有无实际段落。文档只用 H1/H2 时,H3/H4 段落为 0,但仍输出样式表里的模板默认值(H4=Cambria 英文 Word 默认)。旧测试 test_heading_color_has_hash_prefix 用空文档(只设样式、无段落)助长了此错误假设。真实样例 基地项目-消防设计专篇.docx 实测:H1=8段/H2=19段/H3/H4=0段,却输出 4 级含 Cambria。",
+    "fix": "_extract_heading_styles 把 hps=_heading_paragraphs(doc,level) 提前到样式查找之前,if not hps: continue(无段落的级别跳过,不输出模板残留)。修旧夹具 test_heading_color_has_hash_prefix 补真实 Heading 段落。+2 回归测试(只输出使用级别 / 多级别各 [1] 与 [1,2])。真实样例+HTTP端到端验证:heading_styles levels=[1,2],无 Cambria。",
+    "tags": [
+      "layout-import",
+      "heading-styles",
+      "docx",
+      "标题",
+      "模板残留",
+      "Cambria",
+      "unused-level",
+      "green-test-not-correct"
+    ],
+    "related_bugs": [
+      "bug-1099",
+      "bug-1100",
+      "bug-1101"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06T22:40:00Z"
   }
 ]

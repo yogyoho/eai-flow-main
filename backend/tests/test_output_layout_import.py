@@ -73,6 +73,7 @@ def test_heading_color_has_hash_prefix():
     from docx.shared import RGBColor
 
     doc.styles["Heading 1"].font.color.rgb = RGBColor(0x2B, 0x57, 0x9A)
+    doc.add_heading("第一章 概述", level=1)  # must actually use the level, else it's skipped
     h1 = extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]
     assert h1["color"] == "#2B579A"
 
@@ -95,6 +96,24 @@ def test_heading_size_read_from_runs_not_style():
     h.runs[0].font.size = Pt(18)
     doc.add_paragraph("正文内容。")
     assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["fontSize"] == 18
+
+
+def test_heading_styles_only_emit_levels_actually_used():
+    """Regression: levels with zero Heading paragraphs must be skipped, not emitted with
+    Word template-default values (e.g. an English font like Cambria) that pollute the form.
+    _make_docx() has one Heading 1 paragraph and no Heading 2-4 → only level 1 may appear."""
+    levels = [h["level"] for h in data_for()["heading_styles"]]
+    assert levels == [1]
+
+
+def test_heading_styles_emit_each_used_level():
+    """A doc using Heading 1 and 2 emits exactly [1, 2] (not 1-4)."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    doc.add_heading("1.1 项目位置", level=2)
+    doc.add_paragraph("正文。")
+    levels = [h["level"] for h in extract_layout_from_docx(_docx_bytes(doc))["heading_styles"]]
+    assert levels == [1, 2]
 
 
 def test_table_style_present_only_when_table_exists():

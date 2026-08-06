@@ -258,14 +258,23 @@ def _extract_body_styles(doc) -> dict:
 
 
 def _extract_heading_styles(doc) -> list[dict]:
+    """Per-level heading styles, ONLY for levels the document actually uses.
+
+    A level with zero Heading paragraphs is skipped — otherwise we'd emit Word's
+    template-default style (often an English font like Cambria) for a level the sample
+    never uses, polluting the editor with bogus values. ponytail: real docs format
+    headings on runs too, so we read runs first and fall back to the Heading style.
+    """
     defaults = {1: 16, 2: 14, 3: 12, 4: 12}
     out = []
     for level in range(1, 5):
+        hps = _heading_paragraphs(doc, level)
+        if not hps:
+            continue  # 文档未使用该级标题 → 跳过,避免输出 Word 模板残留(如 Cambria)污染表单
         try:
             style = doc.styles[f"Heading {level}"]
         except KeyError:
             continue
-        hps = _heading_paragraphs(doc, level)
         run_size, run_family = _dominant_run_font(hps)
         style_size = style.font.size.pt if style.font.size else None
         size = run_size or style_size

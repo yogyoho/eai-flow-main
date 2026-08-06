@@ -4813,3 +4813,12 @@
 | 21:20 | Edited backend/app/extensions/output/layout_import.py | 3→3 lines | ~46 |
 | 21:20 | Edited backend/tests/test_output_layout_import.py | modified test_figure_styles_null() | ~748 |
 | 21:50 | feat: _extract_figure_styles (captionPosition/numbering/showSource) | layout_import.py + test (+7) | 图表样式三项从样例提取并经 applyImported 赋值表单;37测试绿+端到端API figure_styles=below/chapter/True | ~9k |
+| 22:40 | fix: 标题样式只输出文档实际使用的级别(bug-1102) | layout_import.py + test | 真实样例查证:文档只用H1/H2却输出4级含Cambria模板残留;改 if not hps: continue;42测试绿+真实样例HTTP端到端 levels=[1,2]无Cambria | ~12k |
+| 21:24 | Session end: 4 writes across 2 files (layout_import.py, test_output_layout_import.py) | 0 reads | ~1484 tok |
+| 21:27 | Edited backend/tests/test_output_layout_import.py | modified test_header_logo_detected_from_image() | ~496 |
+| 21:27 | Session end: 5 writes across 2 files (layout_import.py, test_output_layout_import.py) | 0 reads | ~1980 tok |
+| 21:33 | Created backend/_diag_heading.py | — | ~471 |
+| 21:34 | Edited backend/_diag_heading.py | modified range() | ~213 |
+| 21:36 | Edited backend/tests/test_output_layout_import.py | modified test_heading_size_read_from_runs_not_style() | ~347 |
+| 21:37 | Edited backend/app/extensions/output/layout_import.py | modified _extract_heading_styles() | ~245 |
+| 21:38 | Edited backend/tests/test_output_layout_import.py | 3→4 lines | ~77 |
