@@ -7,7 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # --- Nested schemas (mirror frontend types.ts) ---
 
 
@@ -35,6 +34,10 @@ class CoverSlotSchema(BaseModel):
     kind: str = "variable"
     sampleValue: str
     defaultFrom: str | None = None
+    # Exact OOXML substring to find at generation time. For colon fields this is
+    # label-inclusive ("项目编号：XX") so duplicate values (XX×3) don't collide;
+    # absent → falls back to sampleValue.
+    target: str | None = None
 
 
 class CoverMasterSchema(BaseModel):

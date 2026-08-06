@@ -208,11 +208,17 @@ def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -
         if slot.get("kind") != "variable":
             continue
         repl = slot_value.get(slot.get("id"))
-        target = slot.get("sampleValue")
-        if not repl or not target or str(repl) == target:
+        sample = slot.get("sampleValue")
+        # Label-inclusive target (e.g. "项目编号：XX") uniquely anchors colon fields
+        # so duplicate sample values (XX×3) don't collide; absent → sampleValue.
+        target = slot.get("target") or sample
+        if not repl or not target or not sample or str(repl) == sample:
             continue
+        # Swap just the value within the (possibly label-inclusive) target so the
+        # label survives and a sibling slot sharing the same sample value is untouched.
+        replacement = target.replace(sample, str(repl))
         for p_el in root.iter(f"{{{_W_GEN}}}p"):
-            _replace_target_in_para(p_el, target, str(repl))
+            _replace_target_in_para(p_el, target, replacement)
 
     for img in master.get("images", []):
         orig_rid = img.get("origRid")

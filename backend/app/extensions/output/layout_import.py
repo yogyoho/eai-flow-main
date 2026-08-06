@@ -580,8 +580,44 @@ def _para_text(p_el) -> str:
     return "".join((t.text or "") for t in p_el.iter(f"{{{_W}}}t"))
 
 
+# id → display label for colon-detected fields.
+_COVER_LABELS = {
+    "project_number": "项目编号",
+    "archive_no": "档案号",
+    "version": "版次",
+    "certificate_no": "证书号",
+    "client": "建设单位",
+    "project_name": "项目名",
+    "stage": "设计阶段",
+}
+# (id, label chars, defaultFrom). A label is matched as its chars joined by \s*,
+# which tolerates the sample's inter-character spacing (档 案 号 / 版    次) while
+# still requiring the label to be contiguous-ish — 项目名 won't match across
+# 项目名…项目编号 because \s* can't skip non-whitespace.
+_COVER_COLON_FIELDS = [
+    ("project_number", "项目编号", None),
+    ("project_number", "工程编号", None),
+    ("archive_no", "档案号", None),
+    ("version", "版次", None),
+    ("certificate_no", "证书号", None),
+    ("certificate_no", "资质证书号", None),
+    ("client", "建设单位", "frontmatter:client"),
+    ("client", "业主单位", "frontmatter:client"),
+    ("client", "业主", "frontmatter:client"),
+    ("project_name", "项目名称", None),
+    ("project_name", "工程名称", None),
+    ("stage", "设计阶段", None),
+    ("stage", "阶段", None),
+    ("date", "日期", "today"),
+]
+
+
 def _prefill_cover_slots(cover_blocks) -> list[dict]:
-    """Prefill standard variable slots by scanning cover-region text. camelCase keys."""
+    """Detect cover fields as editable slots by scanning cover-region text.
+
+    Colon fields carry a label-inclusive ``target`` (e.g. ``"档 案 号：XX"``) so
+    duplicate sample values (XX×3 across 项目编号/档案号/证书号) bind unambiguously
+    at generation. camelCase keys."""
     paras: list[tuple] = []  # (p_el, text) incl. paragraphs inside tables
     for b in cover_blocks:
         for p in b.iter(f"{{{_W}}}p"):
@@ -591,37 +627,54 @@ def _prefill_cover_slots(cover_blocks) -> list[dict]:
     full = "\n".join(t for _, t in paras)
 
     slots: list[dict] = []
+    seen: set[str] = set()
 
-    def add(slot_id: str, label: str, value, default_from: str | None = None) -> None:
-        if value:
-            slots.append({"id": slot_id, "label": label, "kind": "variable", "sampleValue": str(value).strip(), "defaultFrom": default_from})
+    def add(slot_id: str, label: str, value, *, default_from: str | None = None, target: str | None = None, kind: str = "variable") -> None:
+        if not value or slot_id in seen:
+            return
+        seen.add(slot_id)
+        val = str(value).strip()
+        slots.append({"id": slot_id, "label": label, "kind": kind, "sampleValue": val, "defaultFrom": default_from, "target": (target or val).strip()})
 
-    # title: largest-font paragraph, else 专篇/报告书/计算书 keyword
-    title, best_sz = "", 0.0
-    for p, txt in paras:
-        sz = _max_run_font_pt(p)
-        if sz > best_sz and len(txt.strip()) >= 2:
-            best_sz, title = sz, txt.strip()
-    if not title:
-        m = re.search(r"(.{2,40}?(?:专篇|报告书|计算书|设计说明).{0,20})", full)
+    # 1) Colon fields: LABEL：VALUE (whitespace-tolerant label, value = next token).
+    for slot_id, label_chars, default_from in _COVER_COLON_FIELDS:
+        m = re.search(r"\s*".join(label_chars) + r"\s*[：:]\s*(?P<val>[^\s：:\n]+)", full)
         if m:
-            title = m.group(1).strip()
-    add("title", "报告标题", title, "doc_title")
+            add(slot_id, _COVER_LABELS.get(slot_id, label_chars), m.group("val"), default_from=default_from, target=m.group(0))
 
-    m = re.search(r"项目名(?:称)?[:：\s]*(\S.{0,39})", full)
-    add("project_name", "项目名", m.group(1) if m else None)
+    # 2) Title: prefer a report-name keyword (第…册…专篇 / …专篇) over largest-font,
+    #    so a large-font stage value (基础设计) isn't mistaken for the report title.
+    title = None
+    m = re.search(r"第[\d一二三四五六七八九十百两]+\s*[一-龥A-Za-z0-9 ]{0,20}?(?:专篇|报告书|计算书|设计说明)", full)
+    if not m:
+        m = re.search(r"[一-龥A-Za-z0-9 ]{2,24}?(?:专篇|报告书|计算书|设计说明)", full)
+    if m:
+        title = m.group(0).strip()
+    if not title:  # fallback: largest-font paragraph ≥ 2 chars
+        best, best_sz = "", 0.0
+        for p, txt in paras:
+            sz = _max_run_font_pt(p)
+            if sz > best_sz and len(txt.strip()) >= 2:
+                best_sz, best = sz, txt.strip()
+        title = best
+    add("title", "报告名称", title, default_from="doc_title")
 
-    m = re.search(r"(?:建设单位|业主单位|业主)[:：]\s*(\S.{0,39})", full)
-    add("client", "建设单位", m.group(1) if m else None, "frontmatter:client")
+    # 3) 项目名 (positional, no colon) — only if not already a colon field.
+    if "project_name" not in seen:
+        m = re.search(r"项目名(?:称)?\s+(?P<val>[^\s：:\n]+)", full)
+        if m:
+            add("project_name", "项目名", m.group("val"))
 
-    m = re.search(r"(?:项目编号|工程编号|编号)[:：]\s*(\S.{0,39})", full)
-    add("project_number", "项目编号", m.group(1) if m else None)
+    # 4) 设计院 / 设计单位 (label-only in sample, no value) → literal slot so the
+    #    field is at least recognized; generation has no source to fill it.
+    if "design_unit" not in seen and re.search(r"设计院|设计单位", full):
+        add("design_unit", "设计单位", "设计院", kind="literal")
 
-    m = re.search(r"(?:设计阶段|阶段)[:：]\s*(\S.{0,29})", full)
-    add("stage", "设计阶段", m.group(1) if m else None)
-
-    m = _DATE_RE.search(full)
-    add("date", "日期", m.group(0) if m else None, "today")
+    # 5) Date placeholder (20XX年0X月) or real date — only if not a colon field.
+    if "date" not in seen:
+        m = re.search(r"20\d{2}年\d{1,2}月|20XX年0X月|\d{4}[-/年]\d{1,2}[-/月]\d{0,2}日?", full)
+        if m:
+            add("date", "日期", m.group(0), default_from="today")
 
     return slots
 

@@ -141,7 +141,27 @@ def test_extract_real_sample_cover_master():
     assert cm["images"] == []
     assert cm["boundary"] in ("before_toc", "before_first_heading")
     assert cm["sourceFile"] == "基地项目-消防设计专篇.docx"
-    assert "title" in {s["id"] for s in cm["slots"]}
+    slots = {s["id"]: s for s in cm["slots"]}
+    # no two slots share an id
+    assert len(slots) == len(cm["slots"])
+    # all 7 cover fields detected (gold, grounded in the real sample)
+    assert {"title", "project_name", "project_number", "archive_no", "version", "design_unit", "date"} <= set(slots)
+    # title is the report name, NOT the stage value 基础设计
+    assert "消防设计专篇" in slots["title"]["sampleValue"]
+    assert slots["title"]["sampleValue"] != "基础设计"
+    # 基础设计 (项目阶段, labeled 项目名) appears in exactly one slot, as project_name
+    ji = [s for s in cm["slots"] if s["sampleValue"] == "基础设计"]
+    assert len(ji) == 1 and ji[0]["id"] == "project_name"
+    # spaced labels matched (档 案 号 / 版    次); placeholder date accepted
+    assert slots["version"]["sampleValue"] == "0"
+    assert slots["date"]["sampleValue"] == "20XX年0X月"
+    assert slots["design_unit"]["kind"] == "literal"
+    # disambiguation: project_number & archive_no share sampleValue "XX" but carry
+    # distinct label-inclusive targets → replace-all won't cross-overwrite at generation.
+    assert slots["project_number"]["sampleValue"] == "XX"
+    assert slots["archive_no"]["sampleValue"] == "XX"
+    assert slots["project_number"]["target"] != slots["archive_no"]["target"]
+    assert slots["project_number"]["target"].endswith("XX")
 
 
 def _png_bytes(w: int = 2, h: int = 2) -> bytes:
@@ -198,9 +218,35 @@ def test_render_cover_master_round_trip_replaces_variable():
 
     assert len(doc.tables) == 2  # banner + 会签 both carried over
     all_text = "\n".join(p.text for p in doc.paragraphs) + "\n" + "\n".join(c.text for t in doc.tables for r in t.rows for c in r.cells)
-    assert "乙公司" in all_text  # replaced
+    assert "建设单位：乙公司" in all_text  # replaced, label preserved by target.replace(sample, repl)
     assert "甲公司" not in all_text  # old value gone
     assert "消防设计专篇" in all_text  # banner title (literal) preserved
+
+
+def test_render_cover_master_disambiguates_duplicate_xx():
+    """Two colon fields share sample value "XX" but carry distinct label-inclusive
+    targets. Resolving project_number must fill only 项目编号：XX and leave 档 案 号：XX
+    intact — the replace-all collision that motivated the `target` field."""
+    from app.extensions.output.generator import _render_cover_master
+
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    master = {
+        "mode": "master",
+        "images": [],
+        "sourceFile": "x",
+        "boundary": "before_toc",
+        "xml": f'<w:p xmlns:w="{w}"><w:r><w:t>项目编号：XX   档 案 号：XX</w:t></w:r></w:p>',
+        "slots": [
+            {"id": "project_number", "label": "项目编号", "kind": "variable", "sampleValue": "XX", "target": "项目编号：XX"},
+            {"id": "archive_no", "label": "档案号", "kind": "variable", "sampleValue": "XX", "target": "档 案 号：XX"},
+        ],
+    }
+    doc = Document()
+    _render_cover_master(doc, master, {"project_number": "GB-2026-001"}, {})
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "项目编号：GB-2026-001" in text  # resolved, label preserved
+    assert "档 案 号：XX" in text  # preserved — no collateral overwrite
+    assert text.count("GB-2026-001") == 1  # not also jammed into archive_no
 
 
 def test_render_cover_master_literal_slot_not_replaced():

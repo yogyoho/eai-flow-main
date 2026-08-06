@@ -46,6 +46,9 @@ export interface CoverSlot {
   kind: "variable" | "literal";
   sampleValue: string;
   defaultFrom?: string | null;
+  /** Exact OOXML substring to find at generation (label-inclusive for colon fields
+   * so duplicate values like XX don't collide). Absent → sampleValue. */
+  target?: string | null;
 }
 
 export interface CoverMasterImage {
