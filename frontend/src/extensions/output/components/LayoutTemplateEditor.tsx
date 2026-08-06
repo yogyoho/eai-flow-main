@@ -26,6 +26,8 @@ import { AdminSelect } from "@/components/ui/admin-select";
 import type {
   AppendixRules,
   BodyStyles,
+  CoverMaster,
+  CoverSlot,
   CoverTemplate,
   FigureStyles,
   HeaderFooter,
@@ -312,6 +314,7 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
   const [reportType, setReportType] = useState(template?.reportType ?? "general");
   const [pageSettings, setPageSettings] = useState<PageSettings>(template?.pageSettings ?? DEFAULT_PAGE_SETTINGS);
   const [coverTemplate, setCoverTemplate] = useState<CoverTemplate | null>(template?.coverTemplate ?? null);
+  const [coverMaster, setCoverMaster] = useState<CoverMaster | null>(template?.coverMaster ?? null);
   const [tocSettings, setTocSettings] = useState<TocSettings | null>(template?.tocSettings ?? null);
   const [bodyStyles, setBodyStyles] = useState<BodyStyles>(template?.bodyStyles ?? DEFAULT_BODY_STYLES);
   const [headingStyles, setHeadingStyles] = useState<HeadingStyle[]>(template?.headingStyles ?? DEFAULT_HEADING_STYLES);
@@ -327,6 +330,7 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
 
   // patch helpers — collapse the repeated `{ ...(x ?? DEFAULT), patch }` boilerplate
   const patchCover = useCallback((p: Partial<CoverTemplate>) => setCoverTemplate((c) => ({ ...(c ?? COVER_DEFAULT), ...p })), []);
+  const patchSlot = useCallback((index: number, p: Partial<CoverSlot>) => setCoverMaster((m) => (m ? { ...m, slots: m.slots.map((s, i) => (i === index ? { ...s, ...p } : s)) } : m)), []);
   const patchTable = useCallback((p: Partial<TableStyles>) => setTableStyles((t) => ({ ...(t ?? TABLE_DEFAULT), ...p })), []);
   const patchFigure = useCallback((p: Partial<FigureStyles>) => setFigureStyles((f) => ({ ...(f ?? FIGURE_DEFAULT), ...p })), []);
   const patchHF = useCallback((p: Partial<HeaderFooter>) => setHeaderFooter((h) => ({ ...(h ?? HF_DEFAULT), ...p })), []);
@@ -342,7 +346,7 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
         reportType,
         pageSettings,
         coverTemplate,
-        coverMaster: null,
+        coverMaster,
         tocSettings,
         bodyStyles,
         headingStyles,
@@ -355,7 +359,7 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
     } finally {
       setSaving(false);
     }
-  }, [name, reportType, pageSettings, coverTemplate, tocSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, referenceStyle, appendixRules, onSave]);
+  }, [name, reportType, pageSettings, coverTemplate, coverMaster, tocSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, referenceStyle, appendixRules, onSave]);
 
   const applyImported = useCallback((data: Record<string, unknown>) => {
     const ps = data.page_settings as PageSettings | undefined;
@@ -370,10 +374,15 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
     if (ff) setFigureStyles(ff);
     const hf = data.header_footer as HeaderFooter | null | undefined;
     if (hf) setHeaderFooter(hf);
-    // 封面方案 A+C 兜底：cover_detected=false 或封面开关全为 false（歧义）时不动封面区，避免误清空用户已配置的封面
-    const ct = data.cover_template as CoverTemplate | null | undefined;
-    if (data.cover_detected === true && ct && (ct.showLogo || ct.showTitle || ct.showClient || ct.showDate || ct.showProjectNumber)) {
-      setCoverTemplate(ct);
+    const cm = data.cover_master as CoverMaster | null | undefined;
+    if (cm?.mode === "master") {
+      setCoverMaster(cm);
+    } else {
+      // 无母版时才走旧 toggle 兜底（保留既有行为）
+      const ct = data.cover_template as CoverTemplate | null | undefined;
+      if (data.cover_detected === true && ct && (ct.showLogo || ct.showTitle || ct.showClient || ct.showDate || ct.showProjectNumber)) {
+        setCoverTemplate(ct);
+      }
     }
   }, []);
 
@@ -598,27 +607,69 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
 
           {/* 封面配置 */}
           <Section icon={ImageIcon} title="封面配置">
-            <div className="grid grid-cols-2 gap-2">
-              <Toggle checked={coverTemplate?.showLogo ?? false} onChange={(v) => patchCover({ showLogo: v })} label="显示 Logo" icon={ImageIcon} />
-              <Toggle checked={coverTemplate?.showTitle ?? false} onChange={(v) => patchCover({ showTitle: v })} label="显示标题" icon={Type} />
-              <Toggle checked={coverTemplate?.showClient ?? false} onChange={(v) => patchCover({ showClient: v })} label="显示建设单位" />
-              <Toggle checked={coverTemplate?.showDate ?? false} onChange={(v) => patchCover({ showDate: v })} label="显示日期" />
-              <Toggle checked={coverTemplate?.showProjectNumber ?? false} onChange={(v) => patchCover({ showProjectNumber: v })} label="显示项目编号" />
-            </div>
-            {((coverTemplate?.showLogo ?? false) || (coverTemplate?.showTitle ?? false) || (coverTemplate?.showClient ?? false) || (coverTemplate?.showDate ?? false) || (coverTemplate?.showProjectNumber ?? false)) && (
-              <div className="mt-4 rounded-lg bg-muted/30 p-5">
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">预览</p>
-                <div className="mx-auto max-w-[240px] space-y-2.5 text-center">
-                  {coverTemplate?.showLogo && (
-                    <div className="mx-auto flex h-12 w-20 items-center justify-center rounded-md bg-primary/10 text-[10px] font-medium text-primary ring-1 ring-inset ring-primary/15">LOGO</div>
-                  )}
-                  {coverTemplate?.showTitle && <div className="text-lg font-bold text-foreground">报告标题</div>}
-                  <div className="space-y-1.5 pt-1 text-xs text-muted-foreground">
-                    {coverTemplate?.showClient && <div>建设单位：XXXX</div>}
-                    {coverTemplate?.showDate && <div>日期：2026-08</div>}
-                    {coverTemplate?.showProjectNumber && <div>项目编号：XXXX</div>}
-                  </div>
+            {coverMaster ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-muted-foreground">来自样例：<span className="font-medium text-foreground">{coverMaster.sourceFile || "（未命名）"}</span></span>
+                  <span className="ml-auto shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">{coverMaster.boundary === "before_toc" ? "目录前" : "首标题前"}</span>
                 </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium text-muted-foreground">{`槽位（生成时替换"变量"，保留"字面"）`}</p>
+                  {coverMaster.slots.map((slot, i) => (
+                    <div key={slot.id} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5">
+                      <span className="w-16 shrink-0 text-[11px] font-medium text-muted-foreground">{slot.label}</span>
+                      <input
+                        className="h-7 flex-1 rounded-md border border-border bg-background px-2 text-xs disabled:opacity-50"
+                        value={slot.sampleValue}
+                        onChange={(e) => patchSlot(i, { sampleValue: e.target.value })}
+                        disabled={slot.kind === "literal"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => patchSlot(i, { kind: slot.kind === "variable" ? "literal" : "variable" })}
+                        className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-medium ring-1 ring-inset ring-border transition-colors hover:bg-muted ${slot.kind === "variable" ? "text-primary" : "text-muted-foreground"}`}
+                        title={slot.kind === "variable" ? "点击切为字面（原样保留不替换）" : "点击切为变量（生成时替换）"}
+                      >
+                        {slot.kind === "variable" ? "变量" : "字面"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50">
+                  <FileUp className="h-3.5 w-3.5" />
+                  {importing ? "提取中…" : "重新从样例导入封面"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Toggle checked={coverTemplate?.showLogo ?? false} onChange={(v) => patchCover({ showLogo: v })} label="显示 Logo" icon={ImageIcon} />
+                  <Toggle checked={coverTemplate?.showTitle ?? false} onChange={(v) => patchCover({ showTitle: v })} label="显示标题" icon={Type} />
+                  <Toggle checked={coverTemplate?.showClient ?? false} onChange={(v) => patchCover({ showClient: v })} label="显示建设单位" />
+                  <Toggle checked={coverTemplate?.showDate ?? false} onChange={(v) => patchCover({ showDate: v })} label="显示日期" />
+                  <Toggle checked={coverTemplate?.showProjectNumber ?? false} onChange={(v) => patchCover({ showProjectNumber: v })} label="显示项目编号" />
+                </div>
+                {((coverTemplate?.showLogo ?? false) || (coverTemplate?.showTitle ?? false) || (coverTemplate?.showClient ?? false) || (coverTemplate?.showDate ?? false) || (coverTemplate?.showProjectNumber ?? false)) && (
+                  <div className="rounded-lg bg-muted/30 p-5">
+                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">预览</p>
+                    <div className="mx-auto max-w-[240px] space-y-2.5 text-center">
+                      {coverTemplate?.showLogo && (
+                        <div className="mx-auto flex h-12 w-20 items-center justify-center rounded-md bg-primary/10 text-[10px] font-medium text-primary ring-1 ring-inset ring-primary/15">LOGO</div>
+                      )}
+                      {coverTemplate?.showTitle && <div className="text-lg font-bold text-foreground">报告标题</div>}
+                      <div className="space-y-1.5 pt-1 text-xs text-muted-foreground">
+                        {coverTemplate?.showClient && <div>建设单位：XXXX</div>}
+                        {coverTemplate?.showDate && <div>日期：2026-08</div>}
+                        {coverTemplate?.showProjectNumber && <div>项目编号：XXXX</div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 disabled:opacity-50">
+                  <FileUp className="h-3.5 w-3.5" />
+                  {importing ? "提取中…" : "从样例 .docx 导入真实封面"}
+                </button>
               </div>
             )}
           </Section>
