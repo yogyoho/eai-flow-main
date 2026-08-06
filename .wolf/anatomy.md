@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-06T10:48:48.202Z
-> Files: 1916 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-06T11:44:20.770Z
+> Files: 1917 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -1276,7 +1276,7 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~23593 tok)
+- `database.py` — Database connection and session management for extensions module. (~23529 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~5818 tok)
@@ -1421,12 +1421,11 @@
 - `__init__.py` (~0 tok)
 - `cover_presets.py` — Built-in cover-page presets for the docmgr Word export. (~514 tok)
 - `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~14880 tok)
-- `layout_import.py` — Deterministic .docx → layout-template extraction (page/body/headings/table/header-footer/cover A+C); validate_docx_upload 共享校验. (~260 tok)
+- `layout_import.py` — Deterministic .docx → layout-template extraction. (~2355 tok)
 - `layout_import.py` — Deterministic .docx → layout-template extraction. (~2341 tok)
 - `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
 - `routers.py` — FastAPI router for layout template CRUD and report generation. (~3016 tok)
 - `schemas.py` — Pydantic schemas for layout template CRUD. (~1065 tok)
-- `seed.py` — Built-in layout templates — seeded idempotently on first startup. (~3179 tok)
 - `service.py` — Business logic for layout template CRUD. (~1135 tok)
 
 ## backend/app/extensions/project/
@@ -1782,7 +1781,7 @@
 - `test_output_cover.py` — Tests for cover-page rendering + cover field resolution. (~1027 tok)
 - `test_output_frontmatter.py` — Tests for markdown front-matter splitting. (~320 tok)
 - `test_output_generate_integration.py` — End-to-end: generate_docx produces cover + TOC + body sections with numbering. (~1193 tok)
-- `test_output_layout_import.py` — Tests for deterministic .docx → layout-template extraction. (~1412 tok)
+- `test_output_layout_import.py` — Tests for deterministic .docx → layout-template extraction. (~1520 tok)
 - `test_output_numbering.py` — Tests for decimal heading-number computation. (~426 tok)
 - `test_output_routers.py` — Tests for routers template_data assembly + cover field collection. (~474 tok)
 - `test_output_sections.py` — Tests for per-section page numbering + footer PAGE field. (~364 tok)
@@ -2537,7 +2536,7 @@
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
 - `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~8960 tok)
 - `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~27604 tok)
-- `ExportDocxDialog.tsx` — FieldLabel — renders table (~13217 tok)
+- `ExportDocxDialog.tsx` — FieldLabel — renders table (~13232 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)

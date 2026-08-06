@@ -4753,3 +4753,11 @@
 | 18:48 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | 3→2 lines | ~17 |
 | 18:48 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | inline fix | ~20 |
 | 18:58 | feat word-export-layout-import done: layout_import.py + /import-layout x2端点 + 编辑器导入/目录/封面预览 + docmgr 修坏按钮&保存模板丢参; 50 tests, tsc/eslint clean, gateway 401-up | layout_import.py routers.py x2 LayoutTemplateEditor ExportDocxDialog api.ts | 11 commits |
+| 19:03 | Edited backend/app/extensions/output/layout_import.py | modified _style_color() | ~71 |
+| 19:03 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | 2→2 lines | ~39 |
+| 19:04 | Edited backend/tests/test_output_layout_import.py | modified test_extracts_body_and_heading_fonts() | ~228 |
+| 19:06 | Session end: 36 writes across 9 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 20 reads | ~87545 tok |
+| 19:28 | Session end: 36 writes across 9 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 20 reads | ~87545 tok |
+| 19:44 | Edited backend/app/extensions/database.py | reduced (-6 lines) | ~41 |
+| 19:47 | 清空预置排版模板: 移除 database.py 播种调用 + 删 seed.py/test_output_seed.py + 删5行 is_builtin=true; 剩2个自建 | database.py seed.py(rm) test_output_seed.py(rm) | done |
+| 19:47 | Session end: 37 writes across 10 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 22 reads | ~114358 tok |
