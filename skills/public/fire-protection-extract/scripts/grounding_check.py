@@ -24,6 +24,11 @@ def _norm(s):
     return s.replace(" ", "").replace("　", "").replace("\n", "")
 
 
+def _sources_at(sources_by_idx, idx):
+    srcs = sources_by_idx[idx] if idx < len(sources_by_idx) else []
+    return srcs if isinstance(srcs, list) else []
+
+
 def _is_decorative(block):
     b = block.strip()
     if not b:
@@ -111,10 +116,10 @@ def check(report_md, structure, outline, mapping):
             failed.append(b[:48])
     rate = grounded / checked if checked else 0.0
 
-    # 3. 完整性：大纲每个 verbatim 节必须有非空 sources
+    # 3. 完整性：大纲每个 verbatim 节必须有非空 sources（非列表源一律视为无源）
     uncovered = [sec["fire"] for idx, sec in enumerate(sections)
                  if sec.get("class") == "verbatim"
-                 and not (sources_by_idx[idx] if idx < len(sources_by_idx) else [])]
+                 and not _sources_at(sources_by_idx, idx)]
 
     # 4. 冲突断言（大纲节级 + 映射源级）
     conflict_failures = []

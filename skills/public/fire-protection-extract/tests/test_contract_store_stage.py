@@ -80,3 +80,19 @@ def test_find_all_stages_when_stage_none():
     contract_store.save_contract("B", "基础设计", {"sources": []}, s1)
     name, _, _ = contract_store.find_best(s1, stage=None)
     assert name in ("A", "B")
+
+
+def test_save_stamps_outline_version():
+    mapping = {"sources": []}
+    struct = _struct()
+    outline = {"outline_version": "2026-08-05", "sections": []}
+    contract_store.save_contract("版本项目", "基础设计", mapping, struct, outline=outline)
+    loaded = contract_store.load_contract("版本项目", "基础设计")
+    assert loaded["_outline_version"] == "2026-08-05"
+
+
+def test_validate_outline_version_mismatch():
+    outline = {"outline_version": "v2", "sections": []}
+    assert contract_store.validate_outline_version({"_outline_version": "v1"}, outline) is not None
+    assert contract_store.validate_outline_version({"_outline_version": "v2"}, outline) is None
+    assert contract_store.validate_outline_version({}, outline) is None  # 缺版本 → 不拦

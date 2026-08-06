@@ -79,6 +79,15 @@ def _combined_similarity(fp_a, fp_b):
     return 0.7 * _heading_similarity(fp_a, fp_b) + 0.3 * _table_similarity(fp_a, fp_b)
 
 
+def validate_outline_version(mapping, outline):
+    """映射记录的 _outline_version 与当前大纲版本不一致 → 返回错误说明；一致/缺任一 → None。"""
+    m_ver = mapping.get("_outline_version")
+    o_ver = outline.get("outline_version")
+    if m_ver is not None and o_ver is not None and m_ver != o_ver:
+        return f"契约基于旧大纲版本 {m_ver}，当前大纲版本 {o_ver}，需 E3 重跑"
+    return None
+
+
 def validate_format(mapping):
     """新格式合法返回 None；旧字符串锚格式返回错误说明。"""
     if not isinstance(mapping, dict):
@@ -99,7 +108,7 @@ def validate_format(mapping):
     return None
 
 
-def save_contract(name, stage, mapping, structure):
+def save_contract(name, stage, mapping, structure, outline=None):
     if not name or not stage or any(ch in name + stage for ch in ("..", "/", "\\")):
         raise ValueError(f"非法契约名/阶段: {name!r} {stage!r}")
     _ensure_dir()
@@ -111,6 +120,8 @@ def save_contract(name, stage, mapping, structure):
     contract["_stage"] = stage
     contract["_saved_at"] = datetime.now().isoformat()
     contract["_fingerprint"] = fp
+    if outline is not None:
+        contract["_outline_version"] = outline.get("outline_version", "")
     tmp_path = contract_path.with_suffix(".tmp")
     tmp_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp_path, contract_path)
@@ -165,14 +176,15 @@ def main(argv):
         return 2
     cmd = argv[0]
     if cmd == "save":
-        # usage: save <stage> <name> <structure.json>   (mapping 从 stdin 读)
-        if len(argv) != 4:
-            print("usage: contract_store.py save <stage> <name> <structure.json>", file=sys.stderr)
+        # usage: save <stage> <name> <structure.json> [outline.json]   (mapping 从 stdin 读)
+        if len(argv) not in (4, 5):
+            print("usage: contract_store.py save <stage> <name> <structure.json> [outline.json]", file=sys.stderr)
             return 2
         stage, name = argv[1], argv[2]
         try:
             structure = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
             mapping = json.loads(sys.stdin.read())
+            outline = json.loads(Path(argv[4]).read_text(encoding="utf-8")) if len(argv) == 5 else None
         except json.JSONDecodeError as e:
             print(f"CONTRACT_PARSE_ERROR: {e}", file=sys.stderr)
             return 3
@@ -180,7 +192,7 @@ def main(argv):
         if err:
             print(f"CONTRACT_FORMAT_MISMATCH: {err}", file=sys.stderr)
             return 3
-        path = save_contract(name, stage, mapping, structure)
+        path = save_contract(name, stage, mapping, structure, outline=outline)
         print(f"SAVED {name} ({stage}) -> {path}")
         return 0
     if cmd == "load":
@@ -207,7 +219,8 @@ def main(argv):
         result = find_best(structure, stage=argv[1])
         if result:
             name, mapping, sim = result
-            out = {k: v for k, v in mapping.items() if not k.startswith("_")}
+            # 保留 _outline_version（run.sh 用其做大纲漂移守卫），其余 _ 元数据剥离
+            out = {k: v for k, v in mapping.items() if (not k.startswith("_")) or k == "_outline_version"}
             print(json.dumps({"name": name, "similarity": round(sim, 3), "mapping": out},
                              ensure_ascii=False, indent=2))
             return 0

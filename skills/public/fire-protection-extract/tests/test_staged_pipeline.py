@@ -245,3 +245,13 @@ def test_non_list_sources_does_not_crash():
     report, _ = extract.extract(struct, outline, mapping)
     res = grounding_check.check(report, struct, outline, mapping)
     assert isinstance(res["uncovered_sections"], list)
+
+
+def test_uncovered_flags_non_list_sources():
+    struct = {"paras": [{"i": 0, "text": "A"}], "tables": {}}
+    outline = {"report_title": "{项目名} 消防设计专篇", "templates": {},
+               "sections": [{"fire": "1 概况", "class": "verbatim"}]}
+    mapping = {"sources": ["junk"]}  # 非列表 → 应判为未覆盖
+    report, _ = extract.extract(struct, outline, mapping)
+    res = grounding_check.check(report, struct, outline, mapping)
+    assert "1 概况" in res["uncovered_sections"]

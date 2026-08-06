@@ -56,6 +56,14 @@ if [ "$FIND_RC" -eq 0 ]; then
   FOUND=$(echo "$FIND_OUT" | python -c "import sys,json; print(json.load(sys.stdin)['name'])" 2>/dev/null || echo "")
   echo "$FIND_OUT" | python -c "import sys,json; m=json.load(sys.stdin)['mapping']; json.dump(m,sys.stdout,ensure_ascii=False,indent=2)" > "$MAPPING" 2>/dev/null || true
   echo "  ✓ 使用契约: ${FOUND}"
+  # 契约大纲版本漂移守卫：映射记录的 _outline_version 与当前大纲不一致 → 拒绝使用。
+  # 注：路径必须作为 argv 传入（MSYS/GitBash 会把 /d/.. 转成 D:/..），内嵌进 -c 字符串会打不开
+  OUTLINE_VERSION_ERR=$(python -c "import json,sys; m=json.load(open(sys.argv[1],encoding='utf-8')); o=json.load(open(sys.argv[2],encoding='utf-8')); m_v=m.get('_outline_version'); o_v=o.get('outline_version'); print(f'契约基于旧大纲版本 {m_v}，当前大纲版本 {o_v}，需 E3 重跑' if (m_v is not None and o_v is not None and m_v != o_v) else '')" "$MAPPING" "$OUTLINE" 2>/dev/null || echo "")
+  if [ -n "$OUTLINE_VERSION_ERR" ]; then
+    echo "CONTRACT_STALE: $OUTLINE_VERSION_ERR" >&2
+    echo "  → 契约大纲版本过旧，删除后重跑 E3 生成新映射" >&2
+    exit 3
+  fi
 elif [ "$FIND_RC" -eq 3 ]; then
   echo "CONTRACT_ERROR: $FIND_OUT" >&2
   echo "  → 契约解析/格式异常，检查 struct.json 或重跑 E3" >&2

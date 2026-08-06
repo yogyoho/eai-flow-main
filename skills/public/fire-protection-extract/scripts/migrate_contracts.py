@@ -128,6 +128,7 @@ def main(argv):
     out_path = Path(argv[4])
     mapping = align_to_outline(old, struct, outline)
     mapping["_stage"] = stage
+    mapping["_outline_version"] = outline.get("outline_version", "")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
     missing = [sec["fire"] for idx, sec in enumerate(outline["sections"])
