@@ -365,3 +365,30 @@ async def test_validate_grantee_role_branch_rejects_unknown():
     with pytest.raises(HTTPException) as exc:
         await _validate_grantee(AsyncMock(), "role", "no_such_role_code")
     assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_validate_grantee_user_branch_malformed_uuid_rejects_400():
+    """畸形 UUID 串在进入 DB 前即返回 400，不再触发 asyncpg 编码 500。"""
+    from fastapi import HTTPException
+
+    from app.extensions.knowledge.routers import _validate_grantee
+
+    with pytest.raises(HTTPException) as exc:
+        await _validate_grantee(AsyncMock(), "user", "not-a-uuid")
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_validate_grantee_user_branch_unknown_uuid_rejects_400():
+    """格式合法但目录表中不存在的 UUID → 400。"""
+    from fastapi import HTTPException
+
+    from app.extensions.knowledge.routers import _validate_grantee
+
+    db = AsyncMock()
+    db.execute.return_value = MagicMock()  # 非 AsyncMock：scalar_one_or_none() 是同步调用
+    db.execute.return_value.scalar_one_or_none.return_value = None
+    with pytest.raises(HTTPException) as exc:
+        await _validate_grantee(db, "user", str(uuid.uuid4()))
+    assert exc.value.status_code == 400
