@@ -4761,3 +4761,35 @@
 | 19:44 | Edited backend/app/extensions/database.py | reduced (-6 lines) | ~41 |
 | 19:47 | 清空预置排版模板: 移除 database.py 播种调用 + 删 seed.py/test_output_seed.py + 删5行 is_builtin=true; 剩2个自建 | database.py seed.py(rm) test_output_seed.py(rm) | done |
 | 19:47 | Session end: 37 writes across 10 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 22 reads | ~114358 tok |
+| 19:50 | Session end: 37 writes across 10 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 22 reads | ~114358 tok |
+
+## Session: 2026-08-06 20:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:05 | 验证「从样例导入排版」端到端: 容器内 python-docx 造样例→nginx:2026 登录+POST /import-layout→200, 5组+封面全提取正确; applyImported 逐字段 setState→控件 value={state} 绑定闭环(页面/正文/标题/表格/页眉页脚/封面) | layout_import.py routers.py LayoutTemplateEditor.tsx | 提取✓ 落控件✓; 已知缺口: figure_styles恒null(设计), toc_settings不提取, 行距/段距/表色取默认 | ~6.2k |
+| 20:15 | fix 表格表头底纹凭空返回蓝#2B579A(bug-1098): _extract_table_styles 拆出 _shd_fill/_cell_shading_fill/_style_firstrow_shading/_header_text_color; 底纹=首格直填w:shd→样式firstRow带区→白色#FFFFFF兜底(不再发明蓝); 表头字色读run,默认#333333; +3测试 | layout_import.py test_output_layout_import.py | commit 5a03d2331; 实测普通表→#FFFFFF, D9E2F3底纹表→#D9E2F3 |
+| 20:16 | Edited backend/tests/test_output_layout_import.py | added 2 import(s) | ~59 |
+| 20:17 | Edited backend/tests/test_output_layout_import.py | modified test_table_style_present_only_when_table_exists() | ~583 |
+| 20:17 | Edited backend/app/extensions/output/layout_import.py | modified _shd_fill() | ~721 |
+| 20:21 | Session end: 3 writes across 2 files (test_output_layout_import.py, layout_import.py) | 1 reads | ~9070 tok |
+| 20:31 | Edited backend/tests/test_output_layout_import.py | modified test_table_style_present_only_when_table_exists() | ~93 |
+| 20:31 | Edited backend/tests/test_output_layout_import.py | modified test_table_style_firstrow_shading_extracted() | ~320 |
+| 20:32 | Edited backend/app/extensions/output/layout_import.py | modified _style_conditional_shading() | ~258 |
+| 20:32 | Edited backend/app/extensions/output/layout_import.py | modified _extract_table_styles() | ~277 |
+| 20:37 | Edited backend/tests/test_output_layout_import.py | modified test_body_size_read_from_runs_not_style() | ~301 |
+| 20:38 | Edited backend/app/extensions/output/layout_import.py | modified _run_font() | ~934 |
+
+## Session: 2026-08-06 20:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:46 | Edited backend/tests/test_output_layout_import.py | inline fix | ~12 |
+| 20:47 | Edited backend/tests/test_output_layout_import.py | modified test_body_line_spacing_read_from_paragraphs_not_style() | ~726 |
+| 20:48 | Edited backend/app/extensions/output/layout_import.py | modified _heading_paragraphs() | ~705 |
+| 20:48 | Edited backend/app/extensions/output/layout_import.py | expanded (+12 lines) | ~317 |
+| 20:48 | Edited backend/app/extensions/output/layout_import.py | 3→4 lines | ~43 |
+| 20:49 | Edited backend/app/extensions/output/layout_import.py | inline fix | ~32 |
+| 20:49 | Edited backend/app/extensions/output/layout_import.py | inline fix | ~18 |
+| 20:50 | 样例逐项对照审计(run/段落层真实样例) | layout_import.py | 查出5漏网bug:行距/段后距/首行缩进/标题色/表边框色均读样式层或硬编码 | ~3k |
+| 20:53 | 修5字段改读run/段落/单元格层+5回归测试(共24) | layout_import.py,test | 24测试全绿,12字段逐项对照全中,bug-1099 | ~4k |

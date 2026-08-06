@@ -62,19 +62,150 @@ def _style_color(style, default: str) -> str:
     return default
 
 
+def _run_font(run) -> str | None:
+    """eastAsia-first font name on a run, or None if not explicitly set."""
+    try:
+        m = re.search(r'w:eastAsia="([^"]+)"', run._element.xml)
+        if m:
+            return m.group(1)
+        return run.font.name
+    except Exception:
+        return None
+
+
+def _dominant_run_font(paragraphs) -> tuple[float | None, str | None]:
+    """Most common (size_pt, family) across explicitly-formatted runs in `paragraphs`.
+
+    Returns (None, None) when no run sets a size/family — caller then falls back to
+    the style. Real docs usually set body/heading size on each run (e.g. 四号 = 14pt)
+    while leaving the Normal/Heading style at a template default, so sampling runs is
+    far more accurate than reading the style alone.
+    """
+    sizes: dict[float, int] = {}
+    families: dict[str, int] = {}
+    for p in paragraphs:
+        for run in p.runs:
+            try:
+                sz = run.font.size
+            except Exception:
+                sz = None
+            if sz is not None:
+                sizes[sz.pt] = sizes.get(sz.pt, 0) + 1
+            fam = _run_font(run)
+            if fam:
+                families[fam] = families.get(fam, 0) + 1
+    size = max(sizes, key=sizes.get) if sizes else None
+    family = max(families, key=families.get) if families else None
+    return size, family
+
+
+def _body_paragraphs(doc) -> list:
+    """Non-heading, non-empty body paragraphs (excludes table cells)."""
+    return [p for p in doc.paragraphs if p.text.strip() and not p.style.name.startswith("Heading")]
+
+
+def _heading_paragraphs(doc, level: int) -> list:
+    return [p for p in doc.paragraphs if p.style.name == f"Heading {level}"]
+
+
+def _dominant(paragraphs, getter):
+    """Most common non-None getter(paragraph) value across paragraphs, or None."""
+    counts: dict = {}
+    for p in paragraphs:
+        try:
+            v = getter(p)
+        except Exception:
+            v = None
+        if v is not None:
+            counts[v] = counts.get(v, 0) + 1
+    return max(counts, key=counts.get) if counts else None
+
+
+def _para_line_spacing_multiple(p) -> float | None:
+    """Paragraph line spacing as a 'multiple' float (1.5, 1.73); None for exact/atLeast or unset.
+
+    The editor's lineHeight field is a decimal multiple, so exact (固定值) spacing — common in
+    CN docs but not expressible as a multiple — falls back to the style/default upstream.
+    """
+    ls = p.paragraph_format.line_spacing
+    if isinstance(ls, float):
+        return round(ls, 2)
+    return None
+
+
+def _para_space_after_pt(p) -> int | None:
+    sa = p.paragraph_format.space_after
+    return int(sa.pt) if sa is not None else None
+
+
+def _para_first_indent_chars(p, body_pt: float | None) -> int | None:
+    fi = p.paragraph_format.first_line_indent
+    if fi is None or not body_pt:
+        return None
+    return round(fi.pt / body_pt)  # pt indent ÷ pt body size ≈ 字 (char) indent
+
+
+def _dominant_run_color(paragraphs) -> str | None:
+    """Most common explicit run color (#RRGGBB) across paragraphs, or None."""
+    counts: dict = {}
+    for p in paragraphs:
+        for run in p.runs:
+            try:
+                rgb = run.font.color.rgb
+            except Exception:
+                rgb = None
+            if rgb is not None:
+                key = f"#{rgb}"
+                counts[key] = counts.get(key, 0) + 1
+    return max(counts, key=counts.get) if counts else None
+
+
+def _tbl_border_color(table) -> str | None:
+    """First non-auto border color from w:tblBorders (representative of all edges)."""
+    try:
+        borders = table._tbl.tblPr.find(qn("w:tblBorders"))
+        if borders is None:
+            return None
+        for edge in ("top", "left", "bottom", "right"):
+            e = borders.find(qn(f"w:{edge}"))
+            if e is not None:
+                color = e.get(qn("w:color"))
+                if color and color.lower() != "auto":
+                    return f"#{color}"
+    except Exception:
+        pass
+    return None
+
+
 def _extract_body_styles(doc) -> dict:
     style = doc.styles["Normal"]
     pf = style.paragraph_format
-    size = style.font.size.pt if style.font.size else None
-    ls = pf.line_spacing
-    line_spacing = round(float(ls), 2) if isinstance(ls, float) and ls else 1.5
-    sa = pf.space_after.pt if pf.space_after else None
+    body = _body_paragraphs(doc)
+    run_size, run_family = _dominant_run_font(body)
+    style_size = style.font.size.pt if style.font.size else None
+    size = run_size or style_size
+    family = run_family or _style_font(style)
+
+    # Real docs set spacing/indent per-paragraph, not on the Normal style — sample the
+    # dominant paragraph value, then fall back to the style / a sensible default.
+    line_spacing = _dominant(body, _para_line_spacing_multiple)
+    if line_spacing is None:
+        ls = pf.line_spacing
+        line_spacing = round(float(ls), 2) if isinstance(ls, float) and ls else 1.5
+    space_after = _dominant(body, _para_space_after_pt)
+    if space_after is None:
+        sa = pf.space_after
+        space_after = int(sa.pt) if sa else 6
+    indent = _dominant(body, lambda p: _para_first_indent_chars(p, size))
+    if indent is None:
+        indent = 2  # ponytail: not derivable from style → default 2 字
+
     return {
-        "fontFamily": _style_font(style),
+        "fontFamily": family,
         "fontSize": int(size) if size else 12,
         "lineHeight": line_spacing,
-        "paragraphSpacing": int(sa) if sa else 6,
-        "firstLineIndent": 2,  # ponytail: char indent not reliably derivable → default
+        "paragraphSpacing": space_after,
+        "firstLineIndent": indent,
     }
 
 
@@ -86,14 +217,16 @@ def _extract_heading_styles(doc) -> list[dict]:
             style = doc.styles[f"Heading {level}"]
         except KeyError:
             continue
-        size = style.font.size.pt if style.font.size else None
+        run_size, run_family = _dominant_run_font(_heading_paragraphs(doc, level))
+        style_size = style.font.size.pt if style.font.size else None
+        size = run_size or style_size
         out.append(
             {
                 "level": level,
-                "fontFamily": _style_font(style),
+                "fontFamily": run_family or _style_font(style),
                 "fontSize": int(size) if size else defaults[level],
                 "fontWeight": 700 if style.font.bold else 400,
-                "color": _style_color(style, "#333333"),
+                "color": _dominant_run_color(_heading_paragraphs(doc, level)) or _style_color(style, "#333333"),
                 "numbering": "decimal",
             }
         )
@@ -174,7 +307,7 @@ def _extract_table_styles(doc) -> dict | None:
         # from direct cell shading or the table style's firstRow band above.
         "headerBg": f"#{header_bg}" if header_bg else "#FFFFFF",
         "headerColor": header_color or "#333333",
-        "borderColor": "#CCCCCC",
+        "borderColor": _tbl_border_color(table) or "#CCCCCC",
         "stripeRows": stripe,
     }
 

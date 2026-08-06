@@ -6,7 +6,7 @@ import pytest
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt
+from docx.shared import Cm, Pt, RGBColor
 
 from app.extensions.output.layout_import import extract_layout_from_docx
 
@@ -75,6 +75,26 @@ def test_heading_color_has_hash_prefix():
     doc.styles["Heading 1"].font.color.rgb = RGBColor(0x2B, 0x57, 0x9A)
     h1 = extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]
     assert h1["color"] == "#2B579A"
+
+
+def test_body_size_read_from_runs_not_style():
+    """Regression: body size set on runs (real docs, e.g. 四号=14pt) must be read, not the Normal default."""
+    doc = Document()
+    # Normal style left at template default; body runs explicitly at 四号 = 14pt
+    for txt in ("本项目位于某工业园区。", "厂区总平面布置符合防火间距要求。"):
+        run = doc.add_paragraph().add_run(txt)
+        run.font.size = Pt(14)
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["fontSize"] == 14
+
+
+def test_heading_size_read_from_runs_not_style():
+    """Heading size overridden on the run must be read, not only the Heading style."""
+    doc = Document()
+    h = doc.add_heading("第一章 概述", level=1)
+    h.runs[0].font.size = Pt(18)
+    doc.add_paragraph("正文内容。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["fontSize"] == 18
 
 
 def test_table_style_present_only_when_table_exists():
@@ -149,6 +169,64 @@ def test_table_style_banding_enables_striping():
     tsp.append(tc_pr)
     table.style.element.append(tsp)
     assert extract_layout_from_docx(_docx_bytes(doc))["table_styles"]["stripeRows"] is True
+
+
+def test_body_line_spacing_read_from_paragraphs_not_style():
+    """Regression: line spacing set per-paragraph (real docs) must be read, not the Normal default."""
+    doc = Document()
+    for txt in ("正文段落一。", "正文段落二。"):
+        p = doc.add_paragraph(txt)
+        p.paragraph_format.line_spacing = 1.73
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["lineHeight"] == 1.73
+
+
+def test_body_paragraph_spacing_read_from_paragraphs_not_style():
+    """Regression: space_after set per-paragraph must be read, not the Normal default."""
+    doc = Document()
+    for txt in ("正文段落一。", "正文段落二。"):
+        p = doc.add_paragraph(txt)
+        p.paragraph_format.space_after = Pt(10)
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["paragraphSpacing"] == 10
+
+
+def test_body_first_line_indent_derived_from_paragraphs():
+    """Regression: first-line indent (Pt) is converted to 字 chars using the body size."""
+    doc = Document()
+    for txt in ("正文段落一。", "正文段落二。"):
+        p = doc.add_paragraph(txt)
+        p.runs[0].font.size = Pt(14)  # 四号
+        p.paragraph_format.first_line_indent = Pt(28)  # 2 chars at 14pt
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["firstLineIndent"] == 2
+
+
+def test_heading_color_read_from_runs_not_style():
+    """Regression: heading color set on the run must be read, not the Heading style's color."""
+    doc = Document()
+    h = doc.add_heading("第一章 概述", level=1)
+    h.runs[0].font.color.rgb = RGBColor(0xFF, 0x00, 0x00)  # red on run, style untouched
+    doc.add_paragraph("正文内容。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["color"] == "#FF0000"
+
+
+def test_table_border_color_extracted_from_tblBorders():
+    """Regression: table border color must be read from w:tblBorders, not hardcoded gray."""
+    doc = Document()
+    doc.add_heading("标题", level=1)
+    table = doc.add_table(rows=2, cols=2)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        e = OxmlElement(f"w:{edge}")
+        e.set(qn("w:val"), "single")
+        e.set(qn("w:sz"), "4")
+        e.set(qn("w:space"), "0")
+        e.set(qn("w:color"), "000000")
+        borders.append(e)
+    table._tbl.tblPr.append(borders)
+    ts = extract_layout_from_docx(_docx_bytes(doc))["table_styles"]
+    assert ts["borderColor"] == "#000000"
 
 
 def test_figure_styles_null():
