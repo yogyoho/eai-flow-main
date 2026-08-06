@@ -173,10 +173,10 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
     if (ff) setFigureStyles(ff);
     const hf = data.header_footer as HeaderFooter | null | undefined;
     if (hf) setHeaderFooter(hf);
-    // 封面方案 A+C 兜底：cover_detected=false 时不动封面区
-    if (data.cover_detected === true) {
-      const ct = data.cover_template as CoverTemplate | null | undefined;
-      if (ct) setCoverTemplate(ct);
+    // 封面方案 A+C 兜底：cover_detected=false 或封面开关全为 false（歧义）时不动封面区，避免误清空用户已配置的封面
+    const ct = data.cover_template as CoverTemplate | null | undefined;
+    if (data.cover_detected === true && ct && (ct.showLogo || ct.showTitle || ct.showClient || ct.showDate || ct.showProjectNumber)) {
+      setCoverTemplate(ct);
     }
   }, []);
 
