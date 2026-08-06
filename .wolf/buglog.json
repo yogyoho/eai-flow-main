@@ -17355,5 +17355,113 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-06T22:40:00Z"
+  },
+  {
+    "id": "bug-1103",
+    "timestamp": "2026-08-06T23:30:00Z",
+    "error_message": "从样例导入排版:正文中文字体提取为 Times New Roman(西文),真实应为宋体。用户:很多样式项与样例不一样",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_run_font 在 run 无 w:eastAsia 时回落 run.font.name(=ascii 西文字体 Times New Roman)。真实样例 基地项目-消防设计专篇.docx 正文 904 个 run 中 887 个无 eastAsia(继承文档默认宋体),仅 17 个显式黑体;Normal 样式也无 eastAsia;font.name 回落把西文字体当中文字体输出。OOXML 字体模型:rFonts 有 ascii/hAnsi(西文)/eastAsia(CJK)/cs 四套,run.font.name 只返回 ascii。",
+    "fix": "新增 _cjk_font 级联解析(对中文文档):① 若 ≥50% run 显式声明 eastAsia→取主导 run eastAsia;② 否则 run 静默继承→走 style.eastAsia→docDefaults.eastAsia→style.font.name→宋体。_run_font 改为只返回 eastAsia(不再回落 font.name)。_doc_defaults_eastAsia 从 w:docDefaults 的 <w:rFonts w:eastAsia> 读取(scoped 到 rFonts,避开 <w:lang w:eastAsia> 区域码)。_clean_font 过滤 zh-CN/en-US 区域码。真实样例验证:body=宋体,H1=黑体,H2=宋体。+1 回归测试(_set_doc_default_eastAsia 注入 docDefaults)。",
+    "tags": [
+      "layout-import",
+      "docx",
+      "字体",
+      "eastAsia",
+      "CJK",
+      "docDefaults",
+      "OOXML",
+      "green-test-not-correct",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1101",
+      "bug-1102"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06T23:30:00Z"
+  },
+  {
+    "id": "bug-1104",
+    "timestamp": "2026-08-06T23:30:00Z",
+    "error_message": "从样例导入排版:页眉页脚全空/showPageNumber=false,真实应有页眉文本'基地综合大队建设项目消防专篇'与页脚页码(PAGE 域)",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_extract_header_footer 只读 doc.sections[0]。真实样例有 6 个 section:sec0/sec1(封面/目录区)页眉页脚为空,sec2-sec5(正文区)才有页眉'基地综合大队建设项目消防专篇'与页脚 PAGE 域。只看 sections[0]→全空。",
+    "fix": "_extract_header_footer 遍历所有 section:headerText/footerText 取第一个非空 section 的文本;showPageNumber/showLogo 任一 section 命中即为 true。真实样例验证:headerText='基地综合大队建设项目消防专篇',footerText='I 设计院',showPageNumber=true。+1 回归测试(add_section 第二 section 独立页眉页脚)。",
+    "tags": [
+      "layout-import",
+      "docx",
+      "页眉页脚",
+      "multi-section",
+      "header-footer",
+      "PAGE-field",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1101",
+      "bug-1102"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06T23:30:00Z"
+  },
+  {
+    "id": "bug-1105",
+    "timestamp": "2026-08-06T23:30:00Z",
+    "error_message": "从样例导入排版:封面误判 cover_detected=true/showTitle=true,真实样例第一个 Heading 前是目录(TOC)不是封面",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_detect_cover 把第一个 Heading 前所有非空段落当封面候选,未排除 toc 样式段落。真实样例 pre-heading 区={Normal:6, toc 1:8, toc 2:20}=目录页(toc 条目占主导),被误判为封面;showTitle 取最大字号段落=目录'目录'二字(16pt)→误 true。",
+    "fix": "_detect_cover 收集 pre 段落时,样式名含 toc/目录/contents 或文本为'目录'/'contents' 的段落标记 has_toc 并跳过(不作为封面候选);has_toc 为真→返回 None(按无封面处理,回退 C 保留编辑器原状,不臆造封面)。真实样例验证:cover_detected=false, cover_template=null。+1 回归测试(toc 样式段落→cover_detected False)。",
+    "tags": [
+      "layout-import",
+      "docx",
+      "封面",
+      "cover-detection",
+      "TOC",
+      "目录",
+      "false-positive",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1101",
+      "bug-1102"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06T23:30:00Z"
+  },
+  {
+    "id": "bug-1106",
+    "timestamp": "2026-08-07T00:05:00Z",
+    "error_message": "从样例导入排版:正文段后距(paragraphSpacing)被提取为 6,与样例不符(密集正文,实际段后距为 0)。",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_extract_body_styles 在 _dominant(body) 取不到 space_after(样例所有正文段落均未声明 space_after)且 Normal 样式也无(pPrDefault 为空)时,fallback 写死 6。6 是任意猜测值,非样例真实值。Ground-truth 验证:样例 body 段落 space_after 计数为空,docDefaults pPrDefault 为空 → 真实段后距 0。",
+    "fix": "fallback 从 `else 6` 改为 `else 0`(仅当段落与 Normal 均未声明 space_after 时)。真实样例验证:body paragraphSpacing 0。+1 回归测试(未声明 space_after→0)。",
+    "tags": ["layout-import", "docx", "段后距", "paragraphSpacing", "fallback", "real-sample-verified"],
+    "related_bugs": ["bug-1103", "bug-1104", "bug-1105"],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T00:05:00Z"
+  },
+  {
+    "id": "bug-1107",
+    "timestamp": "2026-08-07T00:06:00Z",
+    "error_message": "从样例导入排版:H1 标题颜色被提取为 #333333(深灰),与样例不符(实际为黑色 auto/#000000)。",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_extract_heading_styles 的 color = _dominant_run_color(hps) or _style_color(style, '#333333')。样例 H1 的 run 与 Heading 1 样式均未定义 color(Word auto),两路都返回 None → 命中 fallback '#333333'。但 Word auto 文本色渲染为黑色 #000000,#333333 是任意审美猜测。Ground-truth 验证:样例 H1 run color 计数为空,Heading 1 style color=None。",
+    "fix": "color fallback 从 '#333333' 改为 '#000000'(auto=黑)。真实样例验证:H1 color #000000。+1 回归测试(run 与样式均无 color→#000000)。",
+    "tags": ["layout-import", "docx", "标题颜色", "heading-color", "fallback", "real-sample-verified"],
+    "related_bugs": ["bug-1103", "bug-1106", "bug-1108"],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T00:06:00Z"
+  },
+  {
+    "id": "bug-1108",
+    "timestamp": "2026-08-07T00:07:00Z",
+    "error_message": "从样例导入排版:H1 numbering 提取为 'none',但同级 H2 提取为 'decimal',不一致。样例 H1 实为十进制章号('1  设计依据'/'2  概述')。",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_HEADING_DEC_RE = ^\\d+[.)）]|^\\d+\\.\\d+ 只识别 '1.'/'1)'/'1.1',漏掉中文报告常见的手写章号 '数字+≥2空格+文本'(样例 H1 '1  设计依据')。导致 H1 误判 none,而 H2 '1.1' 命中 decimal → 同份文档两级标题编号策略不一致。generator.py 消费:numbering=='decimal' 时计算并前置编号,none 不前置;不一致会破坏导出编号。",
+    "fix": "_HEADING_DEC_RE 增加第三支 ^\\d{1,3}\\s{2,}\\S 覆盖 '1  设计依据'(1-3位数字+≥2空格+非空);不误伤 '2024 年'/'100 万元'(无≥2空格分隔)。真实样例验证:H1/H2 均 decimal。+1 回归测试(数字+空格形式→decimal)。",
+    "tags": ["layout-import", "docx", "标题编号", "heading-numbering", "regex", "inconsistency", "real-sample-verified"],
+    "related_bugs": ["bug-1103", "bug-1106", "bug-1107"],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T00:07:00Z"
   }
 ]

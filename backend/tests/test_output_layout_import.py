@@ -328,6 +328,48 @@ def test_header_footer_page_number_false_when_no_field():
     assert extract_layout_from_docx(_docx_bytes(doc))["header_footer"]["showPageNumber"] is False
 
 
+def test_header_footer_from_non_first_section_when_first_blank():
+    """Regression (real sample has 6 sections): cover/TOC sections are blank; the body
+    sections carry the real header/footer. Must scan all sections, not just sections[0]."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    sec1 = doc.add_section()
+    sec1.header.is_linked_to_previous = False
+    sec1.footer.is_linked_to_previous = False
+    sec1.header.paragraphs[0].add_run("基地综合大队建设项目消防专篇")
+    fld = OxmlElement("w:fldSimple")
+    fld.set(qn("w:instr"), "PAGE")
+    sec1.footer.paragraphs[0]._p.append(fld)
+    hf = extract_layout_from_docx(_docx_bytes(doc))["header_footer"]
+    assert hf["headerText"] == "基地综合大队建设项目消防专篇"
+    assert hf["showPageNumber"] is True
+
+
+def _set_doc_default_eastAsia(doc, font):
+    """Inject w:eastAsia=font into w:docDefaults/rPrDefault/rPr/rFonts (mimics a real
+    CN doc whose body CJK font is inherited from the document default)."""
+    rpr_default = doc.styles.element.find(".//" + qn("w:rPrDefault"))
+    rpr = rpr_default.find(qn("w:rPr"))
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.insert(0, rfonts)
+    rfonts.set(qn("w:eastAsia"), font)
+
+
+def test_body_font_from_doc_defaults_when_runs_silent():
+    """Regression (real sample 基地项目-消防设计专篇): body runs set no w:eastAsia and
+    Normal has none either — the CJK font is inherited from w:docDefaults (宋体). Must
+    NOT report the Western run.font.name (Times New Roman)."""
+    doc = Document()
+    _set_doc_default_eastAsia(doc, "宋体")
+    doc.add_heading("第一章 概述", level=1)
+    p = doc.add_paragraph("这是正文内容，用于测试提取。")
+    p.runs[0].font.name = "Times New Roman"  # ascii/Western only — must NOT win for CJK
+    body = extract_layout_from_docx(_docx_bytes(doc))["body_styles"]
+    assert body["fontFamily"] == "宋体"
+
+
 def test_figure_styles_null():
     assert data_for()["figure_styles"] is None
 
@@ -396,6 +438,23 @@ def test_figure_show_source_false_when_no_source_line():
 
 def test_no_cover_detected_for_plain_document():
     assert data_for()["cover_detected"] is False
+
+
+def test_cover_not_detected_when_pre_region_is_toc():
+    """Regression (real sample): the pages before the first Heading are a TABLE OF
+    CONTENTS (toc-styled entries), not a cover. Must NOT fabricate a cover."""
+    from docx.enum.style import WD_STYLE_TYPE
+
+    doc = Document()
+    try:
+        toc = doc.styles.add_style("toc 1", WD_STYLE_TYPE.PARAGRAPH)
+    except ValueError:  # default template may already define toc 1
+        toc = doc.styles["toc 1"]
+    doc.add_paragraph("第一章 概述 .......... 1", style=toc)
+    doc.add_paragraph("1.1 设计依据 ........ 2", style=toc)
+    doc.add_paragraph("第二章 总平面 .......... 5", style=toc)
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["cover_detected"] is False
 
 
 def test_cover_logo_position_left_for_default_left_alignment():
@@ -471,3 +530,40 @@ def test_validate_docx_upload_returns_extraction():
     data = _docx_bytes(doc)
     result = validate_docx_upload("report.docx", data)
     assert result["page_settings"]["paperSize"] == "A4"
+
+
+def test_body_paragraph_spacing_zero_when_undeclared():
+    """Regression (real sample 基地项目-消防设计专篇): no body paragraph declares space_after
+    and Normal/pPrDefault define none either → the faithful value is 0 (dense body), not
+    the old guessed 6."""
+    doc = Document()
+    doc.styles["Normal"].paragraph_format.space_after = None  # sample's Normal declares none
+    for txt in ("正文段落一。", "正文段落二。"):
+        p = doc.add_paragraph(txt)
+        p.runs[0].font.size = Pt(14)
+    doc.add_heading("第一章 概述", level=1)
+    assert extract_layout_from_docx(_docx_bytes(doc))["body_styles"]["paragraphSpacing"] == 0
+
+
+def test_heading_color_black_when_neither_run_nor_style_declares():
+    """Regression (real sample H1): neither the run nor the Heading 1 style defines a color
+    → Word renders auto/black. Must be #000000, not the old guessed #333333."""
+    doc = Document()
+    rpr = doc.styles["Heading 1"].element.find(qn("w:rPr"))
+    if rpr is not None:
+        color = rpr.find(qn("w:color"))
+        if color is not None:
+            rpr.remove(color)
+    doc.add_heading("概述", level=1)
+    doc.add_paragraph("正文。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["color"] == "#000000"
+
+
+def test_heading_numbering_decimal_for_digit_spaces_form():
+    """Regression (real sample H1 '1  设计依据'): a chapter number written as digit + ≥2
+    spaces + text IS decimal numbering, not 'none'. Previously only '1.' / '1.1' matched,
+    so H1 came back 'none' while sibling H2 (1.1) was 'decimal' — inconsistent."""
+    doc = Document()
+    doc.add_heading("1  设计依据", level=1)
+    doc.add_paragraph("正文。")
+    assert extract_layout_from_docx(_docx_bytes(doc))["heading_styles"][0]["numbering"] == "decimal"

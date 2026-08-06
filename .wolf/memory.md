@@ -4822,3 +4822,46 @@
 | 21:36 | Edited backend/tests/test_output_layout_import.py | modified test_heading_size_read_from_runs_not_style() | ~347 |
 | 21:37 | Edited backend/app/extensions/output/layout_import.py | modified _extract_heading_styles() | ~245 |
 | 21:38 | Edited backend/tests/test_output_layout_import.py | 3→4 lines | ~77 |
+| 21:40 | Session end: 10 writes across 3 files (layout_import.py, test_output_layout_import.py, _diag_heading.py) | 2 reads | ~16255 tok |
+| 21:48 | Created backend/_dump_layout.py | — | ~1493 |
+| 21:49 | Created backend/_dump2.py | — | ~585 |
+
+## Session: 2026-08-06 21:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:54 | Created backend/_dump_layout.py | — | ~771 |
+| 21:54 | Edited backend/_dump_layout.py | 7→9 lines | ~71 |
+| 21:55 | Edited backend/_dump_layout.py | 17→17 lines | ~146 |
+| 22:00 | Created backend/_probe.py | — | ~208 |
+| 22:01 | Edited backend/app/extensions/output/layout_import.py | modified _clean_font() | ~335 |
+| 22:01 | Edited backend/app/extensions/output/layout_import.py | modified _run_font() | ~430 |
+| 22:01 | Edited backend/app/extensions/output/layout_import.py | _style_font() → _cjk_font() | ~62 |
+| 22:01 | Edited backend/app/extensions/output/layout_import.py | _style_font() → _cjk_font() | ~113 |
+| 22:02 | Edited backend/app/extensions/output/layout_import.py | modified _extract_header_footer() | ~376 |
+| 22:02 | Edited backend/app/extensions/output/layout_import.py | modified startswith() | ~170 |
+| 22:04 | Edited backend/tests/test_output_layout_import.py | modified test_header_footer_from_non_first_section_when_first_blank() | ~556 |
+| 22:04 | Edited backend/tests/test_output_layout_import.py | modified test_cover_not_detected_when_pre_region_is_toc() | ~234 |
+| 22:04 | Created backend/_verify.py | — | ~239 |
+| 22:05 | Created backend/_verify.py | — | ~160 |
+| 23:35 | layout-import 三 bug 修复+真实样例验证 | layout_import.py / test_output_layout_import.py | body 字体 Times New Roman→宋体(_cjk_font 级联:run eastAsia≥50%→style→docDefaults→宋体); 页眉页脚全空→遍历 6 section 取非空(基地综合大队…+PAGE 域); 封面误判→排除 toc 目录页(cover_detected false)。45 测试绿+真实样例 基地项目-消防设计专篇.docx 逐字段验证通过。bug-1103/1104/1105 | ~2k |
+| 22:10 | Created backend/_e2e.py | — | ~421 |
+| 22:17 | Created backend/_e2e.py | — | ~382 |
+| 22:18 | Created backend/_e2e.py | — | ~358 |
+
+## Session: 2026-08-06 22:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:23 | Created backend/_dump_layout.py | — | ~131 |
+| 22:24 | Created backend/_verify_layout.py | — | ~1539 |
+| 22:26 | Created backend/_verify2.py | — | ~425 |
+| 22:27 | Edited backend/app/extensions/output/layout_import.py | 1→3 lines | ~48 |
+| 22:27 | Edited backend/app/extensions/output/layout_import.py | 4→6 lines | ~75 |
+| 22:27 | Edited backend/app/extensions/output/layout_import.py | 1→3 lines | ~56 |
+| 22:29 | Edited backend/tests/test_output_layout_import.py | modified test_validate_docx_upload_returns_extraction() | ~600 |
+| 23:35 | PART A 全量提取 dump (真实样例 基地项目-消防设计专篇.docx) 经 gateway 容器直调 extract_layout_from_docx | backend/_dump_layout.py(已删) | 完整 JSON(page_settings/body_styles/heading_styles/table_styles/figure_styles/header_footer/cover) | ~3000 |
+| 23:40 | PART B ground-truth 交叉验证(docDefaults/Normal/Heading 样式+run 分布/段后距/首行缩进/图表) | backend/_verify_layout.py,_verify2.py(已删) | 定位 3 处 fallback 臆造:段后距6→0/H1色#333333→#000000/H1编号none→decimal;排除 5 项"看着可疑实则正确" | ~3500 |
+| 23:48 | 修复 3 处 + 3 回归测试 | layout_import.py(_HEADING_DEC_RE+段后距fallback+H1色fallback),test_output_layout_import.py | 48 passed,ruff clean,真实样例验证段落0/H1色#000000/H1 decimal | ~900 |
+| 23:55 | OpenWolf 记账 | buglog.json(bug-1106/1107/1108),cerebrum.md(默认值不可臆造+消费侧语义优先) | valid 1067 entries | ~400 |
+| 22:32 | Session end: 7 writes across 5 files (_dump_layout.py, _verify_layout.py, _verify2.py, layout_import.py, test_output_layout_import.py) | 3 reads | ~30224 tok |

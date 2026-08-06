@@ -41,15 +41,37 @@ def _paper_from_dimensions(width_cm: float, height_cm: float) -> tuple[str, str]
     return best, orientation
 
 
-def _style_font(style) -> str:
-    """eastAsia-first font name for a docx style (CJK samples set w:eastAsia)."""
+_LOCALE_RE = re.compile(r"^[a-z]{2}-[A-Z]{2}$")
+
+
+def _clean_font(name: str | None) -> str | None:
+    """A real font name, or None. Filters OOXML locale codes (zh-CN / en-US) that
+    appear in w:eastAsia slots but are region tags, not fonts."""
+    if not name or _LOCALE_RE.match(name):
+        return None
+    return name
+
+
+def _style_eastAsia(style) -> str | None:
+    """w:eastAsia CJK font declared on a style (cleaned), or None."""
     try:
         m = re.search(r'w:eastAsia="([^"]+)"', style.element.xml)
-        if m:
-            return m.group(1)
+        return _clean_font(m.group(1)) if m else None
     except Exception:
-        pass
-    return style.font.name or "宋体"
+        return None
+
+
+def _doc_defaults_eastAsia(doc) -> str | None:
+    """Document default CJK font from w:docDefaults' <w:rFonts w:eastAsia=...>.
+
+    CN docs commonly leave the Normal style and most runs unformatted, so body text
+    inherits this default (typically 宋体). Scoped to rFonts so it ignores the
+    unrelated <w:lang w:eastAsia="zh-CN"> locale tag."""
+    try:
+        m = re.search(r'<w:docDefaults>.*?<w:rFonts[^>]*w:eastAsia="([^"]+)"', doc.styles.element.xml, re.S)
+        return _clean_font(m.group(1)) if m else None
+    except Exception:
+        return None
 
 
 def _style_color(style, default: str) -> str:
@@ -63,14 +85,36 @@ def _style_color(style, default: str) -> str:
 
 
 def _run_font(run) -> str | None:
-    """eastAsia-first font name on a run, or None if not explicitly set."""
+    """w:eastAsia CJK font on a run (cleaned), or None when the run sets none and
+    therefore inherits. Deliberately NOT run.font.name — that returns the Western
+    (ascii) font (e.g. Times New Roman), which is wrong for CJK text."""
     try:
         m = re.search(r'w:eastAsia="([^"]+)"', run._element.xml)
-        if m:
-            return m.group(1)
-        return run.font.name
+        return _clean_font(m.group(1)) if m else None
     except Exception:
         return None
+
+
+def _cjk_font(doc, style, paragraphs) -> str:
+    """Resolve the CJK font body/heading text actually renders in.
+
+    CN docs rarely set w:eastAsia on every run — most runs are *silent* and inherit
+    the document/style default. So if a MAJORITY of runs declare eastAsia the text
+    actively uses that font (take the dominant); otherwise the runs inherit and we
+    walk style.eastAsia → docDefaults.eastAsia → style.font.name → 宋体. Counting the
+    few runs that DO declare (often emphasis/labels) would mislabel the whole body —
+    e.g. 17 黑体 runs among 887 silent 宋体 runs must not win."""
+    runs = [r for p in paragraphs for r in p.runs]
+    declared: dict[str, int] = {}
+    for r in runs:
+        fam = _run_font(r)
+        if fam:
+            declared[fam] = declared.get(fam, 0) + 1
+    if runs and declared:
+        top_font, top_n = max(declared.items(), key=lambda kv: kv[1])
+        if top_n >= len(runs) * 0.5:
+            return top_font
+    return _style_eastAsia(style) or _doc_defaults_eastAsia(doc) or _clean_font(style.font.name) or "宋体"
 
 
 def _dominant_run_font(paragraphs) -> tuple[float | None, str | None]:
@@ -176,7 +220,9 @@ def _dominant_run_bold(paragraphs) -> bool | None:
 
 
 _HEADING_CN_RE = re.compile(r"^第[一二三四五六七八九十百零\d]+章|^[一二三四五六七八九十]+[、.．]")
-_HEADING_DEC_RE = re.compile(r"^\d+[.\)）]|^\d+\.\d+")
+# 第三支 `^\d{1,3}\s{2,}\S` 覆盖中文报告常见的手写章号 "1  设计依据"（数字+≥2空格），
+# 不会误伤 "2024 年" / "100 万元"（无 ≥2 空格分隔）。
+_HEADING_DEC_RE = re.compile(r"^\d+[.\)）]|^\d+\.\d+|^\d{1,3}\s{2,}\S")
 
 # Figure caption detection. CN report authors hand-type captions (图1-1 / 图1) rather
 # than using Word's Caption style, so we match the text first and the style as a fallback.
@@ -230,10 +276,10 @@ def _extract_body_styles(doc) -> dict:
     style = doc.styles["Normal"]
     pf = style.paragraph_format
     body = _body_paragraphs(doc)
-    run_size, run_family = _dominant_run_font(body)
+    run_size, _ = _dominant_run_font(body)
     style_size = style.font.size.pt if style.font.size else None
     size = run_size or style_size
-    family = run_family or _style_font(style)
+    family = _cjk_font(doc, style, body)
 
     # Real docs set spacing/indent per-paragraph, not on the Normal style — sample the
     # dominant paragraph value, then fall back to the style / a sensible default.
@@ -243,7 +289,9 @@ def _extract_body_styles(doc) -> dict:
     space_after = _dominant(body, _para_space_after_pt)
     if space_after is None:
         sa = pf.space_after
-        space_after = int(sa.pt) if sa else 6
+        # 样例段落普遍未声明 space_after 且 pPrDefault 为空 → 段后距实为 0（密集正文），
+        # 不是任意猜测值。仅当 Normal 样式显式定义时才取它。
+        space_after = int(sa.pt) if sa else 0
     indent = _dominant(body, lambda p: _para_first_indent_chars(p, size))
     if indent is None:
         indent = 2  # ponytail: not derivable from style → default 2 字
@@ -275,7 +323,7 @@ def _extract_heading_styles(doc) -> list[dict]:
             style = doc.styles[f"Heading {level}"]
         except KeyError:
             continue
-        run_size, run_family = _dominant_run_font(hps)
+        run_size, _ = _dominant_run_font(hps)
         style_size = style.font.size.pt if style.font.size else None
         size = run_size or style_size
         run_bold = _dominant_run_bold(hps)
@@ -283,10 +331,12 @@ def _extract_heading_styles(doc) -> list[dict]:
         out.append(
             {
                 "level": level,
-                "fontFamily": run_family or _style_font(style),
+                "fontFamily": _cjk_font(doc, style, hps),
                 "fontSize": int(size) if size else defaults[level],
                 "fontWeight": 700 if bold else 400,
-                "color": _dominant_run_color(hps) or _style_color(style, "#333333"),
+                # 样例 H1 样式与 run 均未定义 color（Word auto），auto 渲染为黑色 #000000，
+                # 不是猜测的深灰 #333333。
+                "color": _dominant_run_color(hps) or _style_color(style, "#000000"),
                 "numbering": _heading_numbering(hps),
             }
         )
@@ -371,7 +421,7 @@ def _extract_table_styles(doc) -> dict | None:
 
 
 def _extract_header_footer(doc) -> dict:
-    section = doc.sections[0]
+    sections = doc.sections
 
     def _text(part) -> str:
         if part is None:
@@ -394,11 +444,16 @@ def _extract_header_footer(doc) -> dict:
         except Exception:
             return False
 
+    # A multi-section report commonly leaves the cover/TOC sections blank and only
+    # fills the body sections, so scan every section: take the first non-empty header/
+    # footer, and turn on page-number/logo if ANY section shows them.
+    header_text = next((_text(s.header) for s in sections if _text(s.header)), "")
+    footer_text = next((_text(s.footer) for s in sections if _text(s.footer)), "")
     return {
-        "headerText": _text(section.header),
-        "footerText": _text(section.footer),
-        "showPageNumber": _has_page_field(section.footer) or _has_page_field(section.header),
-        "showLogo": _has_image(section.header),
+        "headerText": header_text,
+        "footerText": footer_text,
+        "showPageNumber": any(_has_page_field(s.footer) or _has_page_field(s.header) for s in sections),
+        "showLogo": any(_has_image(s.header) for s in sections),
     }
 
 
@@ -427,11 +482,21 @@ def _detect_cover(doc) -> dict | None:
         different_first = False
 
     pre: list = []
+    has_toc = False
     for p in doc.paragraphs:
         if p.style.name.startswith("Heading"):
             break
-        if p.text.strip():
-            pre.append(p)
+        if not p.text.strip():
+            continue
+        # 目录页(TOC)不是封面:toc 样式条目或"目录"/"contents"标题属于前置目录。
+        if re.search(r"toc|目录|contents", p.style.name or "", re.I) or re.match(r"^目\s*录$|^contents$", p.text.strip(), re.I):
+            has_toc = True
+            continue
+        pre.append(p)
+
+    # 第一个 Heading 前是目录页 → 按无封面处理(回退 C,保留编辑器原状,不臆造封面)。
+    if has_toc:
+        return None
 
     if not different_first and len(pre) < 3:
         return None
