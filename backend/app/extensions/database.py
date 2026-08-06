@@ -231,6 +231,14 @@ async def migrate_db() -> None:
         await conn.execute(
             text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()")
         )
+        # EAI-CUSTOM (标签池 A): 用户显式标签列
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tags VARCHAR[]")
+        )
+        # 收口早前 TEXT[] 版建的列（幂等:VARCHAR[]→VARCHAR[] 为 no-op）
+        await conn.execute(
+            text("ALTER TABLE users ALTER COLUMN tags TYPE VARCHAR[] USING tags::varchar[]")
+        )
         # EAI-CUSTOM: module nav visibility
         await conn.execute(
             text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS nav VARCHAR(200)[] DEFAULT '{}'")
@@ -1553,13 +1561,7 @@ async def seed_db() -> None:
             except Exception as e:
                 logger.warning(f"Failed to seed dictionary data: {e}")
 
-            # Seed built-in layout templates for report output
-            try:
-                from app.extensions.output.seed import seed_builtin_templates
-
-                await seed_builtin_templates(session)
-            except Exception as e:
-                logger.warning(f"Failed to seed layout templates: {e}")
+            # EAI-CUSTOM: built-in layout template seeding removed (2026-08) — 预置模板无用，用户只保留自建模板
 
             # Seed app-center domains + apps
             try:
