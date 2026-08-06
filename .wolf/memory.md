@@ -4708,3 +4708,48 @@
 |------|--------|---------|---------|--------|
 | 17:32 | Created docs/superpowers/specs/2026-08-06-word-export-layout-import-design.md | — | ~1462 |
 | 17:32 | design: word export layout import spec written (shared docx extract endpoint + TOC UI + cover preview + fix docmgr dead button) | docs/superpowers/specs/2026-08-06-word-export-layout-import-design.md | ~1.2k |
+| 17:32 | Edited docs/superpowers/specs/2026-08-06-word-export-layout-import-design.md | 3→3 lines | ~120 |
+| 17:33 | Session end: 2 writes across 1 files (2026-08-06-word-export-layout-import-design.md) | 10 reads | ~55776 tok |
+
+## Session: 2026-08-06 17:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:00 | Created docs/superpowers/plans/2026-08-06-word-export-layout-import.md | — | ~7930 |
+| 18:00 | Edited docs/superpowers/plans/2026-08-06-word-export-layout-import.md | modified data_for() | ~286 |
+| 18:01 | Session end: 2 writes across 1 files (2026-08-06-word-export-layout-import.md) | 8 reads | ~41381 tok |
+| 18:04 | Created backend/tests/test_output_layout_import.py | — | ~900 |
+| 18:04 | Created backend/app/extensions/output/layout_import.py | — | ~2167 |
+| 18:04 | Edited backend/app/extensions/output/layout_import.py | inline fix | ~30 |
+| 18:12 | Session end: 5 writes across 3 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py) | 14 reads | ~54979 tok |
+| 18:12 | Edited backend/app/extensions/output/layout_import.py | modified _para_align() | ~58 |
+| 18:12 | Edited backend/tests/test_output_layout_import.py | modified test_no_cover_detected_for_plain_document() | ~174 |
+| 18:14 | Edited backend/tests/test_output_layout_import.py | modified test_rejects_non_docx_bytes() | ~147 |
+| 18:15 | Edited backend/app/extensions/output/routers.py | added 1 import(s) | ~50 |
+| 18:15 | Edited backend/app/extensions/output/routers.py | modified import_layout() | ~254 |
+| 18:20 | Edited backend/tests/test_output_layout_import.py | modified test_validate_docx_upload_rejects_non_docx_filename() | ~291 |
+| 18:20 | Edited backend/tests/test_docmgr_export.py | modified test_docmgr_router_registers_import_layout() | ~213 |
+| 18:20 | Edited backend/app/extensions/output/layout_import.py | modified validate_docx_upload() | ~197 |
+| 18:20 | Edited backend/app/extensions/output/routers.py | inline fix | ~20 |
+| 18:20 | Edited backend/app/extensions/output/routers.py | modified import_layout() | ~138 |
+| 18:21 | Edited backend/app/extensions/docmgr/routers.py | inline fix | ~25 |
+| 18:21 | Edited backend/app/extensions/docmgr/routers.py | modified import_layout_docmgr() | ~267 |
+| 18:26 | Edited frontend/src/extensions/output/api.ts | modified async() | ~159 |
+| 18:29 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | added 1 import(s) | ~66 |
+| 18:29 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | 3→5 lines | ~58 |
+| 18:29 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | added error handling | ~523 |
+| 18:29 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | added optional chaining | ~331 |
+| 18:35 | Session end: 22 writes across 7 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 18 reads | ~73273 tok |
+| 18:35 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | 7→7 lines | ~121 |
+| 18:37 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | expanded (+38 lines) | ~524 |
+| 18:39 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | expanded (+18 lines) | ~469 |
+| 18:40 | Created frontend/scratch-rule-test.ts | — | ~94 |
+| 18:41 | Created frontend/scratch-rule-test.ts | — | ~148 |
+| 18:42 | Edited frontend/src/extensions/output/components/LayoutTemplateEditor.tsx | added nullish coalescing | ~70 |
+| 18:45 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | expanded (+12 lines) | ~369 |
+| 18:46 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | inline fix | ~68 |
+| 18:48 | Session end: 30 writes across 9 files (2026-08-06-word-export-layout-import.md, test_output_layout_import.py, layout_import.py, routers.py, test_docmgr_export.py) | 20 reads | ~89046 tok |
+| 18:48 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | 3→1 lines | ~4 |
+| 18:48 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | 3→2 lines | ~17 |
+| 18:48 | Edited frontend/src/extensions/docmgr/ExportDocxDialog.tsx | inline fix | ~20 |
+| 18:58 | feat word-export-layout-import done: layout_import.py + /import-layout x2端点 + 编辑器导入/目录/封面预览 + docmgr 修坏按钮&保存模板丢参; 50 tests, tsc/eslint clean, gateway 401-up | layout_import.py routers.py x2 LayoutTemplateEditor ExportDocxDialog api.ts | 11 commits |
