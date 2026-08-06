@@ -215,3 +215,20 @@ def test_knowledge_base_grant_model_registered():
     assert KnowledgeBaseGrant.__tablename__ == "knowledge_base_grants"
     cols = {c.name for c in KnowledgeBaseGrant.__table__.columns}
     assert {"kb_id", "grantee_type", "grantee_id", "permission", "expires_at", "created_by", "created_at"} <= cols
+
+
+# ---------------------------------------------------------------------------
+# Task 2: kb_grant_visible_clause — 授权可见性 EXISTS 子句
+# ---------------------------------------------------------------------------
+
+
+def test_kb_grant_visible_clause_sql_contains_grant_table_and_matches():
+    from app.extensions.knowledge.access import kb_grant_visible_clause
+
+    idn = AttributeSet(user_id="u1", username="u1", role_code="dept_head", dept_ids=["d1"])
+    sql = str(kb_grant_visible_clause(idn).compile(compile_kwargs={"literal_binds": True})).lower()
+    assert "knowledge_base_grants" in sql
+    assert "user" in sql and "u1" in sql
+    assert "dept" in sql and "d1" in sql
+    assert "dept_head" in sql
+    assert "expires_at" in sql
