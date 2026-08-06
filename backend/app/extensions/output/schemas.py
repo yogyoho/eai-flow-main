@@ -40,8 +40,8 @@ class CoverSlotSchema(BaseModel):
 class CoverMasterSchema(BaseModel):
     mode: str = "master"
     xml: str
-    images: list[dict] = []
-    slots: list[CoverSlotSchema] = []
+    images: list[dict] = Field(default_factory=list)
+    slots: list[CoverSlotSchema] = Field(default_factory=list)
     sourceFile: str = ""
     boundary: str = "before_toc"
 
