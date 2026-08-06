@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.output.generator import generate_docx
+from app.extensions.output.layout_import import extract_layout_from_docx
 from app.extensions.output.schemas import (
     LayoutTemplateCreate,
     LayoutTemplateListResponse,
@@ -147,6 +148,23 @@ async def duplicate_template(
         raise HTTPException(status_code=404, detail="Template not found")
     duplicated = await LayoutTemplateService.duplicate_template(db, template)
     return LayoutTemplateResponse.model_validate(duplicated)
+
+
+@router.post("/import-layout")
+async def import_layout(
+    file: UploadFile = File(...),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """Upload a .docx sample → deterministic layout-template extraction (5 groups + cover detection)."""
+    if not file.filename or not file.filename.lower().endswith(".docx"):
+        raise HTTPException(status_code=400, detail="仅支持 .docx 文件")
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件不能超过 10MB")
+    try:
+        return extract_layout_from_docx(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # --- Report Generation ---

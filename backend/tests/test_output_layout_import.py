@@ -116,3 +116,13 @@ def test_cover_detected_for_first_page_cover():
 def test_rejects_non_docx_bytes():
     with pytest.raises(ValueError):
         extract_layout_from_docx(b"this is definitely not a docx file")
+
+
+def test_output_router_registers_import_layout():
+    from app.extensions.output.routers import router
+
+    paths = set()
+    for route in router.routes:
+        for method in getattr(route, "methods", None) or set():
+            paths.add((route.path, method))
+    assert ("/api/extensions/output/import-layout", "POST") in paths, "output import-layout route missing"
