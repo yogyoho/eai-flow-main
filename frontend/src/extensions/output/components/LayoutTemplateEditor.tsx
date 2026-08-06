@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
-import React, { useState, useCallback } from "react";
+import { ChevronDown, ChevronRight, FileUp, Loader2 } from "lucide-react";
+import React, { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import type {
@@ -133,6 +134,8 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
   const [appendixRules, setAppendixRules] = useState<AppendixRules | null>(template?.appendixRules ?? null);
 
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = useCallback(async () => {
     if (!name.trim()) return;
@@ -156,6 +159,46 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
       setSaving(false);
     }
   }, [name, reportType, pageSettings, coverTemplate, tocSettings, bodyStyles, headingStyles, tableStyles, figureStyles, headerFooter, referenceStyle, appendixRules, onSave]);
+
+  const applyImported = useCallback((data: Record<string, unknown>) => {
+    const ps = data.page_settings as PageSettings | undefined;
+    if (ps) setPageSettings(ps);
+    const bs = data.body_styles as BodyStyles | undefined;
+    if (bs) setBodyStyles(bs);
+    const hs = data.heading_styles as HeadingStyle[] | undefined;
+    if (hs?.length) setHeadingStyles(hs.map((h) => ({ ...h })));
+    const ts = data.table_styles as TableStyles | null | undefined;
+    if (ts) setTableStyles(ts);
+    const ff = data.figure_styles as FigureStyles | null | undefined;
+    if (ff) setFigureStyles(ff);
+    const hf = data.header_footer as HeaderFooter | null | undefined;
+    if (hf) setHeaderFooter(hf);
+    // 封面方案 A+C 兜底：cover_detected=false 时不动封面区
+    if (data.cover_detected === true) {
+      const ct = data.cover_template as CoverTemplate | null | undefined;
+      if (ct) setCoverTemplate(ct);
+    }
+  }, []);
+
+  const handleImportedFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setImporting(true);
+      try {
+        const { outputApi } = await import("@/extensions/output/api");
+        const data = await outputApi.importLayout(file);
+        applyImported(data);
+        toast.success("已从样例文档提取排版");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "无法从该文件提取排版信息");
+      } finally {
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [applyImported],
+  );
 
   const updateHeading = (index: number, field: keyof HeadingStyle, value: string | number) => {
     setHeadingStyles((prev) => prev.map((h, i) => (i === index ? { ...h, [field]: value } : h)));
@@ -193,6 +236,21 @@ export function LayoutTemplateEditor({ template, onSave, onCancel }: LayoutTempl
               <div>
                 <FieldLabel>报告类型</FieldLabel>
                 <AdminSelect value={reportType} onChange={setReportType} options={REPORT_TYPE_OPTIONS} className="w-full" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importing}
+                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                  >
+                    {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+                    {importing ? "提取中..." : "从样例导入排版"}
+                  </button>
+                  <span className="text-xs text-muted-foreground">上传 .docx 样例自动提取排版参数</span>
+                </div>
+                <input ref={fileInputRef} type="file" accept=".docx" onChange={handleImportedFile} className="hidden" />
               </div>
             </div>
           </Section>
