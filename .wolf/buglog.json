@@ -17307,5 +17307,28 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-06"
+  },
+  {
+    "id": "bug-1101",
+    "timestamp": "2026-08-06T21:55:00Z",
+    "error_message": "从样例导入排版:图表样式三项(标题位置 captionPosition/编号方式 numbering/显示来源 showSource)未从样例提取,也未赋值到表单——figure_styles 恒为 null",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "extract_layout_from_docx 硬编码 figure_styles: None,无 _extract_figure_styles;前端 applyImported 虽有 if(ff) setFigureStyles(ff) 接线,但 ff 恒 null → 死分支,图表区维持编辑器默认(下方/章节/true)。与既有盲点同源:接线存在但喂不进数据。",
+    "fix": "新增 _extract_figure_styles(doc):题注检测(_is_caption=Caption/题注样式 or 文本 图d/figured);captionPosition=题注在图后→below/图前→above;numbering=图1-1→chapter/图1→continuous;showSource=全文搜 数据来源/来源/source 正则;无图无题注→None(不动表单)。replace None → _extract_figure_styles(doc)。+7 回归测试(ruff format)。端到端验证:login200+import-layout API 返回 figure_styles={captionPosition:below,numbering:chapter,showSource:True}。",
+    "tags": [
+      "layout-import",
+      "figure-styles",
+      "docx",
+      "图表",
+      "题注",
+      "import-layout",
+      "dead-wiring"
+    ],
+    "related_bugs": [
+      "bug-1099",
+      "bug-1100"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-06T21:55:00Z"
   }
 ]

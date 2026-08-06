@@ -283,6 +283,68 @@ def test_figure_styles_null():
     assert data_for()["figure_styles"] is None
 
 
+def _blip_run(para) -> None:
+    """Append a minimal drawingml image marker to a paragraph (mimics an embedded figure)."""
+    run = para.add_run()
+    run._r.append(OxmlElement("a:blip"))
+
+
+def _doc_with_figure(*, caption: str | None = None, caption_above: bool = False, source: str | None = None) -> bytes:
+    """A doc with one figure (image paragraph) and an optional caption / source line."""
+    doc = Document()
+    doc.add_heading("第一章 概述", level=1)
+    doc.add_paragraph("正文内容。")
+    if caption and caption_above:
+        doc.add_paragraph(caption)
+    _blip_run(doc.add_paragraph())  # the figure (image paragraph)
+    if caption and not caption_above:
+        doc.add_paragraph(caption)
+    if source:
+        doc.add_paragraph(source)
+    return _docx_bytes(doc)
+
+
+def test_figure_styles_none_when_no_figures_or_captions():
+    """No image and no caption text → figure_styles None (leave the form's figure config alone)."""
+    assert data_for()["figure_styles"] is None
+
+
+def test_figure_caption_position_below():
+    """A caption paragraph right after an image → captionPosition 'below'."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1 厂区平面图"))["figure_styles"]
+    assert fs["captionPosition"] == "below"
+
+
+def test_figure_caption_position_above():
+    """A caption paragraph right before an image → captionPosition 'above'."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1 厂区平面图", caption_above=True))["figure_styles"]
+    assert fs["captionPosition"] == "above"
+
+
+def test_figure_numbering_chapter():
+    """A chapter-segmented caption (图1-1) → numbering 'chapter'."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1-1 厂区平面图"))["figure_styles"]
+    assert fs["numbering"] == "chapter"
+
+
+def test_figure_numbering_continuous():
+    """A plain sequential caption (图1) → numbering 'continuous'."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1 厂区平面图"))["figure_styles"]
+    assert fs["numbering"] == "continuous"
+
+
+def test_figure_show_source_true_when_source_line_present():
+    """A 数据来源 line near the figure → showSource True."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1 厂区平面图", source="数据来源：自绘"))["figure_styles"]
+    assert fs["showSource"] is True
+
+
+def test_figure_show_source_false_when_no_source_line():
+    """A figure with no source line → showSource False (not a hardcoded True)."""
+    fs = extract_layout_from_docx(_doc_with_figure(caption="图1 厂区平面图"))["figure_styles"]
+    assert fs["showSource"] is False
+
+
 def test_no_cover_detected_for_plain_document():
     assert data_for()["cover_detected"] is False
 

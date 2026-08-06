@@ -338,3 +338,8 @@
 - **标题编号识别**: 中文报告通常把编号手打进标题文本(第一章/一、/1./1.1)而非用 Word 列表自动编号 → 先正则匹配文本(第X章|一、→chinese; ^\d[.)]|^\d.\d→decimal),再查 w:pPr/w:numPr(自动编号→decimal),都无→none。numId→abstractNum→lvlText 解析 decimal/天干/字母 的完整解析需 numbering.xml,ponytail 省略。
 - **页眉 logo 检测**: header part XML 里 `.//{drawingml}blip` 存在即有图 → showLogo=true(复用 _DRAWML 常量,同 cover 的 _para_has_image 思路)。
 - **标题字重**: 读 run 主导 bold(_dominant_run_bold),样式 bold 仅作 fallback;run 显式 False 能压过样式 True。
+
+## [2026-08-06] Key Learnings 补遗 (图表样式提取 figure_styles)
+- **图表样式三项可从题注/正文文本检测**: captionPosition(标题位置)= 题注段落在图(image 段,_para_has_image)的下一段→below / 上一段→above;numbering(编号方式)= 题注文本 图1-1 / figure1-1(chapter)vs 图1 / figure1(continuous);showSource(显示来源)= 全文搜 数据来源/资料来源/图片来源/来源/source 正则。无图且无题注→返回 None,不动表单(同 cover_detected/table_styles 的"检测不到就不覆盖用户配置"原则)。
+- **题注识别**: CN 报告作者手打题注文本(图1-1/图1)而非用 Word Caption 样式 → 先正则匹配文本,样式(Caption/题注)仅作 fallback。`_is_caption(para)` = 样式名含 caption|题注 OR 文本匹配 `^(图|figure|fig)\s*[\d一二三四五六七八九十]+`。
+- **"接线存在但喂不进数据"是隐匿 bug 高发模式**: 前端 applyImported 早有 `if(ff) setFigureStyles(ff)`,但因后端恒返回 null 而成死分支,代码 review 看着像"已实现"。这类盲点单看任一端都合理,必须端到端(真实样例经 API 返回 → 字段非空)才能发现。同 bug-1099/1100 根因。

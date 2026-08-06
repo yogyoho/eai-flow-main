@@ -178,6 +178,13 @@ def _dominant_run_bold(paragraphs) -> bool | None:
 _HEADING_CN_RE = re.compile(r"^第[一二三四五六七八九十百零\d]+章|^[一二三四五六七八九十]+[、.．]")
 _HEADING_DEC_RE = re.compile(r"^\d+[.\)）]|^\d+\.\d+")
 
+# Figure caption detection. CN report authors hand-type captions (图1-1 / 图1) rather
+# than using Word's Caption style, so we match the text first and the style as a fallback.
+_CAPTION_STYLE_RE = re.compile(r"caption|题注", re.I)
+_CAPTION_TEXT_RE = re.compile(r"^(图|figure|fig\.?)\s*[\d一二三四五六七八九十]+", re.I)
+_CAPTION_CHAPTER_RE = re.compile(r"^(图|figure|fig\.?)\s*\d+[-－—.]\d+", re.I)
+_SOURCE_RE = re.compile(r"(数据来源|资料来源|图片来源|来源|source)", re.I)
+
 
 def _heading_numbering(paragraphs) -> str:
     """Best-effort heading numbering style: 'chinese' | 'decimal' | 'none'.
@@ -343,9 +350,7 @@ def _extract_table_styles(doc) -> dict | None:
         header_bg = _style_conditional_shading(table, "firstRow")
     header_color = _header_text_color(table)
     # Zebra striping only when the table style defines row banding; plain tables → off.
-    stripe = bool(
-        _style_conditional_shading(table, "band1Row") or _style_conditional_shading(table, "band2Row")
-    )
+    stripe = bool(_style_conditional_shading(table, "band1Row") or _style_conditional_shading(table, "band2Row"))
     return {
         # No fill detected → white (no-fill), never an invented blue. Real fill comes
         # from direct cell shading or the table style's firstRow band above.
@@ -452,6 +457,49 @@ def _detect_cover(doc) -> dict | None:
     return cover
 
 
+def _is_caption(para) -> bool:
+    """A figure-caption paragraph: Caption/题注 style, or text like 图1-1 / Figure 2."""
+    if _CAPTION_STYLE_RE.search(para.style.name or ""):
+        return True
+    return bool(_CAPTION_TEXT_RE.match(para.text.strip()))
+
+
+def _extract_figure_styles(doc) -> dict | None:
+    """Best-effort figure-style detection: caption position / numbering / source line.
+
+    Returns None when the sample has neither image paragraphs nor caption text — the
+    caller then leaves the figure section untouched (don't clobber user config).
+    ponytail: caption adjacency heuristics (图1-1 → chapter, 图1 → continuous,
+    image-then-caption → below) match how CN report authors hand-type captions; honor
+    tblLook/abstractNum only if a sample mismatches these defaults.
+    """
+    paragraphs = doc.paragraphs
+    cap_indices = {i for i, p in enumerate(paragraphs) if _is_caption(p)}
+    image_indices = [i for i, p in enumerate(paragraphs) if _para_has_image(p)]
+    if not cap_indices and not image_indices:
+        return None
+
+    # Caption position: a caption right after an image → below; right before → above.
+    below = sum(1 for i in image_indices if (i + 1) in cap_indices)
+    above = sum(1 for i in image_indices if (i - 1) in cap_indices)
+    caption_position = "above" if above > below else "below"
+
+    # Numbering: a chapter-segmented caption (图1-1) → chapter, else continuous (图1).
+    numbering = "continuous"
+    for i in cap_indices:
+        if _CAPTION_CHAPTER_RE.match(paragraphs[i].text.strip()):
+            numbering = "chapter"
+            break
+
+    show_source = any(_SOURCE_RE.search(p.text) for p in paragraphs)
+
+    return {
+        "captionPosition": caption_position,
+        "numbering": numbering,
+        "showSource": show_source,
+    }
+
+
 def extract_layout_from_docx(data: bytes) -> dict:
     """Parse a .docx byte stream → LayoutTemplate data subset (snake_case).
 
@@ -478,7 +526,7 @@ def extract_layout_from_docx(data: bytes) -> dict:
         "body_styles": _extract_body_styles(doc),
         "heading_styles": _extract_heading_styles(doc),
         "table_styles": _extract_table_styles(doc),
-        "figure_styles": None,
+        "figure_styles": _extract_figure_styles(doc),
         "header_footer": _extract_header_footer(doc),
         "cover_template": cover,
         "cover_detected": cover is not None,
