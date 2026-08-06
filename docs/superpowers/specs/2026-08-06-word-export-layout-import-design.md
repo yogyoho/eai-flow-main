@@ -93,7 +93,7 @@ docmgr 前端 URL 不变（`/api/extensions/docmgr/import-layout`），后端补
 - 「导入排版」按钮：后端修好即活，现有 `handleFileSelected` 已能应用 5 组数据（snake_case）；封面为预设驱动，忽略 `cover_template`
 - **修「保存为模板丢参」**：保存时持久化
   - `tocSettings`：`{ maxDepth: tocDepth, showPageNumbers: true, leaderDots: true }`（`withToc=true` 时）否则 `null`（当前硬编码 `null`）
-  - `coverTemplate`：把活动封面预设字段映射为 5 开关（尽力映射；预设的具体值仍在导出时按 `default_from` 填）
+  - `coverTemplate`：把活动封面预设字段映射为 5 开关（尽力映射；预设的具体值仍在导出时按 `default_from` 填）。映射规则：按字段名含 `title` → `showTitle`、`client`/`unit`/`业主`/`单位` → `showClient`、`date` → `showDate`、`number`/`编号` → `showProjectNumber`、`logo` → `showLogo`（含 logo 字段时 `logoPosition` 取 `center`）；无匹配的字段忽略。无活动预设时 `coverTemplate: null`
 
 ## 测试
 
