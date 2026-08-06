@@ -100,19 +100,75 @@ def _extract_heading_styles(doc) -> list[dict]:
     return out
 
 
+def _shd_fill(shd) -> str | None:
+    """w:shd element → fill hex string, or None when absent / 'auto' (no fill)."""
+    if shd is None:
+        return None
+    fill = shd.get(qn("w:fill"))
+    return fill if fill and fill.lower() != "auto" else None
+
+
+def _cell_shading_fill(tc) -> str | None:
+    tc_pr = tc.tcPr
+    return _shd_fill(tc_pr.find(qn("w:shd")) if tc_pr is not None else None)
+
+
+def _style_firstrow_shading(table) -> str | None:
+    """Best-effort header-band fill from the table style's firstRow conditional format.
+
+    Covers the common Word case where picking a built-in table style bands the header
+    without writing per-cell shading. ponytail: ignores w:tblLook (assumes the band
+    applies); honor tblLook if a sample with a disabled first-row band mismatches.
+    """
+    try:
+        style = table.style
+        if style is None:
+            return None
+        for tsp in style.element.findall(qn("w:tblStylePr")):
+            if tsp.get(qn("w:type")) != "firstRow":
+                continue
+            tc_pr = tsp.find(qn("w:tcPr"))
+            fill = _shd_fill(tc_pr.find(qn("w:shd")) if tc_pr is not None else None)
+            if fill:
+                return fill
+    except Exception:
+        pass
+    return None
+
+
+def _header_text_color(table) -> str | None:
+    """First header cell's first explicitly-colored run, best-effort."""
+    try:
+        for para in table.rows[0].cells[0].paragraphs:
+            for run in para.runs:
+                try:
+                    rgb = run.font.color.rgb
+                except Exception:
+                    rgb = None
+                if rgb is not None:
+                    return f"#{rgb}"
+    except Exception:
+        pass
+    return None
+
+
 def _extract_table_styles(doc) -> dict | None:
     if not doc.tables:
         return None
+    table = doc.tables[0]
+    header_bg = None
     try:
-        cell = doc.tables[0].rows[0].cells[0]
-        tc_pr = cell._tc.tcPr
-        shd = tc_pr.find(qn("w:shd")) if tc_pr is not None else None
-        header_bg = shd.get(qn("w:fill")) if shd is not None else None
+        header_bg = _cell_shading_fill(table.rows[0].cells[0]._tc)
     except Exception:
         header_bg = None
+    if not header_bg:
+        header_bg = _style_firstrow_shading(table)
+    header_color = _header_text_color(table)
     return {
-        "headerBg": f"#{header_bg}" if header_bg else "#2B579A",
-        "headerColor": "#FFFFFF",
+        # No fill detected → white (no-fill), never an invented blue. Real fill comes
+        # from direct cell shading or the table style's firstRow band above.
+        "headerBg": f"#{header_bg}" if header_bg else "#FFFFFF",
+        "headerColor": header_color or "#333333",
         "borderColor": "#CCCCCC",
         "stripeRows": True,  # ponytail: zebra striping not derivable from docx → default
     }

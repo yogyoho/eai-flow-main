@@ -4,6 +4,8 @@ from io import BytesIO
 
 import pytest
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
 from app.extensions.output.layout_import import extract_layout_from_docx
@@ -79,6 +81,51 @@ def test_table_style_present_only_when_table_exists():
     assert data_for(with_table=True)["table_styles"] is not None
     assert data_for(with_table=True)["table_styles"]["stripeRows"] is True
     assert data_for()["table_styles"] is None
+
+
+def _shaded_cell_table(*, direct_fill: str | None = None, style_firstrow_fill: str | None = None) -> bytes:
+    doc = Document()
+    doc.add_heading("标题", level=1)
+    table = doc.add_table(rows=2, cols=2)
+    if direct_fill:
+        tc_pr = table.rows[0].cells[0]._tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), direct_fill)
+        tc_pr.append(shd)
+    if style_firstrow_fill:
+        table.style = "Table Grid"
+        tsp = OxmlElement("w:tblStylePr")
+        tsp.set(qn("w:type"), "firstRow")
+        tc_pr = OxmlElement("w:tcPr")
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), style_firstrow_fill)
+        tc_pr.append(shd)
+        tsp.append(tc_pr)
+        table.style.element.append(tsp)
+    return _docx_bytes(doc)
+
+
+def test_table_plain_header_is_white_not_blue():
+    """Regression: a plain table (no header shading) must NOT invent a blue header."""
+    ts = data_for(with_table=True)["table_styles"]
+    assert ts["headerBg"] == "#FFFFFF"  # no fill detected → white, never the old #2B579A blue
+    assert ts["headerColor"] == "#333333"
+
+
+def test_table_direct_cell_shading_extracted():
+    """A directly-shaded header cell must yield its real fill color."""
+    ts = extract_layout_from_docx(_shaded_cell_table(direct_fill="D9E2F3"))["table_styles"]
+    assert ts["headerBg"] == "#D9E2F3"
+
+
+def test_table_style_firstrow_shading_extracted():
+    """A table style with a firstRow band must yield the band fill (common Word case)."""
+    ts = extract_layout_from_docx(_shaded_cell_table(style_firstrow_fill="C6E0B4"))["table_styles"]
+    assert ts["headerBg"] == "#C6E0B4"
 
 
 def test_figure_styles_null():
