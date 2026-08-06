@@ -288,3 +288,17 @@ def test_export_requests_carry_cover_fields():
     assert ec.cover_preset_id == "fire_protection"
     assert ExportContentRequest().cover_preset_id is None
     assert ExportContentRequest().cover_values is None
+
+
+def test_docmgr_router_registers_import_layout():
+    """POST /import-layout must be registered — the ExportDocxDialog 导入排版 button depends on it."""
+    from app.extensions.docmgr.routers import router
+
+    paths = set()
+    for route in router.routes:
+        for method in getattr(route, "methods", None) or set():
+            paths.add((route.path, method))
+    assert (
+        "/api/extensions/docmgr/import-layout",
+        "POST",
+    ) in paths, "docmgr import-layout route is missing — 导入排版 button 404s"

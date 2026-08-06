@@ -237,3 +237,17 @@ def extract_layout_from_docx(data: bytes) -> dict:
         "cover_template": cover,
         "cover_detected": cover is not None,
     }
+
+
+def validate_docx_upload(filename: str | None, data: bytes) -> dict:
+    """Validate an .docx upload (extension + ≤10MB) and return extracted layout.
+
+    Raises ValueError with a user-facing Chinese message on invalid input; the
+    routers map it to HTTP 400. Kept in this pure module so both the output and
+    docmgr import-layout endpoints share one implementation.
+    """
+    if not filename or not filename.lower().endswith(".docx"):
+        raise ValueError("仅支持 .docx 文件")
+    if len(data) > 10 * 1024 * 1024:
+        raise ValueError("文件不能超过 10MB")
+    return extract_layout_from_docx(data)

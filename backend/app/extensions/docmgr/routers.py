@@ -6,7 +6,7 @@ import logging
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -299,6 +299,25 @@ async def list_cover_presets(current_user: CurrentUser = Depends(require_permiss
     from app.extensions.output.cover_presets import public_cover_presets
 
     return {"items": public_cover_presets()}
+
+
+@router.post("/import-layout")
+async def import_layout_docmgr(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+):
+    """Thin pass-through to the shared output layout extractor.
+
+    Fixes the ExportDocxDialog「导入排版」dead button — this route was specified
+    in 2026-06-09-docmgr-word-export-layout-design.md but never implemented.
+    """
+    from app.extensions.output.layout_import import validate_docx_upload
+
+    data = await file.read()
+    try:
+        return validate_docx_upload(file.filename, data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 class ExportRequest(BaseModel):

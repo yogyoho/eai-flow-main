@@ -126,3 +126,29 @@ def test_output_router_registers_import_layout():
         for method in getattr(route, "methods", None) or set():
             paths.add((route.path, method))
     assert ("/api/extensions/output/import-layout", "POST") in paths, "output import-layout route missing"
+
+
+def test_validate_docx_upload_rejects_non_docx_filename():
+    from app.extensions.output.layout_import import validate_docx_upload
+
+    with pytest.raises(ValueError, match="仅支持 .docx 文件"):
+        validate_docx_upload("report.pdf", b"PK\x03\x04" + b"\x00" * 100)
+
+
+def test_validate_docx_upload_rejects_oversize():
+    from app.extensions.output.layout_import import validate_docx_upload
+
+    with pytest.raises(ValueError, match="不能超过 10MB"):
+        validate_docx_upload("report.docx", b"PK\x03\x04" + b"\x00" * (10 * 1024 * 1024 + 1))
+
+
+def test_validate_docx_upload_returns_extraction():
+    from app.extensions.output.layout_import import validate_docx_upload
+
+    doc = Document()
+    s = doc.sections[0]
+    s.page_width = Cm(21.0)
+    s.page_height = Cm(29.7)
+    data = _docx_bytes(doc)
+    result = validate_docx_upload("report.docx", data)
+    assert result["page_settings"]["paperSize"] == "A4"
