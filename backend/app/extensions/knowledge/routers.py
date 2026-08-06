@@ -233,8 +233,13 @@ async def _validate_grantee(db: AsyncSession, grantee_type: str, grantee_id: str
 
         from app.extensions.models import Department, User
 
+        # EAI-CUSTOM: 畸形 UUID 串会在 asyncpg 编码时报错→500，先解析成 UUID 使无效 id 返回 400
+        try:
+            parsed_id = UUID(grantee_id)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {grantee_type} id")
         model = User if grantee_type == "user" else Department
-        stmt = sa_select(model.id).where(model.id == grantee_id)
+        stmt = sa_select(model.id).where(model.id == parsed_id)
         if (await db.execute(stmt)).scalar_one_or_none() is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {grantee_type} id")
     else:  # role
