@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import logging
 import re
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -15,6 +16,8 @@ from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt, RGBColor
 from lxml import etree
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Minimal markdown parser — produces a list of typed blocks
@@ -123,7 +126,12 @@ def _render_cover(doc, cover_template: dict | None, cover_fields: dict) -> None:
 
     if ct.get("showLogo"):
         p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # EAI-CUSTOM: honor logoPosition (left/center/right); center is the legacy default.
+        p.alignment = {
+            "left": WD_ALIGN_PARAGRAPH.LEFT,
+            "center": WD_ALIGN_PARAGRAPH.CENTER,
+            "right": WD_ALIGN_PARAGRAPH.RIGHT,
+        }.get(ct.get("logoPosition"), WD_ALIGN_PARAGRAPH.CENTER)
         run = p.add_run("[编制单位 LOGO]")
         _set_run_font(run, "宋体")
         run.font.size = Pt(10)
@@ -189,6 +197,13 @@ def _replace_target_in_para(p_el, target: str, replacement: str) -> bool:
     return True
 
 
+# EAI-CUSTOM: the resolvable cover slot ids. Mirrored one-for-one by frontend
+# cover-state.ts COVER_RESOLVABLE_SLOT_IDS (the UI locks any slot outside this
+# set to literal); backend test test_output_cover.py::test_cover_slot_value_keys
+# pins this set — keep it in sync with the slot_value dict below.
+COVER_SLOT_VALUE_KEYS = ("title", "client", "project_number", "date", "project_name", "stage")
+
+
 def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -> None:
     """Inject the cover-master OOXML fragment at the body start, replacing variable
     slots with resolved project values and re-embedding base64 images."""
@@ -196,6 +211,7 @@ def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -
         return  # nothing to inject; also avoids persisting dangling image rels (I2)
     root = etree.fromstring(f'<root xmlns:w="{_W_GEN}" xmlns:a="{_DRAWML_GEN}" xmlns:r="{_REL_GEN}">{master.get("xml", "")}</root>')
 
+    # keys == COVER_SLOT_VALUE_KEYS (see module doc above)
     slot_value = {
         "title": resolved.get("title"),
         "client": resolved.get("client"),
@@ -231,9 +247,10 @@ def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -
             new_rid, _image = doc.part.get_or_add_image(BytesIO(blob))
             for blip in blips:
                 blip.set(f"{{{_REL_GEN}}}embed", new_rid)
-        except Exception:
+        except Exception as exc:
             # image must never abort cover generation — strip the orphan <w:drawing>
             # so the emitted doc references no missing rId (would trigger Word repair).
+            logger.warning("cover image re-embed failed, stripping drawing: %s", exc)
             for blip in blips:
                 drawing = blip.getparent()
                 while drawing is not None and drawing.tag != f"{{{_W_GEN}}}drawing":
@@ -1028,15 +1045,20 @@ def generate_docx(
     numbers = _compute_heading_numbers(blocks, template_data.get("heading_styles", []))
 
     # === Section 0: COVER ===
+    cover_rendered = False
     if has_cover:
         try:
             if cover_master and cover_master.get("mode") == "master":
                 _render_cover_master(doc, cover_master, resolved_cover, frontmatter)
             else:
                 _render_cover(doc, template_data.get("cover_template"), resolved_cover)
-        except Exception:  # cover must never abort generation
-            pass
-        doc.add_section(WD_SECTION.NEW_PAGE)
+            cover_rendered = True
+        except Exception as exc:  # cover must never abort generation (M5: observable, not silent)
+            logger.warning("cover render failed: %s", exc)
+        # only section-break when a cover was actually rendered — a failed render
+        # must not leave a blank leading page.
+        if cover_rendered:
+            doc.add_section(WD_SECTION.NEW_PAGE)
 
     # === Section 1: TOC ===
     if has_toc and _render_toc(doc, template_data.get("toc_settings")):
@@ -1317,7 +1339,8 @@ def generate_docx_simple(
     if cover_preset:
         try:
             has_cover = _render_cover_preset(doc, cover_preset, cover_values)
-        except Exception:  # cover must never abort generation
+        except Exception as exc:  # cover must never abort generation (M5: observable, not silent)
+            logger.warning("cover render failed: %s", exc)
             has_cover = False
         if has_cover:
             doc.add_section(WD_SECTION.NEW_PAGE)

@@ -100,3 +100,102 @@ def test_resolve_omits_missing_optional_fields():
     resolved = _resolve_cover_fields({}, {}, [])
     assert "client" not in resolved
     assert "project_number" not in resolved
+
+
+def test_logo_position_alignment():
+    """M2: logo paragraph alignment follows cover_template.logoPosition."""
+    cases = [
+        ("left", WD_ALIGN_PARAGRAPH.LEFT),
+        ("center", WD_ALIGN_PARAGRAPH.CENTER),
+        ("right", WD_ALIGN_PARAGRAPH.RIGHT),
+        (None, WD_ALIGN_PARAGRAPH.CENTER),  # legacy default
+    ]
+    for pos, expected in cases:
+        ct = {
+            "showLogo": True,
+            "showTitle": False,
+            "showClient": False,
+            "showDate": False,
+            "showProjectNumber": False,
+            "logoPosition": pos,
+        }
+        doc = Document()
+        _render_cover(doc, ct, {})
+        logo_para = next(p for p in doc.paragraphs if "[编制单位 LOGO]" in p.text)
+        assert logo_para.alignment == expected, f"logoPosition={pos} → {expected}"
+
+
+def test_logo_position_absent_key_defaults_center():
+    """M2: a legacy cover_template WITHOUT a logoPosition key renders centered."""
+    ct = {
+        "showLogo": True,
+        "showTitle": False,
+        "showClient": False,
+        "showDate": False,
+        "showProjectNumber": False,
+    }
+    doc = Document()
+    _render_cover(doc, ct, {})
+    logo_para = next(p for p in doc.paragraphs if "[编制单位 LOGO]" in p.text)
+    assert logo_para.alignment == WD_ALIGN_PARAGRAPH.CENTER
+
+
+def test_cover_slot_value_keys():
+    """Cross-language drift guard: the generator's resolvable slot id set must
+    equal the set mirrored by frontend cover-state.ts COVER_RESOLVABLE_SLOT_IDS
+    (title/client/project_number/date/project_name/stage)."""
+    from app.extensions.output.generator import COVER_SLOT_VALUE_KEYS
+
+    assert set(COVER_SLOT_VALUE_KEYS) == {
+        "title",
+        "client",
+        "project_number",
+        "date",
+        "project_name",
+        "stage",
+    }
+
+
+def test_cover_render_failure_is_logged_not_silent(caplog):
+    """M5: a failing cover render logs a warning and must not abort generation."""
+    import logging
+    from pathlib import Path
+
+    from app.extensions.output.generator import generate_docx
+
+    tpl = {
+        "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},
+        "body_styles": {"fontFamily": "宋体", "fontSize": 12, "lineHeight": 1.5, "paragraphSpacing": 0, "firstLineIndent": 2},
+        "heading_styles": [],
+        "cover_master": {"mode": "master", "xml": "<w:p>", "images": [], "slots": [], "sourceFile": "bad.docx", "boundary": "before_toc"},
+        "cover_template": None,
+        "toc_settings": None,
+    }
+    out = Path("_m5_cover_fail_test.docx")
+    try:
+        with caplog.at_level(logging.WARNING, logger="app.extensions.output.generator"):
+            result = generate_docx("# 正文\n", tpl, out)
+        assert "cover render failed" in caplog.text, "cover failure must be logged, not silent"
+        assert result, "generation must not abort on cover failure"
+        assert out.exists()
+    finally:
+        out.unlink(missing_ok=True)
+
+
+def test_cover_preset_failure_logged_simple_branch(caplog):
+    """M5: the generate_docx_simple cover path (docmgr export) also logs, not silent."""
+    import logging
+    from io import BytesIO
+
+    from app.extensions.output.generator import generate_docx_simple
+
+    buf = BytesIO()
+    with caplog.at_level(logging.WARNING, logger="app.extensions.output.generator"):
+        generate_docx_simple(
+            "# 正文\n",
+            buf,
+            cover_preset={"elements": [{"type": "spacer", "lines": "abc"}]},
+            cover_values={},
+        )
+    assert "cover render failed" in caplog.text
+    assert buf.getbuffer().nbytes > 0  # generation did not abort

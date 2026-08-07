@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,7 +22,7 @@ class PageSettingsSchema(BaseModel):
 
 class CoverTemplateSchema(BaseModel):
     showLogo: bool = True
-    logoPosition: str = "center"
+    logoPosition: Literal["left", "center", "right"] = "center"
     showTitle: bool = True
     showClient: bool = True
     showDate: bool = True
