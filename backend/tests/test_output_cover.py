@@ -153,6 +153,7 @@ def test_cover_slot_value_keys():
         "date",
         "project_name",
         "stage",
+        "design_unit",
     }
 
 

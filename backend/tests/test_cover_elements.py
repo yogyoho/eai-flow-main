@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from docx import Document
+from docx.oxml.ns import qn
 from pydantic import ValidationError
 
 from app.extensions.output.generator import _render_cover_elements, generate_docx
@@ -129,6 +130,10 @@ def test_render_cover_elements_slot_replacement_and_pages():
     assert any("环境影响报告书" in t for t in texts), "未绑定元素保留原文"
     assert len(doc.tables) == 1, "表格元素应生成 1 张 docx 表"
     assert doc.tables[0].rows[0].cells[0].text.strip() == "专业名称"
+    tc_pr = doc.tables[0].rows[0].cells[0]._tc.get_or_add_tcPr()
+    shd = tc_pr.find(qn("w:shd"))
+    assert shd is not None, "表头单元格应写 headerBg 底纹 w:shd"
+    assert shd.get(qn("w:fill")) == "D9D9D9", "headerBg #D9D9D9 应落到 w:fill"
     assert len(doc.sections) >= 2, "多页元素应产生分节"
 
 
@@ -148,3 +153,6 @@ def test_generate_docx_uses_cover_elements_priority():
         doc = Document(str(out))
         texts = [p.text for p in doc.paragraphs if p.text.strip()]
         assert "基地项目" in texts, "cover_elements 应优先于 cover_master 渲染"
+        # 负向断言：cover_master(<w:p/> 空段) 未被渲染 → 首非空段应为封面标题，而非正文/空注入
+        assert texts and texts[0] == "基地项目", "cover_elements 应最先渲染（首非空段为封面标题），非 cover_master 空段注入"
+        assert "正文" in texts, "封面后正文应正常渲染"

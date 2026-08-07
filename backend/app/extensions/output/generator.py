@@ -206,7 +206,8 @@ def _replace_target_in_para(p_el, target: str, replacement: str) -> bool:
 # cover-state.ts COVER_RESOLVABLE_SLOT_IDS (the UI locks any slot outside this
 # set to literal); backend test test_output_cover.py::test_cover_slot_value_keys
 # pins this set — keep it in sync with the slot_value dict below.
-COVER_SLOT_VALUE_KEYS = ("title", "client", "project_number", "date", "project_name", "stage")
+# T7 TODO: 前端 cover-state.ts COVER_RESOLVABLE_SLOT_IDS 尚未纳入 design_unit，T7 同步。
+COVER_SLOT_VALUE_KEYS = ("title", "client", "project_number", "date", "project_name", "stage", "design_unit")
 
 
 def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -> None:
@@ -285,9 +286,9 @@ def _render_cover_elements(doc, cover: dict, resolved: dict, frontmatter: dict) 
         "client": resolved.get("client"),
         "project_number": resolved.get("project_number"),
         "date": resolved.get("date"),
-        "project_name": frontmatter.get("project_name") or resolved.get("project_name"),
-        "stage": frontmatter.get("stage"),
-        "design_unit": frontmatter.get("design_unit"),
+        "project_name": resolved.get("project_name"),
+        "stage": resolved.get("stage"),
+        "design_unit": resolved.get("design_unit"),
     }
     pages = cover.get("pages", [])
     for pi, page in enumerate(pages):
@@ -315,10 +316,13 @@ def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
         pf.space_after = Pt(el.get("spaceAfter", 0))
         run = p.add_run(text)
         _set_run_font(run, _resolve_font(el.get("fontFamily", "宋体")))
-        run.font.size = Pt(int(el.get("fontSize", 12)))
+        try:
+            run.font.size = Pt(int(el.get("fontSize", 12)))
+        except (TypeError, ValueError):  # 显式 null/非法字号 → 默认 12pt
+            run.font.size = Pt(12)
         run.bold = bool(el.get("bold", False))
         try:
-            run.font.color.rgb = RGBColor.from_string(el.get("color", "#000000").lstrip("#"))
+            run.font.color.rgb = RGBColor.from_string((el.get("color") or "#000000").lstrip("#"))
         except ValueError:
             pass
     elif etype == "table":
@@ -350,7 +354,11 @@ def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
             except Exception as exc:
                 logger.warning("cover image element failed: %s", exc)
     elif etype == "spacer":
-        for _ in range(int(el.get("lines", 1))):
+        try:
+            lines = int(el.get("lines", 1))
+        except (TypeError, ValueError):  # 显式 null/非法行数 → 默认 1 行
+            lines = 1
+        for _ in range(lines):
             doc.add_paragraph()
     # divider：空段兜底（v1 简化，如实现则下边框）
 
