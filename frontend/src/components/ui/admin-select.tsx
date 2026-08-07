@@ -46,7 +46,12 @@ function AdminSelect({
           className
         )}
       >
-        <SelectPrimitive.Value placeholder={placeholder}>
+        <SelectPrimitive.Value
+          placeholder={placeholder}
+          // ponytail: 长标签（如字体名 Times New Roman）省略号截断不折行；
+          // flex 子项需 min-w-0+flex-1 才允许收缩触发 ellipsis。
+          className="min-w-0 flex-1 truncate"
+        >
           {options.find((o) => o.value === value)?.label ?? placeholder}
         </SelectPrimitive.Value>
         <SelectPrimitive.Icon>
@@ -86,7 +91,9 @@ function AdminSelect({
                     <CheckIcon className="size-4" />
                   </SelectPrimitive.ItemIndicator>
                 </span>
-                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">
+                  {option.label}
+                </SelectPrimitive.ItemText>
               </SelectPrimitive.Item>
             ))}
           </SelectPrimitive.Viewport>

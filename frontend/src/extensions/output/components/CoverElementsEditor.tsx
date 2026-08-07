@@ -224,7 +224,7 @@ function TextElementBody({
         value={el.fontFamily ?? "宋体"}
         onChange={(v) => onPatch({ fontFamily: v })}
         options={COVER_FONT_OPTIONS}
-        className="w-24 text-xs"
+        className="w-28 text-xs"
       />
     </div>
   );
