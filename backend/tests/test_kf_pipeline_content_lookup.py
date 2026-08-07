@@ -13,7 +13,6 @@ invented a 耐火等级表. Now returns "" → _enrich's _short_content skip.
 
 from app.extensions.knowledge_factory.pipeline import _find_best_matching_paragraph
 
-
 # ── _find_best_matching_paragraph: 匹配不到必须返回 "" ──
 
 def test_no_keywords_returns_empty():
