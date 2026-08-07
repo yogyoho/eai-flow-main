@@ -1106,6 +1106,12 @@ def extract_layout_from_docx(data: bytes, source_file: str = "") -> dict:
     paper, orientation = _paper_from_dimensions(_to_cm(section.page_width), _to_cm(section.page_height))
     cover = _detect_cover(doc)
     cover_master = _extract_cover_master(doc, source_file=source_file)
+    cover_pages = _extract_cover_pages(doc)
+    cover_elements = (
+        {"mode": "elements", "pages": [p.model_dump() for p in cover_pages], "sourceFile": source_file}
+        if cover_pages
+        else None
+    )
 
     return {
         "page_settings": {
@@ -1123,7 +1129,8 @@ def extract_layout_from_docx(data: bytes, source_file: str = "") -> dict:
         "header_footer": _extract_header_footer(doc),
         "cover_template": cover,
         "cover_master": cover_master,
-        "cover_detected": cover_master is not None or cover is not None,
+        "cover_elements": cover_elements,
+        "cover_detected": cover_master is not None or cover is not None or cover_elements is not None,
     }
 
 

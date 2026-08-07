@@ -101,6 +101,21 @@ def test_huanping_sample_three_pages():
     assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
 
 
+@skip_missing
+def test_import_layout_includes_cover_elements():
+    from app.extensions.output.layout_import import extract_layout_from_docx
+
+    data = SAMPLE1.read_bytes()
+    r = extract_layout_from_docx(data, source_file="消防.docx")
+    ce = r.get("cover_elements")
+    assert ce and ce["mode"] == "elements", "import 响应应含 cover_elements"
+    assert ce["pages"], "应有页面"
+    assert ce["sourceFile"] == "消防.docx", "sourceFile 应透传"
+    texts = [e["text"] for p in ce["pages"] for e in p["elements"] if e["type"] == "text"]
+    assert any("第三册 消防设计专篇" in t for t in texts), "封面文本元素应提取"
+    assert r["cover_detected"] is True
+
+
 def _sample_cover():
     return {
         "mode": "elements",
