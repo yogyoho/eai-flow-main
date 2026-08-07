@@ -248,7 +248,12 @@ class TestKfResolveTemplate:
 
     @pytest.mark.asyncio
     async def test_missing_domain_keywords_uses_defaults(self, mock_run_in_db):
-        """Call with minimal args still works."""
+        """空 domain_keywords 必须返回 found=false，且不触碰 DB。
+
+        回归 7c2aa1431：无关键词时 loose-match 兜底会返回整个库里最高分的
+        模板（当时是煤矿环评，score 88），导致 AI 报"匹配到煤矿模板而非消防"。
+        修复后空关键词直接返回 missing_keywords，_run_in_db 不应被调用。
+        """
         from app.extensions.knowledge_factory.mcp_server.tools.template_tools import (
             handle_kf_resolve_template,
         )
@@ -261,8 +266,11 @@ class TestKfResolveTemplate:
             return {"found": False, "reason": "no_template_found",
                     "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
 
-        await handle_kf_resolve_template({"domain_keywords": []}, _fake_run_in_db)
-        assert call_count == 1
+        result = await handle_kf_resolve_template({"domain_keywords": []}, _fake_run_in_db)
+        assert call_count == 0, "空 domain_keywords 不应触发 DB 查询（loose-match 兜底会选错模板）"
+        data = _parse_json_result(result)
+        assert data["found"] is False
+        assert data["reason"] == "missing_keywords"
 
 
 # ──────────────────────────────────────────────────────────────────────
