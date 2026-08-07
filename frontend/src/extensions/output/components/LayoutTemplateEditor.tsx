@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import {
+  COVER_EMPTY_ELEMENTS,
   coverLogoPosition,
   coverSlotEffectiveKind,
   coverSlotSourceLabel,
@@ -36,6 +37,7 @@ import {
 import type {
   AppendixRules,
   BodyStyles,
+  Cover,
   CoverMaster,
   CoverSlot,
   CoverTemplate,
@@ -48,6 +50,8 @@ import type {
   TocSettings,
 } from "@/extensions/output/types";
 import { cn } from "@/lib/utils";
+
+import { CoverElementsEditor } from "./CoverElementsEditor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitives
@@ -525,6 +529,9 @@ export function LayoutTemplateEditor({
   const [coverMaster, setCoverMaster] = useState<CoverMaster | null>(
     template?.coverMaster ?? null,
   );
+  const [coverElements, setCoverElements] = useState<Cover | null>(
+    template?.coverElements ?? null,
+  );
   const [tocSettings, setTocSettings] = useState<TocSettings | null>(
     template?.tocSettings ?? null,
   );
@@ -614,7 +621,7 @@ export function LayoutTemplateEditor({
         pageSettings,
         coverTemplate: normalizedCoverTemplate,
         coverMaster,
-        coverElements: null,
+        coverElements,
         tocSettings,
         bodyStyles,
         headingStyles,
@@ -633,6 +640,7 @@ export function LayoutTemplateEditor({
     pageSettings,
     coverTemplate,
     coverMaster,
+    coverElements,
     tocSettings,
     bodyStyles,
     headingStyles,
@@ -644,9 +652,12 @@ export function LayoutTemplateEditor({
     onSave,
   ]);
 
-  // 共享封面复位语义（H2 stale 防护）：母版存在则采纳；不存在则总把旧母版清掉
+  // 共享封面复位语义（H2 stale 防护）：元素/母版存在则采纳；不存在则总把旧的清掉。
+  // cover_elements 是新一代结构化封面（优先于 cover_master 的旧数据兜底）。
   const applyCoverImport = useCallback((data: Record<string, unknown>) => {
     const { coverMaster, coverTemplate } = resolveCoverFromImport(data);
+    const ce = data.cover_elements as Cover | null | undefined;
+    setCoverElements(ce?.mode === "elements" ? ce : null);
     setCoverMaster(coverMaster);
     if (coverTemplate !== undefined) setCoverTemplate(coverTemplate);
   }, []);
@@ -666,6 +677,9 @@ export function LayoutTemplateEditor({
       if (ff) setFigureStyles(ff);
       const hf = data.header_footer as HeaderFooter | null | undefined;
       if (hf) setHeaderFooter(hf);
+      // 封面元素：样例带 cover_elements 则采纳，否则清掉旧的（stale 防护，同 coverMaster 逻辑）
+      const ce = data.cover_elements as Cover | null | undefined;
+      setCoverElements(ce?.mode === "elements" ? ce : null);
       applyCoverImport(data);
     },
     [applyCoverImport],
@@ -1160,7 +1174,27 @@ export function LayoutTemplateEditor({
 
           {/* 封面配置 */}
           <Section icon={ImageIcon} title="封面配置">
-            {coverMaster ? (
+            {coverElements ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-muted-foreground">
+                    来自样例：{coverElements.sourceFile ?? "（未命名）"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCoverElements(null)}
+                    className="ml-auto shrink-0 rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+                  >
+                    移除封面
+                  </button>
+                </div>
+                <CoverElementsEditor
+                  cover={coverElements}
+                  onChange={setCoverElements}
+                />
+              </div>
+            ) : coverMaster ? (
               <div className="space-y-3">
                 <div className="bg-muted/40 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
                   <FileText className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
@@ -1360,6 +1394,14 @@ export function LayoutTemplateEditor({
                   </div>
                 )}
                 <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCoverElements(COVER_EMPTY_ELEMENTS)}
+                    className="border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs font-medium transition-colors"
+                  >
+                    <Type className="h-3.5 w-3.5" />
+                    用元素编辑器
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
