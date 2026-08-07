@@ -1244,6 +1244,10 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_master JSONB"
         ))
+        # output: cover_elements JSONB — Task 4 cover-elements persistence (same rationale as cover_master).
+        await conn.execute(text(
+            "ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_elements JSONB"
+        ))
 
         # contract-price (cpa): project-level fields extracted from front-page
         # OCR text. Idempotent — create_all won't add columns to the pre-existing

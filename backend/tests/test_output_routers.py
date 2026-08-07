@@ -17,6 +17,7 @@ def _fake_template():
         appendix_rules=None,
         cover_template={"showTitle": True},
         cover_master=None,
+        cover_elements=None,
         toc_settings={"maxDepth": 2},
     )
 
@@ -37,6 +38,17 @@ def test_build_template_data_cover_none_when_absent():
     td = _build_template_data(tpl)
     assert td["cover_template"] is None
     assert td["toc_settings"] is None
+
+
+def test_build_template_data_includes_cover_elements():
+    """Task 4: cover_elements (JSONB column) must flow through _build_template_data."""
+    tpl = _fake_template()
+    tpl.cover_elements = {
+        "mode": "elements",
+        "pages": [{"elements": [{"id": "e1", "type": "text", "text": "T"}]}],
+    }
+    td = _build_template_data(tpl)
+    assert td["cover_elements"]["pages"][0]["elements"][0]["text"] == "T"
 
 
 def test_collect_cover_fields_drops_none():

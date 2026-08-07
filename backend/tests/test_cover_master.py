@@ -60,6 +60,7 @@ def test_build_template_data_includes_cover_master():
         appendix_rules=None,
         cover_template=None,
         toc_settings=None,
+        cover_elements=None,
         cover_master={"mode": "master", "xml": "<w:p/>", "images": [], "slots": [], "sourceFile": "x.docx", "boundary": "before_toc"},
     )
     td = _build_template_data(tpl)

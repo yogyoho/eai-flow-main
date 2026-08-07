@@ -22,6 +22,7 @@ class LayoutTemplate(Base):
     page_settings: Mapped[dict] = mapped_column(JSONB, nullable=False)
     cover_template: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     cover_master: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    cover_elements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     toc_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     body_styles: Mapped[dict] = mapped_column(JSONB, nullable=False)
     heading_styles: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
