@@ -591,18 +591,38 @@ def test_build_structure_hint_filters_table_captions():
 
 
 def test_build_structure_hint_truncates_summary_not_tree():
-    """max_chars 截断时子节树优先保留，摘要后砍。"""
+    """max_chars 截断时子节树优先保留，摘要后砍。
+
+    P3 修复的生产场景是 406 页文档（子节树 ~5650 chars > 默认 max_chars 5000），
+    截断是真实路径。此测试必须真正触发 `if len(result) > max_chars` 分支：
+    构造 3 章、每章 ~200 字正文，max_chars 设得比树略大 → 第 1 章摘要保留、后续章摘要被砍。
+    """
     from app.extensions.knowledge_factory.doc_parser import build_structure_hint
     doc = ParsedDocument(file_path="x", file_type="docx")
-    long_text = "内容" * 3000  # 超 max_chars
-    paragraphs = ["1 总则", "1.1 子节", long_text]
+    body = "本章正文内容。" * 60  # ~300 字
+    paragraphs = [
+        "1 总则", body, "1.1 规划背景", body,
+        "2 环境现状", body, "2.1 监测点位", body,
+        "3 环境影响预测", body, "3.1 预测模型", body,
+    ]
     doc.headings = [
         Heading(title="1 总则", level=1, para_idx=0),
-        Heading(title="1.1 子节", level=2, para_idx=1),
+        Heading(title="1.1 规划背景", level=2, para_idx=2),
+        Heading(title="2 环境现状", level=1, para_idx=4),
+        Heading(title="2.1 监测点位", level=2, para_idx=6),
+        Heading(title="3 环境影响预测", level=1, para_idx=8),
+        Heading(title="3.1 预测模型", level=2, para_idx=10),
     ]
     doc.full_text = "\n\n".join(paragraphs)
     doc.finalize_sections(paragraphs)
-    hint = build_structure_hint(doc, 1000)  # 小预算
-    # 子节树（短）必须保留
-    assert "1.1 子节" in hint
-    assert "1 总则" in hint
+    # 全量结果 756 chars；树 ~305，树+首章摘要 ~518，树+前两章摘要 >700。
+    # max_chars=650 落在 [树+首章摘要, 树+两章摘要) → 真正触发截断，首章摘要保留、后续章被砍。
+    hint = build_structure_hint(doc, 650)
+    # 子节树完整保留
+    assert "1.1 规划背景" in hint
+    assert "2.1 监测点位" in hint
+    assert "3.1 预测模型" in hint
+    # 第 1 章摘要保留（树 + 首章 200 字 ≤ 650）
+    assert "本章正文内容" in hint
+    # 截断必须真正发生：输出比全量结果短
+    assert len(hint) < len(build_structure_hint(doc, 100000))

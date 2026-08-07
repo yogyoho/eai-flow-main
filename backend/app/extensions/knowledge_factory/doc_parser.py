@@ -610,7 +610,7 @@ def build_structure_hint(parsed: ParsedDocument, max_chars: int = 5000) -> str:
             hk = headings[k]
             if hk.level > 4 or _is_table_caption(hk.title):
                 continue
-            indent = "  " * (hk.level - 2)
+            indent = "  " * (hk.level - 1)
             parts.append(f"{indent}- {hk.title}")
 
     parts.append("\n## 各章节内容摘要（每章节前200字）\n")
