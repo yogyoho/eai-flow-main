@@ -150,6 +150,19 @@ def _heading_level_from_number(num_str: str) -> int:
     return min(num_str.count(".") + 1, 3)
 
 
+_TABLE_CAPTION_RE = re.compile(r"^表\s*\d+[\.\-]\d+")
+
+
+def _is_table_caption(title: str) -> bool:
+    """判断标题是否为表格 caption（'表N.M-x' 格式）。
+
+    环评样例中，表格标题被作者套了 Heading 5 样式（level=5，65/65 全是
+    '表N.M-x'），而 level 4 是真章节（2.2.1.1）。用格式而非 level 判定，
+    兼容 regex 兜底（_heading_level_from_number 上限 3，无 level 5）。
+    """
+    return bool(_TABLE_CAPTION_RE.match(title.strip()))
+
+
 # ── Body-text guard (bug-404) ──
 # 真标题是简短名词短语；含子句/句末标点（，。；！？ 及 ASCII 对应）的一定是
 # 被误套了标题样式的正文段。顿号 、 可在真标题里作连词（"设计、施工及验收"），
@@ -566,26 +579,68 @@ def parse_pdf(file_path: str) -> ParsedDocument:
 # ── Structure hint builder ──
 
 def build_structure_hint(parsed: ParsedDocument, max_chars: int = 5000) -> str:
+    """构建结构提示：完整章节树 + 每章短摘要。
+
+    P3 修复（覆盖不完整）：旧实现每章仅前 450 字摘要，长章节（环评 406 页
+    13 章全部）子节标题被截断 → Step 1 章节推断建不全子节树 → Step 2
+    漏抽被漏子节的表。改为：
+    1. H1 目录 + 每 H1 下完整子节树（H2/H3/H4，过滤表 caption）
+    2. 每章 200 字短摘要（结构已由子节树提供，内容仅作 purpose 信号）
+    子节树优先保留，max_chars 超限时摘要后砍。
+    """
     headings = parsed.headings
     if not headings:
         return parsed.full_text[:max_chars]
 
-    h1s = [h for h in headings if h.level == 1]
-    if not h1s:
-        h1s = [h for h in headings if h.level <= 2]
-    if not h1s:
-        h1s = headings[:20]
+    # H1 起始 index 列表（无 H1 时退化到 level<=2）
+    h1_positions = [i for i, h in enumerate(headings) if h.level == 1]
+    if not h1_positions:
+        h1_positions = [i for i, h in enumerate(headings) if h.level <= 2]
+    if not h1_positions:
+        h1_positions = list(range(len(headings)))
 
-    parts = [f"## 文档章节目录（自动识别，共 {len(h1s)} 章）\n"]
-    for h in h1s:
-        parts.append(f"- {h.title}")
-    parts.append("\n## 各章节内容摘要（每章节前450字）\n")
-    for h in h1s:
-        # 用 text_offset 而非 find(title)：find 在有目录页的文档上命中
-        # 目录条目（带页码），而非正文章节。text_offset 已由 finalize_sections
-        # 正确计算到 body 段落位置。（bug-404）
+    parts = [f"## 文档章节目录（自动识别，共 {len(h1_positions)} 章）\n"]
+
+    # 子节树：H1 → H2/H3/H4，过滤表 caption（表N.M-x 是 Heading5 噪声）
+    for pi, start in enumerate(h1_positions):
+        end = h1_positions[pi + 1] if pi + 1 < len(h1_positions) else len(headings)
+        h1 = headings[start]
+        parts.append(f"### {h1.title}")
+        for k in range(start + 1, end):
+            hk = headings[k]
+            if hk.level > 4 or _is_table_caption(hk.title):
+                continue
+            indent = "  " * (hk.level - 2)
+            parts.append(f"{indent}- {hk.title}")
+
+    parts.append("\n## 各章节内容摘要（每章节前200字）\n")
+    for start in h1_positions:
+        h = headings[start]
         idx = h.text_offset if h.text_offset >= 0 else parsed.full_text.find(h.title)
-        parts.append(f"### {h.title}\n{parsed.full_text[idx:idx + 450] if idx >= 0 else '(未找到)'}\n")
+        raw = parsed.full_text[idx:idx + 200] if idx >= 0 else "（内容未找到）"
+        # 摘要内也剔除表 caption 行（表N.M-x），防止 Heading5 噪声泄漏进 hint
+        snippet = "\n".join(ln for ln in raw.split("\n") if not _is_table_caption(ln.strip()))
+        parts.append(f"### {h.title}\n{snippet}\n")
 
+    # 子节树优先：max_chars 超限时保留树 + 预算内摘要，树本身超限则截断树
     result = "\n".join(parts)
-    return result[:max_chars] + ("\n...(内容已截断)" if len(result) > max_chars else "")
+    if len(result) > max_chars:
+        tree_lines = []
+        for line in parts:
+            if line.lstrip().startswith("## 各章节内容摘要"):
+                break
+            tree_lines.append(line)
+        tree = "\n".join(tree_lines)
+        if len(tree) <= max_chars:
+            budget = max_chars - len(tree)
+            summary_lines = []
+            for line in parts:
+                if not line.startswith("### ") or line in tree_lines:
+                    continue
+                if sum(len(s) for s in summary_lines) + len(line) > budget:
+                    break
+                summary_lines.append(line)
+            result = tree + "\n" + "\n".join(summary_lines)
+        else:
+            result = tree[:max_chars]
+    return result

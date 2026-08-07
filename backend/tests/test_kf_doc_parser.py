@@ -225,6 +225,116 @@ def test_section_length_no_anchor_returns_zero():
     assert doc.section_length(0) == 0
 
 
+# ── 表格展平进全文 (bug-1120): Step 2 LLM 必须看到真实表行列 ──
+
+def test_expat_flattens_table_into_full_text(tmp_path):
+    """w:tbl 的单元格文本必须进入 full_text（带 | 前缀标记）。
+
+    回归 bug-1120：data() 曾把 w:tc 文本进 cell_buf 而非 cur_text，导致
+    full_text/section_text_by_title 不含表格内容 → Step 2 LLM 看不到表，
+    table_schemas 列定义全靠猜。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>1 监测点位</w:t></w:r></w:p>'
+        '<w:tbl>'
+        '<w:tr><w:tc><w:p><w:r><w:t>序号</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>点位名称</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>类型</w:t></w:r></w:p></w:tc></w:tr>'
+        '<w:tr><w:tc><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>矿区边界</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>有组织</w:t></w:r></w:p></w:tc></w:tr>'
+        '</w:tbl>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "t.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None
+    # 表结构照旧提取
+    assert len(r.tables) == 1
+    assert r.tables[0].columns == ["序号", "点位名称", "类型"]
+    # 表行列已展平进全文
+    assert "| 序号 | 点位名称 | 类型" in r.full_text
+    assert "| 1 | 矿区边界 | 有组织" in r.full_text
+    assert "【表格】" in r.full_text and "【表格结束】" in r.full_text
+
+
+def test_expat_flattened_table_lands_in_section_slice(tmp_path):
+    """展平后的表格行必须落入所在章节的 section_text_by_title 切片。
+
+    这是 bug-1120 的端到端判据：Step 2 _enrich 用 section_text_by_title
+    取章节内容，若表格行不进切片则 LLM 仍看不到表。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>1 监测点位</w:t></w:r></w:p>'
+        '<w:tbl>'
+        '<w:tr><w:tc><w:p><w:r><w:t>序号</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>点位名称</w:t></w:r></w:p></w:tc></w:tr>'
+        '<w:tr><w:tc><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>矿区边界</w:t></w:r></w:p></w:tc></w:tr>'
+        '</w:tbl>'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>2 工程分析</w:t></w:r></w:p>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "t2.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None
+    sec1 = r.section_text_by_title("1 监测点位", level=1)
+    # 表格数据必须进入章节 1 的切片
+    assert "矿区边界" in sec1, f"表格行应进章节切片, 得: {sec1[:300]}"
+    # 不越界进下一章
+    sec2 = r.section_text_by_title("2 工程分析", level=1)
+    assert "矿区边界" not in sec2
+
+
+def test_expat_table_pipe_in_cell_does_not_split(tmp_path):
+    """单元格内含 '|' 时替换为全角 '｜'，防止列边界歧义。"""
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>甲|乙</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "pipe.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    assert r is not None
+    assert "甲｜乙" in r.full_text
+    assert "甲|乙" not in r.full_text
+
+
+def test_expat_table_rows_not_detected_as_headings(tmp_path):
+    """| 前缀表格行不能被 _scan_headings_regex 误判为章节标题。
+
+    bug-1120 设计约束：标题 pattern 锚定行首数字/汉字序号，| 开头行不命中。
+    """
+    import zipfile
+    from app.extensions.knowledge_factory.doc_parser import _parse_docx_expat
+    doc_xml = (
+        '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc>'
+        '<w:tc><w:p><w:r><w:t>矿区边界</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+        '</w:document>'
+    ).encode("utf-8")
+    fp = tmp_path / "h.docx"
+    with zipfile.ZipFile(fp, "w") as zf:
+        zf.writestr("word/document.xml", doc_xml)
+    r = _parse_docx_expat(fp)
+    # 表格行 "| 1 | 矿区边界" 即使数字开头 + | 前缀，也不得成为 heading
+    assert r is not None and r.headings == []
+
+
 # ── expat handler: 真实命名空间 docx ──
 
 def test_expat_extracts_namespaced_docx(tmp_path):
@@ -416,3 +526,83 @@ def test_style_levels_resolves_basedon_inheritance(tmp_path):
         levels = _parse_style_levels(zf)
     # MySection 通过 basedOn 继承 "2" 的 outlineLvl=1 → level 2
     assert levels.get("mysection") == 2, f"MySection 应继承 level 2，得 {levels.get('mysection')}"
+
+
+# ── P3 覆盖修复: 表 caption 过滤 + 子节树构建 ──
+
+def test_is_table_caption_matches():
+    """'表N.M-x' 标题是表格 caption，不是章节。"""
+    from app.extensions.knowledge_factory.doc_parser import _is_table_caption
+    assert _is_table_caption("表1.4-1") is True
+    assert _is_table_caption("表 10.1-1") is True
+    assert _is_table_caption("表2.3-10") is True
+    # level 5 的（expat 样式路径产出）也识别
+    assert _is_table_caption("表3.4-20") is True
+
+
+def test_is_table_caption_rejects_real_sections():
+    """真实章节标题（含数字编号）不是表格 caption。"""
+    from app.extensions.knowledge_factory.doc_parser import _is_table_caption
+    assert _is_table_caption("2.2.1.1 原总体规划批复情况") is False
+    assert _is_table_caption("10 环境管理、监测计划与跟踪评价") is False
+    assert _is_table_caption("1.1 规划背景与任务由来") is False
+
+
+def test_build_structure_hint_includes_subsection_tree():
+    """结构提示必须包含 H1 下的 H2/H3 子节标题（P3 根因）。"""
+    from app.extensions.knowledge_factory.doc_parser import build_structure_hint
+    # 手工构造带子节的 ParsedDocument
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    paragraphs = [
+        "1 总则", "内容A", "1.1 规划背景", "内容B", "1.2 评价依据", "内容C",
+        "2 规划方案", "内容D",
+    ]
+    doc.headings = [
+        Heading(title="1 总则", level=1, para_idx=0),
+        Heading(title="1.1 规划背景", level=2, para_idx=2),
+        Heading(title="1.2 评价依据", level=2, para_idx=4),
+        Heading(title="2 规划方案", level=1, para_idx=6),
+    ]
+    doc.full_text = "\n\n".join(paragraphs)
+    doc.finalize_sections(paragraphs)
+    hint = build_structure_hint(doc, 5000)
+    # 子节树包含 H2 标题
+    assert "1.1 规划背景" in hint
+    assert "1.2 评价依据" in hint
+    # H1 目录仍存在
+    assert "2 规划方案" in hint
+
+
+def test_build_structure_hint_filters_table_captions():
+    """表 caption（表N.M-x）不进入子节树。"""
+    from app.extensions.knowledge_factory.doc_parser import build_structure_hint
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    paragraphs = ["1 总则", "见下表", "表1.4-1", "数据行", "2 结论", "结束"]
+    doc.headings = [
+        Heading(title="1 总则", level=1, para_idx=0),
+        Heading(title="表1.4-1", level=5, para_idx=2),  # 表格 caption 误标 Heading5
+        Heading(title="2 结论", level=1, para_idx=4),
+    ]
+    doc.full_text = "\n\n".join(paragraphs)
+    doc.finalize_sections(paragraphs)
+    hint = build_structure_hint(doc, 5000)
+    assert "表1.4-1" not in hint  # 过滤
+    assert "1 总则" in hint
+
+
+def test_build_structure_hint_truncates_summary_not_tree():
+    """max_chars 截断时子节树优先保留，摘要后砍。"""
+    from app.extensions.knowledge_factory.doc_parser import build_structure_hint
+    doc = ParsedDocument(file_path="x", file_type="docx")
+    long_text = "内容" * 3000  # 超 max_chars
+    paragraphs = ["1 总则", "1.1 子节", long_text]
+    doc.headings = [
+        Heading(title="1 总则", level=1, para_idx=0),
+        Heading(title="1.1 子节", level=2, para_idx=1),
+    ]
+    doc.full_text = "\n\n".join(paragraphs)
+    doc.finalize_sections(paragraphs)
+    hint = build_structure_hint(doc, 1000)  # 小预算
+    # 子节树（短）必须保留
+    assert "1.1 子节" in hint
+    assert "1 总则" in hint
