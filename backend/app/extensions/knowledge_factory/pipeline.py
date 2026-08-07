@@ -1565,12 +1565,13 @@ class ExtractionPipeline:
             "total": len(flat),
             "failed": failed["n"],
             "grounded_dropped": grounded_dropped["n"],
-            "deduped": deduped_count,
+            "deduped": deduped_count,  # 移除的重复 table_schemas 数（非节数）
         }
-        if failed["n"] or grounded_dropped["n"]:
+        if failed["n"] or grounded_dropped["n"] or deduped_count:
             logger.warning(
                 f"[Task {task_id_meta}] 元数据抽取汇总: {len(flat)}节, "
                 f"LLM失败降级 {failed['n']}节, grounding丢弃/标记 {grounded_dropped['n']}字段"
+                + (f", 去重合并 {deduped_count}个表" if deduped_count else "")
             )
 
         return enriched
