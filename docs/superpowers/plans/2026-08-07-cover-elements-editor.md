@@ -8,6 +8,8 @@
 
 **Tech Stack:** Python 3.12 / FastAPI / Pydantic v2 / python-docx / lxml；React 19 / TypeScript / Tailwind；pytest（后端）/ vitest（前端）。
 
+**状态: COMPLETED (2026-08-07, 10 任务全部实施+双轮审查+浏览器端到端验证)**
+
 **Spec:** `docs/superpowers/specs/2026-08-07-cover-elements-editor-design.md`
 **金标准样例:** `基地项目-消防设计专篇.docx`（1 页，标题横幅+会签表）、`2横城矿区总体规划（修编）环评——报告书报批版2021.1.docx`（3 页：封面/批准页/名单表）。样例复制到 `C:/Temp/eai-cover1-消防.docx`、`C:/Temp/eai-cover2-环评.docx` 供测试。
 
