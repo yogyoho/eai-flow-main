@@ -18,6 +18,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from lxml import etree
 
+from app.extensions.output.schemas import CoverElementSchema, CoverPageSchema
+
 _PAPER_DIMS = {
     "A4": (21.0, 29.7),
     "A3": (29.7, 42.0),
@@ -744,6 +746,158 @@ def _extract_cover_master(doc, source_file: str = "") -> dict | None:
         "sourceFile": source_file,
         "boundary": boundary,
     }
+
+
+# ---------------------------------------------------------------------------
+# Cover elements extraction — structured multi-page editor model (replaces the
+# cover_master OOXML passthrough as the primary extraction path; cover_master
+# stays as legacy fallback). Each page = elements (text/table/spacer).
+# ---------------------------------------------------------------------------
+# 冒号字段标签 → 变量 id 映射（宽松匹配标签字符，容忍 档 案 号 空格）
+_COVER_COLON_SLOT_MAP = [
+    (("项目编号", "工程编号"), "project_number"),
+    (("档 案 号", "档案号"), "archive_no"),
+    (("版    次", "版次", "版"), "version"),
+    (("证书号", "资质证书号"), "certificate_no"),
+    (("建设单位", "业主单位"), "client"),
+    (("设计阶段", "阶段"), "stage"),
+    (("日期", "报告日期"), "date"),
+]
+_COVER_DATE_RE = re.compile(r"20\d{2}年\d{1,2}月|20XX年0X月|\d{4}[-/年]\d{1,2}[-/月]\d{0,2}日?")
+_COVER_TITLE_RE = re.compile(
+    r"第[\d一二三四五六七八九十百两]+\s*[一-龥A-Za-z0-9 ]{0,20}?(?:专篇|报告书|计算书|设计说明)"
+    r"|[一-龥A-Za-z0-9 ]{2,24}?(?:专篇|报告书|计算书|设计说明)"
+)
+
+
+def _para_style(p_el) -> dict:
+    """Best-effort paragraph style: alignment + first run font props (pt)."""
+    jc = p_el.find(f"{{{_W}}}pPr/{{{_W}}}jc")
+    alignment = {"left": "left", "center": "center", "right": "right"}.get(jc.get(f"{{{_W}}}val") if jc is not None else None, "left")
+    fontFamily, fontSize, bold, color = "宋体", 12, False, "#000000"
+    r = p_el.find(f"{{{_W}}}r")
+    if r is not None:
+        rPr = r.find(f"{{{_W}}}rPr")
+        if rPr is not None:
+            rf = rPr.find(f"{{{_W}}}rFonts")
+            if rf is not None:
+                fontFamily = rf.get(f"{{{_W}}}eastAsia") or rf.get(f"{{{_W}}}ascii") or "宋体"
+            sz = rPr.find(f"{{{_W}}}sz")
+            if sz is not None:
+                try:
+                    fontSize = int(sz.get(f"{{{_W}}}val", "24")) // 2
+                except ValueError:
+                    fontSize = 12
+            bold = rPr.find(f"{{{_W}}}b") is not None
+            c = rPr.find(f"{{{_W}}}color")
+            if c is not None:
+                color = "#" + (c.get(f"{{{_W}}}val") or "000000")
+    return {"fontFamily": fontFamily, "fontSize": fontSize, "bold": bold, "color": color, "alignment": alignment}
+
+
+def _slot_from_colon(text: str) -> str | None:
+    """'项目编号：XX' → project_number; 匹配任一标签 → 对应 slot id."""
+    for labels, sid in _COVER_COLON_SLOT_MAP:
+        for lab in labels:
+            if re.search(r"\s*".join(lab) + r"\s*[：:]", text):
+                return sid
+    return None
+
+
+def _block_to_element(el) -> dict:
+    """Convert a body block (<w:p>|<w:tbl>) to a CoverElementSchema dict."""
+    if el.tag == f"{{{_W}}}tbl":
+        rows_el = el.findall(f"{{{_W}}}tr")
+        cells: list[list[str]] = []
+        for tr in rows_el:
+            row = [" ".join(_para_text(p).strip() for p in tc.iter(f"{{{_W}}}p") if _para_text(p).strip()) for tc in tr.iter(f"{{{_W}}}tc")]
+            cells.append(row)
+        return {
+            "id": f"tbl{len(cells)}x{len(cells[0]) if cells else 0}",
+            "type": "table",
+            "rows": len(cells),
+            "cols": len(cells[0]) if cells else 0,
+            "cells": cells,
+            "borderColor": "#000000",
+        }
+    text = _para_text(el).strip()
+    if not text:
+        return {"id": "sp", "type": "spacer", "lines": 1}
+    style = _para_style(el)
+    # 冒号字段标签的装饰性字间空格(工  程  编  号)在编辑/生成替换时是噪声 → 归一化,
+    # 同时让"工程编号"这类标签可被生成端按标签精确替换。
+    sid = _slot_from_colon(text)
+    if sid:
+        text = re.sub(r"\s+", "", text)
+    el_dict = {"id": f"p{abs(hash(text)) % 10000}", "type": "text", "text": text, **style}
+    if sid:
+        el_dict["slotId"] = sid
+    elif text.strip() in ("项目名", "项目名称"):
+        el_dict["slotId"] = "project_name"
+    elif _COVER_TITLE_RE.search(text) and el_dict.get("fontSize", 12) >= 16:
+        el_dict["slotId"] = "title"
+    elif _COVER_DATE_RE.search(text):
+        el_dict["slotId"] = "date"
+    return el_dict
+
+
+def _table_has_cover_fields(tbl) -> bool:
+    """A cover-field/layout table (banner + colon fields) vs a real content table.
+
+    Layout tables hold the cover metadata (项目编号：XX / 第…册…专篇 / 20XX年0X月 /
+    项目名) inside their cells → decompose them into editable text elements so the
+    fields bind as slots. Content tables (会签表 / 名单表) carry no such fields →
+    keep as a single table element.
+    """
+    for tc in tbl.iter(f"{{{_W}}}tc"):
+        for p in tc.iter(f"{{{_W}}}p"):
+            t = _para_text(p).strip()
+            if not t:
+                continue
+            if _slot_from_colon(t) or _COVER_TITLE_RE.search(t) or _COVER_DATE_RE.search(t) or t in ("项目名", "项目名称"):
+                return True
+    return False
+
+
+def _table_cell_elements(tbl) -> list[dict]:
+    """Decompose a layout table into its non-empty cell paragraphs as text elements."""
+    out: list[dict] = []
+    for tc in tbl.iter(f"{{{_W}}}tc"):
+        for p in tc.iter(f"{{{_W}}}p"):
+            el = _block_to_element(p)
+            if el["type"] == "text":
+                out.append(el)
+    return out
+
+
+def _extract_cover_pages(doc) -> list[CoverPageSchema]:
+    """封面区(目录/首个Heading前) → 按非空分节符/分页符切页 → 每页元素列表."""
+    body = doc.element.body
+    pages: list[dict] = [{"elements": []}]
+    heading_ids, toc_ids = _style_id_sets(doc)
+    for child in body:
+        tag = child.tag
+        if tag == f"{{{_W}}}sectPr":
+            break
+        if tag == f"{{{_W}}}p":
+            style_el = child.find(f"{{{_W}}}pPr/{{{_W}}}pStyle")
+            style_val = style_el.get(f"{{{_W}}}val") if style_el is not None else None
+            text = _para_text(child).strip()
+            if _TOC_TEXT_RE.match(text) or style_val in toc_ids or style_val in heading_ids:
+                break
+            has_sect = child.find(f"{{{_W}}}pPr/{{{_W}}}sectPr") is not None
+            has_pgbr = any(br.get(f"{{{_W}}}type") == "page" for br in child.iter(f"{{{_W}}}br"))
+            # 非空分节符/分页符段落 → 新页;空的分节符段落多为封面内布局标记
+            # (标题横幅表后)不切页——消防样例借此保持单页封面。
+            pages[-1]["elements"].append(_block_to_element(child))
+            if (has_sect or has_pgbr) and text:
+                pages.append({"elements": []})
+        elif tag == f"{{{_W}}}tbl":
+            if _table_has_cover_fields(child):
+                pages[-1]["elements"].extend(_table_cell_elements(child))
+            else:
+                pages[-1]["elements"].append(_block_to_element(child))
+    return [CoverPageSchema(elements=[CoverElementSchema(**e) for e in p["elements"]]) for p in pages if any(e["type"] != "spacer" for e in p["elements"])]
 
 
 def _is_caption(para) -> bool:
