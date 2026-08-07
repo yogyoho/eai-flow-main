@@ -593,26 +593,38 @@ _COVER_LABELS = {
     "project_name": "项目名",
     "stage": "设计阶段",
 }
-# (id, label chars, defaultFrom). A label is matched as its chars joined by \s*,
+# (label alternatives → slot id). A label is matched as its chars joined by \s*,
 # which tolerates the sample's inter-character spacing (档 案 号 / 版    次) while
 # still requiring the label to be contiguous-ish — 项目名 won't match across
-# 项目名…项目编号 because \s* can't skip non-whitespace.
-_COVER_COLON_FIELDS = [
-    ("project_number", "项目编号", None),
-    ("project_number", "工程编号", None),
-    ("archive_no", "档案号", None),
-    ("version", "版次", None),
-    ("certificate_no", "证书号", None),
-    ("certificate_no", "资质证书号", None),
-    ("client", "建设单位", "frontmatter:client"),
-    ("client", "业主单位", "frontmatter:client"),
-    ("client", "业主", "frontmatter:client"),
-    ("project_name", "项目名称", None),
-    ("project_name", "工程名称", None),
-    ("stage", "设计阶段", None),
-    ("stage", "阶段", None),
-    ("date", "日期", "today"),
+# 项目名…项目编号 because \s* can't skip non-whitespace. Single shared mapping:
+# BOTH the structured cover-element extraction (_slot_from_colon) and the legacy
+# cover_master slot prefill (_prefill_cover_slots) consume it.
+_COVER_COLON_LABELS: list[tuple[tuple[str, ...], str]] = [
+    (("项目编号", "工程编号"), "project_number"),
+    (("档案号",), "archive_no"),
+    (("版次",), "version"),
+    (("证书号", "资质证书号"), "certificate_no"),
+    (("建设单位", "业主单位", "业主"), "client"),
+    (("项目名称", "工程名称"), "project_name"),
+    (("设计阶段", "阶段"), "stage"),
+    (("日期",), "date"),
 ]
+_COVER_COLON_DEFAULT_FROM: dict[str, str | None] = {
+    "project_number": None,
+    "archive_no": None,
+    "version": None,
+    "certificate_no": None,
+    "client": "frontmatter:client",
+    "project_name": None,
+    "stage": None,
+    "date": "today",
+}
+# Date / report-title patterns — named once, referenced by both the legacy
+# cover_master prefill and the structured cover-element extraction.
+_COVER_DATE_RE = re.compile(r"20\d{2}年\d{1,2}月|20XX年0X月|\d{4}[-/年]\d{1,2}[-/月]\d{0,2}日?")
+_COVER_TITLE_CN_RE = re.compile(r"第[\d一二三四五六七八九十百两]+\s*[一-龥A-Za-z0-9 ]{0,20}?(?:专篇|报告书|计算书|设计说明)")
+_COVER_TITLE_GEN_RE = re.compile(r"[一-龥A-Za-z0-9 ]{2,24}?(?:专篇|报告书|计算书|设计说明)")
+_COVER_TITLE_RE = re.compile(_COVER_TITLE_CN_RE.pattern + "|" + _COVER_TITLE_GEN_RE.pattern)
 
 
 def _prefill_cover_slots(cover_blocks) -> list[dict]:
@@ -640,17 +652,22 @@ def _prefill_cover_slots(cover_blocks) -> list[dict]:
         slots.append({"id": slot_id, "label": label, "kind": kind, "sampleValue": val, "defaultFrom": default_from, "target": (target or val).strip()})
 
     # 1) Colon fields: LABEL：VALUE (whitespace-tolerant label, value = next token).
-    for slot_id, label_chars, default_from in _COVER_COLON_FIELDS:
-        m = re.search(r"\s*".join(label_chars) + r"\s*[：:]\s*(?P<val>[^\s：:\n]+)", full)
-        if m:
-            add(slot_id, _COVER_LABELS.get(slot_id, label_chars), m.group("val"), default_from=default_from, target=m.group(0))
+    #    Each slot's first matching label wins (add() dedupes by slot id), matching
+    #    the previous flat _COVER_COLON_FIELDS ordering exactly.
+    for labels, slot_id in _COVER_COLON_LABELS:
+        default_from = _COVER_COLON_DEFAULT_FROM.get(slot_id)
+        for label_chars in labels:
+            m = re.search(r"\s*".join(label_chars) + r"\s*[：:]\s*(?P<val>[^\s：:\n]+)", full)
+            if m:
+                add(slot_id, _COVER_LABELS.get(slot_id, label_chars), m.group("val"), default_from=default_from, target=m.group(0))
+                break
 
     # 2) Title: prefer a report-name keyword (第…册…专篇 / …专篇) over largest-font,
     #    so a large-font stage value (基础设计) isn't mistaken for the report title.
     title = None
-    m = re.search(r"第[\d一二三四五六七八九十百两]+\s*[一-龥A-Za-z0-9 ]{0,20}?(?:专篇|报告书|计算书|设计说明)", full)
+    m = _COVER_TITLE_CN_RE.search(full)
     if not m:
-        m = re.search(r"[一-龥A-Za-z0-9 ]{2,24}?(?:专篇|报告书|计算书|设计说明)", full)
+        m = _COVER_TITLE_GEN_RE.search(full)
     if m:
         title = m.group(0).strip()
     if not title:  # fallback: largest-font paragraph ≥ 2 chars
@@ -675,7 +692,7 @@ def _prefill_cover_slots(cover_blocks) -> list[dict]:
 
     # 5) Date placeholder (20XX年0X月) or real date — only if not a colon field.
     if "date" not in seen:
-        m = re.search(r"20\d{2}年\d{1,2}月|20XX年0X月|\d{4}[-/年]\d{1,2}[-/月]\d{0,2}日?", full)
+        m = _COVER_DATE_RE.search(full)
         if m:
             add("date", "日期", m.group(0), default_from="today")
 
@@ -754,26 +771,11 @@ def _extract_cover_master(doc, source_file: str = "") -> dict | None:
 # cover_master OOXML passthrough as the primary extraction path; cover_master
 # stays as legacy fallback). Each page = elements (text/table/spacer).
 # ---------------------------------------------------------------------------
-# 冒号字段标签 → 变量 id 映射（宽松匹配标签字符，容忍 档 案 号 空格）
-_COVER_COLON_SLOT_MAP = [
-    (("项目编号", "工程编号"), "project_number"),
-    (("档 案 号", "档案号"), "archive_no"),
-    (("版    次", "版次", "版"), "version"),
-    (("证书号", "资质证书号"), "certificate_no"),
-    (("建设单位", "业主单位"), "client"),
-    (("设计阶段", "阶段"), "stage"),
-    (("日期", "报告日期"), "date"),
-]
-_COVER_DATE_RE = re.compile(r"20\d{2}年\d{1,2}月|20XX年0X月|\d{4}[-/年]\d{1,2}[-/月]\d{0,2}日?")
-_COVER_TITLE_RE = re.compile(
-    r"第[\d一二三四五六七八九十百两]+\s*[一-龥A-Za-z0-9 ]{0,20}?(?:专篇|报告书|计算书|设计说明)"
-    r"|[一-龥A-Za-z0-9 ]{2,24}?(?:专篇|报告书|计算书|设计说明)"
-)
-
-
 # Monotonic element-id counter: ids must be unique per extraction (T8 editor uses
 # id as React key / patchCoverElementsPage match key). Content-hash ids collide on
 # duplicated cover text (banner repeats), so a plain counter is used instead.
+# 共享的冒号标签映射与日期/标题正则见上方 _COVER_COLON_LABELS / _COVER_DATE_RE /
+# _COVER_TITLE_RE。
 _ELEM_COUNTER = itertools.count(1)
 
 
@@ -795,24 +797,64 @@ def _para_style(p_el) -> dict:
                     fontSize = int(sz.get(f"{{{_W}}}val", "24")) // 2
                 except ValueError:
                     fontSize = 12
-            bold = rPr.find(f"{{{_W}}}b") is not None
+            b = rPr.find(f"{{{_W}}}b")
+            if b is not None:
+                bval = b.get(f"{{{_W}}}val")
+                bold = bval not in ("0", "false", "off")  # w:b w:val=0/false/off → 非粗体
             c = rPr.find(f"{{{_W}}}color")
             if c is not None:
-                color = "#" + (c.get(f"{{{_W}}}val") or "000000")
+                val = c.get(f"{{{_W}}}val")
+                if val and val.lower() != "auto":  # w:color w:val=auto → 保持默认黑色
+                    color = "#" + val
     return {"fontFamily": fontFamily, "fontSize": fontSize, "bold": bold, "color": color, "alignment": alignment}
 
 
 def _slot_from_colon(text: str) -> str | None:
-    """'项目编号：XX' → project_number; 匹配任一标签 → 对应 slot id."""
-    for labels, sid in _COVER_COLON_SLOT_MAP:
+    """'项目编号：XX' → project_number; 匹配任一标签 → 对应 slot id.
+
+    冒号字段元素在实践里单段单字段;即使文本含多个冒号,这里绑定取第一个匹配标签,
+    生成端按最后一个冒号替换值部分(见 _render_cover_elements)——两者通常一致,无需消歧。
+    """
+    for labels, sid in _COVER_COLON_LABELS:
         for lab in labels:
             if re.search(r"\s*".join(lab) + r"\s*[：:]", text):
                 return sid
     return None
 
 
-def _block_to_element(el) -> dict:
-    """Convert a body block (<w:p>|<w:tbl>) to a CoverElementSchema dict."""
+def _image_element(doc, el) -> dict | None:
+    """If the paragraph embeds a drawing image, return an image element dict (else None).
+
+    Reads the first <a:blip> r:embed → related part blob → base64 + extension.
+    Cover logos are standalone (empty-text) paragraphs; a paragraph with both text
+    and an image is treated as text elsewhere (image ignored).
+    """
+    blips = list(el.iter(f"{{{_DRAWML}}}blip"))
+    if not blips:
+        return None
+    rid = blips[0].get(f"{{{_REL}}}embed")
+    if not rid:
+        return None
+    part = doc.part.related_parts.get(rid)
+    blob = getattr(part, "blob", None) if part is not None else None
+    if not blob:
+        return None
+    ext = "png"
+    partname = getattr(part, "partname", None)
+    if partname and "." in str(partname):
+        ext = str(partname).rsplit(".", 1)[-1].lower()
+    return {
+        "id": f"img{next(_ELEM_COUNTER)}",
+        "type": "image",
+        "image": {"b64": base64.b64encode(blob).decode("ascii"), "ext": ext},
+    }
+
+
+def _block_to_element(doc, el) -> dict:
+    """Convert a body block (<w:p>|<w:tbl>) to a CoverElementSchema dict.
+
+    Returns a dict fed to ``CoverElementSchema(**el)`` by the caller. Blocks that
+    fail are degraded to a spacer by the caller (spec §8 block-level try/except)."""
     if el.tag == f"{{{_W}}}tbl":
         rows_el = el.findall(f"{{{_W}}}tr")
         cells: list[list[str]] = []
@@ -837,24 +879,28 @@ def _block_to_element(el) -> dict:
             "borderColor": "#000000",
         }
     text = _para_text(el).strip()
-    if not text:
-        return {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
-    style = _para_style(el)
-    # 冒号字段标签的装饰性字间空格(工  程  编  号)在编辑/生成替换时是噪声 → 归一化,
-    # 同时让"工程编号"这类标签可被生成端按标签精确替换。
-    sid = _slot_from_colon(text)
-    if sid:
-        text = re.sub(r"\s+", "", text)
-    el_dict = {"id": f"el{next(_ELEM_COUNTER)}", "type": "text", "text": text, **style}
-    if sid:
-        el_dict["slotId"] = sid
-    elif text.strip() in ("项目名", "项目名称"):
-        el_dict["slotId"] = "project_name"
-    elif _COVER_TITLE_RE.search(text) and el_dict.get("fontSize", 12) >= 16:
-        el_dict["slotId"] = "title"
-    elif _COVER_DATE_RE.search(text):
-        el_dict["slotId"] = "date"
-    return el_dict
+    if text:
+        style = _para_style(el)
+        # 冒号字段标签的装饰性字间空格(工  程  编  号)在编辑/生成替换时是噪声 → 归一化,
+        # 同时让"工程编号"这类标签可被生成端按标签精确替换。
+        sid = _slot_from_colon(text)
+        if sid:
+            text = re.sub(r"\s+", "", text)
+        el_dict = {"id": f"el{next(_ELEM_COUNTER)}", "type": "text", "text": text, **style}
+        if sid:
+            el_dict["slotId"] = sid
+        elif text.strip() in ("项目名", "项目名称"):
+            el_dict["slotId"] = "project_name"
+        elif _COVER_TITLE_RE.search(text) and el_dict.get("fontSize", 12) >= 16:
+            el_dict["slotId"] = "title"
+        elif _COVER_DATE_RE.search(text):
+            el_dict["slotId"] = "date"
+        return el_dict
+    # 空段:独立 logo 图片 → image 元素;否则 spacer。
+    img = _image_element(doc, el)
+    if img is not None:
+        return img
+    return {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
 
 
 def _table_has_cover_fields(tbl) -> bool:
@@ -875,19 +921,28 @@ def _table_has_cover_fields(tbl) -> bool:
     return False
 
 
-def _table_cell_elements(tbl) -> list[dict]:
-    """Decompose a layout table into its non-empty cell paragraphs as text elements."""
+def _table_cell_elements(doc, tbl) -> list[dict]:
+    """Decompose a layout table into its cell paragraphs as text/image elements."""
     out: list[dict] = []
     for tc in tbl.iter(f"{{{_W}}}tc"):
         for p in tc.iter(f"{{{_W}}}p"):
-            el = _block_to_element(p)
-            if el["type"] == "text":
+            try:
+                el = _block_to_element(doc, p)
+            except Exception:
+                el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
+            if el["type"] in ("text", "image"):
                 out.append(el)
     return out
 
 
 def _extract_cover_pages(doc) -> list[CoverPageSchema]:
-    """封面区(目录/首个Heading前) → 按非空分节符/分页符切页 → 每页元素列表."""
+    """封面区(目录/首个Heading前) → 按非空分节符/分页符切页 → 每页元素列表.
+
+    返回 list[CoverPageSchema];T4 持久化逐页 `.model_dump()`,T5
+    `_cover_master_to_elements` 产出同一 schema 形状。`_block_to_element` 返回
+    dict,由这里包成 CoverElementSchema 实例;单块转换失败降级为 spacer(§8),
+    绝不中断导入。
+    """
     body = doc.element.body
     pages: list[dict] = [{"elements": []}]
     heading_ids, toc_ids = _style_id_sets(doc)
@@ -905,14 +960,22 @@ def _extract_cover_pages(doc) -> list[CoverPageSchema]:
             has_pgbr = any(br.get(f"{{{_W}}}type") == "page" for br in child.iter(f"{{{_W}}}br"))
             # 非空分节符/分页符段落 → 新页;空的分节符段落多为封面内布局标记
             # (标题横幅表后)不切页——消防样例借此保持单页封面。
-            pages[-1]["elements"].append(_block_to_element(child))
+            try:
+                el = _block_to_element(doc, child)
+            except Exception:
+                el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
+            pages[-1]["elements"].append(el)
             if (has_sect or has_pgbr) and text:
                 pages.append({"elements": []})
         elif tag == f"{{{_W}}}tbl":
             if _table_has_cover_fields(child):
-                pages[-1]["elements"].extend(_table_cell_elements(child))
+                pages[-1]["elements"].extend(_table_cell_elements(doc, child))
             else:
-                pages[-1]["elements"].append(_block_to_element(child))
+                try:
+                    el = _block_to_element(doc, child)
+                except Exception:
+                    el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
+                pages[-1]["elements"].append(el)
     return [CoverPageSchema(elements=[CoverElementSchema(**e) for e in p["elements"]]) for p in pages if any(e["type"] != "spacer" for e in p["elements"])]
 
 

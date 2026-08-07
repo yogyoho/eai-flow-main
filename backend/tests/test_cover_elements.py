@@ -1,4 +1,5 @@
 """Tests for the structured cover element model (replaces cover_master passthrough)."""
+
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,11 @@ from app.extensions.output.schemas import (
     LayoutTemplateCreate,
 )
 
-SAMPLE1 = Path("C:/Temp/eai-cover1-消防.docx")   # 基地项目-消防设计专篇
-SAMPLE2 = Path("C:/Temp/eai-cover2-环评.docx")   # 横城矿区环评报告
+SAMPLE1 = Path("C:/Temp/eai-cover1-消防.docx")  # 基地项目-消防设计专篇
+SAMPLE2 = Path("C:/Temp/eai-cover2-环评.docx")  # 横城矿区环评报告
+
+# 金标准样例只在本地开发机存在;CI(Linux) 无 C:/Temp → 跳过而非 FileNotFoundError。
+skip_missing = pytest.mark.skipif(not (SAMPLE1.exists() and SAMPLE2.exists()), reason="金标准样例缺失（本地开发机才有）")
 
 
 def _cover_of(path):
@@ -55,6 +59,7 @@ def test_layout_template_create_accepts_cover_elements():
     assert tpl.cover_elements.pages[0].elements[0].text == "报告标题"
 
 
+@skip_missing
 def test_fire_sample_single_page_with_table_elements():
     """消防设计专篇: 1 页, 含文本元素(标题横幅/项目编号) + 会签表元素."""
     pages = _cover_of(SAMPLE1)
@@ -74,6 +79,7 @@ def test_fire_sample_single_page_with_table_elements():
     assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
 
 
+@skip_missing
 def test_huanping_sample_three_pages():
     """环评报告: 3 页 (封面/批准页/名单页), 含名单表格."""
     pages = _cover_of(SAMPLE2)
@@ -82,6 +88,8 @@ def test_huanping_sample_three_pages():
     assert any("环境影响报告书" in t for t in p1_texts)
     p2_texts = " ".join(e.text for e in pages[1].elements)
     assert "工程" in p2_texts and "H7367Z" in p2_texts
+    imgs = [e for p in pages for e in p.elements if e.type == "image"]
+    assert len(imgs) >= 1, f"环评封面应有 ≥1 个 logo 图片元素, got {len(imgs)}"
     p3_tables = [e for e in pages[2].elements if e.type == "table"]
     assert len(p3_tables) == 2, f"名单页应 2 张表, got {len(p3_tables)}"
     assert p3_tables[1].rows >= 16
