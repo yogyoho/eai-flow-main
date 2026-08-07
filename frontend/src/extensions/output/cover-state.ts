@@ -46,6 +46,31 @@ export function normalizeCoverTemplate(
   return null;
 }
 
+/** A cover whose every page has no content-bearing element (only spacers / empty
+ * text / empty tables / logo-without-data) carries no cover content — collapse it
+ * to null so it is not persisted as a configured cover (which would render a
+ * spurious blank cover page on generation). Mirrors `normalizeCoverTemplate`. */
+export function normalizeCoverElements(cover: Cover | null): Cover | null {
+  if (!cover) return null;
+  const hasContent = cover.pages.some((p) =>
+    p.elements.some((el) => {
+      switch (el.type) {
+        case "spacer":
+          return false;
+        case "text":
+          return Boolean((el.text ?? "").trim());
+        case "table":
+          return (el.rows ?? 0) > 0 && (el.cols ?? 0) > 0;
+        case "image":
+          return Boolean(el.image?.b64);
+        case "divider":
+          return true;
+      }
+    }),
+  );
+  return hasContent ? cover : null;
+}
+
 /** A cover with no pages — the neutral seed for a brand-new element-based cover
  * (mode `elements`, one empty page). */
 export const COVER_EMPTY_ELEMENTS: Cover = { mode: "elements", pages: [{ elements: [] }] };

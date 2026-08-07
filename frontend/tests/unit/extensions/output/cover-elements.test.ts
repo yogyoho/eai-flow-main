@@ -4,6 +4,7 @@ import {
   COVER_EMPTY_ELEMENTS,
   COVER_SLOT_OPTIONS,
   isCoverSlotResolvable,
+  normalizeCoverElements,
   patchCoverElementsPage,
 } from "@/extensions/output/cover-state";
 import { transformTemplate } from "@/extensions/output/transforms";
@@ -52,5 +53,46 @@ describe("cover element helpers", () => {
   test("COVER_EMPTY_ELEMENTS 是空封面", () => {
     expect(COVER_EMPTY_ELEMENTS.mode).toBe("elements");
     expect(COVER_EMPTY_ELEMENTS.pages).toEqual([{ elements: [] }]);
+  });
+});
+
+describe("normalizeCoverElements", () => {
+  test("空封面（无元素）→ null", () => {
+    expect(normalizeCoverElements(COVER_EMPTY_ELEMENTS)).toBeNull();
+  });
+
+  test("只有空行/空文本的封面 → null", () => {
+    const cover: Cover = {
+      mode: "elements",
+      pages: [
+        {
+          elements: [
+            { id: "s1", type: "spacer", lines: 1 },
+            { id: "t1", type: "text", text: "   " },
+          ],
+        },
+      ],
+    };
+    expect(normalizeCoverElements(cover)).toBeNull();
+  });
+
+  test("null → null", () => {
+    expect(normalizeCoverElements(null)).toBeNull();
+  });
+
+  test("含文本元素的封面 → 原样透传", () => {
+    const cover: Cover = {
+      mode: "elements",
+      pages: [{ elements: [{ id: "e1", type: "text", text: "报告标题" }] }],
+    };
+    expect(normalizeCoverElements(cover)).toBe(cover);
+  });
+
+  test("分隔线元素视为有内容 → 透传", () => {
+    const cover: Cover = {
+      mode: "elements",
+      pages: [{ elements: [{ id: "d1", type: "divider" }] }],
+    };
+    expect(normalizeCoverElements(cover)).toBe(cover);
   });
 });

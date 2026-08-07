@@ -29,6 +29,7 @@ import {
   coverSlotEffectiveKind,
   coverSlotSourceLabel,
   isCoverSlotResolvable,
+  normalizeCoverElements,
   normalizeCoverTemplate,
   patchCoverState,
   resolveCoverFromImport,
@@ -621,7 +622,8 @@ export function LayoutTemplateEditor({
         pageSettings,
         coverTemplate: normalizedCoverTemplate,
         coverMaster,
-        coverElements,
+        // 全空封面（只有空行/空文本）归一化为 null，避免持久化触发空白封面页
+        coverElements: normalizeCoverElements(coverElements),
         tocSettings,
         bodyStyles,
         headingStyles,
@@ -677,9 +679,7 @@ export function LayoutTemplateEditor({
       if (ff) setFigureStyles(ff);
       const hf = data.header_footer as HeaderFooter | null | undefined;
       if (hf) setHeaderFooter(hf);
-      // 封面元素：样例带 cover_elements 则采纳，否则清掉旧的（stale 防护，同 coverMaster 逻辑）
-      const ce = data.cover_elements as Cover | null | undefined;
-      setCoverElements(ce?.mode === "elements" ? ce : null);
+      // 封面（含 cover_elements stale 防护）统一走 applyCoverImport，单点负责
       applyCoverImport(data);
     },
     [applyCoverImport],
@@ -1183,7 +1183,11 @@ export function LayoutTemplateEditor({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setCoverElements(null)}
+                    onClick={() => {
+                      setCoverElements(null);
+                      setCoverMaster(null);
+                      setCoverTemplate(null);
+                    }}
                     className="ml-auto shrink-0 rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
                   >
                     移除封面
