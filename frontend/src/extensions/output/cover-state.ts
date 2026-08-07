@@ -114,7 +114,7 @@ export function coverSlotEffectiveKind(slot: {
  * extraction source (layout_import._prefill_cover_slots); when it is null the
  * generator STILL fills resolvable slots at generation (project_number from
  * api/frontmatter, project_name/stage from frontmatter) — so "无自动来源" must
- * only appear for genuinely unresolvable ids (design_unit/archive_no/version/
+ * only appear for genuinely unresolvable ids (archive_no/version/
  * certificate_no), never for a resolvable slot that auto-fills. */
 const COVER_DEFAULT_FROM_LABELS: Record<string, string> = {
   doc_title: "来自文档标题",

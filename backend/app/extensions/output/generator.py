@@ -205,8 +205,7 @@ def _replace_target_in_para(p_el, target: str, replacement: str) -> bool:
 # EAI-CUSTOM: the resolvable cover slot ids. Mirrored one-for-one by frontend
 # cover-state.ts COVER_RESOLVABLE_SLOT_IDS (the UI locks any slot outside this
 # set to literal); backend test test_output_cover.py::test_cover_slot_value_keys
-# pins this set — keep it in sync with the slot_value dict below.
-# T7 TODO: 前端 cover-state.ts COVER_RESOLVABLE_SLOT_IDS 尚未纳入 design_unit，T7 同步。
+# pins this set — keep it in sync with frontend cover-state.ts COVER_RESOLVABLE_SLOT_IDS.
 COVER_SLOT_VALUE_KEYS = ("title", "client", "project_number", "date", "project_name", "stage", "design_unit")
 
 
