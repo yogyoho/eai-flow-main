@@ -29,6 +29,47 @@ class CoverTemplateSchema(BaseModel):
     showProjectNumber: bool = True
 
 
+class CoverImageSchema(BaseModel):
+    b64: str
+    ext: str = "png"
+
+
+class CoverElementSchema(BaseModel):
+    id: str
+    type: Literal["text", "table", "image", "spacer", "divider"] = "text"
+    # text
+    text: str = ""
+    fontFamily: str = "宋体"
+    fontSize: int = 12
+    bold: bool = False
+    color: str = "#000000"
+    alignment: Literal["left", "center", "right"] = "center"
+    spaceBefore: int = 0
+    spaceAfter: int = 0
+    slotId: str | None = None
+    # table
+    rows: int = 0
+    cols: int = 0
+    cells: list[list[str]] = Field(default_factory=list)
+    headerBg: str | None = None
+    borderColor: str = "#000000"
+    # image
+    image: CoverImageSchema | None = None
+    widthCm: float | None = None
+    # spacer
+    lines: int = 1
+
+
+class CoverPageSchema(BaseModel):
+    elements: list[CoverElementSchema] = Field(default_factory=list)
+
+
+class CoverSchema(BaseModel):
+    mode: Literal["elements"] = "elements"
+    pages: list[CoverPageSchema] = Field(default_factory=list)
+    sourceFile: str = ""
+
+
 class CoverSlotSchema(BaseModel):
     id: str
     label: str
@@ -107,6 +148,7 @@ class LayoutTemplateCreate(BaseModel):
     page_settings: PageSettingsSchema
     cover_template: CoverTemplateSchema | None = None
     cover_master: CoverMasterSchema | None = None
+    cover_elements: CoverSchema | None = None
     toc_settings: TocSettingsSchema | None = None
     body_styles: BodyStylesSchema
     heading_styles: list[HeadingStyleSchema] = Field(default_factory=list)
@@ -123,6 +165,7 @@ class LayoutTemplateUpdate(BaseModel):
     page_settings: PageSettingsSchema | None = None
     cover_template: CoverTemplateSchema | None = None
     cover_master: CoverMasterSchema | None = None
+    cover_elements: CoverSchema | None = None
     toc_settings: TocSettingsSchema | None = None
     body_styles: BodyStylesSchema | None = None
     heading_styles: list[HeadingStyleSchema] | None = None
@@ -143,6 +186,7 @@ class LayoutTemplateResponse(BaseModel):
     page_settings: dict
     cover_template: dict | None = None
     cover_master: dict | None = None
+    cover_elements: dict | None = None
     toc_settings: dict | None = None
     body_styles: dict
     heading_styles: list
