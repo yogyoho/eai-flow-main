@@ -95,6 +95,7 @@ def _resolve_cover_fields(api_fields: dict, frontmatter: dict, blocks: list[Bloc
     - title: api > front-matter > first H1 block text
     - client/project_number: api > front-matter (omit if neither)
     - date: api > front-matter > today (ISO)
+    - project_name/stage/design_unit: api > front-matter (omit if neither)
     """
     resolved: dict = {}
     title = api_fields.get("title") or frontmatter.get("title")
@@ -106,6 +107,10 @@ def _resolve_cover_fields(api_fields: dict, frontmatter: dict, blocks: list[Bloc
     if title:
         resolved["title"] = title
     for key in ("client", "project_number"):
+        val = api_fields.get(key) or frontmatter.get(key)
+        if val:
+            resolved[key] = val
+    for key in ("project_name", "stage", "design_unit"):
         val = api_fields.get(key) or frontmatter.get(key)
         if val:
             resolved[key] = val
@@ -261,6 +266,93 @@ def _render_cover_master(doc, master: dict, resolved: dict, frontmatter: dict) -
     body = doc.element.body
     for child in reversed(list(root)):  # insert at 0 in reverse → original order
         body.insert(0, deepcopy(child))
+
+
+def _replace_slot_value(text: str, value: str) -> str:
+    """绑定文本替换：含冒号保留标签只换值；否则整体替换。"""
+    if "：" in text or ":" in text:
+        idx = max(text.rfind("："), text.rfind(":"))
+        return text[: idx + 1] + value
+    return value
+
+
+def _render_cover_elements(doc, cover: dict, resolved: dict, frontmatter: dict) -> None:
+    """从结构化元素构建封面：逐页段落/表格/图片，页间分节；绑定元素用解析值替换."""
+    if not cover or cover.get("mode") != "elements":
+        return
+    slot_value = {
+        "title": resolved.get("title"),
+        "client": resolved.get("client"),
+        "project_number": resolved.get("project_number"),
+        "date": resolved.get("date"),
+        "project_name": frontmatter.get("project_name") or resolved.get("project_name"),
+        "stage": frontmatter.get("stage"),
+        "design_unit": frontmatter.get("design_unit"),
+    }
+    pages = cover.get("pages", [])
+    for pi, page in enumerate(pages):
+        for el in page.get("elements", []):
+            try:
+                _render_cover_element(doc, el, slot_value)
+            except Exception as exc:
+                logger.warning("cover element render failed, skipping: %s", exc)
+        if pi < len(pages) - 1:
+            doc.add_section(WD_SECTION.NEW_PAGE)
+
+
+def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
+    etype = el.get("type")
+    if etype == "text":
+        text = el.get("text", "")
+        sid = el.get("slotId")
+        repl = slot_value.get(sid) if sid else None
+        if repl:
+            text = _replace_slot_value(text, str(repl))
+        p = doc.add_paragraph()
+        p.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(el.get("alignment"), WD_ALIGN_PARAGRAPH.CENTER)
+        pf = p.paragraph_format
+        pf.space_before = Pt(el.get("spaceBefore", 0))
+        pf.space_after = Pt(el.get("spaceAfter", 0))
+        run = p.add_run(text)
+        _set_run_font(run, _resolve_font(el.get("fontFamily", "宋体")))
+        run.font.size = Pt(int(el.get("fontSize", 12)))
+        run.bold = bool(el.get("bold", False))
+        try:
+            run.font.color.rgb = RGBColor.from_string(el.get("color", "#000000").lstrip("#"))
+        except ValueError:
+            pass
+    elif etype == "table":
+        rows, cols = int(el.get("rows", 0)), int(el.get("cols", 0))
+        cells = el.get("cells", [])
+        if rows <= 0 or cols <= 0:
+            return
+        tbl = doc.add_table(rows=rows, cols=cols)
+        tbl.style = "Table Grid"
+        for ri in range(rows):
+            for ci in range(cols):
+                cell_text = cells[ri][ci] if ri < len(cells) and ci < len(cells[ri]) else ""
+                tbl.rows[ri].cells[ci].text = cell_text
+        header_bg = el.get("headerBg")
+        if header_bg and rows > 0:
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            for ci in range(cols):
+                shd = OxmlElement("w:shd")
+                shd.set(qn("w:val"), "clear")
+                shd.set(qn("w:fill"), header_bg.lstrip("#"))
+                tbl.rows[0].cells[ci]._tc.get_or_add_tcPr().append(shd)
+    elif etype == "image":
+        img = el.get("image")
+        if img:
+            try:
+                blob = base64.b64decode(img["b64"])
+                doc.add_picture(BytesIO(blob))
+            except Exception as exc:
+                logger.warning("cover image element failed: %s", exc)
+    elif etype == "spacer":
+        for _ in range(int(el.get("lines", 1))):
+            doc.add_paragraph()
+    # divider：空段兜底（v1 简化，如实现则下边框）
 
 
 def _render_cover_preset(doc, preset: dict | None, values: dict | None) -> bool:
@@ -1039,7 +1131,8 @@ def generate_docx(
             pf.alignment = alignment
 
     cover_master = template_data.get("cover_master")
-    has_cover = bool(cover_master or template_data.get("cover_template"))
+    cover_elements = template_data.get("cover_elements")
+    has_cover = bool(cover_elements or cover_master or template_data.get("cover_template"))
     has_toc = bool(template_data.get("toc_settings"))
     resolved_cover = _resolve_cover_fields(cover_fields or {}, frontmatter, blocks) if has_cover else {}
     numbers = _compute_heading_numbers(blocks, template_data.get("heading_styles", []))
@@ -1048,7 +1141,9 @@ def generate_docx(
     cover_rendered = False
     if has_cover:
         try:
-            if cover_master and cover_master.get("mode") == "master":
+            if cover_elements and cover_elements.get("mode") == "elements":
+                _render_cover_elements(doc, cover_elements, resolved_cover, frontmatter)
+            elif cover_master and cover_master.get("mode") == "master":
                 _render_cover_master(doc, cover_master, resolved_cover, frontmatter)
             else:
                 _render_cover(doc, template_data.get("cover_template"), resolved_cover)

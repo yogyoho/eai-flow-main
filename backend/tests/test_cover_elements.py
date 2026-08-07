@@ -1,11 +1,13 @@
 """Tests for the structured cover element model (replaces cover_master passthrough)."""
 
+import tempfile
 from pathlib import Path
 
 import pytest
 from docx import Document
 from pydantic import ValidationError
 
+from app.extensions.output.generator import _render_cover_elements, generate_docx
 from app.extensions.output.layout_import import _extract_cover_pages
 from app.extensions.output.schemas import (
     CoverElementSchema,
@@ -96,3 +98,53 @@ def test_huanping_sample_three_pages():
     assert p3_tables[0].cols >= 3, f"名单页首表 cols 应 >=3(实为3), got {p3_tables[0].cols}"
     ids = [e.id for p in pages for e in p.elements]
     assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
+
+
+def _sample_cover():
+    return {
+        "mode": "elements",
+        "sourceFile": "x.docx",
+        "pages": [
+            {"elements": [
+                {"id": "e1", "type": "text", "text": "项目名", "fontSize": 22, "bold": True, "alignment": "center", "slotId": "project_name"},
+                {"id": "e2", "type": "text", "text": "项目编号：XX", "fontSize": 14, "alignment": "center", "slotId": "project_number"},
+                {"id": "e3", "type": "text", "text": "环境影响报告书", "fontSize": 22, "alignment": "center"},
+                {"id": "e4", "type": "table", "rows": 2, "cols": 2, "cells": [["专业名称", "编制"], ["总图", ""]], "headerBg": "#D9D9D9"},
+                {"id": "e5", "type": "spacer", "lines": 2},
+            ]},
+            {"elements": [
+                {"id": "e6", "type": "text", "text": "审定、审查人员名单", "fontSize": 16, "alignment": "center"},
+            ]},
+        ],
+    }
+
+
+def test_render_cover_elements_slot_replacement_and_pages():
+    resolved = {"project_name": "基地项目", "project_number": "P001"}
+    doc = Document()
+    _render_cover_elements(doc, _sample_cover(), resolved, {})
+    texts = [p.text for p in doc.paragraphs if p.text.strip()]
+    assert "基地项目" in texts, "项目名绑定应替换为 基地项目"
+    assert any("项目编号：P001" in t for t in texts), "冒号字段应保留标签替换值"
+    assert any("环境影响报告书" in t for t in texts), "未绑定元素保留原文"
+    assert len(doc.tables) == 1, "表格元素应生成 1 张 docx 表"
+    assert doc.tables[0].rows[0].cells[0].text.strip() == "专业名称"
+    assert len(doc.sections) >= 2, "多页元素应产生分节"
+
+
+def test_generate_docx_uses_cover_elements_priority():
+    tpl = {
+        "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},
+        "body_styles": {"fontFamily": "宋体", "fontSize": 12, "lineHeight": 1.5, "paragraphSpacing": 0, "firstLineIndent": 2},
+        "heading_styles": [],
+        "cover_elements": _sample_cover(),
+        "cover_master": {"mode": "master", "xml": "<w:p/>", "images": [], "slots": [], "sourceFile": "old", "boundary": "before_toc"},
+        "cover_template": None,
+        "toc_settings": None,
+    }
+    with tempfile.TemporaryDirectory() as d:
+        out = Path(d) / "r.docx"
+        generate_docx("# 正文\n", tpl, out, cover_fields={"project_name": "基地项目", "project_number": "P001"})
+        doc = Document(str(out))
+        texts = [p.text for p in doc.paragraphs if p.text.strip()]
+        assert "基地项目" in texts, "cover_elements 应优先于 cover_master 渲染"
