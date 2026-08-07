@@ -7,12 +7,14 @@ import {
   ArrowDown,
   ArrowUp,
   Bold,
+  GripVertical,
   Image as ImageIcon,
   Minus,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import {
@@ -44,7 +46,7 @@ const ELEMENT_TYPE_META: Record<
   table: { label: "表格", badgeCls: "bg-emerald-500/10 text-emerald-600" },
   image: { label: "Logo", badgeCls: "bg-amber-500/10 text-amber-600" },
   spacer: { label: "空行", badgeCls: "bg-muted text-muted-foreground" },
-  divider: { label: "分隔线", badgeCls: "bg-muted text-muted-foreground" },
+  divider: { label: "分页符", badgeCls: "bg-muted text-muted-foreground" },
 };
 
 /** 元素自增 ID 生成器 —— 仅在一次会话内保证唯一即可（Task 2 已保证存量元素 id 唯一）。 */
@@ -318,6 +320,12 @@ interface ElementRowProps {
   onMove: (dir: -1 | 1) => void;
   onCell: (r: number, c: number, v: string) => void;
   onResize: (dr: number, dc: number) => void;
+  onDragStart: () => void;
+  onDragOver: () => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  dragging: boolean;
+  dragOver: boolean;
 }
 
 function ElementRow({
@@ -329,11 +337,42 @@ function ElementRow({
   onMove,
   onCell,
   onResize,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  dragging,
+  dragOver,
 }: ElementRowProps) {
   const meta = ELEMENT_TYPE_META[el.type];
   return (
-    <div className="border-border bg-background rounded-lg border">
+    <div
+      className={cn(
+        "border-border bg-background rounded-lg border transition-shadow",
+        dragOver && "ring-primary/60 ring-2 ring-inset",
+        dragging && "opacity-40",
+      )}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOver();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+    >
       <div className="flex items-center gap-2 px-2.5 py-1.5">
+        <button
+          type="button"
+          draggable
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          className="text-muted-foreground/40 hover:text-muted-foreground shrink-0 cursor-grab rounded p-0.5 transition-colors active:cursor-grabbing"
+          aria-label="拖动排序"
+          title="拖动排序"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
         <span className="text-muted-foreground/50 w-4 shrink-0 text-center text-[10px]">
           {index + 1}
         </span>
@@ -360,7 +399,9 @@ function ElementRow({
           )}
           {el.type === "spacer" && <SpacerBody el={el} onPatch={onPatch} />}
           {el.type === "divider" && (
-            <span className="text-muted-foreground text-xs">分隔线</span>
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <span className="border-muted-foreground/30 border-t w-6" /> 分页符
+            </span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -406,6 +447,59 @@ function ElementRow({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 插入位（元素间）：折叠为一条 ＋，展开为类型选择菜单，插入到指定 index
+// ─────────────────────────────────────────────────────────────────────────────
+
+function InsertZone({
+  open,
+  onToggle,
+  onInsert,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onInsert: (t: CoverElementType) => void;
+}) {
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="在指定位置插入元素"
+        title="在指定位置插入元素"
+        className="group flex w-full items-center gap-1 py-1"
+      >
+        <span className="border-border flex-1 border-t border-dashed" />
+        <Plus className="text-muted-foreground/25 group-hover:text-primary h-3.5 w-3.5 transition-colors" />
+        <span className="border-border flex-1 border-t border-dashed" />
+      </button>
+    );
+  }
+  return (
+    <div className="bg-primary/5 border-primary/25 flex items-center gap-1 rounded-md border border-dashed px-1.5 py-1">
+      <span className="text-muted-foreground/60 shrink-0 text-[10px]">插入</span>
+      {(Object.keys(ELEMENT_TYPE_META) as CoverElementType[]).map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onInsert(t)}
+          className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary flex items-center gap-0.5 rounded border border-dashed px-1.5 py-0.5 text-[10px] transition-colors"
+        >
+          <Plus className="h-2.5 w-2.5" /> {ELEMENT_TYPE_META[t].label}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="关闭插入菜单"
+        className="text-muted-foreground/50 hover:text-muted-foreground ml-auto rounded p-0.5 transition-colors"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 主组件：页签 + 元素列表 + 添加页/元素
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -419,6 +513,11 @@ export function CoverElementsEditor({
   cover,
   onChange,
 }: CoverElementsEditorProps) {
+  // 拖拽排序源/悬停目标 + 插入菜单开关（key = `${pageIndex}:${elementIndex}`）
+  const [drag, setDrag] = useState<{ from: string; over: string | null } | null>(null);
+  const [insertOpen, setInsertOpen] = useState<string | null>(null);
+  const keyOf = (pi: number, i: number) => `${pi}:${i}`;
+
   const updateElement = useCallback(
     (pi: number, id: string, patch: Partial<CoverElement>) => {
       // cover 非空（props 类型保证）→ patchCoverElementsPage 不会返回 null
@@ -518,6 +617,44 @@ export function CoverElementsEditor({
     [cover, onChange],
   );
 
+  /** 拖拽落点：把元素从 fromIdx 移到 toIdx（splice 两步）。 */
+  const moveElementTo = useCallback(
+    (pi: number, fromIdx: number, toIdx: number) => {
+      const page = cover.pages[pi];
+      if (!page) return;
+      const els = page.elements.slice();
+      if (
+        fromIdx < 0 ||
+        fromIdx >= els.length ||
+        toIdx < 0 ||
+        toIdx >= els.length ||
+        fromIdx === toIdx
+      ) {
+        return;
+      }
+      const [moved] = els.splice(fromIdx, 1);
+      if (!moved) return;
+      els.splice(toIdx, 0, moved);
+      onChange(patchCoverElementsPage(cover, pi, () => els)!);
+    },
+    [cover, onChange],
+  );
+
+  /** 在指定 index 插入新元素（元素间「＋」菜单）。 */
+  const insertElement = useCallback(
+    (pi: number, index: number, type: CoverElementType) => {
+      onChange(
+        patchCoverElementsPage(cover, pi, (els) => {
+          const next = els.slice();
+          next.splice(index, 0, createElement(type));
+          return next;
+        })!,
+      );
+      setInsertOpen(null);
+    },
+    [cover, onChange],
+  );
+
   const addPage = useCallback(() => {
     onChange({ ...cover, pages: [...cover.pages, { elements: [] }] });
   }, [cover, onChange]);
@@ -574,23 +711,81 @@ export function CoverElementsEditor({
             {/* 元素列表 */}
             <div className="space-y-2 p-3">
               {page.elements.length === 0 ? (
-                <p className="text-muted-foreground/70 rounded-lg border border-dashed py-4 text-center text-[11px]">
-                  空页 — 添加元素开始编辑
-                </p>
-              ) : (
-                page.elements.map((el, i) => (
-                  <ElementRow
-                    key={el.id}
-                    el={el}
-                    index={i}
-                    count={page.elements.length}
-                    onPatch={(patch) => updateElement(pi, el.id, patch)}
-                    onRemove={() => removeElement(pi, el.id)}
-                    onMove={(dir) => moveElement(pi, el.id, dir)}
-                    onCell={(r, c, v) => updateTableCell(pi, el.id, r, c, v)}
-                    onResize={(dr, dc) => resizeTable(pi, el.id, dr, dc)}
+                <>
+                  <InsertZone
+                    open={insertOpen === keyOf(pi, 0)}
+                    onToggle={() =>
+                      setInsertOpen(
+                        insertOpen === keyOf(pi, 0) ? null : keyOf(pi, 0),
+                      )
+                    }
+                    onInsert={(t) => insertElement(pi, 0, t)}
                   />
-                ))
+                  <p className="text-muted-foreground/70 rounded-lg border border-dashed py-4 text-center text-[11px]">
+                    空页 — 添加元素开始编辑
+                  </p>
+                </>
+              ) : (
+                <>
+                  <InsertZone
+                    open={insertOpen === keyOf(pi, 0)}
+                    onToggle={() =>
+                      setInsertOpen(
+                        insertOpen === keyOf(pi, 0) ? null : keyOf(pi, 0),
+                      )
+                    }
+                    onInsert={(t) => insertElement(pi, 0, t)}
+                  />
+                  {page.elements.map((el, i) => (
+                    <Fragment key={el.id}>
+                      <ElementRow
+                        el={el}
+                        index={i}
+                        count={page.elements.length}
+                        onPatch={(patch) => updateElement(pi, el.id, patch)}
+                        onRemove={() => removeElement(pi, el.id)}
+                        onMove={(dir) => moveElement(pi, el.id, dir)}
+                        onCell={(r, c, v) =>
+                          updateTableCell(pi, el.id, r, c, v)
+                        }
+                        onResize={(dr, dc) => resizeTable(pi, el.id, dr, dc)}
+                        dragging={drag?.from === keyOf(pi, i)}
+                        dragOver={drag?.over === keyOf(pi, i)}
+                        onDragStart={() =>
+                          setDrag({ from: keyOf(pi, i), over: null })
+                        }
+                        onDragOver={() =>
+                          setDrag((d) =>
+                            d ? { ...d, over: keyOf(pi, i) } : d,
+                          )
+                        }
+                        onDrop={() => {
+                          if (drag && drag.from !== keyOf(pi, i)) {
+                            const [fp, fi] = drag.from
+                              .split(":")
+                              .map(Number);
+                            if (fp === pi && fi !== undefined) {
+                              moveElementTo(pi, fi, i);
+                            }
+                          }
+                          setDrag(null);
+                        }}
+                        onDragEnd={() => setDrag(null)}
+                      />
+                      <InsertZone
+                        open={insertOpen === keyOf(pi, i + 1)}
+                        onToggle={() =>
+                          setInsertOpen(
+                            insertOpen === keyOf(pi, i + 1)
+                              ? null
+                              : keyOf(pi, i + 1),
+                          )
+                        }
+                        onInsert={(t) => insertElement(pi, i + 1, t)}
+                      />
+                    </Fragment>
+                  ))}
+                </>
               )}
 
               {/* 添加元素按钮组 */}

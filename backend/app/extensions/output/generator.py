@@ -359,7 +359,10 @@ def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
             lines = 1
         for _ in range(lines):
             doc.add_paragraph()
-    # divider：空段兜底（v1 简化，如实现则下边框）
+    elif etype == "divider":
+        # 分页符：分隔线元素重定义为分页符（生成时在此插一页断，封面内部分页）。
+        # 旧 type id "divider" 保留以兼容已持久化封面；现有 divider 即成为分页符。
+        doc.add_page_break()
 
 
 def _render_cover_preset(doc, preset: dict | None, values: dict | None) -> bool:

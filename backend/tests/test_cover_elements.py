@@ -135,6 +135,27 @@ def _sample_cover():
     }
 
 
+def test_render_cover_element_divider_is_page_break():
+    """分隔线元素重定义为分页符：渲染为 <w:br w:type="page"/>，非空段兜底。"""
+    from docx.oxml.ns import qn
+
+    cover = {
+        "mode": "elements",
+        "sourceFile": "x.docx",
+        "pages": [{"elements": [
+            {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
+            {"id": "e2", "type": "divider"},
+            {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
+        ]}],
+    }
+    doc = Document()
+    _render_cover_elements(doc, cover, {}, {})
+    brs = doc.element.body.findall(f".//{qn('w:br')}")
+    assert any(br.get(qn("w:type")) == "page" for br in brs), "divider 应渲染为分页符"
+    texts = [p.text for p in doc.paragraphs if p.text.strip()]
+    assert "封面一" in texts and "封面二" in texts, "分页符前后文本应都保留"
+
+
 def test_render_cover_elements_slot_replacement_and_pages():
     resolved = {"project_name": "基地项目", "project_number": "P001"}
     doc = Document()
