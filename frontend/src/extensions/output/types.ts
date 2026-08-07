@@ -10,6 +10,7 @@ export interface LayoutTemplate {
   pageSettings: PageSettings;
   coverTemplate: CoverTemplate | null;
   coverMaster: CoverMaster | null;
+  coverElements: Cover | null;
   tocSettings: TocSettings | null;
   bodyStyles: BodyStyles;
   headingStyles: HeadingStyle[];
@@ -66,6 +67,45 @@ export interface CoverMaster {
   slots: CoverSlot[];
   sourceFile: string;
   boundary: string;
+}
+
+export interface CoverImage {
+  b64: string;
+  ext?: string;
+}
+
+export type CoverElementType = "text" | "table" | "image" | "spacer" | "divider";
+
+export interface CoverElement {
+  id: string;
+  type: CoverElementType;
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  bold?: boolean;
+  color?: string;
+  alignment?: "left" | "center" | "right";
+  spaceBefore?: number;
+  spaceAfter?: number;
+  slotId?: string | null;
+  rows?: number;
+  cols?: number;
+  cells?: string[][];
+  headerBg?: string | null;
+  borderColor?: string;
+  image?: CoverImage | null;
+  widthCm?: number | null;
+  lines?: number;
+}
+
+export interface CoverPage {
+  elements: CoverElement[];
+}
+
+export interface Cover {
+  mode: "elements";
+  pages: CoverPage[];
+  sourceFile?: string;
 }
 
 export interface TocSettings {

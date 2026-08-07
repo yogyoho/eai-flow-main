@@ -465,6 +465,7 @@ export function ExportDocxDialog({ docId, docTitle, content, open, onOpenChange 
           referenceStyle: "gb7714",
           coverTemplate: coverTpl,
           coverMaster: null,
+          coverElements: null,
           tocSettings: withToc ? { maxDepth: tocDepth, showPageNumbers: true, leaderDots: true } : null,
           appendixRules: null,
         });

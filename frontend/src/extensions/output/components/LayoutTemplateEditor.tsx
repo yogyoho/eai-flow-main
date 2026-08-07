@@ -614,6 +614,7 @@ export function LayoutTemplateEditor({
         pageSettings,
         coverTemplate: normalizedCoverTemplate,
         coverMaster,
+        coverElements: null,
         tocSettings,
         bodyStyles,
         headingStyles,
