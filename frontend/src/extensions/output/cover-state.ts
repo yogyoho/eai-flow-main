@@ -1,4 +1,4 @@
-import type { CoverMaster, CoverTemplate } from "./types";
+import type { Cover, CoverElement, CoverMaster, CoverTemplate } from "./types";
 
 /** Neutral cover-template seed: every boolean explicitly false + centered logo.
  * NOT the old COVER_DEFAULT (all-true): a partial patch merged over this base
@@ -46,11 +46,44 @@ export function normalizeCoverTemplate(
   return null;
 }
 
-/** Slot ids the generator can resolve a replacement value for — the exact keys
- * of generator.py `_render_cover_master` slot_value. Any other slot
- * (design_unit / archive_no / version / certificate_no) has no value source at
- * generation: toggling it to "variable" is a silent no-op, so the UI must lock
- * it to literal. */
+/** A cover with no pages — the neutral seed for a brand-new element-based cover
+ * (mode `elements`, one empty page). */
+export const COVER_EMPTY_ELEMENTS: Cover = { mode: "elements", pages: [{ elements: [] }] };
+
+/** Variable-bound slot options for a cover element, in display order. The
+ * `value` set mirrors the backend generator.py `COVER_SLOT_VALUE_KEYS`
+ * (7 keys, incl. `design_unit` — resolvable from frontmatter via
+ * `_resolve_cover_fields`). */
+export const COVER_SLOT_OPTIONS: { value: string; label: string }[] = [
+  { value: "title", label: "报告标题" },
+  { value: "client", label: "建设单位" },
+  { value: "project_number", label: "项目编号" },
+  { value: "date", label: "日期" },
+  { value: "project_name", label: "项目名" },
+  { value: "stage", label: "设计阶段" },
+  { value: "design_unit", label: "设计单位" },
+];
+
+/** Patch the elements of a single cover page (immutable). `pageIndex` out of
+ * range leaves the cover untouched; `null` cover passes through as null. */
+export function patchCoverElementsPage(
+  cover: Cover | null,
+  pageIndex: number,
+  updater: (elements: CoverElement[]) => CoverElement[],
+): Cover | null {
+  if (!cover) return cover;
+  return {
+    ...cover,
+    pages: cover.pages.map((p, i) => (i === pageIndex ? { ...p, elements: updater(p.elements) } : p)),
+  };
+}
+
+/** Slot ids the generator can resolve a replacement value for — synced with the
+ * backend generator.py `COVER_SLOT_VALUE_KEYS` (7 keys, incl. design_unit from
+ * frontmatter via `_resolve_cover_fields`). Any other slot
+ * (archive_no / version / certificate_no) has no value source at generation:
+ * toggling it to "variable" is a silent no-op, so the UI must lock it to
+ * literal. */
 export const COVER_RESOLVABLE_SLOT_IDS = [
   "title",
   "client",
@@ -58,6 +91,7 @@ export const COVER_RESOLVABLE_SLOT_IDS = [
   "date",
   "project_name",
   "stage",
+  "design_unit",
 ] as const;
 
 export function isCoverSlotResolvable(id: string): boolean {
@@ -92,6 +126,7 @@ const COVER_ID_SOURCE_LABELS: Record<string, string> = {
   project_number: "来自接口参数/报告元数据",
   project_name: "来自报告元数据·项目名",
   stage: "来自报告元数据·设计阶段",
+  design_unit: "来自报告元数据·设计单位",
   title: "生成时填入报告标题",
   client: "生成时填入建设单位",
   date: "生成时填入日期",

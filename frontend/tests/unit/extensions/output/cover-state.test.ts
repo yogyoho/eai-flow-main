@@ -188,12 +188,12 @@ describe("M6 resolvable-slot lock", () => {
         "date",
         "project_name",
         "stage",
+        "design_unit",
       ].every(isCoverSlotResolvable),
     ).toBe(true);
   });
 
   test("unresolvable ids are not resolvable", () => {
-    expect(isCoverSlotResolvable("design_unit")).toBe(false);
     expect(isCoverSlotResolvable("archive_no")).toBe(false);
     expect(isCoverSlotResolvable("version")).toBe(false);
     expect(isCoverSlotResolvable("certificate_no")).toBe(false);
@@ -235,12 +235,14 @@ describe("M4 source labels", () => {
       "来自报告元数据·项目名",
     );
     expect(coverSlotSourceLabel("stage", null)).toBe("来自报告元数据·设计阶段");
+    expect(coverSlotSourceLabel("design_unit", null)).toBe(
+      "来自报告元数据·设计单位",
+    );
   });
 
   test("genuinely unresolvable slot → 无自动来源", () => {
-    expect(coverSlotSourceLabel("design_unit", null)).toBe("无自动来源");
     expect(coverSlotSourceLabel("archive_no", null)).toBe("无自动来源");
-    expect(coverSlotSourceLabel("design_unit", undefined)).toBe("无自动来源");
+    expect(coverSlotSourceLabel("archive_no", undefined)).toBe("无自动来源");
   });
 
   test("unknown defaultFrom on a resolvable slot → 无自动来源", () => {
