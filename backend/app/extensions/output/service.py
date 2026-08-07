@@ -23,12 +23,19 @@ async def _migrate_cover_master(template: LayoutTemplate, db: AsyncSession) -> N
     通道；转换失败保留旧母版（返回 None，不覆盖）。设置后把实例 expunge 出 session，
     防止 get_db 请求尾的无条件 commit 把读时迁移意外落库（spec review 发现的 bug：
     仅 GET 也会永久改写旧模板）。保存时（update）才显式落库。
+
+    迁移是"忠实"的（与 _extract_cover_pages 同源：恢复 logo、保留多页、分解字段表），
+    所以 generate 走 elements 的产物与旧 master 内容一致——读时迁移在生成端改变
+    输出的顾虑因此不成立（spec review Fix #2）。
     """
     if template.cover_master and not template.cover_elements:
         migrated = _cover_master_to_elements(template.cover_master)
         if migrated is not None:
             template.cover_elements = migrated
-            db.expunge(template)  # AsyncSession.expunge 是同步方法（SQLAlchemy 2.0 已验证），无需 await
+            # AsyncSession.expunge 是同步方法（SQLAlchemy 2.0 已验证），无需 await。
+            # 依赖 LayoutTemplate 全列 eager（无 lazy/deferred relationship）——
+            # 若有惰性列，expunge 后访问会抛 DetachedInstanceError。
+            db.expunge(template)
 
 
 class LayoutTemplateService:

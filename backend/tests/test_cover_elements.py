@@ -208,6 +208,108 @@ def test_cover_master_read_migration_does_not_persist_to_db():
     asyncio.run(scenario())
 
 
+def test_cover_master_to_elements_restores_logo_from_images():
+    """Fix #1: 迁移从 master["images"] (按 origRid) 恢复 logo, 而非降级为 spacer."""
+    from app.extensions.output.layout_import import _cover_master_to_elements
+
+    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+           'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+           'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+           '<w:r><w:drawing><a:blip r:embed="rId1"/></w:drawing></w:r></w:p>')
+    master = {
+        "mode": "master",
+        "xml": xml,
+        "images": [{"origRid": "rId1", "ext": "png", "b64": "QUJD"}],
+        "slots": [],
+        "sourceFile": "old.docx",
+        "boundary": "before_toc",
+    }
+    cover = _cover_master_to_elements(master)
+    imgs = [e for e in cover["pages"][0]["elements"] if e["type"] == "image"]
+    assert imgs, "logo 应恢复为 image 元素"
+    assert imgs[0]["image"]["b64"] == "QUJD"
+    assert imgs[0]["image"]["ext"] == "png"
+
+
+def test_cover_master_to_elements_preserves_multipage():
+    """Fix #3: 迁移与 _extract_cover_pages 同源 → 多页母版按分页符保留页数."""
+    from app.extensions.output.layout_import import _cover_master_to_elements
+
+    W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    xml = (
+        f'<w:p xmlns:w="{W}"><w:r><w:t>封面</w:t></w:r></w:p>'
+        f'<w:p xmlns:w="{W}"><w:r><w:t>批准页</w:t></w:r><w:r><w:br w:type="page"/></w:r></w:p>'
+        f'<w:p xmlns:w="{W}"><w:r><w:t>名单页</w:t></w:r></w:p>'
+    )
+    master = {"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"}
+    cover = _cover_master_to_elements(master)
+    assert len(cover["pages"]) == 2, f"多页母版应切为 2 页, got {len(cover['pages'])}"
+    p1_texts = [e["text"] for e in cover["pages"][0]["elements"] if e["type"] == "text"]
+    p2_texts = [e["text"] for e in cover["pages"][1]["elements"] if e["type"] == "text"]
+    assert "封面" in p1_texts
+    assert "名单页" in p2_texts
+
+
+def test_cover_master_migration_update_delete_after_expunge():
+    """spec-review #5: expunge 后 update/delete 走真实 re-attach 路径仍能落库."""
+    import asyncio
+
+    from sqlalchemy import JSON, Column, Integer, String
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.orm import declarative_base
+
+    from app.extensions.output.schemas import LayoutTemplateUpdate
+    from app.extensions.output.service import LayoutTemplateService, _migrate_cover_master
+
+    TestBase = declarative_base()
+
+    class LegacyTpl(TestBase):
+        __tablename__ = "legacy_tpl"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False, default="")
+        cover_master = Column(JSON, nullable=True)
+        cover_elements = Column(JSON, nullable=True)
+
+    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+
+    async def scenario():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as conn:
+            await conn.run_sync(TestBase.metadata.create_all)
+        Factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with Factory() as db:
+            tpl = LegacyTpl(
+                name="旧名",
+                cover_master={"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"},
+                cover_elements=None,
+            )
+            db.add(tpl)
+            await db.commit()
+            await db.refresh(tpl)
+            tpl_id = tpl.id
+            # 读路径迁移 → expunge
+            await _migrate_cover_master(tpl, db)
+            assert tpl.cover_elements, "内存已迁移"
+            assert tpl not in db, "expunge 后模板应已脱离 session"
+            # UPDATE: expunged → re-attach → set name → commit/refresh
+            updated = await LayoutTemplateService.update_template(db, tpl, LayoutTemplateUpdate(name="新名"))
+            assert updated.name == "新名"
+
+        async with Factory() as db2:
+            fresh = await db2.get(LegacyTpl, tpl_id)
+            assert fresh.name == "新名", "update 应落库"
+            # DELETE: expunged → re-attach → delete
+            await _migrate_cover_master(fresh, db2)
+            await LayoutTemplateService.delete_template(db2, fresh)
+
+        async with Factory() as db3:
+            assert await db3.get(LegacyTpl, tpl_id) is None, "delete 应落库"
+
+    asyncio.run(scenario())
+
+
 def test_generate_docx_uses_cover_elements_priority():
     tpl = {
         "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},

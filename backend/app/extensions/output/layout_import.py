@@ -822,45 +822,56 @@ def _slot_from_colon(text: str) -> str | None:
     return None
 
 
-def _image_element(doc, el) -> dict | None:
+def _image_element(doc, el, images_map: dict | None = None) -> dict | None:
     """If the paragraph embeds a drawing image, return an image element dict (else None).
 
     Reads the first <a:blip> r:embed → related part blob → base64 + extension.
     Cover logos are standalone (empty-text) paragraphs; a paragraph with both text
     and an image is treated as text elsewhere (image ignored).
 
-    ``doc`` may be None when migrating a stored cover_master (only the OOXML
-    fragment survives; the image blobs are gone) — in that case images cannot be
-    restored and the paragraph degrades to a spacer instead.
+    When ``doc`` is None (migration from a stored cover_master), the image blobs are
+    recovered from ``images_map`` ({origRid: {"b64", "ext"}}) instead — they were
+    collected by ``_extract_cover_master`` and stored in ``master["images"]``.
     """
-    if doc is None:
-        return None
     blips = list(el.iter(f"{{{_DRAWML}}}blip"))
     if not blips:
         return None
     rid = blips[0].get(f"{{{_REL}}}embed")
     if not rid:
         return None
-    part = doc.part.related_parts.get(rid)
-    blob = getattr(part, "blob", None) if part is not None else None
-    if not blob:
+    if doc is not None:
+        part = doc.part.related_parts.get(rid)
+        blob = getattr(part, "blob", None) if part is not None else None
+        if not blob:
+            return None
+        ext = "png"
+        partname = getattr(part, "partname", None)
+        if partname and "." in str(partname):
+            ext = str(partname).rsplit(".", 1)[-1].lower()
+        return {
+            "id": f"img{next(_ELEM_COUNTER)}",
+            "type": "image",
+            "image": {"b64": base64.b64encode(blob).decode("ascii"), "ext": ext},
+        }
+    # 迁移: 图片来自存储的 master["images"] (按 origRid), 而非 live doc
+    img = (images_map or {}).get(rid)
+    if not img or not img.get("b64"):
         return None
-    ext = "png"
-    partname = getattr(part, "partname", None)
-    if partname and "." in str(partname):
-        ext = str(partname).rsplit(".", 1)[-1].lower()
     return {
         "id": f"img{next(_ELEM_COUNTER)}",
         "type": "image",
-        "image": {"b64": base64.b64encode(blob).decode("ascii"), "ext": ext},
+        "image": {"b64": img["b64"], "ext": img.get("ext", "png")},
     }
 
 
-def _block_to_element(doc, el) -> dict:
+def _block_to_element(doc, el, images_map: dict | None = None) -> dict:
     """Convert a body block (<w:p>|<w:tbl>) to a CoverElementSchema dict.
 
     Returns a dict fed to ``CoverElementSchema(**el)`` by the caller. Blocks that
-    fail are degraded to a spacer by the caller (spec §8 block-level try/except)."""
+    fail are degraded to a spacer by the caller (spec §8 block-level try/except).
+
+    ``images_map`` is threaded to ``_image_element`` for the migration path where
+    ``doc`` is None (logos recovered from stored ``master["images"]``)."""
     if el.tag == f"{{{_W}}}tbl":
         rows_el = el.findall(f"{{{_W}}}tr")
         cells: list[list[str]] = []
@@ -903,7 +914,7 @@ def _block_to_element(doc, el) -> dict:
             el_dict["slotId"] = "date"
         return el_dict
     # 空段:独立 logo 图片 → image 元素;否则 spacer。
-    img = _image_element(doc, el)
+    img = _image_element(doc, el, images_map)
     if img is not None:
         return img
     return {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
@@ -927,18 +938,54 @@ def _table_has_cover_fields(tbl) -> bool:
     return False
 
 
-def _table_cell_elements(doc, tbl) -> list[dict]:
+def _table_cell_elements(doc, tbl, images_map: dict | None = None) -> list[dict]:
     """Decompose a layout table into its cell paragraphs as text/image elements."""
     out: list[dict] = []
     for tc in tbl.iter(f"{{{_W}}}tc"):
         for p in tc.iter(f"{{{_W}}}p"):
             try:
-                el = _block_to_element(doc, p)
+                el = _block_to_element(doc, p, images_map)
             except Exception:
                 el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
             if el["type"] in ("text", "image"):
                 out.append(el)
     return out
+
+
+def _blocks_to_pages(doc, blocks, images_map: dict | None = None) -> list[dict]:
+    """body blocks → 页列表(按非空分节符/分页符切页, cover-field 表分解为元素).
+
+    供 `_extract_cover_pages`(从 live doc 收集 blocks) 与 `_cover_master_to_elements`
+    (从存储的 OOXML 片段解析 blocks) 共用 —— spec §7: 迁移与提取同源。
+    ``doc`` 可为 None(迁移): 图片从 ``images_map`` ({origRid: {"b64","ext"}}) 恢复。
+    返回 [{elements: [dict...]}] (未包 CoverPageSchema; 全 spacer 页丢弃)。
+    """
+    pages: list[dict] = [{"elements": []}]
+    for child in blocks:
+        tag = child.tag
+        if tag == f"{{{_W}}}p":
+            text = _para_text(child).strip()
+            has_sect = child.find(f"{{{_W}}}pPr/{{{_W}}}sectPr") is not None
+            has_pgbr = any(br.get(f"{{{_W}}}type") == "page" for br in child.iter(f"{{{_W}}}br"))
+            # 非空分节符/分页符段落 → 新页;空的分节符段落多为封面内布局标记
+            # (标题横幅表后)不切页——消防样例借此保持单页封面。
+            try:
+                el = _block_to_element(doc, child, images_map)
+            except Exception:
+                el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
+            pages[-1]["elements"].append(el)
+            if (has_sect or has_pgbr) and text:
+                pages.append({"elements": []})
+        elif tag == f"{{{_W}}}tbl":
+            if _table_has_cover_fields(child):
+                pages[-1]["elements"].extend(_table_cell_elements(doc, child, images_map))
+            else:
+                try:
+                    el = _block_to_element(doc, child, images_map)
+                except Exception:
+                    el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
+                pages[-1]["elements"].append(el)
+    return [p for p in pages if any(e["type"] != "spacer" for e in p["elements"])]
 
 
 def _extract_cover_pages(doc) -> list[CoverPageSchema]:
@@ -947,11 +994,11 @@ def _extract_cover_pages(doc) -> list[CoverPageSchema]:
     返回 list[CoverPageSchema];T4 持久化逐页 `.model_dump()`,T5
     `_cover_master_to_elements` 产出同一 schema 形状。`_block_to_element` 返回
     dict,由这里包成 CoverElementSchema 实例;单块转换失败降级为 spacer(§8),
-    绝不中断导入。
+    绝不中断导入。块转换/切页/表格分解委托共享 helper `_blocks_to_pages`。
     """
     body = doc.element.body
-    pages: list[dict] = [{"elements": []}]
     heading_ids, toc_ids = _style_id_sets(doc)
+    blocks: list = []
     for child in body:
         tag = child.tag
         if tag == f"{{{_W}}}sectPr":
@@ -962,37 +1009,24 @@ def _extract_cover_pages(doc) -> list[CoverPageSchema]:
             text = _para_text(child).strip()
             if _TOC_TEXT_RE.match(text) or style_val in toc_ids or style_val in heading_ids:
                 break
-            has_sect = child.find(f"{{{_W}}}pPr/{{{_W}}}sectPr") is not None
-            has_pgbr = any(br.get(f"{{{_W}}}type") == "page" for br in child.iter(f"{{{_W}}}br"))
-            # 非空分节符/分页符段落 → 新页;空的分节符段落多为封面内布局标记
-            # (标题横幅表后)不切页——消防样例借此保持单页封面。
-            try:
-                el = _block_to_element(doc, child)
-            except Exception:
-                el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
-            pages[-1]["elements"].append(el)
-            if (has_sect or has_pgbr) and text:
-                pages.append({"elements": []})
+            blocks.append(child)
         elif tag == f"{{{_W}}}tbl":
-            if _table_has_cover_fields(child):
-                pages[-1]["elements"].extend(_table_cell_elements(doc, child))
-            else:
-                try:
-                    el = _block_to_element(doc, child)
-                except Exception:
-                    el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
-                pages[-1]["elements"].append(el)
-    return [CoverPageSchema(elements=[CoverElementSchema(**e) for e in p["elements"]]) for p in pages if any(e["type"] != "spacer" for e in p["elements"])]
+            blocks.append(child)
+    pages = _blocks_to_pages(doc, blocks)
+    return [CoverPageSchema(elements=[CoverElementSchema(**e) for e in p["elements"]]) for p in pages]
 
 
 def _cover_master_to_elements(master: dict | None) -> dict | None:
     """旧 cover_master（OOXML 片段）→ 元素模型。失败返回 None（保留旧母版）。
 
     Task 5 迁移：读取模板时若 cover_master 存在而 cover_elements 为空，把存储的
-    封面 OOXML 片段解析回 w:p / w:tbl 块，复用 ``_block_to_element(None, ...)`` 转成
-    CoverElementSchema 形状的元素 dict（mode="elements"）。仅内存填充不落库，保存时
-    才持久化。图片无法还原（blob 已随原 docx 丢失）→ 自动降级为 spacer；任何解析/
-    转换异常都返回 None，让调用方保留旧母版，绝不破坏已有模板。
+    封面 OOXML 片段解析回 w:p / w:tbl 块，复用共享 helper ``_blocks_to_pages``
+    （与 _extract_cover_pages 同源，spec §7）切页 + 表格分解 + 图片恢复：
+    - 多页母版（如环评 3 页）保留页数；
+    - banner/字段表按 _table_has_cover_fields 分解为可绑定文本元素；
+    - logo 从 ``master["images"]``（按 origRid 匹配 <a:blip r:embed>）恢复 b64，
+      不再是 spacer。
+    转换/解析失败或无元素 → None，让调用方保留旧母版，绝不破坏已有模板。
     """
     if not master or not master.get("xml"):
         return None
@@ -1002,8 +1036,12 @@ def _cover_master_to_elements(master: dict | None) -> dict | None:
         W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
         root = _et.fromstring(f'<root xmlns:w="{W}">{master["xml"]}</root>')
         blocks = [b for b in list(root) if b.tag in (f"{{{W}}}p", f"{{{W}}}tbl")]
-        pages = [{"elements": [_block_to_element(None, b) for b in blocks]}]
-        pages = [p for p in pages if p["elements"]]
+        images_map = {
+            img["origRid"]: {"b64": img.get("b64", ""), "ext": img.get("ext", "png")}
+            for img in (master.get("images") or [])
+            if img.get("origRid")
+        }
+        pages = _blocks_to_pages(None, blocks, images_map)
         if not pages:
             return None
         return {"mode": "elements", "pages": pages, "sourceFile": master.get("sourceFile", "")}
