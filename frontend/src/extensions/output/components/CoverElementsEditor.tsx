@@ -12,7 +12,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import {
@@ -29,6 +29,11 @@ import { cn } from "@/lib/utils";
 // ─────────────────────────────────────────────────────────────────────────────
 // 元素元信息与创建
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** AdminSelect 的"不绑定"哨兵值 —— Radix Select 禁止空串作为 option value
+ * （@radix-ui/react-select@2.2.6 在 SelectItem value === "" 时直接 throw），
+ * 因此用项目惯例的 `__none__` 哨兵占位，onChange 时再映射回 null。 */
+const UNBOUND = "__none__";
 
 /** 每种元素类型的展示名 + 类型徽标配色。 */
 const ELEMENT_TYPE_META: Record<
@@ -133,6 +138,9 @@ function TextElementBody({
   el: CoverElement;
   onPatch: (patch: Partial<CoverElement>) => void;
 }) {
+  // 字号输入允许"清空中的瞬态"（清空时本地草稿为空串，不失焦前不强制回填 12）
+  const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+  const sizeValue = sizeDraft ?? String(el.fontSize ?? 12);
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <input
@@ -140,26 +148,35 @@ function TextElementBody({
         value={el.text ?? ""}
         onChange={(e) => onPatch({ text: e.target.value })}
         placeholder="文本内容"
+        aria-label="文本内容"
         className={cn(inputCls, "min-w-[120px] flex-1")}
       />
       <AdminSelect
-        value={el.slotId ?? ""}
-        onChange={(v) => onPatch({ slotId: v || null })}
-        options={[{ value: "", label: "不绑定" }, ...COVER_SLOT_OPTIONS]}
+        value={el.slotId ?? UNBOUND}
+        onChange={(v) => onPatch({ slotId: v === UNBOUND ? null : v })}
+        options={[{ value: UNBOUND, label: "不绑定" }, ...COVER_SLOT_OPTIONS]}
         className="w-32"
       />
       <input
         type="number"
-        value={el.fontSize ?? 12}
-        onChange={(e) => onPatch({ fontSize: parseInt(e.target.value) || 12 })}
+        value={sizeValue}
+        onChange={(e) => {
+          setSizeDraft(e.target.value);
+          const n = parseInt(e.target.value, 10);
+          if (e.target.value !== "" && !Number.isNaN(n)) {
+            onPatch({ fontSize: n });
+          }
+        }}
+        onBlur={() => setSizeDraft(null)}
+        aria-label="字号 (pt)"
         className={cn(inputCls, "w-14 px-2 text-center")}
-        title="字号 (pt)"
       />
       <button
         type="button"
         onClick={() => onPatch({ bold: !el.bold })}
         className={cn(ghostBtnCls, el.bold && "bg-primary/10 text-primary")}
-        title="加粗"
+        aria-label="加粗"
+        aria-pressed={!!el.bold}
       >
         <Bold className="h-3.5 w-3.5" />
       </button>
@@ -180,9 +197,10 @@ function TextElementBody({
               (el.alignment ?? "center") === val &&
                 "bg-primary/10 text-primary",
             )}
-            title={
+            aria-label={
               val === "left" ? "左对齐" : val === "right" ? "右对齐" : "居中"
             }
+            aria-pressed={(el.alignment ?? "center") === val}
           >
             <Icon className="h-3.5 w-3.5" />
           </button>
@@ -208,7 +226,7 @@ function SpacerBody({
         type="button"
         onClick={() => onPatch({ lines: Math.max(1, lines - 1) })}
         className={cn(ghostBtnCls, "h-5 w-5")}
-        title="减少空行"
+        aria-label="减少空行"
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -219,7 +237,7 @@ function SpacerBody({
         type="button"
         onClick={() => onPatch({ lines: lines + 1 })}
         className={cn(ghostBtnCls, "h-5 w-5")}
-        title="增加空行"
+        aria-label="增加空行"
       >
         <Plus className="h-3 w-3" />
       </button>
@@ -274,6 +292,7 @@ function TableBody({
               type="text"
               value={cell}
               onChange={(e) => onCell(r, c, e.target.value)}
+              aria-label={`单元格 第 ${r + 1} 行 第 ${c + 1} 列`}
               className={cn(
                 tableCellCls,
                 r === 0 && el.headerBg && "font-medium",
@@ -350,7 +369,7 @@ function ElementRow({
             onClick={() => onMove(-1)}
             disabled={index === 0}
             className={ghostBtnCls}
-            title="上移"
+            aria-label="上移"
           >
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
@@ -359,7 +378,7 @@ function ElementRow({
             onClick={() => onMove(1)}
             disabled={index === count - 1}
             className={ghostBtnCls}
-            title="下移"
+            aria-label="下移"
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
@@ -367,7 +386,7 @@ function ElementRow({
             type="button"
             onClick={onRemove}
             className={cn(ghostBtnCls, "hover:text-destructive")}
-            title="删除"
+            aria-label="删除"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -402,10 +421,11 @@ export function CoverElementsEditor({
 }: CoverElementsEditorProps) {
   const updateElement = useCallback(
     (pi: number, id: string, patch: Partial<CoverElement>) => {
+      // cover 非空（props 类型保证）→ patchCoverElementsPage 不会返回 null
       onChange(
         patchCoverElementsPage(cover, pi, (els) =>
           els.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-        ) ?? cover,
+        )!,
       );
     },
     [cover, onChange],
@@ -417,7 +437,7 @@ export function CoverElementsEditor({
         patchCoverElementsPage(cover, pi, (els) => [
           ...els,
           createElement(type),
-        ]) ?? cover,
+        ])!,
       );
     },
     [cover, onChange],
@@ -428,7 +448,7 @@ export function CoverElementsEditor({
       onChange(
         patchCoverElementsPage(cover, pi, (els) =>
           els.filter((e) => e.id !== id),
-        ) ?? cover,
+        )!,
       );
     },
     [cover, onChange],
@@ -436,20 +456,19 @@ export function CoverElementsEditor({
 
   const moveElement = useCallback(
     (pi: number, id: string, dir: -1 | 1) => {
-      onChange(
-        patchCoverElementsPage(cover, pi, (els) => {
-          const idx = els.findIndex((e) => e.id === id);
-          const j = idx + dir;
-          if (idx < 0 || j < 0 || j >= els.length) return els;
-          const a = els[idx];
-          const b = els[j];
-          if (!a || !b) return els;
-          const next = els.slice();
-          next[idx] = b;
-          next[j] = a;
-          return next;
-        }) ?? cover,
-      );
+      const page = cover.pages[pi];
+      if (!page) return;
+      const idx = page.elements.findIndex((e) => e.id === id);
+      const j = idx + dir;
+      // 越界（首/末元素）或找不到 → 直接跳过 onChange，不产生无意义的新对象
+      if (idx < 0 || j < 0 || j >= page.elements.length) return;
+      const a = page.elements[idx];
+      const b = page.elements[j];
+      if (!a || !b) return;
+      const next = page.elements.slice();
+      next[idx] = b;
+      next[j] = a;
+      onChange(patchCoverElementsPage(cover, pi, () => next)!);
     },
     [cover, onChange],
   );
@@ -470,7 +489,7 @@ export function CoverElementsEditor({
             );
             return { ...e, cells };
           }),
-        ) ?? cover,
+        )!,
       );
     },
     [cover, onChange],
@@ -493,7 +512,7 @@ export function CoverElementsEditor({
             );
             return { ...e, rows, cols, cells };
           }),
-        ) ?? cover,
+        )!,
       );
     },
     [cover, onChange],
