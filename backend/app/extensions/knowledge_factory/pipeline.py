@@ -334,7 +334,7 @@ def _find_best_matching_paragraph(
     """
 
     if not keywords:
-        return content[:max_chars]
+        return ""
 
     # 按换行分割段落
     paragraphs = re.split(r"\n\s*\n|\n(?=[^\s])", content)
@@ -366,8 +366,10 @@ def _find_best_matching_paragraph(
     if best_score >= len(keywords):
         return best_paragraph[:max_chars]
 
-    # 否则返回文档开头
-    return content[:max_chars]
+    # 否则返回空串（而非文档开头）。返回不相关内容会诱导 LLM 凭章节标题
+    # 编造不存在的表格/元数据（bug-1123：给排水 sec_05_06 凭空出现消防耐火
+    # 等级表）。空串让调用方走 _short_content 跳过机制，LLM 拿不到误导内容。
+    return ""
 
 
 # Progress callback type
@@ -1400,11 +1402,10 @@ class ExtractionPipeline:
                     if best_match:
                         return best_match
 
-            # 策略3: 降级处理 - 返回第一份文档的前 max_chars 字符
-            if doc_contents:
-                first_doc_content = next(iter(doc_contents.values())).get("content", "")
-                return first_doc_content[:max_chars]
-
+            # 策略3: 匹配不到 → 返回空串（而非第一份文档开头）。
+            # 返回不相关开头会诱导 LLM 凭章节标题编造不存在的表格/元数据
+            # （bug-1123：给排水 sec_05_06 建筑设计防火规范凭空出现耐火等级表）。
+            # 空串让 _enrich 走 _short_content 跳过机制，LLM 拿不到误导内容。
             return ""
 
         # 全文锚定源（所有文档拼接），供 _ground_metadata 校验 LLM 输出
