@@ -426,6 +426,18 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
                     columns=tbl_rows[0] if tbl_rows else [],
                     rows=tbl_rows[1:] if len(tbl_rows) > 1 else [],
                 ))
+                # EAI-CUSTOM (bug-1120): 展平表格行列进 paragraphs → full_text，
+                # 让 Step 2 LLM 能看见真实表结构（否则 table_schemas 全靠猜）。
+                # `|` 前缀行 + `【表格】` 标记保证不被标题 pattern 误判为章节标题
+                # （doc_parser/_scan_headings_regex 与 pipeline/_scan_chapter_headings
+                # 的标题 pattern 均锚定行首数字/汉字序号，`|`/`【` 开头不命中）。
+                # 单元格内 `|` 换全角 `｜` 防列边界歧义。
+                paragraphs.append("【表格】")
+                header = "| " + " | ".join(c.replace("|", "｜") for c in tbl_rows[0]) if tbl_rows[0] else "|"
+                paragraphs.append(header)
+                for r in tbl_rows[1:]:
+                    paragraphs.append("| " + " | ".join(c.replace("|", "｜") for c in r))
+                paragraphs.append("【表格结束】")
 
     def data(text: str):
         if in_t and in_p and not in_tc:
