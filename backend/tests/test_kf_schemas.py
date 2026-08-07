@@ -56,3 +56,35 @@ def test_both_provided_is_accepted():
         **_base(source_report_ids=[_DOC_ID], uploaded_file_ids=[_FILE_ID])
     )
     assert task.source_report_ids and task.uploaded_file_ids
+
+
+# ── _LenientMeta list-field str coercion (bug-1122) ──
+
+def test_formula_input_vars_str_coerced_to_list():
+    """LLM 把 FormulaReference.input_vars 输出成单个 str 时，应包成 [str] 而非 500。
+
+    回归 bug-1122：给排水计算书模板的 formula_references[].input_vars 是
+    'Qe-蒸发水量(m³/h)...进、出水温差(℃)'（str），Pydantic 验证 list 失败
+    → GET /api/kf/templates/{id} 500。_LenientMeta._scrub_llm_output 缺少
+    list 字段的 str 转换。
+    """
+    from app.extensions.knowledge_factory.schemas import FormulaReference
+
+    fr = FormulaReference(
+        formula_id="F01",
+        name="冷却塔补充水量",
+        input_vars="Qe-蒸发水量(m³/h)...进、出水温差(℃)",  # LLM 输出 str
+    )
+    assert fr.input_vars == ["Qe-蒸发水量(m³/h)...进、出水温差(℃)"]
+
+
+def test_formula_input_vars_list_dict_still_ok():
+    """list[dict] / list[str] 正常输出不受影响。"""
+    from app.extensions.knowledge_factory.schemas import FormulaReference
+
+    fr1 = FormulaReference(formula_id="F1", input_vars=["Qe", "Qw"])
+    assert fr1.input_vars == ["Qe", "Qw"]
+    fr2 = FormulaReference(
+        formula_id="F2", input_vars=[{"name": "Qe", "unit": "m³/h"}]
+    )
+    assert fr2.input_vars[0]["name"] == "Qe"

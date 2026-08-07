@@ -230,6 +230,10 @@ class _LenientMeta(BaseModel):
                 # str 字段但 LLM 输出 int → 转换
                 elif fi.annotation is str and isinstance(v, (int, float)):
                     data[k] = str(v)
+                # list 字段但 LLM 输出 str（如 input_vars 输出单个 'Qe-蒸发水量(m³/h)...'）→ 包成 [str]
+                # 否则 Pydantic list_type 验证失败 → 模板详情 500（bug-1122）
+                elif fi.annotation is list and isinstance(v, str) and v.strip():
+                    data[k] = [v]
         return data
 
 
