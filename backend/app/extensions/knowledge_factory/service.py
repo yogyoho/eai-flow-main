@@ -259,6 +259,7 @@ class TemplateService:
         db: AsyncSession,
         domain: Optional[str] = None,
         status: Optional[str] = None,
+        name: Optional[str] = None,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[ExtractionTemplate], int]:
@@ -272,6 +273,9 @@ class TemplateService:
                 query = query.where(ExtractionTemplate.status == statuses[0])
             elif len(statuses) > 1:
                 query = query.where(ExtractionTemplate.status.in_(statuses))
+        if name:
+            # 名称模糊过滤（大小写不敏感），供 MCP kf_list_templates 与列表页使用
+            query = query.where(ExtractionTemplate.name.ilike(f"%{name}%"))
 
         count_result = await db.execute(select(func.count()).select_from(query.subquery()))
         total = count_result.scalar() or 0
