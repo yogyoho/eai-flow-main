@@ -74,7 +74,12 @@ export interface CoverImage {
   ext?: string;
 }
 
-export type CoverElementType = "text" | "table" | "image" | "spacer" | "divider";
+export type CoverElementType =
+  | "text"
+  | "table"
+  | "image"
+  | "spacer"
+  | "divider";
 
 export interface CoverElement {
   id: string;

@@ -18,25 +18,29 @@ const STATUS_LABELS: Record<GenerateOutputResult["status"], string> = {
   failed: "生成失败",
 };
 
-export function OutputProgress({ result, polling, onRetry }: OutputProgressProps) {
+export function OutputProgress({
+  result,
+  polling,
+  onRetry,
+}: OutputProgressProps) {
   if (!result) return null;
 
   if (result.status === "queued" || result.status === "processing") {
     return (
-      <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="border-border bg-card space-y-4 rounded-xl border p-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm font-medium text-foreground">
+          <Loader2 className="text-primary h-5 w-5 animate-spin" />
+          <span className="text-foreground text-sm font-medium">
             {STATUS_LABELS[result.status]}...
           </span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-1000"
+            className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r transition-all duration-1000"
             style={{ width: result.status === "processing" ? "60%" : "20%" }}
           />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {polling ? "正在等待生成结果..." : "任务已提交"}
         </p>
       </div>
@@ -45,20 +49,22 @@ export function OutputProgress({ result, polling, onRetry }: OutputProgressProps
 
   if (result.status === "completed" && result.downloadUrl) {
     return (
-      <div className="space-y-4 rounded-xl border border-success/20 bg-success/5 p-5 shadow-sm">
+      <div className="border-success/20 bg-success/5 space-y-4 rounded-xl border p-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <Download className="h-5 w-5 text-success" />
+          <Download className="text-success h-5 w-5" />
           <div>
-            <span className="text-sm font-medium text-foreground">报告已生成</span>
+            <span className="text-foreground text-sm font-medium">
+              报告已生成
+            </span>
             {result.fileName && (
-              <p className="text-xs text-muted-foreground">{result.fileName}</p>
+              <p className="text-muted-foreground text-xs">{result.fileName}</p>
             )}
           </div>
         </div>
         <a
           href={result.downloadUrl}
           download={result.fileName}
-          className="inline-flex items-center gap-2 rounded-lg bg-success px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-success/90"
+          className="bg-success hover:bg-success/90 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
         >
           <Download className="h-4 w-4" />
           下载文件
@@ -69,16 +75,16 @@ export function OutputProgress({ result, polling, onRetry }: OutputProgressProps
 
   if (result.status === "failed") {
     return (
-      <div className="space-y-4 rounded-xl border border-destructive/20 bg-destructive/5 p-5 shadow-sm">
+      <div className="border-destructive/20 bg-destructive/5 space-y-4 rounded-xl border p-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive" />
-          <span className="text-sm font-medium text-foreground">生成失败</span>
+          <AlertCircle className="text-destructive h-5 w-5" />
+          <span className="text-foreground text-sm font-medium">生成失败</span>
         </div>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+            className="border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
             重新生成

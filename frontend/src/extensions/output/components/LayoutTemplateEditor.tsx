@@ -1176,9 +1176,9 @@ export function LayoutTemplateEditor({
           <Section icon={ImageIcon} title="封面配置">
             {coverElements ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate text-muted-foreground">
+                <div className="bg-muted/40 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
+                  <FileText className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                  <span className="text-muted-foreground truncate">
                     来自样例：{coverElements.sourceFile ?? "（未命名）"}
                   </span>
                   <button
@@ -1188,7 +1188,7 @@ export function LayoutTemplateEditor({
                       setCoverMaster(null);
                       setCoverTemplate(null);
                     }}
-                    className="ml-auto shrink-0 rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+                    className="border-border text-destructive hover:bg-destructive/10 ml-auto shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-medium"
                   >
                     移除封面
                   </button>

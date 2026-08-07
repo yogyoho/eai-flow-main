@@ -4,7 +4,13 @@ import { Download, FileUp, FolderOpen, Loader2, X } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
 
 import { AdminSelect } from "@/components/ui/admin-select";
-import type { GenerateOutputRequest, GenerateSource, LayoutTemplate, OutputFormat, WatermarkType } from "@/extensions/output/types";
+import type {
+  GenerateOutputRequest,
+  GenerateSource,
+  LayoutTemplate,
+  OutputFormat,
+  WatermarkType,
+} from "@/extensions/output/types";
 import { WATERMARK_LABELS } from "@/extensions/output/types";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +36,11 @@ interface OutputConfigPanelProps {
   loading: boolean;
 }
 
-export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConfigPanelProps) {
+export function OutputConfigPanel({
+  templates,
+  onGenerate,
+  loading,
+}: OutputConfigPanelProps) {
   const [source, setSource] = useState<GenerateSource>("project");
   const [projectId, setProjectId] = useState("");
   const [markdownFile, setMarkdownFile] = useState<File | null>(null);
@@ -41,7 +51,10 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const templateOptions = templates.map((t) => ({ value: t.id, label: t.name }));
+  const templateOptions = templates.map((t) => ({
+    value: t.id,
+    label: t.name,
+  }));
 
   const canGenerate =
     templateId !== "" &&
@@ -52,7 +65,8 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
     onGenerate({
       source,
       projectId: source === "project" ? projectId.trim() : undefined,
-      markdownFile: source === "markdown" ? markdownFile ?? undefined : undefined,
+      markdownFile:
+        source === "markdown" ? (markdownFile ?? undefined) : undefined,
       format,
       layoutTemplateId: templateId,
       watermark,
@@ -62,7 +76,11 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
   const handleFileSelect = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".md") && !file.name.endsWith(".markdown") && file.type !== "text/markdown") {
+    if (
+      !file.name.endsWith(".md") &&
+      !file.name.endsWith(".markdown") &&
+      file.type !== "text/markdown"
+    ) {
       // Accept anyway — some systems don't set MIME for .md
     }
     setMarkdownFile(file);
@@ -83,16 +101,19 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
     setDragOver(false);
   }, []);
 
-  const inputCls = "w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20";
+  const inputCls =
+    "w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20";
 
   return (
     <div className="space-y-6">
-      <h3 className="text-base font-medium text-foreground">生成配置</h3>
+      <h3 className="text-foreground text-base font-medium">生成配置</h3>
 
-      <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="border-border bg-card space-y-4 rounded-xl border p-5 shadow-sm">
         {/* Source mode toggle */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">内容来源</label>
+          <label className="text-foreground text-sm font-medium">
+            内容来源
+          </label>
           <AdminSelect
             value={source}
             onChange={(v) => setSource(v as GenerateSource)}
@@ -104,9 +125,11 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
         {/* Project ID (project mode) */}
         {source === "project" && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">项目 ID</label>
+            <label className="text-foreground text-sm font-medium">
+              项目 ID
+            </label>
             <div className="relative">
-              <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <FolderOpen className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <input
                 type="text"
                 value={projectId}
@@ -121,18 +144,24 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
         {/* Markdown upload (markdown mode) */}
         {source === "markdown" && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Markdown 文件</label>
+            <label className="text-foreground text-sm font-medium">
+              Markdown 文件
+            </label>
             {markdownFile ? (
-              <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-                <FileUp className="h-5 w-5 shrink-0 text-primary" />
+              <div className="border-primary/30 bg-primary/5 flex items-center gap-3 rounded-lg border px-4 py-3">
+                <FileUp className="text-primary h-5 w-5 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{markdownFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{(markdownFile.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-foreground truncate text-sm font-medium">
+                    {markdownFile.name}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {(markdownFile.size / 1024).toFixed(1)} KB
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setMarkdownFile(null)}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 rounded-md p-1 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -150,9 +179,18 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
                     : "border-border hover:border-primary/40 hover:bg-muted/50",
                 )}
               >
-                <FileUp className={cn("mb-3 h-8 w-8", dragOver ? "text-primary" : "text-muted-foreground")} />
-                <p className="text-sm font-medium text-foreground">拖拽文件到此处或点击上传</p>
-                <p className="mt-1 text-xs text-muted-foreground">支持 .md / .markdown 文件</p>
+                <FileUp
+                  className={cn(
+                    "mb-3 h-8 w-8",
+                    dragOver ? "text-primary" : "text-muted-foreground",
+                  )}
+                />
+                <p className="text-foreground text-sm font-medium">
+                  拖拽文件到此处或点击上传
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  支持 .md / .markdown 文件
+                </p>
               </div>
             )}
             <input
@@ -167,7 +205,9 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
 
         {/* Format */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">输出格式</label>
+          <label className="text-foreground text-sm font-medium">
+            输出格式
+          </label>
           <AdminSelect
             value={format}
             onChange={(v) => setFormat(v as OutputFormat)}
@@ -178,7 +218,9 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
 
         {/* Layout Template */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">排版模板</label>
+          <label className="text-foreground text-sm font-medium">
+            排版模板
+          </label>
           <AdminSelect
             value={templateId}
             onChange={setTemplateId}
@@ -190,7 +232,9 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
 
         {/* Watermark */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">水印类型</label>
+          <label className="text-foreground text-sm font-medium">
+            水印类型
+          </label>
           <AdminSelect
             value={watermark}
             onChange={(v) => setWatermark(v as WatermarkType)}
@@ -205,7 +249,7 @@ export function OutputConfigPanel({ templates, onGenerate, loading }: OutputConf
         type="button"
         onClick={handleGenerate}
         disabled={!canGenerate || loading}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="bg-primary hover:bg-primary/90 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
           <>

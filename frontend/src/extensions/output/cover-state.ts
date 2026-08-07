@@ -73,7 +73,10 @@ export function normalizeCoverElements(cover: Cover | null): Cover | null {
 
 /** A cover with no pages — the neutral seed for a brand-new element-based cover
  * (mode `elements`, one empty page). */
-export const COVER_EMPTY_ELEMENTS: Cover = { mode: "elements", pages: [{ elements: [] }] };
+export const COVER_EMPTY_ELEMENTS: Cover = {
+  mode: "elements",
+  pages: [{ elements: [] }],
+};
 
 /** Variable-bound slot options for a cover element, in display order. The
  * `value` set mirrors the backend generator.py `COVER_SLOT_VALUE_KEYS`
@@ -99,7 +102,9 @@ export function patchCoverElementsPage(
   if (!cover) return cover;
   return {
     ...cover,
-    pages: cover.pages.map((p, i) => (i === pageIndex ? { ...p, elements: updater(p.elements) } : p)),
+    pages: cover.pages.map((p, i) =>
+      i === pageIndex ? { ...p, elements: updater(p.elements) } : p,
+    ),
   };
 }
 
