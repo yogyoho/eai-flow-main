@@ -77,6 +77,55 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
     return chapters, total
 
 
+def _dedupe_table_schemas(sections: list[dict]) -> int:
+    """结果层去重：按 (caption, columns) 全局合并 table_schemas。
+
+    同一逻辑表在父子切片重叠 + 跨章节引用下会被 LLM 重复生成
+    （给排水 7 源表 → 26 schema，tbl_03_01 复用 5 次）。两遍算法：
+    1. scan：确定每个 (caption, columns) 键保留哪个副本 ——
+       叶子优先 → depth 大者优先 → order(文档序) 早者优先
+    2. prune：移除所有非胜者副本，返回移除数。
+
+    P1 设计：只解决数量膨胀，不解决归属错误（后者见 bug-1123）。
+    """
+    keep: dict[tuple, dict] = {}   # key → 保留的 table dict（对象引用）
+    best: dict[tuple, tuple] = {}  # key → (is_leaf, depth, -order) 比较元组
+    order = [0]
+
+    def _scan(nodes: list[dict], depth: int) -> None:
+        for sec in nodes:
+            for t in sec.get("table_schemas") or []:
+                key = (t.get("caption", ""), tuple(c.get("header", "") for c in (t.get("columns") or [])))
+                cand = (not (sec.get("children") or []), depth, -order[0])
+                order[0] += 1
+                if key not in best or cand > best[key]:
+                    best[key] = cand
+                    keep[key] = t
+            if sec.get("children"):
+                _scan(sec["children"], depth + 1)
+
+    def _prune(nodes: list[dict]) -> int:
+        n = 0
+        for sec in nodes:
+            tables = sec.get("table_schemas") or []
+            if tables:
+                kept = [
+                    t for t in tables
+                    if keep.get(
+                        (t.get("caption", ""), tuple(c.get("header", "") for c in (t.get("columns") or [])))
+                    ) is t
+                ]
+                n += len(tables) - len(kept)
+                if len(kept) < len(tables):
+                    sec["table_schemas"] = kept
+            if sec.get("children"):
+                n += _prune(sec["children"])
+        return n
+
+    _scan(sections, 1)
+    return _prune(sections)
+
+
 # Patterns for detecting chapter/section headings in Chinese documents
 _CHAPTER_PATTERNS = [
     # 第一章 / 第二节 / 第三条
