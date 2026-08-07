@@ -1,7 +1,7 @@
 # 封面配置重构：结构化多页元素编辑器 — 设计文档
 
 **日期**: 2026-08-07
-**状态**: DRAFT（待评审）
+**状态**: APPROVED（2026-08-07）
 **范围**: 报告输出扩展
 - 后端 `backend/app/extensions/output/{schemas.py, layout_import.py, generator.py, service.py}`
 - 前端 `frontend/src/extensions/output/{cover-state.ts, components/LayoutTemplateEditor.tsx, types.ts, api.ts}`
