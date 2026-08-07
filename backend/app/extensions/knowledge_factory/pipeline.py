@@ -515,6 +515,9 @@ class ExtractionPipeline:
             detail += f"，LLM 失败降级 {failed_n} 节"
         if dropped_n:
             detail += f"，grounding 校验丢弃/标记 {dropped_n} 个幻觉字段"
+        deduped_n = stats.get("deduped", 0)
+        if deduped_n:
+            detail += f"，去重合并 {deduped_n} 个重复表"
         await _emit(
             "元数据抽取", StepStatus.COMPLETED, _fmt(time.time() - t2), detail
         )
@@ -1551,12 +1554,18 @@ class ExtractionPipeline:
         # 顶层章节并发抽取（semaphore 全局限流），耗时从 N×5s 降到 N/5×5s
         enriched = await asyncio.gather(*[_safe_enrich(s) for s in sections])
 
+        # P1 结果层去重：合并 (caption, columns) 相同的 table_schemas
+        deduped_count = _dedupe_table_schemas(enriched)
+        if deduped_count:
+            logger.info(f"[Task {task_id_meta}] 结果层去重合并 {deduped_count} 个重复 table_schemas")
+
         # 可观测性汇总：失败节数 + grounding 丢弃字段数（不再静默降级）
         flat = _flatten_sections(enriched)
         ctx["_meta_stats"] = {
             "total": len(flat),
             "failed": failed["n"],
             "grounded_dropped": grounded_dropped["n"],
+            "deduped": deduped_count,
         }
         if failed["n"] or grounded_dropped["n"]:
             logger.warning(
