@@ -46,3 +46,79 @@ def test_collect_cover_fields_drops_none():
 
 def test_collect_cover_fields_all_none_returns_empty():
     assert _collect_cover_fields(None, None, None, None) == {}
+
+
+def test_strip_cover_master_payload_removes_xml_and_images():
+    from app.extensions.output.routers import _strip_cover_master_payload
+
+    cm = {
+        "mode": "master",
+        "xml": "<w:p/>",
+        "images": [{"origRid": "rId1", "ext": "png", "b64": "AAA"}],
+        "slots": [{"id": "client", "label": "建设单位"}],
+        "sourceFile": "a.docx",
+        "boundary": "before_toc",
+    }
+    stripped = _strip_cover_master_payload(cm)
+    assert "xml" not in stripped
+    assert "images" not in stripped
+    assert stripped["mode"] == "master"
+    assert stripped["slots"][0]["id"] == "client"
+    assert stripped["sourceFile"] == "a.docx"
+    assert stripped["boundary"] == "before_toc"
+
+
+def test_strip_cover_master_payload_none_passthrough():
+    from app.extensions.output.routers import _strip_cover_master_payload
+
+    assert _strip_cover_master_payload(None) is None
+
+
+def _minimal_template_dict():
+    return {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "T",
+        "report_type": "g",
+        "is_builtin": False,
+        "page_settings": {"paperSize": "A4"},
+        "body_styles": {"fontFamily": "宋体"},
+        "heading_styles": [],
+        "reference_style": "gb7714",
+        "cover_template": None,
+        "cover_master": None,
+        "toc_settings": None,
+        "table_styles": None,
+        "figure_styles": None,
+        "header_footer": None,
+        "appendix_rules": None,
+        "created_at": "2026-08-07T00:00:00",
+        "updated_at": "2026-08-07T00:00:00",
+    }
+
+
+def test_list_response_validates_stripped_cover_master():
+    """L1: list items carry no xml/images but still validate through the list schema."""
+    from app.extensions.output.routers import _strip_cover_master_payload
+    from app.extensions.output.schemas import LayoutTemplateListResponse
+
+    item = _minimal_template_dict()
+    item["cover_master"] = _strip_cover_master_payload(
+        {"mode": "master", "xml": "<w:p/>", "images": [{"b64": "x"}], "slots": [], "sourceFile": "a.docx", "boundary": "before_toc"}
+    )
+    resp = LayoutTemplateListResponse(items=[item], total=1)
+    cm = resp.items[0].cover_master
+    assert "xml" not in cm
+    assert "images" not in cm
+    assert cm["mode"] == "master"
+    assert cm["sourceFile"] == "a.docx"
+
+
+def test_detail_response_preserves_full_cover_master():
+    """L1: detail (getTemplate) must keep xml/images so the editor can save."""
+    from app.extensions.output.schemas import LayoutTemplateResponse
+
+    item = _minimal_template_dict()
+    item["cover_master"] = {"mode": "master", "xml": "<w:p/>", "images": [{"b64": "x"}], "slots": [], "sourceFile": "a.docx", "boundary": "before_toc"}
+    resp = LayoutTemplateResponse.model_validate(item)
+    assert resp.cover_master["xml"] == "<w:p/>"
+    assert "images" in resp.cover_master

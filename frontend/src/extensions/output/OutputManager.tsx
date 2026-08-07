@@ -1,6 +1,13 @@
 "use client";
 
-import { FileOutput, FileText, History, LayoutGrid, Loader2, Plus } from "lucide-react";
+import {
+  FileOutput,
+  FileText,
+  History,
+  LayoutGrid,
+  Loader2,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +20,11 @@ import { LayoutTemplateCard } from "./components/LayoutTemplateCard";
 import { LayoutTemplateEditor } from "./components/LayoutTemplateEditor";
 import { OutputConfigPanel } from "./components/OutputConfigPanel";
 import { OutputProgress } from "./components/OutputProgress";
-import type { GenerateOutputRequest, GenerateOutputResult, LayoutTemplate } from "./types";
+import type {
+  GenerateOutputRequest,
+  GenerateOutputResult,
+  LayoutTemplate,
+} from "./types";
 
 type TabId = "templates" | "generate" | "history";
 
@@ -28,7 +39,12 @@ function TemplatesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<LayoutTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<LayoutTemplate | null>(
+    null,
+  );
+  // L1: list responses carry only a lightweight cover_master (no xml/images);
+  // the editor needs the full template, so fetch detail on edit-open.
+  const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -48,33 +64,74 @@ function TemplatesTab() {
   }, []);
 
   useEffect(() => {
-    loadTemplates();
+    void loadTemplates();
   }, [loadTemplates]);
 
   const handleCreateSave = useCallback(
-    async (data: Omit<LayoutTemplate, "id" | "isBuiltin" | "createdAt" | "updatedAt">) => {
+    async (
+      data: Omit<
+        LayoutTemplate,
+        "id" | "isBuiltin" | "createdAt" | "updatedAt"
+      >,
+    ) => {
       await outputApi.createTemplate(data);
       toast.success("模板已创建");
       setShowEditor(false);
-      loadTemplates();
+      void loadTemplates();
     },
     [loadTemplates],
   );
 
+  const handleEditTemplate = useCallback(
+    async (t: LayoutTemplate) => {
+      if (editingPendingId) {
+        toast.info("正在加载模板，请稍候");
+        return; // one detail fetch at a time
+      }
+      setEditingPendingId(t.id);
+      try {
+        // bound the fetch so a hung request can't leave editingPendingId stuck
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const full = await Promise.race([
+          outputApi.getTemplate(t.id),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("加载模板详情超时")),
+              15000,
+            );
+          }),
+        ]).finally(() => clearTimeout(timer));
+        setEditingTemplate(full);
+      } catch (err) {
+        // do NOT open the editor with the stripped list template — saving it
+        // would send cover_master missing required xml (422).
+        toast.error(err instanceof Error ? err.message : "加载模板详情失败");
+      } finally {
+        setEditingPendingId(null);
+      }
+    },
+    [editingPendingId],
+  );
+
   const handleEditSave = useCallback(
-    async (data: Omit<LayoutTemplate, "id" | "isBuiltin" | "createdAt" | "updatedAt">) => {
+    async (
+      data: Omit<
+        LayoutTemplate,
+        "id" | "isBuiltin" | "createdAt" | "updatedAt"
+      >,
+    ) => {
       if (!editingTemplate) return;
       await outputApi.updateTemplate(editingTemplate.id, data);
       toast.success("模板已更新");
       setEditingTemplate(null);
-      loadTemplates();
+      void loadTemplates();
     },
     [editingTemplate, loadTemplates],
   );
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
         <Loader2 className="mb-4 h-8 w-8 animate-spin" />
         <span>加载模板中...</span>
       </div>
@@ -83,12 +140,12 @@ function TemplatesTab() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-destructive">
+      <div className="text-destructive flex flex-col items-center justify-center py-16">
         <span className="mb-2 text-lg">加载失败</span>
-        <span className="mb-4 text-sm text-muted-foreground">{error}</span>
+        <span className="text-muted-foreground mb-4 text-sm">{error}</span>
         <button
           type="button"
-          className="rounded-lg bg-destructive px-4 py-2 text-sm text-white hover:bg-destructive/90"
+          className="bg-destructive hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm text-white"
           onClick={() => void loadTemplates()}
         >
           重试
@@ -100,11 +157,14 @@ function TemplatesTab() {
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">共 {templates.length} 个模板</span>
+        <span className="text-muted-foreground text-sm">
+          共 {templates.length} 个模板
+        </span>
         <button
           type="button"
           onClick={() => setShowEditor(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
+          disabled={editingPendingId !== null}
+          className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:cursor-wait disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           新建模板
@@ -112,10 +172,12 @@ function TemplatesTab() {
       </div>
 
       {templates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
           <FileText className="mb-4 h-12 w-12" />
           <span className="mb-2 text-lg">暂无排版模板</span>
-          <span className="text-sm">点击上方「新建模板」创建第一个排版模板</span>
+          <span className="text-sm">
+            点击上方「新建模板」创建第一个排版模板
+          </span>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -123,7 +185,8 @@ function TemplatesTab() {
             <LayoutTemplateCard
               key={template.id}
               template={template}
-              onEdit={(t) => setEditingTemplate(t)}
+              onEdit={(t) => void handleEditTemplate(t)}
+              editingPending={editingPendingId === template.id}
               onRefresh={loadTemplates}
             />
           ))}
@@ -175,16 +238,16 @@ function GenerateTab() {
   const startPolling = useCallback(
     (taskId: string) => {
       setPolling(true);
-      pollingRef.current = setInterval(async () => {
-        try {
-          const status = await outputApi.getTaskStatus(taskId);
-          setResult(status);
-          if (status.status === "completed" || status.status === "failed") {
-            stopPolling();
-          }
-        } catch {
-          stopPolling();
-        }
+      pollingRef.current = setInterval(() => {
+        void outputApi
+          .getTaskStatus(taskId)
+          .then((status) => {
+            setResult(status);
+            if (status.status === "completed" || status.status === "failed") {
+              stopPolling();
+            }
+          })
+          .catch(() => stopPolling());
       }, 3000);
     },
     [stopPolling],
@@ -204,7 +267,7 @@ function GenerateTab() {
         if (res.status === "queued" || res.status === "processing") {
           startPolling(res.taskId);
         }
-      } catch (err) {
+      } catch {
         setResult({
           taskId: "",
           status: "failed",
@@ -227,11 +290,7 @@ function GenerateTab() {
         onGenerate={handleGenerate}
         loading={loading}
       />
-      <OutputProgress
-        result={result}
-        polling={polling}
-        onRetry={handleRetry}
-      />
+      <OutputProgress result={result} polling={polling} onRetry={handleRetry} />
     </div>
   );
 }
@@ -258,7 +317,10 @@ function HistoryTab() {
       const data = await outputApi.listHistory();
       setItems(data);
     } catch (err: unknown) {
-      if (err instanceof Error && (err as Error & { status: number }).status === 404) {
+      if (
+        err instanceof Error &&
+        (err as Error & { status: number }).status === 404
+      ) {
         setItems([]);
       } else {
         setError(err instanceof Error ? err.message : "加载历史记录失败");
@@ -274,7 +336,7 @@ function HistoryTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground">
+      <div className="text-muted-foreground flex items-center justify-center py-16">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -282,12 +344,12 @@ function HistoryTab() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-destructive">
+      <div className="text-destructive flex flex-col items-center justify-center py-16">
         <span className="mb-2 text-lg">加载失败</span>
-        <span className="mb-4 text-sm text-muted-foreground">{error}</span>
+        <span className="text-muted-foreground mb-4 text-sm">{error}</span>
         <button
           type="button"
-          className="rounded-lg bg-destructive px-4 py-2 text-sm text-white hover:bg-destructive/90"
+          className="bg-destructive hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm text-white"
           onClick={() => void loadHistory()}
         >
           重试
@@ -298,7 +360,7 @@ function HistoryTab() {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
         <History className="mb-4 h-12 w-12" />
         <span className="mb-2 text-lg">暂无输出历史</span>
         <span className="text-sm">生成报告后将在此处显示历史记录</span>
@@ -307,10 +369,10 @@ function HistoryTab() {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/50 text-left text-xs font-medium text-muted-foreground">
+          <tr className="border-border bg-muted/50 text-muted-foreground border-b text-left text-xs font-medium">
             <th className="px-4 py-3">项目</th>
             <th className="px-4 py-3">格式</th>
             <th className="px-4 py-3">状态</th>
@@ -319,11 +381,11 @@ function HistoryTab() {
             <th className="px-4 py-3">操作</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-border divide-y">
           {items.map((item) => (
             <tr key={item.taskId} className="hover:bg-muted/30">
-              <td className="px-4 py-3 text-foreground">{item.projectId}</td>
-              <td className="px-4 py-3 text-foreground">{item.format}</td>
+              <td className="text-foreground px-4 py-3">{item.projectId}</td>
+              <td className="text-foreground px-4 py-3">{item.format}</td>
               <td className="px-4 py-3">
                 <span
                   className={cn(
@@ -335,11 +397,19 @@ function HistoryTab() {
                         : "bg-primary/10 text-primary",
                   )}
                 >
-                  {item.status === "completed" ? "已完成" : item.status === "failed" ? "失败" : "进行中"}
+                  {item.status === "completed"
+                    ? "已完成"
+                    : item.status === "failed"
+                      ? "失败"
+                      : "进行中"}
                 </span>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{item.fileName ?? "-"}</td>
-              <td className="px-4 py-3 text-muted-foreground">{item.createdAt}</td>
+              <td className="text-muted-foreground px-4 py-3">
+                {item.fileName ?? "-"}
+              </td>
+              <td className="text-muted-foreground px-4 py-3">
+                {item.createdAt}
+              </td>
               <td className="px-4 py-3">
                 {item.downloadUrl && (
                   <a
@@ -364,16 +434,16 @@ export function OutputManager() {
   const currentTab = (params.get("tab") ?? "templates") as TabId;
 
   return (
-    <div className="flex flex-col h-full bg-muted">
+    <div className="bg-muted flex h-full flex-col">
       {/* Tab Header */}
-      <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
-        <div className="p-1 border rounded-sm bg-emerald-50 border-emerald-200 text-emerald-600 shrink-0 mr-3">
-          <FileOutput className="w-4 h-4" />
+      <header className="bg-background border-border flex h-15 shrink-0 items-center border-b px-6">
+        <div className="mr-3 shrink-0 rounded-sm border border-emerald-200 bg-emerald-50 p-1 text-emerald-600">
+          <FileOutput className="h-4 w-4" />
         </div>
-        <span className="font-bold text-lg tracking-tight text-foreground mr-8">
+        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
           报告输出
         </span>
-        <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
+        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
             const href = `/output?tab=${id}`;
             const isActive = currentTab === id;
@@ -382,10 +452,10 @@ export function OutputManager() {
                 key={id}
                 href={href}
                 className={cn(
-                  "flex items-center gap-2 h-full transition-colors py-5 border-b-2",
+                  "flex h-full items-center gap-2 border-b-2 py-5 transition-colors",
                   isActive
                     ? "text-primary border-primary"
-                    : "border-transparent hover:text-foreground",
+                    : "hover:text-foreground border-transparent",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -397,7 +467,7 @@ export function OutputManager() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 bg-background">
+      <div className="bg-background flex-1 overflow-y-auto p-6">
         {currentTab === "templates" && <TemplatesTab />}
         {currentTab === "generate" && <GenerateTab />}
         {currentTab === "history" && <HistoryTab />}

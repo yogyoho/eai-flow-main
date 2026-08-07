@@ -59,8 +59,10 @@ export interface CoverMasterImage {
 
 export interface CoverMaster {
   mode: "master";
-  xml: string;
-  images: CoverMasterImage[];
+  /** Full OOXML fragment — only present on detail responses (getTemplate /
+   * create / update / duplicate). List responses omit it (L1) → optional. */
+  xml?: string;
+  images?: CoverMasterImage[];
   slots: CoverSlot[];
   sourceFile: string;
   boundary: string;

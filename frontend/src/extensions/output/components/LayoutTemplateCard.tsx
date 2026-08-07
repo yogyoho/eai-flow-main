@@ -12,9 +12,16 @@ interface LayoutTemplateCardProps {
   template: LayoutTemplate;
   onEdit?: (template: LayoutTemplate) => void;
   onRefresh?: () => void;
+  /** Disables the edit button while the editor fetches this template's full detail. */
+  editingPending?: boolean;
 }
 
-export function LayoutTemplateCard({ template, onEdit, onRefresh }: LayoutTemplateCardProps) {
+export function LayoutTemplateCard({
+  template,
+  onEdit,
+  onRefresh,
+  editingPending = false,
+}: LayoutTemplateCardProps) {
   const [showActions, setShowActions] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -52,26 +59,42 @@ export function LayoutTemplateCard({ template, onEdit, onRefresh }: LayoutTempla
   return (
     <div
       className={cn(
-        "relative rounded-xl border border-border bg-background p-5 shadow-sm",
-        "transition-all hover:border-primary/30 hover:shadow-md",
-        "text-left w-full",
+        "border-border bg-background relative rounded-xl border p-5 shadow-sm",
+        "hover:border-primary/30 transition-all hover:shadow-md",
+        "w-full text-left",
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Action buttons — top right */}
       {showActions && !deleting && (
-        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-background/90 p-1 shadow-sm border border-border/50 backdrop-blur-sm z-10">
-          <button type="button" onClick={handleEdit} title="编辑" className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-primary transition-colors">
+        <div className="bg-background/90 border-border/50 absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border p-1 shadow-sm backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={handleEdit}
+            title="编辑"
+            disabled={editingPending}
+            className="text-muted-foreground hover:bg-accent hover:text-primary rounded p-1.5 transition-colors disabled:cursor-wait disabled:opacity-50"
+          >
             <Pencil className="h-3.5 w-3.5" />
           </button>
           {!template.isBuiltin && (
-            <button type="button" onClick={handleDuplicate} title="复制" className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-primary transition-colors">
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              title="复制"
+              className="text-muted-foreground hover:bg-accent hover:text-primary rounded p-1.5 transition-colors"
+            >
               <Copy className="h-3.5 w-3.5" />
             </button>
           )}
           {!template.isBuiltin && (
-            <button type="button" onClick={handleDelete} title="删除" className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+            <button
+              type="button"
+              onClick={handleDelete}
+              title="删除"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1.5 transition-colors"
+            >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
@@ -79,19 +102,19 @@ export function LayoutTemplateCard({ template, onEdit, onRefresh }: LayoutTempla
       )}
 
       <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+        <div className="from-primary/20 to-primary/5 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br">
           <FileText className="size-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1 space-y-2">
-          <h3 className="truncate text-sm font-medium text-foreground">
+          <h3 className="text-foreground truncate text-sm font-medium">
             {template.name}
           </h3>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium">
               {template.reportType}
             </span>
             {template.isBuiltin && (
-              <span className="inline-flex items-center rounded-full border border-muted-foreground/20 bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="border-muted-foreground/20 bg-muted text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium">
                 内置
               </span>
             )}
@@ -99,13 +122,15 @@ export function LayoutTemplateCard({ template, onEdit, onRefresh }: LayoutTempla
         </div>
       </div>
 
-      <div className="mt-4 space-y-1.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+      <div className="border-border/50 text-muted-foreground mt-4 space-y-1.5 border-t pt-3 text-xs">
         {template.pageSettings && (
           <div className="flex justify-between">
             <span>页面尺寸</span>
             <span className="text-foreground">
               {template.pageSettings.paperSize}
-              {template.pageSettings.orientation === "landscape" ? " 横向" : " 纵向"}
+              {template.pageSettings.orientation === "landscape"
+                ? " 横向"
+                : " 纵向"}
             </span>
           </div>
         )}

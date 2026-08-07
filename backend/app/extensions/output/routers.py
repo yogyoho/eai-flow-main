@@ -31,6 +31,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/output", tags=["output"])
 
 
+def _strip_cover_master_payload(cover_master: dict | None) -> dict | None:
+    """List responses carry only the lightweight cover-master envelope
+    (mode/slots/sourceFile/boundary) — the OOXML fragment + base64 images are
+    only needed in the editor, which fetches the full template via
+    GET /templates/{id}. (L1: keep list payloads small.)"""
+    if not cover_master:
+        return cover_master
+    return {k: v for k, v in cover_master.items() if k not in ("xml", "images")}
+
+
 def _build_template_data(template) -> dict:
     """Assemble the template_data dict passed to generate_docx.
 
@@ -82,10 +92,12 @@ async def list_templates(
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     templates = await LayoutTemplateService.list_templates(db)
-    return LayoutTemplateListResponse(
-        items=[LayoutTemplateResponse.model_validate(t) for t in templates],
-        total=len(templates),
-    )
+    items = []
+    for t in templates:
+        d = LayoutTemplateResponse.model_validate(t).model_dump()
+        d["cover_master"] = _strip_cover_master_payload(d.get("cover_master"))
+        items.append(d)
+    return LayoutTemplateListResponse(items=items, total=len(templates))
 
 
 @router.get("/templates/{template_id}", response_model=LayoutTemplateResponse)
