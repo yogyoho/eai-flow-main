@@ -49,6 +49,17 @@ const ELEMENT_TYPE_META: Record<
   divider: { label: "分页符", badgeCls: "bg-muted text-muted-foreground" },
 };
 
+/** 文本元素可选字体（生成时经 generator._resolve_font 映射到 python-docx 字体名）。 */
+const COVER_FONT_OPTIONS: { value: string; label: string }[] = [
+  { value: "宋体", label: "宋体" },
+  { value: "黑体", label: "黑体" },
+  { value: "仿宋", label: "仿宋" },
+  { value: "楷体", label: "楷体" },
+  { value: "微软雅黑", label: "微软雅黑" },
+  { value: "等线", label: "等线" },
+  { value: "Times New Roman", label: "Times New Roman" },
+];
+
 /** 元素自增 ID 生成器 —— 仅在一次会话内保证唯一即可（Task 2 已保证存量元素 id 唯一）。 */
 let elementIdSeq = 0;
 function newElementId(): string {
@@ -157,7 +168,8 @@ function TextElementBody({
         value={el.slotId ?? UNBOUND}
         onChange={(v) => onPatch({ slotId: v === UNBOUND ? null : v })}
         options={[{ value: UNBOUND, label: "不绑定" }, ...COVER_SLOT_OPTIONS]}
-        className="w-32"
+        // text-xs 与左侧文本输入框（inputCls）字号对齐；twMerge 会覆盖 AdminSelect 内置 text-sm
+        className="w-32 text-xs"
       />
       <input
         type="number"
@@ -208,6 +220,12 @@ function TextElementBody({
           </button>
         ))}
       </div>
+      <AdminSelect
+        value={el.fontFamily ?? "宋体"}
+        onChange={(v) => onPatch({ fontFamily: v })}
+        options={COVER_FONT_OPTIONS}
+        className="w-24 text-xs"
+      />
     </div>
   );
 }
