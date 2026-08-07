@@ -9,6 +9,7 @@ LayoutTemplate-shaped dict (snake_case) consumed by the output/docmgr
 from __future__ import annotations
 
 import base64
+import itertools
 import re
 from copy import deepcopy
 from io import BytesIO
@@ -770,6 +771,12 @@ _COVER_TITLE_RE = re.compile(
 )
 
 
+# Monotonic element-id counter: ids must be unique per extraction (T8 editor uses
+# id as React key / patchCoverElementsPage match key). Content-hash ids collide on
+# duplicated cover text (banner repeats), so a plain counter is used instead.
+_ELEM_COUNTER = itertools.count(1)
+
+
 def _para_style(p_el) -> dict:
     """Best-effort paragraph style: alignment + first run font props (pt)."""
     jc = p_el.find(f"{{{_W}}}pPr/{{{_W}}}jc")
@@ -812,24 +819,33 @@ def _block_to_element(el) -> dict:
         for tr in rows_el:
             row = [" ".join(_para_text(p).strip() for p in tc.iter(f"{{{_W}}}p") if _para_text(p).strip()) for tc in tr.iter(f"{{{_W}}}tc")]
             cells.append(row)
+        # 真实列数取自 w:tblGrid 的 gridCol 数(物理行 tc 数受 gridSpan/vMerge 影响,
+        # 会签表实为 6 列但首行只有 3 个 tc)。无 tblGrid 时回退到各行最大 cell 数。
+        grid = el.find(f"{{{_W}}}tblGrid")
+        if grid is not None:
+            cols = len(grid.findall(f"{{{_W}}}gridCol"))
+        else:
+            cols = max((len(r) for r in cells), default=0)
+        for row in cells:
+            row.extend([""] * (cols - len(row)))
         return {
-            "id": f"tbl{len(cells)}x{len(cells[0]) if cells else 0}",
+            "id": f"tbl{next(_ELEM_COUNTER)}",
             "type": "table",
             "rows": len(cells),
-            "cols": len(cells[0]) if cells else 0,
+            "cols": cols,
             "cells": cells,
             "borderColor": "#000000",
         }
     text = _para_text(el).strip()
     if not text:
-        return {"id": "sp", "type": "spacer", "lines": 1}
+        return {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
     style = _para_style(el)
     # 冒号字段标签的装饰性字间空格(工  程  编  号)在编辑/生成替换时是噪声 → 归一化,
     # 同时让"工程编号"这类标签可被生成端按标签精确替换。
     sid = _slot_from_colon(text)
     if sid:
         text = re.sub(r"\s+", "", text)
-    el_dict = {"id": f"p{abs(hash(text)) % 10000}", "type": "text", "text": text, **style}
+    el_dict = {"id": f"el{next(_ELEM_COUNTER)}", "type": "text", "text": text, **style}
     if sid:
         el_dict["slotId"] = sid
     elif text.strip() in ("项目名", "项目名称"):

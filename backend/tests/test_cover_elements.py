@@ -66,9 +66,12 @@ def test_fire_sample_single_page_with_table_elements():
     tables = [e for e in els if e.type == "table"]
     assert tables, "会签表应为表格元素"
     assert tables[0].rows >= 10, f"会签表 rows 应 >=10, got {tables[0].rows}"
+    assert tables[0].cols >= 5, f"会签表 cols 应 >=5(实为6), got {tables[0].cols}"
     bound = {e.slotId: e for e in els if e.slotId}
     assert bound.get("project_number"), "项目编号:XX 应绑 project_number"
     assert bound.get("date"), "20XX年0X月 应绑 date"
+    ids = [e.id for e in els]
+    assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
 
 
 def test_huanping_sample_three_pages():
@@ -82,3 +85,6 @@ def test_huanping_sample_three_pages():
     p3_tables = [e for e in pages[2].elements if e.type == "table"]
     assert len(p3_tables) == 2, f"名单页应 2 张表, got {len(p3_tables)}"
     assert p3_tables[1].rows >= 16
+    assert p3_tables[0].cols >= 3, f"名单页首表 cols 应 >=3(实为3), got {p3_tables[0].cols}"
+    ids = [e.id for p in pages for e in p.elements]
+    assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
