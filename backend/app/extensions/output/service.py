@@ -15,15 +15,20 @@ from app.extensions.output.schemas import LayoutTemplateCreate, LayoutTemplateUp
 logger = logging.getLogger(__name__)
 
 
-def _migrate_cover_master(template: LayoutTemplate) -> None:
+async def _migrate_cover_master(template: LayoutTemplate, db: AsyncSession) -> None:
     """读取时把旧 cover_master 自动迁移为 cover_elements（仅内存，不写库）。
 
     Task 5：老模板只有 cover_master（OOXML 片段）、无 cover_elements 时，读取即用
     ``_cover_master_to_elements`` 现算一份元素模型填充，前端/生成端走统一 elements
-    通道；转换失败保留旧母版（返回 None，不覆盖）。不 commit —— 保存时才落库。
+    通道；转换失败保留旧母版（返回 None，不覆盖）。设置后把实例 expunge 出 session，
+    防止 get_db 请求尾的无条件 commit 把读时迁移意外落库（spec review 发现的 bug：
+    仅 GET 也会永久改写旧模板）。保存时（update）才显式落库。
     """
     if template.cover_master and not template.cover_elements:
-        template.cover_elements = _cover_master_to_elements(template.cover_master)
+        migrated = _cover_master_to_elements(template.cover_master)
+        if migrated is not None:
+            template.cover_elements = migrated
+            db.expunge(template)  # AsyncSession.expunge 是同步方法（SQLAlchemy 2.0 已验证），无需 await
 
 
 class LayoutTemplateService:
@@ -33,14 +38,14 @@ class LayoutTemplateService:
         result = await db.execute(stmt)
         templates = list(result.scalars().all())
         for t in templates:
-            _migrate_cover_master(t)
+            await _migrate_cover_master(t, db)
         return templates
 
     @staticmethod
     async def get_template(db: AsyncSession, template_id: uuid.UUID) -> LayoutTemplate | None:
         template = await db.get(LayoutTemplate, template_id)
         if template is not None:
-            _migrate_cover_master(template)
+            await _migrate_cover_master(template, db)
         return template
 
     @staticmethod
@@ -74,6 +79,10 @@ class LayoutTemplateService:
         if not update_data:
             return template
 
+        # get_template 读时迁移可能已 expunge → 重新挂回 session 才能落库（spec review 修复）
+        if template not in db:
+            db.add(template)
+
         for field, value in update_data.items():
             if hasattr(value, "model_dump"):
                 value = value.model_dump()
@@ -87,6 +96,9 @@ class LayoutTemplateService:
 
     @staticmethod
     async def delete_template(db: AsyncSession, template: LayoutTemplate) -> None:
+        # get_template 读时迁移可能已 expunge → 重新挂回 session 才能 delete（spec review 修复）
+        if template not in db:
+            db.add(template)
         await db.delete(template)
         await db.commit()
 

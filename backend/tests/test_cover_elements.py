@@ -155,6 +155,59 @@ def test_cover_master_to_elements_handles_bad_xml():
     assert _cover_master_to_elements(master) is None  # 坏 xml → None, 保留旧母版
 
 
+def test_cover_master_read_migration_does_not_persist_to_db():
+    """spec-review 回归: 读时迁移只改内存, get_db 请求尾 commit 不得落库.
+
+    ``_migrate_cover_master`` 设置 ``cover_elements`` 后必须 expunge 出 session,
+    否则 get_db 的无条件 commit 会把读时迁移写成新模板, 永久改写旧母版 (图片→spacer)。
+    """
+    import asyncio
+
+    from sqlalchemy import JSON, Column, Integer
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.orm import declarative_base
+
+    from app.extensions.output.service import _migrate_cover_master
+
+    TestBase = declarative_base()
+
+    class LegacyTpl(TestBase):
+        __tablename__ = "legacy_tpl"
+        id = Column(Integer, primary_key=True)
+        cover_master = Column(JSON, nullable=True)
+        cover_elements = Column(JSON, nullable=True)
+
+    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+
+    async def scenario():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as conn:
+            await conn.run_sync(TestBase.metadata.create_all)
+        Factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with Factory() as db:
+            tpl = LegacyTpl(
+                cover_master={"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"},
+                cover_elements=None,
+            )
+            db.add(tpl)
+            await db.commit()
+            await db.refresh(tpl)
+            # 读路径: 迁移只改内存
+            await _migrate_cover_master(tpl, db)
+            assert tpl.cover_elements, "内存已迁移"
+            # 模拟 get_db 请求尾的无条件 commit
+            await db.commit()
+
+        # 新 session 复查: cover_elements 必须仍未落库
+        async with Factory() as db2:
+            fresh = await db2.get(LegacyTpl, tpl.id)
+            assert fresh.cover_elements is None, "GET 读时迁移不得写库"
+
+    asyncio.run(scenario())
+
+
 def test_generate_docx_uses_cover_elements_priority():
     tpl = {
         "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},
