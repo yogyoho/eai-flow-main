@@ -137,6 +137,24 @@ def test_render_cover_elements_slot_replacement_and_pages():
     assert len(doc.sections) >= 2, "多页元素应产生分节"
 
 
+def test_cover_master_to_elements_converts_old_master():
+    from app.extensions.output.layout_import import _cover_master_to_elements
+    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+    master = {"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"}
+    cover = _cover_master_to_elements(master)
+    assert cover["mode"] == "elements"
+    assert cover["pages"], "应至少 1 页"
+    texts = [e["text"] for e in cover["pages"][0]["elements"] if e["type"] == "text"]
+    assert "项目名" in texts
+
+
+def test_cover_master_to_elements_handles_bad_xml():
+    from app.extensions.output.layout_import import _cover_master_to_elements
+    master = {"mode": "master", "xml": "<w:p>", "images": [], "slots": [], "sourceFile": "bad.docx", "boundary": "before_toc"}
+    assert _cover_master_to_elements(master) is None  # 坏 xml → None, 保留旧母版
+
+
 def test_generate_docx_uses_cover_elements_priority():
     tpl = {
         "page_settings": {"paperSize": "A4", "orientation": "portrait", "marginTop": 2.54, "marginBottom": 2.54, "marginLeft": 3.17, "marginRight": 3.17},

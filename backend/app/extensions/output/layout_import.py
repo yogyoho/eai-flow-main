@@ -828,7 +828,13 @@ def _image_element(doc, el) -> dict | None:
     Reads the first <a:blip> r:embed → related part blob → base64 + extension.
     Cover logos are standalone (empty-text) paragraphs; a paragraph with both text
     and an image is treated as text elsewhere (image ignored).
+
+    ``doc`` may be None when migrating a stored cover_master (only the OOXML
+    fragment survives; the image blobs are gone) — in that case images cannot be
+    restored and the paragraph degrades to a spacer instead.
     """
+    if doc is None:
+        return None
     blips = list(el.iter(f"{{{_DRAWML}}}blip"))
     if not blips:
         return None
@@ -977,6 +983,32 @@ def _extract_cover_pages(doc) -> list[CoverPageSchema]:
                     el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
                 pages[-1]["elements"].append(el)
     return [CoverPageSchema(elements=[CoverElementSchema(**e) for e in p["elements"]]) for p in pages if any(e["type"] != "spacer" for e in p["elements"])]
+
+
+def _cover_master_to_elements(master: dict | None) -> dict | None:
+    """旧 cover_master（OOXML 片段）→ 元素模型。失败返回 None（保留旧母版）。
+
+    Task 5 迁移：读取模板时若 cover_master 存在而 cover_elements 为空，把存储的
+    封面 OOXML 片段解析回 w:p / w:tbl 块，复用 ``_block_to_element(None, ...)`` 转成
+    CoverElementSchema 形状的元素 dict（mode="elements"）。仅内存填充不落库，保存时
+    才持久化。图片无法还原（blob 已随原 docx 丢失）→ 自动降级为 spacer；任何解析/
+    转换异常都返回 None，让调用方保留旧母版，绝不破坏已有模板。
+    """
+    if not master or not master.get("xml"):
+        return None
+    try:
+        from lxml import etree as _et
+
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        root = _et.fromstring(f'<root xmlns:w="{W}">{master["xml"]}</root>')
+        blocks = [b for b in list(root) if b.tag in (f"{{{W}}}p", f"{{{W}}}tbl")]
+        pages = [{"elements": [_block_to_element(None, b) for b in blocks]}]
+        pages = [p for p in pages if p["elements"]]
+        if not pages:
+            return None
+        return {"mode": "elements", "pages": pages, "sourceFile": master.get("sourceFile", "")}
+    except Exception:
+        return None
 
 
 def _is_caption(para) -> bool:

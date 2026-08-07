@@ -8,10 +8,22 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.output.layout_import import _cover_master_to_elements
 from app.extensions.output.models import LayoutTemplate
 from app.extensions.output.schemas import LayoutTemplateCreate, LayoutTemplateUpdate
 
 logger = logging.getLogger(__name__)
+
+
+def _migrate_cover_master(template: LayoutTemplate) -> None:
+    """读取时把旧 cover_master 自动迁移为 cover_elements（仅内存，不写库）。
+
+    Task 5：老模板只有 cover_master（OOXML 片段）、无 cover_elements 时，读取即用
+    ``_cover_master_to_elements`` 现算一份元素模型填充，前端/生成端走统一 elements
+    通道；转换失败保留旧母版（返回 None，不覆盖）。不 commit —— 保存时才落库。
+    """
+    if template.cover_master and not template.cover_elements:
+        template.cover_elements = _cover_master_to_elements(template.cover_master)
 
 
 class LayoutTemplateService:
@@ -19,11 +31,17 @@ class LayoutTemplateService:
     async def list_templates(db: AsyncSession) -> list[LayoutTemplate]:
         stmt = select(LayoutTemplate).order_by(LayoutTemplate.is_builtin.desc(), LayoutTemplate.created_at.desc())
         result = await db.execute(stmt)
-        return list(result.scalars().all())
+        templates = list(result.scalars().all())
+        for t in templates:
+            _migrate_cover_master(t)
+        return templates
 
     @staticmethod
     async def get_template(db: AsyncSession, template_id: uuid.UUID) -> LayoutTemplate | None:
-        return await db.get(LayoutTemplate, template_id)
+        template = await db.get(LayoutTemplate, template_id)
+        if template is not None:
+            _migrate_cover_master(template)
+        return template
 
     @staticmethod
     async def create_template(db: AsyncSession, data: LayoutTemplateCreate) -> LayoutTemplate:
