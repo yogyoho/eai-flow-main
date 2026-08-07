@@ -77,6 +77,11 @@ def _count_sections(sections: list[dict]) -> tuple[int, int]:
     return chapters, total
 
 
+def _table_schema_key(t: dict) -> tuple:
+    """table_schemas 去重键： (caption, columns-header 元组)。"""
+    return (t.get("caption", ""), tuple(c.get("header", "") for c in (t.get("columns") or [])))
+
+
 def _dedupe_table_schemas(sections: list[dict]) -> int:
     """结果层去重：按 (caption, columns) 全局合并 table_schemas。
 
@@ -95,7 +100,7 @@ def _dedupe_table_schemas(sections: list[dict]) -> int:
     def _scan(nodes: list[dict], depth: int) -> None:
         for sec in nodes:
             for t in sec.get("table_schemas") or []:
-                key = (t.get("caption", ""), tuple(c.get("header", "") for c in (t.get("columns") or [])))
+                key = _table_schema_key(t)
                 cand = (not (sec.get("children") or []), depth, -order[0])
                 order[0] += 1
                 if key not in best or cand > best[key]:
@@ -111,9 +116,7 @@ def _dedupe_table_schemas(sections: list[dict]) -> int:
             if tables:
                 kept = [
                     t for t in tables
-                    if keep.get(
-                        (t.get("caption", ""), tuple(c.get("header", "") for c in (t.get("columns") or [])))
-                    ) is t
+                    if keep.get(_table_schema_key(t)) is t
                 ]
                 n += len(tables) - len(kept)
                 if len(kept) < len(tables):
