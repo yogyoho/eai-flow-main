@@ -15,7 +15,7 @@ from app.extensions.auth.engine import FilterRule
 from app.extensions.auth.middleware import require_permission, with_data_scope
 from app.extensions.database import get_db
 from app.extensions.docmgr.folder_service import FolderService
-from app.extensions.docmgr.service import AIDocumentService
+from app.extensions.docmgr.service import AIDocumentService, _StaleWrite
 from app.extensions.docmgr.share_schemas import ShareCreateRequest, ShareResponse
 from app.extensions.docmgr.share_service import ShareService
 from app.extensions.schemas import (
@@ -36,6 +36,10 @@ from app.extensions.schemas import (
     PersonalVersionCreateRequest,
     PersonalVersionDetailResponse,
     PersonalVersionListResponse,
+    ProjectDocContentRequest,
+    ProjectOutputsResponse,
+    ProjectVersionDetailResponse,
+    ProjectVersionListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -938,6 +942,108 @@ async def restore_personal_version(
 ):
     """Restore a version: write its content back to the outputs file."""
     result = await AIDocumentService.restore_personal_version(db, current_user.id, version_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
+    await db.commit()
+    return {"ok": True, "content": result["content"], "thread_id": result["thread_id"], "rel_path": result["rel_path"]}
+
+
+# ─── Project Outputs (Cross-User Shared Filesystem) ─────────────────────────
+# EAI-CUSTOM: 文档空间「项目区」—— 直接扫各成员线程 outputs/ 目录聚合；
+# 项目负责人(lisi)生成的文档自动对组员(zhangsan)可见，可编辑（跨用户写回 + mtime 乐观锁）。
+
+
+async def _require_project_member(db: AsyncSession, project_id: UUID, user_id: UUID) -> None:
+    """跨用户写/版本端点鉴权：校验调用者是项目成员（fail-closed，查库失败即拒）。"""
+    members = await AIDocumentService._project_members(db, project_id)
+    if str(user_id) not in {str(getattr(m, "user_id", None)) for m in members}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a project member")
+
+
+@router.get("/projects/{project_id}/outputs", response_model=ProjectOutputsResponse)
+async def list_project_outputs(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
+):
+    """项目区文件系统视图 —— 聚合所有成员线程的 outputs/（服务层校验成员资格）。"""
+    try:
+        return await AIDocumentService.list_project_outputs(db, project_id, current_user.id)
+    except PermissionError:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a project member")
+
+
+@router.put("/projects/{project_id}/outputs")
+async def save_project_output(
+    project_id: UUID,
+    data: ProjectDocContentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM
+):
+    """跨用户写回线程 outputs/ 文件（编辑器保存，带 mtime 乐观锁 + 自动版本快照）。"""
+    await _require_project_member(db, project_id, current_user.id)
+    try:
+        await AIDocumentService.write_project_output(
+            db,
+            project_id,
+            data.thread_id,
+            data.rel_path,
+            data.content,
+            current_user.id,
+            if_mtime=data.if_mtime,
+        )
+    except _StaleWrite:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="file modified by another editor")
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="outputs directory not found")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    await db.commit()
+    return {"ok": True}
+
+
+# ── EAI-CUSTOM: 项目文档版本历史（list / get / restore；写盘自动快照）───────
+
+
+@router.get("/projects/{project_id}/versions", response_model=ProjectVersionListResponse)
+async def list_project_versions(
+    project_id: UUID,
+    thread_id: str = Query(..., min_length=1, max_length=100),
+    rel_path: str = Query(..., min_length=1, max_length=500),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
+):
+    """项目文档版本列表（最新优先）。"""
+    await _require_project_member(db, project_id, current_user.id)
+    versions = await AIDocumentService.list_project_versions(db, project_id, thread_id, rel_path)
+    return {"versions": versions}
+
+
+@router.get("/projects/{project_id}/versions/{version_id}", response_model=ProjectVersionDetailResponse)
+async def get_project_version(
+    project_id: UUID,
+    version_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
+):
+    """取单条版本全文。"""
+    await _require_project_member(db, project_id, current_user.id)
+    v = await AIDocumentService.get_project_version(db, project_id, version_id)
+    if v is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
+    return v
+
+
+@router.post("/projects/{project_id}/versions/{version_id}/restore")
+async def restore_project_version(
+    project_id: UUID,
+    version_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM
+):
+    """恢复版本：将其内容写回 outputs/ 文件（顺带建一条新快照）。"""
+    await _require_project_member(db, project_id, current_user.id)
+    result = await AIDocumentService.restore_project_version(db, project_id, version_id, current_user.id)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
     await db.commit()

@@ -272,3 +272,24 @@ class TestProjectVersionCrud:
                 db, pid, "T1", "doc.md", "edited", uid,
             )
         mock_snap.assert_awaited_once_with(db, pid, "T1", "doc.md", "edited", uid)
+
+
+# ---- router route registration (mirror tests/test_docmgr_versions.py) ----
+class TestProjectOutputRoutesRegistered:
+    def test_all_project_routes_registered(self):
+        """项目区 5 个路由必须注册，否则前端 404。"""
+        from app.extensions.docmgr.routers import router
+
+        routes = {
+            (r.path, m)
+            for r in router.routes
+            for m in (getattr(r, "methods", None) or set())
+        }
+        for path, method in [
+            ("/api/extensions/docmgr/projects/{project_id}/outputs", "GET"),
+            ("/api/extensions/docmgr/projects/{project_id}/outputs", "PUT"),
+            ("/api/extensions/docmgr/projects/{project_id}/versions", "GET"),
+            ("/api/extensions/docmgr/projects/{project_id}/versions/{version_id}", "GET"),
+            ("/api/extensions/docmgr/projects/{project_id}/versions/{version_id}/restore", "POST"),
+        ]:
+            assert (path, method) in routes, f"missing route {method} {path}"

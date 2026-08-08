@@ -778,6 +778,57 @@ class PersonalVersionDetailResponse(BaseModel):
     content: str
 
 
+# ============== Project Doc Outputs (Cross-User) ==============
+# EAI-CUSTOM: 项目 outputs 跨用户共享 —— 两区文件系统视图的「项目区」。
+
+
+class ProjectDocFile(BaseModel):
+    name: str
+    rel_path: str
+    size: int
+    mime: str
+    modified_at: datetime
+    member: str
+    thread_id: str
+
+
+class ProjectOutputsResponse(BaseModel):
+    files: list[ProjectDocFile]
+    total: int = 0
+
+
+class ProjectDocContentRequest(BaseModel):
+    """跨用户编辑写回 body（编辑器保存）。"""
+
+    thread_id: str = Field(..., min_length=1, max_length=100)
+    rel_path: str = Field(..., min_length=1, max_length=500)
+    content: str
+    if_mtime: float | None = None
+
+
+class ProjectVersionListItem(BaseModel):
+    id: UUID
+    label: str | None
+    created_at: datetime
+    editor_user_id: UUID
+    preview: str
+    content_length: int
+
+
+class ProjectVersionListResponse(BaseModel):
+    versions: list[ProjectVersionListItem]
+
+
+class ProjectVersionDetailResponse(BaseModel):
+    id: UUID
+    label: str | None
+    created_at: datetime
+    content: str
+    thread_id: str
+    rel_path: str
+    editor_user_id: UUID
+
+
 # ============== Knowledge Base Grant Schemas ==============
 # EAI-CUSTOM: 每-KB 显式授权 CRUD（实例级 ACL，与角色 data_scope 互补）。
 
