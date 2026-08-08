@@ -43,6 +43,7 @@ import {
   type HumanInputRequest,
   type HumanInputResponse,
 } from "@/core/messages/human-input";
+import { safeLocalStorage } from "@/core/settings/local";
 import { hasToolResult, useThreadStream } from "@/core/threads/hooks";
 import { uuid } from "@/core/utils/uuid";
 import { isIMEComposing } from "@/lib/ime";
@@ -116,16 +117,15 @@ export default function NewAgentPage() {
       });
     },
   });
-
   useEffect(() => {
     if (typeof window === "undefined" || step !== "chat") {
       return;
     }
-    if (window.localStorage.getItem(SAVE_HINT_STORAGE_KEY) === "1") {
+    if (safeLocalStorage.getItem(SAVE_HINT_STORAGE_KEY) === "1") {
       return;
     }
     setShowSaveHint(true);
-    window.localStorage.setItem(SAVE_HINT_STORAGE_KEY, "1");
+    safeLocalStorage.setItem(SAVE_HINT_STORAGE_KEY, "1");
   }, [step]);
 
   const handleConfirmName = useCallback(async () => {
