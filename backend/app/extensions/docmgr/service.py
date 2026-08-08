@@ -722,8 +722,10 @@ class AIDocumentService:
             raise FileNotFoundError(f"thread outputs dir not found: {thread_id}")
 
         target = (base / rel_path).resolve()
-        # 防路径穿越
-        if not str(target).startswith(str(base.resolve())):
+        # 防路径穿越：target 必须落在 outputs 目录内（用 parents 成员判定，
+        # 避免 startswith 对 outputs_archive 等「前缀兄弟目录」的误判绕过）
+        base_resolved = base.resolve()
+        if target != base_resolved and base_resolved not in target.parents:
             raise ValueError(f"path escape detected: {rel_path}")
 
         # mtime 乐观锁
@@ -758,8 +760,9 @@ class AIDocumentService:
         if base is None:
             raise FileNotFoundError(f"thread outputs dir not found: {thread_id}")
         target = (base / rel_path).resolve()
-        # 防路径穿越
-        if not str(target).startswith(str(base.resolve())):
+        # 防路径穿越：target 必须落在 outputs 目录内（parents 成员判定，避免前缀兄弟目录绕过）
+        base_resolved = base.resolve()
+        if target != base_resolved and base_resolved not in target.parents:
             raise ValueError(f"path escape detected: {rel_path}")
         if not target.is_file():
             raise FileNotFoundError(f"file not found: {rel_path}")
@@ -980,8 +983,10 @@ class AIDocumentService:
             base.mkdir(parents=True, exist_ok=True)  # auto-create for standalone docs
 
         target = (base / rel_path).resolve()
-        # 防路径穿越：target 必须在 outputs 目录内
-        if not str(target).startswith(str(base.resolve())):
+        # 防路径穿越：target 必须在 outputs 目录内（parents 成员判定，避免 startswith
+        # 对 outputs_archive 等「前缀兄弟目录」的误判绕过）
+        base_resolved = base.resolve()
+        if target != base_resolved and base_resolved not in target.parents:
             raise ValueError(f"path escape detected: {rel_path}")
 
         await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))

@@ -100,6 +100,66 @@ class TestPersonalOutputsExcludesProjectThreads:
         assert "t-project" not in tids
 
 
+class TestRequireProjectMemberThread:
+    """C1 回归：thread_id 必须属于本项目成员的线程，防跨项目越权读写他人 outputs。"""
+
+    @pytest.mark.asyncio
+    async def test_non_member_thread_id_rejected(self):
+        """成员用不属于本项目的 thread_id 读写 → 403（核心越权场景）。"""
+        from fastapi import HTTPException
+
+        from app.extensions.docmgr.routers import _require_project_member_thread
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, member = uuid4(), uuid4()
+
+        class _M:
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
+
+        # member 属本项目（线程 T1），但请求 T_other（不属于本项目任何成员）
+        with patch.object(AIDocumentService, "_project_members",
+                          AsyncMock(return_value=[_M(member, "T1")])):
+            with pytest.raises(HTTPException) as exc:
+                await _require_project_member_thread(AsyncMock(), pid, member, "T_other")
+            assert exc.value.status_code == 403
+            assert "thread" in exc.value.detail
+
+    @pytest.mark.asyncio
+    async def test_member_thread_id_allowed(self):
+        from app.extensions.docmgr.routers import _require_project_member_thread
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, member = uuid4(), uuid4()
+
+        class _M:
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
+
+        with patch.object(AIDocumentService, "_project_members",
+                          AsyncMock(return_value=[_M(member, "T1")])):
+            await _require_project_member_thread(AsyncMock(), pid, member, "T1")  # 不抛即通过
+
+    @pytest.mark.asyncio
+    async def test_non_member_user_rejected(self):
+        from fastapi import HTTPException
+
+        from app.extensions.docmgr.routers import _require_project_member_thread
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, member, outsider = uuid4(), uuid4(), uuid4()
+
+        class _M:
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
+
+        with patch.object(AIDocumentService, "_project_members",
+                          AsyncMock(return_value=[_M(member, "T1")])):
+            with pytest.raises(HTTPException) as exc:
+                await _require_project_member_thread(AsyncMock(), pid, outsider, "T1")
+            assert exc.value.status_code == 403
+
+
 class TestWriteProjectOutput:
     @pytest.mark.asyncio
     async def test_locate_thread_outputs_by_thread_id_scan(self, tmp_path: Path):
@@ -144,6 +204,22 @@ class TestWriteProjectOutput:
             with pytest.raises(ValueError):
                 await AIDocumentService.write_project_output(
                     AsyncMock(), pid, "T1", "../../etc/passwd", "x", uid,
+                )
+
+    @pytest.mark.asyncio
+    async def test_prefix_sibling_path_escape_rejected(self, tmp_path: Path):
+        """I1 回归：../outputs_archive/secret 这类「前缀兄弟目录」不能绕过 startswith。"""
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        (out.parent / "outputs_archive").mkdir()  # 前缀兄弟目录：旧 startswith 会误判通过
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(ValueError):
+                await AIDocumentService.write_project_output(
+                    AsyncMock(), pid, "T1", "../outputs_archive/secret.md", "x", uid,
                 )
 
     @pytest.mark.asyncio
@@ -335,4 +411,20 @@ class TestReadProjectOutput:
             with pytest.raises(ValueError):
                 await AIDocumentService.read_project_output(
                     AsyncMock(), pid, "T1", "../../etc/passwd",
+                )
+
+    @pytest.mark.asyncio
+    async def test_prefix_sibling_path_escape_rejected(self, tmp_path: Path):
+        """I1 回归：../outputs_archive/secret 不能绕过 startswith（前缀兄弟目录）。"""
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        (out.parent / "outputs_archive").mkdir()
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(ValueError):
+                await AIDocumentService.read_project_output(
+                    AsyncMock(), pid, "T1", "../outputs_archive/secret.md",
                 )

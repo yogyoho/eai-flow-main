@@ -960,6 +960,20 @@ async def _require_project_member(db: AsyncSession, project_id: UUID, user_id: U
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a project member")
 
 
+async def _require_project_member_thread(db: AsyncSession, project_id: UUID, user_id: UUID, thread_id: str) -> None:
+    """带 thread_id 的文件/版本端点鉴权：调用者须为项目成员，且 thread_id 须属于本项目成员的线程。
+
+    防跨项目越权：thread_id 全局唯一，但 service._locate_thread_outputs 会扫所有 user 桶定位，
+    故必须在此显式校验 thread_id 是本项目某个成员的线程——否则项目 A 的成员可借任意 thread_id
+    读写项目 B 或他人线程的 outputs（fail-closed，查库失败即拒）。EAI-CUSTOM。
+    """
+    members = await AIDocumentService._project_members(db, project_id)
+    if str(user_id) not in {str(getattr(m, "user_id", None)) for m in members}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a project member")
+    if thread_id not in {getattr(m, "thread_id", None) for m in members}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="thread does not belong to this project")
+
+
 @router.get("/projects/{project_id}/outputs", response_model=ProjectOutputsResponse)
 async def list_project_outputs(
     project_id: UUID,
@@ -982,7 +996,7 @@ async def read_project_output(
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
 ):
     """读单个项目文件内容 + mtime（编辑器 seed；artifacts API owner-scoped 故走此端点）。"""
-    await _require_project_member(db, project_id, current_user.id)
+    await _require_project_member_thread(db, project_id, current_user.id, thread_id)
     try:
         return await AIDocumentService.read_project_output(db, project_id, thread_id, rel_path)
     except FileNotFoundError:
@@ -999,7 +1013,7 @@ async def save_project_output(
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM
 ):
     """跨用户写回线程 outputs/ 文件（编辑器保存，带 mtime 乐观锁 + 自动版本快照）。"""
-    await _require_project_member(db, project_id, current_user.id)
+    await _require_project_member_thread(db, project_id, current_user.id, data.thread_id)
     try:
         new_mtime = await AIDocumentService.write_project_output(
             db,
@@ -1032,7 +1046,7 @@ async def list_project_versions(
     current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
 ):
     """项目文档版本列表（最新优先）。"""
-    await _require_project_member(db, project_id, current_user.id)
+    await _require_project_member_thread(db, project_id, current_user.id, thread_id)
     versions = await AIDocumentService.list_project_versions(db, project_id, thread_id, rel_path)
     return {"versions": versions}
 
