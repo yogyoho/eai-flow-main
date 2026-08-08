@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# EAI-CUSTOM: 跨用户编辑 mtime 乐观锁失败信号（router 映射 HTTP 409）
+class _StaleWrite(Exception):
+    """文件已被他人修改（client 持有的 mtime 过期）。"""
+
+
 class AIDocumentService:
     """AI Document service."""
 
@@ -675,6 +680,64 @@ class AIDocumentService:
 
         files.sort(key=lambda f: f["modified_at"], reverse=True)
         return {"files": files, "total": len(files)}
+
+    @staticmethod
+    def _locate_thread_outputs(thread_id: str):
+        """按 thread_id 扫描所有 user 桶，定位该线程的 outputs 目录。
+
+        thread_id 全局唯一，不依赖 member.user_id（agent 运行时 user_id 可能 ≠
+        项目 member user_id）。复用 project/service.sync_project_thread_docs 的
+        fallback 扫描模式。返回 Path 或 None。
+        """
+        from deerflow.config.paths import Paths
+
+        users_dir = Paths().base_dir / "users"
+        if not users_dir.is_dir():
+            return None
+        for bucket in sorted(users_dir.iterdir()):
+            cand = bucket / "threads" / thread_id / "user-data" / "outputs"
+            if cand.is_dir():
+                return cand
+        return None
+
+    @staticmethod
+    async def write_project_output(
+        db: AsyncSession,
+        project_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        content: str,
+        editor_user_id: UUID,
+        if_mtime: float | None = None,
+    ) -> None:
+        """服务器调解写回文件原物理路径（跨用户编辑）。带 mtime 乐观锁。
+
+        if_mtime 非空时与当前文件 mtime 比对，不一致（>1s）抛 _StaleWrite。
+        写成功后（Task 5 将在此处）创建一条 ProjectDocVersion 快照。
+        """
+        import asyncio
+
+        base = AIDocumentService._locate_thread_outputs(thread_id)
+        if base is None:
+            raise FileNotFoundError(f"thread outputs dir not found: {thread_id}")
+
+        target = (base / rel_path).resolve()
+        # 防路径穿越
+        if not str(target).startswith(str(base.resolve())):
+            raise ValueError(f"path escape detected: {rel_path}")
+
+        # mtime 乐观锁
+        if if_mtime is not None:
+            cur_mtime = await asyncio.to_thread(lambda: target.stat().st_mtime)
+            # 容忍 1s 文件系统精度差
+            if abs(cur_mtime - if_mtime) > 1.0:
+                raise _StaleWrite("file modified by another editor")
+
+        await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))
+        # TODO(Task 5): 创建 ProjectDocVersion 快照
+        #   await AIDocumentService.create_project_version(
+        #       db, project_id, thread_id, rel_path, content, editor_user_id,
+        #   )
 
     @staticmethod
     async def upsert_personal_star(

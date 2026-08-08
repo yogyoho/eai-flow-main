@@ -98,3 +98,66 @@ class TestPersonalOutputsExcludesProjectThreads:
         tids = {t["thread_id"] for t in res["threads"]}
         assert "t-personal" in tids
         assert "t-project" not in tids
+
+
+class TestWriteProjectOutput:
+    @pytest.mark.asyncio
+    async def test_locate_thread_outputs_by_thread_id_scan(self, tmp_path: Path):
+        """thread_id 全局唯一 → 扫所有 user 桶定位（避开双 user_id 坑）。"""
+        from app.extensions.docmgr.service import AIDocumentService
+
+        # 文件在 lisi 桶，调用者可能是别人
+        lisi = uuid4()
+        out = tmp_path / "users" / str(lisi) / "threads" / "T-lisi" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            located = AIDocumentService._locate_thread_outputs("T-lisi")
+        assert located is not None and located.name == "outputs"
+
+    @pytest.mark.asyncio
+    async def test_write_back_to_original_path(self, tmp_path: Path):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        lisi, zhangsan, pid = uuid4(), uuid4(), uuid4()
+        out = tmp_path / "users" / str(lisi) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        (out / "doc.md").write_text("original")
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            await AIDocumentService.write_project_output(
+                AsyncMock(), pid, "T1", "doc.md", "edited by zhangsan", zhangsan,
+            )
+        assert (out / "doc.md").read_text() == "edited by zhangsan"
+
+    @pytest.mark.asyncio
+    async def test_path_escape_rejected(self, tmp_path: Path):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(ValueError):
+                await AIDocumentService.write_project_output(
+                    AsyncMock(), pid, "T1", "../../etc/passwd", "x", uid,
+                )
+
+    @pytest.mark.asyncio
+    async def test_stale_mtime_raises(self, tmp_path: Path):
+        """保存带过期 mtime → 抛 _StaleWrite（router 映射 409）。"""
+        from app.extensions.docmgr.service import AIDocumentService, _StaleWrite
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        f = out / "doc.md"
+        f.write_text("v1")
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(_StaleWrite):
+                # 客户端拿到的旧 mtime=1.0 与当前文件 mtime 不符
+                await AIDocumentService.write_project_output(
+                    AsyncMock(), pid, "T1", "doc.md", "v2", uid, if_mtime=1.0,
+                )
