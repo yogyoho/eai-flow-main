@@ -9,7 +9,7 @@ from docx.oxml.ns import qn
 from pydantic import ValidationError
 
 from app.extensions.output.generator import _render_cover_elements, generate_docx
-from app.extensions.output.layout_import import _extract_cover_pages
+from app.extensions.output.layout_import import _extract_cover_pages, _para_style, _table_cell_elements
 from app.extensions.output.schemas import (
     CoverElementSchema,
     CoverSchema,
@@ -104,6 +104,15 @@ def test_huanping_sample_three_pages():
     assert p3_tables[0].cols >= 3, f"名单页首表 cols 应 >=3(实为3), got {p3_tables[0].cols}"
     ids = [e.id for p in pages for e in p.elements]
     assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
+
+
+@skip_missing
+def test_fire_sample_banner_keeps_spacers():
+    """消防样例: 封面页内空段(banner 表内/页内) → spacer 元素, 且往返页数保持 2 页."""
+    pages = _cover_of(SAMPLE1)
+    assert len(pages) == 2, f"往返页数应保持 2, got {len(pages)}"
+    spacers = [e for p in pages for e in p.elements if e.type == "spacer"]
+    assert spacers, "封面提取应保留空行 spacer(banner 表内空段/页内空段), 不丢弃空行"
 
 
 @skip_missing
@@ -393,3 +402,53 @@ def test_generate_docx_uses_cover_elements_priority():
         # 负向断言：cover_master(<w:p/> 空段) 未被渲染 → 首非空段应为封面标题，而非正文/空注入
         assert texts and texts[0] == "基地项目", "cover_elements 应最先渲染（首非空段为封面标题），非 cover_master 空段注入"
         assert "正文" in texts, "封面后正文应正常渲染"
+
+
+def test_para_style_extracts_spacing():
+    """w:spacing (twips) → spaceBefore/spaceAfter (pt): 240→12pt, 120→6pt."""
+    from docx.oxml import parse_xml
+
+    W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    xml = (
+        f'<w:p xmlns:w="{W}">'
+        f'<w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>'
+        f'<w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>测试</w:t></w:r>'
+        f'</w:p>'
+    )
+    style = _para_style(parse_xml(xml))
+    assert style["spaceBefore"] == 12, f"240 twips 应为 12pt, got {style['spaceBefore']}"
+    assert style["spaceAfter"] == 6, f"120 twips 应为 6pt, got {style['spaceAfter']}"
+
+
+def test_para_style_spacing_auto_and_absent_defaults_zero():
+    """beforeAutospacing=1 → 跳过 (0); 无 w:spacing → 0."""
+    from docx.oxml import parse_xml
+
+    W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    auto = (
+        f'<w:p xmlns:w="{W}">'
+        f'<w:pPr><w:spacing w:before="240" w:beforeAutospacing="1"/></w:pPr>'
+        f'<w:r><w:t>测试</w:t></w:r>'
+        f'</w:p>'
+    )
+    style = _para_style(parse_xml(auto))
+    assert style["spaceBefore"] == 0, "beforeAutospacing=1 应跳过间距"
+    assert style["spaceAfter"] == 0
+    absent = f'<w:p xmlns:w="{W}"><w:r><w:t>测试</w:t></w:r></w:p>'
+    style = _para_style(parse_xml(absent))
+    assert style["spaceBefore"] == 0 and style["spaceAfter"] == 0, "无 w:spacing → 默认 0"
+
+
+def test_table_decomposition_keeps_empty_line_spacers():
+    """封面表分解: [文本, 空段, 文本] → [text, spacer, text], 不丢空行."""
+    doc = Document()
+    tbl = doc.add_table(rows=1, cols=1)
+    cell = tbl.cell(0, 0)
+    cell.text = "项目名"
+    cell.add_paragraph("")
+    cell.add_paragraph("日期")
+    els = _table_cell_elements(doc, tbl._tbl)
+    kinds = [e["type"] for e in els]
+    assert kinds == ["text", "spacer", "text"], f"应保留空段为 spacer, got {kinds}"
+    assert els[0]["text"] == "项目名"
+    assert els[2]["text"] == "日期"

@@ -812,7 +812,16 @@ def _para_style(p_el) -> dict:
                 val = c.get(f"{{{_W}}}val")
                 if val and val.lower() != "auto":  # w:color w:val=auto → 保持默认黑色
                     color = "#" + val
-    return {"fontFamily": fontFamily, "fontSize": fontSize, "bold": bold, "color": color, "alignment": alignment}
+    # 段落间距 w:spacing (twips → pt): 保留样张的垂直节奏; auto 间距跳过。
+    spacing = p_el.find(f"{{{_W}}}pPr/{{{_W}}}spacing")
+    space_before = space_after = 0
+    if spacing is not None and spacing.get(f"{{{_W}}}beforeAutospacing") != "1" and spacing.get(f"{{{_W}}}afterAutospacing") != "1":
+        try:
+            space_before = int(spacing.get(f"{{{_W}}}before") or 0) // 20
+            space_after = int(spacing.get(f"{{{_W}}}after") or 0) // 20
+        except ValueError:
+            pass
+    return {"fontFamily": fontFamily, "fontSize": fontSize, "bold": bold, "color": color, "alignment": alignment, "spaceBefore": space_before, "spaceAfter": space_after}
 
 
 def _slot_from_colon(text: str) -> str | None:
@@ -953,7 +962,8 @@ def _table_cell_elements(doc, tbl, images_map: dict | None = None) -> list[dict]
                 el = _block_to_element(doc, p, images_map)
             except Exception:
                 el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
-            if el["type"] in ("text", "image"):
+            # 保留 spacer: 封面表内的空段(如消防 banner 内部空行)是样张垂直节奏的一部分。
+            if el["type"] in ("text", "image", "spacer"):
                 out.append(el)
     return out
 
