@@ -123,7 +123,9 @@ class TestWriteProjectOutput:
         out = tmp_path / "users" / str(lisi) / "threads" / "T1" / "user-data" / "outputs"
         out.mkdir(parents=True)
         (out / "doc.md").write_text("original")
-        with patch("deerflow.config.paths.Paths") as mp:
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(
+            AIDocumentService, "create_project_version", new=AsyncMock()
+        ):
             mp.return_value.base_dir = tmp_path
             await AIDocumentService.write_project_output(
                 AsyncMock(), pid, "T1", "doc.md", "edited by zhangsan", zhangsan,
@@ -161,3 +163,112 @@ class TestWriteProjectOutput:
                 await AIDocumentService.write_project_output(
                     AsyncMock(), pid, "T1", "doc.md", "v2", uid, if_mtime=1.0,
                 )
+
+
+# ---- version CRUD test fakes (mirror tests/test_docmgr_versions.py) ----
+class _FakeVersion:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+class _FakeResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return self._rows
+
+    def scalar_one_or_none(self):
+        return self._rows[0] if self._rows else None
+
+
+def _fake_version_db(old_ids=None):
+    """Mock AsyncSession that captures the added version and assigns id on flush."""
+    db = AsyncMock()
+    captured: dict = {}
+    db.add = lambda v: captured.setdefault("v", v)
+
+    async def _flush():
+        v = captured.get("v")
+        if v is not None and getattr(v, "id", None) is None:
+            v.id = uuid4()
+
+    db.flush = _flush
+    db.execute = AsyncMock(return_value=_FakeResult(old_ids or []))
+    return db
+
+
+class TestProjectVersionCrud:
+    @pytest.mark.asyncio
+    async def test_create_caps_history_at_20(self):
+        """超过每文件上限时发出 DELETE 裁剪旧版本。"""
+        from sqlalchemy.sql.dml import Delete
+
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, uid = uuid4(), uuid4()
+        db = _fake_version_db(old_ids=[uuid4() for _ in range(21)])
+        vid = await AIDocumentService.create_project_version(
+            db, pid, "T1", "doc.md", "content", uid, "标签",
+        )
+        assert vid is not None
+        delete_calls = [c for c in db.execute.await_args_list if isinstance(c.args[0], Delete)]
+        assert len(delete_calls) == 1, "超过上限时应发出一次 DELETE 裁剪"
+
+    @pytest.mark.asyncio
+    async def test_create_no_delete_within_limit(self):
+        from sqlalchemy.sql.dml import Delete
+
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, uid = uuid4(), uuid4()
+        db = _fake_version_db(old_ids=[])
+        vid = await AIDocumentService.create_project_version(db, pid, "T1", "doc.md", "content", uid)
+        assert vid is not None
+        delete_calls = [c for c in db.execute.await_args_list if isinstance(c.args[0], Delete)]
+        assert len(delete_calls) == 0
+
+    @pytest.mark.asyncio
+    async def test_restore_writes_back_and_returns_content(self):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        pid, uid = uuid4(), uuid4()
+        version = _FakeVersion(
+            id=uuid4(), project_id=pid, thread_id="T1", rel_path="doc.md",
+            content="# restored", editor_user_id=uid, label=None, created_at=None,
+        )
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=_FakeResult([version]))
+        with patch.object(AIDocumentService, "write_project_output", new=AsyncMock()) as mock_write:
+            result = await AIDocumentService.restore_project_version(db, pid, version.id, uid)
+        assert result["content"] == "# restored"
+        mock_write.assert_awaited_once_with(db, pid, "T1", "doc.md", "# restored", uid)
+
+    @pytest.mark.asyncio
+    async def test_restore_missing_returns_none(self):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=_FakeResult([]))
+        assert await AIDocumentService.restore_project_version(db, uuid4(), uuid4(), uuid4()) is None
+
+    @pytest.mark.asyncio
+    async def test_write_project_output_creates_version_snapshot(self, tmp_path: Path):
+        """write_project_output 写盘后必须建一条版本快照。"""
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        db = _fake_version_db(old_ids=[])
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(
+            AIDocumentService, "create_project_version", new=AsyncMock(return_value=uuid4())
+        ) as mock_snap:
+            mp.return_value.base_dir = tmp_path
+            await AIDocumentService.write_project_output(
+                db, pid, "T1", "doc.md", "edited", uid,
+            )
+        mock_snap.assert_awaited_once_with(db, pid, "T1", "doc.md", "edited", uid)

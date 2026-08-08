@@ -734,10 +734,136 @@ class AIDocumentService:
                 raise _StaleWrite("file modified by another editor")
 
         await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))
-        # TODO(Task 5): 创建 ProjectDocVersion 快照
-        #   await AIDocumentService.create_project_version(
-        #       db, project_id, thread_id, rel_path, content, editor_user_id,
-        #   )
+        # 保存编辑版本快照（跨用户编辑历史）
+        await AIDocumentService.create_project_version(
+            db, project_id, thread_id, rel_path, content, editor_user_id,
+        )
+
+    _PROJECT_VERSION_LIMIT = 20
+
+    @staticmethod
+    async def create_project_version(
+        db: AsyncSession,
+        project_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        content: str,
+        editor_user_id: UUID,
+        label: str | None = None,
+    ) -> UUID:
+        """Create a content snapshot; cap per-file history at 20 (delete oldest)."""
+        from sqlalchemy import delete as sa_delete
+
+        from app.extensions.models import ProjectDocVersion
+
+        version = ProjectDocVersion(
+            project_id=project_id, thread_id=thread_id, rel_path=rel_path,
+            content=content, editor_user_id=editor_user_id, label=label,
+        )
+        db.add(version)
+        await db.flush()
+        # 每文件保留最新 N 条，超出的旧版本删除
+        stmt = (
+            select(ProjectDocVersion.id)
+            .where(
+                ProjectDocVersion.project_id == project_id,
+                ProjectDocVersion.thread_id == thread_id,
+                ProjectDocVersion.rel_path == rel_path,
+            )
+            .order_by(ProjectDocVersion.created_at.desc())
+            .offset(AIDocumentService._PROJECT_VERSION_LIMIT)
+        )
+        old_ids = (await db.execute(stmt)).scalars().all()
+        if old_ids:
+            await db.execute(sa_delete(ProjectDocVersion).where(ProjectDocVersion.id.in_(old_ids)))
+        return version.id
+
+    @staticmethod
+    async def list_project_versions(
+        db: AsyncSession,
+        project_id: UUID,
+        thread_id: str,
+        rel_path: str,
+    ) -> list[dict]:
+        """List versions newest-first with content preview."""
+        from app.extensions.models import ProjectDocVersion
+
+        rows = (
+            await db.execute(
+                select(ProjectDocVersion)
+                .where(
+                    ProjectDocVersion.project_id == project_id,
+                    ProjectDocVersion.thread_id == thread_id,
+                    ProjectDocVersion.rel_path == rel_path,
+                )
+                .order_by(ProjectDocVersion.created_at.desc())
+            )
+        ).scalars().all()
+        return [
+            {
+                "id": v.id,
+                "label": v.label,
+                "created_at": v.created_at,
+                "editor_user_id": v.editor_user_id,
+                "preview": (v.content or "")[:120],
+                "content_length": len(v.content or ""),
+            }
+            for v in rows
+        ]
+
+    @staticmethod
+    async def get_project_version(
+        db: AsyncSession,
+        project_id: UUID,
+        version_id: UUID,
+    ) -> dict | None:
+        """Fetch a single version scoped by project."""
+        from app.extensions.models import ProjectDocVersion
+
+        v = (
+            await db.execute(
+                select(ProjectDocVersion).where(
+                    ProjectDocVersion.id == version_id,
+                    ProjectDocVersion.project_id == project_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if v is None:
+            return None
+        return {
+            "id": v.id,
+            "label": v.label,
+            "created_at": v.created_at,
+            "content": v.content,
+            "thread_id": v.thread_id,
+            "rel_path": v.rel_path,
+            "editor_user_id": v.editor_user_id,
+        }
+
+    @staticmethod
+    async def restore_project_version(
+        db: AsyncSession,
+        project_id: UUID,
+        version_id: UUID,
+        editor_user_id: UUID,
+    ) -> dict | None:
+        """Restore: write the version's content back to the outputs file (creates a new snapshot)."""
+        from app.extensions.models import ProjectDocVersion
+
+        v = (
+            await db.execute(
+                select(ProjectDocVersion).where(
+                    ProjectDocVersion.id == version_id,
+                    ProjectDocVersion.project_id == project_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if v is None:
+            return None
+        await AIDocumentService.write_project_output(
+            db, v.project_id, v.thread_id, v.rel_path, v.content, editor_user_id,
+        )
+        return {"content": v.content, "thread_id": v.thread_id, "rel_path": v.rel_path}
 
     @staticmethod
     async def upsert_personal_star(
