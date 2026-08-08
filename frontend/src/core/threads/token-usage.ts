@@ -13,6 +13,19 @@ export function retainThreadTokenUsagePlaceholder(
   return previous && previous.thread_id === threadId ? previous : undefined;
 }
 
+export function threadTokenUsageToTokenUsage(
+  usage: ThreadTokenUsageResponse | null | undefined,
+): TokenUsage | null {
+  if (!usage) {
+    return null;
+  }
+  return {
+    inputTokens: usage.total_input_tokens ?? 0,
+    outputTokens: usage.total_output_tokens ?? 0,
+    totalTokens: usage.total_tokens ?? 0,
+  };
+}
+
 export interface ContextUsage {
   tokenCount: number;
   maxContextTokens: number | null;
@@ -30,18 +43,5 @@ export function selectContextUsage(
     tokenCount: token_count ?? 0,
     maxContextTokens: max_context_tokens ?? null,
     percentage: percentage ?? null,
-  };
-}
-
-export function threadTokenUsageToTokenUsage(
-  usage: ThreadTokenUsageResponse | null | undefined,
-): TokenUsage | null {
-  if (!usage) {
-    return null;
-  }
-  return {
-    inputTokens: usage.total_input_tokens ?? 0,
-    outputTokens: usage.total_output_tokens ?? 0,
-    totalTokens: usage.total_tokens ?? 0,
   };
 }
