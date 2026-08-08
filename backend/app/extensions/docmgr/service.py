@@ -566,6 +566,98 @@ class AIDocumentService:
 
         return {"threads": result, "total": total, "has_more": has_more}
 
+    # ── EAI-CUSTOM: 项目 outputs 跨用户聚合（不动 harness） ──────────────────
+
+    @staticmethod
+    async def _project_members(db: AsyncSession, project_id) -> list:
+        """本项目全部 ProjectMember 行（含 user_id / thread_id）。失败返回空列表。"""
+        try:
+            from app.extensions.models import ProjectMember
+
+            rows = await db.execute(
+                select(ProjectMember).where(ProjectMember.project_id == project_id)
+            )
+            return list(rows.scalars().all())
+        except Exception:
+            return []
+
+    @staticmethod
+    async def _resolve_member_username(db: AsyncSession, user_id) -> str:
+        """Resolve display username for a member; fall back to str(user_id)."""
+        try:
+            from app.extensions.models import User
+
+            user = await db.get(User, user_id)
+            return getattr(user, "username", None) or str(user_id)
+        except Exception:
+            return str(user_id)
+
+    @staticmethod
+    async def list_project_outputs(
+        db: AsyncSession,
+        project_id: UUID,
+        caller_user_id: UUID,
+    ) -> dict:
+        """聚合本项目所有成员线程的 outputs/ 文件（跨 user 桶，服务器全盘读）。
+
+        返回 {files: [{name, rel_path, size, mime, modified_at, member, thread_id}]}。
+        非 member 抛 PermissionError（router 映射 403）。
+        """
+        from datetime import UTC, datetime
+        from pathlib import Path
+
+        from deerflow.config.paths import Paths
+
+        members = await AIDocumentService._project_members(db, project_id)
+        if not any(getattr(m, "user_id", None) == caller_user_id for m in members):
+            raise PermissionError("not a project member")
+
+        paths = Paths()
+        users_dir = paths.base_dir / "users"
+
+        username_cache: dict = {}
+
+        async def _username(uid) -> str:
+            if uid not in username_cache:
+                username_cache[uid] = await AIDocumentService._resolve_member_username(db, uid)
+            return username_cache[uid]
+
+        files: list[dict] = []
+        for m in members:
+            tid = getattr(m, "thread_id", None)
+            if not tid:
+                continue
+            # 找到真正含该 thread 的 user 桶（thread_id 全局唯一）
+            resolved = None
+            if users_dir.is_dir():
+                for bucket in sorted(users_dir.iterdir()):
+                    cand = bucket / "threads" / tid / "user-data" / "outputs"
+                    if cand.is_dir():
+                        resolved = cand
+                        break
+            if resolved is None:
+                continue
+            for fp in sorted(resolved.rglob("*")):
+                if not fp.is_file():
+                    continue
+                rel = str(fp.relative_to(resolved))
+                if any(p.startswith(".") for p in Path(rel).parts):
+                    continue
+                st = fp.stat()
+                mime, _ = mimetypes.guess_type(fp.name)
+                files.append({
+                    "name": fp.name,
+                    "rel_path": rel,
+                    "size": st.st_size,
+                    "mime": mime or "application/octet-stream",
+                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
+                    "member": await _username(getattr(m, "user_id", None)),
+                    "thread_id": tid,
+                })
+
+        files.sort(key=lambda f: f["modified_at"], reverse=True)
+        return {"files": files, "total": len(files)}
+
     @staticmethod
     async def upsert_personal_star(
         db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, starred: bool,
