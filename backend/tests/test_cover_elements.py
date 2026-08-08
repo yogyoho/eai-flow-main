@@ -63,22 +63,27 @@ def test_layout_template_create_accepts_cover_elements():
 
 
 @skip_missing
-def test_fire_sample_single_page_with_table_elements():
-    """消防设计专篇: 1 页, 含文本元素(标题横幅/项目编号) + 会签表元素."""
+def test_fire_sample_two_pages_banner_and_qianbiao_table():
+    """消防设计专篇: 2 页 — 第1页 banner(标题横幅/项目编号/日期), 第2页 会签表.
+
+    分节符/分页符段落为空时也切页: 标题横幅表后的空分节符段落把会签表顶到第2页;
+    目录前的空分页符段落生成的幽灵页(全 spacer)被过滤。
+    """
     pages = _cover_of(SAMPLE1)
-    assert len(pages) == 1, f"消防样例应为 1 页, got {len(pages)}"
-    els = pages[0].elements
-    texts = [e.text for e in els if e.type == "text"]
-    assert any("第三册 消防设计专篇" in t for t in texts), "报告名称文本元素缺失"
-    assert any(t.strip() == "项目名" for t in texts), "独立项目名占位元素缺失"
-    tables = [e for e in els if e.type == "table"]
-    assert tables, "会签表应为表格元素"
-    assert tables[0].rows >= 10, f"会签表 rows 应 >=10, got {tables[0].rows}"
-    assert tables[0].cols >= 5, f"会签表 cols 应 >=5(实为6), got {tables[0].cols}"
-    bound = {e.slotId: e for e in els if e.slotId}
-    assert bound.get("project_number"), "项目编号:XX 应绑 project_number"
-    assert bound.get("date"), "20XX年0X月 应绑 date"
-    ids = [e.id for e in els]
+    assert len(pages) == 2, f"消防样例应为 2 页, got {len(pages)}"
+    # 第1页 = banner 文本元素(项目名/册标题/编号/日期绑定)
+    p0_texts = [e.text for e in pages[0].elements if e.type == "text"]
+    assert any("第三册 消防设计专篇" in t for t in p0_texts), "报告名称文本元素缺失(banner页)"
+    assert any(t.strip() == "项目名" for t in p0_texts), "独立项目名占位元素缺失(banner页)"
+    p0_bound = {e.slotId: e for e in pages[0].elements if e.slotId}
+    assert p0_bound.get("project_number"), "项目编号:XX 应绑 project_number(banner页)"
+    assert p0_bound.get("date"), "20XX年0X月 应绑 date(banner页)"
+    # 第2页 = 会签表表格元素
+    p1_tables = [e for e in pages[1].elements if e.type == "table"]
+    assert p1_tables, "会签表应为表格元素(第2页)"
+    assert p1_tables[0].rows >= 10, f"会签表 rows 应 >=10, got {p1_tables[0].rows}"
+    assert p1_tables[0].cols >= 5, f"会签表 cols 应 >=5(实为6), got {p1_tables[0].cols}"
+    ids = [e.id for p in pages for e in p.elements]
     assert len(ids) == len(set(ids)), f"元素 id 应唯一, got {len(ids)} els / {len(set(ids))} unique"
 
 

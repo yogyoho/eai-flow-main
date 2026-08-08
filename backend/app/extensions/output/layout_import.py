@@ -436,7 +436,13 @@ def _extract_header_footer(doc) -> dict:
     def _text(part) -> str:
         if part is None:
             return ""
-        return " ".join(p.text.strip() for p in part.paragraphs if p.text.strip())
+        # EAI-CUSTOM: 链接到上一节/空页眉页脚的 part 访问 .paragraphs 会抛
+        # AttributeError: 'Part' object has no attribute 'element'（python-docx 惰性加载
+        # _get_or_add_definition()），导致 import-layout 500。读不到就当空文本处理。
+        try:
+            return " ".join(p.text.strip() for p in part.paragraphs if p.text.strip())
+        except Exception:
+            return ""
 
     def _has_page_field(part) -> bool:
         if part is None:
@@ -953,7 +959,7 @@ def _table_cell_elements(doc, tbl, images_map: dict | None = None) -> list[dict]
 
 
 def _blocks_to_pages(doc, blocks, images_map: dict | None = None) -> list[dict]:
-    """body blocks → 页列表(按非空分节符/分页符切页, cover-field 表分解为元素).
+    """body blocks → 页列表(按分节符/分页符切页——段落带不带文本都切, cover-field 表分解为元素).
 
     供 `_extract_cover_pages`(从 live doc 收集 blocks) 与 `_cover_master_to_elements`
     (从存储的 OOXML 片段解析 blocks) 共用 —— spec §7: 迁移与提取同源。
@@ -964,7 +970,6 @@ def _blocks_to_pages(doc, blocks, images_map: dict | None = None) -> list[dict]:
     for child in blocks:
         tag = child.tag
         if tag == f"{{{_W}}}p":
-            text = _para_text(child).strip()
             has_sect = child.find(f"{{{_W}}}pPr/{{{_W}}}sectPr") is not None
             has_pgbr = any(br.get(f"{{{_W}}}type") == "page" for br in child.iter(f"{{{_W}}}br"))
             # 非空分节符/分页符段落 → 新页;空的分节符段落多为封面内布局标记
@@ -973,9 +978,12 @@ def _blocks_to_pages(doc, blocks, images_map: dict | None = None) -> list[dict]:
                 el = _block_to_element(doc, child, images_map)
             except Exception:
                 el = {"id": f"sp{next(_ELEM_COUNTER)}", "type": "spacer", "lines": 1}
-            pages[-1]["elements"].append(el)
-            if (has_sect or has_pgbr) and text:
+            # 分节符/分页符段落(无论是否带文本)都是页边界: 先开新页, 再把该段落元素
+            # (空段通常是 spacer)放进新页, 保留原结构。此前仅"非空段"才切页 → 消防样例
+            # 标题横幅表后/目录前的空段分节符与分页符被忽略, banner 与会签表被并进一页。
+            if has_sect or has_pgbr:
                 pages.append({"elements": []})
+            pages[-1]["elements"].append(el)
         elif tag == f"{{{_W}}}tbl":
             if _table_has_cover_fields(child):
                 pages[-1]["elements"].extend(_table_cell_elements(doc, child, images_map))
@@ -989,7 +997,7 @@ def _blocks_to_pages(doc, blocks, images_map: dict | None = None) -> list[dict]:
 
 
 def _extract_cover_pages(doc) -> list[CoverPageSchema]:
-    """封面区(目录/首个Heading前) → 按非空分节符/分页符切页 → 每页元素列表.
+    """封面区(目录/首个Heading前) → 按分节符/分页符切页(段落文本可有可无) → 每页元素列表.
 
     返回 list[CoverPageSchema];T4 持久化逐页 `.model_dump()`,T5
     `_cover_master_to_elements` 产出同一 schema 形状。`_block_to_element` 返回
@@ -1036,11 +1044,7 @@ def _cover_master_to_elements(master: dict | None) -> dict | None:
         W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
         root = _et.fromstring(f'<root xmlns:w="{W}">{master["xml"]}</root>')
         blocks = [b for b in list(root) if b.tag in (f"{{{W}}}p", f"{{{W}}}tbl")]
-        images_map = {
-            img["origRid"]: {"b64": img.get("b64", ""), "ext": img.get("ext", "png")}
-            for img in (master.get("images") or [])
-            if img.get("origRid")
-        }
+        images_map = {img["origRid"]: {"b64": img.get("b64", ""), "ext": img.get("ext", "png")} for img in (master.get("images") or []) if img.get("origRid")}
         pages = _blocks_to_pages(None, blocks, images_map)
         if not pages:
             return None
@@ -1107,11 +1111,7 @@ def extract_layout_from_docx(data: bytes, source_file: str = "") -> dict:
     cover = _detect_cover(doc)
     cover_master = _extract_cover_master(doc, source_file=source_file)
     cover_pages = _extract_cover_pages(doc)
-    cover_elements = (
-        {"mode": "elements", "pages": [p.model_dump() for p in cover_pages], "sourceFile": source_file}
-        if cover_pages
-        else None
-    )
+    cover_elements = {"mode": "elements", "pages": [p.model_dump() for p in cover_pages], "sourceFile": source_file} if cover_pages else None
 
     return {
         "page_settings": {
