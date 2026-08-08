@@ -762,6 +762,70 @@ export const docmgrApi = {
       `/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}/restore`,
       { method: "POST" },
     ),
+
+  // ── EAI-CUSTOM: 项目区 outputs（跨用户共享文件系统视图）──────────────
+  // 项目文件 = 所有成员线程 outputs 聚合；lisi 生成 → zhangsan 可见可编辑。
+  listProjectOutputs: (projectId: string) =>
+    request<{
+      files: Array<{
+        name: string;
+        rel_path: string;
+        size: number;
+        mime: string;
+        modified_at: string;
+        member: string;
+        thread_id: string;
+      }>;
+      total: number;
+    }>(`/docmgr/projects/${encodeURIComponent(projectId)}/outputs`),
+
+  /** 读单个项目文件内容 + 当前 mtime（编辑器 seed；mtime 回传做乐观锁）。 */
+  readProjectOutput: (projectId: string, params: { thread_id: string; rel_path: string }) =>
+    request<{ content: string; mtime: number }>(
+      `/docmgr/projects/${encodeURIComponent(projectId)}/outputs/content?thread_id=${encodeURIComponent(params.thread_id)}&rel_path=${encodeURIComponent(params.rel_path)}`,
+    ),
+
+  /** 跨用户写回（编辑器保存，带 mtime 乐观锁）。 */
+  saveProjectContent: (
+    projectId: string,
+    data: { thread_id: string; rel_path: string; content: string; if_mtime?: number },
+  ) =>
+    request<{ ok: boolean }>(`/docmgr/projects/${encodeURIComponent(projectId)}/outputs`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // ── 项目文档版本历史（list / get / restore；写盘自动快照）──────────
+  listProjectVersions: (projectId: string, threadId: string, relPath: string) =>
+    request<{
+      versions: Array<{
+        id: string;
+        label: string | null;
+        created_at: string;
+        editor_user_id: string;
+        preview: string;
+        content_length: number;
+      }>;
+    }>(
+      `/docmgr/projects/${encodeURIComponent(projectId)}/versions?thread_id=${encodeURIComponent(threadId)}&rel_path=${encodeURIComponent(relPath)}`,
+    ),
+
+  getProjectVersion: (projectId: string, versionId: string) =>
+    request<{
+      id: string;
+      label: string | null;
+      created_at: string;
+      content: string;
+      thread_id: string;
+      rel_path: string;
+      editor_user_id: string;
+    }>(`/docmgr/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}`),
+
+  restoreProjectVersion: (projectId: string, versionId: string) =>
+    request<{ ok: boolean; content: string; thread_id: string; rel_path: string }>(
+      `/docmgr/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/restore`,
+      { method: "POST" },
+    ),
 };
 
 // ===== Folder API =====

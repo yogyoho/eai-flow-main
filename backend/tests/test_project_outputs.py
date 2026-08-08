@@ -287,9 +287,52 @@ class TestProjectOutputRoutesRegistered:
         }
         for path, method in [
             ("/api/extensions/docmgr/projects/{project_id}/outputs", "GET"),
+            ("/api/extensions/docmgr/projects/{project_id}/outputs/content", "GET"),
             ("/api/extensions/docmgr/projects/{project_id}/outputs", "PUT"),
             ("/api/extensions/docmgr/projects/{project_id}/versions", "GET"),
             ("/api/extensions/docmgr/projects/{project_id}/versions/{version_id}", "GET"),
             ("/api/extensions/docmgr/projects/{project_id}/versions/{version_id}/restore", "POST"),
         ]:
             assert (path, method) in routes, f"missing route {method} {path}"
+
+
+class TestReadProjectOutput:
+    @pytest.mark.asyncio
+    async def test_reads_content_and_mtime(self, tmp_path: Path):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        (out / "doc.md").write_text("# hello")
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            res = await AIDocumentService.read_project_output(AsyncMock(), pid, "T1", "doc.md")
+        assert res["content"] == "# hello"
+        assert isinstance(res["mtime"], float)
+
+    @pytest.mark.asyncio
+    async def test_missing_file_raises(self, tmp_path: Path):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(FileNotFoundError):
+                await AIDocumentService.read_project_output(AsyncMock(), pid, "T1", "ghost.md")
+
+    @pytest.mark.asyncio
+    async def test_path_escape_rejected(self, tmp_path: Path):
+        from app.extensions.docmgr.service import AIDocumentService
+
+        uid, pid = uuid4(), uuid4()
+        out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
+        out.mkdir(parents=True)
+        with patch("deerflow.config.paths.Paths") as mp:
+            mp.return_value.base_dir = tmp_path
+            with pytest.raises(ValueError):
+                await AIDocumentService.read_project_output(
+                    AsyncMock(), pid, "T1", "../../etc/passwd",
+                )

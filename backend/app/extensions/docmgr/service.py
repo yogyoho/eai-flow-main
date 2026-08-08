@@ -739,6 +739,34 @@ class AIDocumentService:
             db, project_id, thread_id, rel_path, content, editor_user_id,
         )
 
+    @staticmethod
+    async def read_project_output(
+        db: AsyncSession,
+        project_id: UUID,
+        thread_id: str,
+        rel_path: str,
+    ) -> dict:
+        """读单个项目 outputs 文件内容 + mtime（跨用户；router 已鉴权成员资格）。
+
+        返回 {"content": str, "mtime": float}，mtime 供前端回传做写回乐观锁。
+        artifacts API 是 owner-scoped，组员无法跨用户读他人线程 → 本方法直读物理路径。
+        """
+        import asyncio
+
+        base = AIDocumentService._locate_thread_outputs(thread_id)
+        if base is None:
+            raise FileNotFoundError(f"thread outputs dir not found: {thread_id}")
+        target = (base / rel_path).resolve()
+        # 防路径穿越
+        if not str(target).startswith(str(base.resolve())):
+            raise ValueError(f"path escape detected: {rel_path}")
+        if not target.is_file():
+            raise FileNotFoundError(f"file not found: {rel_path}")
+
+        content = await asyncio.to_thread(lambda: target.read_text(encoding="utf-8"))
+        mtime = await asyncio.to_thread(lambda: target.stat().st_mtime)
+        return {"content": content, "mtime": mtime}
+
     _PROJECT_VERSION_LIMIT = 20
 
     @staticmethod

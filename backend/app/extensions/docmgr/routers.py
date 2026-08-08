@@ -973,6 +973,24 @@ async def list_project_outputs(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a project member")
 
 
+@router.get("/projects/{project_id}/outputs/content")
+async def read_project_output(
+    project_id: UUID,
+    thread_id: str = Query(..., min_length=1, max_length=100),
+    rel_path: str = Query(..., min_length=1, max_length=500),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM
+):
+    """读单个项目文件内容 + mtime（编辑器 seed；artifacts API owner-scoped 故走此端点）。"""
+    await _require_project_member(db, project_id, current_user.id)
+    try:
+        return await AIDocumentService.read_project_output(db, project_id, thread_id, rel_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="file not found")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.put("/projects/{project_id}/outputs")
 async def save_project_output(
     project_id: UUID,
