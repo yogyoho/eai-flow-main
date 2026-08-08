@@ -491,6 +491,11 @@ class AIDocumentService:
                     pass
             return 0.0
 
+        # EAI-CUSTOM: 排除绑定项目的线程（项目产物只出现在项目区，不回流个人区）
+        project_tids = await AIDocumentService._personal_project_thread_ids(db)
+        if project_tids:
+            all_threads = [t for t in all_threads if t["thread_id"] not in project_tids]
+
         # 次级 key thread_id 保证排序稳定（created_at 相同/为空时分页不重复/遗漏）
         all_threads.sort(key=lambda t: (_sort_key(t), t["thread_id"]), reverse=True)
 
@@ -591,6 +596,19 @@ class AIDocumentService:
             return getattr(user, "username", None) or str(user_id)
         except Exception:
             return str(user_id)
+
+    @staticmethod
+    async def _personal_project_thread_ids(db: AsyncSession) -> set[str]:
+        """所有绑项目的 thread_id 集合（用于个人区排除）。失败返回空集。"""
+        try:
+            from app.extensions.models import ProjectMember
+
+            rows = await db.execute(
+                select(ProjectMember.thread_id).where(ProjectMember.thread_id.isnot(None))
+            )
+            return {tid for tid in rows.scalars().all() if tid}
+        except Exception:
+            return set()
 
     @staticmethod
     async def list_project_outputs(

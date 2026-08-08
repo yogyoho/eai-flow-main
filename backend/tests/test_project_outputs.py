@@ -75,3 +75,26 @@ class TestListProjectOutputs:
             mp.return_value.base_dir = tmp_path
             res = await AIDocumentService.list_project_outputs(AsyncMock(), pid, caller)
         assert [f["name"] for f in res["files"]] == ["a.md"]
+
+
+class TestPersonalOutputsExcludesProjectThreads:
+    @pytest.mark.asyncio
+    async def test_project_bound_thread_excluded_from_personal(self, tmp_path: Path):
+        """绑项目的线程 outputs 不回流到「我的文档」。"""
+        from app.extensions.docmgr.service import AIDocumentService
+
+        user_id = uuid4()
+        threads_dir = tmp_path / "users" / str(user_id) / "threads"
+        for tid in ("t-personal", "t-project"):
+            out = threads_dir / tid / "user-data" / "outputs"
+            out.mkdir(parents=True)
+            (out / f"{tid}.md").write_text("# x")
+
+        with patch("deerflow.config.paths.Paths") as mp, \
+             patch.object(AIDocumentService, "_personal_project_thread_ids",
+                          AsyncMock(return_value={"t-project"})):
+            mp.return_value.base_dir = tmp_path
+            res = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id)
+        tids = {t["thread_id"] for t in res["threads"]}
+        assert "t-personal" in tids
+        assert "t-project" not in tids
