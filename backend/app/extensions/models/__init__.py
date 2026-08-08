@@ -321,6 +321,33 @@ class PersonalDocVersion(Base):
     owner: Mapped["User"] = relationship("User")
 
 
+class ProjectDocVersion(Base):
+    """EAI-CUSTOM: 项目文档内容快照（跨用户编辑版本历史），键 (project_id, thread_id, rel_path)。
+
+    thread_id 区分不同成员的同名文件（每成员进项目各开自己线程）。每文件留最新 20 条。
+    """
+
+    __tablename__ = "project_doc_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("report_projects.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    thread_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    rel_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    editor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_project_versions_proj_thread_path", "project_id", "thread_id", "rel_path"),
+    )
+
+    project: Mapped["ReportProject"] = relationship("ReportProject")
+    editor: Mapped["User"] = relationship("User")
+
+
 class Conversation(Base):
     """Conversation model - maps thread_id to user_id for data isolation."""
 
