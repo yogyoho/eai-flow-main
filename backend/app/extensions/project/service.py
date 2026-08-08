@@ -1197,63 +1197,17 @@ async def _auto_parse_sources(db: AsyncSession, chapter_id, content: str) -> Non
 # ── Project file aggregation ──
 
 
-async def get_project_files(db: AsyncSession, project_id, *, cookies=None, csrf_token=None) -> list[dict]:
-    """Aggregate files from all member threads via Gateway upload list API."""
-    import httpx
-    import os
+async def get_project_files(db: AsyncSession, project_id, *, caller_user_id) -> list[dict]:
+    """项目文件 = 所有成员线程 outputs 聚合（复用 AIDocumentService.list_project_outputs）。
 
-    stmt = select(ProjectMember).where(ProjectMember.project_id == project_id)
-    result = await db.execute(stmt)
-    members = result.scalars().all()
+    EAI-CUSTOM: 与文档空间「项目区」对齐同一数据源——直接扫各成员线程的 outputs/ 目录，
+    不再走 uploads/list + AIDocument file_ref 双源聚合（后者依赖 agent 调 present_files
+    入册，报告类 skill 不调，链路断；直接读盘根治）。
+    """
+    from app.extensions.docmgr.service import AIDocumentService
 
-    gateway_port = os.environ.get("GATEWAY_PORT", "8001")
-    headers = {}
-    if csrf_token:
-        headers["X-CSRF-Token"] = csrf_token
-
-    files = []
-    async with httpx.AsyncClient(cookies=cookies) as client:
-        for m in members:
-            username = await _resolve_username(db, m.user_id)
-            if not m.thread_id:
-                continue
-            try:
-                resp = await client.get(
-                    f"http://localhost:{gateway_port}/api/threads/{m.thread_id}/uploads/list",
-                    headers=headers,
-                    timeout=10.0,
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    for f in data.get("files", []):
-                        f["thread_id"] = m.thread_id
-                        f["member"] = username
-                        files.append(f)
-            except Exception:
-                pass
-
-    # 2. Also include synced AIDocument records for this project
-    from app.extensions.models import AIDocument
-
-    doc_stmt = select(AIDocument).where(
-        AIDocument.project_id == project_id,
-        AIDocument.file_ref_path.isnot(None),
-    )
-    doc_result = await db.execute(doc_stmt)
-    for doc in doc_result.scalars().all():
-        files.append(
-            {
-                "name": doc.title or "Untitled",
-                "size": doc.file_size,
-                "mime_type": doc.file_mime,
-                "thread_id": doc.source_thread_id,
-                "member": "AI",
-                "updated_at": str(doc.updated_at) if doc.updated_at else None,
-                "source": "aidocument",
-            }
-        )
-
-    return files
+    res = await AIDocumentService.list_project_outputs(db, project_id, caller_user_id)
+    return res["files"]
 
 
 # ── Phase Board ──

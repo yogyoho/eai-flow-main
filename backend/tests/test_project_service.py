@@ -271,137 +271,19 @@ class TestEnterProject:
 
 class TestGetProjectFiles:
     @pytest.mark.asyncio
-    async def test_skips_members_without_thread(self, mock_db, project_id):
-        """Members without thread_id should be skipped."""
-        member = MagicMock()
-        member.thread_id = None
-        member.user_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.side_effect = [[member], []]
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
+    async def test_delegates_to_list_project_outputs(self, mock_db, project_id):
+        """get_project_files 复用 AIDocumentService.list_project_outputs，返回其 files 列表。"""
+        caller = uuid4()
+        files = [{"name": "消防设计专篇.md", "thread_id": "T1", "member": "lisi"}]
+        with patch(
+            "app.extensions.docmgr.service.AIDocumentService.list_project_outputs",
+            new=AsyncMock(return_value={"files": files, "total": 1}),
+        ) as mock_list:
             from app.extensions.project.service import get_project_files
 
-            result = await get_project_files(mock_db, project_id)
-
-        assert result == []
-        mock_client.get.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_handles_api_failure_gracefully(self, mock_db, project_id):
-        """Failed API calls should be silently skipped."""
-        member = MagicMock()
-        member.thread_id = "thread-1"
-        member.user_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.side_effect = [[member], []]
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        with patch("app.extensions.project.service._resolve_username", return_value="alice"), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
-            from app.extensions.project.service import get_project_files
-
-            result = await get_project_files(mock_db, project_id)
-
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_for_no_members(self, mock_db, project_id):
-        """Project with no members returns empty list."""
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        from app.extensions.project.service import get_project_files
-
-        result = await get_project_files(mock_db, project_id)
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_aggregates_files_from_multiple_threads(self, mock_db, project_id):
-        """Should collect files from all member threads and tag with member info."""
-        member1 = MagicMock()
-        member1.thread_id = "thread-1"
-        member1.user_id = uuid4()
-
-        member2 = MagicMock()
-        member2.thread_id = "thread-2"
-        member2.user_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.side_effect = [[member1, member2], []]
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        with patch("app.extensions.project.service._resolve_username", side_effect=lambda db, uid: "alice" if uid == member1.user_id else "bob"), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-            mock_response1 = MagicMock()
-            mock_response1.status_code = 200
-            mock_response1.json.return_value = {"files": [{"name": "report1.docx", "size": 1024}]}
-
-            mock_response2 = MagicMock()
-            mock_response2.status_code = 200
-            mock_response2.json.return_value = {"files": [{"name": "report2.docx", "size": 2048}]}
-
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(side_effect=[mock_response1, mock_response2])
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
-            from app.extensions.project.service import get_project_files
-
-            result = await get_project_files(mock_db, project_id)
-
-        assert len(result) == 2
-        assert result[0]["name"] == "report1.docx"
-        assert result[0]["thread_id"] == "thread-1"
-        assert result[0]["member"] == "alice"
-        assert result[1]["name"] == "report2.docx"
-        assert result[1]["thread_id"] == "thread-2"
-        assert result[1]["member"] == "bob"
-
-    @pytest.mark.asyncio
-    async def test_skips_non_200_responses(self, mock_db, project_id):
-        """Non-200 API responses should be silently skipped."""
-        member = MagicMock()
-        member.thread_id = "thread-1"
-        member.user_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.side_effect = [[member], []]
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        with patch("app.extensions.project.service._resolve_username", return_value="alice"), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-            mock_response = MagicMock()
-            mock_response.status_code = 404
-
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
-            from app.extensions.project.service import get_project_files
-
-            result = await get_project_files(mock_db, project_id)
-
-        assert result == []
+            result = await get_project_files(mock_db, project_id, caller_user_id=caller)
+        assert result == files
+        mock_list.assert_awaited_once_with(mock_db, project_id, caller)
 
 
 class TestWriteProjectContext:

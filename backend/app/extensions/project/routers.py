@@ -331,17 +331,10 @@ async def sync_project_docs(
 @router.get("/projects/{project_id}/files")
 async def get_project_files(
     project_id: UUID,
-    request: Request,
     _member: CurrentUser = Depends(require_project_member()),
     db: AsyncSession = Depends(get_db),
 ):
-    csrf_token = request.cookies.get("csrf_token")
-    return await service.get_project_files(
-        db,
-        project_id,
-        cookies=request.cookies,
-        csrf_token=csrf_token,
-    )
+    return await service.get_project_files(db, project_id, caller_user_id=_member.id)
 
 
 # ── My Permissions ──
