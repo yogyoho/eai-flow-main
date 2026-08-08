@@ -709,11 +709,11 @@ class AIDocumentService:
         content: str,
         editor_user_id: UUID,
         if_mtime: float | None = None,
-    ) -> None:
+    ) -> float:
         """服务器调解写回文件原物理路径（跨用户编辑）。带 mtime 乐观锁。
 
         if_mtime 非空时与当前文件 mtime 比对，不一致（>1s）抛 _StaleWrite。
-        写成功后（Task 5 将在此处）创建一条 ProjectDocVersion 快照。
+        写成功后创建一条 ProjectDocVersion 快照，并返回新 mtime（供下次写回乐观锁）。
         """
         import asyncio
 
@@ -738,6 +738,7 @@ class AIDocumentService:
         await AIDocumentService.create_project_version(
             db, project_id, thread_id, rel_path, content, editor_user_id,
         )
+        return await asyncio.to_thread(lambda: target.stat().st_mtime)
 
     @staticmethod
     async def read_project_output(

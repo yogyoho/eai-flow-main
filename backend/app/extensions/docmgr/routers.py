@@ -1001,7 +1001,7 @@ async def save_project_output(
     """跨用户写回线程 outputs/ 文件（编辑器保存，带 mtime 乐观锁 + 自动版本快照）。"""
     await _require_project_member(db, project_id, current_user.id)
     try:
-        await AIDocumentService.write_project_output(
+        new_mtime = await AIDocumentService.write_project_output(
             db,
             project_id,
             data.thread_id,
@@ -1017,7 +1017,7 @@ async def save_project_output(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     await db.commit()
-    return {"ok": True}
+    return {"ok": True, "mtime": new_mtime}
 
 
 # ── EAI-CUSTOM: 项目文档版本历史（list / get / restore；写盘自动快照）───────

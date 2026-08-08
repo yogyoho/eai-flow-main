@@ -785,15 +785,18 @@ export const docmgrApi = {
       `/docmgr/projects/${encodeURIComponent(projectId)}/outputs/content?thread_id=${encodeURIComponent(params.thread_id)}&rel_path=${encodeURIComponent(params.rel_path)}`,
     ),
 
-  /** 跨用户写回（编辑器保存，带 mtime 乐观锁）。 */
+  /** 跨用户写回（编辑器保存，带 mtime 乐观锁；返回新 mtime 供下次写回）。 */
   saveProjectContent: (
     projectId: string,
     data: { thread_id: string; rel_path: string; content: string; if_mtime?: number },
   ) =>
-    request<{ ok: boolean }>(`/docmgr/projects/${encodeURIComponent(projectId)}/outputs`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+    request<{ ok: boolean; mtime: number }>(
+      `/docmgr/projects/${encodeURIComponent(projectId)}/outputs`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    ),
 
   // ── 项目文档版本历史（list / get / restore；写盘自动快照）──────────
   listProjectVersions: (projectId: string, threadId: string, relPath: string) =>

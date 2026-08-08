@@ -30,9 +30,6 @@ import BatchActionBar from "./BatchActionBar";
 import { ExportDocxDialog } from "./ExportDocxDialog";
 import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./FilePreviewModal";
 import FolderPickerDialog from "./FolderPickerDialog";
-import { ProjectFolderTree } from "./ProjectFolderTree";
-import ShareDialog from "./ShareDialog";
-// ShareDialog retained for potential future use; share UI entry points removed below.
 import DocAIAgentPanel from "./DocAIAgentPanel";
 import PersonalBlockNoteEditor, { type PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
 import { useDocAIThread } from "./useDocAIThread";
@@ -40,7 +37,10 @@ import { computeDocStats } from "./utils/docEditorUtils";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
+import { useProjectOutputs } from "./useProjectOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
+import { workspaceApi } from "@/extensions/workspace/api";
+import type { CollabProject } from "@/extensions/workspace/types";
 
 type AIOperation = "polish" | "expand" | "condense" | "chat";
 type View = "list" | "editor";
@@ -107,12 +107,14 @@ function WindowsFolderOpen({ className }: { className?: string }) {
   );
 }
 
+// EAI-CUSTOM: 项目区 outputs 文件系统视图——项目文件 = outputs 直读（跨用户共享），替代旧 file_ref 文件夹树
+type ProjectFileRef = { project_id: string; thread_id: string; rel_path: string; title: string; member: string };
+
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
   const [activePersonalFile, setActivePersonalFile] = useState<{ thread_id: string; rel_path: string; title: string } | null>(null);
-  const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
-  const [currentFolder, setCurrentFolder] = useState("默认文件夹");
+  const [activeProjectFile, setActiveProjectFile] = useState<ProjectFileRef | null>(null);
   const handleSelectDoc = (doc: AIDocument) => {
     // 二进制文件（PDF / Word / Excel / 图片 / 压缩包等）→ 直接下载，不进编辑器
     if (doc.source_thread_id && doc.file_ref_path && isBinaryFile(doc.file_mime, doc.title)) {
@@ -129,7 +131,13 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     }
     setView("editor");
   };
-  const handleBack = () => { setActiveDocId(null); setActivePersonalFile(null); setView("list"); };
+  const handleSelectProjectFile = (f: ProjectFileRef) => {
+    setActiveProjectFile(f);
+    setActiveDocId(null);
+    setActivePersonalFile(null);
+    setView("editor");
+  };
+  const handleBack = () => { setActiveDocId(null); setActivePersonalFile(null); setActiveProjectFile(null); setView("list"); };
   // 二进制文件直接下载（拉取 artifacts blob → 触发浏览器下载）
   const downloadPersonalFile = async (threadId: string, relPath: string, filename: string) => {
     try {
@@ -151,13 +159,13 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     <div className="h-full flex overflow-hidden bg-background relative">
       {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
       <div className={cn("h-full w-full flex overflow-hidden", view === "editor" && "hidden")}>
-        <DocumentList onSelectDoc={handleSelectDoc} activeNav={activeNav} onNavChange={setActiveNav} currentFolder={currentFolder} onFolderChange={setCurrentFolder} />
+        <DocumentList onSelectDoc={handleSelectDoc} onSelectProjectFile={handleSelectProjectFile} />
       </div>
       {/* Editor slides in on top when active */}
-      {view === "editor" && (activeDocId || activePersonalFile) && (
-        <motion.div key={activeDocId || activePersonalFile?.rel_path} className="absolute inset-0 z-10 flex overflow-hidden"
+      {view === "editor" && (activeDocId || activePersonalFile || activeProjectFile) && (
+        <motion.div key={activeDocId || activePersonalFile?.rel_path || activeProjectFile?.rel_path} className="absolute inset-0 z-10 flex overflow-hidden"
           initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-          <DocumentEditor docId={activeDocId} personalFile={activePersonalFile} onBack={handleBack} />
+          <DocumentEditor docId={activeDocId} personalFile={activePersonalFile} projectFile={activeProjectFile} onBack={handleBack} />
         </motion.div>
       )}
     </div>
@@ -166,14 +174,13 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
 
 // ─── Document List ────────────────────────────────────────────────────────────
 
-function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFolderChange, view = "list" }: {
+function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
   onSelectDoc: (doc: AIDocument) => void;
-  activeNav: "folder" | "file_ref_folder";
-  onNavChange: (nav: "folder" | "file_ref_folder") => void;
-  currentFolder: string;
-  onFolderChange: (folder: string) => void;
+  onSelectProjectFile: (f: ProjectFileRef) => void;
   view?: View;
 }) {
+  // EAI-CUSTOM: 项目区改为 outputs 文件系统视图后，nav 不再切换 project_scope；currentFolder 固定。
+  const currentFolder = "默认文件夹";
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(true);
@@ -187,15 +194,12 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const debouncedSearch = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewDocState, setPreviewDocState] = useState<AIDocument | null>(null);
-  // 分享功能已下线（保留 ShareDialog 组件以备后续）
-  const showShareDialog = false;
-  const shareDoc: AIDocument | null = null;
-  const setShowShareDialog = (_: boolean) => {};
-  const setShareDoc = (_: AIDocument | null) => {};
   const [showFolderPicker, setShowFolderPicker] = useState(false);
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [personalOpen, setPersonalOpen] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  // EAI-CUSTOM: 项目区 outputs 文件系统视图——项目下拉 + 扁平文件列表
+  const [projects, setProjects] = useState<CollabProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred">("all");
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -219,20 +223,30 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, [sidebarWidth]);
-  const { docs, total, loading, page, pageSize, setPage, folders, projectFolders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc, folderTree } =
+  const { docs, total, loading, page, pageSize, setPage, folders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
     useDocuments({ folder: currentFolder });
   // Personal outputs — direct filesystem view (replaces old personal folder tree)
   const personalOutputs = usePersonalOutputs();
+  // EAI-CUSTOM: 项目 outputs——跨用户共享扁平文件列表（选项目后拉取）
+  const projectOutputs = useProjectOutputs(selectedProjectId);
+  useEffect(() => {
+    if (!canUseProject) return;
+    let cancelled = false;
+    workspaceApi
+      .listProjects()
+      .then((data) => { if (!cancelled) setProjects(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [canUseProject]);
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
   useEffect(() => {
     if (navSynced.current) return;
     navSynced.current = true;
-    if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
-    // Default: 全部个人文件，不限定 doc_type（document 与 file_ref 合并显示）
-    else setFilter({ project_scope: "personal", folder: currentFolder });
-  }, [activeNav, currentFolder, setFilter]);
+    // EAI-CUSTOM: 固定个人 scope（项目区已改为独立 outputs 文件系统视图，不再切 project_scope 过滤）
+    setFilter({ project_scope: "personal", folder: currentFolder });
+  }, [currentFolder, setFilter]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -247,20 +261,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   };
 
   const totalPages = Math.ceil(total / pageSize);
-
-  const handleNavClick = (nav: typeof activeNav, folder?: string, folderId?: string | null) => {
-    onNavChange(nav);
-    setSelectedIds(new Set());
-    if (nav === "folder") {
-      const nextFolder = folder ?? "默认文件夹";
-      onFolderChange(nextFolder);
-      // 合并显示全部类型（document + file_ref），不再限定 doc_type
-      setFilter({ project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
-    } else if (nav === "file_ref_folder") {
-      if (folder) onFolderChange(folder);
-      setFilter({ project_scope: "project", folder, folder_id: folderId || undefined, q: search || undefined });
-    }
-  };
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -297,7 +297,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     setSelectedIds(new Set());
   };
 
-  const isFileRefView = activeNav === "file_ref_folder";
+  // EAI-CUSTOM: 项目导航已移除；当前恒为 false，保留常量便于后续恢复
+  const isFileRefView = false;
 
   // 选中线程后，主体区显示该线程文件（适配为 DocCard 期望的形状）
   const adaptPersonalFile = (file: any, thread: any) => ({
@@ -423,7 +424,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   return (
                     <div key={thread.thread_id}>
                       <button
-                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); setActiveFolderId(null); }}
+                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); }}
                         className={cn(
                           "flex w-full items-center justify-between px-3 py-1.5 text-xs rounded-lg transition-colors",
                           selectedThreadId === thread.thread_id
@@ -481,7 +482,7 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               </div>
             )}
           </div>
-          {canUseProject && ( // 项目文件夹 - 树形结构
+          {canUseProject && ( // EAI-CUSTOM: 项目文档——outputs 文件系统视图（跨用户共享）
           <div className="pt-2 mt-2">
             <button
               onClick={() => setArchiveOpen((v) => !v)}
@@ -489,24 +490,50 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
             >
               <div className="flex items-center gap-2">
                 <Archive className="w-3.5 h-3.5" />
-                <span>项目文件夹</span>
+                <span>项目文档</span>
+                <span className="text-[10px] text-muted-foreground/60">成员共享</span>
               </div>
               {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
             {archiveOpen && (
-              <ProjectFolderTree
-                folders={folderTree.folders}
-                expandedKeys={folderTree.expandedKeys}
-                onToggleExpand={folderTree.toggleExpand}
-                onSelectFolder={(folderId, folderName) => {
-                  setActiveFolderId(folderId);
-                  handleNavClick("file_ref_folder", folderName, folderId);
-                }}
-                onCreateFolder={async (name, parentId, projectId) => { await folderTree.createFolder(name, parentId, projectId) }}
-                onRenameFolder={folderTree.renameFolder}
-                onDeleteFolder={folderTree.deleteFolder}
-                activeFolderId={activeFolderId}
-              />
+              <div className="ml-2 space-y-0.5 pt-1">
+                <select
+                  value={selectedProjectId ?? ""}
+                  onChange={(e) => setSelectedProjectId(e.target.value || null)}
+                  className="w-full mb-1.5 px-2 py-1 text-xs rounded-md border border-border bg-background truncate"
+                >
+                  <option value="">{projects.length === 0 ? "暂无项目" : "选择项目…"}</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {selectedProjectId && projectOutputs.loading && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">加载中...</p>
+                )}
+                {selectedProjectId && !projectOutputs.loading && projectOutputs.files.length === 0 && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">暂无输出文件</p>
+                )}
+                {selectedProjectId && projectOutputs.files.map((file) => (
+                  <button
+                    key={`${file.thread_id}/${file.rel_path}`}
+                    onClick={() => onSelectProjectFile({
+                      project_id: selectedProjectId,
+                      thread_id: file.thread_id,
+                      rel_path: file.rel_path,
+                      title: file.name,
+                      member: file.member,
+                    })}
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 rounded transition-colors"
+                    title={file.name}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <FileText className="w-3 h-3 shrink-0 opacity-60" />
+                      <span className="truncate">{file.name}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/50 shrink-0 ml-1.5">由 {file.member} 生成</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
           )}
@@ -791,7 +818,6 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
         {showNewModal && <NewDocModal isOpen={showNewModal} onClose={() => setShowNewModal(false)} onCreate={handleCreate} />}
       </AnimatePresence>
       <FilePreviewModal doc={previewDocState} open={!!previewDocState} onOpenChange={(o) => { if (!o) setPreviewDocState(null); }} />
-      <ShareDialog doc={shareDoc} open={showShareDialog} onOpenChange={setShowShareDialog} />
       <FolderPickerDialog
         folders={folders}
         open={showFolderPicker}
@@ -832,7 +858,7 @@ function DocCard({ doc, variant = "auto", isMenuOpen, onOpenMenu, menuButtonRef,
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-64 group hover:shadow-md hover:border-primary/50 relative"
+      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-50 group hover:shadow-md hover:border-primary/50 relative"
       onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
       <div className="flex-1 mb-4 relative overflow-hidden">
         {showSummary ? (
@@ -1192,7 +1218,7 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
 
 // ─── Document Editor ──────────────────────────────────────────────────────────
 
-function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; onBack: () => void }) {
+function DocumentEditor({ docId, personalFile, projectFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; projectFile: ProjectFileRef | null; onBack: () => void }) {
   const [doc, setDoc] = useState<AIDocument | null>(null);
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1212,6 +1238,8 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   titleRef.current = title;
   // 最近一次待保存的保存逻辑（闭包最新 content），供 unmount flush 用。
   const flushPendingRef = useRef<() => void>(() => {});
+  // EAI-CUSTOM: 项目文件写回乐观锁——读端点返回 mtime，保存时回传；后端比对不一致返 409。
+  const projectMtimeRef = useRef<number | null>(null);
 
   // ── B 组: 字数统计 / 查找替换 / 全屏 ────────────────────────────────
   const [docStats, setDocStats] = useState({ words: 0, chars: 0 });
@@ -1228,11 +1256,26 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
   const [editorKey, setEditorKey] = useState(0); // 恢复版本后强制重挂载编辑器重新 seed
 
   // AI sub-thread persisted at editor level — survives panel close/reopen
-  const aiThreadId = personalFile?.thread_id ?? docId ?? "default";
+  const aiThreadId = projectFile?.thread_id ?? personalFile?.thread_id ?? docId ?? "default";
   const { subThreadId, ensureThread, isCreating, resetThread } = useDocAIThread(aiThreadId);
 
   useEffect(() => {
     setLoading(true);
+    // EAI-CUSTOM: 项目文档——跨用户直读 outputs（artifacts API 是 owner-scoped，组员走 read_project_output）
+    if (projectFile) {
+      docmgrApi
+        .readProjectOutput(projectFile.project_id, { thread_id: projectFile.thread_id, rel_path: projectFile.rel_path })
+        .then(({ content, mtime }) => {
+          projectMtimeRef.current = mtime;
+          const lang = getLanguageFromName(projectFile.title);
+          const displayContent = lang ? "```" + lang + "\n" + content + "\n```" : content;
+          setDoc({ id: "project", title: projectFile.title, content: displayContent, doc_type: "file_ref" } as AIDocument);
+          setTitle(projectFile.title);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return;
+    }
     // 个人文档：直接读线程 outputs/ 文件内容（artifacts API）
     if (personalFile) {
       const artifactPath = `mnt/user-data/outputs/${personalFile.rel_path}`;
@@ -1264,7 +1307,7 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
       setTitle(d.title);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [docId, personalFile]);
+  }, [docId, personalFile, projectFile]);
 
   const scheduleSave = useCallback((content: string) => {
     setSaved(false);
@@ -1275,7 +1318,21 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
     const doSave = async () => {
       setSaving(true);
       try {
-        if (personalFile) {
+        if (projectFile) {
+          // EAI-CUSTOM: 项目文件跨用户写回，带 mtime 乐观锁；保存成功后更新 mtime 供下次比对
+          let saveContent = content;
+          if (getLanguageFromName(projectFile.title)) {
+            const m = content.match(/^```[^\n]*\n([\s\S]*)\n```\s*$/);
+            if (m) saveContent = m[1]!;
+          }
+          const res = await docmgrApi.saveProjectContent(projectFile.project_id, {
+            thread_id: projectFile.thread_id,
+            rel_path: projectFile.rel_path,
+            content: saveContent,
+            if_mtime: projectMtimeRef.current ?? undefined,
+          });
+          projectMtimeRef.current = res.mtime;
+        } else if (personalFile) {
           // 代码文件在编辑器里被 ```lang 包裹，保存时去掉 fence 写回原始内容
           let saveContent = content;
           if (getLanguageFromName(personalFile.title)) {
@@ -1291,7 +1348,8 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
         setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
       } catch (e: any) {
         // 保存失败不再静默 —— 顶部栏展示错误，用户可继续编辑触发重试
-        setSaveError(e?.message || "保存失败，请重试");
+        // 409 = 并发写回冲突（mtime 乐观锁），提示刷新
+        setSaveError(e?.status === 409 ? "文件已被他人修改，请刷新后重试" : e?.message || "保存失败，请重试");
         console.error("[docmgr] save failed:", e);
       } finally { setSaving(false); }
     };
@@ -1300,10 +1358,10 @@ function DocumentEditor({ docId, personalFile, onBack }: { docId: string | null;
       flushPendingRef.current = () => {};
       void doSave();
     }, 1500);
-  }, [docId, personalFile]);
+  }, [docId, personalFile, projectFile]);
 
   const handleTitleBlur = async () => {
-    if (!doc || title === doc.title || personalFile) return;
+    if (!doc || title === doc.title || personalFile || projectFile) return;
     if (!docId) return;
     setSaving(true);
     try {
