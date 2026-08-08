@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions.config import get_extensions_config
 from app.extensions.database import AsyncSession
-from app.extensions.models import Document, KnowledgeBase
+from app.extensions.models import Document, KnowledgeBase, UserDepartment
 from app.extensions.schemas import (
     DocumentResponse,
     DocumentStatus,
@@ -63,17 +63,11 @@ class KnowledgeBaseService:
         - dept: users whose dept_id is in allowed_depts can see it
         - public: everyone can see it
         """
-        from sqlalchemy import and_, true
+        from sqlalchemy import and_
 
         # Super admin sees everything — no visibility filter
         if is_admin:
-            query = (
-                select(KnowledgeBase)
-                .options(joinedload(KnowledgeBase.owner))
-                .offset(skip)
-                .limit(limit)
-                .order_by(KnowledgeBase.created_at.desc())
-            )
+            query = select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).offset(skip).limit(limit).order_by(KnowledgeBase.created_at.desc())
             result = await db.execute(query)
             kbs = result.scalars().all()
             count_result = await db.execute(select(func.count(KnowledgeBase.id)))
@@ -95,14 +89,7 @@ class KnowledgeBaseService:
 
         visibility = or_(*conditions)
 
-        query = (
-            select(KnowledgeBase)
-            .options(joinedload(KnowledgeBase.owner))
-            .where(visibility)
-            .offset(skip)
-            .limit(limit)
-            .order_by(KnowledgeBase.created_at.desc())
-        )
+        query = select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(visibility).offset(skip).limit(limit).order_by(KnowledgeBase.created_at.desc())
         result = await db.execute(query)
         kbs = result.scalars().all()
 
@@ -114,13 +101,24 @@ class KnowledgeBaseService:
 
     @staticmethod
     async def create_kb(db: AsyncSession, owner_id: UUID, data: KnowledgeBaseCreate) -> KnowledgeBase:
+        # EAI-CUSTOM (bug-1134): 部门可见知识库若未显式指定 allowed_depts，兜底填入 owner
+        # 的全部部门（user_departments）。否则 datascope 规则 `allowed_depts OVERLAP
+        # $identity.dept_ids` 命中 NULL（PG: NULL && array → NULL，假），知识库管理页创建的
+        # dept 知识库会对所有非 owner 的同部门用户不可见。
+        allowed_depts = data.allowed_depts
+        if data.access_type == "dept" and not allowed_depts:
+            dept_rows = await db.execute(select(UserDepartment.dept_id).where(UserDepartment.user_id == owner_id))
+            allowed_depts = [row[0] for row in dept_rows.all()]
+            if allowed_depts:
+                logger.info(f"Dept KB '{data.name}': auto-filled allowed_depts from owner departments")
+
         kb = KnowledgeBase(
             name=data.name,
             description=data.description,
             owner_id=owner_id,
             access_type=data.access_type,
             kb_type=data.kb_type,
-            allowed_depts=data.allowed_depts,
+            allowed_depts=allowed_depts,
             embedding_model=data.embedding_model,
             chunk_method=data.chunk_method,
             parser_config=data.parser_config,
@@ -186,6 +184,12 @@ class KnowledgeBaseService:
             kb.parser_config = data.parser_config
         if data.language is not None:
             kb.language = data.language
+
+        # EAI-CUSTOM (bug-1134): 切到 dept 可见性但表单未携带 allowed_depts 时，同样兜底
+        # 填入 owner 的部门，避免与 create_kb 相同的 NULL → 不可见问题。
+        if data.access_type == "dept" and data.allowed_depts is None and not kb.allowed_depts:
+            dept_rows = await db.execute(select(UserDepartment.dept_id).where(UserDepartment.user_id == kb.owner_id))
+            kb.allowed_depts = [row[0] for row in dept_rows.all()]
 
         if kb.ragflow_dataset_id:
             rf_client = KnowledgeBaseService._get_ragflow_client()
@@ -363,10 +367,7 @@ class DocumentService:
         if file_ext not in supported:
             sorted_exts = sorted(supported)
             ext_list = ", ".join(f".{e}" for e in sorted_exts)
-            raise ValueError(
-                f"当前分片方式不支持 .{file_ext} 格式的文件。"
-                f"支持的格式: {ext_list}"
-            )
+            raise ValueError(f"当前分片方式不支持 .{file_ext} 格式的文件。支持的格式: {ext_list}")
 
     @staticmethod
     async def create_doc(

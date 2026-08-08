@@ -25,6 +25,7 @@ roles:
     data_scopes:
     - project_member
     - knowledge_dept
+    - knowledge_public
     - cpa_dept
     - doc_owner
     - doc_project_member
@@ -91,6 +92,7 @@ roles:
     data_scopes:
     - project_member
     - knowledge_dept
+    - knowledge_public
     - cpa_dept
     - doc_owner
     - doc_project_member
@@ -144,6 +146,7 @@ roles:
     data_scopes:
     - project_member
     - knowledge_dept
+    - knowledge_public
     - doc_owner
     - doc_project_member
     pages:

@@ -392,3 +392,21 @@ async def test_validate_grantee_user_branch_unknown_uuid_rejects_400():
     with pytest.raises(HTTPException) as exc:
         await _validate_grantee(db, "user", str(uuid.uuid4()))
     assert exc.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# bug-1135: 公开库可见性层级 —— 私有 < 部门 < 公开（公开是超集）
+# ---------------------------------------------------------------------------
+
+
+def test_kb_reading_roles_grant_knowledge_public_scope():
+    """公开库是部门/私有可见的超集（私有<部门<公开），凡持 knowledge_dept 的角色也必须
+    显式持有 knowledge_public，否则公开库对非 owner 用户不可见。data_scopes 不随
+    ``#inherit`` 继承（仅 permissions 继承），故每个角色须各自列出 knowledge_public。"""
+    reg = get_permission_registry()
+    for role_code in ["dept_head", "project_manager", "writer", "reviewer", "user"]:
+        defaults = reg.get_role_defaults(role_code)
+        assert defaults is not None, f"role {role_code} missing from registry"
+        assert "knowledge_public" in defaults["data_scopes"], (
+            f"role {role_code} lacks knowledge_public — public KBs invisible to non-owners"
+        )
