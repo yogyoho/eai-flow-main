@@ -81,16 +81,13 @@ roles:
     - chapter:review
     - workflow:read
     nav:
-    - nav:dashboard
-    - nav:writing
-    - nav:projects
-    - nav:docmgr
     - nav:knowledge
     - nav:contract-price
     - nav:output
     - nav:app-center
     - nav:settings
     - nav:knowledge-factory
+    - nav:writing
     data_scopes:
     - project_member
     - knowledge_dept
@@ -103,8 +100,6 @@ roles:
     - projects:page:list
     - docmgr:page:browse
     - knowledge:page:browse
-    - kf:page:sample
-    - kf:page:extraction
     - kf:page:compliance
     - kf:page:version
     - kf:page:quality
@@ -125,6 +120,7 @@ roles:
     - settings:page:general
     - settings:page:datasource
     - settings:page:license
+    - kf:page:extraction
     is_system: false
     level: 50
     description: null
@@ -157,4 +153,30 @@ roles:
     is_system: false
     level: 20
     description: 负责文档内容审核和批注
+  user:
+    display_name: 普通用户
+    permissions:
+    - dashboard:view
+    - doc:read
+    - kb:read
+    - model:read
+    - system:access
+    - kb:upload
+    nav:
+    - nav:dashboard
+    - nav:knowledge
+    - nav:app-center
+    data_scopes:
+    - project_member
+    - doc_owner
+    - knowledge_public
+    # EAI-CUSTOM: 补回 knowledge_owner（对齐 permissions.yaml user 角色 M1 修复）——
+    # overlay 是替换非合并，漏掉则普通用户看不到自己的私有/部门 KB
+    - knowledge_owner
+    pages:
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 1
+    description: null
 disabled_roles: []
