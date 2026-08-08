@@ -36,7 +36,7 @@ class CoverImageSchema(BaseModel):
 
 class CoverElementSchema(BaseModel):
     id: str
-    type: Literal["text", "table", "image", "spacer", "divider"] = "text"
+    type: Literal["text", "table", "image", "spacer", "divider", "pageBreak"] = "text"
     # text
     text: str = ""
     fontFamily: str = "宋体"

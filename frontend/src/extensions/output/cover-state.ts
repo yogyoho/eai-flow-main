@@ -57,6 +57,8 @@ export function normalizeCoverElements(cover: Cover | null): Cover | null {
       switch (el.type) {
         case "spacer":
           return false;
+        case "pageBreak":
+          return false;
         case "text":
           return Boolean((el.text ?? "").trim());
         case "table":

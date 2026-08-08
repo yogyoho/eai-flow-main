@@ -40,14 +40,30 @@ const UNBOUND = "__none__";
 /** 每种元素类型的展示名 + 类型徽标配色。 */
 const ELEMENT_TYPE_META: Record<
   CoverElementType,
-  { label: string; badgeCls: string }
+  { label: string; badgeCls: string; badgeText?: string }
 > = {
   text: { label: "文本", badgeCls: "bg-primary/10 text-primary" },
   table: { label: "表格", badgeCls: "bg-emerald-500/10 text-emerald-600" },
   image: { label: "Logo", badgeCls: "bg-amber-500/10 text-amber-600" },
   spacer: { label: "空行", badgeCls: "bg-muted text-muted-foreground" },
+  // divider 为历史遗留的"分页符"类型，仅保留渲染存量元素；不再提供插入（见 ELEMENT_TYPES）。
   divider: { label: "分页符", badgeCls: "bg-muted text-muted-foreground" },
+  pageBreak: {
+    label: "分页符",
+    badgeText: "页",
+    badgeCls: "bg-muted text-muted-foreground",
+  },
 };
+
+/** 可插入的元素类型（添加元素按钮组 + 元素间插入菜单）：divider 已被 pageBreak
+ * 取代，不在插入选项中（避免两个同名"分页符"按钮）；存量 divider 元素仍正常渲染。 */
+const ELEMENT_TYPES: CoverElementType[] = [
+  "text",
+  "table",
+  "image",
+  "spacer",
+  "pageBreak",
+];
 
 /** 文本元素可选字体（生成时经 generator._resolve_font 映射到 python-docx 字体名）。 */
 const COVER_FONT_OPTIONS: { value: string; label: string }[] = [
@@ -98,6 +114,8 @@ function createElement(type: CoverElementType): CoverElement {
     case "spacer":
       return { id, type, lines: 1 };
     case "divider":
+      return { id, type };
+    case "pageBreak":
       return { id, type };
     default:
       // 穷尽所有元素类型，避免遗漏
@@ -224,7 +242,8 @@ function TextElementBody({
         value={el.fontFamily ?? "宋体"}
         onChange={(v) => onPatch({ fontFamily: v })}
         options={COVER_FONT_OPTIONS}
-        className="w-28 text-xs"
+        // w-40: 最长的字体名 "Times New Roman" 也要能单行完整显示（配合 AdminSelect 的 truncate 兜底不折行）
+        className="w-40 text-xs"
       />
     </div>
   );
@@ -400,7 +419,7 @@ function ElementRow({
             meta.badgeCls,
           )}
         >
-          {meta.label}
+          {meta.badgeText ?? meta.label}
         </span>
         <div className="min-w-0 flex-1">
           {el.type === "text" && <TextElementBody el={el} onPatch={onPatch} />}
@@ -418,8 +437,19 @@ function ElementRow({
           {el.type === "spacer" && <SpacerBody el={el} onPatch={onPatch} />}
           {el.type === "divider" && (
             <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <span className="border-muted-foreground/30 border-t w-6" /> 分页符
+              <span className="border-muted-foreground/30 w-6 border-t" />{" "}
+              分页符
             </span>
+          )}
+          {el.type === "pageBreak" && (
+            <div
+              className="text-muted-foreground flex items-center gap-2"
+              aria-label="分页符"
+            >
+              <span className="border-border flex-1 border-t" />
+              <span className="shrink-0 text-xs">分页符</span>
+              <span className="border-border flex-1 border-t" />
+            </div>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -494,8 +524,10 @@ function InsertZone({
   }
   return (
     <div className="bg-primary/5 border-primary/25 flex items-center gap-1 rounded-md border border-dashed px-1.5 py-1">
-      <span className="text-muted-foreground/60 shrink-0 text-[10px]">插入</span>
-      {(Object.keys(ELEMENT_TYPE_META) as CoverElementType[]).map((t) => (
+      <span className="text-muted-foreground/60 shrink-0 text-[10px]">
+        插入
+      </span>
+      {ELEMENT_TYPES.map((t) => (
         <button
           key={t}
           type="button"
@@ -532,7 +564,10 @@ export function CoverElementsEditor({
   onChange,
 }: CoverElementsEditorProps) {
   // 拖拽排序源/悬停目标 + 插入菜单开关（key = `${pageIndex}:${elementIndex}`）
-  const [drag, setDrag] = useState<{ from: string; over: string | null } | null>(null);
+  const [drag, setDrag] = useState<{
+    from: string;
+    over: string | null;
+  } | null>(null);
   const [insertOpen, setInsertOpen] = useState<string | null>(null);
   const keyOf = (pi: number, i: number) => `${pi}:${i}`;
 
@@ -773,15 +808,11 @@ export function CoverElementsEditor({
                           setDrag({ from: keyOf(pi, i), over: null })
                         }
                         onDragOver={() =>
-                          setDrag((d) =>
-                            d ? { ...d, over: keyOf(pi, i) } : d,
-                          )
+                          setDrag((d) => (d ? { ...d, over: keyOf(pi, i) } : d))
                         }
                         onDrop={() => {
                           if (drag && drag.from !== keyOf(pi, i)) {
-                            const [fp, fi] = drag.from
-                              .split(":")
-                              .map(Number);
+                            const [fp, fi] = drag.from.split(":").map(Number);
                             if (fp === pi && fi !== undefined) {
                               moveElementTo(pi, fi, i);
                             }
@@ -811,18 +842,16 @@ export function CoverElementsEditor({
                 <span className="text-muted-foreground text-[10px]">
                   添加：
                 </span>
-                {(Object.keys(ELEMENT_TYPE_META) as CoverElementType[]).map(
-                  (t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => addElement(pi, t)}
-                      className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] transition-colors"
-                    >
-                      <Plus className="h-3 w-3" /> {ELEMENT_TYPE_META[t].label}
-                    </button>
-                  ),
-                )}
+                {ELEMENT_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => addElement(pi, t)}
+                    className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] transition-colors"
+                  >
+                    <Plus className="h-3 w-3" /> {ELEMENT_TYPE_META[t].label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

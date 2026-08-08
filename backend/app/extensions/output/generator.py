@@ -339,6 +339,7 @@ def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
         if header_bg and rows > 0:
             from docx.oxml import OxmlElement
             from docx.oxml.ns import qn
+
             for ci in range(cols):
                 shd = OxmlElement("w:shd")
                 shd.set(qn("w:val"), "clear")
@@ -362,6 +363,9 @@ def _render_cover_element(doc, el: dict, slot_value: dict) -> None:
     elif etype == "divider":
         # 分页符：分隔线元素重定义为分页符（生成时在此插一页断，封面内部分页）。
         # 旧 type id "divider" 保留以兼容已持久化封面；现有 divider 即成为分页符。
+        doc.add_page_break()
+    elif etype == "pageBreak":
+        # 分页符：在元素间插一页断，把长封面内容（如高 banner 表格）拆分为多物理页。
         doc.add_page_break()
 
 
@@ -1440,8 +1444,31 @@ def generate_docx_simple(
     ol_counters: dict[int, int] = {}
 
     # --- Optional cover page (own section, no page number) ---
+    # EAI-CUSTOM: 完整封面模型（cover_elements / cover_master / cover_template）
+    # 由排版模版编辑器驱动，与 generate_docx 走同一套渲染路径；cover_preset 分支保留向后兼容。
+    cover_elements = td.get("cover_elements")
+    cover_master = td.get("cover_master")
+    cover_template = td.get("cover_template")
     has_cover = False
-    if cover_preset:
+    if cover_elements or cover_master or cover_template:
+        # 封面值仅从内容 frontmatter 解析（用户决策：不在弹窗内编辑封面值）。
+        # 拆 frontmatter 后正文也从 body_md 渲染，避免 frontmatter 块出现在导出正文里。
+        frontmatter, body_md = _split_frontmatter(markdown_content)
+        blocks = parse_markdown(body_md)
+        resolved_cover = _resolve_cover_fields({}, frontmatter, blocks)
+        try:
+            if cover_elements and cover_elements.get("mode") == "elements":
+                _render_cover_elements(doc, cover_elements, resolved_cover, frontmatter)
+            elif cover_master and cover_master.get("mode") == "master":
+                _render_cover_master(doc, cover_master, resolved_cover, frontmatter)
+            else:
+                _render_cover(doc, cover_template, resolved_cover)
+            has_cover = True
+        except Exception as exc:  # cover must never abort generation (M5: observable, not silent)
+            logger.warning("cover render failed: %s", exc)
+        if has_cover:
+            doc.add_section(WD_SECTION.NEW_PAGE)
+    elif cover_preset:
         try:
             has_cover = _render_cover_preset(doc, cover_preset, cover_values)
         except Exception as exc:  # cover must never abort generation (M5: observable, not silent)

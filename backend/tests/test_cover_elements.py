@@ -161,6 +161,29 @@ def test_render_cover_element_divider_is_page_break():
     assert "封面一" in texts and "封面二" in texts, "分页符前后文本应都保留"
 
 
+def test_render_cover_element_page_break():
+    """pageBreak 元素：在文本间插一页断 → 首文本段后的下一段含 <w:br w:type="page"/>."""
+    cover = {
+        "mode": "elements",
+        "sourceFile": "x.docx",
+        "pages": [{"elements": [
+            {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
+            {"id": "e2", "type": "pageBreak"},
+            {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
+        ]}],
+    }
+    doc = Document()
+    _render_cover_elements(doc, cover, {}, {})
+    paras = doc.paragraphs
+    # 找到第一段文本段落，断言其后一段含分页符 run
+    first_text_idx = next(i for i, p in enumerate(paras) if p.text.strip())
+    nxt = paras[first_text_idx + 1]
+    brs = nxt._element.findall(f".//{qn('w:br')}")
+    assert any(br.get(qn("w:type")) == "page" for br in brs), "pageBreak 应渲染为 <w:br w:type='page'/>"
+    texts = [p.text for p in paras if p.text.strip()]
+    assert "封面一" in texts and "封面二" in texts, "分页符前后文本应都保留"
+
+
 def test_render_cover_elements_slot_replacement_and_pages():
     resolved = {"project_name": "基地项目", "project_number": "P001"}
     doc = Document()

@@ -79,7 +79,8 @@ export type CoverElementType =
   | "table"
   | "image"
   | "spacer"
-  | "divider";
+  | "divider"
+  | "pageBreak";
 
 export interface CoverElement {
   id: string;
