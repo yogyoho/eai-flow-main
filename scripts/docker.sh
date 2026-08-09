@@ -169,6 +169,10 @@ start() {
     if [ "$sandbox_mode" = "provisioner" ]; then
         services="frontend gateway provisioner nginx"
     fi
+    # EAI-CUSTOM: also bring up the Temporal workflow engine (writing-project
+    # node advancement depends on it). Layered via its overlay compose file;
+    # postgres-ext (its dependency) lives in docker-compose.extensions.yaml.
+    services="$services temporal"
 
     echo -e "${BLUE}Runtime: Gateway embedded agent runtime${NC}"
     echo -e "${BLUE}Detected sandbox mode: $sandbox_mode${NC}"
@@ -221,7 +225,15 @@ start() {
     fi
 
     echo "Building and starting containers..."
-    cd "$DOCKER_DIR" && $COMPOSE_CMD up --build -d --remove-orphans $services
+    # EAI-CUSTOM: layer extensions + temporal overlays so the Temporal workflow
+    # engine starts with the core stack. `--remove-orphans` is intentionally
+    # OMITTED here: this dev env runs many on-demand extension stacks (ragflow,
+    # business-db, cad, ocr, collab) started from separate compose files;
+    # --remove-orphans would destroy them on every start. Sandbox containers
+    # are cleaned separately by cleanup-containers.sh below. (bug-1146)
+    cd "$DOCKER_DIR" && docker compose -p eai-docker \
+        -f docker-compose-dev.yaml -f docker-compose.extensions.yaml \
+        -f docker-compose.temporal.yaml up --build -d $services
     echo ""
     echo "=========================================="
     echo "  DeerFlow Docker is starting!"

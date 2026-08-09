@@ -5835,3 +5835,259 @@
 |------|--------|---------|---------|--------|
 | 09:56 | Edited config/roles_custom.yaml | modified CUSTOM() | ~88 |
 | 10:18 | bug-1137 修复: lisi 创建项目向导第4步加不了成员 → project_manager/dept_head 缺 user:read → /search 403。overlay 补 user:read(roles_custom.yaml) + base 同步(permissions.yaml)。dept_head 关键陷阱:base 加无效,因有 overlay wholesale-replace(真相源) | config/roles_custom.yaml, config/permissions.yaml | 两角色 disk=True live=True(热重载无需重启);bug-1137 已记 buglog | ~3k |
+| 09:58 | Session end: 1 writes across 1 files (roles_custom.yaml) | 0 reads | ~88 tok |
+| 10:42 | 用例#2 查证: 创建项目后「进入对话」是否传项目提示词给 AI Agent。结论: 项目模型无自由文本提示词字段;「提示词」=项目上下文(name/report_type/template)。链路: enter_project 写 thread_dir/project-context.json → DynamicContextMiddleware(EAI-CUSTOM bug-697)首轮读出注入 <project_context> SystemMessage。前端 chat 页根本不读 ?from=project&projectId&projectName(纯显示)。实证 lisi 线程 45b609f0: project-context.json 存在(test2/fire_protection_design/template空),middleware 实跑输出 311 字节 <project_context>。线程 0 writes=未发首消息,注入已武装待发。坑:test 时误用未绑定类方法致 self=thread_id | backend/.../project/service.py, dynamic_context_middleware.py | 无 bug,机制正常工作 | ~6k |
+| 10:36 | Session end: 1 writes across 1 files (roles_custom.yaml) | 7 reads | ~54339 tok |
+| 10:40 | Session end: 1 writes across 1 files (roles_custom.yaml) | 10 reads | ~69640 tok |
+| 10:42 | Session end: 1 writes across 1 files (roles_custom.yaml) | 19 reads | ~130404 tok |
+| 10:44 | Created C:/Users/admin/.claude/plans/rippling-hatching-honey.md | — | ~1653 |
+
+## Session: 2026-08-09 10:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:51 | Edited backend/app/extensions/models/__init__.py | 3→4 lines | ~80 |
+| 10:51 | Edited backend/app/extensions/database.py | 3→7 lines | ~97 |
+| 10:51 | Edited backend/app/extensions/project/routers.py | 9→10 lines | ~97 |
+| 10:51 | Edited backend/app/extensions/project/schemas.py | 2→3 lines | ~46 |
+| 10:51 | Edited backend/app/extensions/project/schemas.py | 4→5 lines | ~78 |
+| 10:51 | Edited backend/app/extensions/project/schemas.py | 2→3 lines | ~62 |
+| 10:52 | Edited backend/app/extensions/project/service.py | 12→14 lines | ~128 |
+| 10:52 | Edited backend/app/extensions/project/service.py | 3→4 lines | ~68 |
+| 10:52 | Edited backend/app/extensions/project/service.py | 7→8 lines | ~92 |
+| 10:52 | Edited backend/app/extensions/project/service.py | 8→9 lines | ~107 |
+| 10:52 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | modified get() | ~80 |
+| 10:52 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 3→3 lines | ~64 |
+| 10:52 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 3→4 lines | ~75 |
+| 10:53 | Edited frontend/src/extensions/project/types.ts | 2→3 lines | ~48 |
+| 10:53 | Edited frontend/src/extensions/project/types.ts | 2→3 lines | ~32 |
+| 10:53 | Edited frontend/src/extensions/project/types.ts | 4→5 lines | ~41 |
+| 10:53 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | added 1 import(s) | ~42 |
+| 10:53 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 1→2 lines | ~29 |
+| 10:53 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | CSS: description, onDescriptionChange | ~161 |
+| 10:54 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | expanded (+11 lines) | ~167 |
+| 10:54 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 2→4 lines | ~46 |
+| 10:54 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | CSS: description | ~103 |
+| 10:54 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added 1 import(s) | ~29 |
+| 10:54 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added nullish coalescing | ~116 |
+| 10:54 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added nullish coalescing | ~56 |
+| 10:54 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added error handling | ~150 |
+| 10:54 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added nullish coalescing | ~544 |
+| 10:55 | Edited backend/tests/test_dynamic_context_middleware.py | modified test_project_context_includes_description() | ~552 |
+| 10:55 | Edited backend/tests/test_project_service.py | 2→3 lines | ~53 |
+| 10:56 | Edited backend/tests/test_project_service.py | 4→5 lines | ~61 |
+
+## Session: 2026-08-09 11:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:05 | Verified frontend typecheck | docker exec deer-flow-frontend pnpm typecheck | tsc --noEmit clean ✅ | ~120 |
+| 11:06 | OpenWolf closeout | .wolf/buglog.json(bug-1138 预存漂移) + .wolf/cerebrum.md(migrate_db 加列学习) | logged | ~900 |
+| 11:06 | SESSION SUMMARY — 项目说明/要求字段(Req6)端到端落地 | B1-B6 后端(models.__init__/database migrate_db/schemas/service/routers/middleware EAI-CUSTOM) + F1-F3 前端(types/wizard/SettingsDialog) | DB 列 description TEXT 落地; 我的 2 测例 PASS; typecheck clean; 6 预存漂移失败(bug-1138,非本任务); 待提交 main-dev-fork | 实现完毕 |
+| 11:10 | Committed feat(project) | 11 文件 381+/32- | main-dev-fork tip 1f27e80e9 (仅暂存本特性 11 文件,未扫入 .wolf/其他 M 文件;re-port bug-697 注入机制此前未提交,与本 description 字段为同一特性一并入库) | 已提交 ✅ |
+| 11:20 | E2E 端到端验证(admin 登录→建项目带 description→enter_project) | project-context.json 含 description ✅;容器内实跑 middleware._get_project_context 输出 Project requirements: ✅;实跑 before_agent 注入首条 HumanMessage(messages[0] 含 <project_context>...Project requirements:...E2E-DESC)✅ | 全链路贯通: 表单→DB→project-context.json→注入 AI 首条消息; 测试项目已删(204+DB=0)+临时文件清理 | 端到端通过 ✅ |
+
+## Session: 2026-08-09 12:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:42 | 诊断「项目文件夹无生成文档」 | docmgr/service.py:619 list_project_outputs + project/service.py:1205 get_project_files + DB project_members + 容器 outputs/ 扫盘 | **非bug(系统按设计工作)**:项目文件夹只聚合项目成员绑定线程的 outputs/。抚顺石化项目 lisi 线程 c7b10c70 仅 project-context.json(0 outputs)=该项目对话从未跑 AI;真报告(吉林/东海/基地)在未绑项目的别的线程。merge 功能已实现(bda511048..d1f9968f6 8commits+前端 useProjectOutputs) | ~3500 |
+| 12:43 | OpenWolf 收尾诊断 | .wolf/buglog.json(bug-1139 not-a-bug) + .wolf/cerebrum.md(Key Learning: 项目文件夹只聚合绑定线程 outputs/) | logged;免后续重复排查 | ~600 |
+| 12:58 | 闭环验证项目文件夹聚合(lisi+zhangsan) | project files API:生成前=[] → 写项目线程 outputs/ → lisi 见[闭环验证-消防测试.md member=lisi] + zhangsan 也见(member=lisi 跨成员) | **聚合机制验证通过✅**(空→出现→全员可见带生成者徽标);但真 AI run 500(bug-1140:新线程触发 ensure_checkpoint_history_seeded→load_agent_config 找不到 agents/lead-agent 目录,独立 bug 阻塞所有新对话);用直接写文件(==write_file)证聚合。测试痕迹已清(thread_id 复位 NULL+删测试线程目录+文件) | ~6500 |
+
+
+
+## Session: 2026-08-09 13:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:20 | 读 services.py bug-1140 代码路径 (build_run_config/ensure_checkpoint_history_seeded/_state_accessor_graph) | gateway/services.py, agents_config.py, agent.py | 推翻上会话误诊:新线程 run 500 根因是 assistant_id="lead-agent"(连字符)被当 custom agent,非 checkpoint seeding;seeding 对新线程提前 return 不触发 | 6k |
+| 13:22 | lisi 建项目「编写抚顺石化消防设计专篇」+zhangsan(writer) | project/projects (POST) | HTTP 201,成员 lisi(owner)+zhangsan(writer),description 注入 ✓ | 1k |
+| 13:23 | lisi 进项目→AI 生成初稿大纲(7章 GB50016/50160) | threads/d8daa744/runs/wait assistant_id=lead_agent | **HTTP 200 — bug-1140 实为测试伪 bug**,AI 正常生成 | 2k |
+| 13:25 | AI 写初稿全文到 outputs/ + present_files | threads/d8daa744/runs/wait | 初稿 7248B 7章,artifacts 已呈现 | 3k |
+| 13:26 | 验证项目文件夹聚合(双成员可见) | project/projects/{id}/files | lisi/zhangsan 均见初稿(member=lisi),磁盘文件存在 | 1k |
+| 13:35 | zhangsan 进项目→编辑补强第5章(首次联网→DNS error) | threads/2ba3a861/runs | 环境问题(browserless DNS),非协作 bug | 2k |
+| 13:37 | zhangsan 重试(禁联网)→写 GB50974 消防水池计算补丁 | threads/2ba3a861/runs/wait | HTTP 200,补丁 2180B,项目文件夹现双成员双文档 | 3k |
+| 13:38 | lisi 提交审核(PATCH status→in_review) | project/projects/{id} (PATCH) | HTTP 200, draft→in_review, derived_stage 1→5 | 1k |
+| 13:40 | 更新 wolf: bug-1140 改判 not-a-bug + cerebrum Key Learning | .wolf/buglog.json, .wolf/cerebrum.md | 记录 assistant_id 归一化坑+runtime uid 分桶+提交审核机制 | 2k |
+
+**Session 结果:** 4 步协作流全程验证通过(建项目→AI 生初稿→zhangsan 编辑补强→lisi 提交审核);**bug-1140 推翻为测试伪 bug**(根因 assistant_id 连字符误判,非 checkpoint seeding,无需改代码);项目文件夹跨成员聚合正常(双桶双文档);遗留:容器内 browserless/网页抓取 DNS 不通(环境,非逻辑 bug)。
+
+## Session: 2026-08-09 13:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:51 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~35 |
+| 13:51 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~19 |
+| 13:51 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added optional chaining | ~157 |
+| 13:58 | 诊断「lisi 项目文档栏恒空」= bug-1141 | useProjectOutputs.ts, api/index.ts, docmgr/service.py, project/routers.py | 三端点 curl 对比定位：下拉框误用 workspaceApi(collab_projects 空) 应改 projectApi(report_projects) | ~6.5k |
+| 13:58 | 修复 bug-1141：下拉框数据源 workspace→project + 默认选中最新项目 | frontend/src/extensions/docmgr/DocumentManagement.tsx (import/state/effect 三处) | tsc 0 错，重启 frontend 验证 /docmgr 200 | ~2k |
+| 13:58 | 更新 OpenWolf：buglog bug-1141 + cerebrum 两套项目系统学习 | .wolf/buglog.json, .wolf/cerebrum.md | ~1k |
+| 14:01 | Session end: 3 writes across 1 files (DocumentManagement.tsx) | 6 reads | ~64306 tok |
+
+## Session: 2026-08-09 15:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 15→13 lines | ~229 |
+| 15:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: project_id, member | ~457 |
+| 15:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | expanded (+6 lines) | ~65 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified DocumentList() | ~111 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 6→4 lines | ~83 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: Default | ~242 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~207 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→1 lines | ~16 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 3→3 lines | ~64 |
+| 15:20 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | reduced (-26 lines) | ~402 |
+| 15:40 | Reverted docmgr 项目文档栏 dropdown→ProjectFolderTree 树视图 | frontend/src/extensions/docmgr/DocumentManagement.tsx | restore fc530c36e^ sidebar+nav; kept projectFile editor; typecheck pass; bug-1142 | ~2.5k |
+| 15:40 | Session end: 10 writes across 1 files (DocumentManagement.tsx) | 7 reads | ~50054 tok |
+| 17:44 | Edited backend/app/extensions/docmgr/folder_service.py | modified ensure_project_root_folders() | ~654 |
+| 17:45 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: EAI-CUSTOM | ~96 |
+| 16:05 | Fixed docmgr 项目文档栏: lisi 4项目→4文件夹 + 点击文件夹显示文档 | backend/app/extensions/docmgr/folder_service.py + DocumentManagement.tsx | ensure_project_root_folders + folder_id-only filter; verified via uv run | ~2.5k |
+| 17:51 | Session end: 12 writes across 2 files (DocumentManagement.tsx, folder_service.py) | 10 reads | ~67665 tok |
+| 17:56 | Session end: 12 writes across 2 files (DocumentManagement.tsx, folder_service.py) | 10 reads | ~67665 tok |
+
+## Session: 2026-08-09 18:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:26 | Created C:/Users/admin/.claude/plans/eventual-wandering-scroll.md | — | ~927 |
+| 18:27 | Edited C:/Users/admin/.claude/plans/eventual-wandering-scroll.md | expanded (+7 lines) | ~344 |
+| 18:28 | Edited C:/Users/admin/.claude/plans/eventual-wandering-scroll.md | expanded (+9 lines) | ~611 |
+| 19:22 | Edited C:/Users/admin/.claude/plans/eventual-wandering-scroll.md | expanded (+10 lines) | ~303 |
+| 19:23 | 诊断对话页 409 "already has an active run"（bug-1144） | gateway 日志 + manager.py + input-box/hooks + nginx/stream_bridge | 仅诊断，未改代码：根因=stream_bridge retained buffer(queue_maxsize=256)溢出→gap 5 次重连耗尽→前端 useStream 提前 ready→撞 reject；后端 409 正确 | ~6k |
+| 19:25 | Session end: 4 writes across 1 files (eventual-wandering-scroll.md) | 19 reads | ~115446 tok |
+
+## Session: 2026-08-09 19:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:30 | 诊断「项目对话生成的报告在文档空间/项目文档编辑tab不出现」— 根因:present_files→docmgr同步死代码(fire_present_files_callbacks 无生产调用点)+sync-thread-files前端死UI+outputs视图未接线+本次agent用bash cp未调present_files;AIDocument行数0;两面同源 | callbacks.py/present_file_tool.py/routers.py/前端DocumentManagement·EditorTab | 诊断完成 bug-1145,未改代码 | ~16k |
+
+## Session: 2026-08-09 20:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:02 | Edited backend/tests/test_present_file_tool_core_logic.py | modified test_present_files_fires_docmgr_callback() | ~862 |
+| 20:04 | Edited backend/packages/harness/deerflow/tools/builtins/present_file_tool.py | 11→15 lines | ~150 |
+| 20:04 | Edited backend/packages/harness/deerflow/tools/builtins/present_file_tool.py | modified present_file_tool() | ~54 |
+| 20:04 | Edited backend/packages/harness/deerflow/tools/builtins/present_file_tool.py | modified CUSTOM() | ~382 |
+| 20:08 | Created backend/_backfill_tmp.py | — | ~232 |
+| 20:10 | 修复 bug-1145: present_file_tool 改 async + 接线 fire_present_files_callbacks; 回填抚顺石化doc | present_file_tool.py, test_present_file_tool_core_logic.py, buglog.json | 6单测过+harness边界过+网关健康+AIDocument行已建 | ~16k |
+| 20:12 | Session end: 5 writes across 3 files (test_present_file_tool_core_logic.py, present_file_tool.py, _backfill_tmp.py) | 5 reads | ~17618 tok |
+
+## Session: 2026-08-09 20:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:25 | Created C:/Users/admin/.claude/plans/eventual-wandering-scroll.md | — | ~1086 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~15 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added 1 import(s) | ~39 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified CUSTOM() | ~273 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added optional chaining | ~525 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added 1 condition(s) | ~53 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: undefined | ~96 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~58 |
+| 20:29 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 4→6 lines | ~121 |
+| 20:32 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~8 |
+| 20:32 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added optional chaining | ~30 |
+
+## Session: 2026-08-09 20:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:39 | bug-1145 根因④ 完成：项目根文件夹视图聚合 outputs 文件系统视图 | DocumentManagement.tsx | 8 edits；typecheck pass、无新 lint；frontend 已重启、nginx:2026 HTTP 200 | ~6500 |
+| 20:52 | Edited skills/public/fire-regulatory-compliance-check/SKILL.md | inline fix | ~15 |
+| 20:52 | Edited skills/public/geological-report/SKILL.md | 2→6 lines | ~64 |
+| 20:52 | Edited skills/public/markdown-to-docx/SKILL.md | 5→8 lines | ~59 |
+| 20:56 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~35 |
+| 20:56 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~68 |
+| 20:56 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | inline fix | ~20 |
+| 20:56 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | added 1 import(s) | ~36 |
+| 20:57 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | added nullish coalescing | ~255 |
+| 20:57 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | CSS: extraDocs | ~259 |
+| 20:57 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | inline fix | ~12 |
+| 20:57 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | inline fix | ~12 |
+| 20:57 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | inline fix | ~13 |
+| 20:57 | Edited frontend/src/extensions/project/tabs/EditorTab.tsx | added 1 import(s) | ~59 |
+| 20:57 | Edited frontend/src/extensions/project/tabs/EditorTab.tsx | added nullish coalescing | ~243 |
+
+## Session: 2026-08-09 21:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:01 | Edited skills/public/fire-regulatory-compliance-check/SKILL.md | expanded (+8 lines) | ~64 |
+| 21:10 | bug-1145 根因② 完成：3 skill 补 present_files 交付步骤（geological-report/markdown-to-docx/fire-regulatory；路径 workspace→outputs） | skills/public/*/SKILL.md ×3 | 引导 agent 用 present_files 而非 bash cp；防落盘无 AIDocument | ~1200 |
+| 21:12 | bug-1145 Surface A 接线：项目详情→文档编辑 tab 聚合 outputs 文件系统视图（proj/ 虚拟文件路由到 DocumentEditor 跨用户直读/写磁盘，普通 doc 仍走 DocCollabView） | DocumentManagement.tsx(export 2)/ProjectDocListPanel.tsx(merge)/EditorTab.tsx(branch) | 9 edits; typecheck EXIT 0 全绿；frontend 重启 nginx:2026 HTTP 200 | ~6800 |
+| 21:09 | Session end: 1 writes across 1 files (SKILL.md) | 1 reads | ~838 tok |
+| 21:13 | Session end: 1 writes across 1 files (SKILL.md) | 2 reads | ~29923 tok |
+| 21:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified CUSTOM() | ~213 |
+| 21:25 | bug-1145 根因⑤（用户诉求：项目文件走 AI 协同编辑器）：handleSelectDoc 收窄——仅 proj/ 虚拟文件走单人 DocumentEditor，已同步 file_ref AIDocument 落 docId→CollabEditor | DocumentManagement.tsx:128 | 1 edit; typecheck EXIT 0; frontend 重启。真相源=collab_documents（协同后磁盘 outputs/ 不更新）；proj/ 无 AIDocument.id 仍单人 | ~5500 |
+
+## Session: 2026-08-09 21:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:30 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | "flex items-center gap-1.5" → "flex items-center gap-1.5" | ~30 |
+| 21:30 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | 2→2 lines | ~45 |
+| 21:30 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | "flex-1 bg-muted rounded p" → "flex-1 bg-muted rounded p" | ~38 |
+| 21:31 | 项目文档栏子文件夹样式对齐我的文档栏：ProjectFolderTree 节点 text-sm→text-xs + 图标 w-4h-4→w-3.5h-3.5 + 重命名 input 同步（对齐个人区 thread 子文件夹 text-xs+w-3.5h-3.5；lucide Folder 风格保留） | ProjectFolderTree.tsx:144,167-168,175 | 3 className edit; typecheck EXIT 0; frontend 重启 exit 0 | ~6500 |
+| 21:32 | Session end: 3 writes across 1 files (ProjectFolderTree.tsx) | 2 reads | ~32431 tok |
+| 21:36 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | inline fix | ~37 |
+| 21:36 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | 5→8 lines | ~132 |
+| 21:37 | 项目区子文件夹换协同图标：lucide FolderOpen/Closed(amber) 底图 + 右下角 Users 角标(blue, bg-background rounded-full ring-1)，表"项目共享协同文件夹"，区别个人区纯文件夹 | ProjectFolderTree.tsx:3,165-172 | +Users import + 图标段改 relative 容器叠角标; typecheck EXIT 0; frontend 重启 exit 0 | ~5800 |
+| 21:38 | Session end: 5 writes across 1 files (ProjectFolderTree.tsx) | 2 reads | ~32603 tok |
+| 21:43 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | inline fix | ~27 |
+| 21:43 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | CSS: http, http | ~560 |
+| 21:43 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | 8→4 lines | ~64 |
+| 21:44 | 项目区子文件夹换整体协同文件夹图标：弃 lucide Folder+Users角标(拼接感)，自定义 CollabFolder/CollabFolderOpen SVG——蓝色文件夹(协同色 #3B82F6，区别个人区黄) + 内嵌双人头(关态白头/开态深蓝头)，照搬 WindowsFolder/Open path 换色加人头；w-4h-4(辨识优先)；移除 FolderOpen/FolderClosed/Users import | ProjectFolderTree.tsx | 3 edit; typecheck EXIT 0; frontend 重启 exit 0 | ~7200 |
+| 21:45 | Session end: 8 writes across 1 files (ProjectFolderTree.tsx) | 2 reads | ~33254 tok |
+| 21:49 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | inline fix | ~35 |
+| 21:49 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | removed 32 lines | ~27 |
+| 21:49 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | 4→5 lines | ~67 |
+| 21:50 | 回退项目文件夹图标：用户对协同角标(Users badge)+自定义协同SVG(蓝文件夹+双人头)均不满意，退回 lucide FolderOpen/Closed 线框图标(保留 text-xs/w-3.5h-3.5 尺寸对齐 + amber)，删 CollabFolder/CollabFolderOpen 组件 + 恢复 import | ProjectFolderTree.tsx | 3 反向 edit; typecheck EXIT 0; frontend 重启 exit 0 | ~5800 |
+| 21:51 | Session end: 11 writes across 1 files (ProjectFolderTree.tsx) | 2 reads | ~33905 tok |
+| 21:59 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | inline fix | ~31 |
+| 21:59 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | 5→2 lines | ~44 |
+| 22:00 | 项目子文件夹换 lucide FolderSync 协同图标（AskUserQuestion 用户选定）：文件夹+循环箭头线框，保留 amber + w-3.5 尺寸对齐；移除 FolderOpen/FolderClosed import；展开/折叠由已有 chevron 表示 | ProjectFolderTree.tsx:3,166-167 | 2 edit; typecheck EXIT 0; frontend 重启 exit 0。第三次尝试（角标+自画SVG 被否后）改走 lucide 线框，用户认可 | ~5200 |
+| 22:01 | Session end: 13 writes across 1 files (ProjectFolderTree.tsx) | 2 reads | ~33980 tok |
+| 22:06 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~24 |
+| 22:06 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 4→4 lines | ~52 |
+| 22:07 | 「项目文件夹」顶级标题图标 Archive(归档箱)→FolderSync(协同)，与子文件夹图标统一 + 加 text-amber-500 黄；移除 Archive import(仅此处用)；未动「文档空间」FolderCheck /「我的文档」WindowsFolder | DocumentManagement.tsx:7,567 | 2 edit; typecheck EXIT 0; frontend 重启 exit 0 | ~4800 |
+| 22:08 | Session end: 15 writes across 2 files (ProjectFolderTree.tsx, DocumentManagement.tsx) | 2 reads | ~34056 tok |
+
+## Session: 2026-08-09 22:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:30 | 排查写作项目流程节点卡在'AI编写初稿'不流转 | workflow/temporal/client.py,workflows.py,activities.py,project/routers.py | 根因:节点流转纯 Temporal 信号驱动,dev 未部署 Temporal→信号静默丢弃;且对话页 AI 生成与工作流引擎不通。bug-1146(未修复) | ~9k |
+
+## Session: 2026-08-09 22:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:30 | 部署 Temporal 流程引擎(bug-1146) | docker/docker-compose.temporal.yaml + postgres + gateway | 3文件叠加起 temporal:auto-setup:1.27.0，gateway worker 已连(project-workflow-queue poller)，节点流转机制恢复；现存项目需 start-workflow 补起实例 | ~6k |
+| 22:39 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/temporal-workflow-engine-deploy.md | — | ~545 |
+| 22:39 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~92 |
+| 22:40 | Session end: 2 writes across 2 files (temporal-workflow-engine-deploy.md, MEMORY.md) | 5 reads | ~16169 tok |
+| 22:47 | Edited scripts/docker.sh | 4→8 lines | ~111 |
+
+## Session: 2026-08-09 22:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:49 | Edited scripts/docker.sh | expanded (+8 lines) | ~186 |
+| 22:52 | Session end: 1 writes across 1 files (docker.sh) | 2 reads | ~16657 tok |
+
+## Session: 2026-08-09 23:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:09 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/temporal-workflow-engine-deploy.md | 1→5 lines | ~355 |
+| 23:10 | 验证写作项目工作流端到端:Temporal部署+start-workflow→28章生成+current_phase_node NULL→t1-ai→t2-edit推进成功;30天TIMER等phase_complete信号 | workflow/temporal/workflows.py+project/routers.py | ✅端到端通过 | ~6k |
+| 23:10 | Session end: 1 writes across 1 files (temporal-workflow-engine-deploy.md) | 2 reads | ~10804 tok |
+
+## Session: 2026-08-09 23:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

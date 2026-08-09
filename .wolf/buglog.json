@@ -17955,8 +17955,17 @@
     "file": "frontend/src/app/knowledge/page.tsx (create 表单) + backend/app/extensions/knowledge/service.py (create_kb)",
     "root_cause": "知识库管理页创建表单选 access_type=dept 时无部门选择 UI，allowed_depts 从不写入 → 后端 create_kb 存 NULL。knowledge_dept datascope 规则 = and(access_type=='dept', allowed_depts OVERLAP $identity.dept_ids)，PG 中 NULL && array = NULL(falsy) → 部门分支永不命中。该页创建的所有 dept 知识库对任何非 owner 不可见。lisi role=project_manager 已含 knowledge_dept、dept_ids 含公用工程室，配置/成员均正确，唯一阻断点=allowed_depts NULL。",
     "fix": "已修复(用户选方案①+③)。①后端兜底：service.py create_kb/update_kb 在 access_type=='dept' 且 allowed_depts 空时，select(UserDepartment.dept_id) 兜底填 owner 的全部部门(EAI-CUSTOM bug-1134 注释)；并顺手删 list_kbs 里未用的 `from sqlalchemy import true`。③数据修复：UPDATE knowledge_bases SET allowed_depts=ARRAY[采购管理部(8cac5bfe), 公用工程室(4119660b)] WHERE id=8376f624。回归测试 tests/test_kb_dept_fallback.py 3 passed；test_knowledge_data_access/test_knowledge_flip 23 passed；ruff clean；gateway 已 restart。PG overlap 验证 lisi_can_see=t。②前端表单加部门多选→deferred(后端兜底已足够防复发)。",
-    "tags": ["knowledge", "datascope", "visibility", "allowed_depts", "dept", "bug-1133-related"],
-    "related_bugs": ["bug-1133"],
+    "tags": [
+      "knowledge",
+      "datascope",
+      "visibility",
+      "allowed_depts",
+      "dept",
+      "bug-1133-related"
+    ],
+    "related_bugs": [
+      "bug-1133"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-08"
   },
@@ -17967,8 +17976,20 @@
     "file": "config/permissions.yaml (4 角色缺 knowledge_public) + config/roles_custom.yaml (overlay 覆盖了同样缺 public 的 data_scopes)",
     "root_cause": "knowledge_public scope = access_type=='public'。M1 只给基础 user 角色补了 knowledge_public/knowledge_owner（见 permissions.yaml:353 注释），遗漏了 dept_head/project_manager/writer/reviewer——它们只挂 knowledge_dept，未挂 knowledge_public，故看不到他人创建的公开库。**关键陷阱**：data_scopes 不随 #inherit 继承（仅 permissions 继承），每角色须各自列；且 roles_custom.yaml overlay 对 project_manager/dept_head/reviewer 做了整体替换(wholesale replace，bug-1087 模式)，运行时真相源是 overlay 而非 permissions.yaml——只改 base 不生效，必须 base+overlay 同步改。",
     "fix": "base permissions.yaml：dept_head/project_manager/writer/reviewer 的 data_scopes 各加 knowledge_public(EAI-CUSTOM bug-1135 注释)；overlay roles_custom.yaml：project_manager/dept_head(共用 knowledge_dept→cpa_dept 块 replace_all)+reviewer(knowledge_dept→doc_owner)的 data_scopes 各加 knowledge_public(writer 不在 overlay，走 base)。验证：registry 5 角色均 resolve knowledge_public=True；engine rule-tree walk lisi union 含 eq access_type=public 叶子；DB 跑 lisi union 语义返回 2 public KB；回归测试 test_knowledge_data_access::test_kb_reading_roles_grant_knowledge_public_scope + 31 tests passed；gateway restart。",
-    "tags": ["knowledge", "datascope", "visibility", "public", "role", "overlay", "bug-1087-related", "hierarchy"],
-    "related_bugs": ["bug-1087", "bug-1134"],
+    "tags": [
+      "knowledge",
+      "datascope",
+      "visibility",
+      "public",
+      "role",
+      "overlay",
+      "bug-1087-related",
+      "hierarchy"
+    ],
+    "related_bugs": [
+      "bug-1087",
+      "bug-1134"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-08"
   },
@@ -17979,7 +18000,17 @@
     "file": "backend/app/extensions/docmgr/routers.py + service.py",
     "root_cause": "C1: _require_project_member 只查 project_id 成员,但 service._locate_thread_outputs(thread_id) 扫所有 user 桶定位文件,thread_id 全局唯一但未被约束到本项目成员线程集 → 任意 thread_id 即可定位任意线程 outputs。I1: startswith 前缀匹配,outputs_archive 以 outputs 开头故误判在界内",
     "fix": "C1: routers 新增 _require_project_member_thread(db,project_id,user_id,thread_id),校验 thread_id ∈ 成员 thread_id 集(fail-closed 403);read_project_output/save_project_output/list_project_versions 改用之(get_project_version/restore 按 version_id+project_id 限定已安全)。I1: write_project_output/read_project_output/write_personal_output 三处 startswith 改 target!=base and base not in target.parents 判定。回归测试5条(非成员thread→403/成员放行/非成员用户403/outputs_archive穿越write+read→ValueError),共23+5通过",
-    "tags": ["security", "cross-tenant", "authorization", "thread-id", "path-traversal", "startswith", "docmgr", "project-outputs", "code-review"],
+    "tags": [
+      "security",
+      "cross-tenant",
+      "authorization",
+      "thread-id",
+      "path-traversal",
+      "startswith",
+      "docmgr",
+      "project-outputs",
+      "code-review"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-09"
@@ -17991,9 +18022,229 @@
     "file": "config/roles_custom.yaml (project_manager + dept_head overlay) + config/permissions.yaml (base 同步)",
     "root_cause": "创建项目向导 StepTeam 搜成员调 /api/extensions/users/search,该端点 require_permission('user:read')。但 project_manager / dept_head 角色权限集都不含 user:read → 403。前端 fetch 的 catch 块静默吞掉 403,下拉显示「无匹配用户」。关键陷阱:dept_head 在 permissions.yaml base 加了 user:read 仍无效(disk=False),因为 dept_head 在 roles_custom.yaml 有 overlay 条目,overlay 是 wholesale-replace 运行时真相源(bug-1087),base 被整体替换 → 必须在 overlay 加才生效",
     "fix": "在 roles_custom.yaml overlay 给 project_manager(line 40) 和 dept_head(新增,在 chapter:review+workflow:read 后) 补 - user:read;permissions.yaml base 同步加(双源一致性)。验证: 两角色 disk=True live=True(热重载,无需重启 gateway)。教训:补权限到有 overlay 的角色必须改 overlay,base 改无效",
-    "tags": ["permission", "user:read", "role", "overlay", "wholesale-replace", "bug-1087-related", "project-create", "wizard", "add-member", "search-403", "config"],
-    "related_bugs": ["bug-1087", "bug-1135"],
+    "tags": [
+      "permission",
+      "user:read",
+      "role",
+      "overlay",
+      "wholesale-replace",
+      "bug-1087-related",
+      "project-create",
+      "wizard",
+      "add-member",
+      "search-403",
+      "config"
+    ],
+    "related_bugs": [
+      "bug-1087",
+      "bug-1135"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1138",
+    "timestamp": "2026-08-09",
+    "error_message": "验证项目说明字段(Req6)时 backend/tests/test_dynamic_context_middleware.py 跑出 6 个失败: test_injects_system_reminder_into_first_human_message / test_memory_included_when_present / test_skips_injection_if_already_present / test_midnight_crossing_*(3)。失败测例断言首条 HumanMessage 被注入(含 __user 后缀),但当前 middleware 实际产出 SystemMessage + __memory 后缀",
+    "file": "backend/tests/test_dynamic_context_middleware.py",
+    "root_cause": "预先存在的测/源漂移(非本任务引入): 该 test 文件有 156 行 pre-existing 改动(re-port commit 2ceba00aa),reminder 注入机制已从 HumanMessage/__user 改为 SystemMessage/__memory,但 6 个旧测例未同步断言。本任务的纯增量 description 注入测例 test_project_context_includes_description PASSED",
+    "fix": "未修复(超出本任务范围)。记录备查: 下次碰该文件需把 6 个旧测例断言从 HumanMessage/__user 对齐到 SystemMessage/__memory,或反向核对 reminder 机制设计意图",
+    "tags": [
+      "test",
+      "pre-existing",
+      "drift",
+      "dynamic-context",
+      "middleware",
+      "system-reminder",
+      "human-message",
+      "not-fixed"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1139",
+    "timestamp": "2026-08-09",
+    "error_message": "用户报告: AI 执行完生成报告(消防设计专篇),为何在文档空间「项目文件夹」下没有生成出相应的文件夹和文档",
+    "file": "backend/app/extensions/docmgr/service.py (list_project_outputs L619) + backend/app/extensions/project/service.py (get_project_files L1205)",
+    "root_cause": "非 bug(系统按设计工作)。项目文件夹只聚合「本项目成员绑定线程」的 outputs/ (project_members.thread_id → users/*/threads/{tid}/user-data/outputs/)。实盘核查: 项目「抚顺石化新装置建设消防设计专篇」lisi 绑定线程 c7b10c70 磁盘上只有 project-context.json(进项目时写的),0 个 outputs 文件——该项目对话从未跑过 AI;真正的消防专篇(吉林/东海/基地)都在未绑项目的其他线程里,故不出现。报告生成在了非项目对话里",
+    "fix": "无需代码改动(merge 功能已实现并提交,8 commits bda511048..d1f9968f6,前端已接 useProjectOutputs)。正确用法: 在项目自己的对话线程里生成报告→写进该线程 outputs/→自动对全员可见;zhangsan 需先进入项目拿到自己线程。注意 runtime user_id 可能 ≠ extensions DB user_id(已知,list_project_outputs 已跨桶扫 thread_id)",
+    "tags": [
+      "not-a-bug",
+      "expected-behavior",
+      "usage",
+      "docmgr",
+      "project-outputs",
+      "project-folder",
+      "wrong-thread",
+      "list_project_outputs",
+      "no-code-change"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1140",
+    "timestamp": "2026-08-09",
+    "error_message": "(已澄清/非 bug) 上次会话误判: 对新线程发起 agent run → HTTP 500, FileNotFoundError .../users/{uid}/agents/lead-agent",
+    "file": "backend/app/gateway/services.py (ensure_checkpoint_history_seeded L880 → build_checkpoint_state_accessor L462 → _state_accessor_graph L397 → agent_factory → make_lead_agent → load_agent_config) + backend/app/gateway/checkpoint_lineage.py (未提交 WIP, git status M)",
+    "root_cause": "误诊更正。真正原因 = 测试请求传了 assistant_id=\"lead-agent\"(连字符)。build_run_config (services.py:726) 判断 assistant_id != _DEFAULT_ASSISTANT_ID(\"lead_agent\" 下划线) 为真 → 注入 agent_name=\"lead-agent\" → _make_lead_agent 调 load_agent_config(\"lead-agent\",user_id) → FileAgentStore.get 抛 FileNotFoundError(内置 lead-agent 无 per-user agents 目录)。关键: 这与 ensure_checkpoint_history_seeded 无关——该函数对新线程无 checkpoint head 时在 services.py:560 aget_tuple is None 处提前 return,根本不进 build_checkpoint_state_accessor。上次会话把 seeding 路径当根因是错的。前端实际发 assistantId=\"lead_agent\"(下划线, 见 frontend src/core/threads/hooks.ts:1652)= 默认值 → 不注入 agent_name → load_agent_config(None)=None → 正常。",
+    "fix": "无需代码改动(非真实 bug)。正确用法: run 请求带 assistant_id=\"lead_agent\"(下划线,前端值)。用正确 assistant_id 实测 4 步协作流全程通过: 建项目+成员→AI 生初稿(7章,GB50016/50160)→zhangsan 编辑补强(GB50974 消防水池计算)→lisi 提交审核(draft→in_review)。遗留可改进(非阻塞): build_run_config:726 对 \"lead_agent\" vs \"lead-agent\" 归一化比较可更健壮,避免连字符误判为 custom agent,但前端不发连字符故不影响生产。",
+    "tags": [
+      "not-a-bug",
+      "test-artifact",
+      "resolved",
+      "assistant-id",
+      "build_run_config",
+      "lead-agent",
+      "load_agent_config",
+      "misdiagnosed",
+      "no-code-change"
+    ],
+    "related_bugs": [
+      "bug-1139"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1141",
+    "timestamp": "2026-08-09T13:55:00",
+    "error_message": "lisi 用户文档空间页面「项目文档」栏恒为空（下拉框无项目可选）",
+    "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+    "root_cause": "项目文档下拉框调 workspaceApi.listProjects()（GET /api/extensions/workspace/projects → collab_projects 表），而报告项目实际建在项目管理扩展（report_projects 表，GET /api/extensions/project/projects）。两套独立的「项目」系统，workspace 对报告项目成员恒为空 → 下拉框「暂无项目」→ 无法选中 → 栏永远空。docmgr 的 outputs 端点本身正常（按 project_id 直查 report_projects 成员，curl 喂 8b32b5ce 返回 2 文件）。",
+    "fix": "下拉框数据源从 workspaceApi.listProjects()（collab_projects）改为 projectApi.list()（report_projects），并把 state 类型 CollabProject[] 改为 ProjectListItem[]；同时默认选中最新项目（data.items[0]?.id）避免面板初始空白。",
+    "tags": [
+      "docmgr",
+      "project-docs-panel",
+      "collab_projects",
+      "report_projects",
+      "wrong-data-source",
+      "frontend-only"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1142",
+    "timestamp": "2026-08-09T15:40:00",
+    "error_message": "文档空间左侧项目文档栏改为下拉框筛选项目，用户要求恢复为按子文件夹显示",
+    "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+    "root_cause": "commit fc530c36e 将项目文件夹树(ProjectFolderTree)替换为项目下拉+扁平outputs文件列表，用户认为该交互不对，要求恢复子文件夹树视图",
+    "fix": "恢复 ProjectFolderTree 树形显示与 activeNav/handleNavClick/activeFolderId 导航流程；移除下拉+projectApi/useProjectOutputs 接线；handleSelectDoc 将项目 file_ref 文档路由到 handleSelectProjectFile(projectFile 模式)，保留跨用户 outputs 读写。权限过滤由后端 FolderService.get_folder_tree(own_folders OR project_id IN member_projects) 保证",
+    "tags": [
+      "docmgr",
+      "project-folder-tree",
+      "revert",
+      "permission",
+      "sidebar"
+    ],
+    "related_bugs": [
+      "bug-1141"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-09T15:40:00"
+  },
+  {
+    "id": "bug-1143",
+    "timestamp": "2026-08-09T16:05:00",
+    "error_message": "lisi 文档空间项目文档栏只有1个文件夹(应4个)，且点击文件夹无文档",
+    "file": "backend/app/extensions/docmgr/folder_service.py + frontend/src/extensions/docmgr/DocumentManagement.tsx",
+    "root_cause": "①项目根文件夹懒创建(finalize.py只在定稿时创建)，无定稿文档的项目无Folder行→树不显示；②handleNavClick同时传 folder字符串+folder_id，后端AND两者，而doc.folder是finalize.py硬编码的「项目文件夹」≠文件夹行名→空列表",
+    "fix": "①folder_service.py 新增 ensure_project_root_folders，get_folder_tree(项目上下文)先按ProjectMember补齐缺失的项目根文件夹；②handleNavClick file_ref分支只用folder_id过滤",
+    "tags": [
+      "docmgr",
+      "project-folder-tree",
+      "folder_id",
+      "lazy-folder",
+      "permission"
+    ],
+    "related_bugs": [
+      "bug-1142"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-09T16:05:00"
+  },
+  {
+    "id": "bug-1144",
+    "timestamp": "2026-08-09T11:23:44Z",
+    "error_message": "对话页执行一轮后再次执行报 HTTP 409: {\"detail\":\"Thread bb1a5c7d-... already has an active run\"}",
+    "file": "根因: packages/harness/deerflow/runtime/stream_bridge/memory.py (retained buffer queue_maxsize=256) + frontend input-box.tsx/hooks.ts; 409 本身: runtime/runs/manager.py:1510 (正确行为)",
+    "root_cause": "后端 409 是正确的并发保护(reject 策略+同 thread 仍有 inflight run)。真因: 长文档生成 run(6.5min)事件密集 > 内存 stream bridge retained buffer(queue_maxsize=256, config.yaml 无 stream_bridge 段取默认)溢出 -> memory.py:149 发 gap -> 前端 recoverStreamReplayGaps 5 次重连耗尽 -> 流迭代器提前结束 -> useStream.isLoading=false(status=ready) 而后端 run 仍 running -> 输入框解锁(唯一门禁 status==='streaming', composerLocked 不看 status) -> 用户发新消息撞 reject -> 409。nginx 无辜(/api/langgraph/ 块 SSE 配置正确, 15s 心跳)。",
+    "fix": "本次仅诊断,未改任何代码/配置(用户选定)。待选修复: ①配置层 config.yaml 增 stream_bridge.queue_maxsize(256->2000~5000),仅需 restart gateway,零代码/零上游债,大概率根治;②前端硬化:识别 'already has an active run' 409 友好提示 + streaming 时真正禁用输入框(产生上游 EAI-CUSTOM 债);③MAX_STREAM_GAP_RECOVERIES 5 调大;④multitask_strategy 改 interrupt(代价大)。",
+    "tags": [
+      "409",
+      "active-run",
+      "stream-bridge",
+      "queue-maxsize",
+      "sse-gap",
+      "long-run",
+      "useStream",
+      "multitask-reject",
+      "frontend",
+      "diagnosis-only"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09T11:23:44Z"
+  },
+  {
+    "id": "bug-1145",
+    "timestamp": "2026-08-09T11:30:00+08:00",
+    "error_message": "项目对话页(thread bb1a5c7d, project 30091fc6 抚顺石化消防设计专篇)执行完报告生成任务后，生成的《抚顺石化消防设计专篇.md》(501行)在「文档空间-项目文件夹」和「项目详情-文档编辑tab」均不出现。文件确实存在于 outputs 线程目录。",
+    "file": "backend/packages/harness/deerflow/tools/callbacks.py + builtins/present_file_tool.py (fire_present_files_callbacks 无生产调用点)",
+    "root_cause": "四重叠加，任一独立即可致文档不可见：(1)【核心/头号】present_files→docmgr 自动同步是死代码：sync_outputs_to_docmgr 回调在 app.py:290 用 register_present_files_callback 注册了，但唯一会触发它的 fire_present_files_callbacks() 在整个 backend 生产代码里零调用(只在 test_sync_outputs_to_docmgr.py 测试里调)，present_file_tool.py 根本没 import/调用它——注册了却没接线(同 bug-009 的「完整实现没接线」模式)。所以 agent 哪怕严格按 SKILL 调 present_files，文件也绝不会同步成 AIDocument。技能 fire-protection-report-v2/SKILL.md 等约20个 skill 都向 agent 承诺「调 present_files 就会自动同步到文档空间」，但该承诺在后端不成立。(2)【本次直接触发】本次 run 64f18b37 agent 根本没用 present_files 工具，而是 bash cp 把文件塞进 outputs(日志0个 present_files tool call、0条 sync_outputs_to_docmgr 日志)，连已损坏的回调都不会触发。(3)【兜底同步也死了】前端旧的 POST /docmgr/sync-thread-files(bug-009 的同步路径)现在是死UI：SyncToDocSpaceButton 定义了但全 src 零渲染，useDocuments 返回的 syncThreadFiles 回调无任何 consumer 解构，不在任何事件(含聊天结束)触发。(4)【绕过 AIDocument 的 outputs 文件系统视图未接线】近期 Task9-12 建的「项目区 outputs 文件系统视图」(GET /projects/{id}/outputs → list_project_outputs，会跨 user 桶按 thread_id 扫描、本可绕过 AIDocument 找到 58790705 桶里的文件)其后端+useProjectOutputs hook 全建好了但前端零消费者，文档编辑tab(EditorTab→ProjectDocListPanel)用的是 AIDocument 端点 GET /docmgr/documents?project_scope=project&project_id=...，不是 outputs 视图。结论：文档空间-项目文件夹 和 项目详情-文档编辑tab 两个面都查 AIDocument 表，而该 thread/project 的 AIDocument 行数为0(全表363条 from_thread 但 project_id 非空仅6条、本项目0条)，故两面皆空。",
+    "fix": "【已修复 2026-08-09】方向①落地：present_file_tool.py 由 def 改 async def，在 normalized_paths 计算后 await fire_present_files_callbacks(resolve_runtime_user_id(runtime), _get_thread_id(runtime) or '', normalized_paths)(EAI-CUSTOM 三重注释: docstring声明+START/END标记+bug-1145/升级注意; harness文件)。兑现技能承诺: agent 调 present_files 即触发 sync_outputs_to_docmgr 落 AIDocument。修复后 test_present_file_tool_core_logic.py 6例全过(原有4例因此前 sync @tool 在本版 LangChain 下 .coroutine=None 而长期红, 随 async 转换一并修复; 新增2例验证回调触发+失败不阻断工具主功能)。test_harness_boundary + test_sync_outputs_to_docmgr 通过。注: test_tool_output_budget_middleware.py 4例红为预存(预览格式漂移, stash 验证与本次无关)。数据补救: 对本 thread 已生成的 抚顺石化消防设计专篇.md 调 sync_outputs_to_docmgr 一次性回填, AIDocument 行已创建(project_id=30091fc6, folder=线程标题, doc_type=file_ref, status=active)。未做(留待): 根因(2) agent 用 bash cp 绕过 present_files 的 skill 层引导; 根因(4) outputs 文件系统视图前端接线。【续修 2026-08-09 21:10】② 落地: geological-report/markdown-to-docx/fire-regulatory-compliance-check 三个写用户文件却无交付步骤的 skill 补 present_files 强制交付(workspace→outputs 路径修正+「不可跳过」); kf-extract-template(写知识库DB非用户文件)/contract-price-analysis(只读)排除。④ 落地: Surface A 项目详情→文档编辑 tab(ProjectDocListPanel 聚合 useProjectOutputs, proj/ 虚拟文件去重; EditorTab 对 proj/ 文件路由到 DocumentEditor 跨用户 readProjectOutput/saveProjectContent 直读/写磁盘, 普通 doc 仍走 DocCollabView); DocumentManagement.tsx 导出 DocumentEditor+ProjectFileRef 供复用。typecheck EXIT 0 全绿, frontend 重启 nginx:2026 HTTP 200。至此 ①②④ 三根因全闭环(③ 死 UI 兜底同步不在用户路径, 保持不动)。【续修 2026-08-09 21:25】根因⑤落地(用户诉求: 项目文件走 AI 协同编辑器): DocumentManagement.tsx handleSelectDoc 收窄——仅 id.startsWith(\"proj/\") 的虚拟文件走单人 DocumentEditor(readProjectOutput/saveProjectContent 直读/写磁盘); 已 present_files 同步的 file_ref AIDocument(真实 uuid id + project_id)落 docId 分支→CollabEditor。协同真相源=collab-server 的 collab_documents 表(yjs_doc): loadMarkdownForDoc 首次从 file_ref 磁盘 seed(≤10MB), 之后协同写只落 collab store, 磁盘 outputs/ 冻结在 seed 时刻不再更新。canAccessDocument 查 ai_documents owner OR project_members join 放行项目成员。typecheck EXIT 0, frontend 重启。边界: proj/ 虚拟文件(bash cp 无 AIDocument 行)仍走单人, 欲协同需 lazy-sync 后端单文件同步端点(留待)。至此①②④⑤四根因闭环。",
+    "tags": [
+      "docmgr",
+      "present_files",
+      "dead-code",
+      "not-wired",
+      "fire_present_files_callbacks",
+      "sync_outputs_to_docmgr",
+      "AIDocument",
+      "项目文档",
+      "文档编辑",
+      "project-outputs",
+      "outputs-view-unwired",
+      "sync-thread-files",
+      "fire-protection-report",
+      "bug-009-class",
+      "harness",
+      "EAI-CUSTOM",
+      "fixed",
+      "async-tool-coroutine-gotcha"
+    ],
+    "related_bugs": [
+      "bug-009",
+      "bug-1144"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-09T21:12:00+08:00"
+  },
+  {
+    "id": "bug-1146",
+    "timestamp": "2026-08-09T22:30:00+08:00",
+    "error_message": "写作项目创建后进入对话页 AI 生成了报告初稿，但流程节点一直停在初始节点'AI编写初稿'，无法向下流转",
+    "file": "backend/app/extensions/workflow/temporal/client.py (+ project/routers.py phase-complete, workflow/temporal/workflows.py)",
+    "root_cause": "节点流转是 Temporal 信号驱动，非自动：phase/task 节点需等 phase_complete 信号→completion gate→advance_phase(写 current_phase_node) 才前进；ai_generate 节点靠 start_phase_ai_writing 自驱。两处断层：(1) dev 环境 docker-compose 未部署 Temporal(grep 无 temporal)，temporal_lifespan 连不上就禁用全部 workflow 特性，_temporal_client=None；phase-complete 调 send_signal 时信号被静默丢弃(client.py:78-80 只 log warning 返回 None，不抛错)，complete_current_phase 仍返回 200，节点不动。(2) 对话页(LangGraph agent /api/langgraph/*)的 AI 生成与工作流引擎不通：聊天产出的初稿只进会话，不写 ProjectChapter、不跑 ai_generate 节点、不发任何信号，故 current_phase_node 永不前进。LocalWorkflowRunner 声称是 Temporal 不可用时的 fallback 但未接入 phase-complete 流程。",
+    "fix": "✅ 路径A 已实施(2026-08-09 22:30)。部署 Temporal：①postgres-ext 建 temporal 角色+temporal/temporal_visibility 库(10-temporal.sh)；②docker pull temporalio/auto-setup:1.27.0；③cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.temporal.yaml up -d temporal；④docker restart deer-flow-gateway(lifespan 只启动时连)。验证：temporal 日志出现 project-workflow-queue 的 Activity poller(cause:Poll)=gateway worker 已连。⚠️遗留：make dev 的 up --remove-orphans 会把 temporal 当 orphan 删，需把 overlay 接进 docker.sh。⚠️现存项目(创建于 Temporal 未起时)temporal_workflow_id=NULL/current_phase_node=NULL，需 POST /api/extensions/workflow/projects/{id}/start-workflow {workflow_id:<def-uuid>} 补起实例，DAG 才跑(init_phase→ai_generate→advance)。\n\n✅ 端到端已验证(2026-08-09 23:10)：对卡住项目 30091fc6 调 start-workflow 后，workflow project-30091fc6-...-44c62463 正常运行：start_phase_ai_writing→notify_phase_start→init_task 三个活动全部 ACT_DONE；start_phase_ai_writing 实写了 28 条 ProjectChapter(概述/火灾报警系统/消防设施…，123–2426 字)；current_phase_node 由 NULL→t1-ai→t2-edit 推进成功；workflow 随后起 30 天 TIMER(PHASE_COMPLETION_TIMEOUT)等 phase_complete 信号(非卡死)。\n⚠️ 纠正此前的误诊：曾判定'3 个活动已调度但 worker 不取走'——实为 start_phase_ai_writing 的 LLM 生成(28 章)耗时超过 120s 轮询窗口，活动一直在跑，worker 正常。判活动是否执行应查事件历史 ACT_SCHED→ACT_START→ACT_DONE，勿仅凭 describe_task_queue 的 poller last_access 推断。\n✅ 推进下一节点(t2-edit→t3-submit)：前端项目详情页'阶段推进'按钮 → POST /api/extensions/project/projects/{id}/phase-complete {comment}（WorkflowProgressCompact.tsx:65）；后端 complete_current_phase → send_signal('phase_complete')，workflow.wait_condition 解除 → advance_phase 写新 current_phase_node。",
+    "tags": [
+      "workflow",
+      "temporal",
+      "node-advance",
+      "phase-complete",
+      "writing-project",
+      "chat-workflow-disconnect",
+      "fixed-temporal-deployed",
+      "end-to-end-verified",
+      "phase-advance-button"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09T23:10:00+08:00"
   }
 ]
