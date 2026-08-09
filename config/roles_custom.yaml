@@ -2,18 +2,47 @@ roles:
   project_manager:
     display_name: 项目经理
     permissions:
-    - '#inherit:dept_head'
+    - ai:start_writing
+    - approval:approve
+    - approval:review
+    - approval:submit
+    - approval:view
+    - chapter:review
+    - chapter:write_any
     - dashboard:view
-    - project:edit
+    - department:create
+    - department:delete
+    - department:update
+    - doc:delete
+    - doc:read
+    - doc:upload
+    - export:generate
+    - kb:create
+    - kb:read
+    - kb:upload
     - member:add
     - member:remove
-    - chapter:write_any
-    - ai:start_writing
+    - model:read
     - outline:edit
+    - project:create
+    - project:delete
+    - project:edit
+    - project:read
     - settings:edit
-    - export:generate
-    - approval:submit
-    - approval:review
+    - system:access
+    - workflow:read
+    - chapter:write_own
+    - chapter:review_any
+    - version:rollback
+    # EAI-CUSTOM (bug-1137): 创建项目向导「组建团队」/ AddMemberDialog 搜用户调
+    # /api/extensions/users/search（require user:read）；缺此点 → 403 → 添加不了成员。
+    # overlay 是运行时真相源，须与 permissions.yaml base 同步（bug-1087 wholesale-replace 教训）
+    - user:read
+    - workflow:start
+    - workflow:cancel
+    - workflow:edit
+    - chapter:view_all
+    - ai:stop_writing
     nav:
     - nav:writing
     - nav:projects
@@ -22,6 +51,8 @@ roles:
     - nav:output
     - nav:app-center
     - nav:knowledge-factory
+    - nav:dashboard
+    - nav:workflow-admin
     data_scopes:
     - project_member
     - knowledge_dept
@@ -81,6 +112,10 @@ roles:
     - approval:view
     - chapter:review
     - workflow:read
+    # EAI-CUSTOM (bug-1137): 同 project_manager，建项目向导搜成员调
+    # /api/extensions/users/search（require user:read）；overlay 是运行时真相源，
+    # base permissions.yaml 改了无效（wholesale-replace，见 bug-1087），必须在此加。
+    - user:read
     nav:
     - nav:knowledge
     - nav:contract-price
@@ -142,7 +177,9 @@ roles:
     - nav:projects
     - nav:knowledge
     - nav:app-center
-    - nav:contract-price
+    - nav:writing
+    - nav:docmgr
+    - nav:knowledge-factory
     data_scopes:
     - project_member
     - knowledge_dept
@@ -169,12 +206,13 @@ roles:
     - nav:dashboard
     - nav:knowledge
     - nav:app-center
+    - nav:writing
+    - nav:projects
+    - nav:docmgr
     data_scopes:
     - project_member
     - doc_owner
     - knowledge_public
-    # EAI-CUSTOM: 补回 knowledge_owner（对齐 permissions.yaml user 角色 M1 修复）——
-    # overlay 是替换非合并，漏掉则普通用户看不到自己的私有/部门 KB
     - knowledge_owner
     pages:
     - knowledge:page:browse
@@ -182,4 +220,42 @@ roles:
     is_system: false
     level: 1
     description: null
+  writer:
+    display_name: 撰写人
+    permissions:
+    - ai:start_writing
+    - chapter:review
+    - chapter:write_own
+    - dashboard:view
+    - doc:read
+    - doc:upload
+    - kb:read
+    - model:read
+    - system:access
+    - workflow:read
+    - doc:delete
+    nav:
+    - nav:dashboard
+    - nav:writing
+    - nav:projects
+    - nav:knowledge
+    - nav:app-center
+    - nav:docmgr
+    - nav:output
+    - nav:workflow-admin
+    - nav:knowledge-factory
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - knowledge_public
+    - doc_owner
+    - doc_project_member
+    pages:
+    - projects:page:list
+    - writing:page:chat
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 10
+    description: 负责章节内容编写和AI辅助写作
 disabled_roles: []

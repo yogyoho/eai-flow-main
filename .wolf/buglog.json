@@ -17435,8 +17435,19 @@
     "file": "backend/app/extensions/output/layout_import.py",
     "root_cause": "_extract_body_styles 在 _dominant(body) 取不到 space_after(样例所有正文段落均未声明 space_after)且 Normal 样式也无(pPrDefault 为空)时,fallback 写死 6。6 是任意猜测值,非样例真实值。Ground-truth 验证:样例 body 段落 space_after 计数为空,docDefaults pPrDefault 为空 → 真实段后距 0。",
     "fix": "fallback 从 `else 6` 改为 `else 0`(仅当段落与 Normal 均未声明 space_after 时)。真实样例验证:body paragraphSpacing 0。+1 回归测试(未声明 space_after→0)。",
-    "tags": ["layout-import", "docx", "段后距", "paragraphSpacing", "fallback", "real-sample-verified"],
-    "related_bugs": ["bug-1103", "bug-1104", "bug-1105"],
+    "tags": [
+      "layout-import",
+      "docx",
+      "段后距",
+      "paragraphSpacing",
+      "fallback",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1103",
+      "bug-1104",
+      "bug-1105"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-07T00:05:00Z"
   },
@@ -17447,8 +17458,19 @@
     "file": "backend/app/extensions/output/layout_import.py",
     "root_cause": "_extract_heading_styles 的 color = _dominant_run_color(hps) or _style_color(style, '#333333')。样例 H1 的 run 与 Heading 1 样式均未定义 color(Word auto),两路都返回 None → 命中 fallback '#333333'。但 Word auto 文本色渲染为黑色 #000000,#333333 是任意审美猜测。Ground-truth 验证:样例 H1 run color 计数为空,Heading 1 style color=None。",
     "fix": "color fallback 从 '#333333' 改为 '#000000'(auto=黑)。真实样例验证:H1 color #000000。+1 回归测试(run 与样式均无 color→#000000)。",
-    "tags": ["layout-import", "docx", "标题颜色", "heading-color", "fallback", "real-sample-verified"],
-    "related_bugs": ["bug-1103", "bug-1106", "bug-1108"],
+    "tags": [
+      "layout-import",
+      "docx",
+      "标题颜色",
+      "heading-color",
+      "fallback",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1103",
+      "bug-1106",
+      "bug-1108"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-07T00:06:00Z"
   },
@@ -17459,9 +17481,519 @@
     "file": "backend/app/extensions/output/layout_import.py",
     "root_cause": "_HEADING_DEC_RE = ^\\d+[.)）]|^\\d+\\.\\d+ 只识别 '1.'/'1)'/'1.1',漏掉中文报告常见的手写章号 '数字+≥2空格+文本'(样例 H1 '1  设计依据')。导致 H1 误判 none,而 H2 '1.1' 命中 decimal → 同份文档两级标题编号策略不一致。generator.py 消费:numbering=='decimal' 时计算并前置编号,none 不前置;不一致会破坏导出编号。",
     "fix": "_HEADING_DEC_RE 增加第三支 ^\\d{1,3}\\s{2,}\\S 覆盖 '1  设计依据'(1-3位数字+≥2空格+非空);不误伤 '2024 年'/'100 万元'(无≥2空格分隔)。真实样例验证:H1/H2 均 decimal。+1 回归测试(数字+空格形式→decimal)。",
-    "tags": ["layout-import", "docx", "标题编号", "heading-numbering", "regex", "inconsistency", "real-sample-verified"],
-    "related_bugs": ["bug-1103", "bug-1106", "bug-1107"],
+    "tags": [
+      "layout-import",
+      "docx",
+      "标题编号",
+      "heading-numbering",
+      "regex",
+      "inconsistency",
+      "real-sample-verified"
+    ],
+    "related_bugs": [
+      "bug-1103",
+      "bug-1106",
+      "bug-1107"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-07T00:07:00Z"
+  },
+  {
+    "id": "bug-1109",
+    "timestamp": "2026-08-07T01:30:00Z",
+    "error_message": "cover_master Task 1 接线后,tests/test_output_routers.py::test_build_template_data_includes_cover_and_toc 与 ::test_build_template_data_cover_none_when_absent 报 AttributeError: 'types.SimpleNamespace' object has no attribute 'cover_master'",
+    "file": "backend/tests/test_output_routers.py",
+    "root_cause": "_build_template_data(routers.py) 按 Task 1 要求新增读取 template.cover_master;但两个既有测试用 _fake_template() 构造的 SimpleNamespace 模板 mock 未包含新的 cover_master 属性,导致属性访问抛错。属于新增列/字段时漏更新测试 mock 的回归。",
+    "fix": "在 test_output_routers.py 的 _fake_template() 中补 cover_master=None,与新增的 JSONB 列对齐。",
+    "tags": [
+      "output",
+      "cover-master",
+      "regression",
+      "test-mock",
+      "SimpleNamespace",
+      "build_template_data"
+    ],
+    "related_bugs": [
+      "bug-1108"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T01:30:00Z"
+  },
+  {
+    "id": "bug-1110",
+    "timestamp": "2026-08-07T02:30:00Z",
+    "error_message": "cover_master Task 2: _extract_cover_master boundary 失败 + _prefill_cover_slots 返回空 — 合成样例 boundary 误判为 before_first_heading (期望 before_toc), 实际样例 slots 为空 (期望含 title)",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_para_text(p_el) 用 p_el.findall(f\"{{{W}}}t\") 只取 <w:p> 的直接子节点, 但 OOXML 里 <w:t> 嵌套在 <w:r> 内 (<w:p><w:r><w:rPr/><w:t>...</w:t></w:r></w:p>), findall 非递归 → 文本恒为空字符串。导致 _TOC_TEXT_RE 对 \"目录\" 段落永远不匹配 (落到 before_first_heading); _prefill_cover_slots 的 paras 列表也空 → slots 空。",
+    "fix": "改 _para_text 用 p_el.iter(f\"{{{W}}}t\") (lxml iter 是后代遍历), 一处修复同时解决 boundary 与 slots。",
+    "tags": [
+      "output",
+      "cover-master",
+      "OOXML",
+      "lxml",
+      "findall-vs-iter",
+      "descendant-traversal"
+    ],
+    "related_bugs": [
+      "bug-1108"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T02:30:00Z"
+  },
+  {
+    "id": "bug-1111",
+    "timestamp": "2026-08-07T02:35:00Z",
+    "error_message": "cover_master Task 2 合成测试 test_extract_cover_master_table_cover 断言 cm[\"xml\"].count(\"<w:tbl\") == 2 失败, 实际 10",
+    "file": "backend/tests/test_cover_master.py",
+    "root_cause": "计划文档给出的测试断言用裸 \"<w:tbl\" 子串计数, 但 OOXML 序列化里 <w:tblPr/<w:tblGrid/<w:tblLook/<w:tblW 都以 <w:tbl 开头, 每张表会贡献 5 次匹配 (表本身 1 + tblPr/tblGrid/tblLook/tblW 各 1) → 2 张表 = 10 次。实现是正确的 (确实只提了 2 张表), 是断言子串过宽。",
+    "fix": "把断言改成 cm[\"xml\"].count(\"<w:tbl \") == 2 (尾部空格, 仅匹配 <w:tbl 元素开标签, 排除 <w:tblPr 等), 实际样例测试用 >= 2 已经宽容无需改。注释里写明 trailing space 排除哪些伪匹配。",
+    "tags": [
+      "output",
+      "cover-master",
+      "test-spec",
+      "substring-count",
+      "OOXML-serialization",
+      "false-positive-match"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T02:35:00Z"
+  },
+  {
+    "id": "bug-1112",
+    "timestamp": "2026-08-07",
+    "error_message": "真实样例金标准测试 test_extract_real_sample_cover_master 在规范调用方式(make test = backend cwd 下 pytest)下静默 SKIP,从未真正运行;实施者报告 PASSED 是因从 repo root 跑",
+    "file": "backend/tests/test_cover_master.py",
+    "root_cause": "SAMPLE = Path(\"backend/data/users/...\") 是 cwd 相对路径;从 backend/ 跑解析成 backend/backend/data/... 不存在 → skipif 触发跳过;CI(make test)永远跑不到该测试,违背对照真实样例初衷",
+    "fix": "改为 __file__ 相对: Path(__file__).resolve().parents[1] / \"data/users/...\" ,cwd 无关;规范 backend cwd 下确认 1 passed(非 skip)",
+    "tags": [
+      "test",
+      "cover-master",
+      "path",
+      "skipif",
+      "output"
+    ],
+    "related_bugs": [
+      "bug-1110",
+      "bug-1111"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1113",
+    "timestamp": "2026-08-07",
+    "error_message": "cover_master 图片提取测试 test_extract_cover_master_captures_image: docx.image.exceptions.UnexpectedEndOfFileError — doc.add_picture 拒绝手编 1x1 PNG b64 串",
+    "file": "backend/tests/test_cover_master.py",
+    "root_cause": "Python-docx 的 image reader 需解析图片头/IDAT 取尺寸;网上常见最小 1x1 PNG b64 串 IHDR/IDAT 不完整,read_long(base 巨大偏移)越界 UnexpectedEndOfFileError",
+    "fix": "改用 stdlib struct+zlib 构造保证可解析的 2x2 灰度 PNG (_png_bytes helper): PNG sig + IHDR + zlib.compress(filter0+scanline) + IEND + crc32",
+    "tags": [
+      "python-docx",
+      "png",
+      "test-fixture",
+      "cover-master",
+      "image-extraction"
+    ],
+    "related_bugs": [
+      "bug-1111"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1114",
+    "timestamp": "2026-08-07",
+    "error_message": "cover_master Task 3 _replace_target_in_para: plan code used p_el.findall(\"{ns}t\") which only finds DIRECT children, but <w:t> is a grandchild of <w:p> (nested in <w:r>) → empty text → slot replacement silently skipped → test_render_cover_master_round_trip_replaces_variable failed (甲公司 not replaced)",
+    "file": "backend/app/extensions/output/generator.py",
+    "root_cause": "lxml findall(\"{ns}tag\") matches only direct children; descendant search needs findall(\".//{ns}tag\") or .iter(\"{ns}tag\"). Plan-spec code was wrong.",
+    "fix": "Changed t_els = p_el.findall(f\".//{{{_W_GEN}}}t\") (descendant axis). The later run.findall(\"{ns}t\") for clearing is correct because <w:t> IS a direct child of <w:r>.",
+    "tags": [
+      "cover_master",
+      "lxml",
+      "findall",
+      "descendant-axis",
+      "ooxml",
+      "task3-plan-bug"
+    ],
+    "related_bugs": [
+      "bug-1113"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1115",
+    "timestamp": "2026-08-07",
+    "error_message": "cover_master Task 3 image re-embed: plan code called doc.part.get_or_add_image_part(BytesIO(blob)) — AttributeError: DocumentPart has no such method. Bare except Exception swallowed it → no image relationship → test_render_cover_master_rewrites_image_embed failed.",
+    "file": "backend/app/extensions/output/generator.py",
+    "root_cause": "Wrong API name in plan-spec code. python-docx DocumentPart exposes get_or_add_image(image_descriptor) -> (rId, Image), not get_or_add_image_part. The returned rId is already the relationship id (no separate relate_to call needed).",
+    "fix": "Replaced two-step (get_or_add_image_part → relate_to(image_part, RT.IMAGE)) with single call: new_rid, _image = doc.part.get_or_add_image(BytesIO(blob)). Removed the now-unused RT import.",
+    "tags": [
+      "cover_master",
+      "python-docx",
+      "image-embed",
+      "api-mismatch",
+      "task3-plan-bug"
+    ],
+    "related_bugs": [
+      "bug-1113"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1116",
+    "timestamp": "2026-08-07",
+    "error_message": "make lint (ruff) 报 F601: generator.py _LATEX_SYMBOLS 字典有重复键 \"rightarrow\" (line ~575 与 ~578 各一个),阻塞 lint 通过。",
+    "file": "backend/app/extensions/output/generator.py",
+    "root_cause": "预存在的 F601 重复字典键(pre-existing,非本次新增)。两处都写 \"rightarrow\": \"→\",ruff F601 命中。Task 3 cerebrum 原记 'out of scope, do not fix',但实际阻塞 make lint,须在 Task 3 硬化提交里一并修。",
+    "fix": "删除第二个重复键(line 578),保留第一个(line 575)。一行删除,行为中性(同值重复)。commit 294965d60。",
+    "tags": [
+      "cover_master",
+      "ruff",
+      "f601",
+      "lint-blocker",
+      "pre-existing"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1117",
+    "timestamp": "2026-08-07T00:00:00",
+    "error_message": "封面母版槽位提取只抓到 8 个字段中的 2 个，且 基础设计 出现两次；标题误判为 基础设计（项目阶段）而非 第三册 消防设计专篇（报告名称）；档 案 号/版    次（带空格标签）漏提；20XX年0X月 占位日期被日期正则拒绝；设计院 无值字段未识别",
+    "file": "backend/app/extensions/output/layout_import.py::_prefill_cover_slots",
+    "root_cause": "旧实现用固定 6 字段正则白名单（title/project_name/client/project_number/stage/date），白名单外字段全丢；标题取最大字号段落→选中大字号的阶段值 基础设计，又被 project_name 正则二次命中→重复；日期正则要求 \\d{4} 拒绝 20XX年0X月 占位；标签内空格（档 案 号/版    次）不匹配。生成侧 _replace_target_in_para 做 full.replace 全量替换，XX 在 项目编号/档案号/证书号 重复→解析任一会波及其他（collateral overwrite）",
+    "fix": "(1) layout_import._prefill_cover_slots 改为通用冒号扫描 _COVER_COLON_FIELDS（\\s* 连接标签字符容忍 档 案 号/版    次 内空格；known-label→id 映射；target=标签含值 m.group(0) 使重复值不碰撞）+ 标题优先 第…册…专篇/…专篇 关键词（不再误选 基础设计）+ 项目名 位置式 + 设计院 literal + 20XX年0X月 占位日期；按 id 去重保证 基础设计 只一次。(2) generator._render_cover_master: target=slot.target or sampleValue；replacement=target.replace(sample, repl) 只换值保留标签，sibling 同值槽位不串扰。(3) CoverSlotSchema/types.ts 加 target 字段（JSONB 透传，无迁移）。真实样例 8 槽位全提取，生成 项目编号 填充、档案号/证书号 XX 保留",
+    "tags": [
+      "cover-master",
+      "slot-extraction",
+      "ooxml",
+      "report-output",
+      "disambiguation",
+      "real-sample"
+    ],
+    "related_bugs": [
+      "bug-1113",
+      "bug-1116"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T00:00:00"
+  },
+  {
+    "id": "bug-1118",
+    "timestamp": "2026-08-07",
+    "error_message": "封面区「重新从样例导入封面」/「从样例 .docx 导入真实封面」按钮与基本信息区「从样例导入排版」共享 handleImportedFile + fileInputRef，一次导入覆盖 pageSettings/bodyStyles/headingStyles/tableStyles/figureStyles/headerFooter——用户配好正文/页面/页眉后单独换封面，其它 section 全部被样例覆盖（数据丢失）",
+    "file": "frontend/src/extensions/output/components/LayoutTemplateEditor.tsx::handleImportedFile/applyImported",
+    "root_cause": "设计文档 §5.5 规定「重新从样例导入封面按钮复用同一端点」——复用全量 import-layout 端点即复用全量副作用；applyImported(364-387) 无条件写入所有 section。设计级缺陷：section 级按钮必须 section 级作用域",
+    "fix": "（已设计未实施，见 2026-08-07-cover-config-editor-remediation-design.md H1）routers.py::import_layout 加 scope=cover 查询参数只返回 {cover_master, cover_template, cover_detected}；api.ts::importLayout(file, scope?)；前端拆 applyImportedLayout/applyImportedCover，封面按钮走 cover scope 只写封面 state",
+    "tags": [
+      "cover-master",
+      "report-output",
+      "data-loss",
+      "import-scope",
+      "design-flaw"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1119",
+    "timestamp": "2026-08-07",
+    "error_message": "封面母版一旦导入无法移除/无法回退到开关简单封面；重新导入一个无封面或仅 cover_template 的样例后，旧 coverMaster 残留 state，UI 仍显示旧母版、保存后生成仍走旧母版（stale master，用户以为换了封面）",
+    "file": "frontend/src/extensions/output/components/LayoutTemplateEditor.tsx::setCoverMaster/applyImported",
+    "root_cause": "setCoverMaster 全文件只在导入时赋非空值（types.ts:317 初始化、LayoutTemplateEditor.tsx:379 赋值），从不置 null；applyImported(376-386) 在 data.cover_master 为 None 或非 master 时不分支复位 coverMaster",
+    "fix": "（已设计未实施，见 2026-08-07-cover-config-editor-remediation-design.md H2）加「移除母版」（setCoverMaster(null) 回落开关模式）+「移除封面」（coverMaster 与 coverTemplate 双置 null）；applyImportedCover 总是 setCoverMaster(cm?.mode==='master'?cm:null)",
+    "tags": [
+      "cover-master",
+      "report-output",
+      "stale-state",
+      "ui-state"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1120",
+    "timestamp": "2026-08-07",
+    "error_message": "docx 直连解析路径下表格内容从未进入 full_text → LLM 看不见表格行列，table_schemas 列头/类型/单位全靠猜测而非抽取（RAGFlow 回退反而含表格文本，'更好的'解析器产出更差结果）",
+    "file": "backend/app/extensions/knowledge_factory/doc_parser.py::_parse_docx_expat data()/w:tbl",
+    "root_cause": "expat SAX 的 data() 把 w:tc 单元格文本进 cell_buf，不进 cur_text → paragraphs/full_text 不含任何表格单元格内容；Step 2 _enrich 从 full_text 切片 section_content，LLM 因此看不到表行。_ground_metadata 只校验 caption 不校验列定义",
+    "fix": "已实施：doc_parser.py _parse_docx_expat w:tbl end 处把 tbl_rows 展平为 | 前缀行追加进 paragraphs（单元格内 | 换全角 ｜）；4 个回归测试(test_kf_doc_parser.py)全绿(33/33)。fallback python-docx 路径不展平(已知取舍)。MCP 4 个失败为 HEAD 预存(aae5a60ac)，与本次无关",
+    "tags": [
+      "template-extraction",
+      "grounding",
+      "table-schemas",
+      "hallucination",
+      "knowledge-factory",
+      "docx",
+      "implemented"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1121",
+    "timestamp": "2026-08-07",
+    "error_message": "4 个预存 KF MCP 测试失败：TemplateService.list_templates() got an unexpected keyword argument 'name'（3个）+ test_missing_domain_keywords_uses_defaults call_count 0!=1",
+    "file": "backend/app/extensions/knowledge_factory/service.py + tests/test_knowledge_factory_mcp.py",
+    "root_cause": "① list_templates 服务签名从未有 name 参数，但 MCP kf_list_templates 工具(template_tools.py:338)一直传 name=name → 生产运行时同样会崩（测试先暴露）；② 测试 7c2aa1431 之前写的，空 domain_keywords 期望仍触发 DB 查询，与修复后的早退守卫矛盾",
+    "fix": "① service.py list_templates 增加 name: Optional[str] + ILIKE 过滤；② 更新 test_missing_domain_keywords_uses_defaults 断言新守卫行为(call_count==0 + reason=missing_keywords)。58/58 测试全绿",
+    "tags": [
+      "knowledge-factory",
+      "mcp",
+      "template",
+      "name-filter",
+      "stale-test",
+      "runtime-crash"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1122",
+    "timestamp": "2026-08-07",
+    "error_message": "GET /api/kf/templates/{id} 对给排水模板返回 500：FormulaReference.input_vars 是 str 而非 list，Pydantic 报 list_type 验证错误",
+    "file": "backend/app/extensions/knowledge_factory/schemas.py::_LenientMeta._scrub_llm_output",
+    "root_cause": "LLM 把 input_vars 输出成单个字符串（'Qe-蒸发水量(m³/h)...进、出水温差(℃)'），_LenientMeta 的 before validator 只处理 int/None→默认值 和 int→str，没有 list 字段的 str 转换。Pydantic 严格验证 list 失败 → 模板详情端点 500（任务本身 completed，数据在 DB 完好）。30d2dc204 之前只修了 list[dict]，str 情况仍漏",
+    "fix": "_LenientMeta._scrub_llm_output 增加 list 字段 str→[str] 包装。新增 2 回归测试（str→list、list[str]/list[dict] 不受影响）。6/6 测试绿，重启 gateway 后给排水模板 200",
+    "tags": [
+      "knowledge-factory",
+      "schemas",
+      "pydantic",
+      "list_type",
+      "template-detail",
+      "500"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1123",
+    "timestamp": "2026-08-07",
+    "error_message": "给排水模板凭空出现 sec_05_06 建筑设计防火规范章节及耐火等级表——源文档无此章节，表中'火灾危险性分类/耐火等级'列头与消防模板部分重叠（LLM 领域知识幻觉，非字面跨文档）",
+    "file": "backend/app/extensions/knowledge_factory/pipeline.py::_find_section_content/_find_best_matching_paragraph",
+    "root_cause": "章节内容匹配不到时，策略3降级返回'第一份文档开头'不相关内容（且 > min_section_length 绕过 _short_content 跳过）。LLM 拿到章节标题'建筑设计防火规范' + 无关内容 → 凭领域知识编造耐火等级表。源文档'标准及规范'章本是一个 12 行标准表(标准名|编号)，被 LLM 拆成 12 个子节又对其中一个编表",
+    "fix": "已实施+端到端验证：_find_best_matching_paragraph/_find_section_content 匹配不到返回空串触发 _short_content 跳过。重跑给排水抽取：耐火等级幻觉表消失、sec_05 从6子节(每标准名一子节)变1个'标准规范列表'、table_schemas 26→14、grounding 拦截17→67字段。64/64 测试全绿",
+    "tags": [
+      "content-lookup",
+      "table-fabrication",
+      "domain-knowledge",
+      "knowledge-factory",
+      "implemented",
+      "verified-e2e",
+      "hallucination"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1124",
+    "timestamp": "2026-08-07",
+    "error_message": "模板抽取 table_schemas 重复膨胀：给排水 7 源表 → 26 schema（3.7x），tbl_03_01 复用 5 次；环评 192→40 去重后仅 ~30",
+    "file": "backend/app/extensions/knowledge_factory/pipeline.py::_dedupe_table_schemas",
+    "root_cause": "_enrich 递归处理每个节点（父节切片含子节子树 → 同表父子各抽）+ 跨章节引用放大 + 每节独立 LLM 无全局视野 + 结果层零去重",
+    "fix": "_dedupe_table_schemas 两遍算法：(caption,columns) 键去重，叶子最深+文档序早保留；接入 _step_extract_metadata 融合前；Step2 detail 计去重数。端到端：给排水 26→16，循环水表 6→2（不同变体保留）",
+    "tags": [
+      "knowledge-factory",
+      "dedup",
+      "table-schemas",
+      "inflation",
+      "result-layer"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1125",
+    "timestamp": "2026-08-07",
+    "error_message": "cover_master 读取时迁移会写入库(get_db 每请求自动 commit),违反 Task5 规格 '仅内存不写库';旧模板被 GET 即静默持久化 lossy 转换(图片→spacer)",
+    "file": "backend/app/extensions/output/service.py::_migrate_cover_master (T5 迁移)",
+    "root_cause": "_migrate_cover_master 在 session 持久化 ORM 对象上直接赋值 template.cover_elements → 标记 dirty;app/extensions/database.py get_db 请求结束无条件 await session.commit() → 只读 GET 也 flush 写入",
+    "fix": "迁移改为不触碰持久化对象:在 service 内 expunge 或对 model_dump 副本做转换,router 仅把迁移结果拼进 response,不写回 ORM attr",
+    "tags": [
+      "output",
+      "cover_elements",
+      "cover_master",
+      "migration",
+      "task5",
+      "get_db-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1129",
+    "timestamp": "2026-08-07",
+    "error_message": "spec-review: read-time cover_master migration persisted to DB on GET — get_db commits unconditionally at request end",
+    "file": "backend/app/extensions/output/service.py",
+    "root_cause": "_migrate_cover_master mutated template.cover_elements on a session-tracked ORM object; get_db (database.py) awaits session.commit() after every request incl. GET, so the in-memory migration flushed to DB, permanently rewriting legacy masters (images→spacers) and changing generation output without a save.",
+    "fix": "_migrate_cover_master(template, db) now expunges the template from the session after setting cover_elements (AsyncSession.expunge is a sync method, no await). update_template/delete_template re-attach with db.add() if the object was expunged by the read path.",
+    "tags": [
+      "output",
+      "cover_elements",
+      "cover_master",
+      "migration",
+      "get_db",
+      "expunge",
+      "sqlalchemy"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1130",
+    "timestamp": "2026-08-07",
+    "error_message": "build_structure_hint 截断分支永不触发: 摘要区头元素以\n开头, line.startswith(\"## 各章节内容摘要\") 永不命中, 树优先截断退化为硬截断",
+    "file": "backend/app/extensions/knowledge_factory/doc_parser.py",
+    "root_cause": "plan 参考代码用 line.startswith 匹配摘要区头, 但 parts 里摘要头是 \"\n## 各章节内容摘要（每章节前200字）\n\", 前导换行使 startswith=False, 断树循环把整个 result 当 tree",
+    "fix": "改用 line.lstrip().startswith(\"## 各章节内容摘要\"); 另将摘要 snippet 内表 caption 行过滤以满足 test_build_structure_hint_filters_table_captions",
+    "tags": [
+      "kf",
+      "knowledge_factory",
+      "build_structure_hint",
+      "truncation",
+      "P3-coverage"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1118",
+    "timestamp": "2026-08-07T00:00:00",
+    "error_message": "封面元素编辑器：分隔线元素渲染为空（v1 占位，生成 docx 中无任何输出）；元素只能↑↓按钮移动、新元素只能追加到末尾",
+    "file": "backend/app/extensions/output/generator.py::_render_cover_element + frontend/src/extensions/output/components/CoverElementsEditor.tsx",
+    "root_cause": "generator.py 的 divider 分支只有注释（空段兜底占位）没有实现；CoverElementsEditor 用 onMove(-1|1) 按钮 + addElement 追加到末尾",
+    "fix": "(1) divider 重定义为分页符：doc.add_page_break()（旧 type id divider 保留以兼容已持久化封面，现有 divider 即成为分页符）；前端标签 分隔线→分页符。(2) CoverElementsEditor 加 HTML5 拖拽排序（GripVertical 手柄 + drag from/over state + moveElementTo splice 两步）。 (3) 元素间 InsertZone（折叠 ＋ → 类型菜单 → 指定 index 插入）",
+    "tags": [
+      "cover-elements",
+      "divider",
+      "page-break",
+      "drag-drop",
+      "frontend"
+    ],
+    "related_bugs": [
+      "bug-1117"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-07T00:00:00"
+  },
+  {
+    "id": "bug-1131",
+    "timestamp": "2026-08-07T09:30:00",
+    "error_message": "封面编辑器字体下拉（Times New Roman）选中态/展开项长标签折行；admin-select 加了 truncate 仍折行",
+    "file": "frontend/src/components/ui/admin-select.tsx",
+    "root_cause": "@radix-ui/react-select 的 Select.Value 和 Select.ItemText 在源码里把 className 解构出来但从未使用（渲染 span 只接收 ...valueProps/itemTextProps），因此传在 Value/ItemText 上的 min-w-0 flex-1 truncate 被静默丢弃，长标签（如 Times New Roman）照常折行",
+    "fix": "用自建包裹 span 承载 truncate：Trigger 内 <span class=min-w-0 flex-1 truncate text-left> 包 Select.Value，下拉项同样 <span class=min-w-0 flex-1 truncate> 包 Select.ItemText；Icon 加 shrink-0。另 CoverElementsEditor 字体下拉 w-28→w-40 让 Times New Roman 单行完整显示。",
+    "tags": [
+      "frontend",
+      "radix-select",
+      "admin-select",
+      "className-dropped",
+      "truncate",
+      "wrapping",
+      "font"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-07"
+  },
+  {
+    "id": "bug-1132",
+    "timestamp": "2026-08-08T09:30:00",
+    "error_message": "导出对话框'从样例.docx导入真实封面'无反应：import-layout 对部分 docx 返回 500 Internal Server Error",
+    "file": "backend/app/extensions/output/layout_import.py",
+    "root_cause": "_extract_header_footer 的 _text(s.header) 访问 header.paragraphs 时，对 header part 被 python-docx 加载成基础 Part（非 _HeaderPart）的 docx（如 section-0 header 为空/未初始化）抛 AttributeError: 'Part' object has no attribute 'element'；_text 无 try/except 保护 → validate_docx_upload 500，前端 catch 只报 'Request failed'，用户感知为'点了没反应'",
+    "fix": "_text(part) 加 try/except，读不到的 header/footer 按空文本处理（EAI-CUSTOM 注释）。新增回归测试 test_extract_layout_from_linked_empty_header_docx + fixture backend/tests/fixtures/generated-cover-test.docx。",
+    "tags": [
+      "import-layout",
+      "docx",
+      "header",
+      "python-docx",
+      "500",
+      "cover",
+      "docmgr"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-08"
+  },
+  {
+    "id": "bug-1133",
+    "timestamp": "2026-08-08T00:00:00Z",
+    "error_message": "普通用户(test-procurement, 采购管理部+公用工程室)看不到自己创建的部门可见知识库「消防报告样例库」(8376f624), 即使 owner_id 就是该用户",
+    "file": "config/roles_custom.yaml",
+    "root_cause": "roles_custom.yaml overlay 覆盖 user 角色 data_scopes 时漏了 knowledge_owner(permissions.yaml base 有)。overlay 是替换非合并 → 生效的 user 角色 data_scopes=['project_member','doc_owner','knowledge_public'], 无 owner 可见 scope → 私有/部门 KB 不可见(只 visible 公开)",
+    "fix": "roles_custom.yaml user 角色 data_scopes 补回 knowledge_owner; 修复后 rule = or(owner_id==user, access_type=='public')",
+    "tags": [
+      "rbac",
+      "knowledge",
+      "datascope",
+      "overlay",
+      "roles_custom",
+      "visibility"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-08"
+  },
+  {
+    "id": "bug-1134",
+    "timestamp": "2026-08-08T00:00:00Z",
+    "error_message": "lisi(project_manager, 公用工程室)看不到 test-procurement 创建的部门可见知识库「消防报告样例库」(8376f624)，两人同属公用工程室(4119660b)",
+    "file": "frontend/src/app/knowledge/page.tsx (create 表单) + backend/app/extensions/knowledge/service.py (create_kb)",
+    "root_cause": "知识库管理页创建表单选 access_type=dept 时无部门选择 UI，allowed_depts 从不写入 → 后端 create_kb 存 NULL。knowledge_dept datascope 规则 = and(access_type=='dept', allowed_depts OVERLAP $identity.dept_ids)，PG 中 NULL && array = NULL(falsy) → 部门分支永不命中。该页创建的所有 dept 知识库对任何非 owner 不可见。lisi role=project_manager 已含 knowledge_dept、dept_ids 含公用工程室，配置/成员均正确，唯一阻断点=allowed_depts NULL。",
+    "fix": "已修复(用户选方案①+③)。①后端兜底：service.py create_kb/update_kb 在 access_type=='dept' 且 allowed_depts 空时，select(UserDepartment.dept_id) 兜底填 owner 的全部部门(EAI-CUSTOM bug-1134 注释)；并顺手删 list_kbs 里未用的 `from sqlalchemy import true`。③数据修复：UPDATE knowledge_bases SET allowed_depts=ARRAY[采购管理部(8cac5bfe), 公用工程室(4119660b)] WHERE id=8376f624。回归测试 tests/test_kb_dept_fallback.py 3 passed；test_knowledge_data_access/test_knowledge_flip 23 passed；ruff clean；gateway 已 restart。PG overlap 验证 lisi_can_see=t。②前端表单加部门多选→deferred(后端兜底已足够防复发)。",
+    "tags": ["knowledge", "datascope", "visibility", "allowed_depts", "dept", "bug-1133-related"],
+    "related_bugs": ["bug-1133"],
+    "occurrences": 1,
+    "last_seen": "2026-08-08"
+  },
+  {
+    "id": "bug-1135",
+    "timestamp": "2026-08-08T00:00:00Z",
+    "error_message": "两个 access_type=public 的公开知识库（法规标准库—标准/规范 3b954278、法规标准库—法律/法规/规章 e8c759fb）对所有 project_manager 用户(lisi)不可见。用户澄清访问层级模型：私有 < 部门可见 < 公开（逐层扩大，左是右子集）。",
+    "file": "config/permissions.yaml (4 角色缺 knowledge_public) + config/roles_custom.yaml (overlay 覆盖了同样缺 public 的 data_scopes)",
+    "root_cause": "knowledge_public scope = access_type=='public'。M1 只给基础 user 角色补了 knowledge_public/knowledge_owner（见 permissions.yaml:353 注释），遗漏了 dept_head/project_manager/writer/reviewer——它们只挂 knowledge_dept，未挂 knowledge_public，故看不到他人创建的公开库。**关键陷阱**：data_scopes 不随 #inherit 继承（仅 permissions 继承），每角色须各自列；且 roles_custom.yaml overlay 对 project_manager/dept_head/reviewer 做了整体替换(wholesale replace，bug-1087 模式)，运行时真相源是 overlay 而非 permissions.yaml——只改 base 不生效，必须 base+overlay 同步改。",
+    "fix": "base permissions.yaml：dept_head/project_manager/writer/reviewer 的 data_scopes 各加 knowledge_public(EAI-CUSTOM bug-1135 注释)；overlay roles_custom.yaml：project_manager/dept_head(共用 knowledge_dept→cpa_dept 块 replace_all)+reviewer(knowledge_dept→doc_owner)的 data_scopes 各加 knowledge_public(writer 不在 overlay，走 base)。验证：registry 5 角色均 resolve knowledge_public=True；engine rule-tree walk lisi union 含 eq access_type=public 叶子；DB 跑 lisi union 语义返回 2 public KB；回归测试 test_knowledge_data_access::test_kb_reading_roles_grant_knowledge_public_scope + 31 tests passed；gateway restart。",
+    "tags": ["knowledge", "datascope", "visibility", "public", "role", "overlay", "bug-1087-related", "hierarchy"],
+    "related_bugs": ["bug-1087", "bug-1134"],
+    "occurrences": 1,
+    "last_seen": "2026-08-08"
+  },
+  {
+    "id": "bug-1136",
+    "timestamp": "2026-08-09",
+    "error_message": "code-review 发现: 项目 outputs 跨用户共享端点仅校验项目成员资格,未校验 thread_id 属于本项目成员线程 → 项目A成员可借任意 thread_id 读写项目B/他人 outputs(跨租户越权); 且 str(target).startswith(str(base)) 防路径穿越对 outputs_archive 等前缀兄弟目录误判通过",
+    "file": "backend/app/extensions/docmgr/routers.py + service.py",
+    "root_cause": "C1: _require_project_member 只查 project_id 成员,但 service._locate_thread_outputs(thread_id) 扫所有 user 桶定位文件,thread_id 全局唯一但未被约束到本项目成员线程集 → 任意 thread_id 即可定位任意线程 outputs。I1: startswith 前缀匹配,outputs_archive 以 outputs 开头故误判在界内",
+    "fix": "C1: routers 新增 _require_project_member_thread(db,project_id,user_id,thread_id),校验 thread_id ∈ 成员 thread_id 集(fail-closed 403);read_project_output/save_project_output/list_project_versions 改用之(get_project_version/restore 按 version_id+project_id 限定已安全)。I1: write_project_output/read_project_output/write_personal_output 三处 startswith 改 target!=base and base not in target.parents 判定。回归测试5条(非成员thread→403/成员放行/非成员用户403/outputs_archive穿越write+read→ValueError),共23+5通过",
+    "tags": ["security", "cross-tenant", "authorization", "thread-id", "path-traversal", "startswith", "docmgr", "project-outputs", "code-review"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-09"
+  },
+  {
+    "id": "bug-1137",
+    "timestamp": "2026-08-09",
+    "error_message": "用户报告: lisi(项目经理)在项目管理页点「创建项目」进入向导,第四步「组建团队」输入框搜不到/加不了项目成员(下拉为空)",
+    "file": "config/roles_custom.yaml (project_manager + dept_head overlay) + config/permissions.yaml (base 同步)",
+    "root_cause": "创建项目向导 StepTeam 搜成员调 /api/extensions/users/search,该端点 require_permission('user:read')。但 project_manager / dept_head 角色权限集都不含 user:read → 403。前端 fetch 的 catch 块静默吞掉 403,下拉显示「无匹配用户」。关键陷阱:dept_head 在 permissions.yaml base 加了 user:read 仍无效(disk=False),因为 dept_head 在 roles_custom.yaml 有 overlay 条目,overlay 是 wholesale-replace 运行时真相源(bug-1087),base 被整体替换 → 必须在 overlay 加才生效",
+    "fix": "在 roles_custom.yaml overlay 给 project_manager(line 40) 和 dept_head(新增,在 chapter:review+workflow:read 后) 补 - user:read;permissions.yaml base 同步加(双源一致性)。验证: 两角色 disk=True live=True(热重载,无需重启 gateway)。教训:补权限到有 overlay 的角色必须改 overlay,base 改无效",
+    "tags": ["permission", "user:read", "role", "overlay", "wholesale-replace", "bug-1087-related", "project-create", "wizard", "add-member", "search-403", "config"],
+    "related_bugs": ["bug-1087", "bug-1135"],
+    "occurrences": 1,
+    "last_seen": "2026-08-09"
   }
 ]

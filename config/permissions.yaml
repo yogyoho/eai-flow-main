@@ -270,6 +270,8 @@ roles:
       - approval:submit
       - approval:view
       - chapter:review
+      # EAI-CUSTOM (bug-1137): 同 project_manager，建项目搜用户需 user:read（只读查询，不含增删改用户）
+      - user:read
     # EAI-CUSTOM (bug-1135): +knowledge_public — 公开库是部门可见的超集（私有<部门<公开），
     # 凡持有 knowledge_dept 的角色亦应可见公开库；M1 只补了 user 角色遗漏了继承链。
     data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "project_member", "doc_owner", "doc_project_member"]
@@ -300,6 +302,9 @@ roles:
       - export:generate
       - approval:submit
       - approval:review
+      # EAI-CUSTOM (bug-1137): 创建项目向导「组建团队」/ AddMemberDialog 搜用户调
+      # /api/extensions/users/search（require user:read）；缺此点 → 403 → 加不了成员
+      - user:read
     # EAI-CUSTOM (bug-1135): +knowledge_public（同 dept_head，公开库是部门可见超集）
     data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "doc_owner", "doc_project_member"]
 
