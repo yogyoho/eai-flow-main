@@ -1022,6 +1022,10 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS current_phase_node VARCHAR(50)"
         ))
+        # EAI-CUSTOM: 项目自由文本说明/要求字段(create_all 不 ALTER 已有表,须在此幂等加列)
+        await conn.execute(text(
+            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS description TEXT"
+        ))
 
         await conn.execute(text(
             "CREATE TABLE IF NOT EXISTS content_sources ("

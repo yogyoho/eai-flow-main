@@ -1,4 +1,10 @@
-"""Middleware to inject dynamic context (memory, current date) as a system-reminder.
+"""Middleware to inject dynamic context (memory, current date, project context) as a system-reminder.
+
+EAI-CUSTOM: 本文件含对上游 deer-flow 的定制增强——首轮读取 thread_dir/project-context.json
+把 <project_context>(项目名/报告类型/项目说明/模板结构)拼进 SystemMessage 注入给 agent(bug-697,
+2026-08-03,系 upstream-sync 回退 commit 07d3f68a1 后的 re-port,适配 tuple 返回签名)。
+所有 EAI 改动以 ``# ── EAI-CUSTOM START/END ──`` 包裹,升级/差分时按此识别;上游若原生
+支持 project-context 注入则删去对应段。
 
 The system prompt is kept fully static for maximum prefix-cache reuse across users
 and sessions.  The current date is always injected.  Per-user memory is also injected
@@ -166,7 +172,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         self._agent_name = agent_name
         self._app_config = app_config
 
-    def _build_full_reminder(self, runtime: Runtime | None = None) -> tuple[str, str | None]:
+    def _build_full_reminder(self, runtime: Runtime | None = None, thread_id: str | None = None) -> tuple[str, str | None]:
         """Return (date_reminder, memory_block | None).
 
         Framework-owned data (date) is separated from user-owned data (memory)
@@ -196,9 +202,106 @@ class DynamicContextMiddleware(AgentMiddleware):
             ]
         )
 
+        # ── EAI-CUSTOM START ──────────────────────────────────────────────────
+        # 写作项目上下文注入(bug-697,2026-08-03):enter_project 在服务端写
+        # thread_dir/project-context.json(app 可信元数据,非用户可编辑),首轮读出
+        # 拼进 SystemMessage 的 date_reminder 前段,让 agent 知道在为哪个项目/模板写作。
+        # 放 SystemMessage 而非 memory 的 HumanMessage:它是框架/app 权威元数据,
+        # 不属 OWASP LLM01 的「用户可影响内容」。回退 commit 07d3f68a1 删过本段,
+        # 此为 re-port(适配 tuple 返回签名)。升级注意:上游若补上同款注入则删本段。
+        if thread_id:
+            project_context = self._get_project_context(thread_id, runtime)
+            if project_context:
+                date_reminder = project_context + "\n\n" + date_reminder
+        # ── EAI-CUSTOM END ────────────────────────────────────────────────────
+
         memory_block = memory_context.strip() if memory_context else None
 
         return date_reminder, memory_block
+
+    # ── EAI-CUSTOM START ──────────────────────────────────────────────────────
+    # 项目上下文读取(bug-697,2026-08-03,re-port 自 commit 2ceba00aa)。
+    # 含项目自由文本说明/要求(Project requirements:)注入(bug-697 扩展)。
+    # 升级注意:上游若原生支持 project-context 注入,删去本段(EAI-CUSTOM END 以内)。
+    @staticmethod
+    def _resolve_thread_id(runtime: object | None) -> str | None:
+        """Resolve thread_id from runtime.context, falling back to config.configurable.
+
+        The gateway sets thread_id in ``config["configurable"]["thread_id"]`` (the
+        LangGraph standard); ``runtime.context["thread_id"]`` is only populated when a
+        caller forwards it explicitly. Without the fallback, thread_id is None and
+        ``_get_project_context`` is silently skipped (its ``if thread_id`` guard),
+        so project context never reaches the agent. Mirrors
+        ``ThreadDataMiddleware.before_agent``.
+        """
+        context = getattr(runtime, "context", None)
+        tid = context.get("thread_id") if isinstance(context, dict) else None
+        if tid is None:
+            try:
+                from langgraph.config import get_config
+
+                tid = get_config().get("configurable", {}).get("thread_id")
+            except Exception:
+                tid = None
+        return tid
+
+    def _get_project_context(self, thread_id: str, runtime: object | None = None) -> str:
+        """Read project context from thread directory if it exists.
+
+        ``runtime`` carries the authenticated ``user_id`` (set by the gateway's
+        ``inject_authenticated_user_context``) via ``runtime.context``. The user_id
+        is resolved from there — NOT from the ``get_effective_user_id()`` contextvar,
+        which is unset in the gateway run path and would fall back to ``"default"``,
+        causing the file (written by the app layer under the extensions user_id) to
+        be missed. See cerebrum Do-Not-Repeat [2026-06-09] / bug-015.
+        """
+        import json
+
+        from deerflow.config.paths import get_paths
+
+        user_id = resolve_runtime_user_id(runtime)
+        paths = get_paths()
+        context_file = paths.thread_dir(thread_id, user_id=user_id) / "project-context.json"
+        if not context_file.exists():
+            return ""
+
+        try:
+            ctx = json.loads(context_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            logger.exception("Failed to read project context for thread %s", thread_id)
+            return ""
+
+        parts = ["<project_context>"]
+        parts.append("You are working on a collaborative report writing project.")
+        if ctx.get("project_name"):
+            parts.append(f"Project name: {ctx['project_name']}")
+        if ctx.get("report_type"):
+            parts.append(f"Report type: {ctx['report_type']}")
+        if ctx.get("description"):  # EAI-CUSTOM: 项目自由文本说明/要求(bug-697 扩展)
+            parts.append(f"Project requirements: {ctx['description']}")
+        tmpl = ctx.get("template")
+        if tmpl:
+            if tmpl.get("template_name"):
+                parts.append(f"Template: {tmpl['template_name']}")
+            if tmpl.get("domain"):
+                parts.append(f"Domain: {tmpl['domain']}")
+            sections = tmpl.get("sections")
+            if isinstance(sections, dict):
+                section_list = sections.get("sections", [])
+            elif isinstance(sections, list):
+                section_list = sections
+            else:
+                section_list = []
+            if section_list:
+                parts.append("Report structure:")
+                for s in section_list:
+                    title = s.get("title", "Untitled") if isinstance(s, dict) else str(s)
+                    parts.append(f"  - {title}")
+        parts.append("Follow the template structure when generating report content. Use the project context to guide your writing and ensure compliance with the report requirements.")
+        parts.append("</project_context>")
+        return "\n".join(parts)
+
+    # ── EAI-CUSTOM END ────────────────────────────────────────────────────────
 
     def _build_date_update_reminder(self) -> str:
         current_date = datetime.now().strftime("%Y-%m-%d, %A")
@@ -265,7 +368,7 @@ class DynamicContextMiddleware(AgentMiddleware):
         )
         return messages
 
-    def _inject(self, state, runtime: Runtime | None = None) -> dict | None:
+    def _inject(self, state, runtime: Runtime | None = None, thread_id: str | None = None) -> dict | None:
         messages = list(state.get("messages", []))
         if not messages:
             return None
@@ -284,7 +387,7 @@ class DynamicContextMiddleware(AgentMiddleware):
             first_idx = next((i for i, m in enumerate(messages) if _is_user_injection_target(m)), None)
             if first_idx is None:
                 return None
-            date_reminder, memory_block = self._build_full_reminder(runtime)
+            date_reminder, memory_block = self._build_full_reminder(runtime, thread_id=thread_id)  # EAI-CUSTOM: bug-697 透传 thread_id 给 project-context 读取
             logger.info(
                 "DynamicContextMiddleware: injecting full reminder (has_memory=%s) into first HumanMessage id=%r",
                 memory_block is not None,
@@ -308,7 +411,12 @@ class DynamicContextMiddleware(AgentMiddleware):
 
     @override
     def before_agent(self, state, runtime: Runtime) -> dict | None:
-        result = self._inject(state, runtime)
+        # ── EAI-CUSTOM START ───────────────────────────────────────────────────
+        # bug-697: 解析 thread_id 透传给 _inject,供 project-context 读取。
+        # 升级注意:上游若补上同款解析则删本段。
+        thread_id = self._resolve_thread_id(runtime)
+        # ── EAI-CUSTOM END ─────────────────────────────────────────────────────
+        result = self._inject(state, runtime, thread_id=thread_id)
         self._record_effective_memory(state, result, runtime)
         return result
 
@@ -325,9 +433,15 @@ class DynamicContextMiddleware(AgentMiddleware):
         # block for tens of minutes (OS TCP timeout).  Time-box injection so
         # the request degrades gracefully (no new dynamic-context update)
         # rather than hanging. Frozen context already in state remains active.
+        # ── EAI-CUSTOM START ───────────────────────────────────────────────────
+        # bug-697: 必须在 event loop 上解析 thread_id —— get_config() 读 contextvar,
+        # 过不了下方 asyncio.to_thread 的线程边界,故在此先解析再穿 to_thread。
+        # 升级注意:上游若补上同款解析则删本段。
+        thread_id = self._resolve_thread_id(runtime)
+        # ── EAI-CUSTOM END ─────────────────────────────────────────────────────
         try:
             result = await asyncio.wait_for(
-                asyncio.to_thread(self._inject, state, runtime),
+                asyncio.to_thread(self._inject, state, runtime, thread_id),
                 timeout=_INJECT_TIMEOUT_SECONDS,
             )
         except TimeoutError:

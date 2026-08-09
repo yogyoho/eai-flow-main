@@ -64,6 +64,7 @@ export interface ReportProject {
   currentPhaseNode?: string | null;
   derivedStage?: number; // EAI-CUSTOM: canonical derived stage (ADR 2026-08-02 P2)
   archivedAt?: string | null; // EAI-CUSTOM: orthogonal archive bucket (ADR P5)
+  description?: string | null; // EAI-CUSTOM: 项目说明/要求,写入 project-context.json 注入 agent
 }
 
 export interface ProjectListItem {
@@ -93,11 +94,13 @@ export interface CreateProjectRequest {
   workflowId?: string | null;
   autoStartWorkflow?: boolean;
   members?: { userId: string; role: MemberRole }[];
+  description?: string | null; // EAI-CUSTOM: 项目说明/要求(选填)
 }
 
 export interface UpdateProjectRequest {
   name?: string;
   status?: ProjectStatus;
+  description?: string | null; // EAI-CUSTOM: 项目说明/要求(选填)
 }
 
 // ── Labels ──

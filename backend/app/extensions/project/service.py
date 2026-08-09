@@ -363,6 +363,7 @@ async def get_project(db: AsyncSession, project_id) -> ProjectOut | None:
         workflow_id=project.workflow_id,
         temporal_workflow_id=project.temporal_workflow_id,
         current_phase_node=project.current_phase_node,
+        description=project.description,
         # EAI-CUSTOM: derived stage (ADR 2026-08-02 P2) — current_stage dropped.
         derived_stage=derive_project_stage(project.status, [c.status for c in chapters]),
     )
@@ -409,6 +410,7 @@ async def enter_project(
         "type": "report_project",
         "report_type": project.report_type,
         "project_name": project.name,
+        "description": project.description,  # EAI-CUSTOM: 项目说明/要求,刷入 project-context.json 供 middleware 注入
         "template": template_context,
     }
 
@@ -614,12 +616,14 @@ async def create_project(
     template_id=None,
     workflow_id=None,
     members_data: list[dict] | None = None,
+    description: str | None = None,
 ) -> ProjectOut:
     has_template = bool(template_id)
     project = ReportProject(
         name=name,
         report_type=report_type,
         created_by=created_by,
+        description=description,
         template_id=template_id,
         workflow_id=workflow_id,
         status="draft",  # EAI-CUSTOM: canonical status (ADR 2026-08-02)
@@ -685,6 +689,7 @@ async def copy_project(
         created_by=created_by,
         template_id=source.template_id,
         workflow_id=source.workflow_id if copy_workflow else None,
+        description=source.description,  # EAI-CUSTOM: 复制项目说明/要求
         status="draft",  # EAI-CUSTOM: canonical status (ADR 2026-08-02)
     )
     db.add(new_project)

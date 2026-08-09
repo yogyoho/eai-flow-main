@@ -34,6 +34,8 @@ class User(Base):
     hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # EAI-CUSTOM (标签池 A): 显式用户标签（admin 在用户管理设置），供 identity.tags / 策略 conditions
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -653,6 +655,7 @@ class ReportProject(Base):
     workflow_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id", ondelete="SET NULL"), nullable=True)
     temporal_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_phase_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)  # EAI-CUSTOM: 项目自由文本说明/要求,写入 project-context.json 注入 agent
 
     chapters: Mapped[list["ProjectChapter"]] = relationship(
         "ProjectChapter",

@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,9 @@ export function SettingsDialog({
   const [projectName, setProjectName] = useState(project.name);
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
+  const [projectDescription, setProjectDescription] = useState(project.description ?? "");
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [savingDescription, setSavingDescription] = useState(false);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>(project.status);
   const [savingStatus, setSavingStatus] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -63,6 +67,8 @@ export function SettingsDialog({
     if (nextOpen) {
       setProjectName(project.name);
       setEditingName(false);
+      setProjectDescription(project.description ?? "");
+      setEditingDescription(false);
       setProjectStatus(project.status);
       setDeleteConfirm("");
     }
@@ -81,6 +87,21 @@ export function SettingsDialog({
       toast.error("更新失败");
     } finally {
       setSavingName(false);
+    }
+  };
+
+  // EAI-CUSTOM: 项目说明/要求编辑(写入后注入 agent);传空串即清空
+  const handleSaveDescription = async () => {
+    setSavingDescription(true);
+    try {
+      await projectApi.update(projectId, { description: projectDescription.trim() });
+      setEditingDescription(false);
+      onRefresh();
+      toast.success("项目说明已更新");
+    } catch {
+      toast.error("更新失败");
+    } finally {
+      setSavingDescription(false);
     }
   };
 
@@ -176,6 +197,49 @@ export function SettingsDialog({
                 <p className="text-sm text-foreground">{project.name}</p>
                 {canEdit && (
                   <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditingName(true)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Description — EAI-CUSTOM: 项目说明/要求,注入 agent */}
+          <div className="space-y-1.5">
+            <label className="text-[12px] text-muted-foreground font-medium">项目说明/要求</label>
+            {editingDescription ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="例如：按《建筑设计防火规范》GB 50016 编写，重点覆盖防火分区与疏散……"
+                  className="min-h-[80px] text-sm"
+                  autoFocus
+                />
+                <div className="flex items-center gap-2">
+                  <Button size="sm" className="h-8" onClick={handleSaveDescription} disabled={savingDescription}>
+                    {savingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8"
+                    onClick={() => {
+                      setEditingDescription(false);
+                      setProjectDescription(project.description ?? "");
+                    }}
+                  >
+                    取消
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <p className="text-sm text-foreground flex-1 whitespace-pre-wrap">
+                  {project.description || "（未填写）"}
+                </p>
+                {canEdit && (
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 shrink-0" onClick={() => setEditingDescription(true)}>
                     <Pencil className="h-3 w-3" />
                   </Button>
                 )}

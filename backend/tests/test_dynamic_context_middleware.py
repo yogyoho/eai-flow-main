@@ -192,6 +192,162 @@ def test_project_context_thread_id_falls_back_to_configurable():
     assert "可回退测试" in reminder
 
 
+def test_project_context_missing_file_no_injection():
+    """No project-context.json → no <project_context> block (graceful skip)."""
+    mw = _make_middleware()
+    runtime_uid = "u-missing"
+    tid = "t-missing"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+    with TemporaryDirectory() as tmp:
+        (Path(tmp) / "users" / runtime_uid / "threads" / tid).mkdir(parents=True)
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+    assert result is not None
+    assert "<project_context>" not in result["messages"][0].content
+
+
+def test_project_context_malformed_json_graceful():
+    """Invalid JSON in project-context.json → graceful skip (no crash, no block)."""
+    mw = _make_middleware()
+    runtime_uid = "u-badjson"
+    tid = "t-badjson"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+    with TemporaryDirectory() as tmp:
+        d = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        d.mkdir(parents=True)
+        (d / "project-context.json").write_text("{ not valid json", encoding="utf-8")
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+    assert result is not None
+    assert "<project_context>" not in result["messages"][0].content
+
+
+def test_project_context_without_project_name():
+    """Missing project_name → block present, but 'Project name:' line omitted."""
+    mw = _make_middleware()
+    runtime_uid = "u-noname"
+    tid = "t-noname"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+    with TemporaryDirectory() as tmp:
+        d = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        d.mkdir(parents=True)
+        (d / "project-context.json").write_text(
+            json.dumps({"project_id": "p", "report_type": "r", "template": {}}),
+            encoding="utf-8",
+        )
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+    reminder = result["messages"][0].content
+    assert "<project_context>" in reminder
+    assert "Project name:" not in reminder
+
+
+def test_project_context_template_sections_list():
+    """template.sections as a list → 'Report structure:' + section titles rendered."""
+    mw = _make_middleware()
+    runtime_uid = "u-sections"
+    tid = "t-sections"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+    with TemporaryDirectory() as tmp:
+        d = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        d.mkdir(parents=True)
+        (d / "project-context.json").write_text(
+            json.dumps(
+                {
+                    "project_id": "p",
+                    "project_name": "带章节项目",
+                    "report_type": "r",
+                    "template": {
+                        "template_name": "T",
+                        "sections": [{"title": "第一章 总论"}, {"title": "第二章 方案"}],
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+    reminder = result["messages"][0].content
+    assert "Report structure:" in reminder
+    assert "第一章 总论" in reminder
+    assert "第二章 方案" in reminder
+
+
+def test_project_context_includes_description():
+    """EAI-CUSTOM: project-context.json 的 description 字段 → reminder 含 'Project requirements:' 行。"""
+    mw = _make_middleware()
+    runtime_uid = "u-desc"
+    tid = "t-desc"
+    state = {"messages": [HumanMessage(content="Hi", id="m1")]}
+    runtime = SimpleNamespace(context={"user_id": runtime_uid, "thread_id": tid})
+    requirements = "按《建筑设计防火规范》GB 50016 编写，覆盖防火分区。"
+    with TemporaryDirectory() as tmp:
+        d = Path(tmp) / "users" / runtime_uid / "threads" / tid
+        d.mkdir(parents=True)
+        (d / "project-context.json").write_text(
+            json.dumps(
+                {
+                    "project_id": "p",
+                    "project_name": "带说明项目",
+                    "report_type": "fire_protection_design",
+                    "description": requirements,
+                    "template": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with (
+            mock.patch("deerflow.agents.lead_agent.prompt._get_memory_context", return_value=""),
+            mock.patch("deerflow.agents.middlewares.dynamic_context_middleware.datetime") as mock_dt,
+            mock.patch("deerflow.config.paths.get_paths") as mock_paths,
+        ):
+            mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
+            mock_paths.return_value = SimpleNamespace(
+                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
+            )
+            result = mw.before_agent(state, runtime)
+    reminder = result["messages"][0].content
+    assert "<project_context>" in reminder
+    assert "Project requirements:" in reminder
+    assert requirements in reminder
+
+
 # ---------------------------------------------------------------------------
 # Frozen-snapshot: no re-injection within a session
 # ---------------------------------------------------------------------------

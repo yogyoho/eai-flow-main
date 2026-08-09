@@ -35,6 +35,7 @@ class TestEnterProject:
         mock_project.template_id = None
         mock_project.report_type = "environmental_impact"
         mock_project.name = "环评报告"
+        mock_project.description = "测试项目说明"
 
         mock_member = MagicMock()
         mock_member.thread_id = None
@@ -57,6 +58,7 @@ class TestEnterProject:
         assert metadata["type"] == "report_project"
         assert metadata["report_type"] == "environmental_impact"
         assert metadata["project_name"] == "环评报告"
+        assert metadata["description"] == "测试项目说明"  # EAI-CUSTOM: 项目说明写入 project-context.json
         assert metadata["template"] == {}
 
         mock_write.assert_called_once_with(tid, str(user_id), metadata)

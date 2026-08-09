@@ -106,6 +106,7 @@ class ProjectCreate(BaseModel):
     workflow_id: UUID | None = None
     auto_start_workflow: bool = False
     members: list["MemberWithDuties"] | None = None
+    description: str | None = None  # EAI-CUSTOM: 项目说明/要求(选填),注入 agent
 
 
 class MemberWithDuties(BaseModel):
@@ -151,6 +152,7 @@ class ProjectUpdate(BaseModel):
     status: str | None = None
     workflow_id: UUID | None = None
     current_phase_node: str | None = None
+    description: str | None = None  # EAI-CUSTOM: 项目说明/要求(选填);注:传 null 不清空(service if v is not None)
 
 
 class ProjectOut(BaseModel):
@@ -171,6 +173,7 @@ class ProjectOut(BaseModel):
     workflow_id: UUID | None = None
     temporal_workflow_id: str | None = None
     current_phase_node: str | None = None
+    description: str | None = None  # EAI-CUSTOM: 项目说明/要求,注入 agent project-context
     archived_at: datetime | None = None  # EAI-CUSTOM: orthogonal archive bucket (ADR P5)
     # EAI-CUSTOM: derived six-stage progress (ADR 2026-08-02 P2) — computed in
     # service.get_project from status + chapter aggregates, never stored.

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { authFetch } from "@/extensions/api/client";
 import { projectApi } from "@/extensions/project/api";
@@ -241,28 +242,28 @@ function StepBasicInfo({
   name,
   reportType,
   client,
-  targetStandard,
   deadline,
+  description,
   errors,
   reportTypeOptions,
   onNameChange,
   onReportTypeChange,
   onClientChange,
-  onTargetStandardChange,
   onDeadlineChange,
+  onDescriptionChange,
 }: {
   name: string;
   reportType: string;
   client: string;
-  targetStandard: string;
   deadline: string;
+  description: string;
   errors: { name?: string; client?: string };
   reportTypeOptions: SelectOption[];
   onNameChange: (v: string) => void;
   onReportTypeChange: (v: string) => void;
   onClientChange: (v: string) => void;
-  onTargetStandardChange: (v: string) => void;
   onDeadlineChange: (v: string) => void;
+  onDescriptionChange: (v: string) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -317,16 +318,6 @@ function StepBasicInfo({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">目标标准</Label>
-          <Input
-            value={targetStandard}
-            onChange={(e) => onTargetStandardChange(e.target.value)}
-            placeholder="如 HJ 2.1-2016（选填）"
-            className="h-[34px] rounded-md border-gray-200 bg-white text-sm"
-          />
-        </div>
-
-        <div className="space-y-1.5">
           <Label className="text-sm text-foreground">截止日期</Label>
           <Popover>
             <PopoverTrigger asChild>
@@ -350,6 +341,17 @@ function StepBasicInfo({
               />
             </PopoverContent>
           </Popover>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">项目说明/要求（选填）</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder="例如：按《建筑设计防火规范》GB 50016 编写，重点覆盖防火分区与疏散……"
+            className="min-h-[90px] resize-none rounded-md bg-white text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">将作为「项目要求」一并注入给 AI 写作助手</p>
         </div>
       </div>
     </div>
@@ -712,7 +714,6 @@ function StepConfirm({
   name,
   reportType,
   client,
-  targetStandard,
   templateId,
   templates,
   leader,
@@ -726,7 +727,6 @@ function StepConfirm({
   name: string;
   reportType: string;
   client: string;
-  targetStandard: string;
   templateId: string;
   templates: TemplateOption[];
   leader: TeamMember | null;
@@ -773,12 +773,6 @@ function StepConfirm({
               <span className="text-gray-400">客户单位</span>
               <p className="mt-0.5 text-foreground">{client}</p>
             </div>
-            {targetStandard && (
-              <div>
-                <span className="text-gray-400">目标标准</span>
-                <p className="mt-0.5 text-foreground">{targetStandard}</p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -880,8 +874,8 @@ export function ProjectCreateWizard() {
   const [name, setName] = useState("");
   const [reportType, setReportType] = useState<string>("");
   const [client, setClient] = useState("");
-  const [targetStandard, setTargetStandard] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [description, setDescription] = useState("");
 
   // Dynamic report type options from report_type business dictionary
   const { options: reportTypeOptions } = useReportTypes();
@@ -994,6 +988,7 @@ export function ProjectCreateWizard() {
       const project = await projectApi.create({
         name: name.trim(),
         reportType: reportType,
+        description: description.trim() || undefined,
         templateId: resolveTemplateId(),
         workflowId,
         autoStartWorkflow: autoStartWorkflow && !!workflowId,
@@ -1047,15 +1042,15 @@ export function ProjectCreateWizard() {
                 name={name}
                 reportType={reportType}
                 client={client}
-                targetStandard={targetStandard}
                 deadline={deadline}
                 errors={errors}
                 reportTypeOptions={reportTypeOptions}
                 onNameChange={(v) => { setName(v); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
                 onReportTypeChange={(v) => setReportType(v )}
                 onClientChange={(v) => { setClient(v); if (errors.client) setErrors((e) => ({ ...e, client: undefined })); }}
-                onTargetStandardChange={setTargetStandard}
                 onDeadlineChange={setDeadline}
+                description={description}
+                onDescriptionChange={setDescription}
               />
             )}
             {step === 2 && (
@@ -1089,7 +1084,6 @@ export function ProjectCreateWizard() {
                 name={name}
                 reportType={reportType}
                 client={client}
-                targetStandard={targetStandard}
                 templateId={templateId}
                 templates={kfTemplates}
                 leader={leader}
