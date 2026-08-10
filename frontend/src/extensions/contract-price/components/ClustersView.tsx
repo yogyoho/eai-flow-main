@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertTriangle, Check, Crosshair, GitMerge, PackageSearch, RefreshCw, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Crosshair, GitMerge, PackageSearch, RefreshCw, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
 } from "@/extensions/contract-price/components/ui/table";
 import type { CpaCluster, CpaItem } from "@/extensions/contract-price/types";
 import {
+  useBatchConfirmClusters,
   useCluster,
   useClusters,
   useConfirmCluster,
@@ -84,10 +85,14 @@ function InlineEdit({
   );
 }
 
+const PAGE_SIZE = 20;
+
 export function ClustersView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "all">("pending");
+  const [page, setPage] = useState(1);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [batchMsg, setBatchMsg] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeName, setMergeName] = useState("");
   const [mergeCategory, setMergeCategory] = useState("未分类");
@@ -95,16 +100,40 @@ export function ClustersView() {
   const [moveTarget, setMoveTarget] = useState<string | null>(null);
   const [trace, setTrace] = useState<CpaItem | null>(null);
 
-  const clustersQuery = useClusters({ cluster_status: filter === "all" ? undefined : filter, limit: 100 });
+  const skip = (page - 1) * PAGE_SIZE;
+  const clustersQuery = useClusters({
+    cluster_status: filter === "all" ? undefined : filter,
+    skip,
+    limit: PAGE_SIZE,
+  });
   const clusterQuery = useCluster(selectedId);
   const confirmMutation = useConfirmCluster();
   const rejectMutation = useRejectCluster();
   const updateMutation = useUpdateCluster();
   const mergeMutation = useMergeClusters();
   const moveMutation = useMoveItem();
+  const batchConfirmMutation = useBatchConfirmClusters();
 
   const clusters = clustersQuery.data?.items ?? [];
+  const total = clustersQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const detail = clusterQuery.data;
+
+  // clamp page when the tail empties after a batch confirm / reject / merge
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [page, totalPages]);
+
+  const pageIds = clusters.map((c) => c.id);
+  const allChecked = pageIds.length > 0 && pageIds.every((id) => checked.has(id));
+  const someChecked = pageIds.some((id) => checked.has(id));
+  const checkedPendingCount = clusters.filter(
+    (c) => checked.has(c.id) && c.status === "pending",
+  ).length;
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked && !allChecked;
+  }, [someChecked, allChecked]);
 
   const toggleCheck = (id: string) =>
     setChecked((prev) => {
@@ -112,6 +141,40 @@ export function ClustersView() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+
+  const toggleSelectAll = () => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (allChecked) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const doBatchConfirm = async () => {
+    const targets = clusters
+      .filter((c) => checked.has(c.id) && c.status === "pending")
+      .map((c) => ({ id: c.id, version: c.version }));
+    if (targets.length === 0) return;
+    setBatchMsg(null);
+    try {
+      const res = await batchConfirmMutation.mutateAsync(targets);
+      setChecked(new Set());
+      setBatchMsg(
+        res.fail > 0
+          ? `已确认 ${res.ok}/${res.total}，${res.fail} 个失败（可能被他人改动，请刷新重试）`
+          : `已确认 ${res.ok} 个分组`,
+      );
+    } catch {
+      setBatchMsg("批量确认失败，请重试。");
+    }
+  };
+
+  const gotoPage = (p: number) => {
+    setPage(p);
+    setChecked(new Set());
+    setSelectedId(null);
+  };
 
   const openMerge = () => {
     // default representative name = first checked cluster's name
@@ -152,7 +215,7 @@ export function ClustersView() {
               {(["pending", "confirmed", "rejected", "all"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => { setFilter(f); setChecked(new Set()); }}
+                  onClick={() => { setFilter(f); setPage(1); setChecked(new Set()); setBatchMsg(null); }}
                   className={cn(
                     "px-3 py-1.5 text-sm transition-colors",
                     filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
@@ -162,12 +225,19 @@ export function ClustersView() {
                 </button>
               ))}
             </div>
+            {checkedPendingCount > 0 ? (
+              <Button size="sm" onClick={doBatchConfirm} disabled={batchConfirmMutation.isPending}>
+                <Check className="h-4 w-4" />
+                批量确认({checkedPendingCount})
+              </Button>
+            ) : null}
             {checked.size >= 2 ? (
               <Button size="sm" onClick={openMerge} disabled={mergeMutation.isPending}>
                 <GitMerge className="h-4 w-4" />
                 合并选中({checked.size})
               </Button>
             ) : null}
+            {batchMsg ? <span className="text-xs text-muted-foreground">{batchMsg}</span> : null}
             <Button variant="outline" size="sm" onClick={() => clustersQuery.refetch()}>
               <RefreshCw className="h-4 w-4" />
               刷新
@@ -218,6 +288,35 @@ export function ClustersView() {
               </ul>
             )}
           </CardContent>
+          {total > PAGE_SIZE ? (
+            <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
+              <span>
+                第 {page}/{totalPages} 页
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1 px-2"
+                  disabled={page <= 1}
+                  onClick={() => gotoPage(page - 1)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  上一页
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1 px-2"
+                  disabled={page >= totalPages}
+                  onClick={() => gotoPage(page + 1)}
+                >
+                  下一页
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </Card>
 
         {/* Right: selected cluster detail */}

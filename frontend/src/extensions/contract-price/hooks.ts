@@ -121,6 +121,25 @@ export function useRejectCluster() {
   });
 }
 
+export function useBatchConfirmClusters() {
+  const qc = useQueryClient();
+  return useMutation({
+    // ponytail: loop the existing single-confirm (version-locked) instead of a
+    // new backend batch endpoint. allSettled so one version clash fails that row
+    // alone and the rest still confirm.
+    mutationFn: async (clusters: { id: string; version: number }[]) => {
+      const results = await Promise.allSettled(
+        clusters.map((c) => contractPriceApi.confirmCluster(c.id, { expected_version: c.version })),
+      );
+      const fail = results.filter((r) => r.status === "rejected").length;
+      return { ok: results.length - fail, fail, total: results.length };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
 export function useUpdateCluster() {
   const qc = useQueryClient();
   return useMutation({

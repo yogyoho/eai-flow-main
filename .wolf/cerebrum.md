@@ -654,3 +654,5 @@
 - **后端重放校验基线**：若 Edit 引用的代码（如 `existing.` 前缀 vs `user.`）在 HEAD 里已重构，则该条 Edit 属"已提交/已过时"，跳过不视为失败；对比 HEAD 版本 ruff 错误数可判断 lint 是否本次引入。
 - **丢失编辑可能被"后续会话在 HEAD 上的新工作"替代**：reset 后某会话可能已在 HEAD 上重做了部分功能（如 deny 权限 Combobox 升级）。重放丢失编辑时，若 anchor 在 deny/该区域不存在 → 该编辑已被新实现替代，跳过即可，不要强行塞回。恢复 = 新工作 + 未冲突的丢失编辑，而不是完整重放 100%。
 - **重放后必查重复导入**：丢失编辑加的 import（如 Popover+Command 树下拉）可能与 reset 后新工作已加的 import 重复 → typecheck 报 Duplicate identifier。先看 import 段去重。
+- **判断"丢失编辑是否已被 post-reset 提交覆盖"**：cp 重放文件后 `git diff HEAD --stat -- <file>` 为空 = 该文件丢失编辑与 HEAD 相同（post-reset 提交已含），无需恢复，也无需提交。BoxPlot(542358005)/crud.py(030df2481) 即此例。
+- **丢失编辑锚点不匹配当前 = 被重写替代**：组件被 post-reset 工作重构后（如 ClustersView 去掉货物分组头部），引用旧结构的编辑(全选本页头部/max-h)anchor 缺失 → 跳过，不要强行重建旧结构。重放结果 = 当前结构 + 仍匹配的丢失编辑。
