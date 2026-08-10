@@ -252,8 +252,16 @@ export function KnowledgeBaseDetail({
   }, [kb.id, kb.name, kb.description, kb.kb_type]);
 
   // Config tab state
-  const [topK, setTopK] = useState(5);
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.2);
+  const [topK, setTopK] = useState(kb.retrieval_config?.top_k ?? 5);
+  const [similarityThreshold, setSimilarityThreshold] = useState(
+    kb.retrieval_config?.similarity_threshold ?? 0.2,
+  );
+  const [vectorWeight, setVectorWeight] = useState(
+    kb.retrieval_config?.vector_similarity_weight ?? 0.3,
+  );
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configDirty, setConfigDirty] = useState(false);
+  const markDirty = () => setConfigDirty(true);
 
   const loadDocs = useCallback(async () => {
     try {
@@ -319,6 +327,31 @@ export function KnowledgeBaseDetail({
     } finally {
       setChatLoading(false);
     }
+  };
+
+  const handleSaveConfig = async () => {
+    setConfigSaving(true);
+    try {
+      const updated = await kbApi.updateRetrievalConfig(kb.id, {
+        top_k: topK,
+        similarity_threshold: similarityThreshold,
+        vector_similarity_weight: vectorWeight,
+      });
+      onKbUpdated?.(updated);
+      setConfigDirty(false);
+      toast("检索配置已保存", "success");
+    } catch (e: any) {
+      toast(e?.message ?? "保存失败", "error");
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const handleResetConfig = () => {
+    setTopK(kb.retrieval_config?.top_k ?? 5);
+    setSimilarityThreshold(kb.retrieval_config?.similarity_threshold ?? 0.2);
+    setVectorWeight(kb.retrieval_config?.vector_similarity_weight ?? 0.3);
+    setConfigDirty(false);
   };
 
   const handleEditSave = async () => {
@@ -650,7 +683,10 @@ export function KnowledgeBaseDetail({
                       min={1}
                       max={20}
                       value={topK}
-                      onChange={(e) => setTopK(Number(e.target.value))}
+                      onChange={(e) => {
+                        setTopK(Number(e.target.value));
+                        markDirty();
+                      }}
                       className="flex-1 accent-primary"
                     />
                     <span className="w-8 text-center text-sm font-medium text-foreground">
@@ -672,15 +708,61 @@ export function KnowledgeBaseDetail({
                       max={1}
                       step={0.05}
                       value={similarityThreshold}
-                      onChange={(e) =>
-                        setSimilarityThreshold(Number(e.target.value))
-                      }
+                      onChange={(e) => {
+                        setSimilarityThreshold(Number(e.target.value));
+                        markDirty();
+                      }}
                       className="flex-1 accent-primary"
                     />
                     <span className="w-10 text-center text-sm font-medium text-foreground">
                       {similarityThreshold.toFixed(2)}
                     </span>
                   </div>
+                </div>
+                {/* 向量权重 */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    向量权重{" "}
+                    <span className="font-normal text-muted-foreground">
+                      （向量/关键词检索权重）
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={vectorWeight}
+                      onChange={(e) => {
+                        setVectorWeight(Number(e.target.value));
+                        markDirty();
+                      }}
+                      className="flex-1 accent-primary"
+                    />
+                    <span className="w-10 text-center text-sm font-medium text-foreground">
+                      {vectorWeight.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                {/* 保存 / 重置 */}
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    disabled={configSaving || !configDirty}
+                    onClick={handleSaveConfig}
+                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                  >
+                    {configSaving ? "保存中…" : "保存配置"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!configDirty}
+                    onClick={handleResetConfig}
+                    className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
+                  >
+                    重置
+                  </button>
                 </div>
               </div>
 
