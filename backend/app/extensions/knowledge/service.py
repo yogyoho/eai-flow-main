@@ -211,6 +211,16 @@ class KnowledgeBaseService:
         return kb
 
     @staticmethod
+    async def update_retrieval_config(db: AsyncSession, kb: KnowledgeBase, config: RetrievalConfig) -> KnowledgeBaseResponse:
+        """持久化 per-KB 检索配置并返回合并默认值后的 KB 响应。
+
+        写权限（owner | write-grantee | 超管）由路由层校验；此方法仅持久化 + 回读。
+        """
+        kb.retrieval_config = config.model_dump()
+        await db.commit()
+        return KnowledgeBaseService.to_response(kb)
+
+    @staticmethod
     async def delete_kb(db: AsyncSession, kb: KnowledgeBase) -> None:
         config = get_extensions_config()
         if config.storage.type.lower() == "local" or config.storage.retain_local_copy:

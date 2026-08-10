@@ -1,10 +1,11 @@
 """Tests for KnowledgeBase retrieval_config serialization & fallback (KB detail-tabs P1)."""
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
-from app.extensions.schemas import RETRIEVAL_CONFIG_DEFAULTS
+from app.extensions.schemas import RETRIEVAL_CONFIG_DEFAULTS, RetrievalConfig
 from app.extensions.knowledge.service import KnowledgeBaseService
 
 
@@ -77,3 +78,39 @@ def test_resolve_chat_params_all_unset_drops_to_empty():
     assert KnowledgeBaseService.resolve_chat_params(None, None, None, None) == {}
     # KB 有部分、请求全 None：KB 给的留下，KB 没给的丢弃
     assert KnowledgeBaseService.resolve_chat_params(None, None, None, {"top_k": 10}) == {"top_k": 10}
+
+
+# ---------------------------------------------------------------------------
+# Task 5: PUT /{kb_id}/retrieval-config — service-layer persistence
+# (router 层权限/写门 verbatim 镜像现有 PUT /{kb_id}; 这里单测服务方法)
+# ---------------------------------------------------------------------------
+
+
+def test_update_retrieval_config_persists_and_returns_merged():
+    """PUT 持久化 → 存储值即传入值；响应 retrieval_config 是存储值与默认值合并后的完整 dict。"""
+    kb = _kb(retrieval_config=None)
+    session = AsyncMock()  # service awaits session.commit()
+    cfg = RetrievalConfig(top_k=12, similarity_threshold=0.35, vector_similarity_weight=0.6)
+
+    # 签名 (db, kb, config) —— 与现有 update_kb(db, kb, data) 的 db-first 约定一致
+    resp = asyncio.run(KnowledgeBaseService.update_retrieval_config(db=session, kb=kb, config=cfg))
+
+    assert kb.retrieval_config == {"top_k": 12, "similarity_threshold": 0.35, "vector_similarity_weight": 0.6}
+    # to_response 合并默认值（这里全是存储值，等于存储值）
+    assert resp.retrieval_config == {"top_k": 12, "similarity_threshold": 0.35, "vector_similarity_weight": 0.6}
+    session.commit.assert_awaited_once()
+
+
+def test_update_retrieval_config_partial_still_merges_defaults_on_read():
+    """存部分字段 → 响应里未存字段回退默认值（to_response 合并保证）。"""
+    kb = _kb(retrieval_config=None)
+    session = AsyncMock()
+    # RetrievalConfig 三个字段都有默认值，仅覆盖 top_k
+    cfg = RetrievalConfig(top_k=12)
+
+    resp = asyncio.run(KnowledgeBaseService.update_retrieval_config(db=session, kb=kb, config=cfg))
+
+    # 存进去的是 RetrievalConfig 默认（top_k=12, 其余 model 默认）
+    assert kb.retrieval_config == RetrievalConfig(top_k=12).model_dump()
+    # 响应合并默认值后 = 默认值（未存的字段回退默认）
+    assert resp.retrieval_config == RETRIEVAL_CONFIG_DEFAULTS | {"top_k": 12}

@@ -34,6 +34,7 @@ from app.extensions.schemas import (
     RAGChatRequest,
     RAGFederatedSearchRequest,
     RAGFederatedSearchResponse,
+    RetrievalConfig,
     to_doc_status,
 )
 
@@ -191,6 +192,28 @@ async def update_knowledge_base(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     kb = await KnowledgeBaseService.update_kb(db, kb, data)
     return KnowledgeBaseService.to_response(kb)
+
+
+@router.put("/{kb_id}/retrieval-config", response_model=KnowledgeBaseResponse)
+async def update_knowledge_base_retrieval_config(
+    kb_id: UUID,
+    config: RetrievalConfig,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
+):
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM: 写门 = owner | write-grantee | 超管 (verbatim 镜像 update_knowledge_base)
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    return await KnowledgeBaseService.update_retrieval_config(db, kb, config)
 
 
 @router.delete("/{kb_id}", response_model=MessageResponse)
