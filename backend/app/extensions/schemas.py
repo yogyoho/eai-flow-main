@@ -375,7 +375,7 @@ class RetrievalConfig(BaseModel):
     vector_similarity_weight: float = Field(default=0.3, ge=0.0, le=1.0)
 
 
-# 默认值常量；to_response 与 resolve_chat_params 共用，保证「未配置」时的行为一致。
+# 默认值常量；后续 to_response 合并默认值 / router 回退逻辑 复用，保证「未配置」时的行为一致。
 RETRIEVAL_CONFIG_DEFAULTS: dict = RetrievalConfig().model_dump()
 
 
@@ -525,14 +525,14 @@ class DocumentListResponse(BaseModel):
 class RAGChatRequest(BaseModel):
     """RAG chat request schema.
 
-    三个检索参数均可省略：省略时由 router 按 请求 → KB.retrieval_config → DEFAULTS 顺序回退。
-    （改 Optional 前，pydantic 默认值会让省略恒等于 5/0.2/0.3，持久化配置无法生效。）
+    NOTE: 三个检索参数的 Optional 化（default=None）与 router 三级回退逻辑在同一提交落地，
+    避免中间态把 None 透传给 RAGFlow。见 resolve_chat_params。
     """
 
     query: str = Field(..., min_length=1)
-    top_k: int | None = Field(default=None, ge=1, le=20)
-    similarity_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
-    vector_similarity_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=20)
+    similarity_threshold: float = Field(default=0.2, ge=0.0, le=1.0)
+    vector_similarity_weight: float = Field(default=0.3, ge=0.0, le=1.0)
 
 
 class RAGChatResponse(BaseModel):
