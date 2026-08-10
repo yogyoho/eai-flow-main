@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, type ReactNode } from "react";
 
+import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { kbApi } from "@/extensions/api";
 import type { KnowledgeBase } from "@/extensions/types";
 
@@ -42,11 +43,13 @@ export default function KnowledgeBaseDetailPage({
     };
   }, [kbId]);
 
+  // EAI-CUSTOM: 必须包在 SimpleShellLayout(内含 PermissionProvider+AuthProvider)内，
+  // 否则 KnowledgeBaseDetail 调用 usePermission 会抛 "must be used within a PermissionProvider"
+  let content: ReactNode;
   if (isLoading) {
-    return <div className="p-8 text-sm text-muted-foreground">加载中…</div>;
-  }
-  if (error || !kb) {
-    return (
+    content = <div className="p-8 text-sm text-muted-foreground">加载中…</div>;
+  } else if (error || !kb) {
+    content = (
       <div className="p-8 text-sm text-muted-foreground">
         知识库不存在或无权访问。
         <button className="ml-2 underline" onClick={() => router.push("/knowledge")}>
@@ -54,13 +57,11 @@ export default function KnowledgeBaseDetailPage({
         </button>
       </div>
     );
+  } else {
+    content = (
+      <KnowledgeBaseDetail kb={kb} onBack={() => router.push("/knowledge")} onKbUpdated={setKb} />
+    );
   }
 
-  return (
-    <KnowledgeBaseDetail
-      kb={kb}
-      onBack={() => router.push("/knowledge")}
-      onKbUpdated={setKb}
-    />
-  );
+  return <SimpleShellLayout>{content}</SimpleShellLayout>;
 }
