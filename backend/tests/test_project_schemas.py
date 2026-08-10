@@ -117,6 +117,19 @@ class TestProjectCreate:
         p = ProjectCreate(name="T", report_type="other", template_id=tid)
         assert p.template_id == tid
 
+    def test_default_assignment_strategy(self):
+        # EAI-CUSTOM: 分工策略默认按章节(ADR 2026-08-10)
+        p = ProjectCreate(name="T", report_type="other")
+        assert p.assignment_strategy == "by_chapter"
+
+    def test_by_role_strategy_accepted(self):
+        p = ProjectCreate(name="T", report_type="other", assignment_strategy="by_role")
+        assert p.assignment_strategy == "by_role"
+
+    def test_invalid_strategy_rejected(self):
+        with pytest.raises(ValidationError):
+            ProjectCreate(name="T", report_type="other", assignment_strategy="by_domain")
+
 
 class TestProjectUpdate:
     def test_all_none_by_default(self):
@@ -128,6 +141,14 @@ class TestProjectUpdate:
         u = ProjectUpdate(status="completed")
         assert u.status == "completed"
         assert u.name is None
+
+    def test_assignment_strategy(self):
+        u = ProjectUpdate(assignment_strategy="by_role")
+        assert u.assignment_strategy == "by_role"
+
+    def test_assignment_strategy_none_by_default(self):
+        u = ProjectUpdate()
+        assert u.assignment_strategy is None
 
 
 class TestProjectOut:
@@ -143,6 +164,11 @@ class TestProjectOut:
         assert p.chapter_count == 0
         assert p.thread_id is None
         assert p.created_by is None
+
+    def test_default_assignment_strategy(self):
+        uid = uuid4()
+        p = ProjectOut(id=uid, name="Test", report_type="other")
+        assert p.assignment_strategy == "by_chapter"  # EAI-CUSTOM: ADR 2026-08-10
 
 
 class TestProjectListItem:

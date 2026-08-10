@@ -1,6 +1,7 @@
 """Pydantic schemas for report project management."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -107,6 +108,7 @@ class ProjectCreate(BaseModel):
     auto_start_workflow: bool = False
     members: list["MemberWithDuties"] | None = None
     description: str | None = None  # EAI-CUSTOM: 项目说明/要求(选填),注入 agent
+    assignment_strategy: Literal["by_chapter", "by_role"] = "by_chapter"  # EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 
 
 class MemberWithDuties(BaseModel):
@@ -153,6 +155,7 @@ class ProjectUpdate(BaseModel):
     workflow_id: UUID | None = None
     current_phase_node: str | None = None
     description: str | None = None  # EAI-CUSTOM: 项目说明/要求(选填);注:传 null 不清空(service if v is not None)
+    assignment_strategy: Literal["by_chapter", "by_role"] | None = None  # EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 
 
 class ProjectOut(BaseModel):
@@ -174,6 +177,7 @@ class ProjectOut(BaseModel):
     temporal_workflow_id: str | None = None
     current_phase_node: str | None = None
     description: str | None = None  # EAI-CUSTOM: 项目说明/要求,注入 agent project-context
+    assignment_strategy: str = "by_chapter"  # EAI-CUSTOM: 分工策略回显(ADR 2026-08-10)
     archived_at: datetime | None = None  # EAI-CUSTOM: orthogonal archive bucket (ADR P5)
     # EAI-CUSTOM: derived six-stage progress (ADR 2026-08-02 P2) — computed in
     # service.get_project from status + chapter aggregates, never stored.
