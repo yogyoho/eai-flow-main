@@ -49,7 +49,7 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard", navId: "nav:dashboard" },
-  { href: "/writing", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
+  { href: "/workspace/chats/new", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
   { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project", navId: "nav:projects" },
   // EAI-CUSTOM: Collab Workspace 协作工作台（避开 /workspace 对话布局，独立路由）
   { href: "/agentspace", label: "协作工作台", icon: KanbanSquare, licenseModule: "platform", navId: "nav:collab-workspace" },

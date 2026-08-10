@@ -6345,3 +6345,5 @@
 | 18:30 | 核查 knowledge-factory:5 条丢失窗口编辑(8bab81b8 会话)全部已随当天提交(e09ce0f26/5865714af/c7a6cf369/56f302455)入库,无未提交丢失;doc_parser bug-1120 展平误判重放重复→已 checkout 回退;无改动无需提交 | knowledge_factory/* | 无丢失 | ~1k |
 | 18:17 | Session end: 1 writes across 1 files (page.tsx) | 4 reads | ~42132 tok |
 | 18:45 | 恢复 project:丢失窗口仅 2 条(EditorTab bug-1145 根因④ Surface A: proj/前缀 outputs 虚拟文件改走单人 DocumentEditor 直读磁盘,替代打不开的协同 DocCollabView);33a3fc57 大量工作已 reset 前提交;typecheck 过(清容器 .next 修深层缓存损坏) | project/tabs/EditorTab.tsx | done | ~2k |
+| 18:26 | Session end: 1 writes across 1 files (page.tsx) | 4 reads | ~42132 tok |
+| 18:55 | 恢复 shell/Sidebar:智能写作入口 /writing → /workspace/chats/new(33a3fc57 去跳转工作, 8-08 编辑未提交);typecheck 过 | shell/Sidebar.tsx | done | ~1k |
