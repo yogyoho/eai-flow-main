@@ -18,6 +18,7 @@ from app.extensions.schemas import (
     KnowledgeBaseCreate,
     KnowledgeBaseResponse,
     KnowledgeBaseUpdate,
+    RetrievalConfig,
     to_doc_status,
 )
 
@@ -271,6 +272,7 @@ class KnowledgeBaseService:
             embedding_model=kb.embedding_model,
             chunk_method=kb.chunk_method,
             parser_config=kb.parser_config,
+            retrieval_config={**RetrievalConfig().model_dump(), **(kb.retrieval_config or {})},
             language=kb.language,
             status=kb.status,
             created_at=kb.created_at,
