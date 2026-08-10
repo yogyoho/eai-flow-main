@@ -1270,7 +1270,11 @@ export default function TemplateEditor() {
     isDirty: false,
   }));
 
-  // 选中模板后自动选中第一个章节
+  // 选中模板后自动选中第一个章节。
+  // 依赖用 template?.id 而非 template?.sections：任何章节编辑（updateSection 等）
+  // 都会通过 sections.map(...) 产生新的数组引用，若依赖 sections，每次输入都会
+  // 重跑本 effect 并把选中项重置回第一个一级章节 → 编辑子章节时焦点"跳到父章节"。
+  // 只在切换到不同模板（id 变化）时自动选中，编辑中保持用户当前选中。
   useEffect(() => {
     if (template?.sections?.length) {
       const firstSection = findFirstSection(template.sections);
@@ -1281,7 +1285,7 @@ export default function TemplateEditor() {
     } else {
       setSelectedSectionId(null);
     }
-  }, [template?.sections]);
+  }, [template?.id]);
 
   // 查找第一个章节
   const findFirstSection = (sections: EditorSection[]): EditorSection | null => {

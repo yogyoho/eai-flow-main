@@ -6351,3 +6351,5 @@
 | 19:05 | 恢复 layout/theme-provider/admin-select:①layout 加 eai-overrides.css 导入(bug-264/310 黑边框修复,globals.css 会被上游 sync 重置) ②theme-provider 补 React19.3 script 警告注释 ③admin-select truncate 改 wrapper-span(Radix 丢 className,提交 1f63f6e5a 的截断实际无效,丢失编辑才是真修复);typecheck 过 | layout.tsx+theme-provider+admin-select | done | ~2k |
 | 18:40 | Session end: 1 writes across 1 files (page.tsx) | 5 reads | ~43226 tok |
 | 19:20 | 恢复后端残留:真丢失 6 文件(identity user tags 合并/law system owner/user_department flush/review_activities bug-1148 naive datetime/present_file_tool bug-1145 callbacks/dev-entrypoint reload-exclude);误判跳过 engine/permission_routers/checkpoint_lineage/roles_custom.yaml(已提交,marker 已在);6 测试过,ruff 基线同 | 6 后端文件 | done | ~3k |
+| 18:46 | Session end: 1 writes across 1 files (page.tsx) | 5 reads | ~43226 tok |
+| 19:40 | 全量审计:timestamp-vs-commit 过滤出 19 候选,新增恢复 TemplateEditor(useEffect 依赖 sections→id 修子章节焦点跳父);LayoutTemplateEditor/CoverConfigSection 重构为未完成中间态(不编译)回退保留 HEAD;WorkspaceHome/globals.css moot;test_thread_regenerate 3 失败=预存 app fixture 问题 | TemplateEditor.tsx | done | ~3k |
