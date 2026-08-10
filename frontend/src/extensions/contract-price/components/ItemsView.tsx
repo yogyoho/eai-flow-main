@@ -159,7 +159,7 @@ export function ItemsView() {
     run_id: runFilter === "all" ? undefined : runFilter,
     only_outliers: onlyOutliers,
     validation_status: onlyReview ? "needs_review" : undefined,
-    skip: page * PAGE_SIZE,
+    skip: onlyReview ? 0 : page * PAGE_SIZE,
     limit: onlyReview ? 500 : PAGE_SIZE,
   });
   const { data: runsData } = useRuns({ limit: 100 });
@@ -170,10 +170,9 @@ export function ItemsView() {
   const deleteItemsByRun = useDeleteItemsByRun();
   const batchValidateItems = useBatchValidateItems();
 
-  const raw = data?.items ?? [];
+  const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const items = raw;
   const runs: CpaRun[] = runsData?.items ?? [];
 
   const runMap = useMemo(() => new Map(runs.map((r) => [r.id, r] as const)), [runs]);
@@ -274,17 +273,17 @@ export function ItemsView() {
             </form>
             <FilterCheckbox
               checked={onlyOutliers}
-              onChange={() => { setOnlyOutliers(!onlyOutliers); setPage(0); }}
+              onChange={() => { setOnlyOutliers(!onlyOutliers); setPage(0); setSelected(new Set()); }}
               label="仅看异常价格"
             />
             <FilterCheckbox
               checked={onlyReview}
-              onChange={() => setOnlyReview(!onlyReview)}
+              onChange={() => { setOnlyReview(!onlyReview); setPage(0); setSelected(new Set()); }}
               label="仅看待核验"
             />
             <Select
               value={contractFilter}
-              onValueChange={(v) => { setContractFilter(v); setPage(0); }}
+              onValueChange={(v) => { setContractFilter(v); setPage(0); setSelected(new Set()); }}
             >
               <SelectTrigger className="w-[200px] h-9">
                 <SelectValue placeholder="来源合同" />
@@ -391,8 +390,8 @@ export function ItemsView() {
                     <>
                       <Button
                         size="sm"
-                        onClick={() => {
-                          batchValidateItems.mutate([...selected]);
+                        onClick={async () => {
+                          await batchValidateItems.mutateAsync([...selected]);
                           setSelected(new Set());
                         }}
                         disabled={batchValidateItems.isPending}

@@ -229,6 +229,7 @@ async def list_items(
     cluster_id: Optional[UUID] = None,
     run_id: Optional[UUID] = None,
     only_outliers: bool = False,
+    validation_status: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[CpaItem], int]:
@@ -243,6 +244,8 @@ async def list_items(
         stmt = stmt.where(CpaItem.run_id == run_id)
     if only_outliers:
         stmt = stmt.where(CpaItem.is_outlier.is_(True))
+    if validation_status:
+        stmt = stmt.where(CpaItem.validation_status == validation_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaItem.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
