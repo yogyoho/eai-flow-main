@@ -422,12 +422,13 @@ async def delete_items_by_run(
 @router.get("/runs", response_model=Page[RunOut])
 async def list_runs(
     run_status: str | None = None,
+    has_items: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
-    items, total = await crud.list_runs(db, run_status, skip, limit)
+    items, total = await crud.list_runs(db, run_status, has_items, skip, limit)
     return Page[RunOut](items=items, total=total, skip=skip, limit=limit)
 
 

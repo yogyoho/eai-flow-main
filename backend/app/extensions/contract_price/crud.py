@@ -11,7 +11,7 @@ from datetime import UTC
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import delete, exists, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.contract_price.models import (
@@ -456,12 +456,17 @@ async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
 async def list_runs(
     session: AsyncSession,
     status: str | None = None,
+    has_items: bool = False,
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[list[CpaRunHistory], int]:
     stmt = select(CpaRunHistory)
     if status:
         stmt = stmt.where(CpaRunHistory.status == status)
+    # EAI-CUSTOM: has_items — 只列当前真有明细(cpa_items)的任务,排除聚类/空任务,
+    # 供分项校验页「来源任务」下拉使用;任务总览页(TasksView)不传此参,不受影响。
+    if has_items:
+        stmt = stmt.where(exists().where(CpaItem.run_id == CpaRunHistory.id))
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaRunHistory.started_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)

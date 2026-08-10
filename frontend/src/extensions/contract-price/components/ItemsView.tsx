@@ -162,7 +162,7 @@ export function ItemsView() {
     skip: onlyReview ? 0 : page * PAGE_SIZE,
     limit: onlyReview ? 500 : PAGE_SIZE,
   });
-  const { data: runsData } = useRuns({ limit: 100 });
+  const { data: runsData } = useRuns({ limit: 100, has_items: true });
   const { data: contractsData } = useItemContracts();
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
