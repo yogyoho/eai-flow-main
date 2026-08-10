@@ -159,6 +159,7 @@ class KnowledgeBase(Base):
     embedding_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     chunk_method: Mapped[str] = mapped_column(String(50), default="naive")
     parser_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    retrieval_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     language: Mapped[str] = mapped_column(String(20), default="Chinese")
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
@@ -656,6 +657,7 @@ class ReportProject(Base):
     temporal_workflow_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_phase_node: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)  # EAI-CUSTOM: 项目自由文本说明/要求,写入 project-context.json 注入 agent
+    assignment_strategy: Mapped[str] = mapped_column(String(20), nullable=False, default="by_chapter")  # EAI-CUSTOM: 分工策略 by_chapter|by_role (ADR 2026-08-10)
 
     chapters: Mapped[list["ProjectChapter"]] = relationship(
         "ProjectChapter",
