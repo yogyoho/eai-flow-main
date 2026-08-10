@@ -41,6 +41,7 @@ import {
   useBatchDeleteItems,
   useBatchValidateItems,
   useDeleteItem,
+  useDeleteItemsByRun,
   useItemContracts,
   useItems,
   useRuns,
@@ -146,6 +147,8 @@ export function ItemsView() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // item id to confirm
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [runDeleteOpen, setRunDeleteOpen] = useState(false);
+  const [runDeleteTarget, setRunDeleteTarget] = useState<string>("all"); // chosen run_id, "all" = none yet
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [contractFilter, setContractFilter] = useState<string>("all");
   const [runFilter, setRunFilter] = useState<string>("all"); // "all" | run_id
@@ -164,6 +167,7 @@ export function ItemsView() {
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
   const batchDeleteItems = useBatchDeleteItems();
+  const deleteItemsByRun = useDeleteItemsByRun();
   const batchValidateItems = useBatchValidateItems();
 
   const raw = data?.items ?? [];
@@ -211,6 +215,21 @@ export function ItemsView() {
   const handleBatchDelete = async () => {
     await batchDeleteItems.mutateAsync([...selected]);
     setConfirmBatchDelete(false);
+    setSelected(new Set());
+  };
+
+  const openRunDelete = () => {
+    setRunDeleteTarget(runFilter !== "all" ? runFilter : "all");
+    setRunDeleteOpen(true);
+  };
+
+  const handleRunDelete = async () => {
+    if (runDeleteTarget === "all") return;
+    await deleteItemsByRun.mutateAsync(runDeleteTarget);
+    setRunDeleteOpen(false);
+    setRunDeleteTarget("all");
+    setRunFilter("all");
+    setPage(0);
     setSelected(new Set());
   };
 
@@ -300,6 +319,61 @@ export function ItemsView() {
               </SelectContent>
             </Select>
             <div className="ml-auto flex items-center gap-2">
+              {runDeleteOpen ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">整批作废:</span>
+                  {runFilter !== "all" ? (
+                    <span className="text-xs text-muted-foreground">
+                      删除任务「{formatRunLabel(runMap.get(runFilter) ?? null, runFilter)}」全部货物?
+                    </span>
+                  ) : (
+                    <Select value={runDeleteTarget} onValueChange={(v) => setRunDeleteTarget(v)}>
+                      <SelectTrigger className="h-7 w-[200px] text-xs">
+                        <SelectValue placeholder="选择任务" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {runs.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {formatRunLabel(r, r.id)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="text-xs h-7"
+                    onClick={handleRunDelete}
+                    disabled={runDeleteTarget === "all" || deleteItemsByRun.isPending}
+                  >
+                    确认删除
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-7"
+                    onClick={() => {
+                      setRunDeleteOpen(false);
+                      setRunDeleteTarget("all");
+                    }}
+                  >
+                    取消
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs h-7 text-destructive hover:text-destructive"
+                  onClick={openRunDelete}
+                  disabled={runs.length === 0}
+                  title={runs.length === 0 ? "暂无任务" : "按抽取任务整批删除货物"}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  整批作废
+                </Button>
+              )}
               {selected.size > 0 && (
                 <>
                   <span className="text-xs text-muted-foreground">已选 {selected.size} 条</span>
