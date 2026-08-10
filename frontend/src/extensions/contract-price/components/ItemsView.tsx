@@ -41,7 +41,6 @@ import {
   useBatchDeleteItems,
   useBatchValidateItems,
   useDeleteItem,
-  useDeleteItemsByRun,
   useItemContracts,
   useItems,
   useRuns,
@@ -113,34 +112,6 @@ function DetailField({ label, value, span }: { label: string; value: string; spa
   );
 }
 
-/** Group items by run_id; null-run items go into a "历史数据" bucket. */
-function groupByRun(items: CpaItem[], runs: CpaRun[]) {
-  const runMap = new Map(runs.map((r) => [r.id, r]));
-  const groups: { runId: string | null; run: CpaRun | null; items: CpaItem[] }[] = [];
-  const seen = new Map<string | null, CpaItem[]>();
-
-  for (const it of items) {
-    const key = it.run_id ?? null;
-    if (!seen.has(key)) seen.set(key, []);
-    seen.get(key)!.push(it);
-  }
-
-  // sort: groups with run_id first (newest run first), then null-run
-  const keys = [...seen.keys()].sort((a, b) => {
-    if (!a && !b) return 0;
-    if (!a) return 1;
-    if (!b) return -1;
-    const ra = runMap.get(a);
-    const rb = runMap.get(b);
-    return (rb?.started_at ?? "").localeCompare(ra?.started_at ?? "");
-  });
-
-  for (const k of keys) {
-    groups.push({ runId: k, run: k ? runMap.get(k) ?? null : null, items: seen.get(k)! });
-  }
-  return groups;
-}
-
 export function ItemsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
@@ -153,10 +124,8 @@ export function ItemsView() {
   const [trace, setTrace] = useState<CpaItem | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // item id to confirm
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
-  const [confirmGroupDelete, setConfirmGroupDelete] = useState<string | null>(null); // run id
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [contractFilter, setContractFilter] = useState<string>("all");
   const [runFilter, setRunFilter] = useState<string>("all"); // "all" | run_id
@@ -176,7 +145,6 @@ export function ItemsView() {
   const deleteItem = useDeleteItem();
   const batchDeleteItems = useBatchDeleteItems();
   const batchValidateItems = useBatchValidateItems();
-  const deleteItemsByRun = useDeleteItemsByRun();
 
   const raw = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -186,9 +154,6 @@ export function ItemsView() {
 
   const runMap = useMemo(() => new Map(runs.map((r) => [r.id, r] as const)), [runs]);
 
-  // Group items by run
-  const groups = useMemo(() => groupByRun(items, runs), [items, runs]);
-
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -197,22 +162,14 @@ export function ItemsView() {
     });
   };
 
-  const toggleSelectAll = (groupItems: CpaItem[]) => {
-    const ids = groupItems.map((i) => i.id);
-    const allSelected = ids.every((id) => selected.has(id));
+  const toggleSelectAll = (pageItems: CpaItem[]) => {
+    const ids = pageItems.map((i) => i.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
     setSelected((prev) => {
       const next = new Set(prev);
       for (const id of ids) {
         if (allSelected) next.delete(id); else next.add(id);
       }
-      return next;
-    });
-  };
-
-  const toggleCollapse = (key: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
@@ -235,19 +192,6 @@ export function ItemsView() {
     await batchDeleteItems.mutateAsync([...selected]);
     setConfirmBatchDelete(false);
     setSelected(new Set());
-  };
-
-  const handleGroupDelete = async (runId: string) => {
-    await deleteItemsByRun.mutateAsync(runId);
-    setConfirmGroupDelete(null);
-  };
-
-  const formatRunLabel = (run: CpaRun | null, runId: string | null) => {
-    if (!run) return runId ? `任务 ${runId.slice(0, 8)}…` : "未关联分析任务";
-    const d = new Date(run.started_at);
-    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const phase = run.scope ? (run.scope as Record<string, unknown>).phase : null;
-    return `${phase === "parse" ? "合同数据抽取任务" : "分组分析任务"}_${ds}`;
   };
 
   return (
@@ -315,22 +259,42 @@ export function ItemsView() {
                 ))}
               </SelectContent>
             </Select>
-            {selected.size > 0 && (
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">已选 {selected.size} 条</span>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    batchValidateItems.mutate([...selected]);
-                    setSelected(new Set());
-                  }}
-                  disabled={batchValidateItems.isPending}
-                >
-                  <Check className="h-4 w-4" />
-                  批量确认校验
-                </Button>
-              </div>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {selected.size > 0 && (
+                <>
+                  <span className="text-xs text-muted-foreground">已选 {selected.size} 条</span>
+                  {confirmBatchDelete ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">确认删除已选?</span>
+                      <Button size="sm" variant="destructive" className="text-xs h-7" onClick={handleBatchDelete} disabled={batchDeleteItems.isPending}>
+                        确认
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setConfirmBatchDelete(false)}>
+                        取消
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          batchValidateItems.mutate([...selected]);
+                          setSelected(new Set());
+                        }}
+                        disabled={batchValidateItems.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                        批量确认校验
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs h-7 text-destructive hover:text-destructive" onClick={() => setConfirmBatchDelete(true)}>
+                        <Trash2 className="h-3 w-3" />
+                        批量删除
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {isLoading ? (
@@ -339,82 +303,35 @@ export function ItemsView() {
             <div className="text-sm text-muted-foreground py-8 text-center">暂无明细。</div>
           ) : (
             <>
-              {/* Grouped table — scrollable container */}
+              {/* Flat table — scrollable container */}
               <div className="max-h-[calc(100vh-340px)] overflow-y-auto border border-border rounded-lg">
-              {groups.map((group) => {
-                const groupKey = group.runId ?? "__null__";
-                const isCollapsed = collapsed.has(groupKey);
-                const allSelected = group.items.length > 0 && group.items.every((it) => selected.has(it.id));
-
-                return (
-                  <div key={groupKey} className="border border-border rounded-lg overflow-hidden">
-                    {/* Group header */}
-                    <div className="flex items-center justify-between px-4 py-2 bg-muted/50">
-                      <button
-                        className="flex items-center gap-2 text-sm font-medium hover:text-foreground transition-colors"
-                        onClick={() => toggleCollapse(groupKey)}
-                      >
-                        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        {formatRunLabel(group.run, group.runId)}
-                        <span className="text-xs text-muted-foreground">({group.items.length}条)</span>
-                      </button>
-                      <div className="flex items-center gap-2">
-                        {group.items.some((it) => selected.has(it.id)) && (
-                          <span className="text-xs text-muted-foreground">
-                            已选 {group.items.filter((it) => selected.has(it.id)).length} 条
-                          </span>
-                        )}
-                        {confirmBatchDelete ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-muted-foreground">确认删除已选?</span>
-                            <Button size="sm" variant="destructive" className="text-xs h-7" onClick={handleBatchDelete} disabled={batchDeleteItems.isPending}>
-                              确认
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setConfirmBatchDelete(false)}>
-                              取消
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs text-destructive hover:text-destructive"
-                            disabled={!group.items.some((it) => selected.has(it.id))}
-                            onClick={() => setConfirmBatchDelete(true)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            批量删除
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Group body */}
-                    {!isCollapsed && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-10">
-                              <input
-                                type="checkbox"
-                                checked={allSelected}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = !allSelected && group.items.some((it) => selected.has(it.id));
-                                }}
-                                onChange={() => toggleSelectAll(group.items)}
-                                className="accent-primary cursor-pointer"
-                              />
-                            </TableHead>
-                            <TableHead>货物名称</TableHead>
-                            <TableHead className="whitespace-nowrap">规格</TableHead>
-                            <TableHead>来源合同</TableHead>
-                            <TableHead className="whitespace-nowrap">状态</TableHead>
-                            <TableHead className="text-right">含税单价</TableHead>
-                            <TableHead className="text-right w-[180px]">操作</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.items.map((item) => (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          checked={items.length > 0 && items.every((it) => selected.has(it.id))}
+                          ref={(el) => {
+                            if (el)
+                              el.indeterminate =
+                                !items.every((it) => selected.has(it.id)) &&
+                                items.some((it) => selected.has(it.id));
+                          }}
+                          onChange={() => toggleSelectAll(items)}
+                          className="accent-primary cursor-pointer"
+                        />
+                      </TableHead>
+                      <TableHead>货物名称</TableHead>
+                      <TableHead className="whitespace-nowrap">规格</TableHead>
+                      <TableHead>来源合同</TableHead>
+                      <TableHead className="whitespace-nowrap">状态</TableHead>
+                      <TableHead className="text-right">含税单价</TableHead>
+                      <TableHead className="text-right w-[180px]">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((item) => (
                             <Fragment key={item.id}>
                             <TableRow
                               className={cn(
@@ -618,13 +535,9 @@ export function ItemsView() {
                               </TableRow>
                             )}
                             </Fragment>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </div>
-                );
-              })}
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
               {/* Pagination */}
