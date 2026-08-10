@@ -6359,3 +6359,5 @@
 | 19:52 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | inline fix | ~54 |
 | 19:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | inline fix | ~18 |
 | 20:25 | 重做 contract-price 完整恢复:发现 7-27~8-02 会话(07f7a59a/4cfd999c/5736ec1f)的 ContractsView 97 条编辑全丢(文件最后提交 6-30);从 7-28 Write 基线+85 编辑重建 ContractsView;TasksView/DashboardView/GoodsAnalysis/SettingsView/types/api/hooks 恢复;后端 crud(含 mark_stale_parsing_failed/skill custom→public bug-526)/models/schemas/service/storage 恢复;skill 脚本 cli/vectorizer 等恢复(测试 pre-broken 引 run_pipeline 已回退);typecheck+13 测试过,浏览器四 tab 全验证 | contract-price 全栈 | done | ~5k |
+| 20:25 | Session end: 5 writes across 5 files (page.tsx, api.ts, hooks.ts, ContractsView.tsx, GoodsAnalysis.tsx) | 7 reads | ~47635 tok |
+| 20:40 | 补 ClustersView 分组审核 tab:应用 4 条 7-28 丢失编辑(标题 聚类审核→分组审核/描述/卡片max-h/间距)+ 00:41:18 全选本页 checkbox(共N个分组·第x-y条);typecheck 过,浏览器验证全选本页+分页+批量确认 | ClustersView.tsx | done | ~2k |

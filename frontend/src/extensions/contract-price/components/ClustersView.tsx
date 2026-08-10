@@ -204,10 +204,10 @@ export function ClustersView() {
   };
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6 px-8 pb-8">
       <PageHeader
-        title="聚类审核"
-        description="审核自动聚类分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。"
+        title="分组审核"
+        description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。"
         icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <>
@@ -248,8 +248,29 @@ export function ClustersView() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* Left: cluster list with multi-select */}
-        <Card className="h-fit">
-          <CardContent className="p-0">
+        <Card className="max-h-[calc(100vh-220px)] overflow-hidden">
+          <div className="border-b border-border px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">货物分组</h3>
+              {clusters.length > 0 ? (
+                <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs text-muted-foreground">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={toggleSelectAll}
+                    className="accent-primary"
+                  />
+                  全选本页
+                </label>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              共 {total} 个分组
+              {total > 0 ? ` · 第 ${skip + 1}-${Math.min(skip + clusters.length, total)} 条` : ""}
+            </p>
+          </div>
+          <CardContent className="overflow-y-auto max-h-[calc(100vh-280px)] p-0">
             {clustersQuery.isLoading ? (
               <p className="p-6 text-center text-sm text-muted-foreground">加载中…</p>
             ) : clusters.length === 0 ? (
@@ -267,7 +288,7 @@ export function ClustersView() {
                     <button
                       onClick={() => setSelectedId(c.id)}
                       className={cn(
-                        "flex flex-1 items-center justify-between gap-2 px-2 py-3 text-left transition-colors hover:bg-accent",
+                        "flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-3 text-left transition-colors hover:bg-accent",
                         selectedId === c.id && "bg-accent",
                       )}
                     >
