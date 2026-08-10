@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ import {
 import type { CpaItem, CpaRun } from "@/extensions/contract-price/types";
 import {
   useBatchDeleteItems,
+  useBatchValidateItems,
   useDeleteItem,
   useDeleteItemsByRun,
   useItemContracts,
@@ -157,26 +159,32 @@ export function ItemsView() {
   const [confirmGroupDelete, setConfirmGroupDelete] = useState<string | null>(null); // run id
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [contractFilter, setContractFilter] = useState<string>("all");
+  const [runFilter, setRunFilter] = useState<string>("all"); // "all" | run_id
 
   const { data, isLoading, isFetching, refetch } = useItems({
     goods_name: applied || undefined,
     source_contract_no: contractFilter === "all" ? undefined : contractFilter,
+    run_id: runFilter === "all" ? undefined : runFilter,
     only_outliers: onlyOutliers,
+    validation_status: onlyReview ? "needs_review" : undefined,
     skip: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
+    limit: onlyReview ? 500 : PAGE_SIZE,
   });
   const { data: runsData } = useRuns({ limit: 100 });
   const { data: contractsData } = useItemContracts();
   const updateItem = useUpdateItem();
   const deleteItem = useDeleteItem();
   const batchDeleteItems = useBatchDeleteItems();
+  const batchValidateItems = useBatchValidateItems();
   const deleteItemsByRun = useDeleteItemsByRun();
 
   const raw = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const items = onlyReview ? raw.filter((i) => i.validation_status === "needs_review") : raw;
+  const items = raw;
   const runs: CpaRun[] = runsData?.items ?? [];
+
+  const runMap = useMemo(() => new Map(runs.map((r) => [r.id, r] as const)), [runs]);
 
   // Group items by run
   const groups = useMemo(() => groupByRun(items, runs), [items, runs]);
@@ -239,14 +247,14 @@ export function ItemsView() {
     const d = new Date(run.started_at);
     const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     const phase = run.scope ? (run.scope as Record<string, unknown>).phase : null;
-    return `${phase === "parse" ? "合同数据抽取任务" : "聚类分析任务"}_${ds}`;
+    return `${phase === "parse" ? "合同数据抽取任务" : "分组分析任务"}_${ds}`;
   };
 
   return (
     <div className="space-y-6 p-8">
       <PageHeader
-        title="分项明细"
-        description="每条货物的单价与参数。待核验项(OCR 数字粘连/量级异常)需用溯源对照原文后修正。"
+        title="合同中提取出的货物价格校验"
+        description="每条货物的含税单价与参数。待核验项(OCR 数字粘连/量级异常)需用溯源对照原文后修正。"
         icon={<PackageSearch className="w-4 h-4" />}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
@@ -307,6 +315,22 @@ export function ItemsView() {
                 ))}
               </SelectContent>
             </Select>
+            {selected.size > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">已选 {selected.size} 条</span>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    batchValidateItems.mutate([...selected]);
+                    setSelected(new Set());
+                  }}
+                  disabled={batchValidateItems.isPending}
+                >
+                  <Check className="h-4 w-4" />
+                  批量确认校验
+                </Button>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -385,7 +409,7 @@ export function ItemsView() {
                             <TableHead className="whitespace-nowrap">规格</TableHead>
                             <TableHead>来源合同</TableHead>
                             <TableHead className="whitespace-nowrap">状态</TableHead>
-                            <TableHead className="text-right">单价</TableHead>
+                            <TableHead className="text-right">含税单价</TableHead>
                             <TableHead className="text-right w-[180px]">操作</TableHead>
                           </TableRow>
                         </TableHeader>
