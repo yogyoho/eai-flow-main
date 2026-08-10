@@ -650,3 +650,5 @@
 - **会话 JSONL 日志可重放恢复被 reset 抹掉的未提交编辑**：`~/.claude/projects/<proj>/*.jsonl` 里 assistant 的 `tool_use`（Edit/Write）含**完整 old_string/new_string**。当 `git reset --hard` 冲掉未提交工作后，可：① 用 `git log` 定位丢失窗口（最后一次相关提交 → reset 时刻）；② 扫该窗口内所有会话对目标文件的 Edit 轨迹；③ 按时间顺序 `content.replace(old,new,1)` 重放。前提：丢失窗口起点 = 最后提交 = 当前 HEAD（reset 恢复 HEAD），基线一致才 0 失败。
 - **判断"某文件本次是否真丢"**：`git log -1 -- <file>` 看最后提交时间；会话在提交时刻之后做的未提交 Edit 才可能被 reset 抹掉。reset 后若该文件又有新提交（如 assignment_strategy 工作），重放旧 edit 会因基线漂移失败——此时只恢复用户点名页面直接依赖的文件，不全局铺开。
 - **Windows git-bash `diff -u` 对 CRLF/LF 混排会显示全量差异伪影**：验证重放结果改用 python `difflib.SequenceMatcher` 或直接 grep 关键标记，别被 diff 全删全增吓到。
+- **会话路径匹配注意反斜杠**：扫 session JSONL 里 Edit 的 file_path 时，Windows 路径是反斜杠（`D:\eai\...`），`'/admin/users' in fp.lower()` 正斜杠匹配会**漏检**。先 `fp.replace("\\\\","/").lower()` 归一化再匹配（landing/docmgr 用 `'docmgr' in fp` 不受影响，但 `/admin/xxx` 这种必须归一化）。
+- **后端重放校验基线**：若 Edit 引用的代码（如 `existing.` 前缀 vs `user.`）在 HEAD 里已重构，则该条 Edit 属"已提交/已过时"，跳过不视为失败；对比 HEAD 版本 ruff 错误数可判断 lint 是否本次引入。

@@ -147,6 +147,7 @@ class UserService:
             phone=data.phone,
             emp_no=data.emp_no,
             hire_date=data.hire_date,
+            tags=data.tags,
         )
         db.add(user)
         await db.flush()
@@ -193,6 +194,8 @@ class UserService:
             user.emp_no = data.emp_no
         if data.hire_date is not None:
             user.hire_date = data.hire_date
+        if data.tags is not None:
+            user.tags = data.tags
         if data.is_deleted is not None:
             user.is_deleted = data.is_deleted
 
@@ -375,6 +378,7 @@ class UserService:
             phone=user.phone,
             emp_no=user.emp_no,
             hire_date=user.hire_date,
+            tags=user.tags or [],
             dept_id=user.dept_id,
             dept_name=dept_name,
             dept_ids=dept_ids,

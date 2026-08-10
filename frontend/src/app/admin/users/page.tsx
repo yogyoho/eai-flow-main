@@ -22,9 +22,11 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -48,6 +50,64 @@ function flattenDepts(depts: Department[]): Department[] {
     if (dept.children?.length) acc.push(...flattenDepts(dept.children));
     return acc;
   }, []);
+}
+
+/** Collect every department id in the tree (used to expand the tree on open). */
+function collectAllDeptIds(depts: Department[]): string[] {
+  return depts.flatMap((d) => [d.id, ...collectAllDeptIds(d.children ?? [])]);
+}
+
+interface DeptSelectTreeNodeProps {
+  dept: Department;
+  level: number;
+  selectedIds: string[];
+  expandedIds: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onToggleSelect: (dept: Department, checked: boolean) => void;
+}
+
+/** Recursive multi-select department tree node (used in the user form modal). */
+function DeptSelectTreeNode({ dept, level, selectedIds, expandedIds, onToggleExpand, onToggleSelect }: DeptSelectTreeNodeProps) {
+  const hasChildren = dept.children && dept.children.length > 0;
+  const isExpanded = expandedIds.has(dept.id);
+  const isChecked = selectedIds.includes(dept.id);
+
+  return (
+    <div className="select-none">
+      <div
+        className="flex items-center gap-1 py-2 px-3 rounded-lg cursor-pointer text-sm text-foreground hover:bg-accent transition-colors"
+        style={{ paddingLeft: `${level * 1.5 + 0.75}rem` }}
+        onClick={() => onToggleSelect(dept, !isChecked)}
+      >
+        <div
+          className={cn("w-5 h-5 flex items-center justify-center mr-1", hasChildren ? "cursor-pointer text-muted-foreground hover:text-foreground" : "opacity-0")}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (hasChildren) onToggleExpand(dept.id);
+          }}
+        >
+          {hasChildren ? (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : null}
+        </div>
+        <div className="mr-2 flex items-center" onClick={(e) => e.stopPropagation()}>
+          <StyledCheckbox checked={isChecked} onChange={(checked) => onToggleSelect(dept, checked)} />
+        </div>
+        <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+        <span className="truncate flex-1">{dept.name}</span>
+      </div>
+      {hasChildren && isExpanded &&
+        (dept.children ?? []).map((child) => (
+          <DeptSelectTreeNode
+            key={child.id}
+            dept={child}
+            level={level + 1}
+            selectedIds={selectedIds}
+            expandedIds={expandedIds}
+            onToggleExpand={onToggleExpand}
+            onToggleSelect={onToggleSelect}
+          />
+        ))}
+    </div>
+  );
 }
 
 export default function AdminUsersPage() {
@@ -78,6 +138,8 @@ export default function AdminUsersPage() {
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [hireDatePopoverOpen, setHireDatePopoverOpen] = useState(false);
+  const [deptPopoverOpen, setDeptPopoverOpen] = useState(false);
+  const [deptExpandedIds, setDeptExpandedIds] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({
     username: "",
@@ -90,6 +152,7 @@ export default function AdminUsersPage() {
     dept_ids: [] as string[],
     role_id: "",
     status: "active" as "active" | "inactive",
+    tags: [] as string[],
   });
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -178,6 +241,7 @@ export default function AdminUsersPage() {
         dept_ids: user.dept_ids ?? (user.dept_id ? [user.dept_id] : []),
         role_id: user.role_id ?? "",
         status: user.status as "active" | "inactive",
+        tags: user.tags ?? [],
       });
     } else {
       setEditingUser(null);
@@ -192,6 +256,7 @@ export default function AdminUsersPage() {
         dept_ids: [],
         role_id: roles[0]?.id ?? "",
         status: "active",
+        tags: [],
       });
     }
     setIsModalOpen(true);
@@ -213,6 +278,7 @@ export default function AdminUsersPage() {
           emp_no: formData.emp_no || undefined,
           hire_date: formData.hire_date || undefined,
           dept_ids: formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
+          tags: formData.tags,
         };
         if (formData.password) {
           await userApi.resetPassword(editingUser.id, formData.password);
@@ -230,6 +296,7 @@ export default function AdminUsersPage() {
           emp_no: formData.emp_no || undefined,
           hire_date: formData.hire_date || undefined,
           dept_ids: formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
+          tags: formData.tags.length > 0 ? formData.tags : undefined,
         };
         await userApi.create(createData);
       }
@@ -581,7 +648,7 @@ export default function AdminUsersPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+              className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground">
@@ -595,7 +662,7 @@ export default function AdminUsersPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-5">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
@@ -665,19 +732,6 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">手机号码</label>
-                    <div className="relative">
-                      <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        placeholder="138xxxx"
-                      />
-                    </div>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-foreground mb-1">工号</label>
                     <div className="relative">
                       <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -687,6 +741,19 @@ export default function AdminUsersPage() {
                         onChange={(e) => setFormData({ ...formData, emp_no: e.target.value })}
                         className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                         placeholder="EMP001"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">手机号码</label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        placeholder="138xxxx"
                       />
                     </div>
                   </div>
@@ -725,6 +792,16 @@ export default function AdminUsersPage() {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
+                    <AdminSelect
+                      value={formData.role_id}
+                      onChange={(val) => setFormData({ ...formData, role_id: val })}
+                      options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-foreground mb-1">所属部门（可多选）</label>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {formData.dept_ids.map((deptId) => (
@@ -746,29 +823,101 @@ export default function AdminUsersPage() {
                         </span>
                       ))}
                     </div>
-                    <AdminSelect
-                      value=""
-                      onChange={(val) => {
-                        if (val && !formData.dept_ids.includes(val)) {
-                          setFormData({ ...formData, dept_ids: [...formData.dept_ids, val] });
+                    <Popover
+                      open={deptPopoverOpen}
+                      onOpenChange={(open) => {
+                        setDeptPopoverOpen(open);
+                        // Expand the whole tree the first time the picker opens
+                        if (open && deptExpandedIds.size === 0) {
+                          setDeptExpandedIds(new Set(collectAllDeptIds(departments)));
                         }
                       }}
-                      options={flatDepts
-                        .filter((d) => !formData.dept_ids.includes(d.id))
-                        .map((d) => ({ value: d.id, label: d.name }))}
-                      placeholder="添加部门..."
-                      className="w-full"
-                    />
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        >
+                          <span className={cn(formData.dept_ids.length > 0 ? "text-foreground" : "text-muted-foreground")}>
+                            {formData.dept_ids.length > 0 ? `已选 ${formData.dept_ids.length} 个部门` : "选择部门..."}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-2 bg-background border border-border shadow-lg rounded-lg" align="start">
+                        <div className="max-h-64 overflow-y-auto">
+                          {departments.length === 0 && (
+                            <p className="py-4 text-center text-sm text-muted-foreground">暂无部门</p>
+                          )}
+                          {departments.map((d) => (
+                            <DeptSelectTreeNode
+                              key={d.id}
+                              dept={d}
+                              level={0}
+                              selectedIds={formData.dept_ids}
+                              expandedIds={deptExpandedIds}
+                              onToggleExpand={(id) =>
+                                setDeptExpandedIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(id)) next.delete(id);
+                                  else next.add(id);
+                                  return next;
+                                })
+                              }
+                              onToggleSelect={(dept, checked) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  dept_ids: checked
+                                    ? [...new Set([...prev.dept_ids, dept.id])]
+                                    : prev.dept_ids.filter((id) => id !== dept.id),
+                                }))
+                              }
+                            />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
-                    <AdminSelect
-                      value={formData.role_id}
-                      onChange={(val) => setFormData({ ...formData, role_id: val })}
-                      options={roles.map((r) => ({ value: r.id, label: r.name }))}
-                      className="w-full"
-                    />
+                  <div className="col-span-2">
+                    {/* EAI-CUSTOM (标签池 A): 用户显式标签（回车添加、× 删除） */}
+                    <label className="block text-sm font-medium text-foreground mb-1">标签</label>
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary">
+                      {formData.tags.map((tag, i) => (
+                        <span
+                          key={`${tag}-${i}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-sm text-primary"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, tags: formData.tags.filter((_, idx) => idx !== i) })}
+                            className="text-primary/70 hover:text-primary"
+                            aria-label={`删除标签 ${tag}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = e.currentTarget.value.trim();
+                            if (v && !formData.tags.includes(v)) {
+                              setFormData({ ...formData, tags: [...formData.tags, v] });
+                            }
+                            e.currentTarget.value = "";
+                          } else if (e.key === "Backspace" && !e.currentTarget.value && formData.tags.length > 0) {
+                            setFormData({ ...formData, tags: formData.tags.slice(0, -1) });
+                          }
+                        }}
+                        className="min-w-[120px] flex-1 border-none bg-transparent px-0.5 py-0.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                        placeholder={formData.tags.length === 0 ? "输入标签后回车" : ""}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">输入后回车添加标签，点击 × 删除；用于策略条件 tags 属性（后端会并入 role:/dept: 自动标签）</p>
                   </div>
 
                   <div>
