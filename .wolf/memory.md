@@ -6335,3 +6335,5 @@
 |------|--------|---------|---------|--------|
 | 17:10 | 恢复 docmgr reset 丢失工作:重放 4 会话(2a6b63c6/59fb544a/33a3fc57/d47509a5) 51 条 Edit 到 DocumentManagement/ProjectDocListPanel/ProjectFolderTree/folder_service;typecheck+ruff 过,浏览器验证项目树/点开文档 OK | 4 docmgr 文件 | done | ~3k |
 | 17:45 | 恢复 admin/users 用户管理页:重放 17 条前端编辑(部门树 DeptSelectTreeNode/工号/tags 字段)+3 条后端 service.py tags 持久化;routers _is_admin_role 已提交跳过;typecheck+ruff(基线同 HEAD)过,浏览器验证弹窗字段全 | admin/users/page.tsx + user/service.py | done | ~3k |
+| 17:48 | Edited frontend/src/app/admin/roles/page.tsx | 7→4 lines | ~66 |
+| 17:55 | 恢复 admin/roles 角色管理页:重放 23 条丢失编辑(授权树模块/子页/操作层级+可见/不可见+子页可见性纯模块),3 条 deny 区域字体编辑被 reset 后 deny Combobox 升级替代跳过;去重 Popover 导入;typecheck 过,浏览器验证授权树完整 | admin/roles/page.tsx | done | ~3k |

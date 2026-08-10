@@ -7,15 +7,18 @@ import {
   Settings, Key, Loader2, FolderKanban, ClipboardCheck, FileText, Workflow,
   LayoutGrid, List, KeyRound, Filter, Eye, EyeOff, GripVertical, AlertTriangle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
+} from "@/components/ui/command";
 import { deptApi, permissionsApi, projectApi, roleApi, userApi } from "@/extensions/api";
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
@@ -938,7 +941,7 @@ type PolicyEditState = {
 };
 
 function PoliciesPanel({
-  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules, roles, roleNav, rolePages, onToggleNav, onTogglePage,
+  policies, policiesLoading, onToggle, onDelete, onAdd, onSave, modules, roles,
 }: {
   policies: PolicyItem[];
   policiesLoading: boolean;
@@ -948,10 +951,6 @@ function PoliciesPanel({
   onSave: (policy: PolicyItem) => void;
   modules: RegistryModule[];
   roles: Role[];
-  roleNav: Set<string>;
-  rolePages: Set<string>;
-  onToggleNav: (navId: string, enabled: boolean) => void;
-  onTogglePage: (pageId: string, enabled: boolean) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PolicyEditState>({
@@ -975,7 +974,7 @@ function PoliciesPanel({
       setEditForm({
         name: "",
         conditions: [{ attribute: "", operator: "=", value: "" }],
-        grants: [{ permission: "" }],
+        grants: [],
         denyPermissions: [],
         denyDataScopes: [],
       });
@@ -1050,10 +1049,6 @@ function PoliciesPanel({
               allPermissions={allPermissions}
               modules={modules}
               roles={roles}
-              roleNav={roleNav}
-              rolePages={rolePages}
-              onToggleNav={onToggleNav}
-              onTogglePage={onTogglePage}
             />
           ) : (
             <PolicyRow
@@ -1078,10 +1073,6 @@ function PoliciesPanel({
             allPermissions={allPermissions}
             modules={modules}
             roles={roles}
-            roleNav={roleNav}
-            rolePages={rolePages}
-            onToggleNav={onToggleNav}
-            onTogglePage={onTogglePage}
           />
         </div>
       )}
@@ -1201,89 +1192,180 @@ function PolicyRow({
 
 /* ── Policy Edit Form ──────────────────────────────────────── */
 /** EAI-CUSTOM: 授权权限选择对话框 —— 按 页面(模块) → 子页 → 操作 三级浏览单选（替代扁平下拉） */
-function GrantPermissionDialog({
-  open, onOpenChange, modules, selected, onSelect, roleNav, rolePages, onToggleNav, onTogglePage,
+// EAI-CUSTOM: 三态 checkbox（勾选/半选/未选）—— 级联权限树节点用
+function TriCheckbox({
+  checked, indeterminate, disabled, label, onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  label?: string;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? "mixed" : checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onChange}
+      className={cn(
+        "w-4 h-4 shrink-0 border flex items-center justify-center rounded transition-colors",
+        checked ? "bg-primary border-primary" : indeterminate ? "bg-primary/25 border-primary/50" : "border-muted-foreground/40 hover:border-primary/40",
+        disabled && "opacity-40 cursor-not-allowed",
+      )}
+    >
+      {checked ? <span className="text-white text-[10px] leading-none">✓</span> : indeterminate ? <span className="w-2 h-0.5 bg-primary/70" /> : null}
+    </button>
+  );
+}
+
+// EAI-CUSTOM: 授权 = 完整访问单元 —— 操作 + page:<id>(页面可见) + nav:<id>(模块可见)。
+// 级联：勾操作自动带出页面/模块可见；勾页面=可见+全操作；勾模块=可见+全部子项。三态半选表示部分选中。
+function GrantPermissionDropdown({
+  open, onOpenChange, modules, selected, onChange,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   modules: RegistryModule[];
-  selected?: string;
-  onSelect: (permissionId: string) => void;
-  roleNav: Set<string>;
-  rolePages: Set<string>;
-  onToggleNav: (navId: string, enabled: boolean) => void;
-  onTogglePage: (pageId: string, enabled: boolean) => void;
+  selected: string[];
+  onChange: (permissionIds: string[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [localSel, setLocalSel] = useState<string>(selected || "");
-  useEffect(() => { if (open) setLocalSel(selected || ""); }, [open, selected]);
   const toggleExpand = (key: string) => setExpanded((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   const match = (op: OperationItem) => !search || op.display_name.includes(search) || op.id.includes(search);
   const isExpanded = (key: string) => expanded.has(key) || !!search; // 搜索时自动展开
-  // 可见/不可见 pill —— 页面(模块)与子页共用，点击回写角色 nav/pages
-  const visPill = (visible: boolean, onToggle: () => void) => (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      className={cn(
-        "ml-auto shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors",
-        visible ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20" : "bg-muted text-muted-foreground border-transparent hover:bg-accent",
-      )}
-    >
-      <span className={cn("w-1 h-1 rounded-full", visible ? "bg-primary" : "bg-muted-foreground/50")} />
-      {visible ? "可见" : "不可见"}
-    </button>
-  );
+
+  const perms = new Set(selected);
+  const ops = new Set([...perms].filter((p) => !p.startsWith("page:") && !p.startsWith("nav:")));
+  const pages = new Set([...perms].filter((p) => p.startsWith("page:")).map((p) => p.slice(5)));
+  const navs = new Set([...perms].filter((p) => p.startsWith("nav:")).map((p) => p.slice(4)));
+
+  const pageState = (page: { id: string; operations: OperationItem[] }): "checked" | "indeterminate" | "unchecked" => {
+    const opIds = (page.operations || []).map((o) => o.id);
+    const grantedCount = opIds.filter((o) => ops.has(o)).length;
+    if (pages.has(page.id) && grantedCount === opIds.length) return "checked";
+    if (pages.has(page.id) || grantedCount > 0) return "indeterminate";
+    return "unchecked";
+  };
+  const moduleState = (mod: RegistryModule): "checked" | "indeterminate" | "unchecked" => {
+    const navId = getNavIdForModule(mod.key);
+    if (!navId) return "unchecked";
+    const modPages = mod.pages ?? [];
+    const allChecked = modPages.length > 0 && modPages.every((p) => pageState(p) === "checked");
+    const anyGranted = modPages.some((p) => pages.has(p.id) || (p.operations || []).some((o) => ops.has(o.id)));
+    if (navs.has(navId) && allChecked) return "checked";
+    if (navs.has(navId) || anyGranted) return "indeterminate";
+    return "unchecked";
+  };
+
+  const toggleOp = (opId: string, pageId: string | null | undefined, navId: string | null | undefined) => {
+    const next = new Set(perms);
+    if (next.has(opId)) next.delete(opId);
+    else { next.add(opId); if (pageId) next.add(`page:${pageId}`); if (navId) next.add(`nav:${navId}`); }
+    onChange([...next]);
+  };
+  const togglePage = (page: { id: string; operations: OperationItem[] }, navId: string | null | undefined) => {
+    const opIds = (page.operations || []).map((o) => o.id);
+    const next = new Set(perms);
+    const isFull = pages.has(page.id) && opIds.every((o) => ops.has(o));
+    if (isFull) {
+      next.delete(`page:${page.id}`);
+      for (const o of opIds) next.delete(o);
+    } else {
+      next.add(`page:${page.id}`);
+      for (const o of opIds) next.add(o);
+      if (navId) next.add(`nav:${navId}`);
+    }
+    onChange([...next]);
+  };
+  const toggleModule = (mod: RegistryModule, navId: string) => {
+    const modPages = mod.pages ?? [];
+    const allOpIds = modPages.flatMap((p) => (p.operations || []).map((o) => o.id));
+    const allPageIds = modPages.map((p) => p.id);
+    const next = new Set(perms);
+    const isFull = navs.has(navId) && modPages.length > 0 && modPages.every((p) => pageState(p) === "checked");
+    if (isFull) {
+      next.delete(`nav:${navId}`);
+      for (const p of allPageIds) next.delete(`page:${p}`);
+      for (const o of allOpIds) next.delete(o);
+    } else {
+      next.add(`nav:${navId}`);
+      for (const p of allPageIds) next.add(`page:${p}`);
+      for (const o of allOpIds) next.add(o);
+    }
+    onChange([...next]);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>选择授权权限</DialogTitle>
-          <DialogDescription>按 页面 → 子页 → 操作 浏览；页面/子页可切换可见性（回写角色配置）</DialogDescription>
-        </DialogHeader>
-        <div className="px-6 pb-2">
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+        >
+          <span className={cn(selected.length > 0 ? "text-foreground" : "text-muted-foreground")}>
+            {selected.length > 0 ? `已选 ${selected.length} 项（含页面/模块可见）` : "选择权限（多选）"}
+          </span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[30rem] p-0 bg-background border border-border shadow-lg rounded-lg" align="start">
+        <div className="border-b border-border p-2">
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索权限名称或代码…" className="h-8 text-xs" />
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-1">
+        <div className="max-h-64 overflow-y-auto p-2 space-y-1">
           {modules.filter((m) => !search || m.display_name.includes(search) || (m.pages ?? []).some((pg) => pg.operations.some(match))).map((mod) => {
             const navId = getNavIdForModule(mod.key);
-            const modVisible = navId ? roleNav.has(navId) : true;
+            const mState = moduleState(mod);
             return (
-              <div key={mod.key} className="border-b border-border/60 py-1.5 last:border-0">
+              <div key={mod.key} className="border-b border-border/60 py-1 last:border-0">
                 <div className="flex items-center gap-1.5 w-full">
+                  <TriCheckbox checked={mState === "checked"} indeterminate={mState === "indeterminate"} disabled={!navId} label={mod.display_name}
+                    onChange={() => navId && toggleModule(mod, navId)} />
                   <button type="button" onClick={() => toggleExpand(mod.key)} className="flex items-center gap-1.5 flex-1 text-sm font-semibold text-foreground py-1 hover:text-primary transition-colors">
                     <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isExpanded(mod.key) && "rotate-90")} />
                     {mod.display_name}
                   </button>
-                  {navId && visPill(modVisible, () => onToggleNav(navId, !modVisible))}
                 </div>
                 {isExpanded(mod.key) && (mod.pages ?? []).map((page) => {
-                  const pageVisible = rolePages.has(page.id);
+                  const pState = pageState(page);
                   return (
-                    <div key={page.id} className="ml-5 mb-2">
+                    <div key={page.id} className="ml-7 mb-2">
                       <div className="flex items-center gap-1.5">
+                        <TriCheckbox checked={pState === "checked"} indeterminate={pState === "indeterminate"} label={page.display_name}
+                          onChange={() => togglePage(page, navId)} />
                         <span className="text-xs font-medium text-muted-foreground">{page.display_name}</span>
-                        {visPill(pageVisible, () => onTogglePage(page.id, !pageVisible))}
                       </div>
                       {page.operations.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {page.operations.filter(match).map((op) => (
-                            <button
-                              key={op.id}
-                              type="button"
-                              onClick={() => setLocalSel(op.id)}
-                              className={cn(
-                                "text-[11px] px-2 py-1 rounded border transition-colors",
-                                localSel === op.id ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                              )}
-                            >
-                              {op.display_name}
-                            </button>
-                          ))}
+                        <div className="flex flex-wrap gap-1.5 mt-1 ml-6">
+                          {page.operations.filter(match).map((op) => {
+                            const checked = ops.has(op.id);
+                            return (
+                              <button
+                                key={op.id}
+                                type="button"
+                                onClick={() => toggleOp(op.id, page.id, navId)}
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-sm px-2 py-1 rounded border transition-colors",
+                                  checked ? "bg-primary/10 border-primary/40 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                                )}
+                              >
+                                <span className={cn(
+                                  "w-3.5 h-3.5 border flex items-center justify-center shrink-0 rounded-[2px]",
+                                  checked ? "bg-primary border-primary" : "border-muted-foreground/40",
+                                )}>
+                                  {checked && <span className="text-white text-[10px] leading-none">✓</span>}
+                                </span>
+                                {op.display_name}
+                              </button>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <div className="text-[11px] text-muted-foreground/50">暂无操作项</div>
+                        <div className="text-[11px] text-muted-foreground/50 ml-6">暂无操作项</div>
                       )}
                     </div>
                   );
@@ -1292,17 +1374,19 @@ function GrantPermissionDialog({
             );
           })}
         </div>
-        <DialogFooter className="px-6 pb-4 gap-2">
-          <button type="button" onClick={() => onOpenChange(false)} className="h-8 px-4 text-xs font-medium border border-input rounded-lg hover:bg-accent transition-colors">取消</button>
-          <button type="button" disabled={!localSel} onClick={() => { onSelect(localSel); onOpenChange(false); }} className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">确认</button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="flex items-center justify-between gap-2 border-t border-border p-2">
+          <span className="text-xs text-muted-foreground">已选 {selected.length} 项（勾选页面/模块 = 可见 + 操作级联）</span>
+          <button type="button" onClick={() => onOpenChange(false)} className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+            完成
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
 function PolicyEditForm({
-  form, onChange, onSave, onCancel, allPermissions, modules, roles, roleNav, rolePages, onToggleNav, onTogglePage,
+  form, onChange, onSave, onCancel, allPermissions, modules, roles,
 }: {
   form: PolicyEditState;
   onChange: (f: PolicyEditState) => void;
@@ -1311,10 +1395,6 @@ function PolicyEditForm({
   allPermissions: PermissionItem[];
   modules: RegistryModule[];
   roles: Role[];
-  roleNav: Set<string>;
-  rolePages: Set<string>;
-  onToggleNav: (navId: string, enabled: boolean) => void;
-  onTogglePage: (pageId: string, enabled: boolean) => void;
 }) {
   // EAI-CUSTOM: 条件值下拉建议 —— 按所选属性给 datalist 选项（可输入可点选），避免纯手输体验差。
   // role_code/role_level 来自已加载 roles；username/user_id/dept_id 懒加载用户/部门。
@@ -1338,8 +1418,8 @@ function PolicyEditForm({
     setChipOpens((o) => ({ ...o, [i]: false }));
   };
   const removeChip = (i: number, v: string) => updateCondition(i, { value: chipsOf(i).filter((x) => x !== v).join(",") });
-  // EAI-CUSTOM: 授权权限选择器 —— 三级对话框（页面→子页→操作），grantPicker 记录打开的行
-  const [grantPicker, setGrantPicker] = useState<number | null>(null);
+  // EAI-CUSTOM: 授权权限选择器 —— 多选树形下拉（页面→子页→操作），grantPickerOpen 控制展开
+  const [grantPickerOpen, setGrantPickerOpen] = useState(false);
   useEffect(() => {
     let active = true;
     userApi.list({ limit: 500 }).then((r) => { if (active) setUsers(r.users ?? []); }).catch(() => {});
@@ -1376,23 +1456,54 @@ function PolicyEditForm({
     onChange({ ...form, conditions: conds });
   };
 
-  const addGrant = () => onChange({ ...form, grants: [...form.grants, { permission: "" }] });
   const removeGrant = (i: number) => onChange({ ...form, grants: form.grants.filter((_, idx) => idx !== i) });
-  const updateGrant = (i: number, f: Partial<PolicyGrant>) => {
-    const grs = [...form.grants];
-    grs[i] = { ...grs[i]!, ...f };
-    onChange({ ...form, grants: grs });
+  // EAI-CUSTOM: 授权标签显示 —— 操作显示权限名，page:<id>/nav:<id> 显示页面/模块名
+  const permLabel = (permission: string) => {
+    if (permission.startsWith("page:")) {
+      const pid = permission.slice(5);
+      for (const m of modules) for (const pg of (m.pages ?? [])) if (pg.id === pid) return pg.display_name;
+      return permission;
+    }
+    if (permission.startsWith("nav:")) {
+      const nid = permission.slice(4);
+      const m = modules.find((mm) => getNavIdForModule(mm.key) === nid);
+      return m ? m.display_name : permission;
+    }
+    return allPermissions.find((p) => p.id === permission)?.display_name || permission;
+  };
+  // EAI-CUSTOM: 授权标签层级区分 —— 模块(indigo)/页面(sky)/操作(primary) 颜色 + 层级前缀
+  const grantChipMeta = (permission: string): { level: string; cls: string } => {
+    if (permission.startsWith("nav:")) return { level: "模块", cls: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" };
+    if (permission.startsWith("page:")) return { level: "页面", cls: "bg-sky-500/10 text-sky-500 border-sky-500/20" };
+    return { level: "操作", cls: "bg-primary/10 text-primary border-primary/10" };
   };
 
-  // EAI-CUSTOM (T14): deny 权限 tag 输入框的临时文本态。deny 权限支持精确（kb:delete）
-  // 与模块通配（kb:*），故不能用 allow 那种 Select 下拉——需要自由文本。
-  const [denyPermInput, setDenyPermInput] = useState("");
-  const addDenyPermission = () => {
-    const v = denyPermInput.trim();
-    if (v && !form.denyPermissions.includes(v)) {
-      onChange({ ...form, denyPermissions: [...form.denyPermissions, v] });
+  // EAI-CUSTOM (T14→升级): deny 权限改搜索式分组 Combobox（Popover+Command）。
+  // 仍支持精确（kb:delete）与通配（kb:*）；通配按 id 首段（prefix）匹配（见 engine.py deny 逻辑）。
+  const [denySearch, setDenySearch] = useState("");
+  const [denyPopoverOpen, setDenyPopoverOpen] = useState(false);
+  // 按 prefix 分组：每组 = 精确操作 + 一条 <prefix>:* 通配
+  const denyGroups = useMemo(() => {
+    const map = new Map<string, PermissionItem[]>();
+    for (const p of allPermissions) {
+      const prefix = p.id.split(":")[0]!; // ponytail: id 形如 "<prefix>:<action>"，首段必存在
+      if (!map.has(prefix)) map.set(prefix, []);
+      map.get(prefix)!.push(p);
     }
-    setDenyPermInput("");
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [allPermissions]);
+  const allDenyChoices = useMemo(() => {
+    const s = new Set<string>(allPermissions.map((p) => p.id));
+    for (const [prefix] of denyGroups) s.add(`${prefix}:*`);
+    return s;
+  }, [allPermissions, denyGroups]);
+  const addDenyPermissionValue = (v: string) => {
+    const trimmed = v.trim();
+    if (trimmed && !form.denyPermissions.includes(trimmed)) {
+      onChange({ ...form, denyPermissions: [...form.denyPermissions, trimmed] });
+    }
+    setDenySearch("");
+    setDenyPopoverOpen(false);
   };
   const removeDenyPermission = (perm: string) =>
     onChange({ ...form, denyPermissions: form.denyPermissions.filter((p) => p !== perm) });
@@ -1447,7 +1558,7 @@ function PolicyEditForm({
               ) : (
                 <>
               <Select value={c.attribute || "__none__"} onValueChange={(v) => updateCondition(i, { attribute: v === "__none__" ? "" : v })}>
-                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="属性" /></SelectTrigger>
+                <SelectTrigger className="w-[130px] h-8 text-sm"><SelectValue placeholder="属性" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__"><span className="text-muted-foreground">选择属性</span></SelectItem>
                   {ATTR_OPTIONS.map((a) => <SelectItem key={a} value={a}>{ATTR_LABELS[a] ?? a}</SelectItem>)}
@@ -1461,7 +1572,7 @@ function PolicyEditForm({
                   updateCondition(i, { operator: v, value: isMultiOp ? c.value : "" });
                 }}
               >
-                <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[100px] h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {OP_OPTIONS.map((o) => <SelectItem key={o} value={o}>{OP_LABELS[o] ?? o}</SelectItem>)}
                 </SelectContent>
@@ -1489,7 +1600,7 @@ function PolicyEditForm({
                       ))}
                       <input
                         type="text"
-                        className="flex-1 min-w-[70px] h-6 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                        className="flex-1 min-w-[70px] h-6 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                         value={draft}
                         placeholder={chips.length ? "" : "输入或选择值"}
                         onChange={(e) => setChipDrafts((d) => ({ ...d, [i]: e.target.value }))}
@@ -1528,49 +1639,34 @@ function PolicyEditForm({
         </div>
       </div>
 
-      {/* Grants */}
+      {/* Grants —— 完整访问单元（操作 + 页面/模块可见），级联 checkbox */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-medium text-foreground">权限授予 (Grants)</label>
-          <button type="button" onClick={addGrant} className="text-xs text-primary hover:text-primary/80 font-medium">
-            + 添加授予
-          </button>
+          <span className="text-xs text-muted-foreground">{form.grants.length > 0 ? `已选 ${form.grants.length} 项` : ""}</span>
         </div>
-        <div className="space-y-2">
-          {form.grants.map((g, i) => (
-            <div key={i} className="flex items-center gap-2">
-              {/* EAI-CUSTOM: 三级权限对话框（页面→子页→操作）替代扁平下拉 */}
-              <button
-                type="button"
-                onClick={() => setGrantPicker(i)}
-                className="w-[180px] h-8 px-2 text-xs flex items-center justify-between gap-1 bg-background border border-input rounded hover:border-primary/40 transition-colors"
-              >
-                <span className="truncate text-left">
-                  {g.permission
-                    ? (allPermissions.find((p) => p.id === g.permission)?.display_name || g.permission)
-                    : <span className="text-muted-foreground">选择权限（三级）</span>}
+        {form.grants.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {form.grants.map((g, i) => {
+              const { level, cls } = grantChipMeta(g.permission);
+              return (
+                <span key={g.permission} className={cn("inline-flex items-center gap-1 text-sm px-2.5 py-0.5 rounded-full border", cls)}>
+                  <span className="text-[10px] font-semibold opacity-70">{level}</span>
+                  {permLabel(g.permission)}
+                  <button type="button" onClick={() => removeGrant(i)} className="opacity-70 hover:opacity-100" title="删除">×</button>
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-              </button>
-              <button onClick={() => removeGrant(i)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
+        <GrantPermissionDropdown
+          open={grantPickerOpen}
+          onOpenChange={setGrantPickerOpen}
+          modules={modules}
+          selected={form.grants.map((g) => g.permission)}
+          onChange={(ids) => onChange({ ...form, grants: ids.map((permission) => ({ permission })) })}
+        />
       </div>
-
-      <GrantPermissionDialog
-        open={grantPicker !== null}
-        onOpenChange={(o) => { if (!o) setGrantPicker(null); }}
-        modules={modules}
-        selected={grantPicker !== null ? form.grants[grantPicker]?.permission : undefined}
-        onSelect={(pid) => { if (grantPicker !== null) updateGrant(grantPicker, { permission: pid }); setGrantPicker(null); }}
-        roleNav={roleNav}
-        rolePages={rolePages}
-        onToggleNav={onToggleNav}
-        onTogglePage={onTogglePage}
-      />
 
       {/* Deny (T14) — warning 色，与 allow 视觉区分；无二次确认（设计决策：警告色 + 审计日志即可） */}
       <div className="rounded-lg border border-warning/40 bg-warning/[0.04] p-3 space-y-3">
@@ -1583,23 +1679,87 @@ function PolicyEditForm({
         {/* 拒绝权限 — 精确 (kb:delete) 或模块通配 (kb:*) */}
         <div>
           <label className="block text-[11px] font-medium text-foreground/80 mb-1">拒绝权限</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={denyPermInput}
-              onChange={(e) => setDenyPermInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDenyPermission(); } }}
-              placeholder="例如 kb:delete 或 kb:*"
-              className="flex-1 h-8 px-2 bg-background border border-warning/30 rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-warning/40"
-            />
-            <button
-              type="button"
-              onClick={addDenyPermission}
-              className="h-8 px-2.5 text-xs font-medium text-warning bg-warning/10 border border-warning/30 rounded hover:bg-warning/20 transition-colors"
-            >
-              + 添加
-            </button>
-          </div>
+          <Popover open={denyPopoverOpen} onOpenChange={setDenyPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="w-full h-8 px-2 flex items-center gap-2 bg-background border border-warning/30 rounded text-xs text-muted-foreground hover:border-warning/50 transition-colors"
+              >
+                <Search className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">搜索 / 选择拒绝权限…</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[420px] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  value={denySearch}
+                  onValueChange={setDenySearch}
+                  placeholder="搜索权限名称或代码（如 删除 / 知识库 / kb）…"
+                  className="h-9"
+                />
+                <CommandList className="max-h-[280px]">
+                  <CommandEmpty>无匹配权限</CommandEmpty>
+                  {(() => {
+                    const q = denySearch.trim().toLowerCase();
+                    const groups = q
+                      ? denyGroups
+                          .map(([prefix, perms]) => [prefix, perms.filter((p) =>
+                              p.id.toLowerCase().includes(q) ||
+                              p.display_name.toLowerCase().includes(q))] as [string, PermissionItem[]])
+                          .filter(([prefix, perms]) => perms.length > 0 || `${prefix}:*`.includes(q))
+                      : denyGroups;
+                    const customVal = denySearch.trim();
+                    const showCustom = q !== "" && !allDenyChoices.has(customVal) && !form.denyPermissions.includes(customVal);
+                    return (
+                      <>
+                        {groups.map(([prefix, perms]) => (
+                          <CommandGroup key={prefix} heading={prefix}>
+                            {perms.map((p) => (
+                              <CommandItem
+                                key={p.id}
+                                value={p.id}
+                                disabled={form.denyPermissions.includes(p.id)}
+                                onSelect={() => addDenyPermissionValue(p.id)}
+                                className="text-xs"
+                              >
+                                <span>{p.display_name}</span>
+                                <span className="ml-auto font-mono text-[10px] text-muted-foreground">{p.id}</span>
+                              </CommandItem>
+                            ))}
+                            <CommandItem
+                              value={`${prefix}:*`}
+                              disabled={form.denyPermissions.includes(`${prefix}:*`)}
+                              onSelect={() => addDenyPermissionValue(`${prefix}:*`)}
+                              className="text-xs text-warning"
+                            >
+                              <span>拒绝该前缀全部</span>
+                              <span className="ml-auto font-mono text-[10px]">{`${prefix}:*`}</span>
+                            </CommandItem>
+                          </CommandGroup>
+                        ))}
+                        {showCustom && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup heading="自定义">
+                              <CommandItem
+                                value="__custom__"
+                                onSelect={() => addDenyPermissionValue(customVal)}
+                                className="text-xs"
+                              >
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                <span>添加自定义</span>
+                                <span className="ml-auto font-mono text-[10px] text-warning">{customVal}</span>
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           {form.denyPermissions.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {form.denyPermissions.map((perm) => {
@@ -1622,29 +1782,6 @@ function PolicyEditForm({
               })}
             </div>
           )}
-          {/* 快捷选择 —— 从 registry 已声明的权限中点选追加，便于发现可用 id */}
-          {allPermissions.length > 0 && (
-            <div className="mt-1.5">
-              <Select
-                value="__none__"
-                onValueChange={(v) => {
-                  if (v !== "__none__" && !form.denyPermissions.includes(v)) {
-                    onChange({ ...form, denyPermissions: [...form.denyPermissions, v] });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full h-7 text-[11px] border-warning/20">
-                  <SelectValue placeholder="从已声明权限中选择追加…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__"><span className="text-muted-foreground">不追加</span></SelectItem>
-                  {allPermissions
-                    .filter((p) => !form.denyPermissions.includes(p.id))
-                    .map((p) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         {/* 拒绝数据范围 —— 复用 registry 声明的 data_scopes，按 module 分组多选 */}
@@ -1665,7 +1802,7 @@ function PolicyEditForm({
                       <label
                         key={scope.id}
                         className={cn(
-                          "flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] cursor-pointer transition-colors",
+                          "flex items-center gap-1 px-2 py-0.5 rounded border text-sm cursor-pointer transition-colors",
                           isSelected
                             ? "bg-warning/10 border-warning/40 text-warning font-medium"
                             : "border-border text-muted-foreground hover:border-warning/30",
@@ -2258,23 +2395,6 @@ export default function AdminRolesPage() {
                       onSave={handlePolicySave}
                       modules={modules}
                       roles={roles}
-                      roleNav={detailNavSet}
-                      rolePages={detailPagesSet}
-                      onToggleNav={async (navId, enabled) => {
-                        const newNavs = enabled ? [...detailNavSet, navId] : [...detailNavSet].filter(n => n !== navId);
-                        setDetailNavSet(new Set(newNavs));
-                        try { await roleApi.update(selectedRole.id, { nav: newNavs }); }
-                        catch (err: unknown) { alert(err instanceof Error ? err.message : "更新导航可见性失败"); }
-                      }}
-                      onTogglePage={async (pageId, enabled) => {
-                        const next = new Set(detailPagesSet);
-                        enabled ? next.add(pageId) : next.delete(pageId);
-                        setDetailPagesSet(next);
-                        if (selectedRole && !selectedRole.is_system) {
-                          try { await roleApi.update(selectedRole.id, { pages: serializePages(next, registryModules || []) }); }
-                          catch (err: unknown) { alert(err instanceof Error ? err.message : "更新页面可见性失败"); }
-                        }
-                      }}
                     />
                   </motion.div>
                 ) : (

@@ -652,3 +652,5 @@
 - **Windows git-bash `diff -u` 对 CRLF/LF 混排会显示全量差异伪影**：验证重放结果改用 python `difflib.SequenceMatcher` 或直接 grep 关键标记，别被 diff 全删全增吓到。
 - **会话路径匹配注意反斜杠**：扫 session JSONL 里 Edit 的 file_path 时，Windows 路径是反斜杠（`D:\eai\...`），`'/admin/users' in fp.lower()` 正斜杠匹配会**漏检**。先 `fp.replace("\\\\","/").lower()` 归一化再匹配（landing/docmgr 用 `'docmgr' in fp` 不受影响，但 `/admin/xxx` 这种必须归一化）。
 - **后端重放校验基线**：若 Edit 引用的代码（如 `existing.` 前缀 vs `user.`）在 HEAD 里已重构，则该条 Edit 属"已提交/已过时"，跳过不视为失败；对比 HEAD 版本 ruff 错误数可判断 lint 是否本次引入。
+- **丢失编辑可能被"后续会话在 HEAD 上的新工作"替代**：reset 后某会话可能已在 HEAD 上重做了部分功能（如 deny 权限 Combobox 升级）。重放丢失编辑时，若 anchor 在 deny/该区域不存在 → 该编辑已被新实现替代，跳过即可，不要强行塞回。恢复 = 新工作 + 未冲突的丢失编辑，而不是完整重放 100%。
+- **重放后必查重复导入**：丢失编辑加的 import（如 Popover+Command 树下拉）可能与 reset 后新工作已加的 import 重复 → typecheck 报 Duplicate identifier。先看 import 段去重。
