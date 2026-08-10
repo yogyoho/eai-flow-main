@@ -9,6 +9,7 @@ import {
   Trash2,
   Users,
   UserPlus,
+  Wand2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import { projectApi } from "@/extensions/project/api";
 import { AddMemberDialog } from "@/extensions/project/components/AddMemberDialog";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard/KanbanBoard";
 import type { KanbanCardData } from "@/extensions/project/components/KanbanBoard/types";
+import { RoleBoard } from "@/extensions/project/components/RoleBoard";
 import { StatusDistribution } from "@/extensions/project/components/StatusDistribution";
 import { WorkflowProgressCompact } from "@/extensions/project/components/WorkflowProgressCompact";
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
@@ -32,9 +34,12 @@ import {
   activityLabel,
   aggregateWordCount,
   type ChapterStatus,
+  deriveBlockState,
   flattenChapters,
+  hasAnyContent,
   inferStatus,
 } from "@/extensions/project/utils";
+import { workflowApi } from "@/extensions/workflow/api";
 
 interface OverviewTabProps {
   project: ReportProject;
@@ -344,6 +349,34 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
     }
   };
 
+  // EAI-CUSTOM: 章节进度区块状态机(ADR 2026-08-10)
+  const blockState = useMemo(
+    () => deriveBlockState(project.temporalWorkflowId, hasAnyContent(project.chapters ?? [])),
+    [project.temporalWorkflowId, project.chapters],
+  );
+
+  const [starting, setStarting] = useState(false);
+  const canStartGenerate =
+    (identity?.isAdmin ||
+      identity?.projectRole === "owner" ||
+      identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
+      false) &&
+    !!project.workflowId;
+
+  const handleStartGenerate = useCallback(async () => {
+    if (!project.workflowId) return;
+    setStarting(true);
+    try {
+      await workflowApi.startWorkflow(projectId, project.workflowId);
+      toast.success("AI 开始生成初稿");
+      onRefresh();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "启动失败，请稍后重试");
+    } finally {
+      setStarting(false);
+    }
+  }, [project.workflowId, projectId, onRefresh]);
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="px-4 md:px-8 py-6 flex flex-col gap-6 max-w-7xl mx-auto">
@@ -373,61 +406,125 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Chapter Progress — 3 cols */}
+          {/* Chapter Progress — 3 cols — EAI-CUSTOM: 状态驱动(ADR 2026-08-10) */}
           <div className="lg:col-span-3">
             <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between px-5 pt-4 pb-0">
                 <h3 className="text-sm font-medium text-foreground">章节进度</h3>
-                {kanbanCards.length > 0 && (
-                  <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
-                    <Button
-                      variant={kanbanView ? "ghost" : "secondary"}
-                      size="icon-sm"
-                      onClick={() => setKanbanView(false)}
-                      title="列表视图"
-                    >
-                      <List className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant={kanbanView ? "secondary" : "ghost"}
-                      size="icon-sm"
-                      onClick={() => setKanbanView(true)}
-                      title="看板视图"
-                    >
-                      <LayoutGrid className="size-3.5" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {kanbanView ? (
-                <div className="px-5 pb-4 pt-2 max-h-[480px] overflow-y-auto overflow-x-auto pr-1 cyber-scroll">
-                  <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} onCardEdit={handleEditChapter} />
-                </div>
-              ) : (
-                <div className="px-5 pb-4 pt-2">
-                  {project.chapters?.length > 0 ? (
-                    <div className="max-h-[480px] overflow-y-auto pr-1 cyber-scroll divide-y divide-border/40">
-                      {project.chapters.map((ch) => (
-                        <ChapterNode
-                          key={ch.id}
-                          chapter={ch}
-                          depth={0}
-                          onMarkComplete={handleMarkComplete}
-                          onEdit={handleEditChapter}
-                          completingId={completingId}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                      <p className="text-sm text-muted-foreground">暂无章节</p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">从模板创建项目或手动添加章节</p>
+                {blockState === "human_edit" &&
+                  project.assignmentStrategy !== "by_role" &&
+                  kanbanCards.length > 0 && (
+                    <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+                      <Button
+                        variant={kanbanView ? "ghost" : "secondary"}
+                        size="icon-sm"
+                        onClick={() => setKanbanView(false)}
+                        title="列表视图"
+                      >
+                        <List className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant={kanbanView ? "secondary" : "ghost"}
+                        size="icon-sm"
+                        onClick={() => setKanbanView(true)}
+                        title="看板视图"
+                      >
+                        <LayoutGrid className="size-3.5" />
+                      </Button>
                     </div>
                   )}
+              </div>
+
+              {blockState === "not_generated" && (
+                <div className="px-5 pb-6 pt-4">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <Wand2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">尚未生成初稿</p>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      AI 将按所选大纲生成初稿（可能调整结构），随后进入「人工修改确认」。
+                    </p>
+                    <Button
+                      onClick={handleStartGenerate}
+                      disabled={!canStartGenerate || starting}
+                      className="mb-5"
+                    >
+                      {starting ? (
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4 mr-1.5" />
+                      )}
+                      开始 AI 生成初稿
+                    </Button>
+                    {!project.workflowId && (
+                      <p className="text-[11px] text-muted-foreground mb-4">
+                        请先在「项目设置」关联工作流后再开始生成。
+                      </p>
+                    )}
+                    <ol className="w-full max-w-sm space-y-2 text-left">
+                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">1</span>
+                        AI 按所选大纲生成初稿（可能调整结构）
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">2</span>
+                        进入「人工修改确认」阶段
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">3</span>
+                        按「{project.assignmentStrategy === "by_role" ? "按职责" : "按章节"}」分工修改确认
+                      </li>
+                    </ol>
+                  </div>
                 </div>
               )}
+
+              {blockState === "generating" && (
+                <div className="px-5 pb-6 pt-4 flex flex-col items-center justify-center text-center">
+                  <Loader2 className="h-7 w-7 text-primary animate-spin mb-3" />
+                  <p className="text-sm font-medium text-foreground">AI 正在生成初稿…</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    生成完成后将进入「人工修改确认」，届时可按分工策略修改确认。
+                  </p>
+                </div>
+              )}
+
+              {blockState === "human_edit" &&
+                (project.assignmentStrategy === "by_role" ? (
+                  <RoleBoard
+                    members={project.members ?? []}
+                    chapters={project.chapters ?? []}
+                    onEdit={handleEditChapter}
+                  />
+                ) : kanbanView ? (
+                  <div className="px-5 pb-4 pt-2 max-h-[480px] overflow-y-auto overflow-x-auto pr-1 cyber-scroll">
+                    <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} onCardEdit={handleEditChapter} />
+                  </div>
+                ) : (
+                  <div className="px-5 pb-4 pt-2">
+                    {project.chapters?.length > 0 ? (
+                      <div className="max-h-[480px] overflow-y-auto pr-1 cyber-scroll divide-y divide-border/40">
+                        {project.chapters.map((ch) => (
+                          <ChapterNode
+                            key={ch.id}
+                            chapter={ch}
+                            depth={0}
+                            onMarkComplete={handleMarkComplete}
+                            onEdit={handleEditChapter}
+                            completingId={completingId}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-sm text-muted-foreground">暂无章节</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">从模板创建项目或手动添加章节</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
 
