@@ -143,6 +143,7 @@ async def create_project(
         name=body.name,
         report_type=body.report_type,
         description=body.description,  # EAI-CUSTOM: 项目说明/要求(选填),注入 agent
+        assignment_strategy=body.assignment_strategy,  # EAI-CUSTOM: 分工策略(ADR 2026-08-10)
         template_id=body.template_id,
         workflow_id=body.workflow_id,
         created_by=_user.id,

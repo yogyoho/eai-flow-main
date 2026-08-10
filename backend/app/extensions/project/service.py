@@ -617,6 +617,7 @@ async def create_project(
     workflow_id=None,
     members_data: list[dict] | None = None,
     description: str | None = None,
+    assignment_strategy: str = "by_chapter",  # EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 ) -> ProjectOut:
     has_template = bool(template_id)
     project = ReportProject(
@@ -624,6 +625,7 @@ async def create_project(
         report_type=report_type,
         created_by=created_by,
         description=description,
+        assignment_strategy=assignment_strategy,  # EAI-CUSTOM: 分工策略(ADR 2026-08-10)
         template_id=template_id,
         workflow_id=workflow_id,
         status="draft",  # EAI-CUSTOM: canonical status (ADR 2026-08-02)
