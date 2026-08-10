@@ -120,6 +120,18 @@ function formatRunLabel(run: CpaRun | null, runId: string | null): string {
   return `${phase === "parse" ? "合同数据抽取任务" : "分组分析任务"}_${ds}`;
 }
 
+/** 来源任务列的紧凑标签:"抽取 MM-DD HH:mm" / "分组 MM-DD HH:mm";无 run 时回退。 */
+function formatRunCompact(run: CpaRun | null, runId: string | null): string {
+  if (!run) return runId ? `任务 ${runId.slice(0, 8)}…` : "未关联";
+  const d = new Date(run.started_at);
+  const phase = run.scope ? run.scope.phase : null;
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${phase === "parse" ? "抽取" : "分组"} ${mm}-${dd} ${hh}:${mi}`;
+}
+
 export function ItemsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
@@ -353,6 +365,7 @@ export function ItemsView() {
                       <TableHead>货物名称</TableHead>
                       <TableHead className="whitespace-nowrap">规格</TableHead>
                       <TableHead>来源合同</TableHead>
+                      <TableHead className="whitespace-nowrap">来源任务</TableHead>
                       <TableHead className="whitespace-nowrap">状态</TableHead>
                       <TableHead className="text-right">含税单价</TableHead>
                       <TableHead className="text-right w-[180px]">操作</TableHead>
@@ -416,6 +429,16 @@ export function ItemsView() {
                               <TableCell className="text-muted-foreground">{item.spec_model ?? "—"}</TableCell>
                               <TableCell className="text-muted-foreground">
                                 {item.source_contract_no ?? "—"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground whitespace-nowrap">
+                                {(() => {
+                                  const r = item.run_id ? runMap.get(item.run_id) ?? null : null;
+                                  return (
+                                    <span title={formatRunLabel(r, item.run_id)}>
+                                      {formatRunCompact(r, item.run_id)}
+                                    </span>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
                                 <span
@@ -547,7 +570,7 @@ export function ItemsView() {
                             </TableRow>
                             {expanded.has(item.id) && (
                               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                <TableCell colSpan={7} className="py-3">
+                                <TableCell colSpan={8} className="py-3">
                                   <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
                                     <DetailField label="工程量" value={item.quantity != null ? `${item.quantity}${item.unit ? " " + item.unit : ""}` : "—"} />
                                     <DetailField label="含税单价" value={item.unit_price != null ? item.unit_price.toLocaleString() : "—"} />
