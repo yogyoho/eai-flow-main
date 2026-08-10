@@ -46,15 +46,15 @@ function AdminSelect({
           className
         )}
       >
-        <SelectPrimitive.Value
-          placeholder={placeholder}
-          // ponytail: 长标签（如字体名 Times New Roman）省略号截断不折行；
-          // flex 子项需 min-w-0+flex-1 才允许收缩触发 ellipsis。
-          className="min-w-0 flex-1 truncate"
-        >
-          {options.find((o) => o.value === value)?.label ?? placeholder}
-        </SelectPrimitive.Value>
-        <SelectPrimitive.Icon>
+        {/* Radix Select.Value DROPS the className prop (destructured & unused in its
+            source), so truncate on Value is silently ignored → long labels wrap.
+            Wrap Value in our own flex-1 min-w-0 truncate span instead. */}
+        <span className="min-w-0 flex-1 truncate text-left">
+          <SelectPrimitive.Value placeholder={placeholder}>
+            {options.find((o) => o.value === value)?.label ?? placeholder}
+          </SelectPrimitive.Value>
+        </span>
+        <SelectPrimitive.Icon className="shrink-0">
           <ChevronDownIcon className="h-4 w-4 opacity-50" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
@@ -91,9 +91,10 @@ function AdminSelect({
                     <CheckIcon className="size-4" />
                   </SelectPrimitive.ItemIndicator>
                 </span>
-                <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">
-                  {option.label}
-                </SelectPrimitive.ItemText>
+                {/* ItemText also drops className — same wrapper-span pattern as the trigger. */}
+                <span className="min-w-0 flex-1 truncate">
+                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                </span>
               </SelectPrimitive.Item>
             ))}
           </SelectPrimitive.Viewport>

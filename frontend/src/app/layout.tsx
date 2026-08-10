@@ -1,4 +1,10 @@
 import "@/styles/globals.css";
+// EAI-CUSTOM: 独立样式覆盖文件（修复全局偶发黑边框，bug-264/bug-310）。
+// globals.css 是上游维护文件，会被 upstream sync 周期性重置（其内的 var(--border)
+// fallback 每次 sync 都被抹掉 → 黑边框复发，这正是“一直没彻底解决”的根因）。
+// eai-overrides.css 在上游 tree 之外，sync 永不触碰；须排在 globals.css 之后，
+// 靠源序优先覆盖 base 层的 var(--border) fallback。上游同步后务必 grep 本行是否还在。
+import "@/styles/eai-overrides.css";
 import "katex/dist/katex.min.css";
 
 import { type Metadata } from "next";

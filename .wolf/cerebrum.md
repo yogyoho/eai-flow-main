@@ -661,3 +661,5 @@
 - **丢失窗口编辑未必丢**：会话当天就把编辑 commit 了 → reset 时工作区已干净。判断方法:edit 时间戳 < 该文件最后 commit 时间 → 已入库；且 old_string 不应在 HEAD 里(在则说明该 edit 真丢，但也要防"同形异块"误判，用新代码标记验证)。
 - **`.next` 缓存损坏升级处理**：仅 restart frontend 不够时，errors 会从 routes.d.ts 语法错演进为 validator.ts `Type '"/writing"' does not satisfy the constraint 'never'`（残留路由类型）。可靠修复 = 容器内 `rm -rf .next` + restart frontend，强制全量重新生成（首次编译慢但干净）。
 - **大模块丢失窗口要按该模块最后提交时间过滤**：project 134 条扫描里只有 2 条真丢失（33a3fc57/6bcf873e 的工作大多当天/次日已提交）。规则：先 `git log --before=<reset时刻> -- <模块>` 找最后提交，再只重放更晚的编辑。
+- **eai-overrides.css 是黑边框修复的关键**：globals.css 是上游维护文件,var(--border) fallback 每次 upstream sync 被抹掉→黑边框复发。eai-overrides.css 在上游 tree 外,sync 永不碰,排在 globals.css 后靠源序覆盖。上游同步后必须 grep layout.tsx 里这行 import 是否还在。
+- **Radix Select.Value/ItemText 会丢弃 className prop**：truncate 类直接写在 className 上不生效,须包 wrapper-span(min-w-0 flex-1 truncate)。提交 1f63f6e5a 的 AdminSelect 截断"修复"实际无效,丢失会话的 wrapper-span 才是真修。
