@@ -1026,6 +1026,11 @@ async def migrate_db() -> None:
         await conn.execute(text(
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS description TEXT"
         ))
+        # EAI-CUSTOM: 每-KB 检索配置 (top_k/similarity_threshold/vector_similarity_weight)
+        # create_all 不 ALTER 已有表，须在此幂等加列（与 report_projects.description 同机制）
+        await conn.execute(text(
+            "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS retrieval_config JSON"
+        ))
         # EAI-CUSTOM: 分工策略(ADR 2026-08-10) — 章节进度区块在「人工修改确认」态按此渲染分工叠加层
         await conn.execute(text(
             "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS assignment_strategy VARCHAR(20) NOT NULL DEFAULT 'by_chapter'"
