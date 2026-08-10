@@ -381,8 +381,6 @@ async def list_items(
         stmt = stmt.where(CpaItem.is_outlier.is_(True))
     if validation_status:
         stmt = stmt.where(CpaItem.validation_status == validation_status)
-    if validation_status:
-        stmt = stmt.where(CpaItem.validation_status == validation_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaItem.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
