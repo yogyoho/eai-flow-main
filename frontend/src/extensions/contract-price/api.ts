@@ -175,6 +175,12 @@ export const contractPriceApi = {
       body: JSON.stringify({ item_ids: itemIds }),
     }),
 
+  batchValidateItems: (itemIds: string[]) =>
+    authFetch<{ updated: number }>(`${API_BASE}/items/batch-validate`, {
+      method: "POST",
+      body: JSON.stringify({ item_ids: itemIds }),
+    }),
+
   deleteItemsByRun: (runId: string) =>
     authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, { method: "DELETE" }),
 

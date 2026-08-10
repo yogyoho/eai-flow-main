@@ -234,6 +234,16 @@ export function useBatchDeleteItems() {
   });
 }
 
+export function useBatchValidateItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemIds: string[]) => contractPriceApi.batchValidateItems(itemIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
 export function useDeleteItemsByRun() {
   const qc = useQueryClient();
   return useMutation({
