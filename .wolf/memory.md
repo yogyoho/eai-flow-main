@@ -6361,3 +6361,16 @@
 | 20:25 | 重做 contract-price 完整恢复:发现 7-27~8-02 会话(07f7a59a/4cfd999c/5736ec1f)的 ContractsView 97 条编辑全丢(文件最后提交 6-30);从 7-28 Write 基线+85 编辑重建 ContractsView;TasksView/DashboardView/GoodsAnalysis/SettingsView/types/api/hooks 恢复;后端 crud(含 mark_stale_parsing_failed/skill custom→public bug-526)/models/schemas/service/storage 恢复;skill 脚本 cli/vectorizer 等恢复(测试 pre-broken 引 run_pipeline 已回退);typecheck+13 测试过,浏览器四 tab 全验证 | contract-price 全栈 | done | ~5k |
 | 20:25 | Session end: 5 writes across 5 files (page.tsx, api.ts, hooks.ts, ContractsView.tsx, GoodsAnalysis.tsx) | 7 reads | ~47635 tok |
 | 20:40 | 补 ClustersView 分组审核 tab:应用 4 条 7-28 丢失编辑(标题 聚类审核→分组审核/描述/卡片max-h/间距)+ 00:41:18 全选本页 checkbox(共N个分组·第x-y条);typecheck 过,浏览器验证全选本页+分页+批量确认 | ClustersView.tsx | done | ~2k |
+| 20:37 | Session end: 5 writes across 5 files (page.tsx, api.ts, hooks.ts, ContractsView.tsx, GoodsAnalysis.tsx) | 7 reads | ~47635 tok |
+| 20:57 | Session end: 5 writes across 5 files (page.tsx, api.ts, hooks.ts, ContractsView.tsx, GoodsAnalysis.tsx) | 8 reads | ~47635 tok |
+
+## Session: 2026-08-10 21:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:10 | Edited extensions_config.json | 10→12 lines | ~95 |
+| 21:11 | Edited backend/app/extensions/contract_price/crud.py | 5→3 lines | ~54 |
+| 20:40 | 查证 cpa 代码是否被 reset 旧代码:6 commit 全在 HEAD+origin,crud.py validation_status 形参(367)+9参调用(358)匹配=C1修复在;FE 全新代码。发现并发提交 72dfffa9ff 误加重复 validation_status 过滤块→删除(commit 35aa79c66)→push 同步0/0 | crud.py | verified new code;dup removed+pushed | ~2.5k |
+| 21:12 | Session end: 2 writes across 2 files (extensions_config.json, crud.py) | 3 reads | ~21723 tok |
+| 22:30 | 修 contract-price MCP 数据库连不上(bug-1162):根因=stdio 子进程 env 被 SDK 白名单(HOME/LOGNAME/PATH/SHELL/TERM/USER)+harness tools.py:512-516 收窄→丢 EXTENSIONS_DB_HOST→_resolve_db_url 回退 localhost:5432。修复=extensions_config.json 给该 server env 加 CPA_QUERY_DB_URL=...@postgres-ext:5432(镜像 project server 的 PROJECT_DB_URL 模式,零代码)。restart gateway + MultiServerMCPClient 真实 stdio spawn 验证 query_goods_price('LED')→success:true/7 matched/应急LED灯 均价128.07 PASS | extensions_config.json / .wolf/buglog.json(bug-1162) / .wolf/cerebrum.md(Key Learnings) | fixed+verified | ~9k |
+| 21:15 | Session end: 2 writes across 2 files (extensions_config.json, crud.py) | 3 reads | ~21723 tok |

@@ -18246,5 +18246,194 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-09T23:10:00+08:00"
+  },
+  {
+    "id": "bug-1147",
+    "timestamp": "2026-08-10T02:15:00+08:00",
+    "error_message": "所有 /api/extensions/* 端点返回 401 {\"detail\":{\"code\":\"not_authenticated\",\"message\":\"Authentication required\"}}；但核心 /api/v1/auth/me 同一 cookie 返回 200。",
+    "file": "backend/app/extensions/auth/middleware.py (require_permission(\"system:access\") -> get_current_user)",
+    "root_cause": "扩展层 auth middleware（app.extensions.auth.middleware.get_current_user/require_permission）与核心 Gateway cookie JWT 认证未对齐：核心认证已通过(cookie 有效, auth/me=200)，但扩展层 get_current_user 拒绝同一会话。导致 contract-price 等所有扩展前端拿不到数据(分项校验 tab 显示『暂无明细。』实际是 401→items=[] 的空态，非真无数据；DB 内 cpa_items 有 526 条)。",
+    "fix": "未修(超出本次分项校验扁平列表重构范围)。需单独排查扩展 auth middleware 为何不接受已认证的核心 cookie 会话——可能是 cookie 名/域不匹配、扩展层独立 session 校验、或 require_permission 的 system:access 权限未授予当前用户。复现：浏览器登录后 fetch('/api/extensions/contract-price/items',{credentials:'include'}) → 401；同时 fetch('/api/v1/auth/me') → 200。",
+    "tags": [
+      "auth",
+      "extensions",
+      "401",
+      "not-authenticated",
+      "cookie",
+      "contract-price",
+      "dual-auth",
+      "pre-existing",
+      "unverified-in-browser"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T02:15:00+08:00"
+  },
+  {
+    "id": "bug-1148",
+    "timestamp": "2026-08-10T03:10:00+08:00",
+    "error_message": "GET /api/extensions/contract-price/items 每次返回 TypeError/500(router 位置传 9 参给 crud.list_items 但签名只有 8 参,缺少 validation_status);该 500 被 extension auth 401 在认证门提前拦截,浏览器侧只见 401 故长期未暴露。",
+    "file": "backend/app/extensions/contract_price/crud.py",
+    "root_cause": "concurrent session 给 routers.py 加了 validation_status 查询参数并按位置传给 crud.list_items(session, goods_name, source_contract_no, cluster_id, run_id, only_outliers, validation_status, skip, limit),但 crud.list_items 签名未同步增加该形参→位置错位+TypeError。属 pre-existing 已提交 bug(HEAD 88b873870/d4a6146ba 引入)。",
+    "fix": "crud.list_items 在 only_outliers 后、skip 前增加 validation_status: Optional[str] = None 形参,并在 body 补 if validation_status: stmt.where(CpaItem.validation_status == validation_status) 过滤,使位置顺序与 router 的 9 参调用一致。",
+    "tags": [
+      "crud",
+      "signature-mismatch",
+      "validation_status",
+      "contract-price",
+      "pre-existing",
+      "masked-by-auth",
+      "positional-args"
+    ],
+    "related_bugs": [
+      "bug-1147"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T03:10:00+08:00"
+  },
+  {
+    "id": "bug-T5-retrieval-positional",
+    "timestamp": "2026-08-10T10:50:00",
+    "error_message": "ValueError: \"RetrievalConfig\" object has no field \"retrieval_config\" — calling KnowledgeBaseService.update_retrieval_config(kb, cfg, session) positionally",
+    "file": "backend/tests/test_knowledge_retrieval_config.py",
+    "root_cause": "服务方法签名是 db-first (db, kb, config) 沿用 update_kb(db,kb,data) 约定; 测试按任务示例 (kb,cfg,session) 顺序传位置参数, 导致 RetrievalConfig 落入 kb 形参位, kb.retrieval_config=... 实际是在 Pydantic RetrievalConfig 实例上 setattr 触发 extra=forbid 报错",
+    "fix": "测试改用关键字参数 update_retrieval_config(db=session, kb=kb, config=cfg) 消除歧义; 服务签名保持 db-first 与现有 service 一致",
+    "tags": [
+      "tdd",
+      "positional-arg",
+      "pydantic",
+      "knowledge",
+      "service-signature"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T10:50:00"
+  },
+  {
+    "id": "bug-1149",
+    "timestamp": "2026-08-10T10:15:00+08:00",
+    "error_message": "RAGChatRequest 三个检索参数单独 Optional 化(default=None)会让 POST /{kb_id}/chat 在请求缺参时把 top_k:null 透传给 RAGFlow,破坏在线检索",
+    "file": "backend/app/extensions/schemas.py",
+    "root_cause": "Pydantic 请求字段 Optional 化与消费端接线(router 回退 + None 过滤)必须同提交落地;单独 flip 产生中间态:router 仍 request.top_k 直传 rf_client.chat,None 进 RAGFlow payload",
+    "fix": "回退 Task1 的 Optional flip(commit 5b0523fb9),改为 Task4 原子提交:Optional flip + KnowledgeBaseService.resolve_chat_params 三级回退(请求→KB配置→丢弃)+ router **params 展开。resolver 用 {k:v for k,v in vals.items() if v is not None} 过滤 None,保证 None 永不进 RAGFlow payload(rf_client.chat 三参都有默认 5/0.2/0.3 直透传,故必须在调用前过滤)",
+    "tags": [
+      "pydantic",
+      "optional",
+      "ragflow",
+      "knowledge",
+      "sequencing",
+      "null-passthrough",
+      "atomic-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T10:41:00+08:00"
+  },
+  {
+    "id": "bug-1150",
+    "timestamp": "2026-08-10T10:39:00+08:00",
+    "error_message": "git commit 报 'no changes added' / git show HEAD 显示的是别的前端文件 —— 并行会话的 git commit 把本任务已 stage 的 4 文件卷进混合提交 7e4150c1d",
+    "file": "(process) main-dev-fork shared dirty tree",
+    "root_cause": "多会话并行在同一个 main-dev-fork dirty 工作树提交;git add <file> stage 整文件,并行会话的 git commit 会把所有已 stage 文件(含他人的)一起提交。无 git add -p 可用",
+    "fix": "并行会话 reset 掉混合提交 7e4150c1d 重提交自己前端工作 5f48ec669,本任务文件回工作树;重新 git add + git commit 为 91d361f3e。防御:每次提交后必跑 git show HEAD --stat 确认 HEAD 是自己的提交+文件,否则 re-add+recommit;git add 与 git commit 分两次 Bash 调用避开 code-review-graph pre-commit hook 竞态",
+    "tags": [
+      "git",
+      "concurrent-commit",
+      "dirty-tree",
+      "race",
+      "main-dev-fork",
+      "process"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T10:41:00+08:00"
+  },
+  {
+    "id": "bug-1159",
+    "timestamp": "2026-08-10T11:00:00+08:00",
+    "error_message": "对话页询问某货物价格时 agent 无法正确回答（调用 query_goods_price 失败/答非所问）",
+    "file": "extensions_config.json + skills/public/contract-price-analysis/SKILL.md",
+    "root_cause": "MCP server contract-price-analysis 的 tool_name_prefix 默认 true，工具被绑定成带前缀名 contract-price-analysis_query_goods_price；但 SKILL.md 教 agent 调用不带前缀的 query_goods_price / price_analysis_summary 等。模型按技能指示调一个不存在的工具名 → 价格查询失败。数据/MCP/server 本身都正常（独立加载 4 工具、cwd 透传 bug-712 修复有效），纯粹是技能写的工具名与实际绑定名对不上。",
+    "fix": "extensions_config.json 给 contract-price-analysis 加 \"tool_name_prefix\": false，工具以原名 query_goods_price 等绑定，匹配 SKILL.md。验证：重启 gateway 后 4 工具无前缀加载、无命名冲突、总计仍 26 工具。",
+    "tags": [
+      "mcp",
+      "tool-name-prefix",
+      "contract-price",
+      "skill",
+      "agent-tool-mismatch",
+      "stdio"
+    ],
+    "related_bugs": [
+      "bug-712"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T11:00:00+08:00"
+  },
+  {
+    "id": "bug-1160",
+    "timestamp": "2026-08-10T13:01:00+08:00",
+    "error_message": "TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'（roles/page.tsx denyGroups useMemo 内 map.set(prefix) / map.get(prefix)!.push，3 处）",
+    "file": "frontend/src/app/admin/roles/page.tsx",
+    "root_cause": "tsconfig noUncheckedIndexedAccess:true 下，p.id.split(\":\")[0] 返回 string | undefined，污染下游 Map<string,...> 的 set/get 调用。本权限 id 形如 <prefix>:<action> 首段必存在，但编译器不知道。",
+    "fix": "加非空断言 p.id.split(\":\")[0]!（带注释说明 id 格式保证首段存在）。typecheck EXIT=0。",
+    "tags": [
+      "typecheck",
+      "noUncheckedIndexedAccess",
+      "tsconfig",
+      "frontend",
+      "roles",
+      "combobox"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T13:01:00+08:00"
+  },
+  {
+    "id": "bug-1161",
+    "timestamp": "2026-08-10T15:00:00+08:00",
+    "error_message": "用户报告：代码被覆盖，landing-new/文档空间/合同价格分析/用户管理tab 显示旧内容。具体：landing-new 顶部导航'设置'应改为'应用中心'、快捷区'实体类型库'应改为'系统管理'，这些编辑已消失，磁盘回退到 HEAD。",
+    "file": "38 个已跟踪源码文件被 reset --hard 回退（前端 22: landing-new/docmgr 3/contract-price 8/admin-users/output 2/knowledge-factory/project/shell/layout/theme-provider/admin-select；后端 13: auth engine,identity,permission_routers/contract_price 4/docmgr folder_service/law/user/user_department/temporal review_activities/checkpoint_lineage/skillscan orchestrator/present_file_tool；config/roles_custom.yaml；docker/dev-entrypoint.sh）",
+    "root_cause": "2026-08-10 09:47:05 `git reset --hard HEAD`（reflog: reset: moving to HEAD，同秒 38 个跟踪源码文件 mtime 更新为 09:47:05，各文件最后提交日期从 2026-05-28 到 08-09 不等）把这些含未提交工作区编辑的文件整体回退到各自最后一次提交状态。应用中心等新标签在 landing-new 任何 commit/stash/dangling-blob 均不存在 → 编辑从未提交，git 不可恢复。同款 bug-1150：并发会话共享 main-dev-fork dirty 工作树，一个会话 git reset --hard 清理时把另一会话的工作区编辑一起冲掉。",
+    "fix": "已查明，未自动改码。恢复唯一可行：手工重放丢失的未提交编辑（用户已知 landing-new 两处：设置→应用中心 href /app-center、实体类型库→系统管理）。预防：并发会话改用独立 worktree（cerebrum 已有 Do-Not-Repeat），避免在共享 dirty 分支上 reset --hard；未提交工作先 git stash 或立即提交。",
+    "tags": [
+      "git",
+      "reset-hard",
+      "concurrent-session",
+      "dirty-tree",
+      "data-loss",
+      "landing-new",
+      "main-dev-fork",
+      "race"
+    ],
+    "related_bugs": [
+      "bug-1150"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T15:00:00+08:00"
+  },
+  {
+    "id": "bug-1162",
+    "timestamp": "2026-08-10T22:30:00+08:00",
+    "error_message": "对话 agent 调用 contract-price-analysis MCP 的 query_goods_price / price_analysis_summary 报 PostgreSQL 127.0.0.1:5432 connection refused（用户：'数据库连不上，查询失败'）。工具名修复(bug-1159)后 agent 已能调对工具，但工具内部连库失败。",
+    "file": "extensions_config.json (mcpServers.contract-price-analysis.env) → 解析回退在 backend/app/extensions/config.py DatabaseConfig.from_env() / contract_price/mcp.py _resolve_db_url()",
+    "root_cause": "MCP stdio 子进程环境被两层收窄：① mcp SDK get_default_environment() 只继承 HOME/LOGNAME/PATH/SHELL/TERM/USER（mcp/client/stdio/__init__.py DEFAULT_INHERITED_ENV_VARS 白名单，SDK:127 行 env={**get_default_environment(),**server.env}）；② harness deerflow/mcp/tools.py:512-516 从 server.env(={}) 起仅 setdefault TMPDIR/TMP/TEMP。最终子进程 env 没有 EXTENSIONS_DB_HOST。而 contract_price/mcp.py _resolve_db_url() 在 CPA_QUERY_DB_URL 未设时回退 get_extensions_config().database.url，后者 from_env() 用 os.getenv('EXTENSIONS_DB_HOST','localhost') → 缺失即 localhost → 127.0.0.1:5432 拒绝。project 服务器靠硬编码 env.PROJECT_DB_URL 躲过同一陷阱；contract-price 的 _resolve_db_url() 留了 CPA_QUERY_DB_URL override 钩子却没接线。",
+    "fix": "extensions_config.json 给 contract-price-analysis 的 env 加 CPA_QUERY_DB_URL=postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow（镜像 project 服务器的 PROJECT_DB_URL 模式；_resolve_db_url 第一优先级读它）。零代码改动。验证：MultiServerMCPClient 真实 stdio spawn + query_goods_price('LED') 返回 success:true / 7 matched / 应急LED灯 均价 128.07。",
+    "tags": [
+      "mcp",
+      "stdio",
+      "env",
+      "subprocess",
+      "contract-price",
+      "database",
+      "localhost",
+      "extensions-config",
+      "agent",
+      "env-allowlist"
+    ],
+    "related_bugs": [
+      "bug-1159"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T22:30:00+08:00"
   }
 ]

@@ -89,11 +89,14 @@
         "-m",
         "app.extensions.contract_price.mcp"
       ],
-      "env": {},
+      "env": {
+        "CPA_QUERY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
       "cwd": "/app/backend",
       "url": null,
       "headers": {},
       "oauth": null,
+      "tool_name_prefix": false,
       "description": "合同分项价格只读查询工具(货物价格统计/异常/待核验/总览),供对话 agent 直接调用。不触发流水线。"
     },
     "knowledge-factory": {
