@@ -47,6 +47,7 @@ import { ChunkModal } from "./ChunkModal";
 import { CustomSelect } from "./CustomSelect";
 import { DocStatusBadge } from "./DocStatusBadge";
 import { UploadModal, formatFileSize } from "./UploadModal";
+import { sortSourcesByScore } from "./sources-sort";
 import { ToastContainer, useToast } from "./toast";
 
 function formatDate(dateString: string) {
@@ -89,6 +90,7 @@ export function KnowledgeBaseDetail({
     answer?: string;
     sources?: any[];
   } | null>(null);
+  const [previewChunk, setPreviewChunk] = useState<{ content: string; name?: string } | null>(null);
   const [docs, setDocs] = useState<Document[]>([]);
   const [docsLoading, setDocsLoading] = useState(true);
   const [fileSearch, setFileSearch] = useState("");
@@ -319,9 +321,13 @@ export function KnowledgeBaseDetail({
       const result = await kbApi.chat(kb.id, {
         query,
         top_k: topK,
-        similarity_threshold: similarityThreshold,
+        // similarity_threshold / vector_similarity_weight omitted → backend falls back to persisted retrieval_config
       });
-      setChatResult(result as any);
+      const r = result as any;
+      setChatResult({
+        answer: r.answer,
+        sources: sortSourcesByScore(r.sources ?? []),
+      });
     } catch (e: any) {
       toast(e?.message ?? "检索失败", "error");
     } finally {
@@ -642,7 +648,8 @@ export function KnowledgeBaseDetail({
                       {chatResult.sources.map((src: any, idx: number) => (
                         <div
                           key={idx}
-                          className="rounded-lg border border-border bg-background p-3 text-xs"
+                          onClick={() => setPreviewChunk({ content: src.content ?? "", name: src.document_name })}
+                          className="cursor-pointer rounded-lg border border-border bg-background p-3 text-xs transition-colors hover:border-primary/40 hover:bg-muted/40"
                         >
                           <div className="mb-1 font-medium text-foreground/80">
                             {src.document_name || `来源 ${idx + 1}`}
@@ -660,6 +667,32 @@ export function KnowledgeBaseDetail({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+            {previewChunk && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                onClick={() => setPreviewChunk(null)}
+              >
+                <div
+                  className="max-h-[70vh] w-full max-w-2xl overflow-auto rounded-xl border border-border bg-background p-5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-foreground">
+                      {previewChunk.name ?? "分块原文"}
+                    </h4>
+                    <button
+                      onClick={() => setPreviewChunk(null)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-foreground/80">
+                    {previewChunk.content}
+                  </p>
+                </div>
               </div>
             )}
           </TabsContent>
