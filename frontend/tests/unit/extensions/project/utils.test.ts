@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { ProjectChapter } from "@/extensions/project/types";
 import {
+  type ChapterBlockState,
   type ChapterStatus,
   activityLabel,
+  deriveBlockState,
   flattenChapters,
+  groupByRole,
+  hasAnyContent,
   inferStatus,
 } from "@/extensions/project/utils";
 
@@ -116,5 +120,77 @@ describe("activityLabel", () => {
   it("returns 'X天前' for >= 24 hours", () => {
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     expect(activityLabel(twoDaysAgo)).toBe("2天前");
+  });
+});
+
+// EAI-CUSTOM: 状态机 + 分工纯函数(ADR 2026-08-10)
+
+const baseChapter = (overrides: Partial<ProjectChapter> = {}): ProjectChapter => ({
+  id: "1", projectId: "p", parentId: null, title: "Test", level: 1,
+  sortOrder: 0, status: "pending", content: null,
+  assignedTo: null, assignedName: null,
+  wordCountTarget: 0, wordCountCurrent: 0,
+  purpose: null, generationHint: null, children: [],
+  createdAt: null, updatedAt: null,
+  ...overrides,
+});
+
+describe("hasAnyContent", () => {
+  it("returns false when no chapters have content", () => {
+    expect(hasAnyContent([baseChapter(), baseChapter({ children: [baseChapter()] })])).toBe(false);
+  });
+
+  it("returns true when any chapter has content", () => {
+    expect(hasAnyContent([baseChapter(), baseChapter({ content: "hello" })])).toBe(true);
+  });
+
+  it("returns true for nested content", () => {
+    expect(hasAnyContent([baseChapter({ children: [baseChapter({ content: "x" })] })])).toBe(true);
+  });
+
+  it("ignores whitespace-only content", () => {
+    expect(hasAnyContent([baseChapter({ content: "   \n\t " })])).toBe(false);
+  });
+
+  it("returns false for empty input", () => {
+    expect(hasAnyContent([])).toBe(false);
+  });
+});
+
+describe("deriveBlockState", () => {
+  it("not_generated when temporal workflow id is null/undefined/empty", () => {
+    expect(deriveBlockState(null, false)).toBe<ChapterBlockState>("not_generated");
+    expect(deriveBlockState(undefined, false)).toBe<ChapterBlockState>("not_generated");
+    expect(deriveBlockState("", false)).toBe<ChapterBlockState>("not_generated");
+  });
+
+  it("generating when workflow started but no content", () => {
+    expect(deriveBlockState("wf-123", false)).toBe<ChapterBlockState>("generating");
+  });
+
+  it("human_edit when at least one chapter has content", () => {
+    expect(deriveBlockState("wf-123", true)).toBe<ChapterBlockState>("human_edit");
+  });
+
+  it("content takes priority over workflow id presence", () => {
+    expect(deriveBlockState(null, true)).toBe<ChapterBlockState>("not_generated");
+  });
+});
+
+describe("groupByRole", () => {
+  it("groups items by role", () => {
+    const items = [
+      { role: "writer", id: "1" },
+      { role: "writer", id: "2" },
+      { role: "reviewer", id: "3" },
+    ];
+    expect(groupByRole(items)).toEqual({
+      writer: [{ role: "writer", id: "1" }, { role: "writer", id: "2" }],
+      reviewer: [{ role: "reviewer", id: "3" }],
+    });
+  });
+
+  it("returns empty object for empty input", () => {
+    expect(groupByRole([])).toEqual({});
   });
 });

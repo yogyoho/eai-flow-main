@@ -11,6 +11,8 @@ export type ProjectStatus = "draft" | "in_review" | "approved";
 // EAI-CUSTOM: canonical ProjectRole taxonomy (ADR P5).
 export type MemberRole = "owner" | "phase_lead" | "writer" | "reviewer" | "approver";
 
+export type AssignmentStrategy = "by_chapter" | "by_role"; // EAI-CUSTOM: ADR 2026-08-10
+
 // ── Chapter ──
 
 export interface ProjectChapter {
@@ -65,6 +67,7 @@ export interface ReportProject {
   derivedStage?: number; // EAI-CUSTOM: canonical derived stage (ADR 2026-08-02 P2)
   archivedAt?: string | null; // EAI-CUSTOM: orthogonal archive bucket (ADR P5)
   description?: string | null; // EAI-CUSTOM: 项目说明/要求,写入 project-context.json 注入 agent
+  assignmentStrategy?: AssignmentStrategy; // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 }
 
 export interface ProjectListItem {
@@ -95,12 +98,14 @@ export interface CreateProjectRequest {
   autoStartWorkflow?: boolean;
   members?: { userId: string; role: MemberRole }[];
   description?: string | null; // EAI-CUSTOM: 项目说明/要求(选填)
+  assignmentStrategy?: AssignmentStrategy; // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 }
 
 export interface UpdateProjectRequest {
   name?: string;
   status?: ProjectStatus;
   description?: string | null; // EAI-CUSTOM: 项目说明/要求(选填)
+  assignmentStrategy?: AssignmentStrategy; // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
 }
 
 // ── Labels ──
