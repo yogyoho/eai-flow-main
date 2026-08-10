@@ -37,6 +37,7 @@ import type {
   Document,
   KnowledgeBase,
   KnowledgeBaseGrant,
+  RAGChatResponse,
   Role,
   UpdateKnowledgeBaseRequest,
   User,
@@ -46,9 +47,9 @@ import { cn } from "@/lib/utils";
 import { ChunkModal } from "./ChunkModal";
 import { CustomSelect } from "./CustomSelect";
 import { DocStatusBadge } from "./DocStatusBadge";
-import { UploadModal, formatFileSize } from "./UploadModal";
 import { sortSourcesByScore } from "./sources-sort";
 import { ToastContainer, useToast } from "./toast";
+import { UploadModal, formatFileSize } from "./UploadModal";
 
 function formatDate(dateString: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -86,10 +87,7 @@ export function KnowledgeBaseDetail({
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatResult, setChatResult] = useState<{
-    answer?: string;
-    sources?: any[];
-  } | null>(null);
+  const [chatResult, setChatResult] = useState<{ answer?: string; sources?: RAGChatResponse["sources"] } | null>(null);
   const [previewChunk, setPreviewChunk] = useState<{ content: string; name?: string } | null>(null);
   const [docs, setDocs] = useState<Document[]>([]);
   const [docsLoading, setDocsLoading] = useState(true);
@@ -323,13 +321,12 @@ export function KnowledgeBaseDetail({
         top_k: topK,
         // similarity_threshold / vector_similarity_weight omitted → backend falls back to persisted retrieval_config
       });
-      const r = result as any;
       setChatResult({
-        answer: r.answer,
-        sources: sortSourcesByScore(r.sources ?? []),
+        answer: result.answer,
+        sources: sortSourcesByScore(result.sources),
       });
-    } catch (e: any) {
-      toast(e?.message ?? "检索失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "检索失败", "error");
     } finally {
       setChatLoading(false);
     }
@@ -346,8 +343,8 @@ export function KnowledgeBaseDetail({
       onKbUpdated?.(updated);
       setConfigDirty(false);
       toast("检索配置已保存", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "保存失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "保存失败", "error");
     } finally {
       setConfigSaving(false);
     }
@@ -645,14 +642,14 @@ export function KnowledgeBaseDetail({
                       参考来源
                     </h4>
                     <div className="space-y-2">
-                      {chatResult.sources.map((src: any, idx: number) => (
+                      {chatResult.sources.map((src, idx) => (
                         <div
                           key={idx}
                           onClick={() => setPreviewChunk({ content: src.content ?? "", name: src.document_name })}
                           className="cursor-pointer rounded-lg border border-border bg-background p-3 text-xs transition-colors hover:border-primary/40 hover:bg-muted/40"
                         >
                           <div className="mb-1 font-medium text-foreground/80">
-                            {src.document_name || `来源 ${idx + 1}`}
+                            {src.document_name ?? `来源 ${idx + 1}`}
                           </div>
                           <p className="line-clamp-3 text-muted-foreground">
                             {src.content}
