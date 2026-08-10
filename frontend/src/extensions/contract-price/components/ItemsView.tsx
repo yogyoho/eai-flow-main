@@ -112,6 +112,14 @@ function DetailField({ label, value, span }: { label: string; value: string; spa
   );
 }
 
+function formatRunLabel(run: CpaRun | null, runId: string | null): string {
+  if (!run) return runId ? `任务 ${runId.slice(0, 8)}…` : "未关联分析任务";
+  const d = new Date(run.started_at);
+  const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const phase = run.scope ? run.scope.phase : null;
+  return `${phase === "parse" ? "合同数据抽取任务" : "分组分析任务"}_${ds}`;
+}
+
 export function ItemsView() {
   const [keyword, setKeyword] = useState("");
   const [applied, setApplied] = useState("");
@@ -255,6 +263,26 @@ export function ItemsView() {
                 {(contractsData ?? []).map((c) => (
                   <SelectItem key={c.source_contract_no} value={c.source_contract_no}>
                     {c.source_contract_no} ({c.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={runFilter}
+              onValueChange={(v) => {
+                setRunFilter(v);
+                setPage(0);
+                setSelected(new Set());
+              }}
+            >
+              <SelectTrigger className="w-[220px] h-9">
+                <SelectValue placeholder="来源任务" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部任务</SelectItem>
+                {runs.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {formatRunLabel(r, r.id)}
                   </SelectItem>
                 ))}
               </SelectContent>
