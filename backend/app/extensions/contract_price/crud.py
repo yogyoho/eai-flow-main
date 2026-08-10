@@ -7,7 +7,8 @@ separated from the routers so it can be unit-tested with a mocked session.
 
 import json
 import os
-from typing import Any, Optional
+from datetime import UTC
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, func, select, text, update
@@ -31,8 +32,8 @@ _CONFIG_PATH = os.path.join(
 
 async def list_documents(
     session: AsyncSession,
-    keyword: Optional[str] = None,
-    parse_status: Optional[str] = None,
+    keyword: str | None = None,
+    parse_status: str | None = None,
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[list[CpaDocument], int]:
@@ -51,15 +52,149 @@ async def list_documents(
 
 
 async def delete_document(session: AsyncSession, doc_id: UUID) -> bool:
+    # If this doc's items are part of the current cluster snapshot, that snapshot
+    # is now stale (it still counts the items we're about to delete) → clear it.
+    # Clusters are a full-rebuild snapshot (re-run「开始分组」to regenerate), so
+    # wiping avoids 分组审核 showing groups that no longer match the data.
+    in_snapshot = await session.scalar(
+        select(func.count())
+        .select_from(
+            select(CpaItem)
+            .where(CpaItem.document_id == doc_id, CpaItem.cluster_id.is_not(None))
+            .subquery()
+        )
+    )
     await session.execute(delete(CpaItem).where(CpaItem.document_id == doc_id))
+    if in_snapshot:
+        # null remaining items' cluster_id/is_outlier, drop all clusters, and
+        # revert 'clustered' docs to 'confirmed' (their groups are gone).
+        await session.execute(update(CpaItem).values(cluster_id=None, is_outlier=False))
+        await session.execute(delete(CpaCluster))
+        await session.execute(
+            update(CpaDocument)
+            .where(CpaDocument.confirm_status == "clustered")
+            .values(confirm_status="confirmed")
+        )
     result = await session.execute(delete(CpaDocument).where(CpaDocument.id == doc_id))
     await session.commit()
     return (result.rowcount or 0) > 0
 
 
+async def find_duplicate_document(
+    session: AsyncSession, file_hash: str, exclude_uri: str
+) -> CpaDocument | None:
+    """A document with the SAME content hash under a DIFFERENT storage_uri — i.e.
+    the same contract already uploaded under another filename. Used to reject
+    cross-filename duplicate uploads (dedup by content, not filename). Returns
+    None when the content is new or only exists under ``exclude_uri`` (re-upload
+    of the same filename, which is allowed and overwrites in place)."""
+    result = await session.execute(
+        select(CpaDocument)
+        .where(CpaDocument.file_hash == file_hash)
+        .where(CpaDocument.storage_uri != exclude_uri)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_pending_document(
+    session: AsyncSession,
+    *,
+    storage_uri: str,
+    file_name: str,
+    file_hash: str,
+    file_type: str,
+    size: int,
+) -> None:
+    """Create a 'pending' document row at upload time so the doc shows in the
+    list (status 解析中) BEFORE the parse run finishes. Upsert by storage_uri:
+    re-uploading the same filename resets the existing row to pending (re-parse).
+    The parse run's _persist_parse later fills parse_status + items by upserting
+    on the same storage_uri."""
+    existing = (
+        await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == storage_uri))
+    ).scalar_one_or_none()
+    if existing is None:
+        session.add(
+            CpaDocument(
+                storage_uri=storage_uri,
+                file_name=file_name,
+                file_hash=file_hash,
+                file_type=file_type,
+                quick_fp=f"{file_name}|{size}",
+                parse_mode="ocr",
+                parse_status="pending",
+                confirm_status="pending",
+            )
+        )
+    else:
+        existing.file_hash = file_hash
+        existing.file_type = file_type
+        existing.quick_fp = f"{file_name}|{size}"
+        existing.parse_status = "pending"
+        existing.confirm_status = "pending"
+        existing.parse_meta = None
+        existing.error = None
+    await session.commit()
+
+
+async def mark_documents_parsing(
+    session: AsyncSession, *, storage_uri: str | None = None
+) -> int:
+    """将待解析文档由「已上传」(pending) 置为「解析中」(parsing)。
+
+    在点击「开始解析」时立即调用 —— 让前端在按钮点下的瞬间就显示 解析中,
+    而非等到 OCR 子进程真正启动(可能滞后数秒)。pipeline 子进程随后会按
+    storage_uri 覆写为 parsed/failed/needs_review(见 cli._persist_parse)。
+
+    - 不传 storage_uri:批量置全部 pending 文档(「开始解析」按钮)。
+    - 传 storage_uri:仅置该单文档(单文档触发场景)。
+    返回受影响行数。
+    """
+    stmt = update(CpaDocument).where(CpaDocument.parse_status == "pending")
+    if storage_uri:
+        stmt = stmt.where(CpaDocument.storage_uri == storage_uri)
+    result = await session.execute(stmt.values(parse_status="parsing"))
+    await session.commit()
+    return result.rowcount or 0
+
+
+async def set_document_parse_status(
+    session: AsyncSession, doc_id: UUID, parse_status: str
+) -> CpaDocument | None:
+    """强制将单个文档置为指定解析状态(忽略当前状态)。
+
+    用于「重新解析」:被重解析的文档当前可能是 parsed/needs_review/failed
+    (不一定是 pending),``mark_documents_parsing`` 的 pending 过滤会漏掉它们,
+    故这里按 id 直接覆写为 parsing。子进程用 force_key 重跑后同样覆写终态。
+    """
+    doc = await session.get(CpaDocument, doc_id)
+    if doc is None:
+        return None
+    doc.parse_status = parse_status
+    await session.commit()
+    return doc
+
+
+async def mark_stale_parsing_failed(session: AsyncSession, error: str) -> int:
+    """解析子进程整体失败后兜底:把仍卡在「解析中」的文档置为「解析失败」。
+
+    正常完成的文档已被子进程逐个覆写为 parsed/failed/needs_review;只有子进程
+    崩溃/非零退出时,从未到达终态的 parsing 文档会永远停在 解析中。这里置为
+    failed,避免状态卡死(用户要求:失败就是解析失败)。
+    """
+    result = await session.execute(
+        update(CpaDocument)
+        .where(CpaDocument.parse_status == "parsing")
+        .values(parse_status="failed", error=error)
+    )
+    await session.commit()
+    return result.rowcount or 0
+
+
 async def update_document(
     session: AsyncSession, doc_id: UUID, fields: dict[str, Any]
-) -> Optional[CpaDocument]:
+) -> CpaDocument | None:
     """Patch editable document fields (manual补 for project name/location + metadata)."""
     doc = await session.get(CpaDocument, doc_id)
     if doc is None:
@@ -73,7 +208,7 @@ async def update_document(
 
 async def confirm_document(
     session: AsyncSession, doc_id: UUID, confirm_status: str
-) -> Optional[CpaDocument]:
+) -> CpaDocument | None:
     """Set a document's confirm_status (confirmed/skipped) — the cluster gate."""
     if confirm_status not in ("confirmed", "skipped"):
         return None
@@ -104,8 +239,8 @@ async def confirm_all_documents(session: AsyncSession, confirm_status: str) -> i
 
 async def list_clusters(
     session: AsyncSession,
-    status: Optional[str] = None,
-    category: Optional[str] = None,
+    status: str | None = None,
+    category: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[CpaCluster], int]:
@@ -120,7 +255,7 @@ async def list_clusters(
     return list(result.scalars().all()), int(total)
 
 
-async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> Optional[CpaCluster]:
+async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> CpaCluster | None:
     cluster = await session.get(CpaCluster, cluster_id)
     if cluster is None:
         return None
@@ -134,9 +269,9 @@ async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> Opt
 async def confirm_cluster(
     session: AsyncSession,
     cluster_id: UUID,
-    confirmed_by: Optional[str] = None,
-    expected_version: Optional[int] = None,
-) -> Optional[CpaCluster]:
+    confirmed_by: str | None = None,
+    expected_version: int | None = None,
+) -> CpaCluster | None:
     cluster = await session.get(CpaCluster, cluster_id)
     if cluster is None:
         return None
@@ -152,8 +287,8 @@ async def confirm_cluster(
 async def reject_cluster(
     session: AsyncSession,
     cluster_id: UUID,
-    expected_version: Optional[int] = None,
-) -> Optional[CpaCluster]:
+    expected_version: int | None = None,
+) -> CpaCluster | None:
     """Mark a cluster rejected (manual curation — drop it from confirmed stats)."""
     cluster = await session.get(CpaCluster, cluster_id)
     if cluster is None:
@@ -170,7 +305,7 @@ async def update_cluster(
     session: AsyncSession,
     cluster_id: UUID,
     fields: dict[str, Any],
-) -> Optional[CpaCluster]:
+) -> CpaCluster | None:
     """Patch a cluster's display fields (category / representative_name)."""
     cluster = await session.get(CpaCluster, cluster_id)
     if cluster is None:
@@ -187,7 +322,7 @@ async def merge_clusters(
     cluster_ids: list[UUID],
     representative_name: str,
     category: str = "未分类",
-) -> Optional[CpaCluster]:
+) -> CpaCluster | None:
     if len(cluster_ids) < 2:
         raise ValueError("merge requires at least 2 clusters")
     new_cluster = CpaCluster(
@@ -210,7 +345,7 @@ async def merge_clusters(
     return new_cluster
 
 
-async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUID) -> Optional[CpaItem]:
+async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUID) -> CpaItem | None:
     item = await session.get(CpaItem, item_id)
     if item is None:
         return None
@@ -224,12 +359,12 @@ async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUI
 
 async def list_items(
     session: AsyncSession,
-    goods_name: Optional[str] = None,
-    source_contract_no: Optional[str] = None,
-    cluster_id: Optional[UUID] = None,
-    run_id: Optional[UUID] = None,
+    goods_name: str | None = None,
+    source_contract_no: str | None = None,
+    cluster_id: UUID | None = None,
+    run_id: UUID | None = None,
     only_outliers: bool = False,
-    validation_status: Optional[str] = None,
+    validation_status: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[CpaItem], int]:
@@ -246,6 +381,8 @@ async def list_items(
         stmt = stmt.where(CpaItem.is_outlier.is_(True))
     if validation_status:
         stmt = stmt.where(CpaItem.validation_status == validation_status)
+    if validation_status:
+        stmt = stmt.where(CpaItem.validation_status == validation_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaItem.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
@@ -254,7 +391,7 @@ async def list_items(
 
 async def update_item(
     session: AsyncSession, item_id: UUID, fields: dict[str, Any]
-) -> Optional[CpaItem]:
+) -> CpaItem | None:
     item = await session.get(CpaItem, item_id)
     if item is None:
         return None
@@ -296,6 +433,19 @@ async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int
     return result.rowcount or 0
 
 
+async def batch_validate_items(
+    session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok"
+) -> int:
+    """Batch update validation_status (ok/corrected) for selected items."""
+    result = await session.execute(
+        update(CpaItem)
+        .where(CpaItem.id.in_(item_ids))
+        .values(validation_status=validation_status)
+    )
+    await session.commit()
+    return result.rowcount or 0
+
+
 async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
     result = await session.execute(delete(CpaItem).where(CpaItem.run_id == run_id))
     await session.commit()
@@ -307,7 +457,7 @@ async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
 
 async def list_runs(
     session: AsyncSession,
-    status: Optional[str] = None,
+    status: str | None = None,
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[list[CpaRunHistory], int]:
@@ -320,8 +470,18 @@ async def list_runs(
     return list(result.scalars().all()), int(total)
 
 
-async def get_run(session: AsyncSession, run_id: UUID) -> Optional[CpaRunHistory]:
+async def get_run(session: AsyncSession, run_id: UUID) -> CpaRunHistory | None:
     return await session.get(CpaRunHistory, run_id)
+
+
+async def delete_run(session: AsyncSession, run_id: UUID) -> bool:
+    """Delete a run history record (does NOT cascade to items/docs)."""
+    run = await session.get(CpaRunHistory, run_id)
+    if run is None:
+        return False
+    await session.delete(run)
+    await session.commit()
+    return True
 
 
 async def has_running_run(session: AsyncSession, phase: str) -> bool:
@@ -343,17 +503,21 @@ async def has_running_run(session: AsyncSession, phase: str) -> bool:
     return bool(row)
 
 
-async def cleanup_stale_runs(session: AsyncSession, max_age_seconds: int = 3600) -> int:
+async def cleanup_stale_runs(session: AsyncSession, max_age_seconds: int = 21600) -> int:
     """Mark orphaned 'running' runs (older than max_age_seconds) as 'failed'.
+
+    Default 6h: a 100-doc parse run can take 2-4h, so the old 1h threshold
+    would mark still-running long batches as 'failed' if a new trigger arrived
+    mid-run. 6h covers the worst case without leaving true orphans too long.
 
     A gateway restart mid-run leaves the row at status='running' forever,
     which blocks re-trigger via has_running_run. This self-heal is called at
     the top of each trigger endpoint so orphans are cleared automatically.
     Returns the number of runs marked failed.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
+    cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
     result = await session.execute(
         update(CpaRunHistory)
         .where(CpaRunHistory.status == "running")
@@ -374,7 +538,7 @@ async def create_run(session: AsyncSession, **fields) -> CpaRunHistory:
 
 async def finish_run(
     session: AsyncSession, run_id: UUID, **fields
-) -> Optional[CpaRunHistory]:
+) -> CpaRunHistory | None:
     run = await session.get(CpaRunHistory, run_id)
     if run is None:
         return None
@@ -402,16 +566,20 @@ async def dashboard_counts(session: AsyncSession) -> dict:
             select(CpaCluster).where(CpaCluster.status == "confirmed").subquery()
         )
     ) or 0
+    outlier_count = await session.scalar(
+        select(func.count()).select_from(CpaItem).where(CpaItem.is_outlier.is_(True))
+    ) or 0
     return {
         "contract_count": int(contract_count),
         "item_count": int(item_count),
         "cluster_count": int(cluster_count),
         "pending_cluster_count": int(pending),
         "confirmed_cluster_count": int(confirmed),
+        "outlier_count": int(outlier_count),
     }
 
 
-async def price_range(session: AsyncSession) -> Optional[dict]:
+async def price_range(session: AsyncSession) -> dict | None:
     row = await session.execute(
         select(
             func.min(CpaItem.unit_price),
@@ -496,8 +664,8 @@ async def dashboard_charts(session: AsyncSession) -> dict:
 
 async def goods_analysis(
     session: AsyncSession,
-    name: Optional[str] = None,
-    cluster_id: Optional[UUID] = None,
+    name: str | None = None,
+    cluster_id: UUID | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> dict:
@@ -540,7 +708,7 @@ async def goods_analysis(
     ok_count = sum(1 for it in items if it.validation_status == "ok")
     nr_count = sum(1 for it in items if it.validation_status == "needs_review")
 
-    boxplot: Optional[dict] = None
+    boxplot: dict | None = None
     if priced:
         ps = sorted(priced)
         n = len(ps)
@@ -640,8 +808,19 @@ async def goods_analysis(
         for it in page_items
     ]
 
+    # Display name: prefer the explicit name; for cluster queries, use the
+    # cluster's representative_name (not items[0].goods_name, which may differ
+    # in mixed clusters — a known char-ngram limitation).
+    display_name = name
+    if not display_name and cluster_id:
+        cluster_obj = await session.get(CpaCluster, cluster_id)
+        if cluster_obj:
+            display_name = cluster_obj.representative_name
+    if not display_name:
+        display_name = items[0].goods_name if items else ""
+
     return {
-        "goods_name": name or (items[0].goods_name if items else ""),
+        "goods_name": display_name,
         "total": total,
         "ok_count": ok_count,
         "needs_review_count": nr_count,

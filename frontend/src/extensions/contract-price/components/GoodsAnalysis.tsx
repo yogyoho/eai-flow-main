@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, BarChart3, Building2, CalendarX, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Crosshair, LayoutGrid, PackageSearch, Table2 } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarX, Check, ChevronLeft, ChevronRight, ChevronsUpDown, Crosshair, LayoutGrid, Table2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -94,8 +94,8 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
               className="h-[42px] min-w-[260px] justify-between rounded-lg font-normal"
             >
               {selectedCluster
-                ? clusters.find((c) => c.id === selectedCluster)?.representative_name ?? "选择货物聚类组..."
-                : "选择货物聚类组..."}
+                ? clusters.find((c) => c.id === selectedCluster)?.representative_name ?? "选择货物分组..."
+                : "选择货物分组..."}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -136,9 +136,9 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
         <div className="flex flex-1 items-center justify-center py-20 text-sm text-muted-foreground">分析中...</div>
       ) : !data || data.total === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center py-20 text-center">
-          <PackageSearch className="mb-3 h-12 w-12 text-muted-foreground/30" />
+          <img src="/contract-price/data-tip.svg" alt="" className="mb-3 max-h-32 w-auto" />
           <p className="text-sm text-muted-foreground">
-            {selectedCluster ? "未找到匹配的货物数据" : "选择货物聚类组开始分析"}
+            {selectedCluster ? "未找到匹配的货物数据" : "选择货物聚类分组，查看货物价格的分析图表和明细"}
           </p>
         </div>
       ) : (
@@ -286,6 +286,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground/50">
+                <th className="px-5 py-2.5 text-left font-semibold">货物名称</th>
                 <th className="px-5 py-2.5 text-left font-semibold">合同编号</th>
                 <th className="px-5 py-2.5 text-left font-semibold">供应商</th>
                 <th className="px-5 py-2.5 text-right font-semibold">含税单价</th>
@@ -301,6 +302,7 @@ function AnalysisResult({ data, page, setPage, pageSize }: { data: Record<string
                 const isOutlier = it.is_outlier as boolean;
                 return (
                   <tr key={i} className="border-b border-border/40 transition-colors hover:bg-primary/5">
+                    <td className="px-5 py-2.5 font-medium">{it.goods_name as string}</td>
                     <td className="px-5 py-2.5 font-mono text-[11px] text-muted-foreground">{(it.contract_no as string) || "—"}</td>
                     <td className="px-5 py-2.5 font-medium">{it.supplier as string}</td>
                     <td className={`px-5 py-2.5 text-right font-mono font-semibold ${isOutlier ? "text-rose-500" : "text-primary"}`}>

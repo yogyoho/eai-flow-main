@@ -14,8 +14,7 @@ v2 (MinIO-backed documents):
 """
 
 import uuid
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -35,7 +34,7 @@ from app.extensions.database import Base
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class CpaDocument(Base):
@@ -48,22 +47,22 @@ class CpaDocument(Base):
     file_name: Mapped[str] = mapped_column(String(300))
     file_hash: Mapped[str] = mapped_column(String(128), index=True)     # SHA-256
     file_type: Mapped[str] = mapped_column(String(20))                  # pdf / docx
-    quick_fp: Mapped[Optional[str]] = mapped_column(String(256))        # name|size fast prefilter
-    contract_no: Mapped[Optional[str]] = mapped_column(String(100))
-    supplier: Mapped[Optional[str]] = mapped_column(String(200))
-    project_name: Mapped[Optional[str]] = mapped_column(String(300))      # 项目/工程名称(首页OCR正则)
-    project_location: Mapped[Optional[str]] = mapped_column(String(300))  # 项目所在地/工程地点
-    sign_date: Mapped[Optional[date]] = mapped_column()
+    quick_fp: Mapped[str | None] = mapped_column(String(256))        # name|size fast prefilter
+    contract_no: Mapped[str | None] = mapped_column(String(100))
+    supplier: Mapped[str | None] = mapped_column(String(200))
+    project_name: Mapped[str | None] = mapped_column(String(300))      # 项目/工程名称(首页OCR正则)
+    project_location: Mapped[str | None] = mapped_column(String(300))  # 项目所在地/工程地点
+    sign_date: Mapped[date | None] = mapped_column()
     parse_mode: Mapped[str] = mapped_column(String(20))                 # ocr / docx / failed
     parse_status: Mapped[str] = mapped_column(String(20))               # pending/parsed/failed/needs_review
     confirm_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/confirmed/skipped/clustered
-    parse_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
-    error: Mapped[Optional[str]] = mapped_column(Text)
-    page_count: Mapped[Optional[int]] = mapped_column(Integer)
-    page_sizes: Mapped[Optional[list]] = mapped_column(JSONB)
-    preview_prefix: Mapped[Optional[str]] = mapped_column(String(512))
-    raw_text: Mapped[Optional[str]] = mapped_column(Text)
-    parsed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    parse_meta: Mapped[dict | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    page_sizes: Mapped[list | None] = mapped_column(JSONB)
+    preview_prefix: Mapped[str | None] = mapped_column(String(512))
+    raw_text: Mapped[str | None] = mapped_column(Text)
+    parsed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -88,25 +87,25 @@ class CpaItem(Base):
         UUID(as_uuid=True), ForeignKey("cpa_documents.id"), nullable=False
     )
     goods_name: Mapped[str] = mapped_column(String(300))
-    spec_model: Mapped[Optional[str]] = mapped_column(String(300))
-    tech_params: Mapped[Optional[dict]] = mapped_column(JSONB)
-    quantity: Mapped[Optional[float]] = mapped_column(Numeric(18, 3))
-    unit: Mapped[Optional[str]] = mapped_column(String(50))
-    unit_price: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))  # 含税单价(统计用)
-    price_untaxed: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))  # 不含税单价(审计)
-    cluster_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    spec_model: Mapped[str | None] = mapped_column(String(300))
+    tech_params: Mapped[dict | None] = mapped_column(JSONB)
+    quantity: Mapped[float | None] = mapped_column(Numeric(18, 3))
+    unit: Mapped[str | None] = mapped_column(String(50))
+    unit_price: Mapped[float | None] = mapped_column(Numeric(18, 2))  # 含税单价(统计用)
+    price_untaxed: Mapped[float | None] = mapped_column(Numeric(18, 2))  # 不含税单价(审计)
+    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cpa_clusters.id")
     )
-    source_contract_no: Mapped[Optional[str]] = mapped_column(String(100))
+    source_contract_no: Mapped[str | None] = mapped_column(String(100))
     is_outlier: Mapped[bool] = mapped_column(Boolean, default=False)
-    source_page: Mapped[Optional[int]] = mapped_column(Integer)
-    source_bbox: Mapped[Optional[list]] = mapped_column(JSONB)
-    source_table_idx: Mapped[Optional[int]] = mapped_column(Integer)
-    source_row_idx: Mapped[Optional[int]] = mapped_column(Integer)
-    confidence: Mapped[Optional[float]] = mapped_column(Numeric(5, 4))
+    source_page: Mapped[int | None] = mapped_column(Integer)
+    source_bbox: Mapped[list | None] = mapped_column(JSONB)
+    source_table_idx: Mapped[int | None] = mapped_column(Integer)
+    source_row_idx: Mapped[int | None] = mapped_column(Integer)
+    confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
     validation_status: Mapped[str] = mapped_column(String(20), default="ok")
-    edit_note: Mapped[Optional[str]] = mapped_column(Text)
-    run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    edit_note: Mapped[str | None] = mapped_column(Text)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cpa_run_history.id"), index=True
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -123,10 +122,10 @@ class CpaCluster(Base):
     category: Mapped[str] = mapped_column(String(50))
     representative_name: Mapped[str] = mapped_column(String(300))
     status: Mapped[str] = mapped_column(String(20), default="pending")
-    stats: Mapped[Optional[dict]] = mapped_column(JSONB)
+    stats: Mapped[dict | None] = mapped_column(JSONB)
     item_count: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    confirmed_by: Mapped[Optional[str]] = mapped_column(String(100))
+    confirmed_by: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -142,16 +141,17 @@ class CpaRunHistory(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     trigger_type: Mapped[str] = mapped_column(String(20))
-    scope: Mapped[Optional[dict]] = mapped_column(JSONB)
-    progress: Mapped[Optional[dict]] = mapped_column(JSONB)  # {total,done,failed,phase}
+    label: Mapped[str | None] = mapped_column(String(100))
+    scope: Mapped[dict | None] = mapped_column(JSONB)
+    progress: Mapped[dict | None] = mapped_column(JSONB)  # {total,done,failed,phase}
     status: Mapped[str] = mapped_column(String(20))
     docs_processed: Mapped[int] = mapped_column(Integer, default=0)
     items_extracted: Mapped[int] = mapped_column(Integer, default=0)
     clusters_formed: Mapped[int] = mapped_column(Integer, default=0)
-    duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
-    excel_path: Mapped[Optional[str]] = mapped_column(String(500))
-    error: Mapped[Optional[str]] = mapped_column(Text)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    excel_path: Mapped[str | None] = mapped_column(String(500))
+    error: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

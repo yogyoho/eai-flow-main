@@ -38,7 +38,7 @@ export function SettingsView() {
   if (isLoading || !form) {
     return (
       <div className="p-8">
-        <PageHeader title="配置" description="聚类参数与定时任务设置" icon={<PackageSearch className="w-4 h-4" />} />
+        <PageHeader title="配置" description="分组参数与定时任务设置" icon={<PackageSearch className="w-4 h-4" />} />
         <Card className="mt-6">
           <CardContent className="p-6">
             <div className="h-40 animate-pulse rounded bg-muted" />

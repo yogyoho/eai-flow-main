@@ -21,7 +21,9 @@ import numpy as np
 
 _NUM = re.compile(r"(\d+(?:\.\d+)?)")
 # Canonical numeric tech-param fields (Chinese). Unrecognised keys are ignored.
-_PARAM_FIELDS = ("电压", "电流", "容量", "功率", "频率", "压力", "温度", "流量", "转速", "扬程")
+_PARAM_FIELDS = ("电压", "电流", "容量", "功率", "频率", "压力", "温度", "流量", "转速", "扬程", "管径")
+
+_DN_RE = re.compile(r"DN\s*(\d+)", re.IGNORECASE)
 
 
 def _char_wb_ngrams(text: str, ngram_range: tuple[int, int]) -> list[str]:
@@ -41,9 +43,9 @@ class Vectorizer:
         self._vocab: dict[str, int] = {}
         self._idf: np.ndarray | None = None
         self._param_keys: list[str] = []
+        self._dn_values: list[str] = []  # unique DN values for one-hot encoding
 
     def fit(self, samples: list[tuple[str, dict]]) -> "Vectorizer":
-        # Build vocabulary + document frequency over the goods names.
         df: Counter = Counter()
         doc_count = 0
         for name, _ in samples:
@@ -64,6 +66,13 @@ class Vectorizer:
                 if k in _PARAM_FIELDS:
                     seen.add(k)
         self._param_keys = sorted(seen)
+        # Collect unique DN values for one-hot encoding (different DN sizes =
+        # different products, must not cluster together).
+        dn_set: set[str] = set()
+        for name, _ in samples:
+            for m in _DN_RE.finditer(name):
+                dn_set.add(m.group(1))
+        self._dn_values = sorted(dn_set)
         return self
 
     def _text_vector(self, name: str) -> np.ndarray:
@@ -78,15 +87,20 @@ class Vectorizer:
 
     def transform(self, goods_name: str, tech_params: dict) -> np.ndarray:
         text_vec = self._text_vector(goods_name)
-        param_vec = np.array(
-            [self._numval(tech_params.get(k, "0")) for k in self._param_keys],
-            dtype=float,
-        )
-        if param_vec.size:
-            std = param_vec.std()
-            if std > 1e-9:
-                param_vec = (param_vec - param_vec.mean()) / std
-        return np.concatenate([text_vec, param_vec])
+        # Normalize text to unit length so DN one-hot isn't drowned out.
+        text_norm = np.linalg.norm(text_vec)
+        if text_norm > 1e-9:
+            text_vec = text_vec / text_norm
+        # DN one-hot: different DN sizes are orthogonal → cosine = 0 → separated.
+        # param_vec dropped — its raw values (40/50/100) dominated cosine and
+        # per-sample standardization (std=0 for 1-dim) was a no-op. The DN
+        # one-hot fully handles DN distinction.
+        dn_vec = np.zeros(max(len(self._dn_values), 1), dtype=float)
+        dn_match = _DN_RE.search(goods_name)
+        if dn_match and dn_match.group(1) in self._dn_values:
+            dn_vec[self._dn_values.index(dn_match.group(1))] = 1.0
+        DN_WEIGHT = 5.0
+        return np.concatenate([text_vec, dn_vec * DN_WEIGHT])
 
     @staticmethod
     def _numval(text) -> float:

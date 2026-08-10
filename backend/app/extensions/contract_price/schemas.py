@@ -1,7 +1,7 @@
 """Pydantic request/response models for the contract-price-analysis API."""
 
 from datetime import date, datetime
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -19,18 +19,18 @@ class DocumentOut(ORMBase):
     storage_uri: str
     file_hash: str
     file_type: str
-    contract_no: Optional[str] = None
-    supplier: Optional[str] = None
-    project_name: Optional[str] = None
-    project_location: Optional[str] = None
-    sign_date: Optional[date] = None
+    contract_no: str | None = None
+    supplier: str | None = None
+    project_name: str | None = None
+    project_location: str | None = None
+    sign_date: date | None = None
     parse_mode: str
     parse_status: str
     confirm_status: str = "pending"
-    parse_meta: Optional[dict] = None
-    page_count: Optional[int] = None
-    preview_prefix: Optional[str] = None
-    parsed_at: Optional[datetime] = None
+    parse_meta: dict | None = None
+    page_count: int | None = None
+    preview_prefix: str | None = None
+    parsed_at: datetime | None = None
     created_at: datetime
 
 
@@ -38,24 +38,24 @@ class ItemOut(ORMBase):
     id: UUID
     document_id: UUID
     goods_name: str
-    spec_model: Optional[str] = None
-    tech_params: Optional[dict] = None
-    quantity: Optional[float] = None
-    unit: Optional[str] = None
-    unit_price: Optional[float] = None
-    price_untaxed: Optional[float] = None
-    cluster_id: Optional[UUID] = None
-    source_contract_no: Optional[str] = None
+    spec_model: str | None = None
+    tech_params: dict | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    unit_price: float | None = None
+    price_untaxed: float | None = None
+    cluster_id: UUID | None = None
+    source_contract_no: str | None = None
     is_outlier: bool = False
     # v2 traceability + validation
-    source_page: Optional[int] = None
-    source_bbox: Optional[list] = None
-    source_table_idx: Optional[int] = None
-    source_row_idx: Optional[int] = None
-    confidence: Optional[float] = None
+    source_page: int | None = None
+    source_bbox: list | None = None
+    source_table_idx: int | None = None
+    source_row_idx: int | None = None
+    confidence: float | None = None
     validation_status: str = "ok"
-    edit_note: Optional[str] = None
-    run_id: Optional[UUID] = None
+    edit_note: str | None = None
+    run_id: UUID | None = None
     created_at: datetime
 
 
@@ -64,10 +64,10 @@ class ClusterOut(ORMBase):
     category: str
     representative_name: str
     status: str
-    stats: Optional[dict] = None
+    stats: dict | None = None
     item_count: int
     version: int
-    confirmed_by: Optional[str] = None
+    confirmed_by: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -79,17 +79,18 @@ class ClusterDetail(ClusterOut):
 class RunOut(ORMBase):
     id: UUID
     trigger_type: str
+    label: str | None = None
     status: str
     docs_processed: int
     items_extracted: int
     clusters_formed: int
-    duration_ms: Optional[int] = None
-    excel_path: Optional[str] = None
-    error: Optional[str] = None
-    scope: Optional[dict] = None
-    progress: Optional[dict] = None
+    duration_ms: int | None = None
+    excel_path: str | None = None
+    error: str | None = None
+    scope: dict | None = None
+    progress: dict | None = None
     started_at: datetime
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
 
 
 class DashboardOut(BaseModel):
@@ -98,8 +99,9 @@ class DashboardOut(BaseModel):
     cluster_count: int
     pending_cluster_count: int
     confirmed_cluster_count: int
-    price_range: Optional[dict] = None
-    charts: Optional[dict] = None  # {top_goods, price_ranges, validation, cluster_sizes}
+    outlier_count: int = 0  # count of cpa_items with is_outlier=true (>1.5×IQR within their cluster)
+    price_range: dict | None = None
+    charts: dict | None = None  # {top_goods, price_ranges, validation, cluster_sizes}
     recent_runs: list[RunOut] = []
 
 
@@ -108,7 +110,7 @@ class ConfigOut(BaseModel):
     cluster_eps: float = 0.6
     cluster_min_samples: int = 2
     scheduled_enabled: bool = False
-    schedule_cron: Optional[str] = None
+    schedule_cron: str | None = None
     # Table-name keywords that mark a goods/price table even without a clear
     # price header (different contracts name price tables differently).
     price_table_keywords: list[str] = [
@@ -126,23 +128,23 @@ class ConfigUpdate(ConfigOut):
 
 
 class ItemUpdate(BaseModel):
-    unit_price: Optional[float] = None
-    tech_params: Optional[dict] = None
-    goods_name: Optional[str] = None
-    spec_model: Optional[str] = None
-    validation_status: Optional[str] = None  # ok | needs_review | corrected
-    note: Optional[str] = None
+    unit_price: float | None = None
+    tech_params: dict | None = None
+    goods_name: str | None = None
+    spec_model: str | None = None
+    validation_status: str | None = None  # ok | needs_review | corrected
+    note: str | None = None
 
 
 class DocumentUpdate(BaseModel):
     """Manual补 fallback for project-level fields the front-page OCR regex missed,
     plus the doc-level metadata a user may correct by hand."""
 
-    project_name: Optional[str] = None
-    project_location: Optional[str] = None
-    contract_no: Optional[str] = None
-    supplier: Optional[str] = None
-    sign_date: Optional[date] = None
+    project_name: str | None = None
+    project_location: str | None = None
+    contract_no: str | None = None
+    supplier: str | None = None
+    sign_date: date | None = None
 
 
 class DocumentConfirm(BaseModel):
@@ -152,8 +154,8 @@ class DocumentConfirm(BaseModel):
 
 
 class ClusterConfirm(BaseModel):
-    confirmed_by: Optional[str] = None
-    expected_version: Optional[int] = None
+    confirmed_by: str | None = None
+    expected_version: int | None = None
 
 
 class ClusterMerge(BaseModel):
@@ -165,8 +167,8 @@ class ClusterMerge(BaseModel):
 class ClusterUpdate(BaseModel):
     """Edit a cluster's display fields (manual curation)."""
 
-    category: Optional[str] = None
-    representative_name: Optional[str] = None
+    category: str | None = None
+    representative_name: str | None = None
 
 
 class ItemMove(BaseModel):

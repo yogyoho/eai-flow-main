@@ -72,6 +72,7 @@ export interface CpaClusterDetail extends CpaCluster {
 export interface CpaRun {
   id: string;
   trigger_type: string;
+  label: string | null;
   status: string; // running | completed | failed
   docs_processed: number;
   items_extracted: number;
@@ -80,7 +81,7 @@ export interface CpaRun {
   excel_path: string | null;
   error: string | null;
   scope: Record<string, unknown> | null;
-  progress: { total: number; done: number; failed: number; phase?: string } | null;
+  progress: { total: number; done: number; failed: number; phase?: string; processing?: string[] } | null;
   started_at: string;
   finished_at: string | null;
 }
@@ -98,6 +99,7 @@ export interface CpaDashboard {
   cluster_count: number;
   pending_cluster_count: number;
   confirmed_cluster_count: number;
+  outlier_count: number;
   price_range: { min: number; max: number; avg: number } | null;
   charts: CpaDashboardCharts | null;
   recent_runs: CpaRun[];

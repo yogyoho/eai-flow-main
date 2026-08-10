@@ -6353,3 +6353,9 @@
 | 19:20 | 恢复后端残留:真丢失 6 文件(identity user tags 合并/law system owner/user_department flush/review_activities bug-1148 naive datetime/present_file_tool bug-1145 callbacks/dev-entrypoint reload-exclude);误判跳过 engine/permission_routers/checkpoint_lineage/roles_custom.yaml(已提交,marker 已在);6 测试过,ruff 基线同 | 6 后端文件 | done | ~3k |
 | 18:46 | Session end: 1 writes across 1 files (page.tsx) | 5 reads | ~43226 tok |
 | 19:40 | 全量审计:timestamp-vs-commit 过滤出 19 候选,新增恢复 TemplateEditor(useEffect 依赖 sections→id 修子章节焦点跳父);LayoutTemplateEditor/CoverConfigSection 重构为未完成中间态(不编译)回退保留 HEAD;WorkspaceHome/globals.css moot;test_thread_regenerate 3 失败=预存 app fixture 问题 | TemplateEditor.tsx | done | ~3k |
+| 19:03 | Session end: 1 writes across 1 files (page.tsx) | 5 reads | ~43226 tok |
+| 19:49 | Edited frontend/src/extensions/contract-price/api.ts | 2→7 lines | ~81 |
+| 19:50 | Edited frontend/src/extensions/contract-price/hooks.ts | modified useReparseDocument() | ~137 |
+| 19:52 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | inline fix | ~54 |
+| 19:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | inline fix | ~18 |
+| 20:25 | 重做 contract-price 完整恢复:发现 7-27~8-02 会话(07f7a59a/4cfd999c/5736ec1f)的 ContractsView 97 条编辑全丢(文件最后提交 6-30);从 7-28 Write 基线+85 编辑重建 ContractsView;TasksView/DashboardView/GoodsAnalysis/SettingsView/types/api/hooks 恢复;后端 crud(含 mark_stale_parsing_failed/skill custom→public bug-526)/models/schemas/service/storage 恢复;skill 脚本 cli/vectorizer 等恢复(测试 pre-broken 引 run_pipeline 已回退);typecheck+13 测试过,浏览器四 tab 全验证 | contract-price 全栈 | done | ~5k |

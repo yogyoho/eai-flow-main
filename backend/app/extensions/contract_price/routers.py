@@ -22,7 +22,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user, require_permission
+from app.extensions.auth.middleware import require_permission
 from app.extensions.contract_price import crud, service, storage
 from app.extensions.contract_price.models import CpaDocument
 from app.extensions.contract_price.schemas import (

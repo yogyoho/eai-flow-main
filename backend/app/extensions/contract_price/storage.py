@@ -69,3 +69,12 @@ def get_preview(preview_prefix: str, page_no: int) -> bytes:
 
 def sha256(key: str) -> str:
     return hashlib.sha256(get_object(key)).hexdigest()
+
+
+def delete_object(key: str) -> None:
+    """Remove a contract object from the bucket. Silent if missing (cleanup)."""
+    try:
+        _client().remove_object(BUCKET, key)
+    except Exception:
+        # best-effort; a missing object must not abort a document delete
+        pass

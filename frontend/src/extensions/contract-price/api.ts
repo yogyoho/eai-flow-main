@@ -57,6 +57,11 @@ export const contractPriceApi = {
   deleteDocument: (id: string) =>
     authFetch<void>(`${API_BASE}/documents/${id}`, { method: "DELETE" }),
 
+  reparseDocument: (id: string) =>
+    authFetch<{ run_id: string; status: string; message?: string }>(`${API_BASE}/documents/${id}/reparse`, {
+      method: "POST",
+    }),
+
   updateDocument: (
     id: string,
     body: Partial<

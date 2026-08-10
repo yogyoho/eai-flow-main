@@ -149,6 +149,7 @@ class CpaRunHistory(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     trigger_type: Mapped[str] = mapped_column(String(20))
+    label: Mapped[Optional[str]] = mapped_column(String(100))
     scope: Mapped[Optional[dict]] = mapped_column(JSONB)
     progress: Mapped[Optional[dict]] = mapped_column(JSONB)  # {total,done,failed,phase}
     status: Mapped[str] = mapped_column(String(20))

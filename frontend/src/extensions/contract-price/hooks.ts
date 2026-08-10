@@ -200,6 +200,16 @@ export function useUploadDocument() {
   });
 }
 
+export function useReparseDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => contractPriceApi.reparseDocument(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
 export function useUpdateDocument() {
   const qc = useQueryClient();
   return useMutation({

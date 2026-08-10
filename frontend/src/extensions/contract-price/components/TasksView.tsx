@@ -100,25 +100,27 @@ export function TasksView() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>任务名称</TableHead>
                 <TableHead>开始时间</TableHead>
                 <TableHead>触发</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead className="text-right">进度</TableHead>
                 <TableHead className="text-right">合同</TableHead>
                 <TableHead className="text-right">条目</TableHead>
-                <TableHead className="text-right">聚类</TableHead>
+                <TableHead className="text-right">分组</TableHead>
                 <TableHead className="text-right">耗时</TableHead>
                 <TableHead className="text-right">报告</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <EmptyRow colSpan={9}>加载中…</EmptyRow>
+                <EmptyRow colSpan={10}>加载中…</EmptyRow>
               ) : runs.length === 0 ? (
-                <EmptyRow colSpan={9}>暂无运行记录。</EmptyRow>
+                <EmptyRow colSpan={10}>暂无运行记录。</EmptyRow>
               ) : (
                 runs.map((run) => (
                   <TableRow key={run.id}>
+                    <TableCell>{run.label || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap">{formatDate(run.started_at)}</TableCell>
                     <TableCell>{run.trigger_type === "scheduled" ? "定时" : "手动"}</TableCell>
                     <TableCell className={cn(statusTone[run.status] ?? "")}>{run.status}</TableCell>
@@ -137,6 +139,14 @@ export function TasksView() {
                               }}
                             />
                           </div>
+                          {run.progress.processing?.length ? (
+                            <span
+                              className="max-w-[220px] truncate text-[10px] text-muted-foreground"
+                              title={run.progress.processing.join(", ")}
+                            >
+                              处理中: {run.progress.processing.join(", ")}
+                            </span>
+                          ) : null}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>

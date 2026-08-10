@@ -7,12 +7,20 @@ price_validator, called from cli.run_pipeline) decides which tables are
 goods/price tables and validates the numbers.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# ponytail: retry transient OCR worker crashes (RemoteProtocolError) up to 2
+# times with backoff — scanned PDFs can OOM a worker on first pass but a lone
+# retry against a fresh worker usually succeeds. 3 total attempts, 30s/60s
+# backoff, enough headroom without blowing the per-doc timeout.
+_RETRY_MAX = 3
+_RETRY_BACKOFF = [30, 60]
 
 
 @dataclass
@@ -40,13 +48,28 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
     # 137-page scanned contracts take ~14-16 min of OCR; 900s was too tight
     # (cold-start after a rebuild pushed one run to 15.6min → ReadTimeout with
     # an empty message that looked like a silent failure). 1800s gives margin.
-    async with httpx.AsyncClient(timeout=1800.0) as client:
-        resp = await client.post(
-            url,
-            files={"file": (filename, file_bytes, "application/octet-stream")},
-        )
-        resp.raise_for_status()
-        data = resp.json()
+    last_exc: Exception | None = None
+    for attempt in range(1, _RETRY_MAX + 1):
+        try:
+            async with httpx.AsyncClient(timeout=1800.0) as client:
+                resp = await client.post(
+                    url,
+                    files={"file": (filename, file_bytes, "application/octet-stream")},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            break  # success — exit retry loop
+        except httpx.RemoteProtocolError as exc:
+            last_exc = exc
+            if attempt < _RETRY_MAX:
+                wait = _RETRY_BACKOFF[attempt - 1] if attempt - 1 < len(_RETRY_BACKOFF) else 60
+                logger.warning(
+                    "OCR server disconnected (attempt %d/%d), retrying in %ds: %s",
+                    attempt, _RETRY_MAX, wait, exc,
+                )
+                await asyncio.sleep(wait)
+            else:
+                raise
 
     tables: list[TableExtract] = []
     page_texts: dict[int, str] = {}

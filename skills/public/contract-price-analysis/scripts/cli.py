@@ -28,7 +28,7 @@ from scripts.price_validator import parse_qty, split_glued, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
-from scripts.table_classifier import classify, extract_items, looks_like_continuation
+from scripts.table_classifier import _roles_x_from_data, classify, extract_items, looks_like_continuation
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +83,24 @@ def _load_price_keywords() -> list[str]:
     return list(_DEFAULT_PRICE_KEYWORDS)
 
 
-async def _load_cached_hashes() -> dict:
-    """Load {file_name(minio key): file_hash} for incremental filtering."""
+def _size_from_quick_fp(quick_fp: str | None) -> int | None:
+    """Pull the cached byte-size out of a quick_fp string ('{key}|{size}').
+
+    Used as a cheap change pre-filter so scan_changed can skip re-downloading
+    unchanged objects just to re-hash them (the old behavior downloaded the
+    whole bucket on every scan — catastrophic at 1000 docs)."""
+    if not quick_fp:
+        return None
+    try:
+        return int(str(quick_fp).rsplit("|", 1)[-1])
+    except (ValueError, IndexError):
+        return None
+
+
+async def _load_cached_meta() -> dict:
+    """Load {minio_key: {"hash": file_hash, "size": int|None}} for incremental
+    filtering. ``size`` (parsed from quick_fp) lets scan_changed skip the SHA-256
+    download when the object size is unchanged."""
     try:
         from sqlalchemy import select
 
@@ -92,10 +108,20 @@ async def _load_cached_hashes() -> dict:
         from scripts.models import CpaDocument
 
         async with async_session() as session:
-            rows = await session.execute(select(CpaDocument.file_name, CpaDocument.file_hash))
-            return {name: h for name, h in rows.all()}
+            rows = await session.execute(
+                select(
+                    CpaDocument.file_name,
+                    CpaDocument.file_hash,
+                    CpaDocument.quick_fp,
+                    CpaDocument.parse_status,
+                )
+            )
+            return {
+                name: {"hash": h, "size": _size_from_quick_fp(fp), "parse_status": ps}
+                for name, h, fp, ps in rows.all()
+            }
     except Exception as exc:
-        logger.warning("Could not load cached hashes (DB unavailable): %s", exc)
+        logger.warning("Could not load cached meta (DB unavailable): %s", exc)
         return {}
 
 
@@ -252,6 +278,21 @@ def _rediscover_name_col(rows: list, inherited: int | None) -> int | None:
     return inherited
 
 
+_DN_RE = re.compile(r"DN\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+
+
+def _extract_tech_params(goods_name: str) -> dict:
+    """Extract structured tech params from the goods name for clustering.
+    DN (管径) is the most common spec in construction contracts — extracting it
+    lets the param vector separate DN40 from DN50 (different products), while
+    the text vector handles goods-type separation (阀 vs 管)."""
+    params: dict = {}
+    m = _DN_RE.search(goods_name)
+    if m:
+        params["管径"] = m.group(1)
+    return params
+
+
 def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
     """Classify each table; from goods/price tables build item dicts.
 
@@ -274,25 +315,46 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         "rows_extracted": 0,
         "skipped": {},
     }
-    active_roles: dict | None = None  # roles propagated to continuation pages
+    active_roles: dict | None = None  # index roles propagated to continuation pages
+    active_roles_x: dict | None = None  # x-bands propagated to continuation pages (drift-proof)
     active_col_count = 0
     for table in tables:
-        ttype, roles, header_rows = classify(table.rows, keywords)
+        ttype, roles, roles_x, header_rows = classify(table.rows, keywords, table.cell_bboxes)
         col_count = max((len(r) for r in table.rows), default=0)
         is_continuation = (
             ttype == "unclassified"
             and active_roles is not None
-            and looks_like_continuation(table.rows, active_roles, active_col_count)
+            and looks_like_continuation(
+                table.rows, active_roles, active_col_count, table.cell_bboxes, active_roles_x
+            )
         )
         hejia_col: int | None = None  # 含税合价 col (rightmost numeric) for 反算
         qty_col: int | None = None
 
         if ttype == "goods_price":
-            active_roles = roles
-            active_col_count = col_count
             meta["goods_tables"] += 1
             qty_col = roles.get("qty")
             hejia_col = _find_hejia_col(table.rows, qty_col)
+            # The 含税 header is a MERGED cell (colspan over 单价+合价) that
+            # rapid-table fragments, so the 含税单价 leaf label is often lost and
+            # _map_roles grabs 含税合价 instead. Override price_taxed via the
+            # bulletproof arithmetic relation 含税单价×工程量≈含税合价
+            # (data-driven, header-independent). Same trick the continuation
+            # branch uses; applied here so the corrected x is inherited downstream.
+            new_pt = _rediscover_taxed_price_col(table.rows, qty_col)
+            if new_pt is not None and new_pt != roles.get("price_taxed"):
+                roles["price_taxed"] = new_pt
+                if roles_x is not None:
+                    roles_x = dict(roles_x)
+                    fixed = _roles_x_from_data(
+                        table.rows, table.cell_bboxes, {"price_taxed": new_pt}, header_rows
+                    )
+                    if fixed and "price_taxed" in fixed:
+                        roles_x["price_taxed"] = fixed["price_taxed"]
+            active_roles = roles
+            active_roles_x = roles_x
+            active_col_count = col_count
+            # Goods (header) page: INDEX alignment over the (now corrected) roles.
             raw = extract_items(table.rows, roles, header_rows)
         elif is_continuation:
             meta["continuation_tables"] += 1
@@ -311,13 +373,15 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
                 table.rows, active_roles.get("price_taxed"), active_roles.get("price_untaxed")
             ):
                 cont_roles["price_taxed"] = None
+            cont_roles_x = active_roles_x or roles_x
             qty_col = active_roles.get("qty")
             hejia_col = _find_hejia_col(table.rows, qty_col)
-            raw = extract_items(table.rows, cont_roles, 0)
+            raw = extract_items(table.rows, cont_roles, 0, table.cell_bboxes, cont_roles_x)
         else:
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
             if ttype == "unclassified":
                 active_roles = None  # break the propagation chain
+                active_roles_x = None
             continue
 
         # price validation: glued/magnitude only. Outlier detection moved to
@@ -336,7 +400,14 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
                         r["name"] = c
                         break
             taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
-            untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
+            # Only validate untaxed if a value exists. Contracts without a
+            # 不含税单价 column produce price_untaxed_raw="" → validate_price
+            # would return needs_review("无数字") → every item flagged even
+            # though the 含税 price is correct. Skip when no untaxed value.
+            if r.get("price_untaxed_raw"):
+                untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
+            else:
+                untaxed, vstatus_u, reason_u = None, "ok", ""
             # RECOVERY: 含税单价 missing/abnormal — the 含税单价 cell is empty OR
             # an unsplittable glue ('9697.45556.99' = 税金+含税单价, no space,
             # clearly not a normal number). Recover via the definitional relation
@@ -357,7 +428,7 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
                 {
                     "goods_name": r["name"],
                     "spec_model": r["spec"],
-                    "tech_params": {},
+                    "tech_params": _extract_tech_params(r["name"]),
                     "quantity": parse_qty(r["qty_raw"]),
                     "unit": r["unit"],
                     "unit_price": taxed,  # 含税单价(统计)
@@ -405,12 +476,24 @@ def _build_groups_db(result, db_items: list) -> list:
     return groups
 
 
-async def _persist_parse(documents: list, all_items: list, run_record: dict, run_id: str | None = None) -> None:
-    """Phase-1 persist: upsert documents (by storage_uri) + write their items.
+def _to_date(s: str | None):
+    """YYYY-MM-DD string → date object for the CpaDocument.sign_date column."""
+    if not s:
+        return None
+    try:
+        from datetime import date
 
-    No clustering (that's _persist_clusters after the confirm gate). Re-parsing
-    a changed contract resets confirm_status to 'pending' (content changed →
-    needs re-confirmation before clustering).
+        return date.fromisoformat(s)
+    except (ValueError, TypeError):
+        return None
+
+
+async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = None) -> None:
+    """Persist a single document + its items immediately after parse (checkpoint).
+
+    Called from _process_one_doc so every completed doc is durable on disk even
+    if the parse run crashes later. Re-parsing a doc deletes its old items first
+    (fresh extraction replaces stale rows).
     """
     try:
         from datetime import datetime, timezone
@@ -418,62 +501,57 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
         from sqlalchemy import delete, select
 
         from scripts.db import async_session
-        from scripts.models import CpaDocument, CpaItem, CpaRunHistory
+        from scripts.models import CpaDocument, CpaItem
 
         async with async_session() as session:
-            doc_id_map: dict = {}
-            doc_contract_map: dict = {}
+            existing = (
+                await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == doc["storage_uri"]))
+            ).scalar_one_or_none()
             now = datetime.now(timezone.utc)
-            for doc in documents:
-                existing = (
-                    await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == doc["storage_uri"]))
-                ).scalar_one_or_none()
-                if existing is None:
-                    existing = CpaDocument(
-                        storage_uri=doc["storage_uri"],
-                        file_name=doc["file_name"],
-                        file_hash=doc["hash"],
-                        file_type=doc["type"],
-                        quick_fp=doc.get("quick_fp"),
-                        parse_mode=doc.get("parse_mode", "ocr"),
-                        parse_status=doc.get("parse_status", "parsed"),
-                        confirm_status="pending",
-                        parse_meta=doc.get("parse_meta"),
-                        page_count=doc.get("page_count"),
-                        preview_prefix=doc.get("preview_prefix"),
-                        project_name=doc.get("project_name"),
-                        project_location=doc.get("project_location"),
-                        contract_no=doc.get("contract_no"),
-                        parsed_at=now,
-                    )
-                    session.add(existing)
-                    await session.flush()
-                else:
-                    existing.file_hash = doc["hash"]
-                    existing.parse_status = doc.get("parse_status", "parsed")
-                    existing.confirm_status = "pending"  # content changed → re-confirm
-                    existing.parse_meta = doc.get("parse_meta")
-                    existing.preview_prefix = doc.get("preview_prefix")
-                    existing.parsed_at = now
-                    # only overwrite project fields when re-OCR found them, so a
-                    # manual UI edit (stored earlier) is not wiped by a null hit.
-                    if doc.get("project_name"):
-                        existing.project_name = doc["project_name"]
-                    if doc.get("project_location"):
-                        existing.project_location = doc["project_location"]
-                    if doc.get("contract_no"):
-                        existing.contract_no = doc["contract_no"]
-                    await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
-                doc_id_map[doc["storage_uri"]] = existing.id
+            if existing is None:
+                existing = CpaDocument(
+                    storage_uri=doc["storage_uri"],
+                    file_name=doc["file_name"],
+                    file_hash=doc["hash"],
+                    file_type=doc["type"],
+                    quick_fp=doc.get("quick_fp"),
+                    parse_mode=doc.get("parse_mode", "ocr"),
+                    parse_status=doc.get("parse_status", "parsed"),
+                    confirm_status="pending",
+                    parse_meta=doc.get("parse_meta"),
+                    page_count=doc.get("page_count"),
+                    preview_prefix=doc.get("preview_prefix"),
+                    project_name=doc.get("project_name"),
+                    project_location=doc.get("project_location"),
+                    contract_no=doc.get("contract_no"),
+                    supplier=doc.get("supplier"),
+                    sign_date=_to_date(doc.get("sign_date")),
+                    parsed_at=now,
+                )
+                session.add(existing)
+                await session.flush()
+            else:
+                existing.file_hash = doc["hash"]
+                existing.parse_status = doc.get("parse_status", "parsed")
+                existing.confirm_status = "pending"
+                existing.parse_meta = doc.get("parse_meta")
+                existing.preview_prefix = doc.get("preview_prefix")
+                existing.parsed_at = now
+                if doc.get("project_name"):
+                    existing.project_name = doc["project_name"]
+                if doc.get("project_location"):
+                    existing.project_location = doc["project_location"]
                 if doc.get("contract_no"):
-                    doc_contract_map[doc["storage_uri"]] = doc["contract_no"]
-
-            for it in all_items:
-                dpk = doc_id_map.get(it.get("source_doc_uri"))
-                if dpk is None:
-                    continue  # no resolvable doc → skip rather than violate FK
+                    existing.contract_no = doc["contract_no"]
+                if doc.get("supplier"):
+                    existing.supplier = doc["supplier"]
+                if doc.get("sign_date"):
+                    existing.sign_date = _to_date(doc["sign_date"])
+                await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
+            doc_contract_no = doc.get("contract_no")
+            for it in items:
                 item_kwargs: dict = {
-                    "document_id": dpk,
+                    "document_id": existing.id,
                     "goods_name": it["goods_name"],
                     "spec_model": it.get("spec_model"),
                     "tech_params": it.get("tech_params"),
@@ -488,18 +566,35 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
                     "source_row_idx": it.get("source_row_idx"),
                     "confidence": it.get("confidence"),
                     "validation_status": it.get("validation_status", "ok"),
-                    "source_contract_no": doc_contract_map.get(it.get("source_doc_uri")),
+                    "source_contract_no": doc_contract_no,
                 }
                 if run_id:
                     from uuid import UUID as _UUID
                     item_kwargs["run_id"] = _UUID(run_id)
                 session.add(CpaItem(**item_kwargs))
+            await session.commit()
+    except Exception as exc:
+        logger.warning("Per-doc persist skipped (DB unavailable): %s", exc)
+
+
+async def _persist_parse(documents: list, all_items: list, run_record: dict, run_id: str | None = None) -> None:
+    """Write the run-history record only.
+
+    Documents and items are now persisted per-doc by _persist_one_doc() as each
+    _process_one_doc() completes (checkpoint). This function only finalizes the
+    run record so the UI can show the run as completed/failed.
+    """
+    try:
+        from scripts.db import async_session
+        from scripts.models import CpaRunHistory
+
+        async with async_session() as session:
             session.add(
                 CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
             )
             await session.commit()
     except Exception as exc:
-        logger.warning("Parse persistence skipped (DB unavailable): %s", exc)
+        logger.warning("Run record persist skipped (DB unavailable): %s", exc)
 
 
 async def _persist_clusters(groups: list, run_record: dict) -> None:
@@ -535,7 +630,7 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
                         )
                 await session.execute(
                     update(CpaDocument)
-                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped"]))
+                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped", "clustered"]))
                     .values(confirm_status="clustered")
                 )
             session.add(
@@ -546,6 +641,113 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
         logger.warning("Cluster persistence skipped (DB unavailable): %s", exc)
 
 
+async def _process_one_doc(
+    ch: dict,
+    store: ContractStore,
+    cfg,
+    keywords: list[str],
+    sem: asyncio.Semaphore,
+    state: dict,
+    run_id: str | None,
+    total_docs: int,
+) -> None:
+    """Parse one changed contract under the concurrency semaphore.
+
+    Mutates the shared ``state`` (documents/all_items/counters). Safe because
+    asyncio is single-threaded and these mutate only between awaits. A per-doc
+    failure is recorded as a failed document and NEVER aborts the batch — that
+    isolation is the whole point of moving off the sequential for-loop.
+    """
+    async with sem:
+        key = ch["key"]
+        doc_uri = f"s3://{cfg.minio_bucket}/{key}"
+        state["processing"].add(key)  # ponytail: track for progress visibility
+        if run_id:
+            await _update_run_progress(run_id, {
+                "total": total_docs, "done": state["done"], "failed": state["failed_docs"],
+                "processing": sorted(state["processing"]), "phase": "parse",
+            })
+        try:
+            # MinIO get is a sync blocking call — offload so concurrent docs
+            # don't stall the event loop during download.
+            file_bytes = await asyncio.to_thread(store.get, key)
+            tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
+            items, meta = _extract_from_tables(tables, doc_uri, keywords)
+            project_name, project_location, contract_no, supplier, sign_date = extract_project_fields(page_texts)
+            # Persist preview PNGs for every page that has extracted items, so
+            # the traceback UI can overlay bboxes. Derived directly from items'
+            # source_page — guarantees every item's page has a preview. (The old
+            # approach re-classified tables separately, which could disagree with
+            # _extract_from_tables' classification → some item pages missed previews.)
+            goods_pages: set[int] = set(
+                it.get("source_page") for it in items if it.get("source_page")
+            )
+
+            preview_prefix = None
+            for t in tables:
+                if t.page_no in goods_pages and t.page_preview_b64 and not preview_prefix:
+                    doc_id = ch["hash"][:8]
+                    preview_prefix = store.put_preview(doc_id, t.page_no, base64.b64decode(t.page_preview_b64))
+                elif t.page_no in goods_pages and preview_prefix and t.page_preview_b64:
+                    store.put_preview(ch["hash"][:8], t.page_no, base64.b64decode(t.page_preview_b64))
+            doc_dict = {
+                "storage_uri": doc_uri,
+                "file_name": key,
+                "hash": ch["hash"],
+                "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
+                "quick_fp": f"{key}|{ch['size']}",
+                "parse_mode": "ocr",
+                # needs_review when nothing was extracted OR both project
+                # fields are missing (regex couldn't anchor front-page labels
+                # → human fills them via the management UI).
+                "parse_status": "needs_review"
+                if (not (items or meta["tables_found"]))
+                or (not project_name and not project_location)
+                else "parsed",
+                "parse_meta": meta,
+                "page_count": max((t.page_no for t in tables), default=None),
+                "preview_prefix": preview_prefix,
+                "project_name": project_name,
+                "project_location": project_location,
+                "contract_no": contract_no,
+                "supplier": supplier,
+                "sign_date": sign_date,
+            }
+            # Checkpoint: persist doc + items immediately so a mid-run crash
+            # doesn't lose already-parsed contracts.
+            await _persist_one_doc(doc_dict, items, run_id)
+            state["docs_processed"] += 1
+            state["items_extracted"] += len(items)
+            logger.info("Parsed %s: %d tables, %d items", key, meta["tables_found"], len(items))
+        except Exception as exc:
+            state["failed_docs"] += 1
+            logger.warning("Failed to parse %s: %s", key, exc)
+            # Persist failed status so the UI shows it immediately.
+            await _persist_one_doc(
+                {
+                    "storage_uri": doc_uri,
+                    "file_name": key,
+                    "hash": ch["hash"],
+                    "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
+                    "parse_mode": "ocr",
+                    "parse_status": "failed",
+                    "parse_meta": {"error": repr(exc)},
+                },
+                [],
+                run_id,
+            )
+        finally:
+            state["processing"].discard(key)
+        state["done"] += 1
+        if run_id:
+            await _update_run_progress(
+                run_id, {
+                    "total": total_docs, "done": state["done"], "failed": state["failed_docs"],
+                    "processing": sorted(state["processing"]), "phase": "parse",
+                }
+            )
+
+
 async def run_parse(trigger: str = "manual", run_id: str | None = None, force_key: str | None = None) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
@@ -553,6 +755,12 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
     the number of documents processed. ``run_id`` enables live progress polling.
     ``force_key``: re-parse a single MinIO object by key, bypassing the hash
     cache (single-document reparse; preserves doc_id via storage_uri upsert).
+
+    Documents are parsed CONCURRENTLY (asyncio.Semaphore) so the OCR service's
+    worker pool (OCR_WORKERS) stays fed — each doc's OCR call is an async HTTP
+    wait, so the event loop overlaps N in-flight parses. Concurrency defaults to
+    the OCR worker count; tune via CPA_PARSE_CONCURRENCY. A single doc failing
+    never aborts the batch.
     """
     started = time.monotonic()
     cfg = get_config()
@@ -565,106 +773,28 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
         logger.warning("Schema init skipped (DB unavailable): %s", exc)
 
     store = ContractStore(cfg)
-    cached = await _load_cached_hashes()
+    cached = await _load_cached_meta()
     changed = scan_changed(store, cached, force_key=force_key)
     logger.info("Scan: %d changed / %d cached contracts", len(changed), len(cached))
 
-    docs_processed = 0
-    items_extracted = 0
-    failed_docs = 0
+    state: dict = {
+        "docs_processed": 0,
+        "items_extracted": 0,
+        "failed_docs": 0,
+        "done": 0,
+        "processing": set(),  # doc keys currently being parsed (for progress UI)
+    }
     error: Optional[str] = None
-    documents: list[dict] = []
-    all_items: list[dict] = []
     total_docs = len(changed)
     if run_id:
         await _update_run_progress(run_id, {"total": total_docs, "done": 0, "failed": 0, "phase": "parse"})
 
+    concurrency = max(1, int(os.environ.get("CPA_PARSE_CONCURRENCY", "4")))
+    sem = asyncio.Semaphore(concurrency)
     try:
-        for i, ch in enumerate(changed):
-            key = ch["key"]
-            try:
-                file_bytes = store.get(key)
-                tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
-                items, meta = _extract_from_tables(
-                    tables, f"s3://{cfg.minio_bucket}/{key}", keywords
-                )
-                project_name, project_location, contract_no = extract_project_fields(page_texts)
-                # Persist preview PNGs for pages that contain a goods/continuation
-                # table, so the traceback UI can overlay bboxes later. Include
-                # continuation pages (unclassified tables that look_like_continuation)
-                # since items extracted from them carry source_page pointing here.
-                goods_pages: set[int] = set()
-                active_roles_ct: dict | None = None
-                active_col_count_ct = 0
-                for t in tables:
-                    ttype_ct, roles_ct, _ = classify(t.rows, keywords)
-                    col_count_ct = max((len(r) for r in t.rows), default=0)
-                    is_cont = (
-                        ttype_ct == "unclassified"
-                        and active_roles_ct is not None
-                        and looks_like_continuation(t.rows, active_roles_ct, active_col_count_ct)
-                    )
-                    if ttype_ct == "goods_price":
-                        goods_pages.add(t.page_no)
-                        active_roles_ct = roles_ct
-                        active_col_count_ct = col_count_ct
-                    elif is_cont:
-                        goods_pages.add(t.page_no)
-                    elif ttype_ct == "unclassified":
-                        active_roles_ct = None
-
-                preview_prefix = None
-                for t in tables:
-                    if t.page_no in goods_pages and t.page_preview_b64 and not preview_prefix:
-                        doc_id = ch["hash"][:8]
-                        preview_prefix = store.put_preview(doc_id, t.page_no, base64.b64decode(t.page_preview_b64))
-                    elif t.page_no in goods_pages and preview_prefix and t.page_preview_b64:
-                        store.put_preview(ch["hash"][:8], t.page_no, base64.b64decode(t.page_preview_b64))
-                documents.append(
-                    {
-                        "storage_uri": f"s3://{cfg.minio_bucket}/{key}",
-                        "file_name": key,
-                        "hash": ch["hash"],
-                        "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
-                        "quick_fp": f"{key}|{ch['size']}",
-                        "parse_mode": "ocr",
-                        # needs_review when nothing was extracted OR both project
-                        # fields are missing (regex couldn't anchor front-page labels
-                        # → human fills them via the management UI).
-                        "parse_status": "needs_review"
-                        if (not (items or meta["tables_found"]))
-                        or (not project_name and not project_location)
-                        else "parsed",
-                        "parse_meta": meta,
-                        "page_count": max((t.page_no for t in tables), default=None),
-                        "preview_prefix": preview_prefix,
-                        "project_name": project_name,
-                        "project_location": project_location,
-                        "contract_no": contract_no,
-                    }
-                )
-                all_items.extend(items)
-                docs_processed += 1
-                items_extracted += len(items)
-                logger.info("Parsed %s: %d tables, %d items", key, meta["tables_found"], len(items))
-            except Exception as exc:
-                failed_docs += 1
-                logger.warning("Failed to parse %s: %s", key, exc)
-                documents.append(
-                    {
-                        "storage_uri": f"s3://{cfg.minio_bucket}/{key}",
-                        "file_name": key,
-                        "hash": ch["hash"],
-                        "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
-                        "parse_mode": "ocr",
-                        "parse_status": "failed",
-                        "parse_meta": {"error": repr(exc)},
-                    }
-                )
-            if run_id:
-                await _update_run_progress(
-                    run_id, {"total": total_docs, "done": i + 1, "failed": failed_docs, "phase": "parse"}
-                )
+        await asyncio.gather(
+            *(_process_one_doc(ch, store, cfg, keywords, sem, state, run_id, total_docs) for ch in changed)
+        )
     except Exception as exc:
         error = repr(exc)
         logger.exception("Parse phase failed")
@@ -672,24 +802,26 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
     duration_ms = int((time.monotonic() - started) * 1000)
     run_record = {
         "trigger_type": trigger,
+        "label": f"{'定时' if trigger == 'scheduled' else '手动'}文档解析",
         "status": "failed" if error else "completed",
-        "docs_processed": docs_processed,
-        "items_extracted": items_extracted,
+        "docs_processed": state["docs_processed"],
+        "items_extracted": state["items_extracted"],
         "clusters_formed": 0,
         "duration_ms": duration_ms,
         "error": error,
-        "scope": {"engine": "ocr-v2", "phase": "parse"},
+        "scope": {"engine": "ocr-v2", "phase": "parse", "concurrency": concurrency},
     }
-    await _persist_parse(documents, all_items, run_record, run_id)
-    return docs_processed
+    await _persist_parse([], [], run_record, run_id)
+    return state["docs_processed"]
 
 
 async def run_cluster(trigger: str = "manual") -> int:
-    """Phase 2: cluster items of confirmed/skipped docs (the confirm gate).
+    """Phase 2: cluster items of all parsed docs (no confirm gate).
 
     All items cluster by name; price stats use only ok/corrected items
     (needs_review items cluster but their price is excluded). Marks those docs
-    'clustered'. Returns the number of clusters formed.
+    'clustered' so the UI advances 已解析 → 已分组. Returns the number of clusters
+    formed.
     """
     started = time.monotonic()
     cfg = get_config()
@@ -707,7 +839,10 @@ async def run_cluster(trigger: str = "manual") -> int:
                 await session.execute(
                     select(CpaItem)
                     .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
-                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped"]))
+                    # 无 confirm 门槛:所有「已解析」(parsed/needs_review)文档的货物
+                    # 都参与聚类。价格质量由 item 级 validation_status 把关(needs_review
+                    # 归组但不计入均值),不再依赖 doc 级 confirm_status 门槛。
+                    .where(CpaDocument.parse_status.in_(["parsed", "needs_review"]))
                 )
             ).scalars().all()
             db_items = [
@@ -723,7 +858,7 @@ async def run_cluster(trigger: str = "manual") -> int:
                 }
                 for r in rows
             ]
-        logger.info("Cluster phase: %d items from confirmed/skipped docs", len(db_items))
+        logger.info("Cluster phase: %d items from parsed docs", len(db_items))
         if db_items:
             samples = [(it["goods_name"], it["tech_params"]) for it in db_items]
             result = cluster_items(samples)
@@ -747,6 +882,7 @@ async def run_cluster(trigger: str = "manual") -> int:
 
     run_record = {
         "trigger_type": trigger,
+        "label": f"{'定时' if trigger == 'scheduled' else '手动'}聚类分析",
         "status": "failed" if error else "completed",
         "docs_processed": 0,
         "items_extracted": 0,
@@ -761,15 +897,123 @@ async def run_cluster(trigger: str = "manual") -> int:
     return len(groups)
 
 
+async def run_upload(directory: str) -> int:
+    """Phase 0: batch upload .pdf/.docx files from a directory to MinIO + create
+    pending document rows (parse_status=pending). Dedup by content hash (skip
+    same-content files already uploaded under any filename). After upload, run
+    `--phase parse` to extract items."""
+    import glob
+    import hashlib
+
+    cfg = get_config()
+    store = ContractStore(cfg)
+    files = sorted(
+        f
+        for f in glob.glob(os.path.join(directory, "**", "*"), recursive=True)
+        if os.path.isfile(f) and f.lower().endswith((".pdf", ".docx"))
+    )
+    if not files:
+        logger.warning("Upload: no .pdf/.docx files found in %s", directory)
+        return 0
+    logger.info("Upload: %d files found in %s", len(files), directory)
+
+    try:
+        from scripts.db import init_schema
+
+        await init_schema()
+    except Exception as exc:
+        logger.warning("Schema init skipped: %s", exc)
+
+    from sqlalchemy import select
+
+    from scripts.db import async_session
+    from scripts.models import CpaDocument
+
+    uploaded = skipped = failed = 0
+    async with async_session() as session:
+        for i, fpath in enumerate(files, 1):
+            fname = os.path.basename(fpath)
+            try:
+                with open(fpath, "rb") as f:
+                    data = f.read()
+                if not data:
+                    failed += 1
+                    logger.warning("[%d/%d] Empty: %s", i, len(files), fname)
+                    continue
+                digest = hashlib.sha256(data).hexdigest()
+                # Dedup: same content already exists under any filename?
+                dup = (
+                    await session.execute(
+                        select(CpaDocument).where(CpaDocument.file_hash == digest).limit(1)
+                    )
+                ).scalar_one_or_none()
+                if dup is not None:
+                    skipped += 1
+                    logger.info(
+                        "[%d/%d] Skip duplicate: %s (already as %s)",
+                        i, len(files), fname, dup.file_name,
+                    )
+                    continue
+                # Upload to MinIO + create pending row
+                uri = store.put_bytes(fname, data)
+                ftype = os.path.splitext(fname)[1].lstrip(".").lower() or "pdf"
+                existing = (
+                    await session.execute(
+                        select(CpaDocument).where(CpaDocument.storage_uri == uri)
+                    )
+                ).scalar_one_or_none()
+                if existing is None:
+                    session.add(
+                        CpaDocument(
+                            storage_uri=uri,
+                            file_name=fname,
+                            file_hash=digest,
+                            file_type=ftype,
+                            quick_fp=f"{fname}|{len(data)}",
+                            parse_mode="ocr",
+                            parse_status="pending",
+                            confirm_status="pending",
+                        )
+                    )
+                else:
+                    existing.file_hash = digest
+                    existing.file_type = ftype
+                    existing.quick_fp = f"{fname}|{len(data)}"
+                    existing.parse_status = "pending"
+                    existing.confirm_status = "pending"
+                    existing.parse_meta = None
+                    existing.error = None
+                await session.commit()
+                uploaded += 1
+                logger.info(
+                    "[%d/%d] Uploaded: %s (%.1fMB)", i, len(files), fname, len(data) / 1048576
+                )
+            except Exception as exc:
+                failed += 1
+                logger.warning("[%d/%d] Failed: %s: %s", i, len(files), fname, exc)
+
+    logger.info(
+        "Upload done: %d uploaded, %d skipped (dups), %d failed, %d total",
+        uploaded, skipped, failed, len(files),
+    )
+    return uploaded
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description="Contract price analysis pipeline (v2: OCR, two-phase)")
-    parser.add_argument("--phase", choices=["parse", "cluster"], default="parse")
+    parser.add_argument("--phase", choices=["upload", "parse", "cluster"], default="parse")
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
     parser.add_argument("--run-id", default=None, help="cpa_run_history id for live progress polling")
     parser.add_argument("--force-key", default=None, help="re-parse a single MinIO object key (single-doc reparse, bypasses hash cache)")
+    parser.add_argument("--dir", default=None, help="directory of .pdf/.docx to batch-upload (phase=upload)")
     args = parser.parse_args()
-    if args.phase == "parse":
+    if args.phase == "upload":
+        if not args.dir:
+            parser.error("--dir is required for --phase upload")
+        n = asyncio.run(run_upload(args.dir))
+        print(f"Done. Uploaded {n} file(s).")
+    elif args.phase == "parse":
         n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id, force_key=args.force_key))
         print(f"Done. Parsed {n} document(s).")
     else:
