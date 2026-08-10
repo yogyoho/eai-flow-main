@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Archive, ChevronLeft, ChevronRight, FileText, Grid3X3, List, Search } from "lucide-react";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import type { AIDocument } from "../types";
 
 import { formatFileSize } from "./FilePreviewModal";
 import { useDocuments } from "./useDocuments";
+import { useProjectOutputs, type ProjectDocFile } from "./useProjectOutputs";
 
 // ─── File Type Helpers (rich SVG icon system, matching FileRefCard) ─────────
 
@@ -174,6 +175,30 @@ function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | n
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
+// EAI-CUSTOM (bug-1145 根因④ Surface A): 项目 outputs 文件 → AIDocument 形状。带 project_id +
+// source_thread_id + file_ref_path，点击时 onSelectDoc 传给 EditorTab，由其分支路由到
+// DocumentEditor（跨用户 readProjectOutput/saveProjectContent 直读/写磁盘）。id 用 proj/ 前缀。
+function adaptProjectOutput(pf: ProjectDocFile, projectId: string): AIDocument {
+  return {
+    id: `proj/${projectId}/${pf.thread_id}/${pf.rel_path}`,
+    title: pf.name,
+    doc_type: "file_ref",
+    file_mime: pf.mime,
+    file_size: pf.size,
+    file_ref_path: pf.rel_path,
+    source_thread_id: pf.thread_id,
+    project_id: projectId,
+    updated_at: pf.modified_at,
+    user_id: "",
+    created_at: pf.modified_at,
+    is_starred: false,
+    is_shared: true,
+    content: undefined,
+    folder: pf.member ?? "",
+    status: "active",
+  };
+}
+
 interface ProjectDocListPanelProps {
   projectId: string;
   onSelectDoc: (doc: AIDocument) => void;
@@ -188,6 +213,20 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
     project_scope: "project",
     project_id: projectId,
   });
+
+  // EAI-CUSTOM (bug-1145 根因④ Surface A): 聚合项目 outputs 文件系统视图——把 agent 未走
+  // present_files（如 bash cp）落盘到 thread outputs/ 的文件也显示出来。已被 present_files
+  // 回调同步为 AIDocument 的 file_ref 按线程/rel_path 去重，避免重复显示。
+  const projectOutputs = useProjectOutputs(projectId);
+  const syncedKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const d of docs) if (d.source_thread_id && d.file_ref_path) s.add(`${d.source_thread_id}/${d.file_ref_path}`);
+    return s;
+  }, [docs]);
+  const extraDocs: AIDocument[] = projectOutputs.files
+    .filter((pf) => !syncedKeys.has(`${pf.thread_id}/${pf.rel_path}`))
+    .map((pf) => adaptProjectOutput(pf, projectId));
+  const displayDocs = [...docs, ...extraDocs];
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -250,7 +289,7 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
       <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
         {loading ? (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">加载中...</div>
-        ) : docs.length === 0 ? (
+        ) : displayDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-center">
             <Archive className="w-10 h-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">暂无项目文档</p>
@@ -259,7 +298,7 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
         ) : viewMode === "grid" ? (
           <AnimatePresence>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {docs.map((doc) => (
+              {displayDocs.map((doc) => (
                 <ProjectDocCard key={doc.id} doc={doc} onClick={() => onSelectDoc(doc)} />
               ))}
             </div>
@@ -276,7 +315,7 @@ export default function ProjectDocListPanel({ projectId, onSelectDoc }: ProjectD
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {docs.map((doc) => {
+                {displayDocs.map((doc) => {
                   const ft = getFileType(doc.file_mime, doc.title, doc.doc_type);
                   const cfg = FILE_ICON_CONFIG[ft] ?? FILE_ICON_CONFIG.text!;
                   const fileSize = formatFileSize(doc.file_size);

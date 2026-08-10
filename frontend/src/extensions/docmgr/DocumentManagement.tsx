@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
   CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, Archive, AlertCircle,
+  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, FolderSync, AlertCircle,
   Trash2, Wand2, X, Undo2, Redo2, Maximize, Minimize, ChevronUp, History,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -22,7 +22,7 @@ const CollabEditor = dynamic(() => import("../collab/CollabEditor").then((m) => 
   ssr: false,
   loading: () => <div className="flex-1 flex items-center justify-center text-muted-foreground">加载编辑器...</div>,
 });
-import { docmgrApi } from "../api";
+import { docmgrApi, type FolderNode } from "../api";
 import type { CollabEditorRef } from "../collab/CollabEditor";
 import type { AIDocument } from "../types";
 
@@ -32,15 +32,14 @@ import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./Fil
 import FolderPickerDialog from "./FolderPickerDialog";
 import DocAIAgentPanel from "./DocAIAgentPanel";
 import PersonalBlockNoteEditor, { type PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
+import { ProjectFolderTree } from "./ProjectFolderTree";
 import { useDocAIThread } from "./useDocAIThread";
 import { computeDocStats } from "./utils/docEditorUtils";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { useDocuments } from "./useDocuments";
 import { usePersonalOutputs } from "./usePersonalOutputs";
-import { useProjectOutputs } from "./useProjectOutputs";
+import { useProjectOutputs, type ProjectDocFile } from "./useProjectOutputs";
 import { useLicense } from "@/extensions/license/useLicense";
-import { workspaceApi } from "@/extensions/workspace/api";
-import type { CollabProject } from "@/extensions/workspace/types";
 
 type AIOperation = "polish" | "expand" | "condense" | "chat";
 type View = "list" | "editor";
@@ -108,17 +107,35 @@ function WindowsFolderOpen({ className }: { className?: string }) {
 }
 
 // EAI-CUSTOM: 项目区 outputs 文件系统视图——项目文件 = outputs 直读（跨用户共享），替代旧 file_ref 文件夹树
-type ProjectFileRef = { project_id: string; thread_id: string; rel_path: string; title: string; member: string };
+export type ProjectFileRef = { project_id: string; thread_id: string; rel_path: string; title: string; member: string };
 
 export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
   const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
   const [activePersonalFile, setActivePersonalFile] = useState<{ thread_id: string; rel_path: string; title: string } | null>(null);
   const [activeProjectFile, setActiveProjectFile] = useState<ProjectFileRef | null>(null);
+  // 项目文件夹树导航：folder=个人，file_ref_folder=项目文件夹
+  const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
+  const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const handleSelectDoc = (doc: AIDocument) => {
     // 二进制文件（PDF / Word / Excel / 图片 / 压缩包等）→ 直接下载，不进编辑器
     if (doc.source_thread_id && doc.file_ref_path && isBinaryFile(doc.file_mime, doc.title)) {
       downloadPersonalFile(doc.source_thread_id, doc.file_ref_path, doc.title);
+      return;
+    }
+    // EAI-CUSTOM (bug-1145 根因⑤ 协同诉求): 仅 proj/ 虚拟文件（无 AIDocument 行、bash cp 落盘）
+    // 走跨用户单人直读/写磁盘（readProjectOutput/saveProjectContent）——它没有 AIDocument.id，
+    // 连不了 Hocuspocus 协同 store（collab-server canAccessDocument 查 ai_documents WHERE id）。
+    // 已 present_files 同步成 AIDocument 的 file_ref（有真实 id + project_id）落到下方 docId
+    // 分支 → CollabEditor 协同：collab-server loadMarkdownForDoc 首次从磁盘 seed，之后 collab_documents 为真。
+    if (doc.id.startsWith("proj/") && doc.project_id && doc.source_thread_id && doc.file_ref_path) {
+      handleSelectProjectFile({
+        project_id: doc.project_id,
+        thread_id: doc.source_thread_id,
+        rel_path: doc.file_ref_path,
+        title: doc.title,
+        member: "",
+      });
       return;
     }
     // 个人文档（直接映射）：用 thread_id + rel_path 读 artifacts，不走 AIDocument id
@@ -159,7 +176,13 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     <div className="h-full flex overflow-hidden bg-background relative">
       {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
       <div className={cn("h-full w-full flex overflow-hidden", view === "editor" && "hidden")}>
-        <DocumentList onSelectDoc={handleSelectDoc} onSelectProjectFile={handleSelectProjectFile} />
+        <DocumentList
+          onSelectDoc={handleSelectDoc}
+          activeNav={activeNav}
+          onNavChange={setActiveNav}
+          currentFolder={currentFolder}
+          onFolderChange={setCurrentFolder}
+        />
       </div>
       {/* Editor slides in on top when active */}
       {view === "editor" && (activeDocId || activePersonalFile || activeProjectFile) && (
@@ -174,13 +197,14 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
 
 // ─── Document List ────────────────────────────────────────────────────────────
 
-function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
+function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFolderChange, view = "list" }: {
   onSelectDoc: (doc: AIDocument) => void;
-  onSelectProjectFile: (f: ProjectFileRef) => void;
+  activeNav: "folder" | "file_ref_folder";
+  onNavChange: (nav: "folder" | "file_ref_folder") => void;
+  currentFolder: string;
+  onFolderChange: (folder: string) => void;
   view?: View;
 }) {
-  // EAI-CUSTOM: 项目区改为 outputs 文件系统视图后，nav 不再切换 project_scope；currentFolder 固定。
-  const currentFolder = "默认文件夹";
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(true);
@@ -197,9 +221,7 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  // EAI-CUSTOM: 项目区 outputs 文件系统视图——项目下拉 + 扁平文件列表
-  const [projects, setProjects] = useState<CollabProject[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred">("all");
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -223,30 +245,20 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, [sidebarWidth]);
-  const { docs, total, loading, page, pageSize, setPage, folders, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
+  const { docs, total, loading, page, pageSize, setPage, folders, folderTree, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
     useDocuments({ folder: currentFolder });
   // Personal outputs — direct filesystem view (replaces old personal folder tree)
   const personalOutputs = usePersonalOutputs();
-  // EAI-CUSTOM: 项目 outputs——跨用户共享扁平文件列表（选项目后拉取）
-  const projectOutputs = useProjectOutputs(selectedProjectId);
-  useEffect(() => {
-    if (!canUseProject) return;
-    let cancelled = false;
-    workspaceApi
-      .listProjects()
-      .then((data) => { if (!cancelled) setProjects(data); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [canUseProject]);
 
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
   useEffect(() => {
     if (navSynced.current) return;
     navSynced.current = true;
-    // EAI-CUSTOM: 固定个人 scope（项目区已改为独立 outputs 文件系统视图，不再切 project_scope 过滤）
-    setFilter({ project_scope: "personal", folder: currentFolder });
-  }, [currentFolder, setFilter]);
+    if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
+    // Default: 全部个人文件，不限定 doc_type（document 与 file_ref 合并显示）
+    else setFilter({ project_scope: "personal", folder: currentFolder });
+  }, [activeNav, currentFolder, setFilter]);
 
   const handleSearch = (v: string) => {
     setSearch(v);
@@ -262,7 +274,24 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
 
   const totalPages = Math.ceil(total / pageSize);
 
+  const handleNavClick = (nav: typeof activeNav, folder?: string, folderId?: string | null) => {
+    onNavChange(nav);
+    setSelectedIds(new Set());
+    if (nav === "folder") {
+      const nextFolder = folder ?? "默认文件夹";
+      onFolderChange(nextFolder);
+      // 合并显示全部类型（document + file_ref），不再限定 doc_type
+      setFilter({ project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
+    } else if (nav === "file_ref_folder") {
+      if (folder) onFolderChange(folder);
+      // EAI-CUSTOM: 只用 folder_id 过滤——doc.folder 字符串是 finalize.py 硬编码的「项目文件夹」，
+      // 与文件夹行名不一致，同时传 folder+ folder_id 会被后端 AND 掉导致空列表。
+      setFilter({ project_scope: "project", folder_id: folderId || undefined, q: search || undefined });
+    }
+  };
+
   const handleToggleSelect = (id: string) => {
+    if (id.startsWith("proj/")) return; // EAI-CUSTOM (bug-1145 根因④): 虚拟 outputs 文件无 AIDocument 行，不可选中/批操作
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -297,8 +326,7 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
     setSelectedIds(new Set());
   };
 
-  // EAI-CUSTOM: 项目导航已移除；当前恒为 false，保留常量便于后续恢复
-  const isFileRefView = false;
+  const isFileRefView = activeNav === "file_ref_folder";
 
   // 选中线程后，主体区显示该线程文件（适配为 DocCard 期望的形状）
   const adaptPersonalFile = (file: any, thread: any) => ({
@@ -318,15 +346,62 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
     folder: thread.display_name,
     status: "active",
   });
+  // EAI-CUSTOM (bug-1145 根因④): 项目 outputs 文件 → DocCard 形状。关键：带 project_id +
+  // source_thread_id + file_ref_path，点击时 handleSelectDoc 自动路由到 handleSelectProjectFile
+  // → DocumentEditor 跨用户直读/写（readProjectOutput/saveProjectContent）。id 用 proj/ 前缀，
+  // 供 star/delete/select 守卫识别这类「无 AIDocument 行」的虚拟文件。
+  const adaptProjectOutput = (pf: ProjectDocFile, projectId: string): AIDocument => ({
+    id: `proj/${projectId}/${pf.thread_id}/${pf.rel_path}`,
+    title: pf.name,
+    doc_type: "file_ref",
+    file_mime: pf.mime,
+    file_size: pf.size,
+    file_ref_path: pf.rel_path,
+    source_thread_id: pf.thread_id,
+    project_id: projectId,
+    updated_at: pf.modified_at,
+    user_id: "",
+    created_at: pf.modified_at,
+    is_starred: false,
+    is_shared: true,
+    content: undefined,
+    folder: pf.member ?? "",
+    status: "active",
+  });
   // 从 personalOutputs.threads 派生当前选中线程 —— 单一数据源，
   // 这样 toggleStar 的乐观更新会同时反映到左侧列表和主体区域
   const selectedThread = personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) || null;
+
+  // EAI-CUSTOM (bug-1145 根因④): 项目根文件夹视图聚合 outputs 文件系统视图——
+  // 把 agent 未走 present_files（如 bash cp）落盘到 thread outputs/ 的文件也显示出来。
+  // 仅在选中「项目根文件夹」(parent_id===null) 时聚合；outputs 是扁平全项目视图，无文件夹结构。
+  const folderById = useMemo(() => {
+    const m = new Map<string, FolderNode>();
+    const walk = (nodes: FolderNode[]) => { for (const n of nodes) { m.set(n.id, n); if (n.children?.length) walk(n.children); } };
+    walk(folderTree.folders);
+    return m;
+  }, [folderTree.folders]);
+  const activeProjectRoot = isFileRefView && activeFolderId ? (folderById.get(activeFolderId) ?? null) : null;
+  const activeProjectId = activeProjectRoot?.parent_id === null ? activeProjectRoot.project_id : null;
+  const projectOutputs = useProjectOutputs(activeProjectId);
+  // 已被 present_files 回调同步为 AIDocument 的 file_ref 按 线程/rel_path 去重，避免与 outputs 重复显示
+  const syncedProjectKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const d of docs) if (d.source_thread_id && d.file_ref_path) s.add(`${d.source_thread_id}/${d.file_ref_path}`);
+    return s;
+  }, [docs]);
+  const projectExtraDocs: AIDocument[] = isFileRefView && activeProjectId
+    ? projectOutputs.files
+        .filter((pf) => !syncedProjectKeys.has(`${pf.thread_id}/${pf.rel_path}`))
+        .map((pf) => adaptProjectOutput(pf, activeProjectId))
+    : [];
+
   const displayDocs = selectedThread
     ? selectedThread.files
         .filter((f: any) => (filterMode === "all" ? true : f.starred))
         .map((f: any) => adaptPersonalFile(f, selectedThread))
-    : docs;
-  const displayTotal = selectedThread ? selectedThread.files.length : total;
+    : [...docs, ...projectExtraDocs];
+  const displayTotal = selectedThread ? selectedThread.files.length : total + projectExtraDocs.length;
   const displayLoading = !selectedThread && loading;
 
   // 全局搜索：跨所有线程搜文件名 / 线程名
@@ -424,7 +499,7 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
                   return (
                     <div key={thread.thread_id}>
                       <button
-                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); }}
+                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); setActiveFolderId(null); }}
                         className={cn(
                           "flex w-full items-center justify-between px-3 py-1.5 text-xs rounded-lg transition-colors",
                           selectedThreadId === thread.thread_id
@@ -482,58 +557,32 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
               </div>
             )}
           </div>
-          {canUseProject && ( // EAI-CUSTOM: 项目文档——outputs 文件系统视图（跨用户共享）
+          {canUseProject && ( // 项目文件夹 - 树形结构（权限：后端按项目成员过滤）
           <div className="pt-2 mt-2">
             <button
               onClick={() => setArchiveOpen((v) => !v)}
               className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Archive className="w-3.5 h-3.5" />
-                <span>项目文档</span>
-                <span className="text-[10px] text-muted-foreground/60">成员共享</span>
+                <FolderSync className="w-3.5 h-3.5 text-amber-500" />
+                <span>项目文件夹</span>
               </div>
               {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
             {archiveOpen && (
-              <div className="ml-2 space-y-0.5 pt-1">
-                <select
-                  value={selectedProjectId ?? ""}
-                  onChange={(e) => setSelectedProjectId(e.target.value || null)}
-                  className="w-full mb-1.5 px-2 py-1 text-xs rounded-md border border-border bg-background truncate"
-                >
-                  <option value="">{projects.length === 0 ? "暂无项目" : "选择项目…"}</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-                {selectedProjectId && projectOutputs.loading && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5">加载中...</p>
-                )}
-                {selectedProjectId && !projectOutputs.loading && projectOutputs.files.length === 0 && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5">暂无输出文件</p>
-                )}
-                {selectedProjectId && projectOutputs.files.map((file) => (
-                  <button
-                    key={`${file.thread_id}/${file.rel_path}`}
-                    onClick={() => onSelectProjectFile({
-                      project_id: selectedProjectId,
-                      thread_id: file.thread_id,
-                      rel_path: file.rel_path,
-                      title: file.name,
-                      member: file.member,
-                    })}
-                    className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 rounded transition-colors"
-                    title={file.name}
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <FileText className="w-3 h-3 shrink-0 opacity-60" />
-                      <span className="truncate">{file.name}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/50 shrink-0 ml-1.5">由 {file.member} 生成</span>
-                  </button>
-                ))}
-              </div>
+              <ProjectFolderTree
+                folders={folderTree.folders}
+                expandedKeys={folderTree.expandedKeys}
+                onToggleExpand={folderTree.toggleExpand}
+                onSelectFolder={(folderId, folderName) => {
+                  setActiveFolderId(folderId);
+                  handleNavClick("file_ref_folder", folderName, folderId);
+                }}
+                onCreateFolder={async (name, parentId, projectId) => { await folderTree.createFolder(name, parentId, projectId) }}
+                onRenameFolder={folderTree.renameFolder}
+                onDeleteFolder={folderTree.deleteFolder}
+                activeFolderId={activeFolderId}
+              />
             )}
           </div>
           )}
@@ -678,8 +727,8 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
                       onOpenMenu={handleOpenMenu}
                       menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
                       onSelect={() => onSelectDoc(doc)}
-                      onToggleStar={() => selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false)}
-                      onDelete={async () => { handleCloseMenu(); if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
+                      onToggleStar={() => doc.id.startsWith("proj/") ? undefined : (selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false))}
+                      onDelete={async () => { handleCloseMenu(); if (doc.id.startsWith("proj/")) return; if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
                       onShare={() => {}}
                       selected={selectedIds.has(doc.id)}
                       onToggleSelect={() => handleToggleSelect(doc.id)} />
@@ -743,7 +792,7 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
                         <td className="py-4 px-4 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                              onClick={(e) => { e.stopPropagation(); selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false); }}>
+                              onClick={(e) => { e.stopPropagation(); if (doc.id.startsWith("proj/")) return; selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false); }}>
                               <Star className={cn("w-4 h-4", doc.is_starred && "text-amber-400")} fill={doc.is_starred ? "currentColor" : "none"} />
                             </button>
                             <button ref={(el) => { menuButtonRef.current[doc.id] = el; }}
@@ -806,10 +855,12 @@ function DocumentList({ onSelectDoc, onSelectProjectFile, view = "list" }: {
                 <PenLine className="w-3 h-3" /> 打开编辑
               </button>
               <div className="h-px bg-border my-1 mx-2" />
-              <button type="button" onClick={async () => { handleCloseMenu(); if (confirm(`确认删除该${isFileRef ? "文件" : "文档"}？`)) await deleteDoc(doc.id); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
-                <Trash2 className="w-3 h-3" /> 删除
-              </button>
+              {!doc.id.startsWith("proj/") && (
+                <button type="button" onClick={async () => { handleCloseMenu(); if (confirm(`确认删除该${isFileRef ? "文件" : "文档"}？`)) await deleteDoc(doc.id); }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
+                  <Trash2 className="w-3 h-3" /> 删除
+                </button>
+              )}
             </div>
           );
         })()}
@@ -1218,7 +1269,7 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
 
 // ─── Document Editor ──────────────────────────────────────────────────────────
 
-function DocumentEditor({ docId, personalFile, projectFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; projectFile: ProjectFileRef | null; onBack: () => void }) {
+export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; projectFile: ProjectFileRef | null; onBack: () => void }) {
   const [doc, setDoc] = useState<AIDocument | null>(null);
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1487,7 +1538,7 @@ function DocumentEditor({ docId, personalFile, projectFile, onBack }: { docId: s
   if (loading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">加载中...</div>;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+    <div className="h-full flex flex-col overflow-hidden bg-background">
       <div className="shrink-0 bg-background border-b border-border z-20">
         <div className="h-11 flex items-center justify-between px-4 gap-4">
           <div className="flex items-center gap-2 min-w-0 flex-1">

@@ -18,11 +18,12 @@ import {
   Sparkles,
   LogIn,
   LogOutIcon,
-  Factory,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 import "./index.css";
 import {
@@ -33,7 +34,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Toaster } from "@/components/ui/sonner";
 import { MobileNav } from "@/components/landing/mobile-nav";
+import { PermissionProvider, usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
 export default function LandingNew() {
@@ -75,7 +78,8 @@ export default function LandingNew() {
   };
 
   return (
-    <div className="min-h-screen relative bg-background dark:bg-[#0a0a0a] overflow-hidden font-sans"> 
+    <div className="min-h-screen relative bg-background dark:bg-[#0a0a0a] overflow-hidden font-sans">
+      <Toaster />
       {/* 科技感背景：网格与柔和光晕 */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-grid-pattern opacity-60"></div>
@@ -99,18 +103,9 @@ export default function LandingNew() {
           </span>
         </div>
 
-        <div className="hidden md:flex items-center space-x-2 text-muted-foreground dark:text-muted-foreground font-medium">
-          <button onClick={() => handleNavClick("/workspace/chats/new")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">工程报告</button>
-          <button onClick={() => handleNavClick("/knowledge-factory?tab=reports")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">知识工厂</button>
-          <button onClick={() => handleNavClick("/docmgr")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">文档空间</button>
-          <button onClick={() => handleNavClick("/settings")} className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200">设置</button>
-        </div>
-        <MobileNav links={[
-          { href: "/workspace/chats/new", label: "工程报告" },
-          { href: "/knowledge-factory?tab=reports", label: "知识工厂" },
-          { href: "/docmgr", label: "文档空间" },
-          { href: "/settings", label: "设置" },
-        ]} />
+        <PermissionProvider>
+          <NavItems onNavClick={handleNavClick} />
+        </PermissionProvider>
 
         <div className="flex items-center">
           {!isLoading && (
@@ -128,17 +123,9 @@ export default function LandingNew() {
                       <p className="text-xs text-muted-foreground dark:text-muted-foreground">{user.email}</p>
                     </div>
                     <DropdownMenuGroup className="py-1">
-                      <DropdownMenuItem onClick={() => router.push("/knowledge")}>
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        知识库
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
-                        <Factory className="mr-2 h-4 w-4" />
-                        知识工厂
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push("/procurement")}>
-                        <Network className="mr-2 h-4 w-4" />
-                        采购管理
+                      <DropdownMenuItem onClick={() => router.push("/settings")}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        配置
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
@@ -193,20 +180,9 @@ export default function LandingNew() {
             </motion.div>
 
             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
-              <button
-                onClick={() => handleNavClick("/workspace/chats/new")}
-                className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
-              >
-                <Rocket className="w-5 h-5" />
-                <span>开始写作</span>
-              </button>
-              <button
-                onClick={() => handleNavClick("/knowledge-factory?tab=reports")}
-                className="flex items-center space-x-2 px-8 py-3.5 bg-card dark:bg-card hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
-              >
-                <FolderCog className="w-5 h-5" />
-                <span>知识加工</span>
-              </button>
+              <PermissionProvider>
+                <HeroActions onNavClick={handleNavClick} />
+              </PermissionProvider>
             </motion.div>
           </div>
 
@@ -268,42 +244,9 @@ export default function LandingNew() {
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <QuickAccessCard
-              variants={itemVariants}
-              icon={<BarChart2 className="w-6 h-6 text-primary" />}
-              title="Dashboard"
-              path="/dashboard"
-            />
-            <Link href="/knowledge">
-            <QuickAccessCard
-              variants={itemVariants}
-              icon={<BookOpen className="w-6 h-6 text-primary" />}
-              title="知识库"
-              path="/knowledge"
-            />
-            </Link>
-            <Link href="/procurement">
-            <QuickAccessCard
-              variants={itemVariants}
-              icon={<Network className="w-6 h-6 text-primary" />}
-              title="采购管理"
-              path="/procurement"
-            />
-            </Link>
-            <QuickAccessCard
-              variants={itemVariants}
-              icon={<FileText className="w-6 h-6 text-primary" />}
-              title="模板中心"
-              path="/knowledge/templates"
-            />
-            <QuickAccessCard
-              variants={itemVariants}
-              icon={<Layers className="w-6 h-6 text-primary" />}
-              title="实体类型库"
-              path="/entity-types"
-            />
-          </div>
+          <PermissionProvider>
+            <QuickAccessGrid variants={itemVariants} />
+          </PermissionProvider>
         </motion.div>
       </main>
 
@@ -312,6 +255,81 @@ export default function LandingNew() {
         <p>© 吉林化工工程有限公司 2026 v0.5.0</p>
       </footer>
     </div>
+  );
+}
+
+// Hero 操作区：未登录只显示"欢迎登录"；登录后按 nav 权限过滤 开始写作/知识加工（与 NavItems 同套 canNav）
+function HeroActions({ onNavClick }: { onNavClick: (path: string) => void }) {
+  const { user, isLoading } = useAuth();
+  const { canNav } = usePermission();
+
+  if (isLoading) return null;
+  if (!user) {
+    return (
+      <Link
+        href="/login"
+        className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
+      >
+        <LogIn className="w-5 h-5" />
+        <span>欢迎登录</span>
+      </Link>
+    );
+  }
+  return (
+    <>
+      {canNav("nav:writing") && (
+        <button
+          onClick={() => onNavClick("/workspace/chats/new")}
+          className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
+        >
+          <Rocket className="w-5 h-5" />
+          <span>开始写作</span>
+        </button>
+      )}
+      {canNav("nav:knowledge-factory") && (
+        <button
+          onClick={() => onNavClick("/knowledge-factory?tab=reports")}
+          className="flex items-center space-x-2 px-8 py-3.5 bg-card dark:bg-card hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
+        >
+          <FolderCog className="w-5 h-5" />
+          <span>知识加工</span>
+        </button>
+      )}
+    </>
+  );
+}
+
+// 头部导航：未登录不显示；登录后按 /api/permissions/me 的 nav 权限过滤（与 Sidebar 同一套 canNav）
+function NavItems({ onNavClick }: { onNavClick: (path: string) => void }) {
+  const { user } = useAuth();
+  const { canNav } = usePermission();
+
+  const items = [
+    { label: "工程报告", path: "/workspace/chats/new", navId: "nav:writing" },
+    { label: "知识工厂", path: "/knowledge-factory?tab=reports", navId: "nav:knowledge-factory" },
+    { label: "文档空间", path: "/docmgr", navId: "nav:docmgr" },
+    { label: "应用中心", path: "/app-center", navId: "nav:app-center" },
+  ];
+  const visible = items.filter((item) => canNav(item.navId));
+
+  if (!user) return null;
+  return (
+    <>
+      <div className="hidden md:flex items-center space-x-2 text-muted-foreground dark:text-muted-foreground font-medium">
+        {visible.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => onNavClick(item.path)}
+            className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {visible.length > 0 && (
+        <MobileNav links={visible.map((item) => ({ href: item.path, label: item.label }))} />
+      )}
+    </>
   );
 }
 
@@ -365,25 +383,89 @@ function StatsCard({
   );
 }
 
+interface QuickAccessCardData {
+  title: string;
+  path: string;
+  icon: React.ReactNode;
+  navId?: string;
+  adminOnly?: boolean;
+}
+
+// 快速访问区：未登录置灰不可点；登录后按 nav 权限/管理员判权，无权限 toast 提示
+function QuickAccessGrid({ variants }: { variants: Variants }) {
+  const { user } = useAuth();
+  const { canNav, is_admin } = usePermission();
+  const router = useRouter();
+
+  const cards: QuickAccessCardData[] = [
+    { title: "Dashboard", path: "/dashboard", navId: "nav:dashboard", icon: <BarChart2 className="w-6 h-6 text-primary" /> },
+    { title: "知识库", path: "/knowledge", navId: "nav:knowledge", icon: <BookOpen className="w-6 h-6 text-primary" /> },
+    { title: "文档中心", path: "/docmgr", navId: "nav:docmgr", icon: <FileText className="w-6 h-6 text-primary" /> },
+    { title: "API接口查询", path: "/docs", adminOnly: true, icon: <Layers className="w-6 h-6 text-primary" /> },
+    { title: "系统管理", path: "/admin", adminOnly: true, navId: "nav:admin", icon: <Network className="w-6 h-6 text-primary" /> },
+  ];
+
+  const isAllowed = (card: QuickAccessCardData) => {
+    if (card.adminOnly && !is_admin) return false;
+    if (card.navId && !canNav(card.navId)) return false;
+    return true;
+  };
+
+  const handleClick = (card: QuickAccessCardData) => {
+    if (!user) return; // 登录前不可点击
+    if (!isAllowed(card)) {
+      toast.error("没有权限");
+      return;
+    }
+    router.push(card.path);
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {cards.map((card) => (
+        <QuickAccessCard
+          key={card.title}
+          variants={variants}
+          icon={card.icon}
+          title={card.title}
+          path={card.path}
+          onClick={() => handleClick(card)}
+          disabled={!user}
+        />
+      ))}
+    </div>
+  );
+}
+
 function QuickAccessCard({
   icon,
   title,
   path,
   variants,
+  onClick,
+  disabled,
 }: {
   icon: React.ReactNode;
   title: string;
   path: string;
   variants: Variants;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <motion.div
       variants={variants}
-      whileHover={{ y: -4 }}
-      className="group relative bg-card dark:bg-card rounded-2xl p-6 flex items-center justify-between cursor-pointer transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-lg hover:shadow-primary/10 border border-transparent hover:border-primary/40 overflow-hidden"
+      whileHover={disabled ? undefined : { y: -4 }}
+      onClick={onClick}
+      className={
+        "group relative bg-card dark:bg-card rounded-2xl p-6 flex items-center justify-between transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-border dark:border-border overflow-hidden " +
+        (disabled
+          ? "opacity-60 cursor-not-allowed"
+          : "cursor-pointer hover:shadow-lg hover:shadow-primary/10 hover:border-primary/40")
+      }
     >
-      {/* Hover时的左侧浅灰色粗边框 */}
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-muted-foreground/30 dark:bg-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      {/* Hover时的左侧主色竖线（与 hover 边框同色系） */}
+      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary/70 dark:bg-primary/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
       <div className="flex items-center space-x-4 relative z-10">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">

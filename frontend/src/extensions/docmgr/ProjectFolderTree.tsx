@@ -1,6 +1,6 @@
 "use client"
 
-import { FolderClosed, FolderOpen, Plus, MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react"
+import { FolderSync, Plus, MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 
 import type { FolderNode } from "@/extensions/api"
@@ -141,7 +141,7 @@ function FolderNodeComponent({
       >
         <div
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors",
+            "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs cursor-pointer transition-colors",
             isActive
               ? "bg-primary/10 text-primary font-medium"
               : "text-foreground/80 hover:bg-muted",
@@ -162,17 +162,14 @@ function FolderNodeComponent({
             <span className="w-3 shrink-0" />
           )}
 
-          {/* Folder icon */}
-          {isExpanded && hasChildren
-            ? <FolderOpen className="w-4 h-4 shrink-0 text-amber-500" />
-            : <FolderClosed className="w-4 h-4 shrink-0 text-amber-500" />
-          }
+          {/* 协同文件夹图标（项目共享）：lucide FolderSync 线框，区别个人区普通文件夹；展开/折叠由 chevron 表示 */}
+          <FolderSync className="w-3.5 h-3.5 shrink-0 text-amber-500" />
 
           {/* Name or rename input */}
           {renaming ? (
             <input
               ref={renameInputRef}
-              className="flex-1 bg-muted rounded px-1.5 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 bg-muted rounded px-1.5 py-0.5 text-xs text-foreground outline-none focus:ring-1 focus:ring-primary"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => {

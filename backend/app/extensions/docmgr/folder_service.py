@@ -69,6 +69,46 @@ class FolderService:
         return ids
 
     @staticmethod
+    async def ensure_project_root_folders(db: AsyncSession, user_id: UUID) -> None:
+        """EAI-CUSTOM: 为每个用户参与的项目补齐根文件夹行（懒创建反哺）。
+
+        项目根文件夹原本只在项目定稿时（finalize.py）才创建，导致没有定稿文档的
+        项目在「项目文件夹」树里不可见。这里按 ProjectMember 归属一次性补齐缺失的根，
+        使树里每个参与项目都对应一个文件夹（子文件夹仍由文档/手动创建）。
+        """
+        my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+        existing_ids = set(
+            (await db.execute(
+                select(Folder.project_id).where(
+                    Folder.project_id.in_(my_project_ids),
+                    Folder.parent_id.is_(None),
+                )
+            )).scalars().all()
+        )
+        projects = (
+            await db.execute(
+                select(ReportProject.id, ReportProject.name, ReportProject.created_by)
+                .where(ReportProject.id.in_(my_project_ids))
+                .order_by(ReportProject.created_at.desc())
+            )
+        ).all()
+        missing = [p for p in projects if p.id not in existing_ids]
+        if not missing:
+            return
+        for proj in missing:
+            db.add(Folder(
+                name=proj.name,
+                owner_id=proj.created_by or user_id,
+                project_id=proj.id,
+                parent_id=None,
+            ))
+        try:
+            await db.commit()
+        except Exception as exc:  # 并发读树同时创建时容忍唯一约束冲突
+            await db.rollback()
+            logger.warning("ensure_project_root_folders failed: %r", exc)
+
+    @staticmethod
     async def get_folder_tree(
         db: AsyncSession,
         user_id: UUID,
@@ -81,6 +121,9 @@ class FolderService:
         When doc_type is specified (e.g. "file_ref"), only folders containing
         documents of that type are included and doc_count reflects that type.
         """
+        # EAI-CUSTOM: 项目上下文先补齐缺失的项目根文件夹，保证每个参与项目在树里可见
+        if project_id is not None or project_scope == "project":
+            await FolderService.ensure_project_root_folders(db, user_id)
         # Base visibility: own folders OR folders from projects the user is a member of
         own_folders = Folder.owner_id == user_id
         my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
