@@ -523,16 +523,12 @@ class DocumentListResponse(BaseModel):
 
 
 class RAGChatRequest(BaseModel):
-    """RAG chat request schema.
-
-    NOTE: 三个检索参数的 Optional 化（default=None）与 router 三级回退逻辑在同一提交落地，
-    避免中间态把 None 透传给 RAGFlow。见 resolve_chat_params。
-    """
+    """RAG chat request schema. 检索参数缺省时由 KnowledgeBaseService.resolve_chat_params 三级回退。"""
 
     query: str = Field(..., min_length=1)
-    top_k: int = Field(default=5, ge=1, le=20)
-    similarity_threshold: float = Field(default=0.2, ge=0.0, le=1.0)
-    vector_similarity_weight: float = Field(default=0.3, ge=0.0, le=1.0)
+    top_k: int | None = Field(default=None, ge=1, le=20)
+    similarity_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    vector_similarity_weight: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class RAGChatResponse(BaseModel):

@@ -278,6 +278,27 @@ class KnowledgeBaseService:
             created_at=kb.created_at,
         )
 
+    @staticmethod
+    def resolve_chat_params(
+        top_k: int | None,
+        similarity_threshold: float | None,
+        vector_similarity_weight: float | None,
+        kb_config: dict | None,
+    ) -> dict:
+        """三纔回退：请求参数 → KB 持久化配置 → 丢弃(交 RAGFlow 数据集默认)。
+
+        返回仅含非 None 解析结果的 dict，可直接 ``**`` 展开给 RAGFlowClient.chat。
+        任一参数在请求与 KB 配置中均未指定 → 不出现在返回 dict → RAGFlow 用数据集默认，
+        None 永不传给 RAGFlow。
+        """
+        cfg = kb_config or {}
+        vals = {
+            "top_k": top_k if top_k is not None else cfg.get("top_k"),
+            "similarity_threshold": similarity_threshold if similarity_threshold is not None else cfg.get("similarity_threshold"),
+            "vector_similarity_weight": vector_similarity_weight if vector_similarity_weight is not None else cfg.get("vector_similarity_weight"),
+        }
+        return {k: v for k, v in vals.items() if v is not None}
+
 
 class DocumentService:
     """Document service with RAGFlow integration."""

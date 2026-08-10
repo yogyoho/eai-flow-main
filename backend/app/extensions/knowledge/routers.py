@@ -517,12 +517,13 @@ async def chat_with_knowledge_base(
 
     try:
         rf_client = RAGFlowClient()
+        params = KnowledgeBaseService.resolve_chat_params(
+            request.top_k, request.similarity_threshold, request.vector_similarity_weight, kb.retrieval_config
+        )
         result = await rf_client.chat(
             dataset_id=kb.ragflow_dataset_id,
             query=request.query,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold,
-            vector_similarity_weight=request.vector_similarity_weight,
+            **params,
         )
 
         # RAGFlow returns code != 0 on error with data=null
