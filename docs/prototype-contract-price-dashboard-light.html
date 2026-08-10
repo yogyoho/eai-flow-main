@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合同价格分析 — 总览原型</title>
+<style>
+:root {
+  --db-bg-primary: #f8fafc;
+  --db-bg-secondary: rgba(255, 255, 255, 0.9);
+  --db-bg-tertiary: rgba(241, 245, 249, 0.95);
+  --db-border-color: rgba(203, 213, 225, 0.85);
+  --db-border-color-muted: rgba(226, 232, 240, 0.6);
+  --db-text-main: #0f172a;
+  --db-text-muted: #334155;
+  --db-text-subtle: #64748b;
+  --db-card-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --db-grid-line-color: rgba(59, 130, 246, 0.06);
+  --db-panel-bg-glow: rgba(139, 92, 246, 0.02);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--db-bg-primary);
+  background-image:
+    linear-gradient(to right, var(--db-grid-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--db-grid-line-color) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: var(--db-text-main);
+  min-height: 100vh;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.cyber { font-family: 'Share Tech Mono', monospace; }
+.container { max-width: 1400px; margin: 0 auto; padding: 32px; }
+/* ── Header ── */
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.header-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; justify-content: center; }
+.header-icon svg { width: 18px; height: 18px; color: #3b82f6; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header p { font-size: 13px; color: var(--db-text-muted); }
+/* ── Stat Cards ── */
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--db-card-shadow);
+  transition: border-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.stat-card:hover { border-color: rgba(59,130,246,0.35); }
+.stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stat-icon.blue { background: rgba(59,130,246,0.1); }
+.stat-icon.amber { background: rgba(245,158,11,0.1); }
+.stat-icon.violet { background: rgba(139,92,246,0.1); }
+.stat-icon.rose { background: rgba(244,63,94,0.1); }
+.stat-icon svg { width: 16px; height: 16px; }
+.stat-icon svg { width: 18px; height: 18px; }
+.stat-content { flex: 1; }
+.stat-icon.blue svg { color: #3b82f6; }
+.stat-icon.amber svg { color: #f59e0b; }
+.stat-icon.violet svg { color: #8b5cf6; }
+.stat-icon.rose svg { color: #f43f5e; }
+.stat-label { font-size: 12px; color: var(--db-text-subtle); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-hint { font-size: 11px; color: var(--db-text-muted); margin-top: 4px; }
+/* ── Search Bar ── */
+.search-area { display: flex; gap: 12px; margin-bottom: 24px; }
+.search-input {
+  flex: 1; height: 42px; padding: 0 16px;
+  background: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  border-radius: 8px;
+  color: var(--db-text-main);
+  font-size: 14px; outline: none;
+  transition: border-color 0.3s;
+}
+.search-input:focus { border-color: rgba(6,182,212,0.5); box-shadow: 0 0 12px -2px rgba(6,182,212,0.2); }
+.search-input::placeholder { color: var(--db-text-subtle); }
+.cluster-select {
+  height: 42px; padding: 0 16px; min-width: 260px;
+  background: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  border-radius: 8px;
+  color: var(--db-text-main);
+  font-size: 14px; outline: none; cursor: pointer;
+}
+.cluster-select option { background: #f8fafc; }
+/* ── Analysis Section ── */
+.analysis-title {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+}
+.analysis-title h2 { font-size: 18px; font-weight: 600; }
+.analysis-title .badge {
+  font-size: 11px; padding: 2px 10px; border-radius: 12px;
+  background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+  color: #10b981;
+}
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.chart-card {
+  background: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--db-card-shadow);
+}
+.chart-card.wide { grid-column: 1 / -1; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.chart-header h3 { font-size: 14px; font-weight: 600; color: var(--db-text-muted); display: flex; align-items: center; gap: 8px; }
+.chart-header h3 svg { width: 15px; height: 15px; opacity: 0.7; }
+.chart-header .meta { font-size: 11px; color: var(--db-text-subtle); }
+.chart-body { position: relative; height: 220px; }
+/* ── Table ── */
+.table-card {
+  background: var(--db-bg-secondary);
+  border: 1px solid var(--db-border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--db-card-shadow);
+}
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 10px 16px; font-size: 12px; font-weight: 600; color: var(--db-text-subtle); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--db-border-color); }
+td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--db-border-color-muted); }
+tr:hover td { background: rgba(59,130,246,0.04); }
+.status-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.status-ok { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #10b981; }
+.status-review { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #f59e0b; }
+/* ── Glow ── */
+.glow-cyan { box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.25); }
+.glow-text-cyan { text-shadow: 0 0 8px rgba(6, 182, 212, 0.5); }
+/* SVG chart helpers */
+.axis-line { stroke: rgba(148, 163, 184, 0.15); stroke-width: 1; }
+.axis-text { fill: var(--db-text-subtle); font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+.grid-line { stroke: rgba(148, 163, 184, 0.15); stroke-width: 1; stroke-dasharray: 2 4; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon glow-cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    </div>
+    <div>
+      <h1>合同价格分析总览</h1>
+      <p>跨合同货物价格基准 · 箱线图 / 趋势 / 供应商对比</p>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="stat-content">
+        <div class="stat-label">合同数</div>
+        <div class="stat-value mono">3</div>
+        <div class="stat-hint">已解析 3 份</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+      <div class="stat-content">
+        <div class="stat-label">分项条目</div>
+        <div class="stat-value mono">621</div>
+        <div class="stat-hint">已校验 542 · 待核验 79</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></div>
+      <div class="stat-content">
+        <div class="stat-label">聚类组数</div>
+        <div class="stat-value mono">89</div>
+        <div class="stat-hint">已确认 52 · 待审 37</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="stat-content">
+        <div class="stat-label">异常价格</div>
+        <div class="stat-value mono">12</div>
+        <div class="stat-hint">离群 >1.5×IQR</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-area">
+    <input class="search-input" placeholder="🔍 输入货物名称搜索(如:多孔砖墙、电缆、钢管)..." value="多孔砖墙">
+    <select class="cluster-select">
+      <option>选择聚类组...</option>
+      <option>多孔砖墙 m3 (12条)</option>
+      <option>镀锌钢管 DN100 (8条)</option>
+      <option>电缆 YJV-3×120 (15条)</option>
+      <option>铝合金窗 (6条)</option>
+    </select>
+  </div>
+
+  <!-- Analysis Title -->
+  <div class="analysis-title">
+    <h2>多孔砖墙</h2>
+    <span class="badge">已校验 10 / 12 条</span>
+    <span class="meta" style="color:var(--db-text-subtle);font-size:12px;">· 均值 <span class="mono glow-text-cyan" style="color:#06b6d4;">¥528.50/m³</span> · 区间 [¥451, ¥612]</span>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="charts-grid">
+
+    <!-- Box Plot -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg> 价格分布(箱线图)</h3>
+        <span class="meta">IQR = Q3−Q1 = 89</span>
+      </div>
+      <div class="chart-body">
+        <svg width="100%" height="220" viewBox="0 0 600 220">
+          <defs>
+            <linearGradient id="boxGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.1"/>
+            </linearGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <!-- Grid lines -->
+          <line class="grid-line" x1="0" y1="50" x2="600" y2="50"/>
+          <line class="grid-line" x1="0" y1="100" x2="600" y2="100"/>
+          <line class="grid-line" x1="0" y1="150" x2="600" y2="150"/>
+          <!-- Axis labels -->
+          <text class="axis-text" x="8" y="30">¥700</text>
+          <text class="axis-text" x="8" y="80">¥600</text>
+          <text class="axis-text" x="8" y="130">¥500</text>
+          <text class="axis-text" x="8" y="180">¥400</text>
+          <!-- Box plot: min=451, Q1=490, median=528, Q3=579, max=612 -->
+          <!-- Scale: 400→200px, 700→0px → 1 unit = 0.4px → inverted -->
+          <!-- min(451)→y=200-51*0.4=179.6  Q1(490)→y=200-90*0.4=164  med(528)→y=200-128*0.4=148.8  Q3(579)→y=200-179*0.4=128.4  max(612)→y=200-212*0.4=115.2 -->
+          <!-- Whiskers -->
+          <line x1="300" y1="115" x2="300" y2="200" stroke="rgba(148,163,184,0.3)" stroke-width="1.5"/>
+          <line x1="280" y1="115" x2="320" y2="115" stroke="rgba(148,163,184,0.4)" stroke-width="1.5"/>
+          <line x1="280" y1="200" x2="320" y2="200" stroke="rgba(148,163,184,0.4)" stroke-width="1.5"/>
+          <!-- Box (Q1 to Q3) -->
+          <rect x="250" y="128" width="100" height="36" fill="url(#boxGrad)" stroke="#3b82f6" stroke-width="1.5" rx="4"/>
+          <!-- Median line -->
+          <line x1="250" y1="149" x2="350" y2="149" stroke="#06b6d4" stroke-width="2.5" filter="url(#glow)"/>
+          <!-- Outlier -->
+          <circle cx="300" cy="35" r="4" fill="#f43f5e" filter="url(#glow)"/>
+          <text class="axis-text" x="312" y="38" fill="#f43f5e">¥685 (离群)</text>
+          <!-- Labels -->
+          <text class="axis-text" x="255" y="215" fill="#475569">Q1 ¥490</text>
+          <text class="axis-text" x="300" y="215" text-anchor="middle" fill="#06b6d4">中位 ¥528</text>
+          <text class="axis-text" x="345" y="215" fill="#475569">Q3 ¥579</text>
+          <text class="axis-text" x="335" y="112" fill="#64748b">max ¥612</text>
+          <text class="axis-text" x="335" y="207" fill="#64748b">min ¥451</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Trend Curve -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> 价格趋势(按合同签订月)</h3>
+        <span class="meta">3 份合同 · 2025.03 ~ 2025.11</span>
+      </div>
+      <div class="chart-body">
+        <svg width="100%" height="220" viewBox="0 0 600 220">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#3b82f6"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid -->
+          <line class="grid-line" x1="40" y1="50" x2="580" y2="50"/>
+          <line class="grid-line" x1="40" y1="100" x2="580" y2="100"/>
+          <line class="grid-line" x1="40" y1="150" x2="580" y2="150"/>
+          <!-- Y axis labels -->
+          <text class="axis-text" x="8" y="54">¥600</text>
+          <text class="axis-text" x="8" y="104">¥550</text>
+          <text class="axis-text" x="8" y="154">¥500</text>
+          <!-- Area fill -->
+          <path d="M 80 140 L 200 110 L 340 95 L 480 125 L 560 80 L 560 200 L 80 200 Z" fill="url(#areaGrad)"/>
+          <!-- Line -->
+          <path d="M 80 140 L 200 110 L 340 95 L 480 125 L 560 80" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Data points -->
+          <circle cx="80" cy="140" r="4" fill="#3b82f6" filter="url(#glow)"/>
+          <circle cx="200" cy="110" r="4" fill="#3b82f6" filter="url(#glow)"/>
+          <circle cx="340" cy="95" r="4" fill="#8b5cf6" filter="url(#glow)"/>
+          <circle cx="480" cy="125" r="4" fill="#8b5cf6" filter="url(#glow)"/>
+          <circle cx="560" cy="80" r="5" fill="#06b6d4" stroke="#f8fafc" stroke-width="2" filter="url(#glow)"/>
+          <!-- X axis labels -->
+          <text class="axis-text" x="80" y="215" text-anchor="middle">03月</text>
+          <text class="axis-text" x="200" y="215" text-anchor="middle">05月</text>
+          <text class="axis-text" x="340" y="215" text-anchor="middle">07月</text>
+          <text class="axis-text" x="480" y="215" text-anchor="middle">09月</text>
+          <text class="axis-text" x="560" y="215" text-anchor="middle">11月</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Price Histogram -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> 价格区间分布</h3>
+        <span class="meta">共 12 条</span>
+      </div>
+      <div class="chart-body">
+        <svg width="100%" height="220" viewBox="0 0 600 220">
+          <defs>
+            <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.1"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid -->
+          <line class="grid-line" x1="40" y1="40" x2="580" y2="40"/>
+          <line class="grid-line" x1="40" y1="90" x2="580" y2="90"/>
+          <line class="grid-line" x1="40" y1="140" x2="580" y2="140"/>
+          <!-- Y labels -->
+          <text class="axis-text" x="8" y="44">8</text>
+          <text class="axis-text" x="8" y="94">5</text>
+          <text class="axis-text" x="8" y="144">2</text>
+          <!-- Bars: 400-450:2, 450-500:5, 500-550:3, 550-600:1, 600+:1 -->
+          <rect x="60" y="140" width="90" height="40" fill="url(#barGrad)" stroke="#3b82f6" stroke-width="1" rx="4 4 0 0"/>
+          <text class="axis-text" x="105" y="135" text-anchor="middle">2</text>
+          <rect x="170" y="90" width="90" height="90" fill="url(#barGrad)" stroke="#3b82f6" stroke-width="1" rx="4 4 0 0"/>
+          <text class="axis-text" x="215" y="85" text-anchor="middle">5</text>
+          <rect x="280" y="115" width="90" height="65" fill="url(#barGrad)" stroke="#8b5cf6" stroke-width="1" rx="4 4 0 0"/>
+          <text class="axis-text" x="325" y="110" text-anchor="middle">3</text>
+          <rect x="390" y="165" width="90" height="15" fill="url(#barGrad)" stroke="#3b82f6" stroke-width="1" rx="4 4 0 0"/>
+          <text class="axis-text" x="435" y="160" text-anchor="middle">1</text>
+          <rect x="500" y="165" width="70" height="15" fill="url(#barGrad)" stroke="#f43f5e" stroke-width="1" rx="4 4 0 0"/>
+          <text class="axis-text" x="535" y="160" text-anchor="middle">1</text>
+          <!-- X labels -->
+          <text class="axis-text" x="105" y="200" text-anchor="middle">400-450</text>
+          <text class="axis-text" x="215" y="200" text-anchor="middle">450-500</text>
+          <text class="axis-text" x="325" y="200" text-anchor="middle">500-550</text>
+          <text class="axis-text" x="435" y="200" text-anchor="middle">550-600</text>
+          <text class="axis-text" x="535" y="200" text-anchor="middle">600+</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Supplier Comparison -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l5-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg> 供应商均价对比</h3>
+        <span class="meta">3 家供应商</span>
+      </div>
+      <div class="chart-body">
+        <svg width="100%" height="220" viewBox="0 0 600 220">
+          <defs>
+            <linearGradient id="hbarGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.2"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid -->
+          <line class="grid-line" x1="160" y1="20" x2="160" y2="200"/>
+          <line class="grid-line" x1="280" y1="20" x2="280" y2="200"/>
+          <line class="grid-line" x1="400" y1="20" x2="400" y2="200"/>
+          <line class="grid-line" x1="520" y1="20" x2="520" y2="200"/>
+          <!-- Y labels (suppliers) -->
+          <text class="axis-text" x="150" y="65" text-anchor="end">中建三局</text>
+          <text class="axis-text" x="150" y="120" text-anchor="end">河北润奥佳</text>
+          <text class="axis-text" x="150" y="175" text-anchor="end">广西建工</text>
+          <!-- X labels -->
+          <text class="axis-text" x="160" y="215" text-anchor="middle">¥0</text>
+          <text class="axis-text" x="280" y="215" text-anchor="middle">¥200</text>
+          <text class="axis-text" x="400" y="215" text-anchor="middle">¥400</text>
+          <text class="axis-text" x="520" y="215" text-anchor="middle">¥600</text>
+          <!-- Bars: avg prices 485, 552, 578 -->
+          <!-- Scale: 0→160px, 700→580px → 1¥ = 0.6px -->
+          <!-- 485 → width = 485*0.6=291 → x=160, width=291 -->
+          <rect x="160" y="48" width="291" height="30" fill="url(#hbarGrad)" stroke="#3b82f6" stroke-width="1" rx="4"/>
+          <text class="axis-text" x="460" y="67" fill="#06b6d4" class="mono">¥485 (4条)</text>
+          <!-- 552 → width = 552*0.6=331 -->
+          <rect x="160" y="103" width="331" height="30" fill="url(#hbarGrad)" stroke="#8b5cf6" stroke-width="1" rx="4"/>
+          <text class="axis-text" x="500" y="122" fill="#06b6d4" class="mono">¥552 (5条)</text>
+          <!-- 578 → width = 578*0.6=347 -->
+          <rect x="160" y="158" width="347" height="30" fill="url(#hbarGrad)" stroke="#8b5cf6" stroke-width="1" rx="4"/>
+          <text class="axis-text" x="516" y="177" fill="#06b6d4" class="mono">¥578 (3条)</text>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Detail Table -->
+  <div class="table-card" style="margin-top: 16px;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--db-border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size:14px;font-weight:600;color:var(--db-text-muted);display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;opacity:0.7;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg> 价格明细(跨合同)</h3>
+      <span class="meta" style="font-size:11px;color:var(--db-text-subtle);">12 条 · 已校验 10</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>合同编号</th>
+          <th>供应商</th>
+          <th>含税单价</th>
+          <th>不含税单价</th>
+          <th>数量</th>
+          <th>单位</th>
+          <th>签订日期</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono" style="font-size:11px;color:var(--db-text-muted);">101448206-1GS-...-0021</td>
+          <td>中建三局第一工程</td>
+          <td class="mono" style="color:#06b6d4;">¥511.00</td>
+          <td class="mono" style="color:var(--db-text-muted);">¥468.50</td>
+          <td class="mono">210.86</td>
+          <td>m³</td>
+          <td class="mono" style="font-size:11px;">2025-03-15</td>
+          <td><span class="status-badge status-ok">已校验</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px;color:var(--db-text-muted);">HT-2025-0078-A</td>
+          <td>河北润奥佳建筑劳务</td>
+          <td class="mono" style="color:#06b6d4;">¥545.00</td>
+          <td class="mono" style="color:var(--db-text-muted);">¥500.00</td>
+          <td class="mono">185.50</td>
+          <td>m³</td>
+          <td class="mono" style="font-size:11px;">2025-05-22</td>
+          <td><span class="status-badge status-ok">已校验</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px;color:var(--db-text-muted);">GX-2025-C-0312</td>
+          <td>广西建工集团</td>
+          <td class="mono" style="color:#06b6d4;">¥578.00</td>
+          <td class="mono" style="color:var(--db-text-muted);">¥530.28</td>
+          <td class="mono">320.00</td>
+          <td>m³</td>
+          <td class="mono" style="font-size:11px;">2025-07-08</td>
+          <td><span class="status-badge status-ok">已校验</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px;color:var(--db-text-muted);">HT-2025-0078-A</td>
+          <td>河北润奥佳建筑劳务</td>
+          <td class="mono" style="color:#f43f5e;">¥685.00</td>
+          <td class="mono" style="color:var(--db-text-muted);">¥628.44</td>
+          <td class="mono">45.00</td>
+          <td>m³</td>
+          <td class="mono" style="font-size:11px;">2025-09-14</td>
+          <td><span class="status-badge status-review">待核验 ⚠ 离群</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="font-size:11px;color:var(--db-text-muted);">GX-2025-C-0312</td>
+          <td>广西建工集团</td>
+          <td class="mono" style="color:#06b6d4;">¥490.00</td>
+          <td class="mono" style="color:var(--db-text-muted);">¥449.54</td>
+          <td class="mono">500.00</td>
+          <td>m³</td>
+          <td class="mono" style="font-size:11px;">2025-11-03</td>
+          <td><span class="status-badge status-ok">已校验</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

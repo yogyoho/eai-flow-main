@@ -18435,5 +18435,67 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-10T22:30:00+08:00"
+  },
+  {
+    "id": "bug-1163",
+    "timestamp": "2026-08-10T21:05:00+08:00",
+    "error_message": "分项校验页「来源任务」下拉列出大量非分项货物提取任务(聚类任务/空任务),用户质疑设计缺陷。",
+    "file": "backend/app/extensions/contract_price/crud.py",
+    "root_cause": "GET /runs → crud.list_runs 返回 cpa_run_history 全量不按 phase 过滤;该表混存 parse(提取)/cluster(聚类)/null 三类 run(库内 114 条)。ItemsView 与 TasksView 共用 useRuns,分项校验页把聚类任务也列出来了。",
+    "fix": "crud.list_runs 增 has_items 参数(True 时 WHERE EXISTS cpa_items.run_id,只列当前真有明细的任务);router 增 has_items 查询参(默认 False,TasksView 不受影响);api.ts 增 has_items?:boolean;ItemsView useRuns 传 has_items:true。下拉从~100 收窄到真实来源任务(当前 1 个)。",
+    "tags": [
+      "contract-price",
+      "dropdown",
+      "filter",
+      "run-history",
+      "phase",
+      "has_items",
+      "ui-noise"
+    ],
+    "related_bugs": [
+      "bug-1148"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T21:05:00+08:00"
+  },
+  {
+    "id": "bug-1163",
+    "timestamp": "2026-08-10T23:00:00+08:00",
+    "error_message": "知识库检索测试 POST /api/extensions/knowledge-bases/{id}/chat 返回 400；前端报 Bad Request，无结果",
+    "file": "backend/app/extensions/knowledge/client.py (RAGFlowClient.chat) — 根因在基础设施，非代码",
+    "root_cause": "该知识库(消防报告样例库, kb_id 8376f624...) 在 RAGFlow 用的 embedding 模型是 mxbai-embed-large:latest@Ollama，但 Ollama 服务未运行/未安装(无容器、宿主 11434 端口未监听)。查询时 RAGFlow 对 query 做 embedding 调用 Ollama 失败 → RAGFlow /api/v1/retrieval 返回 code:100 → Gateway /chat 翻译成 HTTP 400。可用替代 embedding: SILICONFLOW(BAAI/bge-large-zh-v1.5, BAAI/bge-m3) / ZHIPU-AI 均在线。3 份源文档可从 documents 表 file_path 列恢复。",
+    "fix": "未修复(基础设施问题，非本轮 KB-tabs 计划范围)。可选方案: (a) 启动/安装 Ollama 并拉取 mxbai-embed-large; (b) 在 RAGFlow 把该数据集 embedding 切到 SILICONFLOW/BAAI/bge-m3(需重建向量); (c) 确认其他 KB 若用在线 embedding 则检索正常。KB-tabs 计划的检索测试 UX/持久化代码已全部完成，端到端验收依赖此项恢复。",
+    "tags": [
+      "ragflow",
+      "ollama",
+      "embedding",
+      "knowledge-base",
+      "retrieval",
+      "400",
+      "infrastructure"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T23:00:00+08:00"
+  },
+  {
+    "id": "bug-1164",
+    "timestamp": "2026-08-10T23:10:00+08:00",
+    "error_message": "进入 /knowledge/{kbId} 详情页运行时崩溃: usePermission must be used within a PermissionProvider (KnowledgeBaseDetail.tsx:86 → usePermission.ts:31)",
+    "file": "frontend/src/app/knowledge/[kbId]/page.tsx",
+    "root_cause": "KB-tabs 重构把详情抽到 /[kbId] 独立路由时，详情页直接渲染 <KnowledgeBaseDetail>，丢掉了列表页(knowledge/page.tsx:957)包裹的 ShellLayout/PermissionProvider 祖先。KnowledgeBaseDetail 第86行调用 usePermission()，必须处在 PermissionProvider 上下文内，否则抛错。同时丢失 ExtensionsSidebar 侧栏导航。",
+    "fix": "在 [kbId]/page.tsx 用 <SimpleShellLayout> 包裹 content(loading/error/success 三态统一包裹)。SimpleShellLayout→ShellLayout 内部已渲染 PermissionProvider+AuthProvider+QueryClientProvider+ExtensionsSidebar，单个 wrapper 同时修复崩溃与恢复侧栏导航。typecheck 通过。",
+    "tags": [
+      "frontend",
+      "permission",
+      "PermissionProvider",
+      "knowledge-base",
+      "regression",
+      "route",
+      "shell"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-10T23:10:00+08:00"
   }
 ]

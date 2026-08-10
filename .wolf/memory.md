@@ -6374,3 +6374,48 @@
 | 21:12 | Session end: 2 writes across 2 files (extensions_config.json, crud.py) | 3 reads | ~21723 tok |
 | 22:30 | 修 contract-price MCP 数据库连不上(bug-1162):根因=stdio 子进程 env 被 SDK 白名单(HOME/LOGNAME/PATH/SHELL/TERM/USER)+harness tools.py:512-516 收窄→丢 EXTENSIONS_DB_HOST→_resolve_db_url 回退 localhost:5432。修复=extensions_config.json 给该 server env 加 CPA_QUERY_DB_URL=...@postgres-ext:5432(镜像 project server 的 PROJECT_DB_URL 模式,零代码)。restart gateway + MultiServerMCPClient 真实 stdio spawn 验证 query_goods_price('LED')→success:true/7 matched/应急LED灯 均价128.07 PASS | extensions_config.json / .wolf/buglog.json(bug-1162) / .wolf/cerebrum.md(Key Learnings) | fixed+verified | ~9k |
 | 21:15 | Session end: 2 writes across 2 files (extensions_config.json, crud.py) | 3 reads | ~21723 tok |
+| 21:21 | Session end: 2 writes across 2 files (extensions_config.json, crud.py) | 3 reads | ~21723 tok |
+| 21:33 | Created frontend/src/extensions/workspace/WorkspaceHome.tsx | — | ~5252 |
+| 21:39 | Session end: 3 writes across 3 files (extensions_config.json, crud.py, WorkspaceHome.tsx) | 4 reads | ~29015 tok |
+| 21:41 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/concurrent-session-git-reset-hazard.md | — | ~425 |
+
+## Session: 2026-08-10 21:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:43 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~101 |
+| 21:43 | Session end: 1 writes across 1 files (MEMORY.md) | 1 reads | ~1249 tok |
+| 22:01 | Edited backend/app/extensions/contract_price/crud.py | inline fix | ~19 |
+| 22:02 | Edited backend/app/extensions/contract_price/crud.py | modified list_runs() | ~169 |
+| 22:02 | Edited backend/app/extensions/contract_price/routers.py | modified list_runs() | ~126 |
+| 22:02 | Edited frontend/src/extensions/contract-price/api.ts | 2→2 lines | ~47 |
+| 22:02 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | inline fix | ~20 |
+
+## Session: 2026-08-10 22:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-10 22:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:05 | 来源任务下拉噪声修复:list_runs 增 has_items(EXISTS cpa_items.run_id)过滤,routers/api/ItemsView 透传;下拉从~100(含聚类)收窄到真实来源任务(当前1个)。13后端测试通过+typecheck绿;commit 81cfc9735 push同步0/0 | crud.py,routers.py,api.ts,ItemsView.tsx | fixed+pushed;buglog bug-1149 | ~4k |
+| 22:07 | Created frontend/src/extensions/workspace/ProjectDetail.tsx | — | ~3149 |
+| 22:09 | 完成 KB-tabs 计划遗留收尾：提交 KnowledgeBaseDetail 类型加固(f9569f00d)，Task12 验收全通过 | KnowledgeBaseDetail.tsx, .wolf/buglog.json | KB-tabs 11任务+收尾全部完成提交；端到端检索仍受 Ollama 宕机阻塞(bug-1163) | ~2k |
+| 22:09 | Session end: 1 writes across 1 files (ProjectDetail.tsx) | 2 reads | ~8388 tok |
+| 22:15 | agentspace 详情页 UI 对齐 projects 详情页：workspace/ProjectDetail.tsx 全量 db-*→cyber-* 转换(外层/header/H1去font-cyber/mono•分隔subtitle/tab胶囊5色neon/stat卡db-card→cyber);dashboard.css import 保留(子pane仍用db);frontend restart;DOM验证 overview db-*全0+cyber全到位、tasks tab neon 蓝切换青;子pane(TaskBoard/ApprovalsQueue/MembersPane/QuickDocEditor)db主题 deferred | ProjectDetail.tsx | aligned+live;未提交 | ~6k |
+| 22:16 | Session end: 1 writes across 1 files (ProjectDetail.tsx) | 10 reads | ~33027 tok |
+| 22:19 | Edited frontend/src/app/knowledge/[kbId]/page.tsx | added 1 import(s) | ~83 |
+| 22:19 | Edited frontend/src/app/knowledge/[kbId]/page.tsx | CSS: EAI-CUSTOM, content | ~215 |
+| 22:24 | 修 /knowledge/[kbId] 详情页 usePermission 崩溃：包裹 <SimpleShellLayout>(含 PermissionProvider) | frontend/src/app/knowledge/[kbId]/page.tsx, .wolf/buglog.json | typecheck 通过；bug-1164 | ~1.5k |
+| 22:25 | Created frontend/src/extensions/workspace/components/TaskBoard.tsx | — | ~2374 |
+| 22:26 | Created frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | — | ~2381 |
+| 22:26 | Created frontend/src/extensions/workspace/components/MembersPane.tsx | — | ~1781 |
+| 22:26 | Created frontend/src/extensions/workspace/components/QuickDocEditor.tsx | — | ~396 |
+| 22:27 | Edited frontend/src/extensions/workspace/ProjectDetail.tsx | 5→3 lines | ~24 |
+| 22:27 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 14 reads | ~40741 tok |
+| 22:32 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 14 reads | ~40741 tok |
+| 22:45 | 4 子 pane 全量 cyber 化：TaskBoard/ApprovalsQueue/MembersPane/QuickDocEditor 的 db-card→rounded-xl border+cyber-bg-secondary/border-muted、var(--db-border)→cyber-border-muted、var(--db-text-primary)→cyber-text-main、--db-bg-purple/cyan→bg-purple-500/10/cyan-500/10；5 文件 dashboard.css import 全删（DashboardPage 相对路径全局加载兜底）；void load() 补 lint；frontend restart；DOM 验证 5 tab(overview/文档/任务/闸门/成员) 全部 db-*=0+cyber 在位 | TaskBoard/ApprovalsQueue/MembersPane/QuickDocEditor.tsx, ProjectDetail.tsx | aligned+live;未提交 | ~7k |
+| 22:38 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 16 reads | ~40741 tok |
+| 23:25 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 35 reads | ~122065 tok |

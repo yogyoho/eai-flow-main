@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-06T11:44:20.770Z
-> Files: 1917 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-10T14:27:06.063Z
+> Files: 1931 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -68,7 +68,7 @@
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~1672 tok)
+- `extensions_config.json` (~1712 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -156,6 +156,7 @@
 - `qa-report-docmgr-collab-2026-05-28.md` — QA Report: Document Collaboration Editor (~956 tok)
 - `qa-report-fire-compliance-skill-2026-06-19.md` — QA Report: fire-regulatory-compliance-check integration (~548 tok)
 - `qa-report-localhost-2026-07-24.md` — QA Report — DocAIAgentPanel AI 助手 (~460 tok)
+- `qa-report-localhost-2026-08-10.md` — QA Report — 文档空间项目文件夹栏验证 (~910 tok)
 - `qa-report-localhost-2026-2026-06-18.md` — QA Report — 设置页 数据源 + 插件 tab 功能测试 (~653 tok)
 - `qa-report-localhost-2026-2026-08-06.md` — QA 报告 — localhost:2026 / localhost:3000 (~1140 tok)
 - `test-fire-report-minimal.md` — 消防设计专篇 (~18 tok)
@@ -453,6 +454,7 @@
 - `deep-wobbling-dragon.md` — AI 从文档自动提取合规规则 — 实施计划 (~965 tok)
 - `delegated-greeting-pebble.md` — Fix: 部分扫描版合同的溯源预览图缺失 (~151 tok)
 - `eager-whistling-minsky.md` — Plan: coal-eia-report — Complete Functional Upgrade Design (v2) (~1957 tok)
+- `enchanted-cooking-floyd.md` — 角色管理「个性化策略」拒绝权限：手填框 → 搜索式分组 Combobox (~923 tok)
 - `federated-prancing-spindle.md` — 知识库三级数据隔离：私有可见 / 部门可见 / 公开可见 (~739 tok)
 - `fizzy-zooming-starlight.md` — C 盘清理计划：C:\Users\admin 冗余文件分析（二次查证版） (~963 tok)
 - `giggly-mixing-toucan.md` — Plan: 沙箱输出文件自动同步到文档空间 (~1024 tok)
@@ -493,6 +495,7 @@
 
 - `agentspace-refactor-plan.md` (~235 tok)
 - `chat-page-upstream-gap-2026-08-03.md` (~534 tok)
+- `concurrent-session-git-reset-hazard.md` (~427 tok)
 - `contract-price-custom-extension.md` (~133 tok)
 - `docker-dev-environment.md` — Docker Development Environment (~389 tok)
 - `docker-restart-vs-up.md` (~150 tok)
@@ -506,7 +509,7 @@
 - `harness-core-upstream-gap-2026-08-03.md` (~549 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~1141 tok)
+- `MEMORY.md` (~1496 tok)
 - `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~324 tok)
 - `offline-prod-deploy-solution.md` (~381 tok)
@@ -1276,10 +1279,10 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~23529 tok)
+- `database.py` — Database connection and session management for extensions module. (~23878 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
-- `schemas.py` — Pydantic schemas for extensions module. (~5818 tok)
+- `schemas.py` — Pydantic schemas for extensions module. (~6284 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -1308,9 +1311,9 @@
 ## backend/app/extensions/contract_price/
 
 - `__init__.py` — Contract price analysis extension. (~225 tok)
-- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~8677 tok)
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~8720 tok)
 - `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~2040 tok)
-- `routers.py` — Contract price analysis management API — all functional areas. (~6425 tok)
+- `routers.py` — Contract price analysis management API — all functional areas. (~6467 tok)
 - `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~1437 tok)
 - `service.py` — Pipeline orchestration service for the management API. (~1222 tok)
 - `storage.py` — MinIO storage for contract files (independent ``cpa-contracts`` bucket). (~783 tok)
@@ -1360,8 +1363,8 @@
 
 - `access.py` — EAI-CUSTOM: 每-KB 显式授权的可见性/写权限辅助（knowledge_base_grants）。 (~442 tok)
 - `client.py` — RAGFlow client for knowledge base integration. (~4935 tok)
-- `routers.py` — Knowledge base routers for extensions module. list/_load_kb_scoped 查询 joinedload(owner) 供 owner_name 序列化。 (~7900 tok)
-- `service.py` — Knowledge base and document management service. (~5934 tok)
+- `routers.py` — Knowledge base routers for extensions module. (~8097 tok)
+- `service.py` — Knowledge base and document management service. (~6581 tok)
 
 ## backend/app/extensions/knowledge_factory/
 
@@ -1413,7 +1416,7 @@
 
 ## backend/app/extensions/models/
 
-- `__init__.py` — SQLAlchemy data models for extensions module. (~12837 tok)
+- `__init__.py` — SQLAlchemy data models for extensions module. (~13302 tok)
 - `role_permission.py` — Unified role-permission model — single source of truth for all project RBAC. (~617 tok)
 
 ## backend/app/extensions/output/
@@ -1431,9 +1434,9 @@
 ## backend/app/extensions/project/
 
 - `mcp.py` — Project MCP Server — exposes chapter read/write tools to DeerFlow lead_agent. (~3633 tok)
-- `routers.py` — FastAPI routers for report project management. (~13874 tok)
+- `routers.py` — FastAPI routers for report project management. (~13830 tok)
 - `schemas.py` — Pydantic schemas for report project management. (~2707 tok)
-- `service.py` — Database-backed service for report project management. (~14216 tok)
+- `service.py` — Database-backed service for report project management. (~13829 tok)
 - `slot_filling.py` — Runtime slot-filling service — checks if required roles for a phase are filled. (~1456 tok)
 
 ## backend/app/extensions/review/
@@ -1766,6 +1769,7 @@
 - `test_kf_doc_parser.py` — Unit tests for doc_parser — heading detection, text normalization, regex fallback. (~1679 tok)
 - `test_knowledge_data_access.py` — Knowledge data-access scope tests (overlap-based dept sharing). (~4991 tok)
 - `test_knowledge_flip.py` — knowledge 可见性接线（HTTP/SQL 层）：dept 角色 scope 含 overlap；by-id 复用 list scope。 (~435 tok)
+- `test_knowledge_retrieval_config.py` — Tests for KnowledgeBase retrieval_config serialization & fallback (KB detail-tabs P1). (~1397 tok)
 - `test_law_kb_registration.py` — Law system-KB registration tests — owner fixed to admin (EAI-CUSTOM). (~815 tok)
 - `test_lead_agent_prompt.py` — _FakeManager: test_build_self_update_section_empty_for_default_agent, test_build_self_update_section (~4205 tok)
 - `test_lead_agent_skills.py` — NamedTool: test_get_skills_prompt_section_returns_empty_when_no_skills_match, test_get_skills_prompt (~3906 tok)
@@ -2096,7 +2100,7 @@
 
 ## frontend/src/app/admin/roles/
 
-- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~36468 tok)
+- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~38154 tok)
 
 ## frontend/src/app/admin/templates/
 
@@ -2172,7 +2176,21 @@
 
 ## frontend/src/app/knowledge/
 
-- `page.tsx` — formatDate (~27811 tok)
+- `page.tsx` — KB_TYPE_OPTIONS (~10730 tok)
+
+## frontend/src/app/knowledge/[kbId]/
+
+- `page.tsx` — KnowledgeBaseDetailPage (~546 tok)
+
+## frontend/src/app/knowledge/_components/
+
+- `ChunkModal.tsx` — Heuristic: RAGFlow often stores chunks as HTML fragments (tables, etc.). (~1625 tok)
+- `CustomSelect.tsx` — CustomSelect (~1106 tok)
+- `DocStatusBadge.tsx` — DocStatusBadge (~170 tok)
+- `KnowledgeBaseDetail.tsx` — formatDate (~13173 tok)
+- `sources-sort.ts` — Sort retrieval sources by score descending. (~139 tok)
+- `toast.tsx` — ToastContainer (~737 tok)
+- `UploadModal.tsx` — formatFileSize (~2063 tok)
 
 ## frontend/src/app/login/
 
@@ -2404,11 +2422,11 @@
 
 ## frontend/src/extensions/
 
-- `types.ts` — EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") (~3903 tok)
+- `types.ts` — EAI-CUSTOM: module nav visibility — list of nav IDs (e.g. "nav:knowledge") (~3972 tok)
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~13828 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~14586 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -2466,18 +2484,18 @@
 
 ## frontend/src/extensions/contract-price/
 
-- `api.ts` — API client for the contract-price-analysis management API. (~2077 tok)
-- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2382 tok)
+- `api.ts` — API client for the contract-price-analysis management API. (~2005 tok)
+- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2467 tok)
 - `types.ts` — TypeScript types for the contract-price-analysis API (v2). (~1075 tok)
 
 ## frontend/src/extensions/contract-price/components/
 
 - `BoxPlot.tsx` — Custom SVG box plot — renders min/Q1/median/Q3/max + outliers. (~1239 tok)
 - `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~5366 tok)
-- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6483 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6662 tok)
 - `DashboardView.tsx` — DashboardView (~892 tok)
-- `GoodsAnalysis.tsx` — badgeColors (~5114 tok)
-- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~8970 tok)
+- `GoodsAnalysis.tsx` — badgeColors (~5225 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~9678 tok)
 - `PageHeader.tsx` — PageHeader — renders table (~356 tok)
 - `SettingsView.tsx` — SettingsView (~1715 tok)
 - `StatCard.tsx` — colorClasses (~411 tok)
@@ -2666,20 +2684,21 @@
 - `ApprovalWorkflow.tsx` — flattenChapters (~2626 tok)
 - `OutlineEditor.tsx` — ExpandCtx (~3522 tok)
 - `OutlinePreview.tsx` — PreviewNode (~682 tok)
-- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11055 tok)
+- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11366 tok)
 - `ProjectList.tsx` — TYPE_PALETTE (~6525 tok)
 - `ProjectWorkspace.tsx` — OverviewTab (~2728 tok)
 - `SciFiProjectDetail.tsx` — STATUS_LABELS (~16457 tok)
 - `SciFiProjectDetail.tsx` — Sci-fi themed project detail page, 3 tabs (overview/editor/review), wired to projectApi (~850 tok)
 - `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~864 tok)
-- `types.ts` — ── Enums ── (~1554 tok)
-- `utils.ts` — Flatten nested chapters into a flat array (depth-first). (~524 tok)
+- `types.ts` — ── Enums ── (~1706 tok)
+- `utils.ts` — Flatten nested chapters into a flat array (depth-first). (~827 tok)
 
 ## frontend/src/extensions/project/components/
 
 - `AddMemberDialog.tsx` — AddMemberDialog — renders modal (~1473 tok)
 - `AiToolsTab.tsx` — AiToolsTab: accepts can prop for RBAC (~182 tok)
 - `ApprovalTab.tsx` — StepIndicator (~4775 tok)
+- `AssignmentStrategySelect.tsx` — STRATEGY_LABELS (~429 tok)
 - `DashboardTab.tsx` — flattenChapters (~2670 tok)
 - `KanbanBoard.tsx` — Kanban with optional can/role props for drag permission gating (~3416 tok)
 - `MemberList.tsx` — ROLE_ORDER, canManage prop hides add/remove buttons (~2490 tok)
@@ -2687,7 +2706,8 @@
 - `MemberWorkspace.tsx` — Dual-mode: standalone dashboard or project-scoped chapter view with RBAC (~6320 tok)
 - `OutlineTab.tsx` — chaptersToTreeNodes (~931 tok)
 - `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1745 tok)
-- `SettingsDialog.tsx` — SettingsDialog — renders modal (~2863 tok)
+- `RoleBoard.tsx` — ROLE_ORDER (~709 tok)
+- `SettingsDialog.tsx` — SettingsDialog — renders modal (~4072 tok)
 - `StatusBadge.tsx` — STATUS_CONFIG (~787 tok)
 - `StatusDistribution.tsx` — STATUS_ITEMS (~766 tok)
 - `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~2401 tok)
@@ -2716,7 +2736,7 @@
 - `DocCollabView.tsx` — CollabEditor (~1525 tok)
 - `EditorTab.tsx` — EditorTab (~725 tok)
 - `HistoryTab.tsx` — HistoryTab — renders modal (~3433 tok)
-- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~5259 tok)
+- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~6604 tok)
 - `ReviewTab.tsx` — STATUS_CONFIG (~3638 tok)
 - `SettingsTab.tsx` — SECTIONS (~5643 tok)
 - `TraceabilityTab.tsx` — SOURCE_TYPE_CONFIG (~3379 tok)
@@ -2812,19 +2832,19 @@
 - `components/QuickDocEditor.tsx` — Tier1 快速文档(复用 CollabEditor+AI menu) (~40 tok)
 - `components/TaskBoard.tsx` — Kanban 任务板(按状态/负责人+agent 指派+run 启动) (~170 tok)
 - `index.tsx` — Collab Workspace — 入口 (~68 tok)
-- `ProjectDetail.tsx` — TIER_LABEL (~2511 tok)
+- `ProjectDetail.tsx` — TIER_LABEL (~3103 tok)
 - `ProjectDetail.tsx` — 项目详情 5 Tab(概览/文档/任务/闸门/成员) (~160 tok)
 - `transforms.ts` — Collab Workspace — camelCase/snakeCase 转换（与 project 模块同款） (~463 tok)
 - `types.ts` — Collab Workspace — 类型定义 (~870 tok)
-- `WorkspaceHome.tsx` — TIER_LABEL (~1627 tok)
+- `WorkspaceHome.tsx` — KIND_LABELS (~5252 tok)
 - `WorkspaceHome.tsx` — 项目列表(AgentSpace 卡片+新建) (~120 tok)
 
 ## frontend/src/extensions/workspace/components/
 
-- `ApprovalsQueue.tsx` — STATE_LABEL (~2266 tok)
-- `MembersPane.tsx` — ROLE_LABEL (~1715 tok)
-- `QuickDocEditor.tsx` — QuickDocEditor (~403 tok)
-- `TaskBoard.tsx` — COLUMNS (~2287 tok)
+- `ApprovalsQueue.tsx` — STATE_LABEL (~2381 tok)
+- `MembersPane.tsx` — ROLE_LABEL (~1781 tok)
+- `QuickDocEditor.tsx` — QuickDocEditor (~396 tok)
+- `TaskBoard.tsx` — COLUMNS (~2374 tok)
 
 ## frontend/src/styles/
 
@@ -2840,6 +2860,10 @@
 ## frontend/tests/unit/
 
 - `brand.test.ts` (~107 tok)
+
+## frontend/tests/unit/app/knowledge/_components/
+
+- `sources-sort.test.ts` — Declares srcs (~210 tok)
 
 ## frontend/tests/unit/core/api/
 
@@ -2885,7 +2909,7 @@
 
 - `api.test.ts` — Mock authFetch before importing api (~1332 tok)
 - `types.test.ts` — Declares labels (~274 tok)
-- `utils.test.ts` — Declares ChapterStatus (~1287 tok)
+- `utils.test.ts` — Declares ChapterBlockState (~2029 tok)
 
 ## frontend/tests/unit/extensions/roles/
 
