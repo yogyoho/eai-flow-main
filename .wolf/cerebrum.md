@@ -656,3 +656,4 @@
 - **重放后必查重复导入**：丢失编辑加的 import（如 Popover+Command 树下拉）可能与 reset 后新工作已加的 import 重复 → typecheck 报 Duplicate identifier。先看 import 段去重。
 - **判断"丢失编辑是否已被 post-reset 提交覆盖"**：cp 重放文件后 `git diff HEAD --stat -- <file>` 为空 = 该文件丢失编辑与 HEAD 相同（post-reset 提交已含），无需恢复，也无需提交。BoxPlot(542358005)/crud.py(030df2481) 即此例。
 - **丢失编辑锚点不匹配当前 = 被重写替代**：组件被 post-reset 工作重构后（如 ClustersView 去掉货物分组头部），引用旧结构的编辑(全选本页头部/max-h)anchor 缺失 → 跳过，不要强行重建旧结构。重放结果 = 当前结构 + 仍匹配的丢失编辑。
+- **丢失文件可能整版被 Write 重建 + Edit 改版**：某会话对组件是「Write 全文件(竖版) + Edit(横版)」两步。提取时不能只抓 Edit，要抓 Write 的 content 字段(旧版)再叠 Edit 得到最终态。Write 在 tool_use input 的 `content` 键(非 old/new)。用 `.next/dev/types/routes.d.ts` 报 TS 语法错误 = Next 生成缓存损坏(并发/中断编译),重启 frontend 重新生成即恢复,与源码无关。
