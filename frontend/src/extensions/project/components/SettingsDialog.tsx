@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { projectApi } from "@/extensions/project/api";
+import { AssignmentStrategySelect } from "@/extensions/project/components/AssignmentStrategySelect";
 import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import type { ProjectIdentity } from "@/extensions/project/tabRegistry";
 import {
@@ -56,6 +57,11 @@ export function SettingsDialog({
   const [savingDescription, setSavingDescription] = useState(false);
   const [projectStatus, setProjectStatus] = useState<ProjectStatus>(project.status);
   const [savingStatus, setSavingStatus] = useState(false);
+  // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
+  const [assignmentStrategy, setAssignmentStrategy] = useState<"by_chapter" | "by_role">(
+    project.assignmentStrategy ?? "by_chapter",
+  );
+  const [savingStrategy, setSavingStrategy] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -70,6 +76,7 @@ export function SettingsDialog({
       setProjectDescription(project.description ?? "");
       setEditingDescription(false);
       setProjectStatus(project.status);
+      setAssignmentStrategy(project.assignmentStrategy ?? "by_chapter");
       setDeleteConfirm("");
     }
     onOpenChange(nextOpen);
@@ -116,6 +123,22 @@ export function SettingsDialog({
       toast.error("更新失败");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
+  const handleStrategyChange = async (v: "by_chapter" | "by_role") => {
+    setAssignmentStrategy(v);
+    setSavingStrategy(true);
+    try {
+      await projectApi.update(projectId, { assignmentStrategy: v });
+      onRefresh();
+      toast.success("分工策略已更新");
+    } catch {
+      toast.error("更新失败");
+      setAssignmentStrategy(project.assignmentStrategy ?? "by_chapter");
+    } finally {
+      setSavingStrategy(false);
     }
   };
 
@@ -271,6 +294,24 @@ export function SettingsDialog({
               </Select>
             ) : (
               <p className="text-sm text-foreground">{PROJECT_STATUS_LABELS[project.status]}</p>
+            )}
+          </div>
+
+          {/* Assignment Strategy — EAI-CUSTOM: 分工策略(ADR 2026-08-10) */}
+          <div className="space-y-1.5">
+            {canEdit ? (
+              <AssignmentStrategySelect
+                value={assignmentStrategy}
+                onChange={(v) => handleStrategyChange(v)}
+                disabled={savingStrategy}
+              />
+            ) : (
+              <>
+                <label className="text-[12px] text-muted-foreground font-medium">分工策略</label>
+                <p className="text-sm text-foreground">
+                  {project.assignmentStrategy === "by_role" ? "按职责分工（按角色）" : "按章节分工"}
+                </p>
+              </>
             )}
           </div>
 

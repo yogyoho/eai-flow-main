@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { authFetch } from "@/extensions/api/client";
 import { projectApi } from "@/extensions/project/api";
+import { AssignmentStrategySelect } from "@/extensions/project/components/AssignmentStrategySelect";
 import { useReportTypes, getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import {
   MEMBER_ROLE_LABELS,
@@ -530,6 +531,8 @@ function StepTeam({
   onAddMember,
   onRemoveMember,
   onSkip,
+  assignmentStrategy,
+  onStrategyChange,
 }: {
   leader: TeamMember | null;
   members: TeamMember[];
@@ -537,6 +540,8 @@ function StepTeam({
   onAddMember: (m: TeamMember) => void;
   onRemoveMember: (id: string) => void;
   onSkip: () => void;
+  assignmentStrategy: "by_chapter" | "by_role";
+  onStrategyChange: (v: "by_chapter" | "by_role") => void;
 }) {
   const [searchValue, setSearchValue] = useState("");
   const [results, setResults] = useState<TeamMember[]>([]);
@@ -693,6 +698,11 @@ function StepTeam({
             ))}
           </div>
         )}
+      </div>
+
+      {/* EAI-CUSTOM: 分工策略(ADR 2026-08-10) */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <AssignmentStrategySelect value={assignmentStrategy} onChange={onStrategyChange} />
       </div>
 
       <div className="flex justify-end">
@@ -905,6 +915,9 @@ export function ProjectCreateWizard() {
   // Auto-start workflow option
   const [autoStartWorkflow, setAutoStartWorkflow] = useState(true);
 
+  // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
+  const [assignmentStrategy, setAssignmentStrategy] = useState<"by_chapter" | "by_role">("by_chapter");
+
   // Submitting
   const [submitting, setSubmitting] = useState(false);
 
@@ -992,6 +1005,7 @@ export function ProjectCreateWizard() {
         templateId: resolveTemplateId(),
         workflowId,
         autoStartWorkflow: autoStartWorkflow && !!workflowId,
+        assignmentStrategy, // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
         members: memberList.length > 0 ? memberList : undefined,
       });
 
@@ -1077,6 +1091,8 @@ export function ProjectCreateWizard() {
                 onAddMember={addTeamMember}
                 onRemoveMember={removeTeamMember}
                 onSkip={skipToNext}
+                assignmentStrategy={assignmentStrategy}
+                onStrategyChange={setAssignmentStrategy}
               />
             )}
             {step === 5 && (
