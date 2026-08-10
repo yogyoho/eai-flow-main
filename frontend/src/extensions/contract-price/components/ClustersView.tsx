@@ -204,7 +204,7 @@ export function ClustersView() {
   };
 
   return (
-    <div className="space-y-6 px-8 pb-8">
+    <div className="space-y-6 p-8">
       <PageHeader
         title="分组审核"
         description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。"
