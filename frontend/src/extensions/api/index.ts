@@ -61,6 +61,7 @@ import type {
   KnowledgeBaseStatus,
   RAGChatRequest,
   RAGChatResponse,
+  RetrievalConfig,
   KnowledgeBaseGrant,
   KnowledgeBaseGrantCreate,
 } from "../types";
@@ -434,6 +435,13 @@ export const kbApi = {
     request<RAGChatResponse>(`/knowledge-bases/${id}/chat`, {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  // Persist per-KB retrieval config
+  updateRetrievalConfig: (id: string, cfg: RetrievalConfig) =>
+    request<KnowledgeBase>(`/knowledge-bases/${id}/retrieval-config`, {
+      method: "PUT",
+      body: JSON.stringify(cfg),
     }),
 
   // List available RAGFlow embedding models

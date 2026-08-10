@@ -282,8 +282,19 @@ export interface KnowledgeBase {
     [key: string]: unknown;
   };
   language?: string;
+  retrieval_config?: {
+    top_k: number;
+    similarity_threshold: number;
+    vector_similarity_weight: number;
+  };
   status: string;
   created_at: string;
+}
+
+export interface RetrievalConfig {
+  top_k: number;
+  similarity_threshold: number;
+  vector_similarity_weight: number;
 }
 
 export interface KnowledgeBaseListResponse {
