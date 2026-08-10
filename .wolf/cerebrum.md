@@ -657,3 +657,7 @@
 - **判断"丢失编辑是否已被 post-reset 提交覆盖"**：cp 重放文件后 `git diff HEAD --stat -- <file>` 为空 = 该文件丢失编辑与 HEAD 相同（post-reset 提交已含），无需恢复，也无需提交。BoxPlot(542358005)/crud.py(030df2481) 即此例。
 - **丢失编辑锚点不匹配当前 = 被重写替代**：组件被 post-reset 工作重构后（如 ClustersView 去掉货物分组头部），引用旧结构的编辑(全选本页头部/max-h)anchor 缺失 → 跳过，不要强行重建旧结构。重放结果 = 当前结构 + 仍匹配的丢失编辑。
 - **丢失文件可能整版被 Write 重建 + Edit 改版**：某会话对组件是「Write 全文件(竖版) + Edit(横版)」两步。提取时不能只抓 Edit，要抓 Write 的 content 字段(旧版)再叠 Edit 得到最终态。Write 在 tool_use input 的 `content` 键(非 old/new)。用 `.next/dev/types/routes.d.ts` 报 TS 语法错误 = Next 生成缓存损坏(并发/中断编译),重启 frontend 重新生成即恢复,与源码无关。
+- **重放前先 grep 当前文件是否已有该功能标记**：同一天会话先写功能、后提交，reset 不会丢。若 HEAD 已有 EAI-CUSTOM 标记(bug-XXX)，重放旧 old_string 会命中**另一处相似代码块**造成重复(如 doc_parser 两个 w:tbl 块)。规则:重放命中前先 grep 新代码的标记字符串，存在则跳过该 edit。
+- **丢失窗口编辑未必丢**：会话当天就把编辑 commit 了 → reset 时工作区已干净。判断方法:edit 时间戳 < 该文件最后 commit 时间 → 已入库；且 old_string 不应在 HEAD 里(在则说明该 edit 真丢，但也要防"同形异块"误判，用新代码标记验证)。
+- **`.next` 缓存损坏升级处理**：仅 restart frontend 不够时，errors 会从 routes.d.ts 语法错演进为 validator.ts `Type '"/writing"' does not satisfy the constraint 'never'`（残留路由类型）。可靠修复 = 容器内 `rm -rf .next` + restart frontend，强制全量重新生成（首次编译慢但干净）。
+- **大模块丢失窗口要按该模块最后提交时间过滤**：project 134 条扫描里只有 2 条真丢失（33a3fc57/6bcf873e 的工作大多当天/次日已提交）。规则：先 `git log --before=<reset时刻> -- <模块>` 找最后提交，再只重放更晚的编辑。

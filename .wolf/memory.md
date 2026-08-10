@@ -6341,3 +6341,7 @@
 | 18:10 | 恢复 contract-price:重放 7 条(6 ClustersView+1 hooks),分页(PAGE_SIZE/第x/y页/上一页下一页)+批量确认(useBatchConfirmClusters/批量确认按钮)恢复;crud.py/BoxPlot 已被 post-reset 提交覆盖跳过;全选本页头部被重写版替代跳过;typecheck+ruff 过,浏览器验证分页 | ClustersView.tsx+hooks.ts | done | ~3k |
 | 18:06 | Session end: 1 writes across 1 files (page.tsx) | 4 reads | ~42132 tok |
 | 18:20 | 恢复 output×2:LayoutTemplateCard 从会话 Write(01:46 竖版)+Edit(02:09 横版)重建横版卡片(预览缩略图/规格meta/能力chips/hover操作栏);layout_import.py 已随 b889284bb 提交跳过;typecheck 过(曾遇 .next routes.d.ts 损坏,重启前端修复),浏览器验证卡片渲染 | LayoutTemplateCard.tsx | done | ~2k |
+| 18:15 | Session end: 1 writes across 1 files (page.tsx) | 4 reads | ~42132 tok |
+| 18:30 | 核查 knowledge-factory:5 条丢失窗口编辑(8bab81b8 会话)全部已随当天提交(e09ce0f26/5865714af/c7a6cf369/56f302455)入库,无未提交丢失;doc_parser bug-1120 展平误判重放重复→已 checkout 回退;无改动无需提交 | knowledge_factory/* | 无丢失 | ~1k |
+| 18:17 | Session end: 1 writes across 1 files (page.tsx) | 4 reads | ~42132 tok |
+| 18:45 | 恢复 project:丢失窗口仅 2 条(EditorTab bug-1145 根因④ Surface A: proj/前缀 outputs 虚拟文件改走单人 DocumentEditor 直读磁盘,替代打不开的协同 DocCollabView);33a3fc57 大量工作已 reset 前提交;typecheck 过(清容器 .next 修深层缓存损坏) | project/tabs/EditorTab.tsx | done | ~2k |
