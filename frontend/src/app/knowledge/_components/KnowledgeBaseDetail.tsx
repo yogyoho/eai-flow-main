@@ -28,6 +28,7 @@ import React, {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermission } from "@/core/permissions";
 import { deptApi, kbApi, roleApi, userApi } from "@/extensions/api";
@@ -81,7 +82,6 @@ export function KnowledgeBaseDetail({
 
   // EAI-CUSTOM: button-level permission check for upload/delete actions
   const { can, is_admin, identity } = usePermission();
-  const [activeTab, setActiveTab] = useState<"test" | "config">("test");
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -536,117 +536,101 @@ export function KnowledgeBaseDetail({
 
       {/* Right Pane */}
       <div className="flex w-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background">
-        <div className="flex shrink-0 items-center border-b border-border px-4">
-          {(["test", "config"] as const).map((tab) => (
-            <button
-              key={tab}
-              className={cn(
-                "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-                activeTab === tab
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === "test" ? "检索测试" : "检索配置"}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-1 flex-col gap-4 overflow-auto bg-muted/30 p-4">
-          {activeTab === "test" && (
-            <>
-              <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                <Textarea
-                  className="min-h-[120px] w-full resize-none border-0 p-4 text-sm outline-none"
-                  placeholder="输入查询内容..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
-                      handleSearch();
-                  }}
-                />
-                <div className="flex items-center justify-between border-t border-border bg-muted/50 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                      格式化
-                    </span>
-                    <button
-                      onClick={() => setIsFormatted(!isFormatted)}
-                      className={cn(
-                        "relative h-4 w-8 rounded-full transition-colors",
-                        isFormatted ? "bg-primary" : "bg-muted-foreground/30",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform",
-                          isFormatted ? "translate-x-4" : "translate-x-0",
-                        )}
-                      />
-                    </button>
-                  </div>
-                  <Button
-                    size="icon"
-                    onClick={handleSearch}
-                    disabled={chatLoading || !query.trim()}
-                    className="rounded-full"
-                  >
-                    {chatLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SearchIcon className="h-4 w-4" />
+        <Tabs defaultValue="test" className="flex flex-1 flex-col overflow-hidden">
+          <TabsList variant="line" className="shrink-0 justify-start rounded-none border-b border-border px-4">
+            <TabsTrigger value="test">检索测试</TabsTrigger>
+            <TabsTrigger value="config">检索配置</TabsTrigger>
+          </TabsList>
+          <TabsContent value="test" className="m-0 flex flex-1 flex-col gap-4 overflow-auto bg-muted/30 p-4">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+              <Textarea
+                className="min-h-[120px] w-full resize-none border-0 p-4 text-sm outline-none"
+                placeholder="输入查询内容..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
+                    handleSearch();
+                }}
+              />
+              <div className="flex items-center justify-between border-t border-border bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                    格式化
+                  </span>
+                  <button
+                    onClick={() => setIsFormatted(!isFormatted)}
+                    className={cn(
+                      "relative h-4 w-8 rounded-full transition-colors",
+                      isFormatted ? "bg-primary" : "bg-muted-foreground/30",
                     )}
-                  </Button>
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform",
+                        isFormatted ? "translate-x-4" : "translate-x-0",
+                      )}
+                    />
+                  </button>
                 </div>
+                <Button
+                  size="icon"
+                  onClick={handleSearch}
+                  disabled={chatLoading || !query.trim()}
+                  className="rounded-full"
+                >
+                  {chatLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SearchIcon className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
+            </div>
 
-              {chatResult && (
-                <div className="space-y-3">
-                  {chatResult.answer && (
-                    <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-                      <h4 className="mb-2 text-sm font-medium text-foreground">
-                        回答
-                      </h4>
-                      <p className="text-sm whitespace-pre-wrap text-foreground/80">
-                        {chatResult.answer}
-                      </p>
-                    </div>
-                  )}
-                  {chatResult.sources && chatResult.sources.length > 0 && (
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium text-foreground">
-                        参考来源
-                      </h4>
-                      <div className="space-y-2">
-                        {chatResult.sources.map((src: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="rounded-lg border border-border bg-background p-3 text-xs"
-                          >
-                            <div className="mb-1 font-medium text-foreground/80">
-                              {src.document_name || `来源 ${idx + 1}`}
-                            </div>
-                            <p className="line-clamp-3 text-muted-foreground">
-                              {src.content}
-                            </p>
-                            {src.score != null && (
-                              <div className="mt-1 text-muted-foreground/70">
-                                相似度: {(src.score * 100).toFixed(1)}%
-                              </div>
-                            )}
+            {chatResult && (
+              <div className="space-y-3">
+                {chatResult.answer && (
+                  <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
+                    <h4 className="mb-2 text-sm font-medium text-foreground">
+                      回答
+                    </h4>
+                    <p className="text-sm whitespace-pre-wrap text-foreground/80">
+                      {chatResult.answer}
+                    </p>
+                  </div>
+                )}
+                {chatResult.sources && chatResult.sources.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-foreground">
+                      参考来源
+                    </h4>
+                    <div className="space-y-2">
+                      {chatResult.sources.map((src: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-border bg-background p-3 text-xs"
+                        >
+                          <div className="mb-1 font-medium text-foreground/80">
+                            {src.document_name || `来源 ${idx + 1}`}
                           </div>
-                        ))}
-                      </div>
+                          <p className="line-clamp-3 text-muted-foreground">
+                            {src.content}
+                          </p>
+                          {src.score != null && (
+                            <div className="mt-1 text-muted-foreground/70">
+                              相似度: {(src.score * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "config" && (
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="config" className="m-0 flex flex-1 flex-col gap-4 overflow-auto bg-muted/30 p-4">
             <div className="space-y-5">
               <div className="space-y-5 rounded-xl border border-border bg-background p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -815,8 +799,8 @@ export function KnowledgeBaseDetail({
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Upload Modal */}
