@@ -130,7 +130,11 @@ async def create_review_assignments(
                         reviewer_id=rid,
                         reviewer_role="reviewer",
                         status="pending",
-                        deadline_at=datetime.now(timezone.utc) + timedelta(hours=DEFAULT_REVIEW_DEADLINE_HOURS),
+                        # EAI-CUSTOM (bug-1150): column is `DateTime` = TIMESTAMP
+                        # WITHOUT TIME ZONE (naive). Passing an offset-aware
+                        # datetime makes asyncpg's naive-epoch encode subtract
+                        # aware-naive → DataError → activity retries forever.
+                        deadline_at=(datetime.now(timezone.utc).replace(tzinfo=None)) + timedelta(hours=DEFAULT_REVIEW_DEADLINE_HOURS),
                     ))
                     count += 1
 

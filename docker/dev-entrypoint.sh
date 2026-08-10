@@ -90,6 +90,8 @@ fi
 
 # ── Hand off to uvicorn ─────────────────────────────────────────────────────
 
+# EAI-CUSTOM: exclude runtime projection dir (.deer-flow/skills_view rebuilds
+# hundreds of files every boot → triggers WatchFiles reload death-loop → nginx 502).
 PYTHONPATH=. exec uv run uvicorn app.gateway.app:app \
     --host 0.0.0.0 --port 8001 \
-    --reload --reload-include='*.yaml .env'
+    --reload --reload-exclude='.deer-flow/**' --reload-include='*.yaml .env'

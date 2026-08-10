@@ -120,6 +120,21 @@ class LawService:
         return _LAW_CHUNK_METHOD.get(law_type)
 
     @staticmethod
+    async def _get_system_owner_id(db: AsyncSession) -> uuid.UUID | None:
+        """解析系统级管理员用户 id（系统初始化库的固定 owner）。
+
+        EAI-CUSTOM: 法规标准库属系统级知识库，owner 固定为 bootstrap admin
+        （email admin@eai-flow.com），不随触发初始化的登录用户变化——避免
+        测试/临时账号软删后留下孤儿 owner。找不到 admin 时返回 None（调用方回退）。
+        """
+        from sqlalchemy import select as sa_select
+
+        from app.extensions.models import User
+
+        result = await db.execute(sa_select(User.id).where(User.email == "admin@eai-flow.com"))
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def _ensure_kb_registered(
         db: AsyncSession,
         owner_id: uuid.UUID,
@@ -127,7 +142,16 @@ class LawService:
         ragflow_dataset_id: str | None,
         chunk_method: str,
     ) -> bool:
-        """确保法规标准库在 knowledge_bases 表中注册为公开知识库。"""
+        """确保法规标准库在 knowledge_bases 表中注册为公开知识库。
+
+        EAI-CUSTOM: 系统级法规标准库的 owner 固定为 admin（_get_system_owner_id），
+        忽略调用方传入的 owner_id，避免被软删除用户留下孤儿 owner。
+        """
+        # EAI-CUSTOM: 系统级知识库 owner 固定 admin；解析失败时回退调用方 owner_id
+        system_owner_id = await LawService._get_system_owner_id(db)
+        if system_owner_id is not None:
+            owner_id = system_owner_id
+
         config = get_extensions_config()
         law_config = config.law.dataset_display_info.get(kb_name)
         display_name = law_config.name if law_config and law_config.name else kb_name

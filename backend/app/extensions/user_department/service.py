@@ -100,6 +100,7 @@ class UserDepartmentService:
         existing = result.scalars().all()
         for ud in existing:
             await db.delete(ud)
+        await db.flush()  # ponytail: flush deletes before inserts to avoid uq_user_dept
 
         if not dept_ids:
             await db.commit()

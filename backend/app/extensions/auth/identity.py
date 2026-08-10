@@ -86,6 +86,9 @@ class DefaultTagResolver:
         user = (await db.execute(stmt)).scalar_one_or_none()
         if user is None:
             return {"tags": [], "labels": {}, "extra": {}}
+        # EAI-CUSTOM (标签池 A): 显式用户标签（admin 在用户管理设置）优先并入
+        if user.tags:
+            tags.extend(t for t in user.tags if t)
         if user.role_id:
             role = await db.get(Role, user.role_id)
             if role and role.code:

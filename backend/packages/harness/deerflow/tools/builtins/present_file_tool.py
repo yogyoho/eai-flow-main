@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +9,10 @@ from langgraph.types import Command
 
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.runtime.user_context import resolve_runtime_user_id
+from deerflow.tools.callbacks import fire_present_files_callbacks
 from deerflow.tools.types import Runtime
+
+logger = logging.getLogger(__name__)
 
 OUTPUTS_VIRTUAL_PREFIX = f"{VIRTUAL_PATH_PREFIX}/outputs"
 
@@ -81,7 +85,7 @@ def _normalize_presented_filepath(
 
 
 @tool("present_files", parse_docstring=True)
-def present_file_tool(
+async def present_file_tool(
     runtime: Runtime,
     filepaths: list[str],
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -111,6 +115,26 @@ def present_file_tool(
         return Command(
             update={"messages": [ToolMessage(f"Error: {exc}", tool_call_id=tool_call_id)]},
         )
+
+    # EAI-CUSTOM (bug-1145): fire registered present_files callbacks so the app
+    # layer (docmgr) auto-syncs presented outputs into the document space
+    # (AIDocument rows). The registry lives in deerflow.tools.callbacks and is
+    # populated by app.gateway.app at startup; this is its intended fire point.
+    # Best-effort: a sync failure must never break the tool's primary job of
+    # presenting files to the user (fire_present_files_callbacks already swallows
+    # per-callback errors; this try/except is defense-in-depth for the whole path).
+    # Upgrade note (deerflow upstream): upstream present_files has no callback
+    # hook; on upstream sync, re-apply this async fire block after normalized_paths
+    # is computed. START EAI-CUSTOM
+    try:
+        await fire_present_files_callbacks(
+            resolve_runtime_user_id(runtime),
+            _get_thread_id(runtime) or "",
+            normalized_paths,
+        )
+    except Exception:
+        logger.warning("present_files callback fire failed", exc_info=True)
+    # END EAI-CUSTOM (bug-1145)
 
     # The merge_artifacts reducer will handle merging and deduplication
     return Command(
