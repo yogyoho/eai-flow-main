@@ -1,14 +1,13 @@
 "use client";
 
 // Collab Workspace 项目详情 — AgentSpace 布局（Tab：概览/文档/任务/闸门/成员）
-// EAI-CUSTOM: 全新模块
+// EAI-CUSTOM: 全新模块。UI 样式对齐项目详情页 (extensions/project/ProjectWorkspace) — cyber 主题
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, FileText, KanbanSquare, ShieldCheck, Users, Settings } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, FileText, KanbanSquare, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import "@/extensions/dashboard/dashboard.css";
 import { Button } from "@/components/ui/button";
 
 import { workspaceApi } from "./api";
@@ -22,6 +21,22 @@ const TIER_LABEL: Record<string, string> = {
   tier1: "速写",
   tier2: "协作",
   tier3: "正式",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  active: "进行中",
+  submitted_for_release: "待发布",
+  released: "已发布",
+  archived: "已归档",
+};
+
+// Per-tab neon active style — matches SciFiProjectDetail / ProjectWorkspace pill bar
+const TAB_NEON: Record<string, string> = {
+  overview: "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(7,70,255,0.3)]",
+  editor: "bg-[#7c3aed] text-white shadow-[0_0_10px_rgba(124,58,237,0.3)]",
+  tasks: "bg-[#0891b2] text-white shadow-[0_0_10px_rgba(8,145,178,0.3)]",
+  gates: "bg-success text-white shadow-[0_0_10px_rgba(82,196,26,0.3)]",
+  members: "bg-warning text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]",
 };
 
 interface ProjectDetailProps {
@@ -46,7 +61,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   }, [projectId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const TABS = [
@@ -58,61 +73,100 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   ];
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return (
+      <div className="flex h-full items-center justify-center text-sm" style={{ color: "var(--cyber-text-muted)" }}>
+        加载中...
+      </div>
+    );
   }
 
   if (!project) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3">
+      <div className="flex h-full flex-col items-center justify-center gap-3">
         <p className="text-sm text-destructive">项目不存在</p>
-        <Button variant="outline" size="sm" onClick={() => router.push("/agentspace")}>返回列表</Button>
+        <Button variant="outline" size="sm" onClick={() => router.push("/agentspace")}>
+          返回列表
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-shell cyber-grid flex h-screen flex-col" style={{ padding: "0" }}>
-      {/* Header — AgentSpace style */}
-      <header className="flex items-center justify-between px-6 py-3 shrink-0 border-b" style={{ borderColor: "var(--db-border)" }}>
-        <div className="flex items-center gap-3 min-w-0">
-          <button type="button" onClick={() => router.push("/agentspace")} className="p-2 rounded-lg border border-border cursor-pointer hover:bg-muted/50">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-cyber text-lg font-bold tracking-widest truncate" style={{ color: "var(--db-text-primary)" }}>
-                {project.name}
-              </h1>
-              <span className="text-[10px] uppercase font-cyber px-2 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary font-bold tracking-widest">
-                {TIER_LABEL[project.tierState] ?? project.tierState}
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground font-bold">
-                {project.kind === "quickdoc" ? "快速文档" : "报告"}
-              </span>
+    <div className="flex h-full flex-col" style={{ background: "var(--cyber-bg-primary)" }}>
+      {/* Header — cyber-themed, matches ProjectWorkspace */}
+      <header
+        className="flex flex-col px-6 shrink-0 pb-4 pt-3"
+        style={{ borderBottom: "1px solid var(--cyber-border-muted)" }}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Left: back button + title + subtitle */}
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/agentspace")}
+              className="group flex shrink-0 cursor-pointer items-center justify-center rounded-lg border p-2"
+              style={{
+                background: "var(--cyber-bg-tertiary)",
+                borderColor: "var(--cyber-border-muted)",
+                color: "var(--cyber-text-muted)",
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            </button>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-xl font-bold tracking-tight" style={{ color: "var(--cyber-text-main)" }}>
+                  {project.name}
+                </h1>
+                <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary font-cyber">
+                  {TIER_LABEL[project.tierState] ?? project.tierState}
+                </span>
+                <span className="shrink-0 rounded border border-border bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                  {project.kind === "quickdoc" ? "快速文档" : "报告"}
+                </span>
+              </div>
+              <p className="mt-1 font-mono text-[11px]" style={{ color: "var(--cyber-text-muted)" }}>
+                {STATUS_LABEL[project.status] ?? project.status}
+                <span className="mx-1.5">•</span>
+                {project.sectionCount} 章节
+                <span className="mx-1.5">•</span>
+                {project.taskCount} 任务
+                <span className="mx-1.5">•</span>
+                {project.memberCount} 成员
+              </p>
             </div>
-            <p className="text-[11px] font-mono mt-0.5" style={{ color: "var(--db-text-muted)" }}>
-              {project.status} · {project.sectionCount} 章节 · {project.taskCount} 任务 · {project.memberCount} 成员
-            </p>
           </div>
-        </div>
 
-        <div className="flex items-center gap-1 p-1 rounded-xl border border-border" style={{ background: "var(--db-bg-tertiary)" }}>
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  active ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 text-muted-foreground"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" /> {t.label}
-              </button>
-            );
-          })}
+          {/* Right: tab pill container */}
+          <div className="flex shrink-0 items-center gap-2">
+            <div
+              className="flex items-center gap-2 overflow-x-auto rounded-xl p-1"
+              style={{
+                background: "var(--cyber-bg-tertiary)",
+                border: "1px solid var(--cyber-border-muted)",
+              }}
+            >
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={`flex cursor-pointer items-center gap-1 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
+                      active
+                        ? (TAB_NEON[t.id] ?? "bg-primary text-primary-foreground")
+                        : "hover:bg-muted/50"
+                    }`}
+                    style={!active ? { color: "var(--cyber-text-muted)" } : undefined}
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -148,39 +202,52 @@ function OverviewPane({ project, onRefresh }: { project: CollabProject; onRefres
     }
   };
 
+  const stats = [
+    { label: "层级 TIER", value: TIER_LABEL[project.tierState] ?? project.tierState },
+    { label: "章节 SECTIONS", value: project.sectionCount },
+    { label: "任务 TASKS", value: project.taskCount },
+    { label: "成员 MEMBERS", value: project.memberCount },
+  ];
+
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="db-card p-4">
-          <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground">层级 TIER</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: "var(--db-text-primary)" }}>{TIER_LABEL[project.tierState]}</p>
-        </div>
-        <div className="db-card p-4">
-          <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground">章节 SECTIONS</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: "var(--db-text-primary)" }}>{project.sectionCount}</p>
-        </div>
-        <div className="db-card p-4">
-          <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground">任务 TASKS</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: "var(--db-text-primary)" }}>{project.taskCount}</p>
-        </div>
-        <div className="db-card p-4">
-          <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground">成员 MEMBERS</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: "var(--db-text-primary)" }}>{project.memberCount}</p>
-        </div>
+    <div className="max-w-4xl p-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        {stats.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-xl border p-4"
+            style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+          >
+            <p className="font-cyber text-[10px] uppercase tracking-widest" style={{ color: "var(--cyber-text-muted)" }}>
+              {s.label}
+            </p>
+            <p className="mt-1 text-2xl font-bold" style={{ color: "var(--cyber-text-main)" }}>
+              {s.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {tier && tier.length > 0 && (
-        <div className="db-card p-4 mb-6">
-          <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground mb-2">升级信号 ESCALATION</p>
+        <div
+          className="mb-6 rounded-xl border p-4"
+          style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+        >
+          <p
+            className="mb-2 font-cyber text-[10px] uppercase tracking-widest"
+            style={{ color: "var(--cyber-text-muted)" }}
+          >
+            升级信号 ESCALATION
+          </p>
           <div className="flex flex-col gap-2">
             {tier.map((s, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs font-mono">
-                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/30 font-bold">
+              <div key={i} className="flex items-center gap-2 font-mono text-xs">
+                <span className="rounded border border-primary/30 bg-primary/10 px-2 py-0.5 font-bold text-primary">
                   {s.signal}
                 </span>
-                <span className="text-muted-foreground">→</span>
-                <span>{TIER_LABEL[s.to] ?? s.to}</span>
-                <span className="text-muted-foreground">{s.at}</span>
+                <span style={{ color: "var(--cyber-text-muted)" }}>→</span>
+                <span style={{ color: "var(--cyber-text-main)" }}>{TIER_LABEL[s.to] ?? s.to}</span>
+                <span style={{ color: "var(--cyber-text-muted)" }}>{s.at}</span>
               </div>
             ))}
           </div>
@@ -208,13 +275,19 @@ function OverviewPane({ project, onRefresh }: { project: CollabProject; onRefres
             升级为报告
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={async () => {
-          try {
-            await workspaceApi.release(project.id);
-            toast.success("已提交发布");
-            onRefresh();
-          } catch { toast.error("发布提交失败"); }
-        }}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            try {
+              await workspaceApi.release(project.id);
+              toast.success("已提交发布");
+              onRefresh();
+            } catch {
+              toast.error("发布提交失败");
+            }
+          }}
+        >
           提交发布
         </Button>
       </div>

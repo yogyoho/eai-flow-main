@@ -1,13 +1,12 @@
 "use client";
 
 // Collab Workspace — 闸门队列（AgentSpace approvals 双栏布局）
-// EAI-CUSTOM: 全新模块
+// EAI-CUSTOM: 全新模块。UI 对齐 cyber 主题。
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, X, RotateCcw, Bot } from "lucide-react";
 import { toast } from "sonner";
 
-import "@/extensions/dashboard/dashboard.css";
 import { Button } from "@/components/ui/button";
 
 import { workspaceApi } from "../api";
@@ -39,7 +38,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
   }, [projectId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const filtered = filter === "all" ? gates : gates.filter((g) => g.state === filter);
@@ -82,8 +81,8 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
   return (
     <div className="flex h-full" style={{ minHeight: 0 }}>
       {/* List pane */}
-      <div className="w-80 shrink-0 border-r flex flex-col" style={{ borderColor: "var(--db-border)" }}>
-        <div className="p-3 flex gap-1 border-b flex-wrap" style={{ borderColor: "var(--db-border)" }}>
+      <div className="w-80 shrink-0 border-r flex flex-col" style={{ borderColor: "var(--cyber-border-muted)" }}>
+        <div className="p-3 flex gap-1 border-b flex-wrap" style={{ borderColor: "var(--cyber-border-muted)" }}>
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -105,7 +104,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
               type="button"
               onClick={() => setSelectedId(g.id)}
               className={`w-full text-left p-3 border-b cursor-pointer hover:bg-muted/30 transition ${selectedId === g.id ? "bg-primary/5" : ""}`}
-              style={{ borderColor: "var(--db-border)" }}
+              style={{ borderColor: "var(--cyber-border-muted)" }}
             >
               <div className="flex items-center justify-between">
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${STATE_TONE[g.state] ?? ""}`}>
@@ -113,7 +112,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
                 </span>
                 <span className="text-[10px] font-mono text-muted-foreground">{g.scope === "task" ? "任务闸门" : "发布闸门"}</span>
               </div>
-              <p className="text-sm font-bold mt-1" style={{ color: "var(--db-text-primary)" }}>
+              <p className="text-sm font-bold mt-1" style={{ color: "var(--cyber-text-main)" }}>
                 {g.scope === "task" ? `任务闸门 #${g.taskId?.slice(0, 8) ?? ""}` : "项目发布闸门"}
               </p>
               <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
@@ -134,7 +133,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
         ) : (
           <div className="max-w-xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold" style={{ color: "var(--db-text-primary)" }}>
+              <h2 className="text-base font-bold" style={{ color: "var(--cyber-text-main)" }}>
                 {selected.scope === "task" ? "任务闸门" : "项目发布闸门"}
               </h2>
               <span className={`text-xs px-2 py-0.5 rounded font-bold ${STATE_TONE[selected.state] ?? ""}`}>
@@ -142,8 +141,13 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
               </span>
             </div>
 
-            <div className="db-card p-4 mb-4">
-              <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground mb-2">参与者 PARTICIPANTS</p>
+            <div
+              className="rounded-xl border p-4 mb-4"
+              style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+            >
+              <p className="text-[10px] uppercase font-cyber tracking-widest mb-2" style={{ color: "var(--cyber-text-muted)" }}>
+                参与者 PARTICIPANTS
+              </p>
               <div className="flex flex-col gap-1.5">
                 {selected.participants?.map((p, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs font-mono">
@@ -155,8 +159,13 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
               </div>
             </div>
 
-            <div className="db-card p-4 mb-4">
-              <p className="text-[10px] uppercase font-cyber tracking-widest text-muted-foreground mb-2">模式 MODE</p>
+            <div
+              className="rounded-xl border p-4 mb-4"
+              style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+            >
+              <p className="text-[10px] uppercase font-cyber tracking-widest mb-2" style={{ color: "var(--cyber-text-muted)" }}>
+                模式 MODE
+              </p>
               <p className="text-xs font-mono">{selected.mode}</p>
               {selected.deadlineAt && (
                 <p className="text-xs font-mono text-muted-foreground mt-1">

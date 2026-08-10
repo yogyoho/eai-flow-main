@@ -1,13 +1,12 @@
 "use client";
 
 // Collab Workspace — 成员面板（人类/数字员工）
-// EAI-CUSTOM: 全新模块
+// EAI-CUSTOM: 全新模块。UI 对齐 cyber 主题。
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Bot, User } from "lucide-react";
 import { toast } from "sonner";
 
-import "@/extensions/dashboard/dashboard.css";
 import { Button } from "@/components/ui/button";
 
 import { workspaceApi } from "../api";
@@ -44,7 +43,7 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
   }, [projectId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const addMember = async () => {
@@ -90,14 +89,17 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
   return (
     <div className="p-6 max-w-2xl">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold" style={{ color: "var(--db-text-primary)" }}>项目成员 · {projectName}</h2>
+        <h2 className="text-sm font-bold" style={{ color: "var(--cyber-text-main)" }}>项目成员 · {projectName}</h2>
         <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
           <Plus className="h-4 w-4 mr-1" /> 添加成员
         </Button>
       </div>
 
       {showAdd && (
-        <div className="db-card p-4 mb-4 flex flex-col gap-3">
+        <div
+          className="rounded-xl border p-4 mb-4 flex flex-col gap-3"
+          style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+        >
           <div className="flex gap-2">
             {(["agent", "human"] as const).map((t) => (
               <button
@@ -147,13 +149,17 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
 
       <div className="flex flex-col gap-2">
         {members.map((m) => (
-          <div key={m.id} className="db-card p-3 flex items-center justify-between">
+          <div
+            key={m.id}
+            className="rounded-xl border p-3 flex items-center justify-between"
+            style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+          >
             <div className="flex items-center gap-3">
-              <span className="p-1.5 rounded-lg" style={{ background: m.memberType === "agent" ? "var(--db-bg-purple)" : "var(--db-bg-cyan)" }}>
+              <span className={`p-1.5 rounded-lg ${m.memberType === "agent" ? "bg-purple-500/10" : "bg-cyan-500/10"}`}>
                 {m.memberType === "agent" ? <Bot className="h-4 w-4 text-purple-400" /> : <User className="h-4 w-4 text-cyan-400" />}
               </span>
               <div>
-                <p className="text-sm font-bold" style={{ color: "var(--db-text-primary)" }}>
+                <p className="text-sm font-bold" style={{ color: "var(--cyber-text-main)" }}>
                   {m.memberType === "agent" ? m.agentName : m.userId}
                 </p>
                 <p className="text-[11px] font-mono text-muted-foreground">{ROLE_LABEL[m.role] ?? m.role}</p>

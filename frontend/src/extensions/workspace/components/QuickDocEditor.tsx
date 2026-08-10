@@ -1,12 +1,11 @@
 "use client";
 
 // Collab Workspace Tier 1 — 快速文档编辑器（复用 CollabEditor + AI menu）
-// EAI-CUSTOM: 全新模块
+// EAI-CUSTOM: 全新模块。UI 对齐 cyber 主题。
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import "@/extensions/dashboard/dashboard.css";
 import { CollabEditor } from "@/extensions/collab/CollabEditor";
 import type { CollabProject } from "../types";
 
@@ -32,7 +31,7 @@ export function QuickDocEditor({ project, onRefresh }: QuickDocEditorProps) {
 
   return (
     <div className="flex h-full flex-col" style={{ minHeight: 0 }}>
-      <div className="px-4 py-2 flex items-center justify-between border-b" style={{ borderColor: "var(--db-border)" }}>
+      <div className="px-4 py-2 flex items-center justify-between border-b" style={{ borderColor: "var(--cyber-border-muted)" }}>
         <span className="text-xs font-mono text-muted-foreground">
           {project.name} · 快速文档（AI 起草 + 修订模式）
         </span>
