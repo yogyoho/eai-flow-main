@@ -127,6 +127,7 @@ def build_graph(formulas_data: list[dict], params: dict) -> FormulaGraph:
                 source_formula_id=psrc.get("source_formula_id", ""),
                 source_param_name=psrc.get("source_param_name", ""),
                 description=psrc.get("description", ""),
+                needs_verification=psrc.get("needs_verification", False),
             )
 
         node = FormulaNode(
@@ -335,6 +336,90 @@ def cmd_check(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 子命令: trace — 输出全公式步骤轨迹（反馈3 折叠渲染）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_trace(args: argparse.Namespace) -> None:
+    """trace 子命令：构建图 → 执行 → 输出每个公式的步骤轨迹。
+
+    支持 --state（从上次 execute 的状态文件恢复）或 --params（首次）。
+
+    输出 JSON: {"traces": [get_step_trace 返回结构, ...]}
+    打印标记: TRACE_READY: <output 路径>（供技能/agent 确认成功）。
+    """
+    formulas = load_formulas(args.formulas)
+
+    if args.state:
+        # 从状态文件恢复用户参数（复用 update 的恢复逻辑）
+        with open(args.state, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        params = {k: v for k, v in (state.get("all_params") or {}).items() if "." not in k}
+    else:
+        params = json.loads(args.params) if args.params else {}
+
+    graph = build_graph(formulas, params)
+    graph.execute()
+
+    traces = [graph.get_step_trace(fid) for fid in graph.nodes]
+    output = {"traces": traces}
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+        print(f"TRACE_READY: {args.output}")
+    else:
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 子命令: impacted — 参数变更的受影响 formula_id + chapter_id（反馈6 定点重生成）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_impacted(args: argparse.Namespace) -> None:
+    """impacted 子命令：恢复状态 → 改参（dry-run）→ 受影响公式 → 反查受影响章节。
+
+    受影响 formula_id 复用 FormulaGraph.update_param 的返回集（与 update 同源）。
+    受影响 chapter_id 用 chapter_manifest 反查（manifest 由 chapter_planner 生成）。
+
+    输出 JSON: {"param","affected_formulas":[...],"affected_chapters":[...]}
+    打印标记: IMPACTED_READY: <output 路径>。
+    """
+    formulas = load_formulas(args.formulas)
+    with open(args.state, "r", encoding="utf-8") as f:
+        state = json.load(f)
+    user_params = {k: v for k, v in (state.get("all_params") or {}).items() if "." not in k}
+
+    graph = build_graph(formulas, user_params)
+    graph.execute()
+    affected_formulas = graph.update_param(args.param, float(args.value))  # dry-run：只取受影响集，不写盘
+
+    # 反查受影响章节
+    affected_chapters: list[str] = []
+    if args.manifest:
+        try:
+            with open(args.manifest, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            for ch in manifest.get("chapters", []):
+                if set(ch.get("formula_ids", [])) & set(affected_formulas):
+                    affected_chapters.append(ch["id"])
+        except (OSError, json.JSONDecodeError):
+            pass  # manifest 缺失/损坏 → 只返回公式级，不阻塞
+
+    output = {
+        "param": args.param,
+        "affected_formulas": affected_formulas,
+        "affected_chapters": affected_chapters,
+    }
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+        print(f"IMPACTED_READY: {args.output}")
+    else:
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CLI 入口
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -382,6 +467,22 @@ def main() -> None:
     p_check.add_argument("--output",
                          help="输出校验结果文件路径")
 
+    # trace 子命令（反馈3）
+    p_trace = sub.add_parser("trace", help="输出全公式步骤轨迹（供报告折叠渲染）")
+    p_trace.add_argument("--formulas", required=True, help="公式定义 JSON 文件路径")
+    p_trace.add_argument("--params", default="{}", help="用户参数 JSON（首次执行时）")
+    p_trace.add_argument("--state", help="上次 execute 的状态文件路径（增量场景，与 --params 二选一）")
+    p_trace.add_argument("--output", help="输出轨迹文件路径")
+
+    # impacted 子命令（反馈6）
+    p_impacted = sub.add_parser("impacted", help="参数变更的受影响公式+章节（定点重生成）")
+    p_impacted.add_argument("--formulas", required=True, help="公式定义 JSON 文件路径")
+    p_impacted.add_argument("--state", required=True, help="上次 execute 的状态文件路径")
+    p_impacted.add_argument("--param", required=True, help="要修改的参数名")
+    p_impacted.add_argument("--value", required=True, help="新的参数值")
+    p_impacted.add_argument("--manifest", help="chapter_manifest.json 路径（反查受影响章节）")
+    p_impacted.add_argument("--output", help="输出受影响集文件路径")
+
     args = parser.parse_args()
 
     if args.command == "execute":
@@ -390,6 +491,10 @@ def main() -> None:
         cmd_update(args)
     elif args.command == "check":
         cmd_check(args)
+    elif args.command == "trace":
+        cmd_trace(args)
+    elif args.command == "impacted":
+        cmd_impacted(args)
     else:
         parser.print_help()
         sys.exit(1)
