@@ -6553,3 +6553,13 @@
 | 01:58 | T10-Step3 ruff 全量清理 formula_engine(19错→0,18/19早于T1-T3) | graph.py/consistency.py/__init__.py | commit f821a39eb,风险0.00,41测试绿 | ~30 |
 | 01:59 | T10-Step4 anatomy 刷新 formula_engine 描述(get_step_trace/last_change_summary/code_constraint_multi) | .wolf/anatomy.md | done | ~5 |
 | 02:00 | T10 完成 — 给排水技能优化 10 任务全部落地(T1-T10),harness 零改动 | 多文件 | 全绿:41测试+ruff clean+冒烟(改Q→8公式差分→3章) | ~15 |
+| 00:31 | Session end: 3 writes across 2 files (consistency.py, graph.py) | 2 reads | ~13408 tok |
+| 00:40 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 4→4 lines | ~66 |
+| 00:40 | Edited skills/public/water-drainage-report/scripts/chapter_planner.py | inline fix | ~49 |
+| 00:40 | Edited skills/public/water-drainage-report/scripts/chapter_planner.py | modified build_manifest() | ~226 |
+| 00:40 | Edited backend/tests/test_chapter_planner.py | modified test_equiplist_has_explicit_filter_count() | ~190 |
+| 00:40 | Edited backend/tests/test_chapter_planner.py | modified test_dedup() | ~195 |
+| 00:42 | Created backend/tests/test_formula_runner_cli.py | — | ~1148 |
+| 00:42 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~12 |
+| 02:10 | 终审 approve-with-nits 整改 4 项(I1 设备一览表映射/I2 e2e测试/I4 bug-1167路径/I5 规范版本) | chapter_planner/formula_runner/SKILL/2测试 | commit 633f4beef,45测试绿,ruff clean | ~40 |
+| 02:10 | 给排水技能优化全部完成(10任务+终审整改),harness 零改动 | 多文件 | 终审 approve-with-nits,无 blocker | ~10 |

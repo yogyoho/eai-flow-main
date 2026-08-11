@@ -18528,10 +18528,10 @@
     "error_message": "formula_runner.py 在宿主机(Win)独立运行报 ModuleNotFoundError: No module named 'app'——from app.extensions.formula_engine import 失败。",
     "file": "skills/public/water-drainage-report/scripts/formula_runner.py",
     "root_cause": "第46行 _BACKEND = Path(__file__).resolve().parents[5] / 'backend' 算错层级。从 scripts/formula_runner.py 往上：parents[4]=仓库根(D:\\eai\\eai-flow-main)，parents[5]=仓库根的上一级(D:\\eai)。故 parents[5]/'backend' = D:\\eai\\backend（不存在）。应为 parents[4]。注释写'向上5级'本身也数错（scripts 到仓库根是4级）。生产里技能能跑(真实反馈来自实际出图)，说明生产调用上下文(Docker容器/agent sandbox/PYTHONPATH)另给了 backend 路径，独立宿主机 `python formula_runner.py` 才暴露此 bug。",
-    "fix": "未修（pre-existing，非本任务引入；且盲目改 parents[5]→parents[4] 可能影响容器/sandbox 路径布局，需先确认生产调用方式）。验证 DRY 重构时用 PYTHONPATH=<repo>/backend 绕过。建议后续单独 task 核查生产调用路径后修复。",
-    "tags": ["water-drainage", "formula_runner", "path", "parents-index", "pre-existing", "host-vs-container"],
+    "fix": "已修（commit 633f4beef, 终审 I4）: parents[5]→parents[4] + 注释「5级」→「parents[4]=项目根」。经核查 scripts→water-drainage-report→public→skills→root 确为 4 级。修复后 host standalone `python formula_runner.py` import OK；I2 subprocess e2e 测试（tests/test_formula_runner_cli.py）依赖此修复并通过。容器/sandbox 不受影响（走 PYTHONPATH/挂载，不依赖此 _BACKEND 计算）。",
+    "tags": ["water-drainage", "formula_runner", "path", "parents-index", "pre-existing", "host-vs-container", "fixed"],
     "related_bugs": [],
     "occurrences": 1,
-    "last_seen": "2026-08-12T00:30:00+08:00"
+    "last_seen": "2026-08-12T02:10:00+08:00"
   }
 ]
