@@ -112,6 +112,17 @@
       "expected_max": 1.6,
       "severity": "warn",
       "description": "吸水管流速应在1.2~1.6 m/s (DN250~1000mm)"
+    },
+    {
+      "id": "N-multi-standard",
+      "type": "code_constraint_multi",
+      "expression": "N",
+      "description": "浓缩倍数 N 跨规范围框比对",
+      "standards": [
+        {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 3.0, "severity": "fail", "note": "不应低于3.0"},
+        {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 5.0, "severity": "warn", "note": "宜≥5.0"},
+        {"code": "GB/T 50050-2017", "clause": "§3.1.x", "min": 3.0, "severity": "fail", "note": "不应低于3.0"}
+      ]
     }
   ]
 }
