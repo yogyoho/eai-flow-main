@@ -494,3 +494,48 @@ class TestMultiStandardMatrix:
         }])
         violations = eng.check()
         assert len(violations) == 1 and violations[0].contract_id == "N-min"
+
+    def test_matrix_actual_unresrollable_passed_none(self):
+        """expression 无法求值时 actual=None，每条 standard 的 passed=None（标【需人工对照规范】）。"""
+        from app.extensions.formula_engine import ConsistencyEngine
+        eng = ConsistencyEngine()
+        # 不往 _computed 放 MISSING_VAR → expression 求值失败 → _resolve_actual 返回 None
+        eng.load_contracts([{
+            "id": "missing-var-multi",
+            "type": "code_constraint_multi",
+            "expression": "MISSING_VAR",
+            "description": "无法求值的多规范合约",
+            "standards": [
+                {"code": "GB X", "clause": "§1", "min": 3.0, "severity": "fail"},
+                {"code": "GB Y", "clause": "§2", "max": 8.0, "severity": "warn"},
+            ],
+        }])
+        rows = eng.multi_standard_matrix()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["actual"] is None
+        assert all(s["passed"] is None for s in row["standards"])
+
+    def test_matrix_max_bound(self):
+        """max 上限分支：actual > max → passed=False；actual ≤ max → passed=True。"""
+        from app.extensions.formula_engine import ConsistencyEngine
+
+        def _eng(n: float):
+            eng = ConsistencyEngine()
+            eng.set_param("4", "N", n)
+            eng._computed["N"] = n
+            eng.load_contracts([{
+                "id": "N-max-multi",
+                "type": "code_constraint_multi",
+                "expression": "N",
+                "description": "N 上限多规范",
+                "standards": [
+                    {"code": "GB MAX", "clause": "§1", "max": 4.5, "severity": "warn"},
+                ],
+            }])
+            return eng
+
+        # N=4.0 ≤ max=4.5 → 通过
+        assert _eng(4.0).multi_standard_matrix()[0]["standards"][0]["passed"] is True
+        # N=5.0 > max=4.5 → 不通过
+        assert _eng(5.0).multi_standard_matrix()[0]["standards"][0]["passed"] is False
