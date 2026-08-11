@@ -14,7 +14,7 @@ description: |
 1. **公式驱动**: 设计参数 → 公式计算 → 计算结果 → 注入章节生成 prompt。公式是核心环节，不是辅助。
 2. **参数一致性**: 前后章数据必须一致。公式输出自动传播到下游公式，参数变更自动触发增量重算。
 3. **多轮交互**: 参数确认 → 公式审核 → 章节生成 → 一致性校验 → 合规检查。每步等待用户确认后再进入下一步。
-4. **⛔ 缺失信息一律由用户提供（最高铁律，贯穿全程）**: 任何缺失信息——无论是项目背景、设计参数、设备清单、工艺数据，还是报告正文中某个具体数值——**必须由用户填写和提供**。三个"绝不"：
+4. **⛔ 禁止无出处的值（最高铁律，贯穿全程）**: 精确化（2026-08-11）——原"禁止任何默认值"改为"禁止无出处的值"。**核心工艺参数**（Q、Δt、N、构筑物尺寸、装置用水量）缺失，仍必须用户提供（`[待用户提供]` + `ask_clarification`，绝不编造）。**系数/经验类参数**（蒸发系数 KZF、有效水深、旁滤比、反洗强度/时长）缺失时，可从 `references/reference_values.json` 取**有出处**的默认值并标注【待核实】，用户核实后晋升为项目定值。三个"绝不"：
    - 绝不联网搜索项目/工程内部数据（设计阶段项目网上不存在，搜了只会引入幻觉）
    - 绝不编造、推断、估算、补全任何具体数值（如消防水量、投资金额、管径、温度）
    - 绝不根据"行业常见值""经验数据"自行填入
@@ -25,6 +25,13 @@ description: |
 本技能**仅用**以下工具：`read_file` / `bash` / `write_file` / `present_files` / `knowledge-factory_kf_resolve_template` / `ask_clarification` / `web_search`（仅限下述三类查询）。
 
 **禁止**调用 `text-to-cad_*` / `cad_*` / `word-document-server_*` 等无关工具。
+
+**配套脚本与数据（通过 bash/read_file 使用）：**
+- `scripts/formula_runner.py` — 公式计算 CLI（execute / update / check / **trace** / **impacted**）
+- `scripts/chapter_planner.py` — 章节规划（manifest 生成 / 受影响章节反查）
+- `references/reference_values.json` — 系数/经验类行业参考值库（反馈2，缺失时取默认+【待核实】）
+- `references/standards_index.json` — 可勾选规范清单（反馈5）
+- `references/consistency_contracts.json` — 一致性 + 多规范围框合约（含 `code_constraint_multi`）
 
 ### ⛔ 联网搜索规则（重要）
 
@@ -46,6 +53,21 @@ description: |
 判断标准：**能查到的客观地理/气候/法规信息 → 可搜；属于某个具体工程项目的内部数据 → 绝不搜，问用户。**
 
 ## 执行流程
+
+### 步骤0：会话快照恢复（反馈7 跨轮承接）
+
+**启动时先检查** `/mnt/user-data/workspace/project_snapshot.json`：
+
+- **存在** → 读取并恢复：`params` / `formula_state` / `chapter_manifest` / `standards_selected` / `report_path`。向用户展示「当前基准状态」（版本号 + 最近一次变更日志），后续指令默认基于该基准增量理解，**不重复追问全局参数**。直接跳到用户当前指令对应的步骤。
+- **不存在或损坏** → 降级为全新运行（try/except 包裹加载，不崩溃），从步骤1 开始。
+
+快照字段（由技能在各步骤后更新，`version++` + `change_log` 追加）：
+```
+{"version", "created_at", "updated_at", "params", "formula_state",
+ "chapter_manifest", "standards_selected", "report_path", "change_log": [...]}
+```
+
+**版本历史** = `version` 序列 + `change_log`；前端展示复用文档空间，不新建。
 
 ### 步骤1：收集设计参数
 
@@ -85,6 +107,10 @@ description: |
 
 **⛔ 参数缺失策略：** 参数必须在用户提供或设计说明书中明确标出，两者都没有 → 标注 `[待确认: 参数名]` → 暂不进入步骤2，等用户补充。
 
+**分层放开（反馈2）：** 系数/经验类参数缺失时，读 `references/reference_values.json`：命中 → 填入默认值并在参数表「来源」列标 `参考值库（【待核实】）`；未命中 → `ask_clarification`。核心工艺参数缺失一律 `ask_clarification`，**绝不**从参考值库取。
+
+**规范勾选（反馈5）：** 步骤1 同时请用户从 `references/standards_index.json` 勾选本项目适用的规范（默认勾选 3 本 tier1_curated=true 的循环水规范）。选中集写入 `project_snapshot.standards_selected`。
+
 ### 步骤2：运行公式计算
 
 **输入:** 步骤1确认的参数表
@@ -93,6 +119,7 @@ description: |
 
 ```bash
 FORMULAS=/mnt/skills/public/water-drainage-report/references/formulas.json
+SCRIPTS=/mnt/skills/public/water-drainage-report/scripts
 WORK=/mnt/user-data/workspace
 
 # 构建参数JSON（将步骤1确认的参数填入）
@@ -105,6 +132,16 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py execut
   --params "$(cat $WORK/params.json)" \
   --output $WORK/formula_state.json
 ```
+
+**生成步骤轨迹 + 章节清单（供后续折叠渲染与定点重生成）：**
+```bash
+python $SCRIPTS/formula_runner.py trace \
+  --formulas $FORMULAS --state $WORK/formula_state.json \
+  --output $WORK/traces.json   # TRACE_READY
+python $SCRIPTS/chapter_planner.py manifest \
+  --formulas $FORMULAS --output $WORK/chapter_manifest.json   # MANIFEST_READY
+```
+`traces.json` 含每公式的 `substituted`/`result`/`inputs.source`/`needs_verification`（反馈3 折叠块的数据源）。
 
 **失败处理：** 如果 `formula_runner.py` 报错 → 检查 `params.json` 格式和 `formulas.json` 路径 → 修正后重试 1 次 → 仍失败则输出错误日志并告知用户具体错误原因。
 
@@ -147,6 +184,19 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py update
 
 修改后重新展示变更摘要："Q 20000→25000, Qe: 292.2→365.2, Qm: 385.3→481.6, filter_count: 25→32"。再次等待用户确认。
 
+**改参定点重生成（反馈6，替代整篇重跑）：**
+```bash
+# 1. 增量重算（已有）
+python $SCRIPTS/formula_runner.py update --formulas $FORMULAS --state $WORK/formula_state.json \
+  --param <参数名> --value <新值> --output $WORK/formula_state.json   # STATE_READY
+# 2. 查受影响章节
+python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
+  --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
+# 3. 仅重生成受影响章节（table 重渲染 / narrative 子 agent 重生成），其余章节原样保留 → 内存内整体覆盖 → 单次 write_file
+# 4. 刷新 traces.json + project_snapshot（version++，change_log 追加 affected_formulas/chapters/value_diffs）
+```
+不做像素级差异高亮 UI（顶回去）；「差异」以变更日志文本落地，复用文档空间版本能力。
+
 ### 步骤3：获取报告模板
 
 **输入:** 步骤2确认的公式计算结果
@@ -183,13 +233,16 @@ knowledge-factory_kf_resolve_template(
   10. 图纸清单
 - 使用全局 GB 标准列表替代逐章 compliance_rules
 
-### 步骤4：生成报告（内存完整生成，一次性写出）
+### 步骤4：生成报告（章节并行，冻结快照驱动）
 
-**输入:** 步骤1确认的参数 + 步骤2的公式结果 + 步骤3的模板元数据（或 fallback 结构）
-**生成:** 按模板章节结构逐章生成（模板有多少章就生成多少章，不限于 10 章）
-**输出:** 内存中的完整 Markdown 报告（下一步落盘）
+**输入:** 步骤1 参数 + 步骤2 公式结果 + 步骤2 的 `traces.json`（冻结快照）+ 步骤3 模板
+**架构（计算与生成分离，Approach A）:**
+- **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。每公式渲染为「摘要行 + `<details><summary>计算过程</summary>` 折叠块（公式来源/取值依据/代入分步/结果）」。
+- **narrative 章** = 并行子 agent 生成（`task()` 工具）。每个子 agent prompt 注入**同一份冻结快照**（`traces.json` 的数值 + 该章 `generation_hint`/`content_contract`/`compliance_rules`），只返回该章 Markdown。按 `chapter_manifest` 顺序合并。
 
-此步骤在内存中**完整生成全部章节**（含封面、附录），不分章节、不写中间文件、不边写边 `append`。
+**核心不变量：** 所有数值在步骤2 固化进 `traces.json`；所有生成单元只读该快照——并行不引入跨章数值漂移。
+
+**提速预算：** 10 章典型报告 = ~3 table 章瞬时 + ~7 narrative 章分批并行（子 agent 池 3 并发）→ 目标 ≤3min。
 
 **⛔ 禁止生成目录：** 报告中**不要包含目录页（TOC）**。原因：Markdown 里手写的目录在导出 Word 后既不能自动更新页码、也不能联动跳转，反而是死文本占篇幅。Word 的目录应在文档空间排版阶段由 Word 的"引用→目录"功能自动生成（基于标题样式）。本技能只生成正文（封面 + 各章正文 + 附录），目录交给 Word。
 
@@ -247,6 +300,11 @@ knowledge-factory_kf_resolve_template(
 
 ### 步骤5：一次性写入 outputs
 
+**报告顶部「本次变更」块（反馈6，仅改参重生成时）：** 若本次是 `update` 触发的定点重生成，报告顶部插入变更摘要块（取 `project_snapshot.change_log` 最新一条）：
+```
+> 本次变更（v{version}）：{param} {old}→{new} ⇒ 重生成章节 {affected_chapters}；{value_diffs}
+```
+
 **输入:** 步骤4在内存中完整生成的 Markdown 报告
 **操作:** 一次 `write_file`（`append=false`）→ 立即 `present_files`
 **输出:** 同步到文档空间的 AIDocument
@@ -284,10 +342,10 @@ CONTRACTS=/mnt/skills/public/water-drainage-report/references/consistency_contra
 WORK=/mnt/user-data/workspace
 
 # 公式规范性校验（容积比、浓缩倍数等）
-python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py check \
+python $SCRIPTS/formula_runner.py check \
   --formulas $FORMULAS \
   --params "$(cat $WORK/params.json)" \
-  --output $WORK/consistency_check.json
+  --output $WORK/consistency_check.json   # CHECK_READY
 ```
 
 展示校验结果：
@@ -300,6 +358,10 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py check 
 
 1项警告 — 建议增大水池容积或减少循环水量。
 ```
+
+**校验面板（反馈4）：** 报告末尾附「校验面板」表：检查项 / 当前值 / 规范区间 / 结论（✅/⚠️/❌）/ 条款引用。
+
+**多规范围框比对（反馈5）：** 对 `code_constraint_multi` 合约（如 N-multi-standard），输出每参数×每规范矩阵；Tier-2（`tier1_curated=false` 的规范）参数显示「未自动校验（规范未入库，需人工对照）」，不给 pass/fail。web_search 仅用于 discovery（规范是否存在/范围/版本年），**绝不**驱动合规 pass/fail。
 
 ### 步骤7：合规检查
 
@@ -323,11 +385,13 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py check 
 
 ## 参考文件
 
-- `references/formulas.json` — 12 个给排水计算公式定义（含表达式、参数来源、输出单位）
-- `references/consistency_contracts.json` — 11 条一致性校验合约（跨章节+跨专业+规范约束）
-- `references/gb_standards.md` — 给排水相关 GB/HG 标准摘要（待补充）
-- `scripts/formula_runner.py` — 公式计算 CLI（execute / update / check 三命令）
-- 知识工厂模板（优先使用） > 内置 fallback 结构
+- `references/formulas.json` — 12 个公式定义（系数/经验类 input 带 source + needs_verification）
+- `references/reference_values.json` — 行业经验参考值库（反馈2）
+- `references/standards_index.json` — 可勾选规范清单（反馈5）
+- `references/consistency_contracts.json` — 一致性 + 多规范围框合约（含 code_constraint_multi）
+- `scripts/formula_runner.py` — 公式 CLI（execute / update / check / trace / impacted）
+- `scripts/chapter_planner.py` — 章节规划（manifest / impacted 反查）
+- 知识工厂模板（优先） > 内置 fallback 10 章结构
 
 ---
 
