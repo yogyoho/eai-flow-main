@@ -378,7 +378,8 @@ def cmd_trace(args: argparse.Namespace) -> None:
 def cmd_impacted(args: argparse.Namespace) -> None:
     """impacted 子命令：恢复状态 → 改参（dry-run）→ 受影响公式 → 反查受影响章节。
 
-    受影响 formula_id 复用 FormulaGraph.update_param 的返回集（与 update 同源）。
+    受影响 formula_id 用值差分：改参后重新 execute，取 last_change_summary 中结果真正变化的公式
+    （update_param 的返回集是全量标记，会过报；值差分保证只有结果变化的公式→其对应章节才需重生成）。
     受影响 chapter_id 用 chapter_manifest 反查（manifest 由 chapter_planner 生成）。
 
     输出 JSON: {"param","affected_formulas":[...],"affected_chapters":[...]}
@@ -391,7 +392,13 @@ def cmd_impacted(args: argparse.Namespace) -> None:
 
     graph = build_graph(formulas, user_params)
     graph.execute()
-    affected_formulas = graph.update_param(args.param, float(args.value))  # dry-run：只取受影响集，不写盘
+    # 值差分裁剪（反馈6）：update_param 是全量标记（ponytail 简化），直接取其返回会得到全部公式。
+    # 改为：改参后重新 execute，用 last_change_summary 只取「结果值真正变化」的公式，
+    # 这样只有受影响结果对应的章节才需重生成（而非整份报告）。
+    graph.update_param(args.param, float(args.value))
+    graph.execute()  # 让新参数的结果落地到 _global_params
+    summary = graph.last_change_summary()  # {"Qe.Qe": "292.2 → 365.25", ...} 仅含变化的公式输出
+    affected_formulas = sorted({key.split(".", 1)[0] for key in summary})
 
     # 反查受影响章节
     affected_chapters: list[str] = []
