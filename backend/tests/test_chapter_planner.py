@@ -31,10 +31,21 @@ class TestBuildManifest:
             formulas = json.load(f)["formulas"]
         manifest = chapter_planner.build_manifest(formulas)
         by_id = {c["id"]: c for c in manifest["chapters"]}
-        assert "Qe" in by_id["ch5_calc"]["formula_ids"]      # 6.1.1
-        assert "Qm" in by_id["ch5_calc"]["formula_ids"]      # 6.1.4
+        assert "Qe" in by_id["ch5_calc"]["formula_ids"]  # 6.1.1
+        assert "Qm" in by_id["ch5_calc"]["formula_ids"]  # 6.1.4
         assert "V_pool" in by_id["ch6_pool"]["formula_ids"]  # 7.1.1
-        assert "Qsf" in by_id["ch8_filter"]["formula_ids"]   # 9.1.1
+        assert "Qsf" in by_id["ch8_filter"]["formula_ids"]  # 9.1.1
+
+    def test_equiplist_has_explicit_filter_count(self):
+        """ch9_equiplist 无 section_prefixes，靠显式 formula_ids 收 filter_count（展示章）。
+
+        回归锚：设备一览表展示 filter_count 台数；若丢失，改 filter_count 不会标记
+        设备一览表重生成（反馈6 漏更新，见评审 I1）。"""
+        with open(_FORMULAS, encoding="utf-8") as f:
+            formulas = json.load(f)["formulas"]
+        manifest = chapter_planner.build_manifest(formulas)
+        by_id = {c["id"]: c for c in manifest["chapters"]}
+        assert "filter_count" in by_id["ch9_equiplist"]["formula_ids"]
 
 
 class TestImpactedChapters:
@@ -58,3 +69,13 @@ class TestImpactedChapters:
         manifest = self._manifest()
         chapters = chapter_planner.impacted_chapters(["Qe", "Qb", "Qm"], manifest)
         assert chapters.count("ch5_calc") == 1
+
+    def test_filter_count_hits_both_filter_and_equiplist(self):
+        """filter_count 同属 ch8_filter（计算章,section 9）和 ch9_equiplist（展示章,显式）。
+
+        回归锚：一个公式可落在多章——计算结果既驱动其计算章，也驱动展示该值的设备一览表。
+        改 filter_count 必须同时标记两章重生成（反馈6 设备一览表不再漏更新,评审 I1）。"""
+        manifest = self._manifest()
+        chapters = chapter_planner.impacted_chapters(["filter_count"], manifest)
+        assert "ch8_filter" in chapters
+        assert "ch9_equiplist" in chapters

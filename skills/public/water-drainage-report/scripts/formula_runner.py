@@ -42,8 +42,8 @@ from pathlib import Path
 
 # ── 路径设置：将 backend 加入 Python 搜索路径 ──
 # 本脚本位于 skills/public/water-drainage-report/scripts/ 目录下，
-# backend 在项目根目录的 backend/ 下。需向上 5 级到达项目根，再进入 backend。
-_BACKEND = Path(__file__).resolve().parents[5] / "backend"
+# backend 在项目根目录的 backend/ 下。parents[4] 即项目根（scripts→wd→public→skills→root）。
+_BACKEND = Path(__file__).resolve().parents[4] / "backend"
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
