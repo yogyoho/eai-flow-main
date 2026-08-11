@@ -54,7 +54,7 @@
 2. **不建"条款级规范库"**。多规范走"扩展 contract + 人工入库"，不做全量条款知识工程。
 3. **web_search 不驱动合规判定**。仅 discovery-only（见 §3.3 与附录 A 的实测证据）。
 4. **不新建响应式前端文档编辑器**。差异 = 变更日志文本；版本历史复用 AIDocument 既有能力。若后续确需前端交互（赛道4），单独立项。
-5. **不改 harness 核心**。新增集中在技能层 + `formula_engine` 的一个公共方法 + 两个 CLI 子命令。
+5. **不改 harness 核心（硬约束，用户 2026-08-11 明确强化："尽最大可能不要改动 deerflow 的 harness 框架核心代码"）**。经核实 `formula_engine` 位于 `app/extensions/`（EAI 自有 app 层），非 `backend/packages/harness/deerflow/`。故全部新增——引擎方法、runner 子命令、数据 json、章节规划脚本、SKILL.md 改写——**100% 落在 app 层 + 技能层**，harness 核心零改动；子 agent 池仅调用不修改。若实施中发现某点确需动 harness，必须先回报用户评估，不得擅自改。
 
 ---
 
@@ -257,7 +257,7 @@
 }
 ```
 - 实现复用引擎已有的表达式求值与参数表；新增的是"结构化轨迹导出"。
-- 属 `app/extensions/formula_engine`（harness 公共包），非 app 私有；按项目 EAI-CUSTOM 规范加三重注释：docstring 声明 + START/END 包裹 + bug 编号/升级注意（harness 核心改动统一规矩）。
+- **落点 = app 层（非 harness）**：`app/extensions/formula_engine` 是 EAI 自有扩展代码，不属于 deer-flow harness 核心（`backend/packages/harness/deerflow/`）。本 spec 全程**不改 harness 核心**，故此处无需 EAI-CUSTOM 三重注释（该规矩仅约束对上游 harness 的修改）；按 app 层常规注释即可。
 
 ### 8.2 `formula_runner.py` 新增子命令
 | 子命令 | 作用 | 输出标记 |
@@ -327,7 +327,7 @@
 | `consistency_contracts.json` | 既有单标准合约 + 新增 `code_constraint_multi` |
 | `formulas.json` | 扩 input 字段（`source`/`needs_verification`） |
 | knowledge-factory 模板 | `kf_resolve_template` 不变；`found=false` fallback 结构不变 |
-| 子 agent 池（harness） | narrative 章并行生成 |
+| 子 agent 池（harness，仅调用不修改） | narrative 章并行生成 |
 | `present_files` + 文档空间 AIDocument | 报告落盘 + 版本历史 |
 | KaTeX（remark-math/rehype-katex） | 公式渲染不变 |
 
