@@ -387,3 +387,52 @@ class TestNeedsVerification:
         assert ParamSource.lookup(0.001461).needs_verification is False
         assert ParamSource.code(5.0).needs_verification is False
         assert ParamSource.user(20000).needs_verification is False
+
+
+# ── get_step_trace：单公式步骤轨迹（反馈3 折叠展开）──
+
+class TestGetStepTrace:
+    def test_trace_structure(self, built_graph: FormulaGraph):
+        built_graph.execute()
+        trace = built_graph.get_step_trace("Qe")
+        assert trace is not None
+        assert trace["id"] == "Qe"
+        assert trace["expression"] == "Q * KZF * delta_t"
+        assert trace["result"] == pytest.approx(292.2, abs=0.1)
+        assert trace["unit"] == "m3/h"
+        # substituted 应把变量替换成数值（Q=20000, KZF=0.001461, delta_t=10）
+        sub = trace["substituted"]
+        assert "20000" in sub and "0.001461" in sub and "10" in sub
+        # inputs 每个参数带 name/value/unit/source/needs_verification
+        names = [i["name"] for i in trace["inputs"]]
+        assert set(names) == {"Q", "KZF", "delta_t"}
+        kzf_in = next(i for i in trace["inputs"] if i["name"] == "KZF")
+        assert kzf_in["value"] == pytest.approx(0.001461)
+        assert "needs_verification" in kzf_in
+        assert kzf_in["source"]  # lookup 参数应带出处描述
+
+    def test_trace_unknown_formula(self, built_graph: FormulaGraph):
+        assert built_graph.get_step_trace("nope") is None
+
+    def test_trace_formula_output_source_label(self, built_graph: FormulaGraph):
+        """formula_output 类型的输入，source 应标注上游公式。"""
+        built_graph.execute()
+        trace = built_graph.get_step_trace("Qb")  # Qb 依赖 Qe（formula_output）
+        qe_in = next(i for i in trace["inputs"] if i["name"] == "Qe")
+        assert "Qe" in qe_in["source"]  # 形如 "formula:Qe.Qe"
+
+    def test_trace_needs_verification_passthrough(self):
+        """ParamSource.needs_verification=True 应透传到轨迹。"""
+        node = FormulaNode(
+            "t", "t", expression="KZF * x",
+            inputs={"KZF": ParamSource.lookup(0.001461, description="GB/T 表3.3.3",
+                                              needs_verification=True),
+                    "x": ParamSource.user(10)},
+            outputs={"t": ""},
+        )
+        g = FormulaGraph()
+        g.add_formula(node).build()
+        g.execute()
+        trace = g.get_step_trace("t")
+        kzf_in = next(i for i in trace["inputs"] if i["name"] == "KZF")
+        assert kzf_in["needs_verification"] is True

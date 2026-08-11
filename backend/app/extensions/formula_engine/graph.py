@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import enum
 import math
+import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any
@@ -67,22 +68,26 @@ class ParamSource:
     # ── 工厂方法：语义化构造不同类型的 ParamSource ──
 
     @classmethod
-    def user(cls, value: float, unit: str = "", *, description: str = "") -> "ParamSource":
+    def user(cls, value: float, unit: str = "", *, description: str = "",
+             needs_verification: bool = False) -> "ParamSource":
         """用户直接输入的设计参数。如循环水量 Q、进出水温差 Δt。
 
         这类参数是 DAG 的"根节点"——不依赖任何公式，但被下游公式依赖。
         用户修改这类参数时，所有直接/间接依赖它的公式都需要重算。
         """
-        return cls(type=ParamSourceType.USER_INPUT, value=value, unit=unit, description=description)
+        return cls(type=ParamSourceType.USER_INPUT, value=value, unit=unit,
+                   description=description, needs_verification=needs_verification)
 
     @classmethod
-    def lookup(cls, value: float, unit: str = "", *, description: str = "") -> "ParamSource":
+    def lookup(cls, value: float, unit: str = "", *, description: str = "",
+               needs_verification: bool = False) -> "ParamSource":
         """通过查表或内插法得到的参数。如蒸发损失系数 KZF。
 
         与 user_input 类似，也是根节点。区别在于语义：这类参数不是用户直接输入，
         而是从规范/手册的表格中查得的固定值。
         """
-        return cls(type=ParamSourceType.LOOKUP_TABLE, value=value, unit=unit, description=description)
+        return cls(type=ParamSourceType.LOOKUP_TABLE, value=value, unit=unit,
+                   description=description, needs_verification=needs_verification)
 
     @classmethod
     def from_formula(cls, formula_id: str, param_name: str, *, unit: str = "") -> "ParamSource":
@@ -105,13 +110,15 @@ class ParamSource:
         )
 
     @classmethod
-    def code(cls, value: float, unit: str = "", *, description: str = "") -> "ParamSource":
+    def code(cls, value: float, unit: str = "", *, description: str = "",
+             needs_verification: bool = False) -> "ParamSource":
         """规范/标准强制规定的值。如浓缩倍数 N≥5.0、旁滤比例 1%~5%。
 
         与 user_input 类似，但来源是 GB/HG 等国家标准而不是用户输入。
         在一致性校验中，这类参数会触发 code_constraint 类型的合约检查。
         """
-        return cls(type=ParamSourceType.CODE_REQUIREMENT, value=value, unit=unit, description=description)
+        return cls(type=ParamSourceType.CODE_REQUIREMENT, value=value, unit=unit,
+                   description=description, needs_verification=needs_verification)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -536,6 +543,50 @@ class FormulaGraph:
                 changes[key] = f"{old_val:.1f} → {new_val:.1f}"
         return changes
 
+    def get_step_trace(self, formula_id: str) -> dict[str, Any] | None:
+        """返回单公式的完整步骤轨迹，供报告折叠渲染（反馈3 黑箱展开）。
+
+        复用引擎已算的值与表达式，不重复求值。返回结构：
+            {
+              "id", "name", "section", "expression", "source"(公式出处),
+              "substituted"(变量替换为数值后的表达式串),
+              "result", "unit",
+              "inputs": [{"name","value","unit","source","needs_verification"}, ...]
+            }
+        公式不存在返回 None。
+        """
+        node = self._nodes.get(formula_id)
+        if node is None:
+            return None
+        resolved = node.resolve_inputs(self._global_params)
+        substituted = _substitute_expression(node.expression, resolved)
+        # 取结果（公式输出值）
+        result: float | None = None
+        for oname in node.outputs:
+            result = self._global_params.get(f"{node.id}.{oname}")
+        unit = next(iter(node.outputs.values()), "") if node.outputs else ""
+        inputs_trace = [
+            {
+                "name": name,
+                "value": resolved.get(name),
+                "unit": src.unit,
+                "source": _source_label(src),
+                "needs_verification": src.needs_verification,
+            }
+            for name, src in node.inputs.items()
+        ]
+        return {
+            "id": node.id,
+            "name": node.name,
+            "section": node.section,
+            "expression": node.expression,
+            "source": _formula_source(node),
+            "substituted": substituted,
+            "result": result,
+            "unit": unit,
+            "inputs": inputs_trace,
+        }
+
     # ═══════════════════════════════════════════════════════════════════
     # 只读属性（供调试和测试使用）
     # ═══════════════════════════════════════════════════════════════════
@@ -569,3 +620,42 @@ class FormulaGraph:
         用于拓扑排序中入度递减和脏标记传播。
         """
         return dict(self._rdeps)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# get_step_trace 辅助：表达式代入 / 来源标注
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _fmt_num(v: float) -> str:
+    """数值格式化为代入串：整数无小数点，浮点保留必要精度。"""
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return repr(v) if isinstance(v, float) else str(v)
+
+
+def _substitute_expression(expression: str, resolved: dict[str, float]) -> str:
+    """把表达式中的变量名替换为数值（词边界，避免 Q 误伤 Qe）。
+
+    math.xxx 等非输入名不受影响（不在 resolved 中）。
+    """
+    out = expression
+    for name, val in resolved.items():
+        if val is None:
+            continue
+        out = re.sub(rf"\b{re.escape(name)}\b", _fmt_num(val), out)
+    return out
+
+
+def _source_label(src: ParamSource) -> str:
+    """单参数来源标注：formula_output 标上游公式，其余用 description 或类型名。"""
+    if src.type == ParamSourceType.FORMULA_OUTPUT:
+        return f"formula:{src.source_formula_id}.{src.source_param_name}"
+    return src.description or src.type.value
+
+
+def _formula_source(node: FormulaNode) -> str:
+    """公式整体出处：取首个 lookup/code 输入的 description（通常是规范条款），否则空。"""
+    for src in node.inputs.values():
+        if src.type in (ParamSourceType.LOOKUP_TABLE, ParamSourceType.CODE_REQUIREMENT) and src.description:
+            return src.description
+    return ""
