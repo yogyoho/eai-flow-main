@@ -1,0 +1,13 @@
+{
+  "description": "给排水/循环水 可勾选规范清单（反馈5 多规范）。tier1_curated=true 表示已人工入库关键限值（驱动自动 pass/fail）；false 表示未入库（参数走 Tier-2，标【需人工对照规范】不自动判定）。",
+  "selection_note": "用户在步骤1 勾选所需规范；选中集存入 project_snapshot.standards_selected。",
+  "standards": [
+    {"code": "GB/T 50746-2012", "title": "石油化工循环水场设计规范", "scope": "循环水场", "tier1_curated": true},
+    {"code": "GB 50648-2011", "title": "化学工业循环冷却水系统设计规范", "scope": "化工循环水", "tier1_curated": true},
+    {"code": "GB/T 50050-2017", "title": "工业循环冷却水处理设计规范", "scope": "循环水处理", "tier1_curated": true},
+    {"code": "GB 50974-2014", "title": "消防给水及消火栓系统技术规范", "scope": "消防给水", "tier1_curated": false, "note": "部分条文 2023-03-01 废止；Tier-1 入库前需按现行条文核对"},
+    {"code": "GB 50014-2021", "title": "室外排水设计标准", "scope": "排水", "tier1_curated": false},
+    {"code": "GB/T 50378-2019", "title": "绿色建筑评价标准", "scope": "绿建", "tier1_curated": false},
+    {"code": "HG/T 20690-2000", "title": "化工企业循环冷却水处理设计技术规定", "scope": "循环水处理细则", "tier1_curated": false}
+  ]
+}
