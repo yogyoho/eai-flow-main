@@ -62,6 +62,7 @@ class ParamSource:
     source_formula_id: str = ""         # FORMULA_OUTPUT 专属：来源公式的 ID
     source_param_name: str = ""         # FORMULA_OUTPUT 专属：来源公式的输出参数名
     description: str = ""               # 人类可读说明，如 "查GB/T 50746表3.3.3内插"
+    needs_verification: bool = False    # 经验/系数默认值是否标【待核实】（反馈2 分层放开）
 
     # ── 工厂方法：语义化构造不同类型的 ParamSource ──
 

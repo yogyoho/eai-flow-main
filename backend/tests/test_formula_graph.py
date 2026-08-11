@@ -365,3 +365,25 @@ class TestParallelGroups:
         assert len(order) == 2
         assert set(order[0]) == {"a1", "b1"}
         assert set(order[1]) == {"a2", "b2"}
+
+
+# ── needs_verification 字段（反馈2 分层放开：经验值标【待核实】）──
+
+class TestNeedsVerification:
+    def test_default_false(self):
+        from app.extensions.formula_engine import ParamSource, ParamSourceType
+        ps = ParamSource(type=ParamSourceType.LOOKUP_TABLE, value=0.001461)
+        assert ps.needs_verification is False
+
+    def test_can_set_true(self):
+        from app.extensions.formula_engine import ParamSource, ParamSourceType
+        ps = ParamSource(type=ParamSourceType.LOOKUP_TABLE, value=0.001461,
+                         needs_verification=True)
+        assert ps.needs_verification is True
+
+    def test_factory_defaults_false(self):
+        """既有工厂方法向后兼容：不传 needs_verification 时默认 False。"""
+        from app.extensions.formula_engine import ParamSource
+        assert ParamSource.lookup(0.001461).needs_verification is False
+        assert ParamSource.code(5.0).needs_verification is False
+        assert ParamSource.user(20000).needs_verification is False
