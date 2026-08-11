@@ -34,6 +34,7 @@ class ContractType(str, enum.Enum):
     CROSS_DISCIPLINE = "cross_discipline"    # 同一参数在不同专业报告间保持一致
     CODE_CONSTRAINT = "code_constraint"      # 设计值必须满足规范要求范围
     FORMULA_CHAIN = "formula_chain"          # 公式计算结果必须等于下游输入值
+    CODE_CONSTRAINT_MULTI = "code_constraint_multi"  # 多规范围框比对（反馈5，不驱动单 pass/fail）
 
 
 class Severity(str, enum.Enum):
@@ -101,6 +102,9 @@ class Contract:
     expected_min: float | None = None                # 下限（≥）
     expected_max: float | None = None                # 上限（≤）
     actual_value: float | None = None                 # 直接指定值（无表达式时使用）
+
+    # ── CODE_CONSTRAINT_MULTI 专用字段 ──
+    standards: list[dict] = field(default_factory=list)  # [{code, clause, min, max, severity, note}, ...]
 
     # ── FORMULA_CHAIN 专用字段 ──
     upstream_param: str = ""                         # 上游参数 "formula_id.output_name"
@@ -214,6 +218,7 @@ class ConsistencyEngine:
                 expected_max=cdef.get("expected_max"),
                 upstream_param=cdef.get("upstream_param", ""),
                 downstream_param=cdef.get("downstream_param", ""),
+                standards=cdef.get("standards", []),
             )
             self._contracts[contract.id] = contract
         return self
@@ -299,6 +304,8 @@ class ConsistencyEngine:
             return self._check_cross_discipline(c)
         elif c.type == ContractType.CODE_CONSTRAINT:
             return self._check_code_constraint(c)
+        elif c.type == ContractType.CODE_CONSTRAINT_MULTI:
+            return None  # 多规范矩阵由 multi_standard_matrix() 单独消费，不走单违规路径
         elif c.type == ContractType.FORMULA_CHAIN:
             return self._check_formula_chain(c)
         return None
@@ -409,6 +416,25 @@ class ConsistencyEngine:
     # 3) 规范约束 — 设计值是否满足 GB/HG 规范的范围要求
     # ═══════════════════════════════════════════════════════════════════
 
+    def _resolve_actual(self, c: Contract) -> float | None:
+        """解析合约的实际值：优先 expression eval，其次 actual_value，都无法则 None。
+
+        被 _check_code_constraint（单标准）和 multi_standard_matrix（多标准）共用。
+        """
+        if c.expression:
+            try:
+                namespace = dict(self._computed)
+                expr = re.sub(r'(\w+)\.(\w+)', r'\1_\2', c.expression)
+                for key, val in list(namespace.items()):
+                    namespace[key.replace(".", "_")] = val
+                namespace["__builtins__"] = {}
+                return float(eval(expr, namespace, {}))
+            except Exception:
+                return None
+        if c.actual_value is not None:
+            return c.actual_value
+        return None
+
     def _check_code_constraint(self, c: Contract) -> Violation | None:
         """校验设计值是否满足规范要求（如 GB/T 50746, GB 50648 等）。
 
@@ -422,23 +448,10 @@ class ConsistencyEngine:
             容积比 = V_system / Q = 3923.5 / 20000 = 0.196
             expected_min = 0.333 → 0.196 < 0.333 → FAIL
         """
-        # 解析实际值
-        if c.expression:
-            try:
-                namespace = dict(self._computed)
-                # 将表达式中的点号替换为下划线：V_system.V_system → V_system_V_system
-                expr = re.sub(r'(\w+)\.(\w+)', r'\1_\2', c.expression)
-                # 为计算参数创建下划线别名
-                for key, val in list(namespace.items()):
-                    namespace[key.replace(".", "_")] = val
-                namespace["__builtins__"] = {}
-                actual = float(eval(expr, namespace, {}))
-            except Exception:
-                return None                        # 无法计算 → 安全跳过（不阻塞）
-        elif c.actual_value is not None:
-            actual = c.actual_value
-        else:
-            return None                            # 无可用值
+        # 解析实际值（与 multi_standard_matrix 共用 _resolve_actual）
+        actual = self._resolve_actual(c)
+        if actual is None:
+            return None                            # 无法计算 → 安全跳过（不阻塞）
 
         # 下限检查
         if c.expected_min is not None and actual < c.expected_min:
@@ -487,6 +500,56 @@ class ConsistencyEngine:
                 actual=f"{c.downstream_param}={downstream_val}",
             )
         return None
+
+    # ═══════════════════════════════════════════════════════════════════
+    # 3b) 多规范矩阵 — 同一参数对照多本规范逐条判定（反馈5 围框比对）
+    # ═══════════════════════════════════════════════════════════════════
+
+    def multi_standard_matrix(self) -> list[dict]:
+        """对所有 code_constraint_multi 合约求值，返回每参数×每规范的结果矩阵（反馈5 围框比对）。
+
+        返回:
+            [
+              {
+                "contract_id", "description", "actual"(当前值或 None),
+                "standards": [
+                  {"code","clause","min","max","actual","severity","passed","note"}, ...
+                ]
+              }, ...
+            ]
+
+        actual 为 None（表达式无法求值）时，每条 standard 的 passed=None（无法判定），
+        供报告标【需人工对照规范】。
+        """
+        rows: list[dict] = []
+        for c in self._contracts.values():
+            if c.type != ContractType.CODE_CONSTRAINT_MULTI:
+                continue
+            actual = self._resolve_actual(c)
+            std_results = []
+            for std in c.standards:
+                lo, hi = std.get("min"), std.get("max")
+                passed = None if actual is None else True
+                if actual is not None:
+                    if lo is not None and actual < lo:
+                        passed = False
+                    if hi is not None and actual > hi:
+                        passed = False
+                std_results.append({
+                    "code": std.get("code", ""),
+                    "clause": std.get("clause", ""),
+                    "min": lo, "max": hi, "actual": actual,
+                    "severity": std.get("severity", "warn"),
+                    "passed": passed,
+                    "note": std.get("note", ""),
+                })
+            rows.append({
+                "contract_id": c.id,
+                "description": c.description,
+                "actual": actual,
+                "standards": std_results,
+            })
+        return rows
 
     # ═══════════════════════════════════════════════════════════════════
     # 辅助工具方法

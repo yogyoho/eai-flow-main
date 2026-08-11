@@ -436,3 +436,61 @@ class TestGetStepTrace:
         trace = g.get_step_trace("t")
         kzf_in = next(i for i in trace["inputs"] if i["name"] == "KZF")
         assert kzf_in["needs_verification"] is True
+
+
+# ── code_constraint_multi：多规范围框比对（反馈5）──
+
+class TestMultiStandardMatrix:
+    def _engine_with_multi(self, n_value: float):
+        from app.extensions.formula_engine import ConsistencyEngine
+        eng = ConsistencyEngine()
+        eng.set_param("4", "N", n_value)          # 注册到 _param_table
+        eng._computed["N"] = n_value               # 供 expression eval
+        eng.load_contracts([{
+            "id": "N-multi-test",
+            "type": "code_constraint_multi",
+            "expression": "N",
+            "description": "浓缩倍数多规范比对",
+            "standards": [
+                {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 3.0, "severity": "fail", "note": "不应低于3.0"},
+                {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 5.0, "severity": "warn", "note": "宜≥5.0"},
+                {"code": "GB/T 50050-2017", "clause": "§3.1.x", "min": 3.0, "severity": "fail"},
+            ],
+        }])
+        return eng
+
+    def test_matrix_shape(self):
+        eng = self._engine_with_multi(5.0)
+        rows = eng.multi_standard_matrix()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["contract_id"] == "N-multi-test"
+        assert row["actual"] == 5.0
+        assert len(row["standards"]) == 3
+
+    def test_each_standard_judged(self):
+        eng = self._engine_with_multi(4.0)  # N=4
+        row = eng.multi_standard_matrix()[0]
+        by_code_clause = {(s["code"], s["clause"], s.get("min")): s for s in row["standards"]}
+        # min=3.0 fail → 4.0≥3.0 通过
+        assert by_code_clause[("GB 50648-2011", "§4.1.1", 3.0)]["passed"] is True
+        # min=5.0 warn → 4.0<5.0 不通过
+        assert by_code_clause[("GB 50648-2011", "§4.1.1", 5.0)]["passed"] is False
+
+    def test_multi_not_in_normal_check(self):
+        """code_constraint_multi 不走 check() 单违规路径（由 multi_standard_matrix 单独消费）。"""
+        eng = self._engine_with_multi(1.0)  # 即便全部不满足
+        assert eng.check() == []           # check() 不产出它的违规
+
+    def test_single_code_constraint_unchanged(self):
+        """既有 code_constraint（单标准）行为不变，仍驱动 check()。"""
+        from app.extensions.formula_engine import ConsistencyEngine
+        eng = ConsistencyEngine()
+        eng._computed["N"] = 2.0
+        eng.load_contracts([{
+            "id": "N-min", "type": "code_constraint",
+            "expression": "N", "expected_min": 3.0, "severity": "fail",
+            "description": "N≥3.0",
+        }])
+        violations = eng.check()
+        assert len(violations) == 1 and violations[0].contract_id == "N-min"
