@@ -55,6 +55,9 @@ from app.extensions.formula_engine import (
     ParamSourceType,
 )
 
+# 同目录章节规划器（反馈6：受影响公式 → 受影响章节反查）；脚本自启时 scripts/ 在 sys.path[0]
+import chapter_planner
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 数据加载与图构建
@@ -400,15 +403,13 @@ def cmd_impacted(args: argparse.Namespace) -> None:
     summary = graph.last_change_summary()  # {"Qe.Qe": "292.2 → 365.25", ...} 仅含变化的公式输出
     affected_formulas = sorted({key.split(".", 1)[0] for key in summary})
 
-    # 反查受影响章节
+    # 反查受影响章节（映射逻辑归 chapter_planner.impacted_chapters，这里只做读文件+容错）
     affected_chapters: list[str] = []
     if args.manifest:
         try:
             with open(args.manifest, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
-            for ch in manifest.get("chapters", []):
-                if set(ch.get("formula_ids", [])) & set(affected_formulas):
-                    affected_chapters.append(ch["id"])
+            affected_chapters = chapter_planner.impacted_chapters(affected_formulas, manifest)
         except (OSError, json.JSONDecodeError):
             pass  # manifest 缺失/损坏 → 只返回公式级，不阻塞
 
