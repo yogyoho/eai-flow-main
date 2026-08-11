@@ -338,6 +338,7 @@ present_files(filepaths=["/mnt/user-data/outputs/{项目名称}给排水设计�
 
 ```bash
 FORMULAS=/mnt/skills/public/water-drainage-report/references/formulas.json
+SCRIPTS=/mnt/skills/public/water-drainage-report/scripts
 CONTRACTS=/mnt/skills/public/water-drainage-report/references/consistency_contracts.json
 WORK=/mnt/user-data/workspace
 
