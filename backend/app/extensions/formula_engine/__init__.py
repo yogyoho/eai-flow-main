@@ -6,18 +6,18 @@ Generic computation layer. Zero domain knowledge. Usable by any engineering disc
 Domain-specific data (formula definitions, consistency contracts) lives alongside each skill.
 """
 
-from app.extensions.formula_engine.graph import (
-    FormulaGraph,
-    FormulaNode,
-    ParamSource,
-    ParamSourceType,
-)
 from app.extensions.formula_engine.consistency import (
     ConsistencyEngine,
     Contract,
     ContractType,
     Severity,
     Violation,
+)
+from app.extensions.formula_engine.graph import (
+    FormulaGraph,
+    FormulaNode,
+    ParamSource,
+    ParamSourceType,
 )
 
 __all__ = [

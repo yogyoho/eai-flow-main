@@ -14,15 +14,16 @@ from __future__ import annotations
 
 import enum
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
+from typing import Any
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 合约类型 — 五种一致性检查维度
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class ContractType(str, enum.Enum):
+
+class ContractType(enum.StrEnum):
     """一致性合约的五种类型。
 
     不同类型的合约有不同的数据来源和校验逻辑：
@@ -32,20 +33,22 @@ class ContractType(str, enum.Enum):
     - formula_chain: 公式链校验 → 检查上游输出是否等于下游输入
     - code_constraint_multi: 多规范矩阵比对 → 仅产出围框矩阵，不驱动 check() 的 pass/fail
     """
-    CROSS_SECTION = "cross_section"          # 同一参数在报告的多个章节中保持一致
-    CROSS_DISCIPLINE = "cross_discipline"    # 同一参数在不同专业报告间保持一致
-    CODE_CONSTRAINT = "code_constraint"      # 设计值必须满足规范要求范围
-    FORMULA_CHAIN = "formula_chain"          # 公式计算结果必须等于下游输入值
+
+    CROSS_SECTION = "cross_section"  # 同一参数在报告的多个章节中保持一致
+    CROSS_DISCIPLINE = "cross_discipline"  # 同一参数在不同专业报告间保持一致
+    CODE_CONSTRAINT = "code_constraint"  # 设计值必须满足规范要求范围
+    FORMULA_CHAIN = "formula_chain"  # 公式计算结果必须等于下游输入值
     CODE_CONSTRAINT_MULTI = "code_constraint_multi"  # 多规范围框比对（反馈5，不驱动单 pass/fail）
 
 
-class Severity(str, enum.Enum):
+class Severity(enum.StrEnum):
     """违规严重程度。
 
     - FAIL: 硬性阻断，不允许发布。如：跨章数据不一致、规范下限不满足。
     - WARN: 建议修正，不阻断。如：浓缩倍数低于推荐值但高于最低值。
     - PASS: 通过。
     """
+
     PASS = "pass"
     WARN = "warn"
     FAIL = "fail"
@@ -54,6 +57,7 @@ class Severity(str, enum.Enum):
 # ═══════════════════════════════════════════════════════════════════════════════
 # Contract — 一条一致性合约
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class Contract:
@@ -87,50 +91,53 @@ class Contract:
         )
     """
 
-    id: str                                          # 合约唯一标识
-    type: ContractType                                # 合约类型
-    description: str = ""                            # 人类可读说明
-    severity: Severity = Severity.FAIL               # 违规严重程度（默认阻断）
+    id: str  # 合约唯一标识
+    type: ContractType  # 合约类型
+    description: str = ""  # 人类可读说明
+    severity: Severity = Severity.FAIL  # 违规严重程度（默认阻断）
 
     # ── CROSS_SECTION / CROSS_DISCIPLINE 专用字段 ──
-    param_name: str = ""                             # 要检查的参数名
+    param_name: str = ""  # 要检查的参数名
     sources: list[dict] = field(default_factory=list)  # 参数来源列表 [{section, discipline, value}]
-    rule: str = "exact_match"                        # 匹配规则: exact_match | tolerance | tolerance_pct
-    tolerance: float | None = None                   # 绝对容差（rule=tolerance 时生效）
-    tolerance_pct: float | None = None               # 百分比容差（如 1.0 = 1%）
+    rule: str = "exact_match"  # 匹配规则: exact_match | tolerance | tolerance_pct
+    tolerance: float | None = None  # 绝对容差（rule=tolerance 时生效）
+    tolerance_pct: float | None = None  # 百分比容差（如 1.0 = 1%）
 
     # ── CODE_CONSTRAINT 专用字段 ──
-    expression: str = ""                             # eval 表达式（可引用计算参数，点号自动转下划线）
-    expected_min: float | None = None                # 下限（≥）
-    expected_max: float | None = None                # 上限（≤）
-    actual_value: float | None = None                 # 直接指定值（无表达式时使用）
+    expression: str = ""  # eval 表达式（可引用计算参数，点号自动转下划线）
+    expected_min: float | None = None  # 下限（≥）
+    expected_max: float | None = None  # 上限（≤）
+    actual_value: float | None = None  # 直接指定值（无表达式时使用）
 
     # ── CODE_CONSTRAINT_MULTI 专用字段 ──
     standards: list[dict] = field(default_factory=list)  # [{code, clause, min, max, severity, note}, ...]
 
     # ── FORMULA_CHAIN 专用字段 ──
-    upstream_param: str = ""                         # 上游参数 "formula_id.output_name"
-    downstream_param: str = ""                       # 下游参数 "formula_id.output_name"
+    upstream_param: str = ""  # 上游参数 "formula_id.output_name"
+    downstream_param: str = ""  # 下游参数 "formula_id.output_name"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Violation — 一条违规记录
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class Violation:
     """一次一致性违规的详细记录。"""
-    contract_id: str       # 触发违规的合约 ID
-    severity: Severity     # FAIL 或 WARN
-    description: str       # 合约描述
-    detail: str = ""       # 违规详情（含具体数值）
-    expected: str = ""     # 期望值
-    actual: str = ""       # 实际值
+
+    contract_id: str  # 触发违规的合约 ID
+    severity: Severity  # FAIL 或 WARN
+    description: str  # 合约描述
+    detail: str = ""  # 违规详情（含具体数值）
+    expected: str = ""  # 期望值
+    actual: str = ""  # 实际值
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ConsistencyEngine — 一致性校验引擎
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ConsistencyEngine:
     """一致性校验引擎。
@@ -156,27 +163,27 @@ class ConsistencyEngine:
     """
 
     def __init__(self) -> None:
-        self._contracts: dict[str, Contract] = {}     # 合约注册表 {contract_id: Contract}
-        self._param_table: dict[str, Any] = {}         # 参数表：多格式 key → value
-        self._computed: dict[str, float] = {}           # 计算参数表（用于 code_constraint 表达式 eval）
+        self._contracts: dict[str, Contract] = {}  # 合约注册表 {contract_id: Contract}
+        self._param_table: dict[str, Any] = {}  # 参数表：多格式 key → value
+        self._computed: dict[str, float] = {}  # 计算参数表（用于 code_constraint 表达式 eval）
         self._resolver: Callable[[str], float] | None = None  # 外部解析器（预留扩展点）
 
     # ═══════════════════════════════════════════════════════════════════
     # 合约管理
     # ═══════════════════════════════════════════════════════════════════
 
-    def add_contract(self, contract: Contract) -> "ConsistencyEngine":
+    def add_contract(self, contract: Contract) -> ConsistencyEngine:
         """添加一条合约。返回 self 支持链式调用。"""
         self._contracts[contract.id] = contract
         return self
 
-    def add_contracts(self, contracts: list[Contract]) -> "ConsistencyEngine":
+    def add_contracts(self, contracts: list[Contract]) -> ConsistencyEngine:
         """批量添加合约。"""
         for c in contracts:
             self._contracts[c.id] = c
         return self
 
-    def load_contracts(self, contracts_json: list[dict]) -> "ConsistencyEngine":
+    def load_contracts(self, contracts_json: list[dict]) -> ConsistencyEngine:
         """从 JSON 字典列表批量加载合约。
 
         这是从技能目录下的 consistency_contracts.json 加载合约的主要入口。
@@ -229,8 +236,7 @@ class ConsistencyEngine:
     # 参数注册 — 将公式结果和手动指定的参数写入参数表
     # ═══════════════════════════════════════════════════════════════════
 
-    def set_param(self, section: str, param_name: str, value: float, *,
-                   discipline: str = "") -> "ConsistencyEngine":
+    def set_param(self, section: str, param_name: str, value: float, *, discipline: str = "") -> ConsistencyEngine:
         """注册一个参数值到参数表。
 
         key 格式（由参数决定）:
@@ -247,9 +253,7 @@ class ConsistencyEngine:
         self._param_table[key] = value
         return self
 
-    def set_params_from_formula_graph(self, graph, *,
-                                       discipline: str = "",
-                                       section_map: dict[str, str] | None = None) -> "ConsistencyEngine":
+    def set_params_from_formula_graph(self, graph, *, discipline: str = "", section_map: dict[str, str] | None = None) -> ConsistencyEngine:
         """从 FormulaGraph 一键导入所有参数。
 
         自动注册两类参数：
@@ -277,7 +281,7 @@ class ConsistencyEngine:
 
         # 注册用户输入参数（无章节号，直接使用参数名）
         for key, val in graph.get_all_params().items():
-            if "." not in key:                     # 用户输入参数的特征：key 中不含 "."
+            if "." not in key:  # 用户输入参数的特征：key 中不含 "."
                 self._param_table[key] = val
                 self._computed[key] = val
         return self
@@ -426,7 +430,7 @@ class ConsistencyEngine:
         if c.expression:
             try:
                 namespace = dict(self._computed)
-                expr = re.sub(r'(\w+)\.(\w+)', r'\1_\2', c.expression)
+                expr = re.sub(r"(\w+)\.(\w+)", r"\1_\2", c.expression)
                 for key, val in list(namespace.items()):
                     namespace[key.replace(".", "_")] = val
                 namespace["__builtins__"] = {}
@@ -453,7 +457,7 @@ class ConsistencyEngine:
         # 解析实际值（与 multi_standard_matrix 共用 _resolve_actual）
         actual = self._resolve_actual(c)
         if actual is None:
-            return None                            # 无法计算 → 安全跳过（不阻塞）
+            return None  # 无法计算 → 安全跳过（不阻塞）
 
         # 下限检查
         if c.expected_min is not None and actual < c.expected_min:
@@ -491,7 +495,7 @@ class ConsistencyEngine:
         upstream_val = self._computed.get(c.upstream_param)
         downstream_val = self._computed.get(c.downstream_param)
         if upstream_val is None or downstream_val is None:
-            return None                            # 数据不足，跳过
+            return None  # 数据不足，跳过
         if not self._values_match(upstream_val, downstream_val, c.rule, c.tolerance, c.tolerance_pct):
             return Violation(
                 contract_id=c.id,
@@ -537,20 +541,26 @@ class ConsistencyEngine:
                         passed = False
                     if hi is not None and actual > hi:
                         passed = False
-                std_results.append({
-                    "code": std.get("code", ""),
-                    "clause": std.get("clause", ""),
-                    "min": lo, "max": hi, "actual": actual,
-                    "severity": std.get("severity", "warn"),
-                    "passed": passed,
-                    "note": std.get("note", ""),
-                })
-            rows.append({
-                "contract_id": c.id,
-                "description": c.description,
-                "actual": actual,
-                "standards": std_results,
-            })
+                std_results.append(
+                    {
+                        "code": std.get("code", ""),
+                        "clause": std.get("clause", ""),
+                        "min": lo,
+                        "max": hi,
+                        "actual": actual,
+                        "severity": std.get("severity", "warn"),
+                        "passed": passed,
+                        "note": std.get("note", ""),
+                    }
+                )
+            rows.append(
+                {
+                    "contract_id": c.id,
+                    "description": c.description,
+                    "actual": actual,
+                    "standards": std_results,
+                }
+            )
         return rows
 
     # ═══════════════════════════════════════════════════════════════════
@@ -577,8 +587,7 @@ class ConsistencyEngine:
         return keys
 
     @staticmethod
-    def _values_match(a: float, b: float, rule: str,
-                       tolerance: float | None, tolerance_pct: float | None) -> bool:
+    def _values_match(a: float, b: float, rule: str, tolerance: float | None, tolerance_pct: float | None) -> bool:
         """判断两个浮点数是否满足给定的匹配规则。
 
         三种规则:
@@ -598,7 +607,7 @@ class ConsistencyEngine:
             if b == 0:
                 return abs(a) < 1e-9
             return abs(a - b) / abs(b) * 100 <= tolerance_pct
-        return abs(a - b) < 1e-9                  # 回退到精确匹配
+        return abs(a - b) < 1e-9  # 回退到精确匹配
 
     # ═══════════════════════════════════════════════════════════════════
     # 结构化报告

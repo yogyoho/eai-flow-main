@@ -17,27 +17,29 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 参数来源类型 — 描述公式中每个输入参数的出处
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class ParamSourceType(str, enum.Enum):
+
+class ParamSourceType(enum.StrEnum):
     """参数来源的四种类型。
 
     不同类型的参数在依赖推导和重算时行为不同：
     - USER_INPUT / LOOKUP_TABLE / CODE_REQUIREMENT → 视为"根参数"，不依赖其他公式
     - FORMULA_OUTPUT → 依赖上游公式，是 DAG 的边来源
     """
-    USER_INPUT = "user_input"              # 用户直接输入的设计参数（如 Q=20000 m³/h）
-    LOOKUP_TABLE = "lookup_table"          # 查表/内插法得到的参数（如 KZF 蒸发系数）
-    FORMULA_OUTPUT = "formula_output"      # 来自其他公式的计算结果（建立依赖关系）
+
+    USER_INPUT = "user_input"  # 用户直接输入的设计参数（如 Q=20000 m³/h）
+    LOOKUP_TABLE = "lookup_table"  # 查表/内插法得到的参数（如 KZF 蒸发系数）
+    FORMULA_OUTPUT = "formula_output"  # 来自其他公式的计算结果（建立依赖关系）
     CODE_REQUIREMENT = "code_requirement"  # 规范/标准强制规定的值（如 GB/T 50746 表3.3.3）
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ParamSource — 描述一个参数的来源和当前值
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class ParamSource:
@@ -57,40 +59,36 @@ class ParamSource:
         ParamSource.code(5.0, description="浓缩倍数 N≥5 (GB 50648 §4.1.1)")
     """
 
-    type: ParamSourceType               # 参数来源类型
-    value: float | None = None          # 当前值（FORMULA_OUTPUT 类型时由公式计算填充）
-    unit: str = ""                      # 单位，如 "m³/h", "℃"
-    source_formula_id: str = ""         # FORMULA_OUTPUT 专属：来源公式的 ID
-    source_param_name: str = ""         # FORMULA_OUTPUT 专属：来源公式的输出参数名
-    description: str = ""               # 人类可读说明，如 "查GB/T 50746表3.3.3内插"
-    needs_verification: bool = False    # 经验/系数默认值是否标【待核实】（反馈2 分层放开）
+    type: ParamSourceType  # 参数来源类型
+    value: float | None = None  # 当前值（FORMULA_OUTPUT 类型时由公式计算填充）
+    unit: str = ""  # 单位，如 "m³/h", "℃"
+    source_formula_id: str = ""  # FORMULA_OUTPUT 专属：来源公式的 ID
+    source_param_name: str = ""  # FORMULA_OUTPUT 专属：来源公式的输出参数名
+    description: str = ""  # 人类可读说明，如 "查GB/T 50746表3.3.3内插"
+    needs_verification: bool = False  # 经验/系数默认值是否标【待核实】（反馈2 分层放开）
 
     # ── 工厂方法：语义化构造不同类型的 ParamSource ──
 
     @classmethod
-    def user(cls, value: float, unit: str = "", *, description: str = "",
-             needs_verification: bool = False) -> "ParamSource":
+    def user(cls, value: float, unit: str = "", *, description: str = "", needs_verification: bool = False) -> ParamSource:
         """用户直接输入的设计参数。如循环水量 Q、进出水温差 Δt。
 
         这类参数是 DAG 的"根节点"——不依赖任何公式，但被下游公式依赖。
         用户修改这类参数时，所有直接/间接依赖它的公式都需要重算。
         """
-        return cls(type=ParamSourceType.USER_INPUT, value=value, unit=unit,
-                   description=description, needs_verification=needs_verification)
+        return cls(type=ParamSourceType.USER_INPUT, value=value, unit=unit, description=description, needs_verification=needs_verification)
 
     @classmethod
-    def lookup(cls, value: float, unit: str = "", *, description: str = "",
-               needs_verification: bool = False) -> "ParamSource":
+    def lookup(cls, value: float, unit: str = "", *, description: str = "", needs_verification: bool = False) -> ParamSource:
         """通过查表或内插法得到的参数。如蒸发损失系数 KZF。
 
         与 user_input 类似，也是根节点。区别在于语义：这类参数不是用户直接输入，
         而是从规范/手册的表格中查得的固定值。
         """
-        return cls(type=ParamSourceType.LOOKUP_TABLE, value=value, unit=unit,
-                   description=description, needs_verification=needs_verification)
+        return cls(type=ParamSourceType.LOOKUP_TABLE, value=value, unit=unit, description=description, needs_verification=needs_verification)
 
     @classmethod
-    def from_formula(cls, formula_id: str, param_name: str, *, unit: str = "") -> "ParamSource":
+    def from_formula(cls, formula_id: str, param_name: str, *, unit: str = "") -> ParamSource:
         """来自上游公式的计算结果。这是构建公式依赖图的关键。
 
         当公式 B 的输入是公式 A 的输出时，系统自动推导出 B 依赖 A。
@@ -110,20 +108,19 @@ class ParamSource:
         )
 
     @classmethod
-    def code(cls, value: float, unit: str = "", *, description: str = "",
-             needs_verification: bool = False) -> "ParamSource":
+    def code(cls, value: float, unit: str = "", *, description: str = "", needs_verification: bool = False) -> ParamSource:
         """规范/标准强制规定的值。如浓缩倍数 N≥5.0、旁滤比例 1%~5%。
 
         与 user_input 类似，但来源是 GB/HG 等国家标准而不是用户输入。
         在一致性校验中，这类参数会触发 code_constraint 类型的合约检查。
         """
-        return cls(type=ParamSourceType.CODE_REQUIREMENT, value=value, unit=unit,
-                   description=description, needs_verification=needs_verification)
+        return cls(type=ParamSourceType.CODE_REQUIREMENT, value=value, unit=unit, description=description, needs_verification=needs_verification)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FormulaNode — 一个工程设计公式
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class FormulaNode:
@@ -151,16 +148,16 @@ class FormulaNode:
         )
     """
 
-    id: str                                        # 唯一标识，如 "Qe", "Qb", "Qm"
-    name: str                                      # 人类可读名称，如 "蒸发水量"
-    section: str = ""                              # 章节引用，如 "6.1.1"
-    expression: str = ""                           # Python 计算表达式，如 "Q * KZF * delta_t"
-    inputs: dict[str, ParamSource] = field(default_factory=dict)    # 参数名 → 来源描述
-    outputs: dict[str, str] = field(default_factory=dict)           # 输出参数名 → 单位
+    id: str  # 唯一标识，如 "Qe", "Qb", "Qm"
+    name: str  # 人类可读名称，如 "蒸发水量"
+    section: str = ""  # 章节引用，如 "6.1.1"
+    expression: str = ""  # Python 计算表达式，如 "Q * KZF * delta_t"
+    inputs: dict[str, ParamSource] = field(default_factory=dict)  # 参数名 → 来源描述
+    outputs: dict[str, str] = field(default_factory=dict)  # 输出参数名 → 单位
 
     # ── 运行时状态（不参与序列化）──
     _output_values: dict[str, float] = field(default_factory=dict, repr=False)  # 上次计算结果缓存
-    dirty: bool = True                             # 脏标记：True = 需要重算
+    dirty: bool = True  # 脏标记：True = 需要重算
 
     # ── 参数解析 ──
 
@@ -185,10 +182,7 @@ class FormulaNode:
                 # 来自上游公式的输出 → 从全局参数表读取
                 key = f"{src.source_formula_id}.{src.source_param_name}"
                 if key not in global_params:
-                    raise KeyError(
-                        f"公式 '{self.id}' 的输入 '{name}' 依赖 '{key}'，"
-                        f"但该公式尚未执行（DAG 拓扑排序可能有误？）"
-                    )
+                    raise KeyError(f"公式 '{self.id}' 的输入 '{name}' 依赖 '{key}'，但该公式尚未执行（DAG 拓扑排序可能有误？）")
                 resolved[name] = global_params[key]
             elif name in global_params:
                 # 用户输入/查表/规范值 → 从全局参数表读取（可变的真实来源）
@@ -197,10 +191,7 @@ class FormulaNode:
                 # 回退：使用初始值（首次执行时参数尚未写入 global_params）
                 resolved[name] = src.value
             else:
-                raise KeyError(
-                    f"公式 '{self.id}' 的输入 '{name}' 无法解析："
-                    f"不在 global_params 中，且没有默认值"
-                )
+                raise KeyError(f"公式 '{self.id}' 的输入 '{name}' 无法解析：不在 global_params 中，且没有默认值")
         return resolved
 
     def derived_dependencies(self) -> set[str]:
@@ -223,6 +214,7 @@ class FormulaNode:
 # ═══════════════════════════════════════════════════════════════════════════════
 # FormulaGraph — 公式有向无环图管理器
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class FormulaGraph:
     """管理一组公式的依赖关系、拓扑执行和增量重算。
@@ -258,30 +250,30 @@ class FormulaGraph:
     """
 
     def __init__(self) -> None:
-        self._nodes: dict[str, FormulaNode] = {}      # 公式节点
-        self._dep_order: list[list[str]] = []          # 拓扑排序批次（同批可并行）
-        self._deps: dict[str, set[str]] = {}           # 正向依赖图
-        self._rdeps: dict[str, set[str]] = {}          # 反向依赖图（用于拓扑排序的入度递减）
-        self._global_params: dict[str, float] = {}      # 全局参数表（输入 + 计算结果）
-        self._prev_snapshot: dict[str, float] = {}      # 上次执行前的全局参数快照（用于变更摘要）
-        self._dirty_order: list[str] = []               # 脏公式的执行顺序
+        self._nodes: dict[str, FormulaNode] = {}  # 公式节点
+        self._dep_order: list[list[str]] = []  # 拓扑排序批次（同批可并行）
+        self._deps: dict[str, set[str]] = {}  # 正向依赖图
+        self._rdeps: dict[str, set[str]] = {}  # 反向依赖图（用于拓扑排序的入度递减）
+        self._global_params: dict[str, float] = {}  # 全局参数表（输入 + 计算结果）
+        self._prev_snapshot: dict[str, float] = {}  # 上次执行前的全局参数快照（用于变更摘要）
+        self._dirty_order: list[str] = []  # 脏公式的执行顺序
 
     # ═══════════════════════════════════════════════════════════════════
     # 构建阶段：添加公式 → 推导依赖 → 拓扑排序 → 初始化参数
     # ═══════════════════════════════════════════════════════════════════
 
-    def add_formula(self, node: FormulaNode) -> "FormulaGraph":
+    def add_formula(self, node: FormulaNode) -> FormulaGraph:
         """添加一个公式节点。返回 self 支持链式调用。"""
         self._nodes[node.id] = node
         return self
 
-    def add_formulas(self, nodes: list[FormulaNode]) -> "FormulaGraph":
+    def add_formulas(self, nodes: list[FormulaNode]) -> FormulaGraph:
         """批量添加公式节点。返回 self 支持链式调用。"""
         for n in nodes:
             self._nodes[n.id] = n
         return self
 
-    def build(self) -> "FormulaGraph":
+    def build(self) -> FormulaGraph:
         """构建依赖图、拓扑排序、初始化全局参数表。
 
         必须在添加完所有公式后调用，之后才能执行 execute()。
@@ -307,8 +299,8 @@ class FormulaGraph:
         for nid, node in self._nodes.items():
             deps = node.derived_dependencies()
             self._deps[nid] = deps
-            for dep_id in deps:                    # 对于每个上游依赖
-                self._rdeps[dep_id].add(nid)       # 记录"谁依赖了我"（反向边）
+            for dep_id in deps:  # 对于每个上游依赖
+                self._rdeps[dep_id].add(nid)  # 记录"谁依赖了我"（反向边）
 
     def _topological_sort(self) -> list[list[str]]:
         """Kahn 算法拓扑排序 → 将公式分组为可并行执行的批次。
@@ -332,12 +324,12 @@ class FormulaGraph:
         batches: list[list[str]] = []
 
         while queue:
-            batch = sorted(queue)                  # 排序保证确定性（同批次内字母序）
+            batch = sorted(queue)  # 排序保证确定性（同批次内字母序）
             batches.append(batch)
             queue.clear()
             for nid in batch:
                 for dependent in self._rdeps.get(nid, set()):
-                    in_degree[dependent] -= 1      # 减少下游公式的入度
+                    in_degree[dependent] -= 1  # 减少下游公式的入度
                     if in_degree[dependent] == 0:  # 下游公式的所有上游都已完成
                         queue.append(dependent)
 
@@ -389,7 +381,7 @@ class FormulaGraph:
                 result = self._execute_node(node)
                 results[nid] = result
                 node._output_values = result
-                node.dirty = False                # 标记为干净
+                node.dirty = False  # 标记为干净
 
         self._dirty_order = []
         return results
@@ -414,32 +406,43 @@ class FormulaGraph:
             # ── math 模块整体（可调用 math.sin(), math.log() 等）──
             "math": math,
             # ── 基本函数 ──
-            "abs": abs, "round": round, "min": min, "max": max,
+            "abs": abs,
+            "round": round,
+            "min": min,
+            "max": max,
             # ── 幂与根 ──
-            "sqrt": math.sqrt, "pow": pow,
+            "sqrt": math.sqrt,
+            "pow": pow,
             # ── 对数与指数 ──
-            "log": math.log, "log10": math.log10, "log2": math.log2,
+            "log": math.log,
+            "log10": math.log10,
+            "log2": math.log2,
             "exp": math.exp,
             # ── 三角函数（弧度制）──
-            "sin": math.sin, "cos": math.cos, "tan": math.tan,
-            "asin": math.asin, "acos": math.acos, "atan": math.atan,
+            "sin": math.sin,
+            "cos": math.cos,
+            "tan": math.tan,
+            "asin": math.asin,
+            "acos": math.acos,
+            "atan": math.atan,
             "atan2": math.atan2,
             # ── 双曲函数（工程传热/流体力学常用）──
-            "sinh": math.sinh, "cosh": math.cosh, "tanh": math.tanh,
+            "sinh": math.sinh,
+            "cosh": math.cosh,
+            "tanh": math.tanh,
             # ── 角度转换（工程中常需度数↔弧度互换）──
-            "radians": math.radians, "degrees": math.degrees,
+            "radians": math.radians,
+            "degrees": math.degrees,
             # ── 常数 ──
-            "pi": math.pi, "e": math.e,
+            "pi": math.pi,
+            "e": math.e,
         }
         namespace.update(resolved)
 
         try:
             value = float(eval(node.expression, {"__builtins__": {}}, namespace))
         except Exception as e:
-            raise ValueError(
-                f"公式 '{node.id}' ({node.name}): 计算表达式 '{node.expression}' 失败，"
-                f"输入参数: {resolved}，错误: {e}"
-            ) from e
+            raise ValueError(f"公式 '{node.id}' ({node.name}): 计算表达式 '{node.expression}' 失败，输入参数: {resolved}，错误: {e}") from e
 
         # 将计算结果写入全局参数表，供下游公式引用
         for oname in node.outputs:
@@ -477,7 +480,7 @@ class FormulaGraph:
         self._global_params[param_name] = new_value
 
         if old_value == new_value:
-            return []                            # 值未变，无需重算
+            return []  # 值未变，无需重算
 
         # ponytail: 全量脏标记。12 个公式的全量重算 < 1ms，无需精细传播。
         # 当公式 > 100 且单次计算 > 10ms 时，升级为 BFS 脏标记传播。
@@ -625,6 +628,7 @@ class FormulaGraph:
 # ═══════════════════════════════════════════════════════════════════════════════
 # get_step_trace 辅助：表达式代入 / 来源标注
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _fmt_num(v: float) -> str:
     """数值格式化为代入串：整数无小数点，浮点保留必要精度。"""
