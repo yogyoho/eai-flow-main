@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-10T14:27:06.063Z
-> Files: 1931 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-11T16:27:46.835Z
+> Files: 1944 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -509,9 +509,9 @@
 - `harness-core-upstream-gap-2026-08-03.md` (~549 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~1496 tok)
+- `MEMORY.md` (~1577 tok)
 - `new-module-over-modify.md` (~197 tok)
-- `no-core-code-changes.md` (~324 tok)
+- `no-core-code-changes.md` (~467 tok)
 - `offline-prod-deploy-solution.md` (~381 tok)
 - `origin-push-postbuffer-fix.md` (~212 tok)
 - `policy-grant-page-visibility.md` (~278 tok)
@@ -520,6 +520,8 @@
 - `upstream-sync-2026-07-29.md` (~1007 tok)
 - `upstream-sync-2026-08-02.md` — Declares attr (~2544 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
+- `water-drainage-report-optimization.md` (~334 tok)
+- `websearch-unreliable-for-gb-compliance.md` (~296 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -1356,8 +1358,8 @@
 ## backend/app/extensions/formula_engine/
 
 - `__init__.py` — Formula DAG engine — dependency graph, topological execution, dirty propagation, consistency validat (~233 tok)
-- `consistency.py` — 跨章节 + 跨专业一致性校验引擎。 (~6283 tok)
-- `graph.py` — 公式 DAG 引擎 — 依赖图构建、拓扑排序、脏标记传播、增量重算。 (~5662 tok)
+- `consistency.py` — 跨章节 + 跨专业一致性校验引擎;含 code_constraint_multi 多规范围框矩阵(反馈5)+ _resolve_actual。 (~6920 tok)
+- `graph.py` — 公式 DAG 引擎 — 依赖图构建、拓扑排序、脏标记传播、增量重算;含 get_step_trace 步骤轨迹(反馈3)+ last_change_summary 变更摘要(反馈6值差分)。 (~6458 tok)
 
 ## backend/app/extensions/knowledge/
 
@@ -1732,6 +1734,8 @@
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
+- `test_chapter_planner.py` — chapter_planner 测试：章节 manifest 生成 + 受影响章节反查（反馈6）。 (~694 tok)
+- `test_chapter_planner.py` — TDD tests for chapter_planner: build_manifest + impacted_chapters (反馈6 受影响章节反查). (~1100 tok)
 - `test_checkpoint_lineage.py` — Replay-base resolution rules shared by regenerate, edit replay and branching. (~2024 tok)
 - `test_checkpointer.py` — Unit tests for checkpointer config, packaging metadata, and factories. (~6660 tok)
 - `test_client_e2e.py` — End-to-end tests for DeerFlowClient. (~9796 tok)
@@ -1762,7 +1766,7 @@
 - `test_extensions_auth_facade.py` — Tests for the EAI auth facade (username+password / email+OTP login). (~3450 tok)
 - `test_extensions_sso.py` — Tests for the EAI SSO (OIDC third facade). (~2816 tok)
 - `test_filterrule_operators.py` — test_overlap_template_parses, test_overlap_empty_identity_attr_denies, test_overlap_malformed_dept_i (~2053 tok)
-- `test_formula_graph.py` — Test Formula DAG engine against real 给排水计算书 calculation chain. (~3931 tok)
+- `test_formula_graph.py` — Test Formula DAG engine against real 给排水计算书 calculation chain. (~6087 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_identity_provider.py` — Tests for AttributeSet and IdentityProvider. (~4186 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
@@ -1954,6 +1958,7 @@
 - `2026-08-05-role-permission-deep-audit-test.md` — 角色管理操作权限 + 数据访问深度审计与测试 实施计划 (~11460 tok)
 - `2026-08-06-kb-data-access.md` — 知识库细粒度数据访问控制 Implementation Plan (~7211 tok)
 - `2026-08-06-word-export-layout-import.md` — Word 样例自动提取排版 + 两对话框补齐 Implementation Plan (~7435 tok)
+- `2026-08-11-water-drainage-report-optimization.md` — 给排水单体计算书技能优化 Implementation Plan (~14239 tok)
 
 ## docs/superpowers/reports/
 
@@ -2032,6 +2037,7 @@
 - `2026-08-05-role-permission-deep-audit-test-design.md` — 角色管理 · 操作权限与数据访问权限深度审计 + 测试设计 (~2916 tok)
 - `2026-08-06-kb-data-access-design.md` — 知识库细粒度数据访问控制（Knowledge Base Data Access Control）设计 (~980 tok)
 - `2026-08-06-word-export-layout-import-design.md` — Word 样例自动提取排版 + 报告输出/文档空间导出对话框补齐 — 设计文档 (~1427 tok)
+- `2026-08-11-water-drainage-report-optimization-design.md` — 给排水单体计算书技能优化设计 (~3878 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -3161,6 +3167,22 @@
 ## skills/public/fire-protection-report-v2/
 
 - `SKILL.md` — ⛔ 第一步：检查是否应该使用本技能（路由关卡，必须最先判断） (~3158 tok)
+
+## skills/public/water-drainage-report/
+
+- `SKILL.md` — 给排水设计专篇技能 (~3449 tok)
+
+## skills/public/water-drainage-report/references/
+
+- `consistency_contracts.json` (~1030 tok)
+- `formulas.json` (~1579 tok)
+- `reference_values.json` (~354 tok)
+- `standards_index.json` (~279 tok)
+
+## skills/public/water-drainage-report/scripts/
+
+- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1191 tok)
+- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~4866 tok)
 
 ## tools/license/
 

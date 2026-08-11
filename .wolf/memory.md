@@ -6419,3 +6419,137 @@
 | 22:45 | 4 子 pane 全量 cyber 化：TaskBoard/ApprovalsQueue/MembersPane/QuickDocEditor 的 db-card→rounded-xl border+cyber-bg-secondary/border-muted、var(--db-border)→cyber-border-muted、var(--db-text-primary)→cyber-text-main、--db-bg-purple/cyan→bg-purple-500/10/cyan-500/10；5 文件 dashboard.css import 全删（DashboardPage 相对路径全局加载兜底）；void load() 补 lint；frontend restart；DOM 验证 5 tab(overview/文档/任务/闸门/成员) 全部 db-*=0+cyber 在位 | TaskBoard/ApprovalsQueue/MembersPane/QuickDocEditor.tsx, ProjectDetail.tsx | aligned+live;未提交 | ~7k |
 | 22:38 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 16 reads | ~40741 tok |
 | 23:25 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 35 reads | ~122065 tok |
+| 23:35 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 35 reads | ~122065 tok |
+| 23:35 | Session end: 8 writes across 6 files (ProjectDetail.tsx, page.tsx, TaskBoard.tsx, ApprovalsQueue.tsx, MembersPane.tsx) | 35 reads | ~122065 tok |
+
+## Session: 2026-08-11 11:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-11 12:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:09 | Created docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | — | ~4025 |
+| 13:10 | Edited docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | inline fix | ~54 |
+| 13:10 | Edited docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | inline fix | ~38 |
+| 13:12 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/water-drainage-report-optimization.md | — | ~326 |
+| 13:12 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/websearch-unreliable-for-gb-compliance.md | — | ~285 |
+| 13:12 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→3 lines | ~130 |
+
+## Session: 2026-08-11 13:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:19 | Edited docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | "formula_engine" → "尽最大可能不要改动 deerflow 的 harn" | ~86 |
+| 13:25 | Edited docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | 2→2 lines | ~69 |
+| 13:27 | Edited docs/superpowers/specs/2026-08-11-water-drainage-report-optimization-design.md | inline fix | ~13 |
+| 13:30 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/no-core-code-changes.md | 1→5 lines | ~302 |
+| 13:30 | Session end: 4 writes across 2 files (2026-08-11-water-drainage-report-optimization-design.md, no-core-code-changes.md) | 2 reads | ~4620 tok |
+| 13:43 | Created docs/superpowers/plans/2026-08-11-water-drainage-report-optimization.md | — | ~15188 |
+
+## Session: 2026-08-11 13:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:47 | 给排水技能优化实施计划写就+提交(86effd970,10任务TDD,harness零改动,自检过) | docs/superpowers/plans/2026-08-11-water-drainage-report-optimization.md | 计划完成,待选执行方式 | ~12k |
+| 13:51 | Edited backend/tests/test_formula_graph.py | modified test_default_false() | ~322 |
+| 13:52 | Edited backend/app/extensions/formula_engine/graph.py | 3→4 lines | ~52 |
+| 13:53 | Session end: 2 writes across 2 files (test_formula_graph.py, graph.py) | 5 reads | ~12319 tok |
+| 13:55 | Session end: 2 writes across 2 files (test_formula_graph.py, graph.py) | 5 reads | ~12338 tok |
+| 13:57 | Session end: 2 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~16546 tok |
+| 13:58 | Edited backend/tests/test_formula_graph.py | modified test_factory_defaults_false() | ~728 |
+| 13:59 | Edited backend/app/extensions/formula_engine/graph.py | added 1 import(s) | ~40 |
+| 13:59 | Edited backend/app/extensions/formula_engine/graph.py | modified user() | ~566 |
+| 14:00 | Edited backend/app/extensions/formula_engine/graph.py | modified get_step_trace() | ~550 |
+| 14:00 | Edited backend/app/extensions/formula_engine/graph.py | modified reverse_dependencies() | ~453 |
+| 14:01 | Session end: 7 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~18883 tok |
+| 14:02 | Edited backend/app/extensions/formula_engine/graph.py | modified _source_label() | ~93 |
+| 14:06 | Session end: 8 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~18976 tok |
+| 14:13 | Session end: 8 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~20525 tok |
+| 15:04 | T1+T2实施完成(needs_verification字段+工厂透传+get_step_trace+4辅助函数;subagent-driven:implementer→spec审✅→质量审✅) | graph.py/test_formula_graph.py | T1=143ba9158 T2=93f0e2e58 30/30测试过 零harness改动 | ~40k || 15:05 | Session end: 8 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~20525 tok |
+| 23:14 | Session end: 8 writes across 2 files (test_formula_graph.py, graph.py) | 6 reads | ~20525 tok |
+| 23:14 | Edited backend/tests/test_formula_graph.py | modified _engine_with_multi() | ~756 |
+| 23:15 | Edited backend/app/extensions/formula_engine/consistency.py | 4→5 lines | ~96 |
+| 23:15 | Edited backend/app/extensions/formula_engine/consistency.py | 3→6 lines | ~72 |
+| 23:15 | Edited backend/app/extensions/formula_engine/consistency.py | 3→4 lines | ~56 |
+| 23:15 | Edited backend/app/extensions/formula_engine/consistency.py | modified _resolve_actual() | ~286 |
+| 23:16 | Edited backend/app/extensions/formula_engine/consistency.py | reduced (-13 lines) | ~57 |
+| 23:16 | Edited backend/app/extensions/formula_engine/consistency.py | 3→5 lines | ~81 |
+| 23:16 | Edited backend/app/extensions/formula_engine/consistency.py | modified multi_standard_matrix() | ~587 |
+| 23:21 | Session end: 16 writes across 3 files (test_formula_graph.py, graph.py, consistency.py) | 6 reads | ~22516 tok |
+| 23:30 | Edited backend/app/extensions/formula_engine/consistency.py | 7→8 lines | ~72 |
+| 23:30 | Edited backend/app/extensions/formula_engine/consistency.py | modified ContractType() | ~151 |
+| 23:31 | Edited backend/tests/test_formula_graph.py | modified test_single_code_constraint_unchanged() | ~695 |
+
+## Session: 2026-08-11 23:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:40 | T3 impl 完成 (code_constraint_multi + multi_standard_matrix + _resolve_actual 抽取) | consistency.py, test_formula_graph.py | commit 07188cc2b; spec✅; 质量review: Approved+I1/I2/M1 | ~9k |
+| 23:42 | 记 bug-1165: test_consistency_engine.py 6 用例 FileNotFoundError (路径 custom→public, pre-existing) | .wolf/buglog.json | 已落盘,未修(pre-existing) | ~2k |
+| 23:44 | 派发 T3 修复子代理: I1(actual=None→passed=None 测试)+I2(max-bound 测试)+M1(ContractType 文档 四→五) | consistency.py, test_formula_graph.py | 子代理后台运行中 | — |
+| 23:33 | T3 修复完成 bc91ef5a7: +2 测试(I1/I2 严格 identity 断言)+ContractType 文档五种 | consistency.py, test_formula_graph.py | 36/36 pass; 自验 diff; T3✅ | ~3k |
+| 23:36 | T4 完成 16df13a3b: formulas.json 5 个系数/经验 input 加 source+needs_verification(KZF:false 余:true;backwash 2项 type user_input→lookup_table) | formulas.json | execute 回归 Qe=292.2; T4✅ | ~4k |
+| 23:38 | T5 完成 7d5af4333: 新建 reference_values.json(5值,与T4一致)+standards_index.json(7规范,tier1_curated 分级) | references/*.json | 两 JSON parse OK; T5✅ | ~3k |
+| 23:40 | T6 完成 842884e5b: consistency_contracts.json 追加 N-multi-standard 合约(code_constraint_multi,3 standards) | consistency_contracts.json | 12 合约; N=4 多规范矩阵 3 判定正确; T6✅ | ~3k |
+| 23:42 | 派发 T7 子代理: formula_runner.py 加 trace/impacted 子命令+build_graph 透传 needs_verification | formula_runner.py | 子代理后台运行中(代码任务) | — |
+| 23:50 | T7 完成 657f22e03: formula_runner 加 trace/impacted+build_graph 透传 needs_verification | formula_runner.py | trace 12项(Qe=292.2/KZF nv=false/eff_depth nv=true); impacted 联动验证 | ~5k |
+| 23:55 | 反馈6缺口诊断: cmd_impacted 复用 update_param 返回集=全量(ponytail 全标记)→所有章节受影响→反馈6失效 | graph.py(诊断,未改) | update_param 返回恒全12;实测确认 | ~3k |
+| 00:00 | 用户决策(AskUserQuestion): 反馈6 走值差分方案(选项1,非修 update_param/非保守v1) | — | 选 last_change_summary 值差分 | ~1k |
+| 00:05 | T7 修复 9aac8c722: cmd_impacted 改值差分(update_param→execute→last_change_summary 抽 fid) | formula_runner.py | Q→8/eff_depth→3 公式(非全12);反馈6真裁剪 | ~3k |
+| 00:08 | 派发 T8 子代理: chapter_planner.py(build_manifest/impacted_chapters+CLI)+test_chapter_planner.py(TDD) | chapter_planner.py, test_chapter_planner.py | 子代理后台运行 | — |
+| 23:35 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~48 |
+| 23:35 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~58 |
+| 23:35 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~52 |
+| 23:35 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~56 |
+| 23:35 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~53 |
+| 23:37 | Created skills/public/water-drainage-report/references/reference_values.json | — | ~354 |
+| 23:37 | Created skills/public/water-drainage-report/references/standards_index.json | — | ~279 |
+| 23:38 | Edited skills/public/water-drainage-report/references/consistency_contracts.json | expanded (+11 lines) | ~161 |
+| 23:41 | Session end: 8 writes across 4 files (formulas.json, reference_values.json, standards_index.json, consistency_contracts.json) | 3 reads | ~15300 tok |
+| 23:41 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 8→9 lines | ~122 |
+| 23:41 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | modified cmd_trace() | ~974 |
+| 23:42 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | expanded (+16 lines) | ~295 |
+| 23:42 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 7→11 lines | ~89 |
+| 23:58 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 1→2 lines | ~38 |
+| 23:58 | Session end: 13 writes across 5 files (formulas.json, reference_values.json, standards_index.json, consistency_contracts.json, formula_runner.py) | 5 reads | ~34252 tok |
+| 23:58 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | expanded (+6 lines) | ~122 |
+| 00:01 | Created backend/tests/test_chapter_planner.py | — | ~694 |
+| 00:02 | Created skills/public/water-drainage-report/scripts/chapter_planner.py | — | ~1191 |
+
+## Session: 2026-08-11 00:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:07 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 6→9 lines | ~58 |
+| 00:07 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | modified except() | ~125 |
+| 00:35 | T8 两阶段评审(chapter_planner 5/5测试+formula_runner集成);发现 DRY 违规:T7 cmd_impacted 内联章节反查=T8 新函数同逻辑 | chapter_planner.py, formula_runner.py | spec✓;quality 发现 1 DRY | ~4k |
+| 00:40 | DRY 重构 9e0bca8c8: cmd_impacted 内联循环→调 chapter_planner.impacted_chapters(保留读文件+try/except 壳) | formula_runner.py | 实测 Q 变更→[ch5_calc,ch6_pool,ch8_filter] 3 章不变;风险评分 0.00 | ~2k |
+| 00:42 | 发现 pre-existing bug-1167: formula_runner parents[5] 应为 parents[4](宿主机独立运行 import app 失败);已记 buglog 未修(需先确认生产调用路径) | formula_runner.py | PYTHONPATH 绕过验证 | ~1k |
+| 00:43 | T8 标记完成;T1-T8 全完成,推进 T9(SKILL.md 流程重写) | — | — | — |
+| 00:15 | Edited skills/public/water-drainage-report/SKILL.md | "绝不" → "禁止任何默认值" | ~72 |
+| 00:15 | Edited skills/public/water-drainage-report/SKILL.md | expanded (+7 lines) | ~129 |
+| 00:15 | Edited skills/public/water-drainage-report/SKILL.md | expanded (+15 lines) | ~162 |
+| 00:15 | Session end: 5 writes across 2 files (formula_runner.py, SKILL.md) | 6 reads | ~27634 tok |
+| 00:15 | Edited skills/public/water-drainage-report/SKILL.md | 1→5 lines | ~107 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | expanded (+11 lines) | ~277 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | 7→10 lines | ~165 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | 3→8 lines | ~67 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | expanded (+13 lines) | ~200 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | 22→26 lines | ~216 |
+| 00:16 | Edited skills/public/water-drainage-report/SKILL.md | 7→9 lines | ~123 |
+| 02:30 | T9 SKILL.md 流程重写集成7反馈 | skills/public/water-drainage-report/SKILL.md (a4ecc5505) | DONE: 11 edits landed, +77/-13, verify=SKILL.md OK | ~9500 |
+| 00:20 | Edited skills/public/water-drainage-report/SKILL.md | 3→4 lines | ~67 |
+
+## Session: 2026-08-11 00:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:27 | Edited backend/app/extensions/formula_engine/consistency.py | inline fix | ~10 |
+| 00:27 | Edited backend/app/extensions/formula_engine/consistency.py | inline fix | ~9 |
+| 00:27 | Edited backend/app/extensions/formula_engine/graph.py | inline fix | ~11 |
+| 01:58 | T10-Step3 ruff 全量清理 formula_engine(19错→0,18/19早于T1-T3) | graph.py/consistency.py/__init__.py | commit f821a39eb,风险0.00,41测试绿 | ~30 |
+| 01:59 | T10-Step4 anatomy 刷新 formula_engine 描述(get_step_trace/last_change_summary/code_constraint_multi) | .wolf/anatomy.md | done | ~5 |
+| 02:00 | T10 完成 — 给排水技能优化 10 任务全部落地(T1-T10),harness 零改动 | 多文件 | 全绿:41测试+ruff clean+冒烟(改Q→8公式差分→3章) | ~15 |

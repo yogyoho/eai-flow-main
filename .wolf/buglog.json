@@ -18497,5 +18497,41 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-10T23:10:00+08:00"
+  },
+  {
+    "id": "bug-1165",
+    "timestamp": "2026-08-11T00:00:00+08:00",
+    "error_message": "backend/tests/test_consistency_engine.py 6 个用例失败: FileNotFoundError — skills\\custom\\water-drainage-report\\references\\consistency_contracts.json (系统找不到指定路径)",
+    "file": "backend/tests/test_consistency_engine.py",
+    "root_cause": "测试硬编码数据文件路径 skills/custom/water-drainage-report/references/...，但该技能实际位于 skills/public/water-drainage-report/（anatomy.md 旧的 custom/ 描述已过时）。skills/custom/ 被 .gitignore 忽略，全新克隆/CI 里不存在该文件 → 6 个依赖该 json 的用例全部 FileNotFoundError。属 pre-existing，与 water-drainage 技能优化(T1-T10)无关——T3 复跑时由 spec reviewer 独立确认在 baseline 93f0e2e58 与 HEAD 07188cc2b 均缺失该文件。",
+    "fix": "未修复（pre-existing，超出现在技能优化范围）。建议修法：把 test_consistency_engine.py 中 custom→public 路径改对，或在测试里用 importlib/glob 探测真实技能根目录；skills/public/water-drainage-report/references/consistency_contracts.json 确实存在。",
+    "tags": ["test", "path", "water-drainage", "consistency", "pre-existing", "gitignore"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-11T00:00:00+08:00"
+  },
+  {
+    "id": "bug-1166",
+    "timestamp": "2026-08-12T00:05:00+08:00",
+    "error_message": "反馈6 局部热更新失效：formula_runner.py cmd_impacted 对任意参数改动返回全部 12 个受影响公式（affected_chapters 随之全部命中），导致技能会重生成整份报告而非仅受影响章节，未省下 5-8 分钟。",
+    "file": "skills/public/water-drainage-report/scripts/formula_runner.py",
+    "root_cause": "cmd_impacted 原实现 `affected_formulas = graph.update_param(...)` 直接取返回集。但 FormulaGraph.update_param（graph.py:455）是 ponytail 全量简化——标记全部节点 dirty 并返回全部 formula_id（显式注释：12 公式 <1ms，>100 公式/>10ms 才升级 BFS 脏标记）。故任意单参改动返回全 12 公式。这不是 update_param 的 bug（有意为之），但 cmd_impacted 拿它做章节裁剪就过报了。",
+    "fix": "cmd_impacted 改值差分：update_param(P,V) → execute()(让新结果落地) → last_change_summary()(仅返回结果真变化的公式输出,key=fid.out) → 抽 formula_id。实测 Q=25000→8 公式、effective_depth=2.5→3 公式(非全 12)。引擎层 update_param 不动(保持 dumb+fast)，智能放 runner 层。commit 9aac8c722。",
+    "tags": ["water-drainage", "feedback6", "cmd_impacted", "value-diff", "update_param", "ponytail"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-12T00:05:00+08:00"
+  },
+  {
+    "id": "bug-1167",
+    "timestamp": "2026-08-12T00:30:00+08:00",
+    "error_message": "formula_runner.py 在宿主机(Win)独立运行报 ModuleNotFoundError: No module named 'app'——from app.extensions.formula_engine import 失败。",
+    "file": "skills/public/water-drainage-report/scripts/formula_runner.py",
+    "root_cause": "第46行 _BACKEND = Path(__file__).resolve().parents[5] / 'backend' 算错层级。从 scripts/formula_runner.py 往上：parents[4]=仓库根(D:\\eai\\eai-flow-main)，parents[5]=仓库根的上一级(D:\\eai)。故 parents[5]/'backend' = D:\\eai\\backend（不存在）。应为 parents[4]。注释写'向上5级'本身也数错（scripts 到仓库根是4级）。生产里技能能跑(真实反馈来自实际出图)，说明生产调用上下文(Docker容器/agent sandbox/PYTHONPATH)另给了 backend 路径，独立宿主机 `python formula_runner.py` 才暴露此 bug。",
+    "fix": "未修（pre-existing，非本任务引入；且盲目改 parents[5]→parents[4] 可能影响容器/sandbox 路径布局，需先确认生产调用方式）。验证 DRY 重构时用 PYTHONPATH=<repo>/backend 绕过。建议后续单独 task 核查生产调用路径后修复。",
+    "tags": ["water-drainage", "formula_runner", "path", "parents-index", "pre-existing", "host-vs-container"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-12T00:30:00+08:00"
   }
 ]

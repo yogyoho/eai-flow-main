@@ -682,3 +682,9 @@
 - **FormulaGraph.update_param 已有 DAG 增量重算+变更摘要**：反馈6"热更新"公式侧已实现；缺的是"受影响章节映射+定点重生成"(新增 `chapter_manifest.json` + `formula_runner impacted` 子命令)。`get_step_trace` 是新增公共方法——**落点 `app/extensions/formula_engine`（EAI app 层），非 harness 核心**，无需 EAI-CUSTOM 三重注释；给排水优化全程 harness 零改动。
 - **用户偏好（记录）**：优化/重构"尽可能复用现有功能（文档空间/公式引擎/合约等）"；反馈建议若不合理要顶回去,不要硬做。
 - **硬约束（用户 2026-08-11 强化）**：尽最大可能不改 deer-flow harness 框架核心（`backend/packages/harness/deerflow/`）。给排水优化经核实 100% 落在 app 层(`app/extensions/formula_engine`)+技能层,harness 零改动;任何实施点若确需动 harness,先回报评估,不擅自改。关联 [[no-core-code-changes]] [[eai-custom-annotation-rule]]。
+
+## [2026-08-12] Decision Log + Do-Not-Repeat (给排水 T7 cmd_impacted 值差分裁剪)
+
+- **Do-Not-Repeat：`FormulaGraph.update_param` 的返回集是「全量标记」，不是受影响子集**。update_param（graph.py:455）有显式 `ponytail:` 注释：「当前实现：全量标记+全量重算；12 公式 <1ms，无需精细脏标记；>100 公式且 >10ms/计算 再升级 BFS」。故 `update_param("Q",25000)` 返回全部 12 个 formula_id，不区分是否真依赖 Q。**本条修正上面 line 682 的措辞**——那里说"update_param 已有 DAG 增量重算"，对「值更新」成立，但对「受影响集返回」不成立（返回恒为全量）。任何拿 update_param 返回值当「受影响子集」用的代码都会过报。
+- **Decision Log：反馈6 紧致裁剪走「值差分」，而非「修 update_param」**。cmd_impacted 原 plan 复用 update_param 返回集 → 任意改参返回全 12 公式 → 所有含公式章节都判"受影响" → LLM 重生成整份报告，反馈6 失效（用户 AskUserQuestion 选值差分方案）。修法：改参后 `execute()` 再跑一次，用 `last_change_summary()`（仅返回结果真变化的公式输出，key=`fid.out`）抽 formula_id。实测 Q→8 公式、effective_depth→3 公式（非全 12）。**理由**：公式引擎保持 dumb+fast（update_param 的 ponytail 简化不动），智能放 runner 层；last_change_summary 的值差分在 graph 层已被 `test_change_summary`/`test_recalc_only_affected` 覆盖。**升级路径**：将来若需依赖图精确裁剪（而非值差分），按 update_param 的 ponytail 注释升级到 BFS 脏标记。关联 [[water-drainage-report-optimization]]。
+- **ponytail 分层原则（记）**：引擎层（graph.py）保持最简全量；runner 层（formula_runner `cmd_*`）放业务智能（值差分、章节反查）。不要为 runner 层的需求去复杂化引擎层——能复用引擎已有方法（last_change_summary）就在 runner 层组合，别回头改引擎。
