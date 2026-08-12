@@ -6595,3 +6595,11 @@
 | 09:24 | Edited frontend/src/extensions/contract-price/api.ts | 3→6 lines | ~90 |
 | 09:29 | Edited frontend/src/extensions/contract-price/hooks.ts | modified useDeleteRun() | ~83 |
 | 08-12 10:15 | 恢复任务中心 tab:TasksView 用 7-29 09:40 Write 全量版(行内删除×50+批量删除+行checkbox+全选);api.ts deleteRun+hooks useDeleteRun(后端 DELETE /runs/{id} 已存在);typecheck 过,浏览器验证 50 删除按钮+51 checkbox | TasksView+api+hooks | done | ~2k |
+| 08-12 10:40 | 核查两处:①任务中心 tab 已修复(e9119a9cc 行内删除×50+批量删除+checkbox) ②文档编辑器右侧空白=pre-reset 原设计 PersonalBlockNoteEditor maxWidth:780 居中阅读宽度(7-25 起就有,非恢复引入);TracebackDrawer 缩放已被并发会话提交 2f492bcf7 | TasksView/编辑器 | 结论 | ~1k |
+| 09:46 | Session end: 3 writes across 3 files (2026-08-12-water-drainage-report-qa-verification.md, api.ts, hooks.ts) | 2 reads | ~3166 tok |
+
+## Session: 2026-08-12 09:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:06 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | "0 auto" → "40px 32px 128px" | ~16 |
