@@ -198,6 +198,7 @@
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
+- [2026-08-13] **设计新业务模块前，先确认数据的「存储形态/可得性」，别默认要 OCR 或爬虫。** 市场四模块设计里我对模块①（智能投标报价）连犯两次同类假设：先假设"友商分项构成拿不到、只能爬中标公示总价"→ 设计了实际值/估算值可信度分层（用户纠正：客户每次投标即持有双方完整自产/外购构成，非爬公示）；又假设"投标数据是扫描件、要走 OCR 管线"→ 给①套完整 OCR 扩展包（再次被用户纠正：数据是结构化的、客户系统已有、无需投标文件/OCR）。**根因：把 contract_price（扫描件合同 OCR）这个参考实现当成所有模块的默认形态，没逐个核对数据形态。** 铁律：设计模块先问清 ①数据在哪个系统 ②结构化还是文档 ③已持有还是要抓取，再选路线 A（OCR 完整扩展）还是路线 B（data_source 结构化复用）。此客户四模块：仅④备品备件是扫描件 OCR；①投标/②销售/③管线全是结构化、走 data_source MCP 复用。详见 docs/superpowers/specs/2026-08-13-market-analysis-modules-design.md（R2/R3 修订）。
 - [2026-08-10] **多会话共享 main-dev-fork dirty 工作树时，别人一次 `git reset --hard HEAD`（或 checkout）会把你未提交的工作区编辑整体冲掉，git 不可恢复。** 实证：用户报「代码被覆盖、页面显示旧内容」→ landing-new 顶部导航"设置→应用中心"、快捷区"实体类型库→系统管理"等未提交编辑全消失。reflog 在 09:47:05 有 `reset: moving to HEAD`，同秒 38 个已跟踪源码文件 mtime 全部更新为 09:47:05（各文件最后提交日期从 05-28 到 08-09 不等），`应用中心` 在任何 commit/stash/dangling-blob 都不存在 → 这些编辑从未提交，被那次 reset 回退到各自最后提交状态。**诊断法：** 用户报旧内容先确认「磁盘==HEAD 且 HEAD 是最新分支」（排除浏览器缓存/容器旧构建/service worker），再对可疑文件查 `git diff HEAD -- <f>` 为空 + mtime 集中在某一秒 + 该秒 reflog 有 reset/checkout → 即未提交编辑被冲掉。**预防：** 并发会话用独立 worktree（同 [[bug-1150]]、cerebrum 已有多次同款）；未提交工作先 `git stash` 或立刻提交；绝不在共享 dirty 分支上 reset --hard。相关 [[bug-1161]]。
 - [2026-08-08] **roles_custom.yaml overlay 是「替换」非「合并」角色定义（data_scopes/permissions/nav/pages 等）——改 permissions.yaml 基础角色加 scope 后必须同步 overlay，否则生效角色丢 scope。** 本次:permissions.yaml user 角色有 `knowledge_owner`(M1 修复),但 roles_custom.yaml 的 user 覆盖 data_scopes 漏了它 → 生效 user 角色 `['project_member','doc_owner','knowledge_public']` 无 owner 可见 → 普通用户看不到自己创建的私有/部门 KB(test-procurement 消防报告样例库)。**判别法**:运行中 `get_permission_registry().get_data_scopes_for_role(code)` 与 base permissions.yaml 对比,发现 overlay 丢 scope 即补。**修法**:overlay 对应角色 data_scopes 补回缺失项(不是删 overlay)。相关 [[role-management-yaml-driven]] [[bug-1133]]。
 - [2026-08-06] **容器内 `pnpm typecheck` 报 `.next/dev/types/validator.ts(692,91): error TS1005 '?' expected` 时，先删 `.next/dev/types` 再跑，别当成自己源码的错误。** Next.js dev HMR 在写生成的 validator.ts 时可能截断/部分重写（生成文件缺 `type __IsExpected` 前缀），而 tsconfig include 了 `.next/dev/types/**/*.ts` → tsc 报 TS1005/TS1128。**修复：** `docker exec deer-flow-frontend sh -c "cd /app/frontend && rm -rf .next/dev/types"`，dev server 下次运行自动重生成。判定：错误文件路径在 `.next/` 下且与本次改动无关 → 99% 是生成缓存损坏。与 [[frontend-deps-need-image-rebuild]] 的"容器送旧产物"是不同问题（这是半成品产物），别混为一谈。
@@ -689,3 +690,84 @@
 - **Decision Log：反馈6 紧致裁剪走「值差分」，而非「修 update_param」**。cmd_impacted 原 plan 复用 update_param 返回集 → 任意改参返回全 12 公式 → 所有含公式章节都判"受影响" → LLM 重生成整份报告，反馈6 失效（用户 AskUserQuestion 选值差分方案）。修法：改参后 `execute()` 再跑一次，用 `last_change_summary()`（仅返回结果真变化的公式输出，key=`fid.out`）抽 formula_id。实测 Q→8 公式、effective_depth→3 公式（非全 12）。**理由**：公式引擎保持 dumb+fast（update_param 的 ponytail 简化不动），智能放 runner 层；last_change_summary 的值差分在 graph 层已被 `test_change_summary`/`test_recalc_only_affected` 覆盖。**升级路径**：将来若需依赖图精确裁剪（而非值差分），按 update_param 的 ponytail 注释升级到 BFS 脏标记。关联 [[water-drainage-report-optimization]]。
 - **ponytail 分层原则（记）**：引擎层（graph.py）保持最简全量；runner 层（formula_runner `cmd_*`）放业务智能（值差分、章节反查）。不要为 runner 层的需求去复杂化引擎层——能复用引擎已有方法（last_change_summary）就在 runner 层组合，别回头改引擎。
 - **章节映射：一个公式可合法落入多章（终审 I1 修复, commit 633f4beef）**。`chapter_planner.build_manifest` 把 `formula_ids` = 显式声明（FALLBACK_CHAPTERS 里的）∪ section 首段匹配。display 章节（如 `ch9_equiplist` 设备一览表）无 `section_prefixes`，靠**显式 `formula_ids:["filter_count"]`** 声明它展示哪些计算结果。故 `filter_count` 同属 `ch8_filter`（计算章, section 9）和 `ch9_equiplist`（展示章）——改它必须同时标记两章重生成。**Do-Not-Repeat**：用 section-prefix 自动映射 shortcut 去实现「spec 给出每章显式 formula_ids」的设计时，**展示章（表格回显计算值：设备一览表/参数表）会被漏掉**——它们没有 section，必须显式列。`ch3_params`（输入参数表）有意不走 `impacted_chapters`（值差分只报告公式输出变化，输入参数不进 last_change_summary；参数表是输入回显，agent 重生成时天然刷新）——与 spec §5.1 line 143 的差异为已知接受项。关联 [[water-drainage-report-optimization]]。
+
+
+## [2026-08-12] Key Learnings + Do-Not-Repeat (bug-1168 — 技能脚本容器内路径失效 / 页面验证发现)
+
+- **技能脚本写死 `parents[N]` 定位 backend 在容器内会漂移失效**：宿主布局 `skills/public/<skill>/scripts` 与容器内 `skills_view` 投影路径 `/app/backend/.deer-flow/skills_view/public/<skill>/scripts` 层级数不同，`parents[4]` 在容器内指向 `.deer-flow`（无 backend）→ `import app` 失败。bug-1167 的 host 修复只覆盖宿主端。**Do-Not-Repeat：技能脚本需 import backend 时，用 `_resolve_backend(start)` 向上搜索「含 app/extensions/<module> 的目录」，别写死 parents[N]。** 容器内 agent 走 /mnt/skills → 投影到 skills_view（/app/backend/.deer-flow/skills_view/）。
+- **宿主端单测全过 ≠ 容器内可用**：formula_runner 的 12 个单测全过（subprocess 从宿主路径跑），但容器内实际 import 失败。agent 因此陷入反复 ask_clarification 死循环（同一组 5 个设备参数问了 4 次，1.3M input tokens）。**Do-Not-Repeat：技能脚本改动必须在容器内（skills_view 投影路径）复跑一次才能算验证通过。**
+- **ask_clarification 死循环是「agent 跑不动管线」的症状，不是根因**：系统提示有「CRITICAL: clarify BEFORE action」强制澄清优先；agent 因任何原因（脚本坏/缺参/import 失败）无法推进时，会退回澄清门禁反复问而非报错。调试此类循环先查 agent 的 bash 调用是否真成功，别只盯澄清逻辑。
+- **页面验证的两条 React 受控输入坑**（chrome-devtools MCP）：① `fill`/`element.click()` 不触发受控 textarea 的 onChange/表单 onSubmit——用 `Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set` 原生 setter + `dispatchEvent(new Event('input',{bubbles:true}))` 同步 React state；② 表单提交用真实 CDP `click` 工具（按 uid）或 `form.requestSubmit()`，别用 evaluate_script 的 `.click()`。页面上多 form 并存时（chat form 通常是第 2 个），`document.querySelector('form button[type=submit]')` 会点错表单。
+
+## Key Learnings (2026-08-12 — 给排水技能页面验证 / agent 绕过规范工具)
+
+**给排水技能（water-drainage-report）7 条反馈页面验证结论：**
+- 反馈2/3/4/5 ✅ UI 实证；反馈6/7 ✅ 机制（单测+容器）；反馈1 ❌（实测 7m18s，目标 ≤3min）。
+- **bug-1168 修复在真实容器闭环验证**：agent 成功对 `/mnt/skills/public/water-drainage-report/scripts/formula_runner.py check` 执行（修复前必 `ModuleNotFoundError: No module named 'app'`）。这是反馈 3/4 在 UI 落地的直接前提。
+- **关键学习（跨会话价值高）：agent 即便被明确指令"用 formula_runner.py execute/trace/check + chapter_planner"，仍倾向先自写整篇 `gen_report.py`（chunked write_file 拼接），还常丢失自身变量结构需 grep/sed 自审。** 这使反馈 1（耗时）从"bug-1168 管线跑不通→clarification 死循环"转为"agent 不优先用规范工具→自写生成器开销 ~5min"。
+- **反馈 1 真正达标路径是 SKILL.md 提示工程**：把"必须先调 formula_runner/chapter_planner，禁止自写整篇文档生成器、禁止 chunked write_file 拼长脚本"从建议性升级为硬约束。规范计算本身亚秒级（execute 单测可证）。
+- 产物：主报告 `循环水装置给排水计算书.md`（含附A 围框矩阵）+ 附件 `计算追踪与校验面板.md`（反馈3/4），均经 present_files 呈现。
+- 验证报告：`docs/superpowers/specs/2026-08-12-water-drainage-report-qa-verification.md`。
+
+**Why:** 下次优化该技能或类似"agent+脚本工具链"技能时，不要再以为"工具可用=agent会用"；agent 自写生成器是反复出现的耗时与健壮性瓶颈。
+**How to apply:** 设计/优化技能时，把"优先调用既有脚本、禁止自写等价生成器"写进 SKILL.md 硬约束；QA 验证耗时类反馈时，区分"计算耗时"与"agent 编排耗时"。
+
+## Key Learning 更新 (2026-08-12 — 执行铁律复验：提示工程扭转 agent 行为)
+
+**前条学习（同日早些）的实证闭环：** 在 SKILL.md 顶部加 `⛔ 执行铁律`（5 条强约束 + 点名 `gen_report.py`/`R=dict(Qe=...)` 等具体反模式 + 置于所有步骤之前的高位置）后，同参数同指令复验：耗时 **7m18s → 2m10s**（反馈1 达标），agent 25s 内即跑 `formula_runner.py execute`、全程不再自写生成器、规范工具链(execute→trace→check→chapter_planner)走满。
+
+**关键学习：提示工程的三个杠杆都重要且已验证有效 —— ① 强约束语气(⛔/禁止/违反即失败) ② 点名具体反模式(比泛泛"请用规范工具"有效得多) ③ 顶层高位置(放在所有步骤之前，而非埋在某个步骤体里)。** 上一轮 agent 绕过散落在步骤里的建议性表述，本轮顶层铁律直接扭转。
+
+**仍未完全收住的点（下次复验观察）：**
+- 铁律 #4（单次 write_file）：agent 仍 chunked append 写报告正文（4 次 append + read-tail），只是不再写 gen_report.py 脚本。比 gen_report 轻得多，耗时未失控，但不是单次写盘。
+- 铁律 #1 prose 滑坡：agent 读到规范 `V_ratio=0.196`(consistency_check.json detail 字段正确)，却在总结 prose 里自行换算成错误的 `0.0545h`(多除×3.6)。**规范工具值正确，是 agent prose 重算引入的误差。** 已补条款"汇报原样引用 JSON 值、禁 prose 自行单位换算"。
+- **Why:** 下次优化任何"agent + 脚本工具链"技能，顶层铁律是改变 agent 行为的首选杠杆；但要预期 agent 对"数值在 prose 里原样引用"这类细粒度遵从仍会滑坡，需把关键数值的逐字引用写成更显式的指令。
+
+## Key Learning 更新 (2026-08-13 — 给排水技能 7 反馈逐项专项测试：反馈7 跨轮承接是最大缺口)
+
+**全量页面专项测试裁决：** 7 条反馈中 1/2/3/4/5 达标（5 条），6 机制达标待 UI 端到端复验（1 条），**7 核心未达标（1 条）**。
+
+**三条硬学习（带实证）：**
+
+1. **canonical 工具比 agent 手推依赖链更准 —— 必须用 `impacted` 不可手推。** 改参轮 agent 手工判 Q 的依赖链时漏掉 `V_ratio_check`（判为"不受影响"），但 `formula_runner.py impacted` 正确识别它受影响（V_ratio_check=V_system/Q，Q 在分母）。值差分工具在真实容器对真实 state 跑出 8 公式/4 章的紧致影响集。**Why:** agent 手推拓扑传播易漏分母/间接依赖；canonical 工具遍历 DAG 无遗漏。**How to apply:** 任何"定点重生成/依赖树"话术，SKILL 必须强制走 `impacted` 子命令，禁 agent 自推。
+
+2. **跨轮任务承接 ≠ 数据持久化；workspace 文件存活不够，必须显式 snapshot 锚定"当前任务"。** 线程 `1366cf6c` 第 2 轮明确要求 Q→25000 改参，agent 读到了基准 state、确认了 CLI 可用，却漂移回"重新交付 Q=20000 报告"。根因：`project_snapshot.json` 从未被写出 → 无当前任务锚点 → agent 被线程首条消息+累积记忆拉回"生成"语义。**Why:** workspace 文件让参数/结果跨轮存活，但不承载"本轮用户意图"；无锚点时 agent 默认回退到原始任务。**How to apply:** 多轮技能的 SKILL 必须①首次交付末尾强制 write snapshot(params/state/standards/report_path+version+changelog) ②每轮收尾追加 changelog ③加"⛔多轮承接铁律：第2轮+一律增量指令、禁回退整篇生成、改参必走 update+impacted"。见 bug-1171。
+
+3. **`formula_runner execute` 是全有或全无 —— 不支持部分 DAG 求值（分阶段场景的边界例外）。** execute 在首个缺失 user_input（pool_area）即 `KeyError` 并不产出 state.json。分阶段轮 agent 正确回落到"按公式定义手算+交叉校验"兜底，数值与全参数 execute 逐字一致（292.20/73.05/385.25）。**Why:** execute 走全拓扑序逐节点 resolve_inputs，遇缺即 raise，无"跳过+标待补"路径。**How to apply:** 后续让 execute 支持部分求值（不可解析公式 output 标 [待用户提供]、可解析子图照算、state.json 仍落盘），分阶段值也由 canonical 背书、铁律 #1 无边界例外。见 bug-1170。
+
+**铁律 #1 prose 条款生效（正向）：** 改参轮 agent 主动捕获并拒绝传播陈旧的"3.27min"记忆，改引权威 `0.196h=11.76min` —— 说明上轮补的"汇报原样引用 JSON、禁 prose 自行换算"条款起作用了。
+
+## Key Learning 更新 (2026-08-13 — 反馈7 修复实测：交接点 gating / 死指令 / 文件系统实证)
+
+**反馈7 已 SKILL 层修复并复验（线程 415dd390）：snapshot.py + 多轮承接铁律 + 关键顺序修正。** 三条新硬学习（带实证）：
+
+1. **【agent 指令设计铁律】放在 agent 交接点（present_files）之后的步骤 = 不可达死指令，永远不会被执行。** 初版 SKILL 把 `snapshot.py save` 放在 `present_files` 之后；agent 在 present_files 即视为本轮交付完成、结束工具调用，save 从不执行（线程 415dd390 Round1 实测：6 文件落盘、唯独无 project_snapshot.json）。**Why:** present_files 是 agent 的"交付/交接"语义终点，其后指令在 agent 的任务完成模型里不存在。**How to apply:** 任何"收尾前必须先做 X"的步骤，把 X 放在交接点**之前**，并让交接点**反向依赖 X 的成功标记**（本例：步骤5 = ①write_file → ②snapshot.py save 拿 `SNAPSHOT_READY` → ③present_files；present_files 明示"没拿到 SNAPSHOT_READY 即未完成"）。修复后 Round1 实测 project_snapshot.json 正确写出（v1+last_task+params+4规范+changelog）。**Do-Not-Repeat：别把任何必做步骤放在 present_files 之后。**
+
+2. **【验证方法论】log 文本 regex ≠ 文件系统实证。** 初次"复验"用 `/SNAPSHOT_READY|snapshot\.py|project_snapshot/` 匹配 agent log，命中（hasSnapshot=true）就误判已修复；实际是 agent 在**推理里提到** project_snapshot，并未执行 save。**Why:** agent 会复述/引用 SKILL 里的概念，log 出现词不等于执行了动作。**How to apply:** 验证持久化类产物必须在文件系统查实际文件（docker exec ls/cat），不能用 log 正则代替。bug-1171 的"修复假阳性"就是这么被文件系统查空抓到的。
+
+3. **【反馈1 关联】高上下文（2.8M tokens）破坏 agent 多步连贯性。** 本线程 Round1 上下文膨胀到 2.8M（改大的 SKILL.md + 澄清交互 + 长报告生成），导致：① checkpointer 加载巨状态慢，页面周期性"加载对话中…"卡死；② Round2 中途被合理澄清打断后，高上下文下执行不连贯（重写报告但未应用 25000、未存 v2）。**Why:** 上下文接近极限时 summarization 中途介入 + 注意力稀释，多步流程掉步。**How to apply:** 多轮验证用**精简首参**（3 参数走容错）开局，避免全参数 + 澄清交互叠加膨胀；SKILL 体积本身也要控制（铁律/锚点 prose 不宜无限堆）。这是反馈1 范畴，独立于反馈7 机制。
+
+## Key Learnings (2026-08-13 — 个人微信绑定代码全量对齐上游 bytedance/main,bug-1172)
+
+**上游 IM 绑定架构真相（跨会话高价值，曾导致 EAI 漂移）：**
+1. **`/connect <code>` 消费在 CHANNEL 层，不在 manager。** wechat.py `_bind_connection_from_connect_code`(→`consume_oauth_state`+`upsert_connection`)在 `_handle_update` 里、dispatch 给 manager 之前就处理掉 connect code。`manager.py:822` 显式 `not msg.text.startswith("/connect")` 跳过它，`_handle_command` 没有 `/connect` 分支(返回"Unknown command: /connect")。**Why:** 上游让每个 channel 自己吃自己的绑定命令。**How to apply:** 写/改绑定测试必须打 channel 层(实例化 WechatChannel + _handle_update),不要打 `manager._handle_command('/connect')`——那是 EAI 旧设计,已随对齐删除(见 test_wechat_binding.py DELETED)。上游覆盖在 test_wechat_channel.py(34 测试,含 test_connect_code_bypasses_allowed_users_filter)。
+2. **上游微信 bot 启动模型 = `qrcode_login_enabled` QR bootstrap。** `channels.wechat.qrcode_login_enabled: true` 且无 bot_token 时,`WechatChannel.start()`→`_bind_via_qrcode()` 从 `ilinkai.weixin.qq.com` 取 QR、记日志、轮询 get_qrcode_status,扫码确认后自动取并持久化 bot_token。**未扫码前 `provider_status("wechat")["enabled"]` = False** → `/api/channels/wechat/connect` 返回 HTTP400 "Channel provider is not enabled"(微信也不出现在 GET /providers 列表)。**这是操作态(bot 未配置),不是 bug。** 管理员不通过浏览器绑定,而是扫码或填 `channels.wechat.bot_token`。
+3. **`channel_connections.enabled: true` + `require_bound_identity: false`**(本仓 config.yaml)。上游通用 `POST /api/channels/{provider}/connect` 要求 `channel_connections.enabled`;EAI 旧注释"wechat left out of channel_connections"是 EAI 意图(因它另做 admin QR-bind),非代码排除——wechat 一直在上游 `_PROVIDER_META`(`auth_mode: binding_code`)。
+
+**Do-Not-Repeat：**
+- **对齐 EAI 文件到上游(git checkout bytedance/main)时,必须同步处理它的测试。** EAI 自有测试文件(上游无对应)很可能测的是已删/错误层级行为,对齐后会全红(test_wechat_binding.py 5/8 失败,因测 manager 层 /connect)。先 diff 测试 vs 上游、grep 已删符号,再决定 checkout / 删除。
+- **EAI 登录字段是 `username`(工号或 email),不是 `email`。** `POST /api/extensions/auth/login` body `{"username":"admin@eai-flow.com","password":"..."}`;用 `email` 字段会 422 missing username。
+
+**本仓 Docker 验证 cheatsheet(跨会话复用)：**
+- 前端 typecheck(cwd 是 /app,前端在 /app/frontend):`docker exec deer-flow-frontend sh -c 'cd /app/frontend && pnpm typecheck'`。
+- 后端单测(venv pytest 在 /app/backend):`docker exec deer-flow-gateway sh -c 'cd /app/backend && PYTHONPATH=. uv run pytest tests/test_xxx.py -v'`。
+- **`.next/dev/types/validator.ts` 是 gitignore 的生成缓存**,运行中的 Turbopack dev server 重生成它时会半写→typecheck 报 TS1128(stray token 如裸 `ck`)。**删掉/重启 frontend 容器重跑即净**,别误判为源码错误。
+- **后端 pytest 跑在 host 的 backend/ venv,不在 gateway 容器**:`docker exec deer-flow-gateway ... python -m pytest` 报 `No module named pytest`(runtime 镜像无 dev deps)。可靠路径:`cd backend && PYTHONPATH=. uv run pytest tests/test_xxx.py -v`(host-side)。上方第 763 行的"docker exec gateway uv run pytest"未验证通过,以本条为准。
+
+## Key Learnings (2026-08-13 — WeChat ClawBot 激活状态/QR 暴露 + auth-state 生命周期)
+
+- **`wechat-auth.json` 的 `status` 字段不是激活信号,`bot_token` 才是。** QR-login 流程(wechat.py:783-799)在 QR 过期/超时时调 `_save_auth_state(status="expired"/"timeout", qrcode=..., qrcode_img_content=...)` **不传 bot_token kwarg**;而 `_save_auth_state` 是 **merge**(`data = dict(self._auth_state)`,line 1387),不传 bot_token 时走 `elif self._bot_token`(line 1396)**保留旧 token**。只有 iLink 运行时返回 `errcode==-14`(wechat.py:566-571)才真正 `bot_token=""` + pop。**故 `status="expired"` 可与有效 `bot_token` 共存**(bot 实际已激活,只是 QR 流程跑过又失败)。任何"是否激活"判断要用 `bool(bot_token)`,不能看 status。
+- **激活 QR 在 `qrcode_img_content`(公网图 URL,`https://liteapp.weixin.qq.com/...`),不是 `qrcode`(内部 token,绝不能泄漏)。** 只在 `status=="pending"` 时暴露 qrcode_img_content。
+- **`POST /api/channels/{name}/restart` 已存在且 admin-gated**(channels.py),→ `service.restart_channel` → 新渠道实例 → 若无 token 则 `_bind_via_qrcode` 拉新 QR。复用它,别写渠道生命周期代码。但注意:若 auth 文件已有 token,重启不会重新拉 QR(实例视为已认证)。
+- **bot-status 端点对所有已登录用户可见**(`_get_user_id` 守卫,非 admin-only)——因为普通用户需扫码激活。只有"重新生成 QR"是 admin-only。
+- **CSRF double-submit:curl 测 API 的正确姿势**——`POST /api/extensions/auth/login`(字段 `username` 非 `email`,无 Origin → 非浏览器客户端放行)成功后在响应里 set `csrf_token` cookie;后续写操作带 `X-CSRF-Token: <cookie值>` header + cookie 即可。`/api/auth/login` 是上游路由、不签 csrf cookie,EAI 登录走 `/api/extensions/auth/login`。

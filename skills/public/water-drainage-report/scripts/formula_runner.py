@@ -41,9 +41,24 @@ import sys
 from pathlib import Path
 
 # ── 路径设置：将 backend 加入 Python 搜索路径 ──
-# 本脚本位于 skills/public/water-drainage-report/scripts/ 目录下，
-# backend 在项目根目录的 backend/ 下。parents[4] 即项目根（scripts→wd→public→skills→root）。
-_BACKEND = Path(__file__).resolve().parents[4] / "backend"
+# 本脚本在两种布局下被调用，必须都能定位到 backend/app/extensions/formula_engine：
+#   1. 宿主开发：  <repo>/skills/public/water-drainage-report/scripts/   → 上溯到 <repo>/backend
+#   2. 容器内运行：/app/backend/.deer-flow/skills_view/public/.../scripts/ → 上溯到 /app/backend（backend 根即其自身）
+# 写死 parents[N] 会在两种布局间漂移（bug-1168：容器内 parents[4] 指向 .deer-flow，import app 直接失败），
+# 故改为向上搜索「含 app/extensions/formula_engine 的目录」，两种布局都命中。
+def _resolve_backend(start: Path) -> Path:
+    """从脚本路径向上找 backend 根（含 app/extensions/formula_engine 的目录）。"""
+    for parent in [start.parent, *start.parents]:
+        # 容器布局：parent 本身即 backend 根（/app/backend 下直接挂 app/extensions/...）
+        if (parent / "app" / "extensions" / "formula_engine").is_dir():
+            return parent
+        # 宿主布局：parent 是项目根，backend 在 parent/backend
+        if (parent / "backend" / "app" / "extensions" / "formula_engine").is_dir():
+            return parent / "backend"
+    raise RuntimeError("无法定位 backend/app/extensions/formula_engine（formula_runner 路径上溯失败）")
+
+
+_BACKEND = _resolve_backend(Path(__file__).resolve())
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 

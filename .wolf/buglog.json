@@ -18505,7 +18505,14 @@
     "file": "backend/tests/test_consistency_engine.py",
     "root_cause": "测试硬编码数据文件路径 skills/custom/water-drainage-report/references/...，但该技能实际位于 skills/public/water-drainage-report/（anatomy.md 旧的 custom/ 描述已过时）。skills/custom/ 被 .gitignore 忽略，全新克隆/CI 里不存在该文件 → 6 个依赖该 json 的用例全部 FileNotFoundError。属 pre-existing，与 water-drainage 技能优化(T1-T10)无关——T3 复跑时由 spec reviewer 独立确认在 baseline 93f0e2e58 与 HEAD 07188cc2b 均缺失该文件。",
     "fix": "未修复（pre-existing，超出现在技能优化范围）。建议修法：把 test_consistency_engine.py 中 custom→public 路径改对，或在测试里用 importlib/glob 探测真实技能根目录；skills/public/water-drainage-report/references/consistency_contracts.json 确实存在。",
-    "tags": ["test", "path", "water-drainage", "consistency", "pre-existing", "gitignore"],
+    "tags": [
+      "test",
+      "path",
+      "water-drainage",
+      "consistency",
+      "pre-existing",
+      "gitignore"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-11T00:00:00+08:00"
@@ -18517,7 +18524,14 @@
     "file": "skills/public/water-drainage-report/scripts/formula_runner.py",
     "root_cause": "cmd_impacted 原实现 `affected_formulas = graph.update_param(...)` 直接取返回集。但 FormulaGraph.update_param（graph.py:455）是 ponytail 全量简化——标记全部节点 dirty 并返回全部 formula_id（显式注释：12 公式 <1ms，>100 公式/>10ms 才升级 BFS 脏标记）。故任意单参改动返回全 12 公式。这不是 update_param 的 bug（有意为之），但 cmd_impacted 拿它做章节裁剪就过报了。",
     "fix": "cmd_impacted 改值差分：update_param(P,V) → execute()(让新结果落地) → last_change_summary()(仅返回结果真变化的公式输出,key=fid.out) → 抽 formula_id。实测 Q=25000→8 公式、effective_depth=2.5→3 公式(非全 12)。引擎层 update_param 不动(保持 dumb+fast)，智能放 runner 层。commit 9aac8c722。",
-    "tags": ["water-drainage", "feedback6", "cmd_impacted", "value-diff", "update_param", "ponytail"],
+    "tags": [
+      "water-drainage",
+      "feedback6",
+      "cmd_impacted",
+      "value-diff",
+      "update_param",
+      "ponytail"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-12T00:05:00+08:00"
@@ -18529,9 +18543,142 @@
     "file": "skills/public/water-drainage-report/scripts/formula_runner.py",
     "root_cause": "第46行 _BACKEND = Path(__file__).resolve().parents[5] / 'backend' 算错层级。从 scripts/formula_runner.py 往上：parents[4]=仓库根(D:\\eai\\eai-flow-main)，parents[5]=仓库根的上一级(D:\\eai)。故 parents[5]/'backend' = D:\\eai\\backend（不存在）。应为 parents[4]。注释写'向上5级'本身也数错（scripts 到仓库根是4级）。生产里技能能跑(真实反馈来自实际出图)，说明生产调用上下文(Docker容器/agent sandbox/PYTHONPATH)另给了 backend 路径，独立宿主机 `python formula_runner.py` 才暴露此 bug。",
     "fix": "已修（commit 633f4beef, 终审 I4）: parents[5]→parents[4] + 注释「5级」→「parents[4]=项目根」。经核查 scripts→water-drainage-report→public→skills→root 确为 4 级。修复后 host standalone `python formula_runner.py` import OK；I2 subprocess e2e 测试（tests/test_formula_runner_cli.py）依赖此修复并通过。容器/sandbox 不受影响（走 PYTHONPATH/挂载，不依赖此 _BACKEND 计算）。",
-    "tags": ["water-drainage", "formula_runner", "path", "parents-index", "pre-existing", "host-vs-container", "fixed"],
+    "tags": [
+      "water-drainage",
+      "formula_runner",
+      "path",
+      "parents-index",
+      "pre-existing",
+      "host-vs-container",
+      "fixed"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-12T02:10:00+08:00"
+  },
+  {
+    "id": "bug-1168",
+    "timestamp": "2026-08-12T00:00:00",
+    "error_message": "ModuleNotFoundError: No module named 'app' — formula_runner.py 在 agent 容器内 import app.extensions.formula_engine 失败（页面验证发现）",
+    "file": "skills/public/water-drainage-report/scripts/formula_runner.py:43-63",
+    "root_cause": "bug-1167 的 host 端修复 _BACKEND=parents[4]/'backend' 只覆盖宿主布局(skills/public/.../scripts → parents[4]=repo root)。容器内 agent 走 /mnt/skills → skills_view 投影，脚本物理路径为 /app/backend/.deer-flow/skills_view/public/.../scripts，parents[4] 指向 .deer-flow（无 backend），import 失败。连锁后果：trace/check/impacted 子命令在容器内全不可用 → agent 跑不了规范管线 → 陷入反复 ask_clarification 的死循环（同一组 5 个设备参数被问了 4 次），反馈3/4/5/6/7 在页面全部失效。",
+    "fix": "新增 _resolve_backend(start) 向上搜索「含 app/extensions/formula_engine 的目录」：容器布局 parent 本身即 backend 根(/app/backend)；宿主布局 parent/backend。两种布局都命中。宿主 + 容器(skills_view 路径) execute/trace/check 实测均 STATE_READY。+3 回归测试 TestResolveBackend(host/container/not_found)。",
+    "tags": [
+      "water-drainage",
+      "formula_runner",
+      "container-path",
+      "skills_view",
+      "bug-1167-followup",
+      "page-verification",
+      "反馈3",
+      "反馈4",
+      "反馈5",
+      "反馈6"
+    ],
+    "related_bugs": [
+      "bug-1167"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-12T00:00:00"
+  },
+  {
+    "id": "bug-1169",
+    "timestamp": "2026-08-12T00:00:00",
+    "error_message": "Extensions database is unavailable (503) — frontend useFolderTree 请求 folders/tree 报错;gateway 日志:(sqlite3.OperationalError) unable to open database file",
+    "file": "backend/app/extensions/database.py (get_db 503 catch); backend/.deer-flow/data/deerflow.db (harness app sqlite)",
+    "root_cause": "contract_price MCP spawn 子进程(uvicorn multiprocessing, 含 python -m app.extensions.contract_price.mcp)泄漏 93 个 deerflow.db 文件描述符(8.5h 累积, 另含 memory-fts5/checkpoints.db fd)。Windows bind-mount(D:\\ 挂载 /app/backend)上被大量持有的文件无法再被其他进程打开 → SQLite 'unable to open database file'。deerflow.db 复制到容器本地 /tmp 可正常打开(文件本身完好),证明是挂载 IO/锁问题而非损坏。docmgr folder tree 路径触发 harness sqlite 读取 → sqlalchemy.exc.OperationalError → get_db 捕获抛 503。错误间歇性出现(08:46/09:14),随 fd 累积恶化。",
+    "fix": "立即: kill 泄漏进程(pid 1986/2089) → deerflow.db 恢复可打开; 杀进程致 gateway 卡住 → docker compose -p eai-docker restart gateway 恢复。持久方案(待实施): 看门狗定期检测持有 >10 个 deerflow.db fd 的非主进程并杀; 或定位 harness MCP spawn 的 fd 泄漏(改 harness 核心,按 no-core-code-changes 约定暂缓)。",
+    "tags": [
+      "sqlite",
+      "fd-leak",
+      "windows-bind-mount",
+      "contract-price-mcp",
+      "extensions-db",
+      "503",
+      "docmgr"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-12"
+  },
+  {
+    "id": "bug-1170",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "formula_runner.py execute 在首个缺失的 user_input 参数即抛 KeyError('公式 V_pool 的输入 pool_area 无法解析')，不产出 state.json；不支持跳过不可解析公式只算可解析子图（部分 DAG 求值）",
+    "file": "backend/app/extensions/formula_engine/graph.py:194 (resolve_inputs) / graph.py:401 (_execute_node)",
+    "root_cause": "execute 走全拓扑序逐节点 resolve_inputs，遇 user_input 缺失即 raise，整图中断；无'跳过+标待补'的部分求值路径",
+    "fix": "未修（非回归，属增强）。现状下分阶段场景 agent 回落按公式定义手算+交叉校验兜底，数值经实测与全参数 execute 输出逐字一致。改进方向：resolve_inputs 对不可解析公式返回 sentinel、output 标 [待用户提供]，可解析子图照常算、state.json 仍落盘",
+    "tags": [
+      "formula_engine",
+      "partial-eval",
+      "water-drainage",
+      "反馈2",
+      "分阶段",
+      "design-limitation"
+    ],
+    "related_bugs": [
+      "bug-1168"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1171",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "反馈7 跨轮任务承接失败：第2轮明确要求把 Q 从 20000 改成 25000 做 impacted 定点重生成，agent 读取了基准状态并确认 CLI 可用后，任务漂移回'重新交付 Q=20000 报告'，完全忽略改参请求，无 25000/无前后对比/无 impacted 调用",
+    "file": "skills/public/water-drainage-report/SKILL.md（snapshot.py save 原置于 present_files 之后）",
+    "root_cause": "两层根因。表层：project_snapshot.json 从未被 agent 写出 → 无'当前任务'锚点 → agent 依据线程首条消息+累积记忆解释任务意图 → 把改参误读为重新生成。深层（2026-08-13 实测确认）：即便加了 snapshot.py CLI + 铁律#4'每轮收尾必须 save'，agent 仍跳过 save——因为 SKILL 原文把 save 放在 present_files（agent 的交接/收尾点）**之后**。agent 在 present_files 后即视为本轮交付完成、结束工具调用，present_files 之后的所有指令都是不可达的'死指令'。数据持久化(workspace 文件)≠任务承接；且'交接点之后的步骤'永远不会被 agent 执行。",
+    "fix": "已修（SKILL 层，未动 harness 核心）：(1) 新增 scripts/snapshot.py（stdlib-only canonical CLI，save/show，读改写 project_snapshot.json，version++ + changelog 追加 + last_task 防漂移锚点）；(2) 新增'多轮承接铁律'（与执行铁律同级）：启动第一件事读快照锚点、第2轮+一律增量禁回退、改参必走 update+impacted、每轮收尾必 save；(3) 关键修正——把 snapshot.py save 从 present_files **之后**改到 **之前**，并让 present_files 显式依赖 SNAPSHOT_READY（write_file → snapshot.py save → 拿到 SNAPSHOT_READY → 才能 present_files）。收尾点反向 gating 收尾前置步骤，杜绝'死指令'。8 个 snapshot CLI 单测 + 3 个 formula_runner 回归全过。pending: 实测复验 agent 是否在 reorder 后真的写出 project_snapshot.json。",
+    "tags": [
+      "water-drainage",
+      "反馈7",
+      "session-snapshot",
+      "cross-round",
+      "task-drift",
+      "multi-turn",
+      "instruction-ordering",
+      "agent-handoff-gating"
+    ],
+    "related_bugs": [
+      "bug-1170"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1172",
+    "timestamp": "2026-08-13T01:50:00Z",
+    "error_message": "个人微信连接 agent 的代码与上游 bytedance/main 严重漂移:wechat.py 处于坏中间态(残留 EAI admin-bind start_bind/_admin_bind_task/get_bind_state/fetch_share_qrcode,同时丢失上游 asyncio.to_thread fs-IO 卸载/_send_with_retry/is_known_channel_command/attach_connection_identity/secure tempfile 鉴权写入);前端 EAI 自有 admin-bind API/hooks/types/wechat-settings-page 与上游 channel_connections /connect 流程重复;EAI 专有 wechat_bot.py 死路由 + test_wechat_binding.py 测试错误层级(manager 层 /connect,但上游 /connect 消费在 channel 层)",
+    "file": "backend/app/channels/wechat.py + backend/app/gateway/routers/{channel_connections,wechat_bot,app,__init__}.py + frontend/src/core/channels/{api,hooks,types}.ts + wechat-settings-page.tsx + i18n + backend/tests/test_wechat_{channel,binding}.py",
+    "root_cause": "EAI 早期为微信单独做了 admin QR-bind 流程(/wechat/bind 等),与上游 channel_connections 的 /connect<code> 绑定模型并行演进导致漂移;后续部分回退留下坏中间态;test_wechat_binding.py 针对 manager._handle_command('/connect') 但上游架构 /connect 由 channel(wechat.py _bind_connection_from_connect_code)消费,manager 显式 skip /connect(line 822/1142)",
+    "fix": "全量对齐上游:wechat.py git checkout bytedance/main(字节级一致,git diff 空);删除 EAI wechat_bot.py 路由+从 app.py/__init__.py 注销;从 channel_connections.py 移除 EAI wechat bind 块(保留上游 /{provider}/connect);前端删 EAI api/hooks/types(StartWechatBotBindResponse/startWechatBotBind/getWechatBotBindStatus/createWechatBindCode/WechatBotBindStatus/WechatBindCodeResponse),wechat-settings-page 改用上游 useConnectChannelProvider('wechat')(保留 connect-code UX,删 admin-bind 段);i18n 三件套(zh-CN/en-US/types)删 admin-bind 键;测试:checkout 上游 test_wechat_channel.py(34)+新增 blocking_io/test_wechat_channel_state.py(3),删除 EAI test_wechat_binding.py(覆盖由上游 channel 层提供)",
+    "tags": ["wechat", "ilink", "upstream-sync", "channel-connections", "eai-custom-removal", "blocking-io"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T01:50:00Z"
+  },
+  {
+    "id": "bug-1173",
+    "timestamp": "2026-08-13T17:30:00Z",
+    "error_message": "User: gateway 首启打印的 ClawBot 激活 QR(或 channels.wechat.bot_token 状态)只出现在 gateway 日志里,admin/普通用户无法在 UI 看到;普通用户激活微信 ClawBot 需要扫描二维码,否则无法激活 — 必须把 QR 暴露给所有已登录用户(非 admin-only)",
+    "file": "backend/app/gateway/routers/channel_connections.py + backend/tests/test_wechat_bot_status.py + frontend/src/core/channels/{types,api,hooks}.ts + frontend/src/components/workspace/settings/wechat-settings-page.tsx + frontend/src/core/i18n/locales/{zh-CN,en-US,types}.ts",
+    "root_cause": "wechat.py 把激活 QR(qrcode_img_content)和状态只写进 wechat-auth.json + 日志,前端无任何消费方;上游 channel_connections 只有 /connect<code> 绑定码,无激活状态视图",
+    "fix": "新增只读 EAI-CUSTOM 端点 GET /api/channels/wechat/bot-status:读 {state_dir}/wechat-auth.json(asyncio.to_thread 过 blocking-IO gate),返回脱敏视图(qrcode_login_enabled/status/bot_bound/qrcode_url 仅 pending 时/updated_at),绝不泄漏 bot_token/ilink_bot_id/raw qrcode;所有已登录用户可见(_get_user_id 守卫,非 admin-only)。前端 useWechatBotStatus(pending 3s/非 confirmed 5s 轮询,confirmed 停)+ useRestartWechatChannel(复用既有 admin POST /wechat/restart,零渠道生命周期代码);wechat-settings-page 顶部加 BotStatusCard(qrcode_login_enabled=false→提示 / confirmed→绿点已激活 / pending→<img src=qrcode_url>+扫码提示 / 其他→需激活+admin 重新生成按钮,非 admin 显示联系管理员);10 个 i18n key 三件套。16 测试全过(含脱敏不泄漏断言)",
+    "tags": ["wechat", "ilink", "clawbot", "activation-qr", "eai-custom", "channel-connections", "settings-ui"],
+    "related_bugs": ["bug-1172", "bug-1174"],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T17:30:00Z"
+  },
+  {
+    "id": "bug-1174",
+    "timestamp": "2026-08-13T17:35:00Z",
+    "error_message": "e2e 发现:当前 dev wechat-auth.json 为 status=expired 且同时持有 bot_token;原 sanitizer 逻辑 bot_bound=(status=='confirmed' && token) 导致卡片在 bot 实际已激活(有 token)时误显示\"激活二维码已过期 + 重新生成\",误导 admin 去无谓重启渠道",
+    "file": "backend/app/gateway/routers/channel_connections.py (_sanitize_wechat_bot_status) + backend/tests/test_wechat_bot_status.py + frontend/src/components/workspace/settings/wechat-settings-page.tsx",
+    "root_cause": "误判了 wechat.py 的状态生命周期:原计划假设\"expired ⇒ token 清空\",但 wechat.py:783-799 的 QR-login 流程在 QR 过期/超时时调 _save_auth_state(status='expired'/'timeout', qrcode=..., qrcode_img_content=...) 时**不传 bot_token kwarg**;_save_auth_state 是 merge(line 1387 data=dict(self._auth_state)),不传 bot_token 时走 elif self._bot_token(line 1396)**保留旧 token**。只有 iLink 运行时返回 errcode==-14(wechat.py:566-571)才真正清 token。故 status 字段只反映 QR-login 流程的瞬态,token 存在才是激活的持久证据",
+    "fix": "bot_bound 改为 bool(bot_token) 即可,与 status 解耦(加生命周期注释说明 wechat.py merge 分支);前端 pending 改 !confirmed && status=='pending' 以防残留 token 时误显旧 QR;新增回归测试 test_sanitize_stale_status_with_token_is_bound 覆盖 expired/timeout/canceled/invalid/failed + token → bot_bound True;live 验证:同文件 status=expired+token 现正确返回 bot_bound=true,UI 显示\"已激活,在线运行中\"且不再显示重新生成按钮",
+    "tags": ["wechat", "ilink", "auth-state", "status-lifecycle", "sanitizer", "e2e-found", "correctness"],
+    "related_bugs": ["bug-1173"],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T17:35:00Z"
   }
 ]

@@ -20,6 +20,34 @@ description: |
    - 绝不根据"行业常见值""经验数据"自行填入
    - **唯一正确做法**：缺失信息时标注 `[待用户提供: 信息名]`，并用 `ask_clarification` 向用户追问，等用户提供后才能继续。公式所需的参数缺失时，公式暂不计算，整章对应位置标注 `[待用户提供]`。
 
+## ⛔ 执行铁律（最高优先级，先于一切步骤）
+
+**实证教训（2026-08-12 页面验证）：** agent 即便被明确要求用规范工具，仍倾向"先自写整篇 Python 生成器 + 分块 `write_file` 拼接"，导致耗时从目标 ≤3min 飙到 7min+，还常丢失自身变量结构、需 grep/sed 取证自己的代码。以下铁律杜绝该模式——**违反任一条即视为流程失败**。
+
+1. **公式数值的唯一来源 = `formula_state.json` / `traces.json`。** 严禁在任何自写代码、heredoc、或回复里硬编码或重算公式结果——禁止出现 `R = dict(Qe=292.20, ...)` 这类字面量赋值，也禁止自行 `Qe = Q * KZF * delta_t`。所有 Qe/Qw/Qb/Qm/V_pool/V_system/filter_count 等值，必须来自步骤2 的 `formula_runner.py execute`/`trace` 输出文件，由代码读文件取得。**向用户汇报/总结时原样引用** `consistency_check.json`/`traces.json` 的数值（如容积比直接引 `detail` 字段的 `0.196`），**严禁在 prose 里自行单位换算或重算**——自行换算会引入 `0.196→0.0545` 这类错误（2026-08-12 复验实测：agent 把 V_ratio 多除了 ×3.6，写出错误的 0.0545h）。
+
+2. **必须先 execute，后生成。** 步骤2 的 `formula_runner.py execute` 必须是第一个计算动作并产出 STATE_READY；在它成功之前，**不得写任何报告内容或生成器代码**。execute 失败则按步骤2「失败处理」排查重试，**绝不绕过自算**。
+
+3. **禁止"整篇文档生成器"脚本。** 不得编写一个循环拼装全报告的 `.py`（如 `gen_report.py`）。table 章直接读 `traces.json` 在上下文内渲染为 Markdown（每式 = 摘要行 + `<details>` 折叠块）；narrative 章走 `task()` 子 agent。报告最终内容由 agent 在上下文内组装，一次 `write_file` 落盘（见步骤5）。渲染需要少量 helper 代码时，必须 `read_file` 读 `formula_state.json`/`traces.json` 取值，不得重算。
+
+4. **禁止分块 `write_file` 拼接。** 全程只允许两类写盘：① 步骤2 的单个 `params.json` heredoc；② 步骤5 的单次报告 `write_file(append=false)`。不得用多次 `append` 拼长脚本或长文档——这会丢自身结构、制造重复段、且每次 append 都是一次工具调用，直接吃掉耗时预算。
+
+5. **耗时自检（反馈1）：** 单轮工具调用累计超 ~90s 仍未拿到 `STATE_READY`/`TRACE_READY` → 已偏离正轨，立即停下、重读步骤2，**勿继续堆砌自写代码**。规范计算本身亚秒级；耗时全在编排，编排必须走规范工具链。
+
+## ⛔ 多轮承接铁律（反馈7，与执行铁律同级，先于一切步骤）
+
+**实证教训（2026-08-13 页面验证）：** 线程 `1366cf6c` 第 2 轮明确要求"把 Q 改成 25000 做 impacted 定点重生成"，agent 读到了基准 state、确认了 CLI 可用，却**漂移回"重新交付 Q=20000 报告"**——根因是 `project_snapshot.json` 从未被写出，无"当前任务"锚点，agent 被线程首条历史消息 + 累积记忆拉回"生成"语义（bug-1171）。以下铁律杜绝该模式——**违反任一条即视为流程失败**。
+
+1. **启动第一件事 = 读快照锚点。** 进流程第一个动作：`bash` 跑 `snapshot.py show`（见步骤0）。拿到 `SNAPSHOT_LAST_TASK` → **这就是当前任务上下文**，理解用户本轮指令一律基于它，**绝不被对话历史首条消息主导**。`SNAPSHOT_NONE` 才按全新运行走步骤1。
+
+2. **第 2 轮+ = 增量指令，绝不回退整篇重生成。** 本会话第 2 轮及以后的任何消息，默认是对当前基准的**增量/修改/追加**指令。**禁止**把"改参/补参数/调章节/追加校验"误读为"重新生成一份完整计算书"。判别：快照存在 + 用户消息含"改成/调整/补/换成/比选/增加/去掉"等变更动词 → 一律走增量路径（改参→步骤2 改参定点；补参数→步骤2 update；追加校验→步骤6/7），**不回步骤1 重新收集参数**。
+
+3. **改参必走 update + impacted，禁回落 present 旧报告。** 用户说改参（"把 Q 改成 25000"/"方案比选"等）→ 必须执行步骤2「改参定点重生成」全流程（`formula_runner.py update` → `impacted` → 仅重生成受影响章节 → 单次 write_file 覆盖 → 步骤5 save）。**绝不**直接 `present_files` 一份未改参的旧报告充数。改参前后关键值对比必须给出（取 `impacted` 的 value_diff）。
+
+4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。
+
+5. **数值汇报仍守执行铁律 #1。** 跨轮承接只承接"任务意图 + 参数基准"，公式数值仍唯一来自 `formula_state.json`/`traces.json`/`consistency_check.json`，原样引用、禁 prose 重算。
+
 ## 工具范围
 
 本技能**仅用**以下工具：`read_file` / `bash` / `write_file` / `present_files` / `knowledge-factory_kf_resolve_template` / `ask_clarification` / `web_search`（仅限下述三类查询）。
@@ -29,6 +57,7 @@ description: |
 **配套脚本与数据（通过 bash/read_file 使用）：**
 - `scripts/formula_runner.py` — 公式计算 CLI（execute / update / check / **trace** / **impacted**）
 - `scripts/chapter_planner.py` — 章节规划（manifest 生成 / 受影响章节反查）
+- `scripts/snapshot.py` — 会话快照 CLI（**save** / **show**，反馈7 跨轮承接 + 版本历史）
 - `references/reference_values.json` — 系数/经验类行业参考值库（反馈2，缺失时取默认+【待核实】）
 - `references/standards_index.json` — 可勾选规范清单（反馈5）
 - `references/consistency_contracts.json` — 一致性 + 多规范围框合约（含 `code_constraint_multi`）
@@ -56,18 +85,25 @@ description: |
 
 ### 步骤0：会话快照恢复（反馈7 跨轮承接）
 
-**启动时先检查** `/mnt/user-data/workspace/project_snapshot.json`：
-
-- **存在** → 读取并恢复：`params` / `formula_state` / `chapter_manifest` / `standards_selected` / `report_path`。向用户展示「当前基准状态」（版本号 + 最近一次变更日志），后续指令默认基于该基准增量理解，**不重复追问全局参数**。直接跳到用户当前指令对应的步骤。
-- **不存在或损坏** → 降级为全新运行（try/except 包裹加载，不崩溃），从步骤1 开始。
-
-快照字段（由技能在各步骤后更新，`version++` + `change_log` 追加）：
-```
-{"version", "created_at", "updated_at", "params", "formula_state",
- "chapter_manifest", "standards_selected", "report_path", "change_log": [...]}
+**进流程第一动作（多轮承接铁律 #1）——读快照锚点：**
+```bash
+python /mnt/skills/public/water-drainage-report/scripts/snapshot.py show
+# → SNAPSHOT_VERSION / SNAPSHOT_LAST_TASK / SNAPSHOT_LAST_CHANGE / SNAPSHOT_REPORT
+# 或 SNAPSHOT_NONE（无快照，全新运行）
 ```
 
-**版本历史** = `version` 序列 + `change_log`；前端展示复用文档空间，不新建。
+- **`SNAPSHOT_LAST_TASK` 存在** → **这就是当前任务上下文**（防漂移锚点）。向用户展示「当前基准状态」（v{version} + 最近一次变更 + report_path），后续指令默认基于该基准增量理解，**不重复追问全局参数、绝不被对话历史首条消息主导**。直接跳到用户本轮指令对应的步骤（改参→步骤2 改参定点；补参数→步骤2 update；追加校验→步骤6/7）。
+- **`SNAPSHOT_NONE` 或损坏** → 降级为全新运行（脚本已 try/except，不崩），从步骤1 开始。
+
+快照字段（由 `snapshot.py save` 在每轮收尾维护，`version++` + `changelog` 追加）：
+```
+{"version", "last_task"(⬅ 防漂移锚点), "created_at", "updated_at",
+ "params", "formula_state_path", "chapter_manifest_path",
+ "standards_selected", "report_path",
+ "changelog": [{"version","task","timestamp","value_diffs","affected","note"}]}
+```
+
+**版本历史** = `version` 序列 + `changelog`；前端展示复用文档空间，不新建。
 
 ### 步骤1：收集设计参数
 
@@ -192,8 +228,9 @@ python $SCRIPTS/formula_runner.py update --formulas $FORMULAS --state $WORK/form
 # 2. 查受影响章节
 python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
   --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
-# 3. 仅重生成受影响章节（table 重渲染 / narrative 子 agent 重生成），其余章节原样保留 → 内存内整体覆盖 → 单次 write_file
-# 4. 刷新 traces.json + project_snapshot（version++，change_log 追加 affected_formulas/chapters/value_diffs）
+# 3. 仅重生成受影响章节（table 重渲染 / narrative 子 agent 重生成），其余章节原样保留 → 内存内整体覆盖 → 单次 write_file（步骤5）
+# 4. 记录本轮 value_diffs（{参数:{old,new}}）+ affected_formulas/chapters（取自上面 impacted 输出），
+#    供步骤5 末尾的 snapshot.py save --diff/--affected 固化（不在本步 save；每轮收尾只在步骤5 save 一次）
 ```
 不做像素级差异高亮 UI（顶回去）；「差异」以变更日志文本落地，复用文档空间版本能力。
 
@@ -306,9 +343,10 @@ knowledge-factory_kf_resolve_template(
 ```
 
 **输入:** 步骤4在内存中完整生成的 Markdown 报告
-**操作:** 一次 `write_file`（`append=false`）→ 立即 `present_files`
+**操作（严格顺序，三步缺一不可）:** ① `write_file` 写报告 → ② `snapshot.py save` 固化快照（拿到 `SNAPSHOT_READY`）→ ③ `present_files` 收尾
 **输出:** 同步到文档空间的 AIDocument
 
+**① 一次 write_file 写入完整报告：**
 ```
 write_file(
     path="/mnt/user-data/outputs/{项目名称}给排水设计专篇.md",
@@ -317,18 +355,33 @@ write_file(
 )
 ```
 
-**立即调 present_files（⚠️ 不可跳过）：**
-```
-present_files(filepaths=["/mnt/user-data/outputs/{项目名称}给排水设计专篇.md"])
-```
-
 **⛔ 写盘铁律（防止死循环）：**
 - ✅ 一次 `write_file` 写入完整内容，`append=false`；有误则在内存整体重生成后再整体覆盖
 - ❌ 禁止分多次 `append` 拼章节（会制造重复段落）
 - ❌ 禁止写完再用 `str_replace` 修改落盘文件（会误删相邻内容）
 - ❌ 禁止"先写 workspace 再 `cp`/`mv` 复制到 outputs"——直接写到 `outputs/`
-- 文件落盘全流程只允许上面这一次 `write_file`
+- 报告文件落盘只允许上面这一次 `write_file`
+
+**② ⛔ 固化会话快照（写盘后、present_files 前，多轮承接铁律 #4，不可跳过）：**
+```bash
+python /mnt/skills/public/water-drainage-report/scripts/snapshot.py save \
+  --task "首次生成 {项目名称} 给排水计算书（Q=<值> m³/h）" \
+  --params /mnt/user-data/workspace/params.json \
+  --state /mnt/user-data/workspace/formula_state.json \
+  --manifest /mnt/user-data/workspace/chapter_manifest.json \
+  --report /mnt/user-data/outputs/{项目名称}给排水设计专篇.md \
+  --standards '["<步骤1勾选的规范>"]' \
+  --output /mnt/user-data/workspace/project_snapshot.json
+# 必须 stdout 出现 SNAPSHOT_READY: version=1 才算快照固化成功
+```
+**改参轮** 把 `--task` 换成改参摘要并追加 `--diff '{"<参数名>":{"old":<旧值>,"new":<新值>}}' --affected "<affected_formulas> / <affected_chapters>"`（取自步骤2 impacted 输出）→ `SNAPSHOT_READY: version=N`。这一步保证下一轮用户回来时，步骤0 能读到 `last_task` 锚点、不漂移、不重问全局参数（bug-1171 防线）。
 - 工具失败不盲目重试——最多修正一次（如纠正路径）再试，连续失败 2 次必须停止并如实告诉用户
+
+**③ 最后调 present_files（⚠️ 必须在 ② 打印 SNAPSHOT_READY 之后才调）：**
+```
+present_files(filepaths=["/mnt/user-data/outputs/{项目名称}给排水设计专篇.md"])
+```
+> 没拿到 ② 的 `SNAPSHOT_READY` 就调 present_files = 本轮未完成（下一轮必漂移）。present_files 是收尾动作，必须是步骤5 的最后一个工具调用。
 
 ### 步骤6：一致性校验
 
