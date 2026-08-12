@@ -560,7 +560,7 @@ const PersonalBlockNoteEditor = forwardRef<PersonalBlockNoteEditorRef, PersonalB
 
         {/* Center: Editor — matches BlockNoteEditor layout */}
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-          <div style={{ padding: "40px 64px 128px" }}>
+          <div style={{ maxWidth: 780, margin: "0 auto", padding: "40px 32px 128px" }}>
             <BlockNoteView
               editor={editor}
               sideMenu={!hideSideMenu}

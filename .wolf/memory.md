@@ -6613,3 +6613,6 @@
 | 16:26 | Session end: 3 writes across 1 files (PersonalBlockNoteEditor.tsx) | 8 reads | ~47503 tok |
 | 16:42 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~26 |
 | 08-12 12:00 | 编辑器巨大留白根治:根因=DocumentEditor 根 div(flex:0 1 auto)不撑满 absolute inset-0 父容器,只占 789px,右侧 755px 空白(非 maxWidth/padding 问题);加 flex-1 后填满 1480px,两侧 64px 留白;chrome-devtools MCP 精确测量验证;另查"Extensions database is unavailable"=瞬时 DB 连接故障(gateway 现连接正常,folders=99,无日志错误) | DocumentManagement | done | ~2k |
+| 16:48 | Session end: 4 writes across 2 files (PersonalBlockNoteEditor.tsx, DocumentManagement.tsx) | 12 reads | ~75133 tok |
+| 17:09 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | "40px 64px 128px" → "0 auto" | ~25 |
+| 08-12 12:30 | 编辑器最终方案:用户选恢复历史 780px 居中;保留 flex-1 修复(消除 collapse)+PersonalBlockNoteEditor 恢复 maxWidth:780+margin:0 auto;chrome-devtools 验证内容 716px 居中,左右 382px 对称;另 DB unavailable 已确认瞬时(连接正常) | PBNE+DocumentManagement | done | ~1k |
