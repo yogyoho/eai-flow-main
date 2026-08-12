@@ -6609,3 +6609,7 @@
 | 14:28 | Session end: 2 writes across 1 files (PersonalBlockNoteEditor.tsx) | 6 reads | ~47487 tok |
 | 16:21 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | "0 auto" → "40px 64px 128px" | ~16 |
 | 08-12 11:30 | 编辑器宽度再调:maxWidth 780 太窄(右空白),全宽+32px 无留白;改为 全宽(去 maxWidth)+64px 水平 padding(.bn-editor padding-inline:0 设计由外层提供留白);typecheck 过,待用户浏览器验证 | PersonalBlockNoteEditor | done | ~1k |
+| 16:23 | Session end: 3 writes across 1 files (PersonalBlockNoteEditor.tsx) | 8 reads | ~47503 tok |
+| 16:26 | Session end: 3 writes across 1 files (PersonalBlockNoteEditor.tsx) | 8 reads | ~47503 tok |
+| 16:42 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~26 |
+| 08-12 12:00 | 编辑器巨大留白根治:根因=DocumentEditor 根 div(flex:0 1 auto)不撑满 absolute inset-0 父容器,只占 789px,右侧 755px 空白(非 maxWidth/padding 问题);加 flex-1 后填满 1480px,两侧 64px 留白;chrome-devtools MCP 精确测量验证;另查"Extensions database is unavailable"=瞬时 DB 连接故障(gateway 现连接正常,folders=99,无日志错误) | DocumentManagement | done | ~2k |

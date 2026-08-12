@@ -1538,7 +1538,7 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
   if (loading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">加载中...</div>;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-background">
+    <div className="h-full flex-1 flex flex-col overflow-hidden bg-background">
       <div className="shrink-0 bg-background border-b border-border z-20">
         <div className="h-11 flex items-center justify-between px-4 gap-4">
           <div className="flex items-center gap-2 min-w-0 flex-1">
