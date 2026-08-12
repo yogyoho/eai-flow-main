@@ -6606,3 +6606,6 @@
 | 10:11 | Session end: 1 writes across 1 files (PersonalBlockNoteEditor.tsx) | 6 reads | ~47462 tok |
 | 14:27 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | "40px 32px 128px" → "0 auto" | ~25 |
 | 08-12 11:05 | 编辑器宽度回滚:去掉 maxWidth 导致文本贴边无留白(bn-editor padding-inline:0 设计依赖外层 780px 提供留白);按用户要求恢复历史版本 maxWidth:780+margin:0 auto+padding 40/32/128 | PersonalBlockNoteEditor | done | ~1k |
+| 14:28 | Session end: 2 writes across 1 files (PersonalBlockNoteEditor.tsx) | 6 reads | ~47487 tok |
+| 16:21 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | "0 auto" → "40px 64px 128px" | ~16 |
+| 08-12 11:30 | 编辑器宽度再调:maxWidth 780 太窄(右空白),全宽+32px 无留白;改为 全宽(去 maxWidth)+64px 水平 padding(.bn-editor padding-inline:0 设计由外层提供留白);typecheck 过,待用户浏览器验证 | PersonalBlockNoteEditor | done | ~1k |
