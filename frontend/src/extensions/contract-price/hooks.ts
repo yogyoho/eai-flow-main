@@ -73,6 +73,16 @@ export function useRuns(params: Record<string, unknown> = {}) {
   });
 }
 
+export function useDeleteRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) => contractPriceApi.deleteRun(runId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa", "runs"] });
+    },
+  });
+}
+
 export function useConfig() {
   return useQuery({ queryKey: KEYS.config, queryFn: contractPriceApi.getConfig });
 }

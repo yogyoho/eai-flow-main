@@ -193,6 +193,9 @@ export const contractPriceApi = {
   listRuns: (params?: { run_status?: string; has_items?: boolean; skip?: number; limit?: number }) =>
     authFetch<Page<CpaRun>>(`${API_BASE}/runs${qs(params)}`),
 
+  deleteRun: (runId: string) =>
+    authFetch<{ deleted: number }>(`${API_BASE}/runs/${runId}`, { method: "DELETE" }),
+
   // Functional area 5: config
   getConfig: () => authFetch<CpaConfig>(`${API_BASE}/config`),
 
