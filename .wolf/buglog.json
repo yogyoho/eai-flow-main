@@ -18680,5 +18680,29 @@
     "related_bugs": ["bug-1173"],
     "occurrences": 1,
     "last_seen": "2026-08-13T17:35:00Z"
+  },
+  {
+    "id": "bug-1175",
+    "timestamp": "2026-08-13T18:05:00Z",
+    "error_message": "WeChat 设置页 addBotHint 文案错误地把 ClawBot 描述为'个人微信号,管理员分享微信号、用户在微信中添加该账号为好友'。管理员据此去微信 app 找 ClawBot 微信号,但根本找不到——iLink 模型下不存在微信号。",
+    "file": "frontend/src/core/i18n/locales/zh-CN.ts, frontend/src/core/i18n/locales/en-US.ts (addBotHint)",
+    "root_cause": "上一轮实现 BotStatusCard 时,按通用 IM bot(Slack/Telegram)模式臆测用户绑定=加好友,未核对 wechat.py 的 iLink 身份模型。代码事实:激活 confirmed 时 iLink 仅返回 bot_token+ilink_bot_id(wechat.py:766-772),无 wxid/微信号/昵称;入站消息身份为 ilink_user_id/from_user_id(wechat.py:621);allowed_users 注释明确为 'allowed iLink user IDs'(config.example.yaml:1858);README/模块功能分析定性为 Tencent iLink。ClawBot 是腾讯 iLink 智能体,非个人微信号,无法在微信搜索/添加好友。",
+    "fix": "addBotHint zh+en 两份改为准确描述:腾讯 iLink 智能体(非个人微信号,无法在微信搜索/添加好友);管理员在 iLink/微信智能体后台获取该 Bot 的分享入口(卡片或链接)发给用户,用户在微信中经该入口进入与 Bot 会话后发送 /connect <code> 绑定到自己的账号。types.ts 为 string 无需改;typecheck 通过;前端容器已重启。",
+    "tags": ["wechat", "ilink", "i18n", "addBotHint", "wrong-content", "user-binding", "do-not-assume"],
+    "related_bugs": ["bug-1173"],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T18:05:00Z"
+  },
+  {
+    "id": "bug-1176",
+    "timestamp": "2026-08-13T18:10:00Z",
+    "error_message": "给排水技能循环水链 effective_depth 默认值自相矛盾: formulas.json + reference_values.json 默认 2.0m, 但其引用出处 GB/T 50746-2012 §4.3.13 标注有效水深区间 1.0~1.5m——默认值落在引用区间外; formulas.json 还混入'本项目取2.0m'项目语境污染通用公式默认值。",
+    "file": "skills/public/water-drainage-report/references/formulas.json:57 + references/reference_values.json:23 (同批修 consistency_contracts.json:105 GB 50050→GB/T 50050-2017 笔误)",
+    "root_cause": "公式默认值与自身引用的规范区间不一致(2.0 不在 1.0~1.5 内); 项目特定取值(本项目取2.0m)被写进通用公式定义, 污染所有项目的默认。属 memory 早前标记的'现有硬编码值需回原文重审'之一(effective_depth/0.1%飘水/1%~5%旁滤兜底子款/GB 50050 笔误)。",
+    "fix": "effective_depth 默认 2.0→1.5(引用区间上限, 落在 1.0~1.5m 内), source 文本去掉'本项目取2.0m'污染并标注'条款号与区间均待回原文核实', needs_verification 保持 true(formulas.json:57 + reference_values.json:23 两处); 顺手修 consistency_contracts.json:105 标准号 GB 50050→GB/T 50050-2017。容器内验证: 省略 effective_depth→all_params=1.5/V_pool=1368(912×1.5); 显式 2.0→用户值覆盖 V_pool=1824。飘水 Q*0.001 魔法数未处理(待用户拍板是否参数化)。",
+    "tags": ["water-drainage", "reference-values", "effective-depth", "default-contradiction", "project-value-contamination", "feedback-2", "feedback-3", "pending-drift-magic-number"],
+    "related_bugs": ["bug-1171"],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T18:10:00Z"
   }
 ]

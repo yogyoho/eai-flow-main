@@ -771,3 +771,22 @@
 - **`POST /api/channels/{name}/restart` 已存在且 admin-gated**(channels.py),→ `service.restart_channel` → 新渠道实例 → 若无 token 则 `_bind_via_qrcode` 拉新 QR。复用它,别写渠道生命周期代码。但注意:若 auth 文件已有 token,重启不会重新拉 QR(实例视为已认证)。
 - **bot-status 端点对所有已登录用户可见**(`_get_user_id` 守卫,非 admin-only)——因为普通用户需扫码激活。只有"重新生成 QR"是 admin-only。
 - **CSRF double-submit:curl 测 API 的正确姿势**——`POST /api/extensions/auth/login`(字段 `username` 非 `email`,无 Origin → 非浏览器客户端放行)成功后在响应里 set `csrf_token` cookie;后续写操作带 `X-CSRF-Token: <cookie值>` header + cookie 即可。`/api/auth/login` 是上游路由、不签 csrf cookie,EAI 登录走 `/api/extensions/auth/login`。
+- **iLink ClawBot 不是个人微信号——身份模型只有 `bot_token` + `ilink_bot_id`,无 wxid/微信号/昵称(bug-1175)。** 激活 confirmed 时 iLink 仅返回这两字段(wechat.py:766-772);入站消息用户身份 = `ilink_user_id`/`from_user_id`(wechat.py:621),非 wxid;`allowed_users` 是 iLink user id 列表(config.example.yaml:1858);README 定性 "Tencent iLink";域名 `ilinkai.weixin.qq.com` + QR 图 `liteapp.weixin.qq.com`。**故"管理员分享微信号、用户在微信 app 搜索加好友"这条路根本不存在**——用户经 iLink/微信智能体后台的分享入口(卡片/链接)进入 bot 会话,再发 `/connect <code>` 绑定到 DeerFlow 账号。具体入口 UI 由腾讯 iLink 平台侧提供,本 repo 不控制也说不清,需去部署 bot 的 iLink 控制台核对。**教训:别拿通用 IM bot(Slack/Telegram)的"加好友"模式臆测绑定流程,先看激活/入站消息返回的身份字段类型。**
+
+
+## Key Learning 更新 (2026-08-13 — bug-1176 公式默认值勿混项目语境 / 默认值须落在引用区间内)
+
+**给排水技能循环水链 effective_depth 默认值自相矛盾（已修）：** formulas.json + reference_values.json 默认 2.0m, 但同一字段引用的 GB/T 50746-2012 §4.3.13 标注有效水深区间 1.0~1.5m——默认值落在引用区间外; formulas.json 还混入"本项目取2.0m"项目语境, 污染了所有项目的通用默认。修为 1.5(区间上限) + needs_verification:true。同批修 consistency_contracts.json 标准号笔误 GB 50050→GB/T 50050-2017。容器内验证: 省略→默认1.5/V_pool=1368; 显式→用户值覆盖。
+
+**Do-Not-Repeat(两条):**
+1. **通用公式/参考值库的默认值不得携带项目特定语境**("本项目取X")。默认值是"用户未提供时的兜底", 必须对任意项目成立; 项目取值走 user_input 覆盖, 不进公式定义。
+2. **默认值必须落在其自身引用的规范区间内**, 否则自相矛盾、报告会用区间外的错值。改默认值时同步核对 source 文本的区间表述。
+
+**Why:** 默认值与引用区间不一致 + 项目值污染, 会让"未提供该参数"的项目默默用错值(且看似有出处、实则落在区间外), 正是反馈3/4(透明/可校验)要消除的隐患。
+**How to apply:** 审计任何 reference_values/formulas 默认值时, 逐条核对 value ∈ source 引用区间 且 source 无"本项目取"字样; 不确定的条款一律 needs_verification:true + 宽区间兜底, 绝不编造精确值(见 [[websearch-unreliable-for-gb-compliance]])。遗留: 飘水 Q*0.001 魔法数待参数化(待用户拍板)。
+
+## Key Learnings (2026-08-13 — 模块④ 备品备件 plan-eng-review: OCR 脏键归一是 MVP 必需)
+- **带"客户维度"的 OCR 比价模块,脏键归一是功能性前提,不可 defer。** contract_price 无客户维度,价格项靠聚类即可;④加 customer 维度后,`compare_part_price_by_customer` / `query_part_price` 两个核心工具全靠"客户+备件"两个脏键聚合,精确匹配必败。
+- **混合归一(D3):客户走主数据表+别名映射(小集合,未命中入"待确认"队列人工认领);备件走聚类引擎复用(高基数脏名)。** 两种实体用两种策略,别一刀切。
+- **Step0 自纠教训:** 评审 Step0 我先说"聚类 MVP 可 defer、用精确匹配",Section1 当场推翻(OCR 备件名脏,精确匹配大面积落空)。归一不是优化项,是 day-1 必建。**下次凡 OCR 抽出的实体要做聚合/比价,归一层 = day-1 必建,先问"键脏不脏"。**
+- 计划稿: docs/superpowers/specs/2026-08-13-spare-parts-eng-plan.md;见 [[market-analysis-modules-design]]。

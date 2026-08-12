@@ -102,7 +102,7 @@
       "expected_min": 1.0,
       "expected_max": 5.0,
       "severity": "warn",
-      "description": "旁滤比例应在1%~5%范围内 (GB 50050 §4.0.4)"
+      "description": "旁滤比例应在1%~5%范围内 (GB/T 50050-2017 §4.0.4)"
     },
     {
       "id": "pump-suction-velocity",

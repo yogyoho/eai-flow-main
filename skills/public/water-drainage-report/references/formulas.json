@@ -54,7 +54,7 @@
       "expression": "pool_area * effective_depth",
       "inputs": {
         "pool_area": {"type": "user_input", "value": null, "unit": "m2", "description": "水池平面面积"},
-        "effective_depth": {"type": "code_requirement", "value": 2.0, "unit": "m", "source": "GB/T 50746-2012 §4.3.13（1.0~1.5m为有效水深，本项目取2.0m，需核实）", "description": "塔底水池有效水深", "needs_verification": true}
+        "effective_depth": {"type": "code_requirement", "value": 1.5, "unit": "m", "source": "GB/T 50746-2012 §4.3.13（有效水深 1.0~1.5m，默认取区间上限1.5m；条款号与区间均待回原文核实）", "description": "塔底水池有效水深", "needs_verification": true}
       },
       "outputs": {"V_pool": "m3"}
     },

@@ -20,9 +20,9 @@
     },
     {
       "key": "effective_depth",
-      "default": 2.0,
+      "default": 1.5,
       "unit": "m",
-      "source": "GB/T 50746-2012 §4.3.13（有效水深 1.0~1.5m，项目取值需核实）",
+      "source": "GB/T 50746-2012 §4.3.13（有效水深 1.0~1.5m，默认取区间上限1.5m；条款号与区间均待回原文核实）",
       "applies_when": "用户未提供塔底水池有效水深",
       "needs_verification": true
     },
