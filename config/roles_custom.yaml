@@ -58,6 +58,7 @@ roles:
     - knowledge_dept
     - knowledge_public
     - cpa_dept
+    - csp_dept
     - doc_owner
     - doc_project_member
     is_system: false
@@ -83,6 +84,13 @@ roles:
     - cpa:page:clusters
     - cpa:page:tasks
     - cpa:page:settings
+    - csp:page:overview
+    - csp:page:contracts
+    - csp:page:customers
+    - csp:page:items
+    - csp:page:clusters
+    - csp:page:tasks
+    - csp:page:settings
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users
@@ -119,6 +127,7 @@ roles:
     nav:
     - nav:knowledge
     - nav:contract-price
+    - nav:spare-parts
     - nav:output
     - nav:app-center
     - nav:settings
@@ -129,6 +138,7 @@ roles:
     - knowledge_dept
     - knowledge_public
     - cpa_dept
+    - csp_dept
     - doc_owner
     - doc_project_member
     pages:
@@ -148,6 +158,13 @@ roles:
     - cpa:page:clusters
     - cpa:page:tasks
     - cpa:page:settings
+    - csp:page:overview
+    - csp:page:contracts
+    - csp:page:customers
+    - csp:page:items
+    - csp:page:clusters
+    - csp:page:tasks
+    - csp:page:settings
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users

@@ -18652,7 +18652,14 @@
     "file": "backend/app/channels/wechat.py + backend/app/gateway/routers/{channel_connections,wechat_bot,app,__init__}.py + frontend/src/core/channels/{api,hooks,types}.ts + wechat-settings-page.tsx + i18n + backend/tests/test_wechat_{channel,binding}.py",
     "root_cause": "EAI 早期为微信单独做了 admin QR-bind 流程(/wechat/bind 等),与上游 channel_connections 的 /connect<code> 绑定模型并行演进导致漂移;后续部分回退留下坏中间态;test_wechat_binding.py 针对 manager._handle_command('/connect') 但上游架构 /connect 由 channel(wechat.py _bind_connection_from_connect_code)消费,manager 显式 skip /connect(line 822/1142)",
     "fix": "全量对齐上游:wechat.py git checkout bytedance/main(字节级一致,git diff 空);删除 EAI wechat_bot.py 路由+从 app.py/__init__.py 注销;从 channel_connections.py 移除 EAI wechat bind 块(保留上游 /{provider}/connect);前端删 EAI api/hooks/types(StartWechatBotBindResponse/startWechatBotBind/getWechatBotBindStatus/createWechatBindCode/WechatBotBindStatus/WechatBindCodeResponse),wechat-settings-page 改用上游 useConnectChannelProvider('wechat')(保留 connect-code UX,删 admin-bind 段);i18n 三件套(zh-CN/en-US/types)删 admin-bind 键;测试:checkout 上游 test_wechat_channel.py(34)+新增 blocking_io/test_wechat_channel_state.py(3),删除 EAI test_wechat_binding.py(覆盖由上游 channel 层提供)",
-    "tags": ["wechat", "ilink", "upstream-sync", "channel-connections", "eai-custom-removal", "blocking-io"],
+    "tags": [
+      "wechat",
+      "ilink",
+      "upstream-sync",
+      "channel-connections",
+      "eai-custom-removal",
+      "blocking-io"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-13T01:50:00Z"
@@ -18664,8 +18671,19 @@
     "file": "backend/app/gateway/routers/channel_connections.py + backend/tests/test_wechat_bot_status.py + frontend/src/core/channels/{types,api,hooks}.ts + frontend/src/components/workspace/settings/wechat-settings-page.tsx + frontend/src/core/i18n/locales/{zh-CN,en-US,types}.ts",
     "root_cause": "wechat.py 把激活 QR(qrcode_img_content)和状态只写进 wechat-auth.json + 日志,前端无任何消费方;上游 channel_connections 只有 /connect<code> 绑定码,无激活状态视图",
     "fix": "新增只读 EAI-CUSTOM 端点 GET /api/channels/wechat/bot-status:读 {state_dir}/wechat-auth.json(asyncio.to_thread 过 blocking-IO gate),返回脱敏视图(qrcode_login_enabled/status/bot_bound/qrcode_url 仅 pending 时/updated_at),绝不泄漏 bot_token/ilink_bot_id/raw qrcode;所有已登录用户可见(_get_user_id 守卫,非 admin-only)。前端 useWechatBotStatus(pending 3s/非 confirmed 5s 轮询,confirmed 停)+ useRestartWechatChannel(复用既有 admin POST /wechat/restart,零渠道生命周期代码);wechat-settings-page 顶部加 BotStatusCard(qrcode_login_enabled=false→提示 / confirmed→绿点已激活 / pending→<img src=qrcode_url>+扫码提示 / 其他→需激活+admin 重新生成按钮,非 admin 显示联系管理员);10 个 i18n key 三件套。16 测试全过(含脱敏不泄漏断言)",
-    "tags": ["wechat", "ilink", "clawbot", "activation-qr", "eai-custom", "channel-connections", "settings-ui"],
-    "related_bugs": ["bug-1172", "bug-1174"],
+    "tags": [
+      "wechat",
+      "ilink",
+      "clawbot",
+      "activation-qr",
+      "eai-custom",
+      "channel-connections",
+      "settings-ui"
+    ],
+    "related_bugs": [
+      "bug-1172",
+      "bug-1174"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-13T17:30:00Z"
   },
@@ -18676,8 +18694,18 @@
     "file": "backend/app/gateway/routers/channel_connections.py (_sanitize_wechat_bot_status) + backend/tests/test_wechat_bot_status.py + frontend/src/components/workspace/settings/wechat-settings-page.tsx",
     "root_cause": "误判了 wechat.py 的状态生命周期:原计划假设\"expired ⇒ token 清空\",但 wechat.py:783-799 的 QR-login 流程在 QR 过期/超时时调 _save_auth_state(status='expired'/'timeout', qrcode=..., qrcode_img_content=...) 时**不传 bot_token kwarg**;_save_auth_state 是 merge(line 1387 data=dict(self._auth_state)),不传 bot_token 时走 elif self._bot_token(line 1396)**保留旧 token**。只有 iLink 运行时返回 errcode==-14(wechat.py:566-571)才真正清 token。故 status 字段只反映 QR-login 流程的瞬态,token 存在才是激活的持久证据",
     "fix": "bot_bound 改为 bool(bot_token) 即可,与 status 解耦(加生命周期注释说明 wechat.py merge 分支);前端 pending 改 !confirmed && status=='pending' 以防残留 token 时误显旧 QR;新增回归测试 test_sanitize_stale_status_with_token_is_bound 覆盖 expired/timeout/canceled/invalid/failed + token → bot_bound True;live 验证:同文件 status=expired+token 现正确返回 bot_bound=true,UI 显示\"已激活,在线运行中\"且不再显示重新生成按钮",
-    "tags": ["wechat", "ilink", "auth-state", "status-lifecycle", "sanitizer", "e2e-found", "correctness"],
-    "related_bugs": ["bug-1173"],
+    "tags": [
+      "wechat",
+      "ilink",
+      "auth-state",
+      "status-lifecycle",
+      "sanitizer",
+      "e2e-found",
+      "correctness"
+    ],
+    "related_bugs": [
+      "bug-1173"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-13T17:35:00Z"
   },
@@ -18688,8 +18716,18 @@
     "file": "frontend/src/core/i18n/locales/zh-CN.ts, frontend/src/core/i18n/locales/en-US.ts (addBotHint)",
     "root_cause": "上一轮实现 BotStatusCard 时,按通用 IM bot(Slack/Telegram)模式臆测用户绑定=加好友,未核对 wechat.py 的 iLink 身份模型。代码事实:激活 confirmed 时 iLink 仅返回 bot_token+ilink_bot_id(wechat.py:766-772),无 wxid/微信号/昵称;入站消息身份为 ilink_user_id/from_user_id(wechat.py:621);allowed_users 注释明确为 'allowed iLink user IDs'(config.example.yaml:1858);README/模块功能分析定性为 Tencent iLink。ClawBot 是腾讯 iLink 智能体,非个人微信号,无法在微信搜索/添加好友。",
     "fix": "addBotHint zh+en 两份改为准确描述:腾讯 iLink 智能体(非个人微信号,无法在微信搜索/添加好友);管理员在 iLink/微信智能体后台获取该 Bot 的分享入口(卡片或链接)发给用户,用户在微信中经该入口进入与 Bot 会话后发送 /connect <code> 绑定到自己的账号。types.ts 为 string 无需改;typecheck 通过;前端容器已重启。",
-    "tags": ["wechat", "ilink", "i18n", "addBotHint", "wrong-content", "user-binding", "do-not-assume"],
-    "related_bugs": ["bug-1173"],
+    "tags": [
+      "wechat",
+      "ilink",
+      "i18n",
+      "addBotHint",
+      "wrong-content",
+      "user-binding",
+      "do-not-assume"
+    ],
+    "related_bugs": [
+      "bug-1173"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-13T18:05:00Z"
   },
@@ -18700,9 +18738,75 @@
     "file": "skills/public/water-drainage-report/references/formulas.json:57 + references/reference_values.json:23 (同批修 consistency_contracts.json:105 GB 50050→GB/T 50050-2017 笔误)",
     "root_cause": "公式默认值与自身引用的规范区间不一致(2.0 不在 1.0~1.5 内); 项目特定取值(本项目取2.0m)被写进通用公式定义, 污染所有项目的默认。属 memory 早前标记的'现有硬编码值需回原文重审'之一(effective_depth/0.1%飘水/1%~5%旁滤兜底子款/GB 50050 笔误)。",
     "fix": "effective_depth 默认 2.0→1.5(引用区间上限, 落在 1.0~1.5m 内), source 文本去掉'本项目取2.0m'污染并标注'条款号与区间均待回原文核实', needs_verification 保持 true(formulas.json:57 + reference_values.json:23 两处); 顺手修 consistency_contracts.json:105 标准号 GB 50050→GB/T 50050-2017。容器内验证: 省略 effective_depth→all_params=1.5/V_pool=1368(912×1.5); 显式 2.0→用户值覆盖 V_pool=1824。飘水 Q*0.001 魔法数未处理(待用户拍板是否参数化)。",
-    "tags": ["water-drainage", "reference-values", "effective-depth", "default-contradiction", "project-value-contamination", "feedback-2", "feedback-3", "pending-drift-magic-number"],
-    "related_bugs": ["bug-1171"],
+    "tags": [
+      "water-drainage",
+      "reference-values",
+      "effective-depth",
+      "default-contradiction",
+      "project-value-contamination",
+      "feedback-2",
+      "feedback-3",
+      "pending-drift-magic-number"
+    ],
+    "related_bugs": [
+      "bug-1171"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-13T18:10:00Z"
+  },
+  {
+    "id": "bug-1177",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "SAWarning: SELECT statement has a cartesian product between FROM element(s) csp_items and anon_1 (spare_parts/mcp.py _handle_summary)",
+    "file": "backend/app/extensions/spare_parts/mcp.py",
+    "root_cause": "func.count(func.distinct(CspItem.customer_id)) 的列引用隐式把 csp_items 拉进 FROM,叠加 .select_from(select(CspItem)...subquery()) 又加入 subquery FROM,两个 FROM 无 join 条件 → 笛卡尔积。空库恰好返回 0 掩盖了 bug,非空库会返回 count×rows(错值)。",
+    "fix": "改用 select(func.count(func.distinct(CspItem.customer_id))).where(customer_id.is_not(None)) 直接计数,去掉 subquery,避免双 FROM。",
+    "tags": [
+      "sqlalchemy",
+      "cartesian-product",
+      "spare-parts",
+      "mcp",
+      "count-distinct",
+      "empty-db-masked"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1178",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "spare-parts 前端 hooks.ts/ContractsView.tsx 复用 [\"cpa\",...] TanStack queryKey → 与并存的 contract_price 模块缓存命名空间冲撞（错误 queryFn 命中、invalidate 串扰）",
+    "file": "frontend/src/extensions/spare-parts/hooks.ts, frontend/src/extensions/spare-parts/components/ContractsView.tsx",
+    "root_cause": "克隆 contract_price 时的 SWAPS 只覆盖了 (Cpa,Csp) 与 (cpa:page:,csp:page:)，漏掉裸小写 cpa；两个兄弟模块同 key 前缀会互相污染缓存",
+    "fix": "replace_all \"cpa\"→\"csp\"（hooks.ts 全部 KEY/queryKey + ContractsView.tsx 2 处 invalidate + bucket 注释）",
+    "tags": ["tanstack-query", "query-key", "fork-clone", "spare-parts", "contract_price", "namespace-collision"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1179",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "TasksView.tsx 引用 run.excel_path（typecheck 报错：CspRun 无 excel_path 字段）",
+    "file": "frontend/src/extensions/spare-parts/components/TasksView.tsx",
+    "root_cause": "T7a 从 CspRun 删掉 excel_path（备件无 excel 导出端点），但 T7c 克隆的 TasksView 仍保留 excel 下载单元格 + Download 图标 + downloadExcel 助手",
+    "fix": "删除整段 excel 下载单元格 + downloadExcel + Download import，替换为 {run.customers_resolved}（客户维度列）",
+    "tags": ["typecheck", "fork-clone", "stale-reference", "spare-parts"],
+    "related_bugs": ["bug-1178"],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1180",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "test_license_modules_sync::test_service_all_modules_is_canonical 失败：ALL_MODULES 含 spare_parts，EXPECTED_KEYS 不含",
+    "file": "backend/tests/test_license_modules_sync.py, tools/license/license_generator.py",
+    "root_cause": "前置会话把 spare_parts 加入 service.py ALL_MODULES + labels.ts MODULE_LABELS，但漏了同步 test EXPECTED_KEYS 与 license_generator.py 的 ALL_MODULES（4 处定义点须一致，test 就是为此而生）",
+    "fix": "EXPECTED_KEYS 与 license_generator.py ALL_MODULES 均追加 \"spare_parts\"（末位，对齐 service.py 顺序）",
+    "tags": ["license", "module-sync", "spare-parts", "test-fix"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
   }
 ]

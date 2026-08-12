@@ -147,6 +147,33 @@ modules:
       - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
       - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
 
+  # ─── 备品备件价格分析（应用中心 → 采购管理；克隆自 contract_price，加客户维度）───
+  spare_parts:
+    display_name: "备品备件价格分析"
+    nav_id: "nav:spare-parts"
+    pages:
+      - id: "csp:page:overview"
+        display_name: "总览"
+      - id: "csp:page:contracts"
+        display_name: "文档解析"
+      - id: "csp:page:customers"
+        display_name: "客户管理"
+      - id: "csp:page:items"
+        display_name: "分项校验"
+        operations: []
+      - id: "csp:page:clusters"
+        display_name: "分组审核"
+        operations: []
+      - id: "csp:page:tasks"
+        display_name: "任务中心"
+        operations: []
+      - id: "csp:page:settings"
+        display_name: "配置"
+        operations: []
+    data_scopes:
+      - { id: "csp_all", display_name: "全部备件数据", rule_template: {} }
+      - { id: "csp_dept", display_name: "本部门备件", rule_template: { dept_id IN: "$identity.dept_ids" } }
+
   # ─── 报告输出（应用中心 → 报告输出）───
   output:
     display_name: "报告输出"
@@ -246,6 +273,7 @@ roles:
       - nav:knowledge
       - nav:knowledge-factory
       - nav:contract-price
+      - nav:spare-parts
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -274,7 +302,8 @@ roles:
       - user:read
     # EAI-CUSTOM (bug-1135): +knowledge_public — 公开库是部门可见的超集（私有<部门<公开），
     # 凡持有 knowledge_dept 的角色亦应可见公开库；M1 只补了 user 角色遗漏了继承链。
-    data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "project_member", "doc_owner", "doc_project_member"]
+    # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
+    data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "project_member", "doc_owner", "doc_project_member"]
 
   project_manager:
     display_name: "项目经理"
@@ -306,7 +335,8 @@ roles:
       # /api/extensions/users/search（require user:read）；缺此点 → 403 → 加不了成员
       - user:read
     # EAI-CUSTOM (bug-1135): +knowledge_public（同 dept_head，公开库是部门可见超集）
-    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "doc_owner", "doc_project_member"]
+    # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
+    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "doc_owner", "doc_project_member"]
 
   writer:
     display_name: "撰写人"

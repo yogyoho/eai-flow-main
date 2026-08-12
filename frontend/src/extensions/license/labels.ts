@@ -13,4 +13,5 @@ export const MODULE_LABELS: Record<string, string> = {
   dashboard: "工作台",
   typography: "报告输出",
   contract_price: "合同价格分析",
+  spare_parts: "备品备件价格分析",
 };

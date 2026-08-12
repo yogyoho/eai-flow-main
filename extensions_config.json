@@ -99,6 +99,24 @@
       "tool_name_prefix": false,
       "description": "合同分项价格只读查询工具(货物价格统计/异常/待核验/总览),供对话 agent 直接调用。不触发流水线。"
     },
+    "spare-parts-analysis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.spare_parts.mcp"
+      ],
+      "env": {
+        "CSP_QUERY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "tool_name_prefix": false,
+      "description": "备品备件价格只读查询工具(备件单价统计/跨客户比价/异常/客户明细/总览),供对话 agent 直接调用。不触发流水线。"
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "http",
@@ -203,6 +221,9 @@
       "enabled": true
     },
     "contract-price-analysis": {
+      "enabled": true
+    },
+    "spare-parts-analysis": {
       "enabled": true
     },
     "plugin-dbd709b2-f795-45a6-8ee5-d4360ca671b7": {

@@ -6832,6 +6832,9 @@
 | ~17:2x | Edited qa-verification.md (5处) | 反馈7 裁决 ❌→✅机制达标/⚠️v2待复验 | ~800 |
 | ~17:2x | Inserted .wolf/cerebrum.md 学习块 | 交接点gating/死指令/文件系统实证/2.8M上下文 | ~250 |
 | 01:22 | Edited persistent memory water-drainage-report-optimization.md | 加反馈7修复状态 + 跨会话学习 | ~324 |
+| 01:33 | 容器内 snapshot.py save×2 机制实证 | 真实 v1 文件→version 1→2→3，created_at 保留+changelog 追加+SNAPSHOT_READY | — |
+| 01:38 | Wrote skills/public/water-drainage-report/scripts/test_snapshot.py | snapshot 自检(stdlib，容器内 PASS)锁死 v1→v2→v3 不变量 | ~89行 |
+| 01:42 | git commit fe65c5064 → main-dev-fork | 反馈7 fix 8 文件 +1054/-23；⚠️ 5 个 wechat 文件曾误入 index，已 restore --staged 退回工作区保留 | — |
 
 | 01:27 | Edited backend/app/gateway/routers/channel_connections.py | expanded (+6 lines) | ~184 |
 | 01:28 | Edited backend/tests/test_wechat_bot_status.py | modified test_sanitize_pending_returns_qrcode_url() | ~404 |
@@ -6864,3 +6867,170 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 01:45 | Created skills/public/water-drainage-report/scripts/test_snapshot.py | — | ~871 |
+| 01:46 | Session end: 1 writes across 1 files (test_snapshot.py) | 2 reads | ~27952 tok |
+| 01:47 | Session end: 1 writes across 1 files (test_snapshot.py) | 2 reads | ~27952 tok |
+| 01:54 | Edited frontend/src/core/i18n/locales/zh-CN.ts | 2→2 lines | ~50 |
+| 01:54 | Edited frontend/src/core/i18n/locales/en-US.ts | 2→2 lines | ~106 |
+| 01:55 | Session end: 3 writes across 3 files (test_snapshot.py, zh-CN.ts, en-US.ts) | 6 reads | ~55845 tok |
+| 01:56 | Session end: 3 writes across 3 files (test_snapshot.py, zh-CN.ts, en-US.ts) | 7 reads | ~56199 tok |
+| 18:10 | Fixed addBotHint 文案错误(bug-1175): iLink ClawBot 非个人微信号 → 改为"iLink 智能体入口 + /connect"准确描述 | zh-CN.ts, en-US.ts | typecheck 过 + 前端重启 + buglog/cerebrum 已记 | ~3k tok |
+| 02:00 | Session end: 3 writes across 3 files (test_snapshot.py, zh-CN.ts, en-US.ts) | 8 reads | ~56199 tok |
+| 02:02 | Edited skills/public/water-drainage-report/references/formulas.json | inline fix | ~62 |
+| 02:02 | Edited skills/public/water-drainage-report/references/reference_values.json | 4→4 lines | ~45 |
+| 02:02 | Edited skills/public/water-drainage-report/references/consistency_contracts.json | inline fix | ~18 |
+| 02:03 | Created docs/superpowers/specs/2026-08-13-spare-parts-eng-plan.md | — | ~2373 |
+
+## Session: 2026-08-12 02:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 02:06 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-analysis-modules-design.md | inline fix | ~104 |
+| 02:06 | 模块④ plan-eng-review 锁定,写工程方案稿(3决策D1/D2/D3+GSTACK REVIEW REPORT) | docs/superpowers/specs/2026-08-13-spare-parts-eng-plan.md; memory/market-analysis-modules-design.md | 方案锁定,开工T1(models) | ~6k |
+| 02:08 | Created backend/app/extensions/spare_parts/models.py | — | ~2493 |
+| 02:08 | Created backend/app/extensions/spare_parts/__init__.py | — | ~164 |
+| 02:09 | Session end: 3 writes across 3 files (market-analysis-modules-design.md, models.py, __init__.py) | 1 reads | ~4809 tok |
+| 02:11 | Created skills/public/spare-parts-analysis/scripts/config.py | — | ~470 |
+| 02:11 | Created skills/public/spare-parts-analysis/scripts/models.py | — | ~2512 |
+| 02:11 | Created skills/public/spare-parts-analysis/scripts/db.py | — | ~211 |
+| 02:11 | Created skills/public/spare-parts-analysis/scripts/storage.py | — | ~666 |
+| 02:11 | Created skills/public/spare-parts-analysis/scripts/__init__.py | — | ~28 |
+| 02:13 | Created skills/public/spare-parts-analysis/scripts/document_parser.py | — | ~1082 |
+| 02:13 | Created skills/public/spare-parts-analysis/scripts/document_scanner.py | — | ~643 |
+| 02:14 | Created skills/public/spare-parts-analysis/scripts/project_fields.py | — | ~1829 |
+| 02:14 | Created skills/public/spare-parts-analysis/scripts/table_classifier.py | — | ~3607 |
+
+## Session: 2026-08-12 02:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 02:17 | Created skills/public/spare-parts-analysis/scripts/clustering/__init__.py | — | ~46 |
+| 02:17 | Created skills/public/spare-parts-analysis/scripts/clustering/vectorizer.py | — | ~1194 |
+| 02:17 | Created skills/public/spare-parts-analysis/scripts/clustering/engine.py | — | ~878 |
+| 02:18 | Created skills/public/spare-parts-analysis/scripts/stats.py | — | ~488 |
+| 02:18 | Created skills/public/spare-parts-analysis/scripts/price_validator.py | — | ~647 |
+| 02:18 | Created skills/public/spare-parts-analysis/scripts/normalizer.py | — | ~546 |
+| 02:20 | Created skills/public/spare-parts-analysis/scripts/cli.py | — | ~11877 |
+| 02:21 | Created skills/public/spare-parts-analysis/SKILL.md | — | ~941 |
+| 02:40 | ④备件 T2b 抽取层fork(document_parser/document_scanner/project_fields/table_classifier)+ T2c 聚类fork(engine/vectorizer)+ T2d cli.py/stats/price_validator/normalizer/SKILL.md | skills/public/spare-parts-analysis/scripts/ | 全 import 通过;project_fields 自检 ok;聚类 sanity ok(同件变体同簇/DN分簇);skill models 5类与扩展对齐 | ~6k |
+| 02:23 | Created backend/app/extensions/spare_parts/mcp.py | — | ~4510 |
+
+## Session: 2026-08-12 02:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 02:28 | Created skills/public/spare-parts-analysis/scripts/query.py | — | ~1956 |
+| 02:28 | Edited skills/public/spare-parts-analysis/scripts/query.py | inline fix | ~30 |
+| 02:34 | Edited backend/app/gateway/app.py | 1→4 lines | ~79 |
+| 02:34 | Edited extensions_config.json | expanded (+18 lines) | ~188 |
+| 02:34 | Edited extensions_config.json | 3→6 lines | ~35 |
+| 02:38 | Edited backend/app/extensions/spare_parts/mcp.py | 5→6 lines | ~114 |
+| 02:41 | Edited backend/app/extensions/spare_parts/mcp.py | inline fix | ~22 |
+| 02:25 | T4 完成:mcp.py(5 只读工具:summary/query_part/compare_by_customer/outliers/customer_parts)+ query.py(7 模式诊断 CLI);container 验证导入OK/工具注册/分发OK/5 handler vs 活库 OK | spare_parts/mcp.py, scripts/query.py | 管理层 CRUD 延后 T7(YAGNI) | ~14k |
+| 02:40 | T4 修 bug-1177:_handle_summary 客户计数笛卡尔积(列引用+subquery 双 FROM);改直计 distinct,空库曾掩盖 | spare_parts/mcp.py | 修+日志+验证无 SAWarning | ~2k |
+| 02:50 | T5 注册:extensions_config.json 加 mcpServers+skills.spare-parts-analysis(CSP_QUERY_DB_URL);app.py 导入 spare_parts 包 | extensions_config.json, gateway/app.py | 重启 gateway | ~3k |
+| 02:55 | T5 验证:csp_ 5 表在 postgres-ext 建出;5 handler vs 活库 OK;config 有效无 load 错误 | eai-flow-postgres-ext | T5 通过 | ~4k |
+| 02:44 | Created backend/tests/test_spare_parts_extension.py | — | ~3696 |
+| 02:44 | Edited backend/tests/test_spare_parts_extension.py | test_handle_outliers_filters_is_outlier() → test_handle_outliers_count_and_desc_sort() | ~203 |
+| 02:45 | Edited backend/tests/test_spare_parts_extension.py | 10→11 lines | ~140 |
+
+## Session: 2026-08-12 02:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 02:50 | T6 单测:16 test 全过(模型注册/5工具分发/客户归一命中-规范-别名-未中/compare 偏离阈值+排序+needs_review排除/query 分组+置信/outliers count+desc/customer_parts 解析+分组/parity 5表) | tests/test_spare_parts_extension.py | 16 passed in 6.53s | ~6k |
+| 02:52 | T6 测试设计教训:monkeypatch 假 `_run_in_db` 绕过 handler 的 WHERE **和** ORDER BY → 不能用它断言过滤/排序行为,只喂"真实查询会返回的"行,只断言 Python 层聚合/分组/偏离 | tests/test_spare_parts_extension.py | 2 处 test 修正后过 | ~1k |
+| 02:55 | T6 E2E 活库:seed 2客户×2文档×5分项(含1 needs_review 9900)→ 真实 MCP handler vs postgres-ext,断言 ilike/customer_id 分组/needs_review 排除(overall median 155 非 9900)/偏离(1.32高于·0.68低于)/别名 E2E-A→E2E客户A/distinct count=2;子→父清理无残留 | mcp.py handlers | E2E POPULATED-DB ASSERTIONS PASSED | ~5k |
+| 02:56 | T6 完成:T1-T6 全绿;④ agent 只读查询能力(5 MCP 工具)已 live + 单测 + 活库 E2E 三重验证 | — | T6 done,T7(管理层+前端)pending | ~1k |
+| 02:56 | Created C:/Users/admin/AppData/Local/Temp/fork_csp.py | — | ~475 |
+| 02:57 | Created backend/app/extensions/spare_parts/schemas.py | — | ~1816 |
+
+## Session: 2026-08-12 02:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:00 | Edited backend/app/extensions/spare_parts/crud.py | 6→7 lines | ~38 |
+| 03:00 | Edited backend/app/extensions/spare_parts/crud.py | modified list_documents() | ~213 |
+| 03:00 | Edited backend/app/extensions/spare_parts/crud.py | modified in() | ~98 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | modified list_items() | ~175 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | modified list_item_customers() | ~220 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | modified CUSTOM() | ~148 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | modified CUSTOM() | ~260 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | 2→3 lines | ~74 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | 3→4 lines | ~42 |
+| 03:01 | Edited backend/app/extensions/spare_parts/crud.py | added 1 condition(s) | ~1558 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | inline fix | ~11 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | expanded (+6 lines) | ~145 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | modified 1() | ~234 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | inline fix | ~27 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | modified list_documents() | ~176 |
+| 03:03 | Edited backend/app/extensions/spare_parts/routers.py | modified list_item_customers() | ~140 |
+| 03:04 | Edited backend/app/extensions/spare_parts/routers.py | modified list_items() | ~256 |
+| 03:04 | Edited backend/app/extensions/spare_parts/routers.py | modified list_customers() | ~894 |
+| 03:04 | Edited backend/app/extensions/spare_parts/routers.py | removed 15 lines | ~10 |
+| 03:04 | Edited backend/app/extensions/spare_parts/routers.py | 9→10 lines | ~102 |
+| 03:04 | Edited backend/app/extensions/spare_parts/__init__.py | added 1 import(s) | ~96 |
+| 03:05 | Edited backend/app/gateway/app.py | metadata() → spare_parts() | ~86 |
+| 03:05 | Edited backend/app/gateway/app.py | 2→5 lines | ~76 |
+| 03:05 | Edited backend/app/extensions/database.py | 4→7 lines | ~207 |
+| 03:05 | Edited backend/app/extensions/database.py | 10 → 11 | ~11 |
+| 03:06 | Edited backend/app/extensions/database.py | "Seeded app-center: 5 doma" → "Seeded app-center: 5 doma" | ~20 |
+| 03:13 | Edited backend/app/extensions/license/service.py | 7→8 lines | ~36 |
+| 03:13 | Edited frontend/src/extensions/license/labels.ts | 2→3 lines | ~17 |
+| 03:14 | Created C:/Users/admin/AppData/Local/Temp/fork_csp_frontend.py | — | ~564 |
+
+## Session: 2026-08-12 03:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:16 | Created frontend/src/extensions/spare-parts/types.ts | — | ~1340 |
+| 03:17 | Created frontend/src/extensions/spare-parts/api.ts | — | ~2522 |
+| 03:17 | Edited frontend/src/app/spare-parts/layout.tsx | 8→9 lines | ~34 |
+| 03:17 | Edited frontend/src/app/spare-parts/layout.tsx | 3→4 lines | ~113 |
+| 03:17 | Edited frontend/src/app/spare-parts/layout.tsx | 3→3 lines | ~33 |
+| 03:18 | Edited frontend/src/extensions/spare-parts/hooks.ts | "cpa" → "csp" | ~2 |
+| 03:18 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | "cpa" → "csp" | ~2 |
+| 03:19 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | inline fix | ~22 |
+| 03:19 | Edited frontend/src/extensions/spare-parts/hooks.ts | modified useRunCluster() | ~650 |
+| 03:20 | Created frontend/src/extensions/spare-parts/components/CustomersView.tsx | — | ~4515 |
+| 03:20 | Created frontend/src/app/spare-parts/customers/page.tsx | — | ~52 |
+| 03:21 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | inline fix | ~19 |
+| 03:21 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | removed 28 lines | ~46 |
+| 03:21 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | "手动与定时分析任务的运行记录，可下载产出的 Exc" → "手动与定时分析任务的运行记录（含客户归并统计）。" | ~14 |
+| 03:21 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | 2→2 lines | ~37 |
+| 03:21 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | reduced (-17 lines) | ~87 |
+| 03:22 | Edited frontend/src/extensions/spare-parts/components/StatCard.tsx | inline fix | ~19 |
+| 03:22 | Edited frontend/src/extensions/spare-parts/components/StatCard.tsx | CSS: emerald | ~26 |
+| 03:22 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | inline fix | ~33 |
+| 03:22 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | 4→4 lines | ~60 |
+| 03:22 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | 14→15 lines | ~266 |
+| 03:25 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | inline fix | ~46 |
+| 03:25 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | 2→3 lines | ~86 |
+| 03:25 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | expanded (+28 lines) | ~600 |
+| 03:25 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | 2→3 lines | ~66 |
+| 03:25 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | 2→3 lines | ~96 |
+
+## Session: 2026-08-12 03:29
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:30 | Edited config/permissions.yaml | expanded (+27 lines) | ~279 |
+| 03:30 | Edited config/permissions.yaml | modified CUSTOM() | ~50 |
+| 03:30 | Edited config/permissions.yaml | 1→2 lines | ~62 |
+| 03:30 | Edited config/permissions.yaml | 1→2 lines | ~62 |
+| 03:31 | Edited config/roles_custom.yaml | 2→3 lines | ~18 |
+| 03:31 | Edited config/roles_custom.yaml | 2→3 lines | ~13 |
+| 03:31 | Edited config/roles_custom.yaml | expanded (+7 lines) | ~61 |
+| 03:40 | Edited backend/tests/test_license_modules_sync.py | 10→10 lines | ~86 |
+| 03:40 | Edited tools/license/license_generator.py | 7→8 lines | ~36 |
+| 03:55 | T7d 完成+验收 | permissions.yaml(+spare_parts 模块块/dept_head+pm csp_dept+nav)、roles_custom.yaml(+7 csp pages+csp_dept+nav)、test EXPECTED_KEYS+license_generator 同步 spare_parts | YAML 解析✓ /me 返 7 csp pages+nav:spare-parts✓ app_definitions spare-parts 卡片(sort11)✓ 管理路由 customers 等 200✓ /spare-parts nginx 200✓ spare-parts 自有测试+ /me + role_calibration 全绿;6 个 pre-existing 失败(3 容器路径+3 overlay 隔离)非本次引入。**T7(④管理层+前端第二波)全完成,T1–T7 收官** | ~9k |
+
+| 03:45 | Session end: 9 writes across 4 files (permissions.yaml, roles_custom.yaml, test_license_modules_sync.py, license_generator.py) | 6 reads | ~34421 tok |
+| 06:41 | Edited skills/public/water-drainage-report/references/formulas.json | 4→5 lines | ~94 |
+| 06:41 | Edited skills/public/water-drainage-report/references/reference_values.json | expanded (+8 lines) | ~119 |
+| 06:41 | Session end: 11 writes across 6 files (permissions.yaml, roles_custom.yaml, test_license_modules_sync.py, license_generator.py, formulas.json) | 7 reads | ~36217 tok |
+| 06:42 | Session end: 11 writes across 6 files (permissions.yaml, roles_custom.yaml, test_license_modules_sync.py, license_generator.py, formulas.json) | 7 reads | ~36217 tok |
+
+## Session: 2026-08-12 06:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

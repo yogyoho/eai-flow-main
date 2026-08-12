@@ -12,6 +12,9 @@ from app.extensions.auth.permission_routers import router as permissions_router
 from app.extensions.auth.policy_routers import router as policy_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
+# EAI-CUSTOM: spare_parts(备品备件价格分析)——导入包即把 csp_ 表注册到 Base.metadata
+# (init_db create_all 建表);router 供管理层 API 挂载(/api/extensions/spare-parts/*)。
+from app.extensions.spare_parts import router as spare_parts_router  # noqa: F401
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.dept.routers import router as dept_router
@@ -585,6 +588,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Contract price analysis management API (/api/extensions/contract-price/*)
     app.include_router(contract_price_router)
+
+    # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
+    app.include_router(spare_parts_router)
 
     # Settings API is mounted at /api/extensions
     app.include_router(settings_router)

@@ -31,6 +31,7 @@ ALL_MODULES = [
     "dashboard",
     "typography",
     "contract_price",
+    "spare_parts",
 ]
 
 

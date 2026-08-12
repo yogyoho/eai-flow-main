@@ -1603,7 +1603,7 @@ async def seed_db() -> None:
                         domain,
                     )
 
-                # Apps (10 built-in)
+                # Apps (11 built-in)
                 apps = [
                     {"app_id": "dashboard", "name": "工作台", "desc": "待办聚合与项目进度概览，开启高效的一天",
                      "icon": "layout-dashboard", "domain": "universal", "stage": "overview",
@@ -1629,6 +1629,9 @@ async def seed_db() -> None:
                     {"app_id": "procurement", "name": "采购管理", "desc": "合同价格分析与采购分项管理，聚类归并与统计",
                      "icon": "package-search", "domain": "procurement", "stage": "process",
                      "path": "/contract-price", "license": "contract_price", "admin": False, "sort": 8, "sort_key": "caigouguanli"},
+                    {"app_id": "spare-parts", "name": "备品备件价格分析", "desc": "跨客户备品备件价格聚类与统计，OCR 解析与认领归并",
+                     "icon": "package", "domain": "procurement", "stage": "process",
+                     "path": "/spare-parts", "license": "spare_parts", "admin": False, "sort": 11, "sort_key": "beipinbeijian"},
                     {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
                      "icon": "settings-2", "domain": "admin", "stage": "manage",
                      "path": "/admin", "license": "platform", "admin": True, "sort": 9, "sort_key": "xitongguanli"},
@@ -1651,7 +1654,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 5 domains + 10 apps")
+                logger.info("Seeded app-center: 5 domains + 11 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 

@@ -772,6 +772,7 @@
 - **bot-status 端点对所有已登录用户可见**(`_get_user_id` 守卫,非 admin-only)——因为普通用户需扫码激活。只有"重新生成 QR"是 admin-only。
 - **CSRF double-submit:curl 测 API 的正确姿势**——`POST /api/extensions/auth/login`(字段 `username` 非 `email`,无 Origin → 非浏览器客户端放行)成功后在响应里 set `csrf_token` cookie;后续写操作带 `X-CSRF-Token: <cookie值>` header + cookie 即可。`/api/auth/login` 是上游路由、不签 csrf cookie,EAI 登录走 `/api/extensions/auth/login`。
 - **iLink ClawBot 不是个人微信号——身份模型只有 `bot_token` + `ilink_bot_id`,无 wxid/微信号/昵称(bug-1175)。** 激活 confirmed 时 iLink 仅返回这两字段(wechat.py:766-772);入站消息用户身份 = `ilink_user_id`/`from_user_id`(wechat.py:621),非 wxid;`allowed_users` 是 iLink user id 列表(config.example.yaml:1858);README 定性 "Tencent iLink";域名 `ilinkai.weixin.qq.com` + QR 图 `liteapp.weixin.qq.com`。**故"管理员分享微信号、用户在微信 app 搜索加好友"这条路根本不存在**——用户经 iLink/微信智能体后台的分享入口(卡片/链接)进入 bot 会话,再发 `/connect <code>` 绑定到 DeerFlow 账号。具体入口 UI 由腾讯 iLink 平台侧提供,本 repo 不控制也说不清,需去部署 bot 的 iLink 控制台核对。**教训:别拿通用 IM bot(Slack/Telegram)的"加好友"模式臆测绑定流程,先看激活/入站消息返回的身份字段类型。**
+- **微信有两层 enablement,互相独立(页面测试踩到):**(1) **IM 通道层** `app/channels/wechat.py`——ClawBot 激活(扫激活码→bot_token),BotStatusCard 读的就是这层;(2) **channel_connections 层** `ChannelConnectionsConfig` 的 per-provider `enabled` flag——`POST /api/channels/wechat/connect`(生成 /connect 绑定码)在 channel_connections.py:625 先查 `status["enabled"]`(= `config.provider_status(provider)["enabled"]`,纯配置声明,与 IM 通道是否在跑无关),`enabled=false` → 400 "Channel provider is not enabled"。故即便 ClawBot 已激活,绑定码仍会被挡——需在设置弹窗的 **「渠道」tab**(或 channel_connections 配置)里把 wechat provider 也启用。两层都 on 才能跑通端到端绑定。
 
 
 ## Key Learning 更新 (2026-08-13 — bug-1176 公式默认值勿混项目语境 / 默认值须落在引用区间内)
@@ -790,3 +791,17 @@
 - **混合归一(D3):客户走主数据表+别名映射(小集合,未命中入"待确认"队列人工认领);备件走聚类引擎复用(高基数脏名)。** 两种实体用两种策略,别一刀切。
 - **Step0 自纠教训:** 评审 Step0 我先说"聚类 MVP 可 defer、用精确匹配",Section1 当场推翻(OCR 备件名脏,精确匹配大面积落空)。归一不是优化项,是 day-1 必建。**下次凡 OCR 抽出的实体要做聚合/比价,归一层 = day-1 必建,先问"键脏不脏"。**
 - 计划稿: docs/superpowers/specs/2026-08-13-spare-parts-eng-plan.md;见 [[market-analysis-modules-design]]。
+
+## Key Learnings (2026-08-13 — 模块④ T6: 假 _run_in_db 绕过 WHERE+ORDER BY 的测试设计陷阱)
+- **monkeypatch 替换掉整个 `_run_in_db(func)` 再喂 canned 行时,handler 内 `func(session)` 里的 SQL 根本不执行** —— 也就是说 handler 的 `WHERE` 过滤 **和** `ORDER BY` 排序都被绕过,只剩 Python 层的聚合/分组/偏离逻辑在跑。
+- **后果:** 若假数据里混入"本应被 WHERE 滤掉"的行(如非离群行喂给 `WHERE is_outlier`),或按非查询顺序喂行,handler 不会纠正 → 测试会断言到错误数量/顺序,误判 handler 有 bug(其实是测试设计错)。
+- **How to apply:** 用假 `_run_in_db` 时,① 只喂"真实查询会返回的"行(已过滤、已排序);② 只断言 handler 在 Python 层做的事(分组/聚合/偏离阈值/置信标记),**不要**用它断言过滤/排序(那俩去活库验证,见 T5/T6 E2E);③ 测试命名反映实际验证点(如 `test_handle_outliers_count_and_desc_sort` 而非 `..._filters_is_outlier`)。
+- 活库 E2E(直接 seed 行进 postgres-ext 再驱动真实 handler)是过滤/排序/JOIN 的真验证;单测假 `_run_in_db` 只验证纯逻辑。两者互补,别用单测假装覆盖了 SQL 行为。
+
+## Key Learnings + Do-Not-Repeat (2026-08-13 — 模块④ T7d: 权限注册 + fork 命名空间坑)
+
+- **【Do-Not-Repeat】机械 fork 兄弟模块时,TanStack queryKey 命名空间必须整体改前缀,别只改大小写/带冒号变体。** clone contract_price→spare_parts 时 SWAPS 覆盖了 `("Cpa","Csp")` 和 `("cpa:page:","csp:page:")`,却漏了裸小写 `cpa` —— hooks.ts/ContractsView.tsx 仍用 `["cpa",...]`。两个并存模块同 key 前缀 → 错误 queryFn 命中 + invalidate 串扰。**How to apply:** fork 后 grep 全仓 `cpa`/旧前缀(区分大小写、含与不含冒号变体),逐个核对;replace_all 裸前缀到新前缀。见 [[bug-1178]]。
+- **新模块上权限的完整足迹(镜像 contract_price):** ① `permissions.yaml` 加 module 块(`nav_id` + `pages[]` + `data_scopes[]`); ② superadmin 自动继承(`pages:["*"]`/`nav:["*"]`),无需显式授权; ③ built-in dept_head/project_manager 加 `*_dept` data_scope(+ 可选 nav)保持与 base 同步; ④ **overlay `roles_custom.yaml` 才是运行时真相源**(wholesale-replace,见 [[bug-1087]]),显式 `pages[]` 须逐条加新 page id + data_scope + nav; ⑤ license 4 处定义点(service.py ALL_MODULES / labels.ts MODULE_LABELS / test EXPECTED_KEYS / license_generator.py ALL_MODULES)必须同增同减,否则 test_license_modules_sync 挂。见 [[bug-1180]]。
+- **gateway 容器只挂 /app/backend,不挂 /app/frontend 与 /app/tools** → test_license_modules_sync 里读 frontend labels.ts/Sidebar.tsx/license_generator.py 的 3 个用例在 gateway 容器内必 FileNotFoundError(host 上文件都在)。这是容器挂载限制,非代码问题;这些用例设计为 host/CI 全仓运行。在 gateway 内只跑 backend-only 测试时忽略这 3 个路径型失败。
+- **`PermissionRegistry(tmp_path)` 不隔离 overlay:** 单测写 tmp permissions.yaml 但只传 permissions_path,overlay 默认指向真实 `config/roles_custom.yaml`,真实 overlay 会覆盖 tmp 里的同名角色 → test_permission_registry 的 test_role_*_defaults 长期挂(实际值来自真实 roles_custom.yaml)。pre-existing 测试基建坑,与本次改动无关。
+- **登录端点字段是 `username`(工号或 email),不是 `email`**(422 missing username)。CSRF 头名 `X-CSRF-Token`,cookie 名 `csrf_token`。

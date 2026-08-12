@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-11T16:27:46.835Z
-> Files: 1944 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-12T22:41:18.636Z
+> Files: 1992 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -68,7 +68,7 @@
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~1712 tok)
+- `extensions_config.json` (~1885 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -460,6 +460,7 @@
 - `giggly-mixing-toucan.md` — Plan: 沙箱输出文件自动同步到文档空间 (~1024 tok)
 - `goofy-foraging-puzzle.md` — Fix: Admin API Security + Role System Enhancement (~1487 tok)
 - `harmonic-twirling-crab.md` — Implementation Plan: Close Spec Gaps Across 4 Domains (~2160 tok)
+- `hazy-exploring-valiant.md` — Plan: Surface WeChat ClawBot activation QR + status in the Settings → WeChat tab (~2539 tok)
 - `humble-sniffing-quail.md` — WeChat iLink: admin UI bind + per-user binding-code authorization (~2582 tok)
 - `joyful-coalescing-puddle.md` — 剩余待更新代码详细分析 (~834 tok)
 - `lazy-exploring-liskov.md` — Knowledge Factory Card Beautification Plan (~1240 tok)
@@ -508,8 +509,9 @@
 - `gateway-reload-loop-skills-view.md` — '`（EAI-CUSTOM 注释）。 (~299 tok)
 - `harness-core-upstream-gap-2026-08-03.md` (~549 tok)
 - `main-dev-fork-branch.md` (~101 tok)
+- `market-analysis-modules-design.md` (~435 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~1577 tok)
+- `MEMORY.md` (~1614 tok)
 - `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~467 tok)
 - `offline-prod-deploy-solution.md` (~381 tok)
@@ -520,7 +522,7 @@
 - `upstream-sync-2026-07-29.md` (~1007 tok)
 - `upstream-sync-2026-08-02.md` — Declares attr (~2544 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
-- `water-drainage-report-optimization.md` (~334 tok)
+- `water-drainage-report-optimization.md` (~602 tok)
 - `websearch-unreliable-for-gb-compliance.md` (~296 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
@@ -539,6 +541,8 @@
 
 ## C:/Users/admin/AppData/Local/Temp/
 
+- `fork_csp_frontend.py` — 一次性机械 fork:contract-price 前端 → spare-parts 前端。 (~564 tok)
+- `fork_csp.py` — 一次性机械 fork:contract_price → spare_parts 后端管理层。 (~475 tok)
 - `gstack-codex-oh-prompt.txt` (~698 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/fire_extract_t9/
@@ -1270,18 +1274,18 @@
 - `connection_identity.py` — Helpers for attaching persisted channel connection ownership to inbound messages. (~373 tok)
 - `dingtalk.py` — DingTalk channel implementation. (~8879 tok)
 - `feishu.py` — Feishu/Lark channel — connects to Feishu via WebSocket (no public IP needed). (~11823 tok)
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~14017 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~14101 tok)
 - `message_bus.py` — MessageBus — async pub/sub hub that decouples channels from the agent dispatcher. (~1977 tok)
 - `service.py` — ChannelService — manages the lifecycle of all IM channels. (~5166 tok)
 - `slack.py` — Slack channel — connects via Socket Mode (no public IP needed). (~3094 tok)
 - `telegram.py` — Telegram channel — connects via long-polling (no public IP needed). (~3757 tok)
-- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~18428 tok)
+- `wechat.py` — WeChat channel — connects to iLink via long-polling. (~17381 tok)
 - `wecom.py` — WeComChannel: supports_streaming, start, stop, send + 1 more (~4336 tok)
 
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~23878 tok)
+- `database.py` — Database connection and session management for extensions module. (~23969 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~6284 tok)
@@ -1414,7 +1418,7 @@
 
 - `routers.py` — License API routers. (~1234 tok)
 - `schemas.py` — Pydantic schemas for license module. (~633 tok)
-- `service.py` — License verification and management service. (~4442 tok)
+- `service.py` — License verification and management service. (~4447 tok)
 
 ## backend/app/extensions/models/
 
@@ -1457,6 +1461,15 @@
 ## backend/app/extensions/settings/
 
 - `routers.py` — Settings API router. (~2482 tok)
+
+## backend/app/extensions/spare_parts/
+
+- `__init__.py` — spare-parts-analysis 扩展包。 (~188 tok)
+- `crud.py` — CRUD operations over the csp_ tables for the management API. (~11317 tok)
+- `mcp.py` — Spare-parts price analysis MCP server — read-only price query tools for the agent。 (~4558 tok)
+- `models.py` — SQLAlchemy ORM models for the spare-parts-analysis ``csp_`` tables. (~2493 tok)
+- `routers.py` — Spare-parts price analysis management API — all functional areas. (~7649 tok)
+- `schemas.py` — Pydantic request/response models for the spare-parts-analysis API. (~1816 tok)
 
 ## backend/app/extensions/user/
 
@@ -1531,7 +1544,7 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan (~7341 tok)
+- `app.py` — EAI-CUSTOM: spare_parts(备品备件价格分析)——导入包即把 csp_ 表注册到 Base.metadata (~7429 tok)
 - `auth_disabled.py` — Auth-disabled (single-user local) mode flag — EAI shim. (~148 tok)
 - `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~1892 tok)
 - `checkpoint_lineage.py` — Shared helpers for resolving replay checkpoints on one checkpoint lineage. (~2426 tok)
@@ -1543,9 +1556,9 @@
 
 ## backend/app/gateway/routers/
 
-- `__init__.py` (~204 tok)
+- `__init__.py` (~194 tok)
 - `auth.py` — Authentication endpoints. (~9270 tok)
-- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~8822 tok)
+- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings + EAI-CUSTOM `GET /wechat/bot-status` (ClawBot 激活状态/QR,只读脱敏). (~9700 tok)
 - `mcp.py` — API: 1 endpoints (~4857 tok)
 - `memory.py` — Memory API router for retrieving and managing global memory data. (~5085 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1559 tok)
@@ -1553,7 +1566,6 @@
 - `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~17099 tok)
 - `threads.py` — Thread CRUD, state, and history endpoints. (~16458 tok)
 - `ui.py` — UI configuration endpoint (EAI minimal stub). (~58 tok)
-- `wechat_bot.py` — WeChat iLink system bot: admin bind surface + user binding-code (E-续 ③). (~1697 tok)
 
 ## backend/app/scheduler/
 
@@ -1734,7 +1746,7 @@
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
-- `test_chapter_planner.py` — chapter_planner 测试：章节 manifest 生成 + 受影响章节反查（反馈6）。 (~694 tok)
+- `test_chapter_planner.py` — chapter_planner 测试：章节 manifest 生成 + 受影响章节反查（反馈6）。 (~974 tok)
 - `test_chapter_planner.py` — TDD tests for chapter_planner: build_manifest + impacted_chapters (反馈6 受影响章节反查). (~1100 tok)
 - `test_checkpoint_lineage.py` — Replay-base resolution rules shared by regenerate, edit replay and branching. (~2024 tok)
 - `test_checkpointer.py` — Unit tests for checkpointer config, packaging metadata, and factories. (~6660 tok)
@@ -1767,6 +1779,7 @@
 - `test_extensions_sso.py` — Tests for the EAI SSO (OIDC third facade). (~2816 tok)
 - `test_filterrule_operators.py` — test_overlap_template_parses, test_overlap_empty_identity_attr_denies, test_overlap_malformed_dept_i (~2053 tok)
 - `test_formula_graph.py` — Test Formula DAG engine against real 给排水计算书 calculation chain. (~6087 tok)
+- `test_formula_runner_cli.py` — formula_runner CLI 端到端测试（反馈6 值差分流程）。 (~1774 tok)
 - `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
 - `test_identity_provider.py` — Tests for AttributeSet and IdentityProvider. (~4186 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
@@ -1777,7 +1790,7 @@
 - `test_law_kb_registration.py` — Law system-KB registration tests — owner fixed to admin (EAI-CUSTOM). (~815 tok)
 - `test_lead_agent_prompt.py` — _FakeManager: test_build_self_update_section_empty_for_default_agent, test_build_self_update_section (~4205 tok)
 - `test_lead_agent_skills.py` — NamedTool: test_get_skills_prompt_section_returns_empty_when_no_skills_match, test_get_skills_prompt (~3906 tok)
-- `test_license_modules_sync.py` — License module key sync guard. (~776 tok)
+- `test_license_modules_sync.py` — License module key sync guard. (~784 tok)
 - `test_loop_detection_middleware.py` — Tests for LoopDetectionMiddleware. (~12877 tok)
 - `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~1270 tok)
 - `test_mcp_config_hardening.py` — Tests for MCP config endpoint hardening (upstream #3425, dev-adapted). (~1138 tok)
@@ -1819,6 +1832,8 @@
 - `test_role_definition_f1.py` — F1 回归：dept_head 权限被 overlay 清空后必须恢复（#inherit:user + 部门扩展）。 (~440 tok)
 - `test_role_overlay_store.py` — Tests for RoleOverlayStore — atomic write + mtime optimistic lock. (~4470 tok)
 - `test_serialization_strip_images.py` — Tests for the API serialization helpers ported from upstream (Tier 2 C). (~809 tok)
+- `test_snapshot_cli.py` — snapshot.py CLI 测试（反馈7 跨轮承接 + 版本历史）。 (~1919 tok)
+- `test_spare_parts_extension.py` — Tests for the spare_parts extension (④ 备品备件价格体系分析). (~3748 tok)
 - `test_sse_consumer_values_buffer.py` — 回归测试: sse_consumer 缓冲 values 全量快照(bug-174)。 (~1182 tok)
 - `test_sub_workflow.py` — TDD tests for sub_workflow node type and child workflow support. (~4381 tok)
 - `test_summarization_middleware.py` — _StaticChatModel: bind_tools, test_before_summarization_hook_receives_messages_before_compression, t (~10211 tok)
@@ -1834,7 +1849,8 @@
 - `test_update_chapter_auto_parse.py` — Tests for update_chapter auto-parse traceability sources. (~1622 tok)
 - `test_view_image_middleware.py` — Unit tests for ViewImageMiddleware. (~4982 tok)
 - `test_view_image_tool.py` — test_view_image_rejects_external_absolute_path, test_view_image_reads_virtual_uploads_path, test_vie (~1671 tok)
-- `test_wechat_binding.py` — Tests for the WeChat system-bot binding flow (E-续 ③): /connect code consumer (~1985 tok)
+- `test_wechat_bot_status.py` — Tests for the EAI-CUSTOM WeChat ClawBot activation-status endpoint. (~2245 tok)
+- `test_wechat_channel_state.py` — blocking-io 回归测试(ported from bytedance/main 2026-08-13):断言 WechatChannel fs-IO 不阻塞 asyncio event loop(constructor/inbound file staging/auth state load 经 asyncio.to_thread 卸载)。3 测试。 (~1200 tok)
 - `test_with_data_scope_middleware.py` — with_data_scope 中间件依赖直调（现无直测）：超管 allow_all / deny 收集 / AND NOT deny。 (~381 tok)
 - `test_workflow_integration.py` — Integration tests for the full writing-project workflow chain. (~6608 tok)
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
@@ -1842,8 +1858,8 @@
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~3593 tok)
-- `roles_custom.yaml` (~969 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4088 tok)
+- `roles_custom.yaml` (~1730 tok)
 
 ## deploy/offline/
 
@@ -2038,6 +2054,9 @@
 - `2026-08-06-kb-data-access-design.md` — 知识库细粒度数据访问控制（Knowledge Base Data Access Control）设计 (~980 tok)
 - `2026-08-06-word-export-layout-import-design.md` — Word 样例自动提取排版 + 报告输出/文档空间导出对话框补齐 — 设计文档 (~1427 tok)
 - `2026-08-11-water-drainage-report-optimization-design.md` — 给排水单体计算书技能优化设计 (~3878 tok)
+- `2026-08-12-water-drainage-report-qa-verification.md` — 给排水单体计算书技能 — 页面验证性测试报告 (~3275 tok)
+- `2026-08-13-market-analysis-modules-design.md` — 市场分析四大模块设计文档 (~4318 tok)
+- `2026-08-13-spare-parts-eng-plan.md` — 模块④ 备品备件价格体系分析 — 工程实现方案(已锁) (~2225 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2215,6 +2234,14 @@
 
 - `page.tsx` — SettingsPage (~960 tok)
 
+## frontend/src/app/spare-parts/
+
+- `layout.tsx` — navItems (~838 tok)
+
+## frontend/src/app/spare-parts/customers/
+
+- `page.tsx` — SparePartsCustomersPage (~52 tok)
+
 ## frontend/src/app/test-editor/
 
 - `page.tsx` — TestEditorPage (~103 tok)
@@ -2342,7 +2369,7 @@
 - `about.md` — 🦌 [About EAIFlow 2.0](https://github.com/bytedance/eai-flow) (~512 tok)
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1541 tok)
 - `skill-settings-page.tsx` — SkillSettingsPage (~1306 tok)
-- `wechat-settings-page.tsx` — WechatSettingsPage (~2497 tok)
+- `wechat-settings-page.tsx` — BotStatusCard (~1942 tok)
 
 ## frontend/src/content/en/
 
@@ -2371,9 +2398,9 @@
 
 ## frontend/src/core/channels/
 
-- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1310 tok)
-- `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1077 tok)
-- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 7 m (~450 tok)
+- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1117 tok)
+- `hooks.ts` — Exports channelProviderQueryKey, channelConnectionsQueryKey, useChannelProviders, useChannelConnecti (~1476 tok)
+- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 7 m (~542 tok)
 
 ## frontend/src/core/config/
 
@@ -2381,9 +2408,9 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~13661 tok)
-- `types.ts` — Exports Translations (~7048 tok)
-- `zh-CN.ts` — Exports zhCN (~9479 tok)
+- `en-US.ts` — Exports enUS (~13755 tok)
+- `types.ts` — Exports Translations (~7035 tok)
+- `zh-CN.ts` — Exports zhCN (~9520 tok)
 
 ## frontend/src/core/mcp/
 
@@ -2490,8 +2517,8 @@
 
 ## frontend/src/extensions/contract-price/
 
-- `api.ts` — API client for the contract-price-analysis management API. (~2005 tok)
-- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2467 tok)
+- `api.ts` — API client for the contract-price-analysis management API. (~2039 tok)
+- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2541 tok)
 - `types.ts` — TypeScript types for the contract-price-analysis API (v2). (~1075 tok)
 
 ## frontend/src/extensions/contract-price/components/
@@ -2559,7 +2586,7 @@
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
 - `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~8960 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~27604 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~29783 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13232 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
@@ -2662,7 +2689,7 @@
 ## frontend/src/extensions/license/
 
 - `api.ts` — Canonical license module keys (for the admin App Management dropdown). (~756 tok)
-- `labels.ts` — Canonical license module key → user-facing label. (~148 tok)
+- `labels.ts` — Canonical license module key → user-facing label. (~156 tok)
 - `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3540 tok)
 - `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~209 tok)
 
@@ -2757,6 +2784,21 @@
 
 - `ShellLayout.tsx` — ShellLayout (~292 tok)
 - `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~2296 tok)
+
+## frontend/src/extensions/spare-parts/
+
+- `api.ts` — API client for the spare-parts-analysis management API. (~2522 tok)
+- `hooks.ts` — TanStack Query hooks for the spare-parts-analysis API. (~3184 tok)
+- `types.ts` — TypeScript types for the spare-parts-analysis API (v2). (~1340 tok)
+
+## frontend/src/extensions/spare-parts/components/
+
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6657 tok)
+- `CustomersView.tsx` — 客户管理(D3: master/alias 归并)。 (~4515 tok)
+- `DashboardView.tsx` — DashboardView (~944 tok)
+- `PartAnalysis.tsx` — badgeColors (~5806 tok)
+- `StatCard.tsx` — colorClasses (~439 tok)
+- `TasksView.tsx` — statusTone — renders table (~2666 tok)
 
 ## frontend/src/extensions/types/
 
@@ -3168,23 +3210,53 @@
 
 - `SKILL.md` — ⛔ 第一步：检查是否应该使用本技能（路由关卡，必须最先判断） (~3158 tok)
 
+## skills/public/spare-parts-analysis/
+
+- `SKILL.md` — 备品备件价格体系分析技能(只读查询) (~882 tok)
+
+## skills/public/spare-parts-analysis/scripts/
+
+- `__init__.py` — EAI-CUSTOM: spare-parts-analysis skill scripts package(forked from contract-price-analysis)。 (~28 tok)
+- `cli.py` — End-to-end pipeline (备件价格体系分析:MinIO + eai-flow-ocr + 客户维度)。 (~11877 tok)
+- `config.py` — Configuration for the spare-parts-analysis pipeline (MinIO + OCR service)。 (~470 tok)
+- `db.py` — Async DB engine + session factory for csp_ tables. (~211 tok)
+- `document_parser.py` — Parse a spare-parts contract file via the eai-flow-ocr HTTP service -> TableExtract list。 (~1082 tok)
+- `document_scanner.py` — Scan the MinIO bucket (csp-parts) for spare-parts contract files; detect changed via SHA-256。 (~643 tok)
+- `models.py` — SQLAlchemy ORM for csp_ tables(备件价格体系分析)。 (~2512 tok)
+- `normalizer.py` — Customer dirty-key normalization (D3 混合归一:客户走主数据/别名表)。 (~546 tok)
+- `price_validator.py` — Price cell validation for scanned-contract OCR output。 (~647 tok)
+- `project_fields.py` — Extract document-level fields from OCR'd first-page text。 (~1829 tok)
+- `query.py` — 备件价格分析只读查询 CLI(诊断用,非对话常规路径)。 (~1956 tok)
+- `stats.py` — 一组单价的聚合统计。 (~488 tok)
+- `storage.py` — MinIO object storage for spare-parts contract files (独立 bucket)。 (~666 tok)
+- `table_classifier.py` — Classify extracted tables and map column roles. (~3607 tok)
+
+## skills/public/spare-parts-analysis/scripts/clustering/
+
+- `__init__.py` — Clustering subpackage: vectorization (text + tech params) and DBSCAN engine。 (~46 tok)
+- `engine.py` — DBSCAN clustering over vectorized part samples (numpy-only, no scikit-learn)。 (~878 tok)
+- `vectorizer.py` — Feature vectorizer: char-ngram TF-IDF over part name/spec + standardized tech params。 (~1194 tok)
+
 ## skills/public/water-drainage-report/
 
-- `SKILL.md` — 给排水设计专篇技能 (~3449 tok)
+- `SKILL.md` — 给排水设计专篇技能 (~4512 tok)
 
 ## skills/public/water-drainage-report/references/
 
-- `consistency_contracts.json` (~1030 tok)
-- `formulas.json` (~1579 tok)
-- `reference_values.json` (~354 tok)
+- `consistency_contracts.json` (~1032 tok)
+- `formulas.json` (~1640 tok)
+- `reference_values.json` (~421 tok)
 - `standards_index.json` (~279 tok)
 
 ## skills/public/water-drainage-report/scripts/
 
-- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1191 tok)
-- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~4866 tok)
+- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1337 tok)
+- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~5116 tok)
+- `snapshot.py` — project_snapshot.json 读写器（反馈7 跨轮承接 + 版本历史）。 (~1692 tok)
+- `test_snapshot.py` — snapshot.py 自检（反馈7 v1→v2→v3 自增不变量）。 (~871 tok)
 
 ## tools/license/
 
+- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1312 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)
