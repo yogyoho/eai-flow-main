@@ -41,6 +41,14 @@
       "source": "GB/T 50746-2012 表3.3.3 内插",
       "applies_when": "用户未提供蒸发损失系数",
       "needs_verification": false
+    },
+    {
+      "key": "drift_rate",
+      "default": 0.001,
+      "unit": "—",
+      "source": "工程经验（飘水率与除水器效率相关，常规 0.01%~0.1%；默认取 0.1% 需核实）",
+      "applies_when": "用户未提供风吹/飘水损失率",
+      "needs_verification": true
     }
   ]
 }

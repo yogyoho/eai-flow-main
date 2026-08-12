@@ -18,9 +18,10 @@
       "id": "Qw",
       "name": "风吹损失水量",
       "section": "6.1.2",
-      "expression": "Q * 0.001",
+      "expression": "Q * drift_rate",
       "inputs": {
-        "Q": {"type": "user_input", "value": null, "unit": "m3/h"}
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h"},
+        "drift_rate": {"type": "code_requirement", "value": 0.001, "unit": "—", "source": "工程经验（飘水率与除水器效率相关，常规 0.01%~0.1%；本项目取 0.1% 需核实）", "description": "风吹（飘水）损失率", "needs_verification": true}
       },
       "outputs": {"Qw": "m3/h"}
     },
