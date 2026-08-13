@@ -298,13 +298,17 @@ async def main() -> None:
 
     bid_rows, item_rows = [], []
     seq = 0
-    for p in PROJECTS:
+    for pi, p in enumerate(PROJECTS):
         for role, bidder, items in (("ours", OURS, p["ours"]), ("competitor", COMP, p["comp"])):
             seq += 1
             bid_id = f"BD-2025-{seq:03d}"
             won = role == p["winner"]
+            # EAI-CUSTOM(option A): 中标方按 base 价,落标方按 base × 上浮(落标=报价更高才落标)。
+            # 上浮系数随项目确定性变化 5%-17%,避免所有项目同比例无差异(仪表盘第3图才有可读性)。
+            markup = 0.05 + (pi % 5) * 0.03
+            price = round(p["price"] * (1.0 if won else (1.0 + markup)), 2)
             bid_rows.append(
-                (bid_id, p["name"], p["loc"], date.fromisoformat(p["date"]), role, bidder, won, p["price"])
+                (bid_id, p["name"], p["loc"], date.fromisoformat(p["date"]), role, bidder, won, price)
             )
             for goods, spec, qty, unit, self_amt, out_amt in items:
                 total = self_amt + out_amt  # 单位:万元
