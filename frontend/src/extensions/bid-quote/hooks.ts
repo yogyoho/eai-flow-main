@@ -66,7 +66,7 @@ export function useDrillDown(sql: string | null) {
     enabled: !!sql,
     queryFn: async (): Promise<QueryResult> => {
       const sid = await resolveSourceId();
-      return querySql(sid, sql as string);
+      return querySql(sid, sql!); // enabled: !!sql 保证此处非空,lint 偏好 ! 非 as 断言
     },
   });
 }
