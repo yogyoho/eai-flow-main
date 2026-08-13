@@ -34,6 +34,7 @@ ALL_MODULES = [
     "typography",
     "contract_price",
     "spare_parts",
+    "bid_quote",
 ]
 
 
