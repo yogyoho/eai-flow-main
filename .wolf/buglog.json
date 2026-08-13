@@ -18947,5 +18947,17 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-13T13:55:00Z"
+  },
+  {
+    "id": "bug-1183",
+    "timestamp": "2026-08-14T04:15:00Z",
+    "error_message": "投标明细下钻 modal 运行期会 400:plan 的 drill SQL `SELECT * FROM mock_bid_item WHERE project_name='X'` 引用不存在的列",
+    "file": "frontend/src/extensions/bid-quote/components/QueryView.tsx",
+    "root_cause": "mock_bid_item 表无 project_name 列(该列在 mock_bid 表上,两表靠 bid_id FK 关联)。plan/spec 作者未核对 mock_bid_item 真实 schema 就写了按项目下钻 SQL,assert_readonly_select 守卫放行(SELECT 语法合法)但执行期 column does not exist → 后端 400 → modal 显『加载失败』。",
+    "fix": "明细下钻改走 bid_id JOIN: `SELECT i.goods_name,...,b.bidder_role,b.won FROM mock_bid_item i JOIN mock_bid b ON i.bid_id=b.bid_id WHERE b.project_name='${v}' ORDER BY i.total_amount DESC`。货物下钻/金额段下钻 SQL 列(goods_name/winning_price)经核对确实存在,保持原样。",
+    "tags": ["bid-quote", "mock_market", "schema", "drill-down", "plan-bug", "assert_readonly_select"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14T04:15:00Z"
   }
 ]

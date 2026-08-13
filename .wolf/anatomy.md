@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-12T22:41:18.636Z
-> Files: 1992 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-13T20:12:19.656Z
+> Files: 2014 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -62,13 +62,13 @@
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~27409 tok)
-- `config.yaml` (~2904 tok)
+- `config.yaml` (~3183 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~1885 tok)
+- `extensions_config.json` (~1933 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -508,10 +508,11 @@
 - `frontend-upstream-sync-progress-2026-08-03.md` (~437 tok)
 - `gateway-reload-loop-skills-view.md` — '`（EAI-CUSTOM 注释）。 (~299 tok)
 - `harness-core-upstream-gap-2026-08-03.md` (~549 tok)
+- `ilink-protocol-reference.md` (~481 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `market-analysis-modules-design.md` (~435 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~1614 tok)
+- `MEMORY.md` (~1654 tok)
 - `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~467 tok)
 - `offline-prod-deploy-solution.md` (~381 tok)
@@ -1285,7 +1286,7 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~23969 tok)
+- `database.py` — Database connection and session management for extensions module. (~24088 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~6284 tok)
@@ -1337,8 +1338,8 @@
 
 - `__init__.py` (~0 tok)
 - `mcp.py` — Data source MCP Server — exposes read-only data query tools to the agent. (~3287 tok)
-- `routers.py` — Data source API router — CRUD + connection test + manual sync. (~1956 tok)
-- `schemas.py` — Pydantic schemas for the data_source extension. Field names align with (~774 tok)
+- `routers.py` — Data source API router — CRUD + connection test + manual sync. (~2548 tok)
+- `schemas.py` — Pydantic schemas for the data_source extension. Field names align with (~872 tok)
 - `service.py` — DataSource service: connection testing, sync, read-only query guard, CRUD. (~3642 tok)
 
 ## backend/app/extensions/docmgr/
@@ -1418,7 +1419,7 @@
 
 - `routers.py` — License API routers. (~1234 tok)
 - `schemas.py` — Pydantic schemas for license module. (~633 tok)
-- `service.py` — License verification and management service. (~4447 tok)
+- `service.py` — License verification and management service. (~4452 tok)
 
 ## backend/app/extensions/models/
 
@@ -1558,7 +1559,7 @@
 
 - `__init__.py` (~194 tok)
 - `auth.py` — Authentication endpoints. (~9270 tok)
-- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings + EAI-CUSTOM `GET /wechat/bot-status` (ClawBot 激活状态/QR,只读脱敏). (~9700 tok)
+- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~9375 tok)
 - `mcp.py` — API: 1 endpoints (~4857 tok)
 - `memory.py` — Memory API router for retrieving and managing global memory data. (~5085 tok)
 - `runs.py` — Stateless runs endpoints -- stream and wait without a pre-existing thread. (~1559 tok)
@@ -1734,8 +1735,11 @@
 
 ## backend/scripts/
 
+- `_diag_bid.py` — 临时诊断:模拟 data_source MCP 的 query_dataset 取数路径,定位 agent 连接失败真因。跑完即删。 (~263 tok)
+- `_diag2_handler.py` — 临时诊断2:走 MCP 真实路径(_resolve_db_url + _handle_query_dataset),定位 agent 连接失败真因。跑完即删。 (~166 tok)
 - `migrate_folders.py` — One-time migration: convert virtual folder strings to Folder entities. (~1917 tok)
 - `migrate_phase_duties.py` — Migrate legacy phase_duties JSONB to unified format. (~694 tok)
+- `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~4774 tok)
 
 ## backend/tests/
 
@@ -1763,7 +1767,7 @@
 - `test_data_source_datasets.py` — Tests for DataSourceDataset model + service + router + mcp. (~3348 tok)
 - `test_data_source_mcp.py` — Tests for the data_source MCP server (tool wiring + read-only enforcement). (~977 tok)
 - `test_data_source_models.py` — Tests for the DataSource model. (~300 tok)
-- `test_data_source_routers.py` — Router-level tests for data_source endpoints. Service layer is mocked. (~1808 tok)
+- `test_data_source_routers.py` — Router-level tests for data_source endpoints. Service layer is mocked. (~3022 tok)
 - `test_data_source_service.py` — Tests for data_source schemas + service logic. (~3641 tok)
 - `test_datascope.py` — TestDataScopeEngine: test_get_data_scope_returns_filter_rule, test_unknown_resource_returns_none_all (~2127 tok)
 - `test_delegation_ledger.py` — Tests for the subagent delegation ledger (parent issue: redundant delegation). (~2562 tok)
@@ -1790,7 +1794,7 @@
 - `test_law_kb_registration.py` — Law system-KB registration tests — owner fixed to admin (EAI-CUSTOM). (~815 tok)
 - `test_lead_agent_prompt.py` — _FakeManager: test_build_self_update_section_empty_for_default_agent, test_build_self_update_section (~4205 tok)
 - `test_lead_agent_skills.py` — NamedTool: test_get_skills_prompt_section_returns_empty_when_no_skills_match, test_get_skills_prompt (~3906 tok)
-- `test_license_modules_sync.py` — License module key sync guard. (~784 tok)
+- `test_license_modules_sync.py` — License module key sync guard. (~790 tok)
 - `test_loop_detection_middleware.py` — Tests for LoopDetectionMiddleware. (~12877 tok)
 - `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~1270 tok)
 - `test_mcp_config_hardening.py` — Tests for MCP config endpoint hardening (upstream #3425, dev-adapted). (~1138 tok)
@@ -1849,7 +1853,7 @@
 - `test_update_chapter_auto_parse.py` — Tests for update_chapter auto-parse traceability sources. (~1622 tok)
 - `test_view_image_middleware.py` — Unit tests for ViewImageMiddleware. (~4982 tok)
 - `test_view_image_tool.py` — test_view_image_rejects_external_absolute_path, test_view_image_reads_virtual_uploads_path, test_vie (~1671 tok)
-- `test_wechat_bot_status.py` — Tests for the EAI-CUSTOM WeChat ClawBot activation-status endpoint. (~2245 tok)
+- `test_wechat_bot_status.py` — Tests for the EAI-CUSTOM WeChat ClawBot activation-status endpoint. (~2658 tok)
 - `test_wechat_channel_state.py` — blocking-io 回归测试(ported from bytedance/main 2026-08-13):断言 WechatChannel fs-IO 不阻塞 asyncio event loop(constructor/inbound file staging/auth state load 经 asyncio.to_thread 卸载)。3 测试。 (~1200 tok)
 - `test_with_data_scope_middleware.py` — with_data_scope 中间件依赖直调（现无直测）：超管 allow_all / deny 收集 / AND NOT deny。 (~381 tok)
 - `test_workflow_integration.py` — Integration tests for the full writing-project workflow chain. (~6608 tok)
@@ -1858,8 +1862,8 @@
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4088 tok)
-- `roles_custom.yaml` (~1730 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4223 tok)
+- `roles_custom.yaml` (~1771 tok)
 
 ## deploy/offline/
 
@@ -1975,6 +1979,7 @@
 - `2026-08-06-kb-data-access.md` — 知识库细粒度数据访问控制 Implementation Plan (~7211 tok)
 - `2026-08-06-word-export-layout-import.md` — Word 样例自动提取排版 + 两对话框补齐 Implementation Plan (~7435 tok)
 - `2026-08-11-water-drainage-report-optimization.md` — 给排水单体计算书技能优化 Implementation Plan (~14239 tok)
+- `2026-08-13-bid-quote-frontend.md` — 投标报价分析 (bid-quote) 前端 Implementation Plan (~14412 tok)
 
 ## docs/superpowers/reports/
 
@@ -2055,8 +2060,11 @@
 - `2026-08-06-word-export-layout-import-design.md` — Word 样例自动提取排版 + 报告输出/文档空间导出对话框补齐 — 设计文档 (~1427 tok)
 - `2026-08-11-water-drainage-report-optimization-design.md` — 给排水单体计算书技能优化设计 (~3878 tok)
 - `2026-08-12-water-drainage-report-qa-verification.md` — 给排水单体计算书技能 — 页面验证性测试报告 (~3275 tok)
+- `2026-08-13-bid-quote-eng-plan.md` — 模块① 智能投标报价分析(bid-quote-analysis)工程方案 (~1098 tok)
+- `2026-08-13-bid-quote-frontend-design.md` — 投标报价分析 (bid-quote-analysis) 前端设计 (~2668 tok)
 - `2026-08-13-market-analysis-modules-design.md` — 市场分析四大模块设计文档 (~4318 tok)
 - `2026-08-13-spare-parts-eng-plan.md` — 模块④ 备品备件价格体系分析 — 工程实现方案(已锁) (~2225 tok)
+- `2026-08-14-ontology-semantic-layer-design.md` — Ontology 概念移植设计 — 统一语义层（市场/分析数据域） (~5368 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2165,6 +2173,15 @@
 ## frontend/src/app/app-center/
 
 - `page.tsx` — AppCenterRoute (~140 tok)
+
+## frontend/src/app/bid-quote/
+
+- `layout.tsx` — navItems (~640 tok)
+- `page.tsx` — BidQuoteDashboardPage (~47 tok)
+
+## frontend/src/app/bid-quote/query/
+
+- `page.tsx` — BidQuoteQueryPage (~42 tok)
 
 ## frontend/src/app/contract-price/
 
@@ -2485,8 +2502,27 @@
 
 ## frontend/src/extensions/app-center/hooks/
 
-- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1911 tok)
+- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1920 tok)
 - `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
+
+## frontend/src/extensions/bid-quote/
+
+- `api.ts` — bid-quote API client —— Route B 薄前端直调 data_source REST。 (~594 tok)
+- `hooks.ts` — bid-quote TanStack Query hooks。queryKey 统一 ["bqa", ...] 命名空间。 (~658 tok)
+- `types.ts` — 投标报价分析(bid-quote)类型 —— 对齐 data_source 罐装 dataset 列。 (~397 tok)
+
+## frontend/src/extensions/bid-quote/components/
+
+- `ChartCard.tsx` — ChartCard (~272 tok)
+- `DashboardView.tsx` — GRID (~2432 tok)
+- `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~908 tok)
+- `QueryView.tsx` — TABS — renders table (~1950 tok)
+- `StatCard.tsx` — HEX (~520 tok)
+- `TechTooltip.tsx` — TechTooltip (~320 tok)
+
+## frontend/src/extensions/bid-quote/components/ui/
+
+- `table.tsx` — Lightweight table primitives(raw HTML)—— bid-quote 模块用。 (~449 tok)
 
 ## frontend/src/extensions/cad-design/components/
 
@@ -2689,7 +2725,7 @@
 ## frontend/src/extensions/license/
 
 - `api.ts` — Canonical license module keys (for the admin App Management dropdown). (~756 tok)
-- `labels.ts` — Canonical license module key → user-facing label. (~156 tok)
+- `labels.ts` — Canonical license module key → user-facing label. (~163 tok)
 - `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3540 tok)
 - `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~209 tok)
 
@@ -3121,6 +3157,10 @@
 
 - `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~3532 tok)
 
+## skills/public/bid-quote-analysis/
+
+- `SKILL.md` — 投标报价分析技能(只读 · data_source 复用) (~711 tok)
+
 ## skills/public/coal-eia-report/
 
 - `SKILL.md` — 煤炭矿区总体规划环评报告编写技能 (~3865 tok)
@@ -3257,6 +3297,6 @@
 
 ## tools/license/
 
-- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1312 tok)
+- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1317 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)
