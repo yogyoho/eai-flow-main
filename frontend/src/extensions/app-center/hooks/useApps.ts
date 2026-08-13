@@ -75,6 +75,7 @@ function deriveNavId(path: string): string | null {
   const segment = path.replace(/^\//, "").split("/")[0];
   if (!segment) return null;
   const mapping: Record<string, string> = {
+    "bid-quote": "nav:bid-quote",
     "contract-price": "nav:contract-price",
     "knowledge-factory": "nav:knowledge-factory",
     "workflow-admin": "nav:workflow-admin",

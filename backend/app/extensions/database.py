@@ -1594,6 +1594,7 @@ async def seed_db() -> None:
                     {"key": "report", "label": "报告编撰", "accent": "violet", "sort": 2, "universal": False},
                     {"key": "knowledge", "label": "知识管理", "accent": "cyan", "sort": 3, "universal": False},
                     {"key": "procurement", "label": "采购管理", "accent": "amber", "sort": 4, "universal": False},
+                    {"key": "marketing", "label": "市场营销", "accent": "emerald", "sort": 5, "universal": False},
                 ]:
                     await session.execute(
                         text(
@@ -1603,7 +1604,7 @@ async def seed_db() -> None:
                         domain,
                     )
 
-                # Apps (11 built-in)
+                # Apps (12 built-in)
                 apps = [
                     {"app_id": "dashboard", "name": "工作台", "desc": "待办聚合与项目进度概览，开启高效的一天",
                      "icon": "layout-dashboard", "domain": "universal", "stage": "overview",
@@ -1632,6 +1633,9 @@ async def seed_db() -> None:
                     {"app_id": "spare-parts", "name": "备品备件价格分析", "desc": "跨客户备品备件价格聚类与统计，OCR 解析与认领归并",
                      "icon": "package", "domain": "procurement", "stage": "process",
                      "path": "/spare-parts", "license": "spare_parts", "admin": False, "sort": 11, "sort_key": "beipinbeijian"},
+                    {"app_id": "bid-quote", "name": "投标报价分析", "desc": "投标中标率/报价对比/自产外购构成分析",
+                     "icon": "gavel", "domain": "marketing", "stage": "analysis",
+                     "path": "/bid-quote", "license": "bid_quote", "admin": False, "sort": 12, "sort_key": "toubiaobaojiafenxi"},
                     {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
                      "icon": "settings-2", "domain": "admin", "stage": "manage",
                      "path": "/admin", "license": "platform", "admin": True, "sort": 9, "sort_key": "xitongguanli"},
@@ -1654,7 +1658,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 5 domains + 11 apps")
+                logger.info("Seeded app-center: 6 domains + 12 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 
