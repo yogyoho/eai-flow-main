@@ -1,5 +1,81 @@
 [
   {
+    "id": "bug-699",
+    "timestamp": "2026-08-13T15:10:00",
+    "error_message": "test_data_source_routers.py 全 12 测试失败:require_permission 链路在 AsyncMock db 上崩溃 —— 先 policy_loader.py 'coroutine' object has no attribute 'all',再 identity.py 'coroutine' object has no attribute 'id'。原 8 个测试在加 ABAC 引擎前能过,升级后未同步 stub → 全部红。",
+    "file": "backend/tests/test_data_source_routers.py",
+    "root_cause": "middleware.py:184 EAI-CUSTOM 把 require_permission 的 check_permission 升级成 ABAC-lite:引擎构建调 load_active_policies(db)(查 policies 表)、identity 解析调 provider.resolve(current_user.id, db)(查 users/roles 表)。但单测 _build_app() 只 override get_current_user/get_db 为 AsyncMock,没 stub 这两条 DB 链,AsyncMock.execute().scalars().all() 与 provider.resolve 的 ORM 查询全抛 AttributeError。check_permission 在落 DB 前会先查 per-request 缓存(get_cached_engine/get_cached_identity),None 才查库 —— 这是干净的注入点。",
+    "fix": "加 autouse fixture _stub_auth_caches:patch app.extensions.auth.cache.get_cached_engine 返回 MagicMock(check→True)+ get_cached_identity 返回 MagicMock(role_code='test')。两个缓存非 None → check_permission 跳过 load_active_policies + provider.resolve 全部 DB 工作;engine.check 直返 True → 放行。全 12 测试通过(原 8 + 新 4)。patch 源模块(非 middleware 命名空间)因 check_permission 内部是 local import,call time 重读模块属性。",
+    "tags": ["test-infra", "auth", "abac", "require_permission", "AsyncMock", "data_source", "pre-existing-rot"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T15:10:00"
+  },
+  {
+    "id": "bug-698",
+    "timestamp": "2026-08-13T13:05:00",
+    "error_message": "Agent 在对话里调 data_sources MCP 的 query_dataset 报:connection to the PostgreSQL database at 127.0.0.1:5432 is failing with Errno 111(ECONNREFUSED)。但 gateway 容器 env 有 EXTENSIONS_DB_HOST=postgres-ext,且诊断脚本直连 postgres-ext 成功。",
+    "file": "extensions_config.json (data_servers MCP env 块)",
+    "root_cause": "langchain-mcp-adapters spawn stdio 子进程时,extensions_config.json 里 \"env\": {} (空 dict,非 null)会作为 StdioServerParameters.env 整体传给 anyio.open_process → 子进程拿到【空环境】,不继承父进程(gateway)的 EXTENSIONS_DB_* 变量。于是 mcp.py::_resolve_db_url 走 fallback get_extensions_config().database.url,该值在无 EXTENSIONS_DB_HOST 时默认 localhost:5432 → gateway 容器内无 postgres → ECONNREFUSED → agent 报 127.0.0.1:5432 Errno 111。实测:stripped env 下 database.url 解析为 localhost;带 DATA_SOURCE_DB_URL 时 _resolve_db_url 短路到 postgres-ext。同级 project.mcp/contract-price-analysis 早就显式写了 *_DB_URL env,data_sources MCP 漏了。",
+    "fix": "extensions_config.json 的 data_servers MCP env 块从 {} 改为 {\"DATA_SOURCE_DB_URL\": \"postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow\"},与 PROJECT_DB_URL 模式一致。_resolve_db_url 已支持 DATA_SOURCE_DB_URL 优先。改后需 restart gateway 让 MCP 子进程以新 env 重新 spawn。",
+    "tags": [
+      "mcp",
+      "stdio",
+      "subprocess-env",
+      "env-inheritance",
+      "data_source",
+      "extensions_config",
+      "localhost-fallback"
+    ],
+    "related_bugs": [
+      "bug-696",
+      "bug-697"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T13:05:00"
+  },
+  {
+    "id": "bug-697",
+    "timestamp": "2026-08-13T11:30:00",
+    "error_message": "asyncpg.exceptions.NotNullViolationError: null value in column \"created_at\" of relation \"data_sources\" violates not-null constraint (裸 SQL INSERT data_sources/data_source_datasets)",
+    "file": "backend/scripts/seed_mock_market.py",
+    "root_cause": "ORM mapped_column(default=func.now()) 是 SQLAlchemy 的 Python-side default,仅在 ORM session.add()/flush() 时填值;asyncpg 直接执行裸 SQL INSERT 完全绕过 ORM,而 DB 列本身没有 server_default,导致 created_at/updated_at 这些 NOT NULL 列无值。",
+    "fix": "裸 SQL INSERT 必须显式给时间戳列:INSERT INTO data_sources (...,created_at,updated_at) VALUES (...,now(),now())。同理 data_source_datasets 的 ON CONFLICT upsert 也要带。",
+    "tags": [
+      "sqlalchemy",
+      "default",
+      "asyncpg",
+      "seed",
+      "raw-sql",
+      "data_source"
+    ],
+    "related_bugs": [
+      "bug-696"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T11:30:00"
+  },
+  {
+    "id": "bug-696",
+    "timestamp": "2026-08-13T11:28:00",
+    "error_message": "asyncpg.exceptions.DataError: invalid input for query argument $4: '2025-03-15' ('str' object has no attribute 'toordinal')",
+    "file": "backend/scripts/seed_mock_market.py",
+    "root_cause": "asyncpg 的 DATE/TIMESTAMP codec 用 pgproto 的 C 扩展直接对 Python 对象调 toordinal(),不解析字符串;传 ISO 日期字符串会 AttributeError。这与 psycopg2(接受字符串)行为相反。",
+    "fix": "传 asyncpg 的 DATE 列必须用 datetime.date 对象:beg_date = date.fromisoformat('2025-03-15')。所有 DATE/TIMESTAMP 参数同理转 date/datetime。",
+    "tags": [
+      "asyncpg",
+      "date",
+      "seed",
+      "type-coercion",
+      "data_source"
+    ],
+    "related_bugs": [
+      "bug-697"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T11:28:00"
+  },
+  {
     "id": "bug-695",
     "timestamp": "2026-08-01T10:11:33",
     "error_message": "PermissionRegistry._load() 未解析主 YAML 文件的 disabled_roles，仅 overlay 文件处理 disabled_roles",
@@ -18780,7 +18856,14 @@
     "file": "frontend/src/extensions/spare-parts/hooks.ts, frontend/src/extensions/spare-parts/components/ContractsView.tsx",
     "root_cause": "克隆 contract_price 时的 SWAPS 只覆盖了 (Cpa,Csp) 与 (cpa:page:,csp:page:)，漏掉裸小写 cpa；两个兄弟模块同 key 前缀会互相污染缓存",
     "fix": "replace_all \"cpa\"→\"csp\"（hooks.ts 全部 KEY/queryKey + ContractsView.tsx 2 处 invalidate + bucket 注释）",
-    "tags": ["tanstack-query", "query-key", "fork-clone", "spare-parts", "contract_price", "namespace-collision"],
+    "tags": [
+      "tanstack-query",
+      "query-key",
+      "fork-clone",
+      "spare-parts",
+      "contract_price",
+      "namespace-collision"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-13T00:00:00Z"
@@ -18792,8 +18875,15 @@
     "file": "frontend/src/extensions/spare-parts/components/TasksView.tsx",
     "root_cause": "T7a 从 CspRun 删掉 excel_path（备件无 excel 导出端点），但 T7c 克隆的 TasksView 仍保留 excel 下载单元格 + Download 图标 + downloadExcel 助手",
     "fix": "删除整段 excel 下载单元格 + downloadExcel + Download import，替换为 {run.customers_resolved}（客户维度列）",
-    "tags": ["typecheck", "fork-clone", "stale-reference", "spare-parts"],
-    "related_bugs": ["bug-1178"],
+    "tags": [
+      "typecheck",
+      "fork-clone",
+      "stale-reference",
+      "spare-parts"
+    ],
+    "related_bugs": [
+      "bug-1178"
+    ],
     "occurrences": 1,
     "last_seen": "2026-08-13T00:00:00Z"
   },
@@ -18804,9 +18894,58 @@
     "file": "backend/tests/test_license_modules_sync.py, tools/license/license_generator.py",
     "root_cause": "前置会话把 spare_parts 加入 service.py ALL_MODULES + labels.ts MODULE_LABELS，但漏了同步 test EXPECTED_KEYS 与 license_generator.py 的 ALL_MODULES（4 处定义点须一致，test 就是为此而生）",
     "fix": "EXPECTED_KEYS 与 license_generator.py ALL_MODULES 均追加 \"spare_parts\"（末位，对齐 service.py 顺序）",
-    "tags": ["license", "module-sync", "spare-parts", "test-fix"],
+    "tags": [
+      "license",
+      "module-sync",
+      "spare-parts",
+      "test-fix"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1181",
+    "timestamp": "2026-08-13T00:00:00Z",
+    "error_message": "WeChat /connect <code> 绑定端到端跑不通: POST /api/channels/wechat/connect 被 'configured' 门挡住——渠道 tab 显示 wechat 不可连接, 获取绑定码按钮无响应/报错。",
+    "file": "backend/app/gateway/routers/channel_connections.py (_CREDENTIAL_FIELDS['wechat'], _RUNTIME_REQUIREMENTS['wechat']) + config.yaml (channel_connections.wechat)",
+    "root_cause": "channel_connections 的 binding-code 通用模型假设每个 provider 都有管理员粘贴的凭据; _RUNTIME_REQUIREMENTS['wechat']=('bot_token',) 要求 runtime store 里有 bot_token 才算 'configured'。但 WeChat/iLink 是 QR 激活模型——bot_token 由 channels.wechat 扫码后自动写入 wechat-auth.json, 永远不进 channel_connections 的 runtime store。结果 connect 端点的 _runtime_channel_configured 永远 False, 出码路径死锁。属 provider 模型错配, 非 wechat.py 本身问题(wechat.py 与上游字节一致, 未动)。",
+    "fix": "(1) _CREDENTIAL_FIELDS['wechat']=() — 渠道 tab 不再为 wechat 渲染凭据表单(无粘贴项); (2) _RUNTIME_REQUIREMENTS['wechat']=() — configured 直接由 channels.wechat.enabled 决定, 不要求 runtime bot_token; (3) config.yaml 显式 channel_connections.wechat.enabled=true 启用绑定通道。'running' 门(_runtime_channel_running, 检查 channel.is_running)仍会拒绝未运行的 bot, 安全未降级。三处均加 EAI-CUSTOM 注释 + bug-1181 回溯 + 升级注意。",
+    "tags": [
+      "wechat",
+      "clawbot",
+      "channel-connections",
+      "binding-code",
+      "configured-gate",
+      "qr-activation",
+      "eai-custom"
+    ],
+    "related_bugs": [
+      "bug-1173",
+      "bug-1175"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T00:00:00Z"
+  },
+  {
+    "id": "bug-1182",
+    "timestamp": "2026-08-13T13:55:00",
+    "error_message": "为装 wecom-aibot SDK 在 gateway 容器内跑 `uv sync --frozen`，覆写了命名卷 gateway-venv 的 .venv：pydantic 等核心包缺失，gateway app import 失败（ModuleNotFoundError: No module named 'pydantic'），服务中断。",
+    "file": "gateway-venv named volume（docker-compose-dev.yaml:153 gateway-venv:/app/backend/.venv），被容器内 uv sync --frozen 覆写",
+    "root_cause": "① gateway 用命名卷 gateway-venv（非 host bind-mount），容器内 uv sync 直接改此卷，与 host backend/.venv 无关。② uv sync --frozen 严格按 uv.lock：而 fastmcp/msoffcrypto-tool/docx2pdf/python-docx 是 dev-entrypoint.sh:85-89 在主 sync 后【额外 uv pip install】的 Office-Word-MCP-Server 依赖，不在 lock，被 --frozen 当多余卸载；异常路径下连 pydantic 等核心包也丢。③ 这些 MCP deps 是 entrypoint 运行时装的，不在镜像/lock，host 无感知。",
+    "fix": "删卷重建触发 entrypoint 自愈：docker rm -f deer-flow-gateway eai-flow-knowledge-factory && docker volume rm eai-docker_gateway-venv && docker compose -p eai-docker -f docker/docker-compose-dev.yaml up -d --no-deps gateway knowledge-factory。空卷后 dev-entrypoint.sh 的 uv sync --all-packages（非 --frozen，含失败重建 .venv 重试的自愈）+ line85-89 MCP deps 安装把 venv 完整恢复（验证 import pydantic/aibot/fastmcp 全 OK）。wecom-aibot 已在 uv.lock，正常 sync 即装上。",
+    "tags": [
+      "gateway-venv",
+      "named-volume",
+      "uv-sync-frozen",
+      "wecom-aibot",
+      "docker",
+      "entrypoint-self-heal",
+      "venv-corruption",
+      "office-word-mcp"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-13T13:55:00Z"
   }
 ]

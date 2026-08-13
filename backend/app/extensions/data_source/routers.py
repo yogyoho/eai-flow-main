@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.middleware import get_current_user, require_permission
+from app.extensions.auth.middleware import require_permission
 from app.extensions.data_source.schemas import (
     DatasetCreate,
     DatasetListResponse,
@@ -15,10 +15,12 @@ from app.extensions.data_source.schemas import (
     DataSourceListResponse,
     DataSourceResponse,
     DataSourceUpdate,
+    QueryResult,
+    SqlQueryRequest,
     SyncResponse,
     TestConnectionResult,
 )
-from app.extensions.data_source.service import DataSourceService
+from app.extensions.data_source.service import DataSourceService, assert_readonly_select
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -119,9 +121,7 @@ async def sync_data_source(
     ds.last_sync_at = out["last_sync_at"]
     await db.commit()
     await db.refresh(ds)
-    return SyncResponse(
-        id=ds.id, status=ds.status, last_sync_at=ds.last_sync_at, metadata=out["metadata"]
-    )
+    return SyncResponse(id=ds.id, status=ds.status, last_sync_at=ds.last_sync_at, metadata=out["metadata"])
 
 
 # ── datasets (curated business tables within a source) ──
@@ -178,3 +178,46 @@ async def delete_dataset(
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据集不存在")
     await db.commit()
+
+
+# ── EAI-CUSTOM: 透出已有 MCP 只读查询能力供前端仪表盘/查询页使用(模块① 投标报价分析) ──
+# 仅 SELECT/WITH;写操作/多语句/SELECT INTO 由 assert_readonly_select fail-closed 拒绝。
+# 不新建业务表、不改守卫语义,只是把 DataSourceService.run_readonly_query 暴露给 REST。
+
+
+@router.post("/{source_id}/datasets/{dataset_id}/query", response_model=QueryResult)
+async def query_dataset(
+    source_id: UUID,
+    dataset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """跑指定 dataset 的 default_query(罐装视图,供仪表盘/查询页固定视图)。"""
+    ds = await DataSourceService.get_by_id(db, source_id)
+    if ds is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据源不存在")
+    dataset = await DataSourceService.get_dataset(db, dataset_id)
+    # 跨源隔离:dataset 必须属于该 source(防越权读)
+    if dataset is None or str(dataset.source_id) != str(source_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据集不存在")
+    rows = await DataSourceService.run_readonly_query(ds, dataset.default_query)
+    return QueryResult(rows=rows, row_count=len(rows), label=dataset.label)
+
+
+@router.post("/{source_id}/query", response_model=QueryResult)
+async def query_source_sql(
+    source_id: UUID,
+    body: SqlQueryRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """下钻参数化只读 SQL(前端按白名单维度拼接,assert_readonly_select 守卫)。"""
+    ds = await DataSourceService.get_by_id(db, source_id)
+    if ds is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据源不存在")
+    try:
+        safe_sql = assert_readonly_select(body.sql)  # fail-closed:非 SELECT/写操作/多语句 → ValueError
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    rows = await DataSourceService.run_readonly_query(ds, safe_sql)
+    return QueryResult(rows=rows, row_count=len(rows))

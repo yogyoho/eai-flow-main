@@ -97,3 +97,18 @@ class DatasetResponse(BaseModel):
 
 class DatasetListResponse(BaseModel):
     items: list[DatasetResponse]
+
+
+# EAI-CUSTOM: 投标报价分析(Route B)只读查询请求/结果 schema —— 透出已有 MCP 查询能力到 REST
+class SqlQueryRequest(BaseModel):
+    """前端下钻参数化只读 SQL 的请求体。"""
+
+    sql: str = Field(..., min_length=1, max_length=4000)
+
+
+class QueryResult(BaseModel):
+    """只读查询结果(罐装 dataset 端点与 raw-SQL 下钻端点共用)。"""
+
+    rows: list[dict]
+    row_count: int
+    label: str | None = None
