@@ -15,6 +15,11 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp
 
 from app.gateway.auth.config import get_auth_config
+from app.gateway.auth.session_cookie_state import (
+    SESSION_COOKIE_ISSUED_STATE_ATTR,
+    SESSION_COOKIE_MAX_AGE_STATE_ATTR,
+    SESSION_COOKIE_SECURE_STATE_ATTR,
+)
 from app.gateway.auth_disabled import is_auth_disabled
 from app.gateway.request_path import get_request_route_path
 
@@ -215,6 +220,25 @@ def is_allowed_auth_origin(request: Request) -> bool:
 
     request_origin = _request_origin(request)
     return normalized_origin in _configured_cors_origins() or (request_origin is not None and normalized_origin == request_origin)
+
+
+def auth_csrf_cookie_settings(request: Request) -> tuple[bool, int | None]:
+    """Return ``(secure, max_age)`` for auth-created CSRF cookies.
+
+    EAI-CUSTOM port from upstream bytedance/main (csrf_middleware.py) so the
+    upstream `routers/auth.py` (adopted in the 2026-08-14 sync) can create
+    auth-session CSRF cookies against the EAI-customized CSRF middleware.
+    """
+    session_cookie_issued = getattr(request.state, SESSION_COOKIE_ISSUED_STATE_ATTR, False)
+    if session_cookie_issued:
+        return (
+            bool(getattr(request.state, SESSION_COOKIE_SECURE_STATE_ATTR, is_secure_request(request))),
+            getattr(request.state, SESSION_COOKIE_MAX_AGE_STATE_ATTR, None),
+        )
+
+    secure = is_secure_request(request)
+    max_age = get_auth_config().token_expiry_days * 24 * 3600 if secure else None
+    return secure, max_age
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
