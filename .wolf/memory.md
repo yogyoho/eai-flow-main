@@ -7289,3 +7289,52 @@
 | 09:12 | Session end: ③ biz-pipeline 落地 | T1-T7 全完成 | 下一步 ② sales-personnel | ~300 |
 | 08:46 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-modules-build-progress.md | — | ~343 |
 | 08:46 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~76 |
+| 08:54 | Created docs/superpowers/plans/2026-08-14-sales-personnel-frontend.md | — | ~3679 |
+| 08:57 | Created backend/scripts/seed_mock_sales.py | — | ~4290 |
+| 08:58 | Edited backend/scripts/seed_mock_sales.py | inline fix | ~29 |
+| 08:58 | Edited backend/scripts/seed_mock_sales.py | inline fix | ~15 |
+| 08:58 | Edited backend/scripts/seed_mock_sales.py | 5→5 lines | ~88 |
+| 09:00 | Edited backend/app/extensions/license/service.py | 3→4 lines | ~18 |
+| 09:00 | Edited frontend/src/extensions/license/labels.ts | 3→4 lines | ~22 |
+| 09:00 | Edited tools/license/license_generator.py | 3→4 lines | ~18 |
+| 09:01 | Edited backend/tests/test_license_modules_sync.py | 10→10 lines | ~112 |
+| 09:02 | Edited config/permissions.yaml | expanded (+11 lines) | ~179 |
+| 09:05 | Edited config/permissions.yaml | inline fix | ~7 |
+
+## Session: 2026-08-14 09:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:07 | Edited config/roles_custom.yaml | 1→2 lines | ~14 |
+| 09:07 | Edited config/roles_custom.yaml | 1→2 lines | ~8 |
+| 09:08 | Edited config/roles_custom.yaml | 2→4 lines | ~26 |
+| 09:08 | Edited backend/app/extensions/database.py | 3→6 lines | ~178 |
+| 09:08 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | 2→3 lines | ~34 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/types.ts | — | ~358 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/api.ts | — | ~520 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/hooks.ts | — | ~686 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/components/StatCard.tsx | — | ~525 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/components/ChartCard.tsx | — | ~264 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/components/TechTooltip.tsx | — | ~283 |
+| 09:12 | Created frontend/src/extensions/sales-personnel/components/ui/table.tsx | — | ~458 |
+| 09:13 | Created frontend/src/extensions/sales-personnel/components/DashboardView.tsx | — | ~2197 |
+| 09:13 | Created frontend/src/extensions/sales-personnel/components/DrillDownModal.tsx | — | ~912 |
+| 09:13 | Created frontend/src/extensions/sales-personnel/components/QueryView.tsx | — | ~2167 |
+| 09:14 | Created frontend/src/app/sales-personnel/layout.tsx | — | ~649 |
+| 09:14 | Created frontend/src/app/sales-personnel/page.tsx | — | ~50 |
+| 09:14 | Created frontend/src/app/sales-personnel/query/page.tsx | — | ~46 |
+| 09:16 | Edited frontend/src/extensions/sales-personnel/hooks.ts | 1→2 lines | ~44 |
+| 09:20 | Session end: 19 writes across 15 files (roles_custom.yaml, database.py, useApps.ts, types.ts, api.ts) | 16 reads | ~26152 tok |
+
+## Session: 2026-08-14 09:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:30 | Backend E2E: curl login(admin@eai-flow.com `username` field) → resolve source b5d077cd → 4 datasets present | /api/extensions/* | 200 ✓ | ~800 |
+| 09:33 | Backend query: POST /{sid}/datasets/{did}/query 需 X-CSRF-Token(读 login 下发的 csrf_token cookie) | HR总览/部门差旅 | 数据与 seed 自检一致(12/11/86.2%/181000/5/40500) ✓ | ~1200 |
+| 09:36 | Browser E2E dashboard /sales-personnel: 5 KPI + 3 图表(考勤构成/差旅/报销饼图)全渲染,数据匹配后端 | DashboardView | 200 ✓ | ~3500 |
+| 09:40 | Browser E2E query /sales-personnel/query: 3 tab + 12 员工(E001-E012,孙磊离职);点张伟下钻→4 趟差旅 DESC | QueryView/DrillDownModal | ✓ | ~3600 |
+| 09:44 | app-center 磁贴 "销售人员" 在 市场营销(现 3 应用),15 应用总数 | /app-center | ✓ | ~2000 |
+| 09:46 | T7 全量验证通过 → ② sales-personnel 完成;四市场模块(④①③②)全部落地 | — | DONE | ~0 |
+| 09:48 | OpenWolf bookkeeping: memory.md + cerebrum.md(CSRF/login gotcha) + anatomy + auto-memory + buglog | .wolf/* | 写入 | ~0 |
+| 09:29 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-modules-build-progress.md | — | ~489 |

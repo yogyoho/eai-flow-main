@@ -18959,5 +18959,17 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T04:15:00Z"
+  },
+  {
+    "id": "bug-1184",
+    "timestamp": "2026-08-14T09:33:00Z",
+    "error_message": "curl 手动验证 data_source 查询端点报 {\"detail\":\"CSRF token missing. Include X-CSRF-Token header.\"};且误用 {\"identifier\":...} 登录字段导致 body 解析偏差",
+    "file": "backend/app/extensions/data_source/routers.py(POST query 端点) + backend/app/extensions/auth/routers.py(登录门面)",
+    "root_cause": "(1) POST /api/extensions/data-sources/{sid}/datasets/{did}/query 是写式动词,受 CSRF Double-Submit 守卫;前端 authFetch 自动带 X-CSRF-Token(读 cookie),curl 手测时漏带。(2) 登录门面字段是 username 非 identifier(identifier 是代码内局部变量 = body.username.strip())",
+    "fix": "curl 联调三步:先 POST /api/extensions/auth/login -c jar -d '{\"username\":\"admin@eai-flow.com\",\"password\":\"Admin@2026\"}';再 CSRF=$(grep -i csrf_token jar|awk '{print $NF}');查询请求加 -H \"X-CSRF-Token: $CSRF\"。GET(list)不需 CSRF",
+    "tags": ["csrf", "data-source", "auth", "login-facade", "curl", "route-b", "e2e-verification"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14T09:33:00Z"
   }
 ]
