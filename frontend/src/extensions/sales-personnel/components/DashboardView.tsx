@@ -176,7 +176,7 @@ export function DashboardView() {
               <XAxis dataKey="department" tick={{ ...TICK, fontSize: 11 }} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
               <YAxis tick={{ ...TICK, ...TABULAR }} tickLine={false} axisLine={false} width={40} />
               <Tooltip content={<TechTooltip unit="万" />} cursor={CURSOR} />
-              <Bar dataKey="金额" name="金额(万)" fill={C_BLUE} radius={[6, 6, 0, 0]} isAnimationActive animationDuration={700} maxBarSize={64}>
+              <Bar dataKey="金额" name="金额(万)" fill={C_BLUE} radius={[3, 3, 0, 0]} isAnimationActive animationDuration={700} maxBarSize={64}>
                 <LabelList
                   dataKey="金额label"
                   position="top"
