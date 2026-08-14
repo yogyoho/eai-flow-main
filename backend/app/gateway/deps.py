@@ -29,6 +29,13 @@ from langgraph.types import Checkpointer
 from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.persistence.feedback import FeedbackRepository
 from deerflow.runtime import RunContext, RunManager, StreamBridge
+
+if TYPE_CHECKING:
+    # EAI-CUSTOM: lazy-imported scheduled-task repos used as annotations below
+    # (imported at runtime inside `initialize`); TYPE_CHECKING keeps ruff happy
+    # without a runtime import cycle.
+    from deerflow.persistence.scheduled_task_runs import ScheduledTaskRunRepository
+    from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
 from deerflow.runtime.checkpoint_mode import freeze_checkpoint_channel_mode, freeze_checkpoint_snapshot_frequency
 from deerflow.runtime.events.store.base import RunEventStore
 from deerflow.runtime.runs.store.base import RunStore
@@ -177,8 +184,8 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
 
             app.state.run_store = RunRepository(sf)
             app.state.feedback_repo = FeedbackRepository(sf)
-            from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
             from deerflow.persistence.scheduled_task_runs import ScheduledTaskRunRepository
+            from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
 
             app.state.scheduled_task_repo = ScheduledTaskRepository(sf)
             app.state.scheduled_task_run_repo = ScheduledTaskRunRepository(sf)
@@ -270,8 +277,8 @@ def _require(attr: str, label: str) -> Callable[[Request], T]:
     return dep
 
 
-get_scheduled_task_repo: Callable[[Request], "ScheduledTaskRepository"] = _require("scheduled_task_repo", "Scheduled task repository")
-get_scheduled_task_run_repo: Callable[[Request], "ScheduledTaskRunRepository"] = _require("scheduled_task_run_repo", "Scheduled task run repository")
+get_scheduled_task_repo: Callable[[Request], ScheduledTaskRepository] = _require("scheduled_task_repo", "Scheduled task repository")
+get_scheduled_task_run_repo: Callable[[Request], ScheduledTaskRunRepository] = _require("scheduled_task_run_repo", "Scheduled task run repository")
 
 
 async def get_scheduled_task_service(request: Request):

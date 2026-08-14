@@ -20,7 +20,6 @@ from app.gateway.auth.session_cookie_state import (
     SESSION_COOKIE_MAX_AGE_STATE_ATTR,
     SESSION_COOKIE_SECURE_STATE_ATTR,
 )
-from app.gateway.auth_disabled import is_auth_disabled
 from app.gateway.request_path import get_request_route_path
 
 CSRF_COOKIE_NAME = "csrf_token"

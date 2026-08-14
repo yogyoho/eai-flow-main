@@ -12,9 +12,6 @@ from app.extensions.auth.permission_routers import router as permissions_router
 from app.extensions.auth.policy_routers import router as policy_router
 from app.extensions.auth.routers import router as auth_router
 from app.extensions.contract_price import router as contract_price_router
-# EAI-CUSTOM: spare_parts(备品备件价格分析)——导入包即把 csp_ 表注册到 Base.metadata
-# (init_db create_all 建表);router 供管理层 API 挂载(/api/extensions/spare-parts/*)。
-from app.extensions.spare_parts import router as spare_parts_router  # noqa: F401
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.dept.routers import router as dept_router
@@ -28,12 +25,16 @@ from app.extensions.license.routers import router as license_router
 from app.extensions.output.routers import router as output_router
 from app.extensions.project import router as project_router
 from app.extensions.role.routers import router as role_router
-from app.extensions.workspace import router as workspace_router  # EAI-CUSTOM: Collab Workspace
 from app.extensions.settings.routers import router as settings_router
+
+# EAI-CUSTOM: spare_parts(备品备件价格分析)——导入包即把 csp_ 表注册到 Base.metadata
+# (init_db create_all 建表);router 供管理层 API 挂载(/api/extensions/spare-parts/*)。
+from app.extensions.spare_parts import router as spare_parts_router  # noqa: F401
 from app.extensions.user.routers import router as user_router
 from app.extensions.web_scraper import web_scraper_router
 from app.extensions.workflow import router as workflow_router
 from app.extensions.workflow.timeline.routers import router as timeline_router
+from app.extensions.workspace import router as workspace_router  # EAI-CUSTOM: Collab Workspace
 from app.gateway.auth_middleware import AuthMiddleware
 from app.gateway.config import get_gateway_config
 from app.gateway.csrf_middleware import CORS_EXPOSED_HEADERS, CSRFMiddleware, get_configured_cors_origins
