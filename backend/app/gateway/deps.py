@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import TYPE_CHECKING, Any, TypeVar, cast
@@ -26,6 +27,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 from fastapi import FastAPI, HTTPException, Request
 from langgraph.types import Checkpointer
 
+from deerflow.community.browser_automation.session import browser_multi_worker_error
 from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.persistence.feedback import FeedbackRepository
 from deerflow.runtime import RunContext, RunManager, StreamBridge
@@ -41,6 +43,87 @@ from deerflow.runtime.events.store.base import RunEventStore
 from deerflow.runtime.runs.store.base import RunStore
 
 logger = logging.getLogger(__name__)
+
+
+# EAI-CUSTOM: ported from upstream bytedance/main (deps.py) so the upstream
+# startup-config validation tests (test_agent_storage_backend,
+# test_multi_worker_postgres_gate) pass against EAI's deps.py. Both are no-ops
+# for the default single-worker EAI deployment (GATEWAY_WORKERS=1).
+def _browser_tools_enabled_in_config(config: AppConfig) -> bool:
+    """Return whether process-local agentic browser sessions are configured."""
+    get_tool_config = getattr(config, "get_tool_config", None)
+    if callable(get_tool_config):
+        return get_tool_config("browser_navigate") is not None
+    return any(getattr(tool, "name", None) == "browser_navigate" for tool in (getattr(config, "tools", None) or []))
+
+
+def _enforce_postgres_for_multi_worker(config: AppConfig) -> None:
+    """Refuse unsafe multi-worker configurations before persistence starts.
+
+    Four checks (all must pass for multi-worker):
+
+    1. Process-local browser sessions must be disabled.
+    2. The DB backend must be Postgres (SQLite write-locks cannot support
+       concurrent multi-process access).
+    3. ``run_events.backend`` must be ``db`` (memory/JSONL stores are
+       process-local).
+    4. ``run_ownership.heartbeat_enabled`` must be True (without heartbeat,
+       reconciliation treats all inflight runs as orphans).
+    """
+    try:
+        workers = int(os.environ.get("GATEWAY_WORKERS", "1"))
+    except (TypeError, ValueError):
+        workers = 1
+
+    if workers <= 1:
+        return
+
+    if _browser_tools_enabled_in_config(config):
+        raise SystemExit(browser_multi_worker_error(workers))
+
+    backend = getattr(config.database, "backend", None)
+    if backend != "postgres":
+        raise SystemExit(f"GATEWAY_WORKERS={workers} requires database.backend='postgres', but database.backend is '{backend}'. SQLite cannot support concurrent multi-process access. Set GATEWAY_WORKERS=1 or switch to Postgres.")
+
+    run_events_backend = getattr(getattr(config, "run_events", None), "backend", None)
+    if run_events_backend != "db":
+        raise SystemExit(
+            f"GATEWAY_WORKERS={workers} requires run_events.backend='db', but run_events.backend is '{run_events_backend}'. "
+            "Memory and JSONL event stores are process-local, so delivery receipt singleton guarantees cannot hold across workers. "
+            "Set GATEWAY_WORKERS=1 or configure run_events.backend: db."
+        )
+
+    run_ownership = getattr(config, "run_ownership", None)
+    if run_ownership is None or not run_ownership.heartbeat_enabled:
+        raise SystemExit(
+            f"GATEWAY_WORKERS={workers} requires run_ownership.heartbeat_enabled=true. "
+            "Without heartbeat, every run has a NULL lease, so reconciliation "
+            "treats all inflight runs as orphans — Worker B would kill Worker A's "
+            "live runs on every rolling update or scale-up. "
+            "Set run_ownership.heartbeat_enabled=true in config.yaml."
+        )
+
+
+def _validate_agent_storage(config: AppConfig) -> None:
+    """Fail fast on an agent-storage backend the database cannot support."""
+    agent_storage = getattr(config, "agent_storage", None)
+    backend = getattr(agent_storage, "backend", "file")
+    db_backend = getattr(getattr(config, "database", None), "backend", None)
+    if backend == "db" and db_backend not in ("sqlite", "postgres"):
+        raise SystemExit(
+            f"agent_storage.backend='db' requires database.backend to be 'sqlite' or 'postgres', "
+            f"but database.backend is '{db_backend}'. A 'memory' database is per-process and cannot "
+            "share agent definitions across nodes. Set database.backend, or use agent_storage.backend='file'."
+        )
+    try:
+        workers = int(os.environ.get("GATEWAY_WORKERS", "1"))
+    except (TypeError, ValueError):
+        workers = 1
+    if workers > 1 and db_backend == "postgres" and backend == "file":
+        logger.warning(
+            "GATEWAY_WORKERS=%s with database.backend='postgres' but agent_storage.backend='file': custom agents are stored per-node on local disk and are not visible across workers/nodes. Set agent_storage.backend='db' to share them.",
+            workers,
+        )
 
 if TYPE_CHECKING:
     from app.gateway.auth.local_provider import LocalAuthProvider
@@ -131,6 +214,12 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
     from deerflow.runtime import make_store, make_stream_bridge
     from deerflow.runtime.checkpointer.async_provider import make_checkpointer
     from deerflow.runtime.events.store import make_run_event_store
+
+    # EAI-CUSTOM: multi-worker / agent-storage safety gates (ported from upstream
+    # deps.py in the 2026-08-15 sync). No-ops for the default single-worker EAI
+    # deployment (GATEWAY_WORKERS unset/1).
+    _enforce_postgres_for_multi_worker(startup_config)
+    _validate_agent_storage(startup_config)
 
     async with AsyncExitStack() as stack:
         # Lifecycle and system-model hooks can originate on isolated subagent
