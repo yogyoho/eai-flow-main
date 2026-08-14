@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { clearBidQuoteCache } from "@/extensions/bid-quote/api";
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
+import { FilterBar } from "@/extensions/bid-quote/components/FilterBar";
 import { StatCard } from "@/extensions/bid-quote/components/StatCard";
 import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import {
@@ -25,6 +26,7 @@ import {
   useProjectShowdown,
   useWinRateBySegment,
 } from "@/extensions/bid-quote/hooks";
+import { EMPTY_FILTERS, type FilterState } from "@/extensions/bid-quote/types";
 
 // EAI-CUSTOM: 项目 chart/success/destructive CSS 变量为完整颜色(非 HSL 通道),故图表用字面 hex
 const GRID = "rgba(100,116,139,0.22)";
@@ -45,15 +47,16 @@ function wan(v: string | null): string {
 
 export function DashboardView() {
   const [tick, setTick] = useState(0);
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const refresh = () => {
     clearBidQuoteCache();
     setTick((t) => t + 1);
   };
 
-  const summaryQ = useBidSummary();
-  const segQ = useWinRateBySegment();
-  const compQ = useComposition();
-  const showdownQ = useProjectShowdown();
+  const summaryQ = useBidSummary(filters);
+  const segQ = useWinRateBySegment(filters);
+  const compQ = useComposition(filters);
+  const showdownQ = useProjectShowdown(filters);
 
   const s = summaryQ.data?.[0];
   // 友商中标率(后端无此字段,前端算)
@@ -75,6 +78,9 @@ export function DashboardView() {
           刷新
         </Button>
       </div>
+
+      {/* 全局过滤 */}
+      <FilterBar filters={filters} onChange={setFilters} />
 
       {/* KPI 行 */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">

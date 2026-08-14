@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { DrillDownModal } from "@/extensions/bid-quote/components/DrillDownModal";
+import { FilterBar } from "@/extensions/bid-quote/components/FilterBar";
 import {
   Table,
   TableBody,
@@ -13,7 +14,13 @@ import {
   TableRow,
 } from "@/extensions/bid-quote/components/ui/table";
 import { useBidList, useComposition, useWinRateBySegment } from "@/extensions/bid-quote/hooks";
-import type { BidItemRow, CompositionRow, SegmentRow } from "@/extensions/bid-quote/types";
+import {
+  EMPTY_FILTERS,
+  type BidItemRow,
+  type CompositionRow,
+  type FilterState,
+  type SegmentRow,
+} from "@/extensions/bid-quote/types";
 
 type TabKey = "bidlist" | "composition" | "segment";
 
@@ -40,11 +47,12 @@ const esc = (v: unknown) => {
 
 export function QueryView() {
   const [tab, setTab] = useState<TabKey>("bidlist");
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [drill, setDrill] = useState<{ title: string; sql: string } | null>(null);
 
   const bidQ = useBidList();
-  const compQ = useComposition();
-  const segQ = useWinRateBySegment();
+  const compQ = useComposition(filters);
+  const segQ = useWinRateBySegment(filters);
 
   const bidRows = bidQ.data ?? [];
   const compRows = compQ.data ?? [];
@@ -89,6 +97,9 @@ export function QueryView() {
         <Search className="h-5 w-5 text-primary" />
         <h1 className="text-2xl font-bold text-foreground">数据查询</h1>
       </div>
+
+      {/* 全局过滤 */}
+      <FilterBar filters={filters} onChange={setFilters} />
 
       {/* 视图 tab(pill) */}
       <div className="flex gap-2">

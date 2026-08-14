@@ -1,50 +1,52 @@
 /**
  * bid-quote TanStack Query hooks。queryKey 统一 ["bqa", ...] 命名空间。
- * 罐装视图:resolve source/dataset id(缓存)→ queryDataset;
- * 明细/下钻:raw SQL → querySql(后端 assert_readonly_select 守卫)。
- *
- * 铁律:dataset label 必须与 seed_mock_market.py 一字不差。
+ * 罐装视图:sqlFor(key, filters, chart) 拼 SQL → queryFiltered(后端 assert_readonly_select 守卫);
+ * 明细/下钻:raw SQL → querySql。
  */
 
 import { useQuery } from "@tanstack/react-query";
 
-import { queryDataset, querySql, resolveDatasetId, resolveSourceId } from "./api";
+import { fetchFilterOptions, queryFiltered, querySql, resolveSourceId, sqlFor } from "./api";
 import type {
   BidItemRow,
   BidSummaryRow,
+  ChartFilter,
   CompositionRow,
+  FilterOptions,
+  FilterState,
   QueryResult,
   SegmentRow,
   ShowdownRow,
 } from "./types";
 
 export const KEYS = {
-  summary: ["bqa", "summary"] as const,
-  composition: ["bqa", "composition"] as const,
-  segment: ["bqa", "segment"] as const,
-  showdown: ["bqa", "showdown"] as const,
+  filterOptions: ["bqa", "filterOptions"] as const,
   bidlist: ["bqa", "bidlist"] as const,
   drilldown: (sql: string) => ["bqa", "drilldown", sql] as const,
 };
 
-function useDatasetQuery<T>(key: readonly string[], label: string, enabled = true) {
+/** 过滤驱动的罐装视图查询。filters/chart 变 → SQL 变 → queryKey 变 → 自动重查。 */
+function useFilteredQuery<T>(
+  keyBase: string,
+  tplKey: "summary" | "composition" | "segment" | "showdown",
+  filters: FilterState,
+  chart?: ChartFilter,
+) {
+  const sql = sqlFor(tplKey, filters, chart);
   return useQuery({
-    queryKey: key,
-    enabled,
+    queryKey: ["bqa", keyBase, sql] as const,
     queryFn: async (): Promise<T[]> => {
-      const sid = await resolveSourceId();
-      const did = await resolveDatasetId(sid, label);
-      const res = await queryDataset(sid, did);
+      const res = await queryFiltered(sql);
       return res.rows as T[];
     },
   });
 }
 
-export const useBidSummary = () => useDatasetQuery<BidSummaryRow>(KEYS.summary, "投标总览");
-export const useComposition = () =>
-  useDatasetQuery<CompositionRow>(KEYS.composition, "货物构成对比(我方vs友商)");
-export const useWinRateBySegment = () => useDatasetQuery<SegmentRow>(KEYS.segment, "按金额段我方中标率");
-export const useProjectShowdown = () => useDatasetQuery<ShowdownRow>(KEYS.showdown, "项目报价对比(我方vs友商)");
+export const useBidSummary = (f: FilterState) => useFilteredQuery<BidSummaryRow>("summary", "summary", f);
+export const useComposition = (f: FilterState, chart?: ChartFilter) =>
+  useFilteredQuery<CompositionRow>("composition", "composition", f, chart);
+export const useWinRateBySegment = (f: FilterState) => useFilteredQuery<SegmentRow>("segment", "segment", f);
+export const useProjectShowdown = (f: FilterState) => useFilteredQuery<ShowdownRow>("showdown", "showdown", f);
 
 /** 明细:全量 mock_bid,下钻来源。 */
 export function useBidList(enabled = true) {
@@ -68,5 +70,13 @@ export function useDrillDown(sql: string | null) {
       const sid = await resolveSourceId();
       return querySql(sid, sql!); // enabled: !!sql 保证此处非空,lint 偏好 ! 非 as 断言
     },
+  });
+}
+
+/** distinct 过滤选项(项目 + 友商),供 FilterBar 下拉。 */
+export function useFilterOptions() {
+  return useQuery({
+    queryKey: KEYS.filterOptions,
+    queryFn: async (): Promise<FilterOptions> => fetchFilterOptions(),
   });
 }
