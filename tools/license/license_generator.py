@@ -34,6 +34,7 @@ ALL_MODULES = [
     "spare_parts",
     "bid_quote",
     "biz_pipeline",
+    "sales_personnel",
 ]
 
 
