@@ -84,11 +84,13 @@ export function buildWhere(
   useCompetitorExists = false,
 ): string {
   const c: string[] = ["1=1"];
+  // IN 列表先排序:SQL 进 queryKey,选择顺序不同会碎片化缓存;排序后同集合 = 同 key
+  const sorted = (xs: string[]) => [...xs].sort((a, b) => a.localeCompare(b, "zh-Hans-u-co-pinyin"));
   if (g.projects.length) {
-    c.push(`project_name IN (${g.projects.map((p) => `'${esc(p)}'`).join(",")})`);
+    c.push(`project_name IN (${sorted(g.projects).map((p) => `'${esc(p)}'`).join(",")})`);
   }
   if (g.competitors.length) {
-    const list = g.competitors.map((x) => `'${esc(x)}'`).join(",");
+    const list = sorted(g.competitors).map((x) => `'${esc(x)}'`).join(",");
     if (useCompetitorExists) {
       // 仅我方查询:筛"有选中友商参与的项目"
       c.push(

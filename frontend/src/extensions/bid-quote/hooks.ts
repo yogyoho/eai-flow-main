@@ -4,7 +4,7 @@
  * 明细/下钻:raw SQL → querySql。
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { fetchFilterOptions, queryFiltered, querySql, resolveSourceId, sqlFor } from "./api";
 import type {
@@ -39,6 +39,8 @@ function useFilteredQuery<T>(
       const res = await queryFiltered(sql);
       return res.rows as T[];
     },
+    // 切过滤时保留旧数据,避免图表闪空
+    placeholderData: keepPreviousData,
   });
 }
 

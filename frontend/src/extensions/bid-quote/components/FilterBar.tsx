@@ -16,25 +16,31 @@ function MultiSelect({
   options,
   selected,
   onToggle,
+  status,
 }: {
   label: string;
   options: string[];
   selected: string[];
   onToggle: (v: string) => void;
+  status: "pending" | "error" | "ok";
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" role="group" aria-label={label}>
       <span className="text-[11px] text-muted-foreground">{label}</span>
       <div className="flex flex-wrap gap-1">
-        {options.length === 0 ? (
+        {status === "pending" && options.length === 0 && (
           <span className="text-[11px] text-muted-foreground/60">加载中…</span>
-        ) : (
-          options.map((o) => {
-            const on = selected.includes(o);
-            return (
-              <button
-                key={o}
-                onClick={() => onToggle(o)}
+        )}
+        {status === "error" && options.length === 0 && (
+          <span className="text-[11px] text-destructive/80">选项加载失败</span>
+        )}
+        {options.map((o) => {
+          const on = selected.includes(o);
+          return (
+            <button
+              key={o}
+              aria-pressed={on}
+              onClick={() => onToggle(o)}
                 className={
                   "rounded border px-2 py-0.5 text-[11px] transition-colors " +
                   (on
@@ -45,8 +51,7 @@ function MultiSelect({
                 {o}
               </button>
             );
-          })
-        )}
+          })}
       </div>
     </div>
   );
@@ -55,6 +60,8 @@ function MultiSelect({
 export function FilterBar({ filters, onChange }: FilterBarProps) {
   const optsQ = useFilterOptions();
   const opts = optsQ.data ?? { projects: [], competitors: [] };
+  // 评审修正:用查询状态而非 options.length 区分 加载中/失败,避免请求失败时永远显示"加载中…"
+  const status = optsQ.isPending ? "pending" : optsQ.isError ? "error" : "ok";
   const toggle = (key: "projects" | "competitors", v: string) => {
     const cur = filters[key];
     onChange({ ...filters, [key]: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v] });
@@ -77,13 +84,26 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
         )}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <MultiSelect label="项目" options={opts.projects} selected={filters.projects} onToggle={(v) => toggle("projects", v)} />
-        <MultiSelect label="友商" options={opts.competitors} selected={filters.competitors} onToggle={(v) => toggle("competitors", v)} />
+        <MultiSelect
+          label="项目"
+          options={opts.projects}
+          selected={filters.projects}
+          onToggle={(v) => toggle("projects", v)}
+          status={status}
+        />
+        <MultiSelect
+          label="友商"
+          options={opts.competitors}
+          selected={filters.competitors}
+          onToggle={(v) => toggle("competitors", v)}
+          status={status}
+        />
         <div className="flex flex-col gap-1">
           <span className="text-[11px] text-muted-foreground">投标日期</span>
           <div className="flex items-center gap-1">
             <input
               type="date"
+              aria-label="投标日期起"
               value={filters.dateFrom ?? ""}
               onChange={(e) => onChange({ ...filters, dateFrom: e.target.value || null })}
               className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]"
@@ -91,6 +111,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
             <span className="text-[11px] text-muted-foreground">~</span>
             <input
               type="date"
+              aria-label="投标日期止"
               value={filters.dateTo ?? ""}
               onChange={(e) => onChange({ ...filters, dateTo: e.target.value || null })}
               className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]"

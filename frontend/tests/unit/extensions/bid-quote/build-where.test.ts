@@ -14,8 +14,8 @@ describe("buildWhere", () => {
   it("空过滤返回 1=1", () => {
     expect(buildWhere(EMPTY_FILTERS)).toBe("1=1");
   });
-  it("projects → IN", () => {
-    const g: FilterState = { ...EMPTY_FILTERS, projects: ["甲", "乙"] };
+  it("projects → IN(乱序输入也按拼音序输出,保证 queryKey 规范化)", () => {
+    const g: FilterState = { ...EMPTY_FILTERS, projects: ["乙", "甲"] };
     expect(buildWhere(g)).toBe("1=1 AND project_name IN ('甲','乙')");
   });
   it("competitors → bidder_name IN(普通模式)", () => {
