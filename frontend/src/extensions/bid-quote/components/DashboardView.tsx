@@ -35,6 +35,7 @@ import {
   GRID,
   RED_55,
 } from "@/extensions/bid-quote/components/chartTheme";
+import { DrillDownModal } from "@/extensions/bid-quote/components/DrillDownModal";
 import { FilterBar } from "@/extensions/bid-quote/components/FilterBar";
 import { SelfRateDistChart } from "@/extensions/bid-quote/components/SelfRateDistChart";
 import { SelfVsOutsourceChart } from "@/extensions/bid-quote/components/SelfVsOutsourceChart";
@@ -65,6 +66,10 @@ export function DashboardView() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   // 图2 货物构成:每图高级筛选(selfAttribute 前端行过滤,不进 SQL)
   const [compChart, setCompChart] = useState<ChartFilter>({});
+  // 图3 下钻:点击“我方”柱 → 该项目全部投标明细(我方+多友商报价对比)
+  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(
+    null,
+  );
   const refresh = () => {
     clearBidQuoteCache();
     setTick((t) => t + 1);
@@ -312,6 +317,17 @@ export function DashboardView() {
                 radius={[3, 3, 0, 0]}
                 isAnimationActive
                 animationDuration={900}
+                onClick={(_d: unknown, idx: number) => {
+                  // recharts Bar onClick(data, index):按索引回查原始行;值转义防 SQL 注入
+                  const r = showdownQ.data?.[idx];
+                  if (r) {
+                    const v = r.project_name.replace(/'/g, "''");
+                    setDrill({
+                      title: `项目报价 · ${r.project_name}`,
+                      sql: `SELECT bidder_name, bidder_role, winning_price, won FROM mock_bid WHERE project_name='${v}' ORDER BY winning_price`,
+                    });
+                  }
+                }}
               >
                 {(showdownQ.data ?? []).map((r, i) => (
                   <Cell key={i} fill={r.we_won ? "url(#ourGrad)" : RED_55} />
@@ -334,6 +350,13 @@ export function DashboardView() {
         {/* 图B:自产 vs 外购金额(项目/货物视角切换) */}
         <SelfVsOutsourceChart filters={filters} />
       </div>
+
+      {/* 图3 点击下钻弹层 */}
+      <DrillDownModal
+        title={drill?.title ?? ""}
+        sql={drill?.sql ?? null}
+        onClose={() => setDrill(null)}
+      />
     </div>
   );
 }
