@@ -12,7 +12,10 @@ import {
   TableRow,
 } from "@/extensions/bid-quote/components/ui/table";
 import { useDrillDown } from "@/extensions/bid-quote/hooks";
-import { type SelfAttribute } from "@/extensions/bid-quote/types";
+import {
+  type SelfAttribute,
+  matchesSelfAttribute,
+} from "@/extensions/bid-quote/types";
 
 interface DrillDownModalProps {
   title: string;
@@ -47,15 +50,16 @@ const rowSelfPct = (r: Record<string, unknown>): number => {
 };
 
 // 自产/外购列高亮:表头绿/琥珀浅色,数据列深一档 + font-medium 突出金额。
+// emerald 与 chartTheme.GREEN(#10b981)同族,避免图表绿与表格绿漂移。
 const headCls = (c: string) =>
   c === "self_amount"
-    ? "text-green-500"
+    ? "text-emerald-500"
     : c === "outsourced_amount"
       ? "text-amber-500"
       : "";
 const cellCls = (c: string) =>
   c === "self_amount"
-    ? "text-green-600 font-medium"
+    ? "text-emerald-600 font-medium"
     : c === "outsourced_amount"
       ? "text-amber-600 font-medium"
       : "";
@@ -81,14 +85,9 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
   const first = rows[0];
   // 货物明细行判定:首行含 self_amount 列(mock_bid_item 投标明细/货物明细)
   const isItemRows = !!first && "self_amount" in first;
+  // 阈值判定复用 matchesSelfAttribute(单一阈值源,勿再内联 >=50/<50);rowSelfPct 恒返回数值
   const visibleRows = isItemRows
-    ? rows.filter((r) =>
-        attr === "all"
-          ? true
-          : attr === "self_dominant"
-            ? rowSelfPct(r) >= 50
-            : rowSelfPct(r) < 50,
-      )
+    ? rows.filter((r) => matchesSelfAttribute(rowSelfPct(r), attr))
     : rows;
   // noUncheckedIndexedAccess: rows[0] 推断为 T|undefined,length 守卫不收窄 → ?? {} 兜底。
   const cols = rows.length ? Object.keys(rows[0] ?? {}) : [];
@@ -167,9 +166,11 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
                     <TableRow key={i} className="cursor-default">
                       {cols.map((c) => (
                         <TableCell key={c} className={cellCls(c)}>
-                          {/* won 布尔列渲染为中标标记,避免裸 true/false */}
-                          {c === "won" && r[c] === true
-                            ? "✓ 中标"
+                          {/* won 布尔列:true → 中标标记;false → 留空(不渲染裸布尔) */}
+                          {c === "won"
+                            ? r[c] === true
+                              ? "✓ 中标"
+                              : ""
                             : cellText(r[c])}
                         </TableCell>
                       ))}
@@ -181,7 +182,12 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
           )}
         </div>
         <div className="border-border text-muted-foreground/70 border-t px-5 py-2 text-[11px]">
-          共 {data?.row_count ?? 0} 条 · {sql}
+          {/* 二次筛选生效时显示 可见/总数,避免与表格行数对不上 */}
+          共 {visibleRows.length}
+          {visibleRows.length !== rows.length
+            ? ` / ${data?.row_count ?? 0}`
+            : ""}{" "}
+          条 · {sql}
         </div>
       </div>
     </div>

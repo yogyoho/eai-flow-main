@@ -23,7 +23,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
-import { clearBidQuoteCache } from "@/extensions/bid-quote/api";
+import { clearBidQuoteCache, esc } from "@/extensions/bid-quote/api";
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
 import { ChartFilterPopover } from "@/extensions/bid-quote/components/ChartFilterPopover";
 import {
@@ -318,10 +318,10 @@ export function DashboardView() {
                 isAnimationActive
                 animationDuration={900}
                 onClick={(_d: unknown, idx: number) => {
-                  // recharts Bar onClick(data, index):按索引回查原始行;值转义防 SQL 注入
+                  // recharts Bar onClick(data, index):按索引回查原始行;esc 单引号转义防 SQL 注入(与 api.ts 同源,勿内联第三份)
                   const r = showdownQ.data?.[idx];
                   if (r) {
-                    const v = r.project_name.replace(/'/g, "''");
+                    const v = esc(r.project_name);
                     setDrill({
                       title: `项目报价 · ${r.project_name}`,
                       sql: `SELECT bidder_name, bidder_role, winning_price, won FROM mock_bid WHERE project_name='${v}' ORDER BY winning_price`,
