@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-13T20:12:19.656Z
-> Files: 2014 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-14T00:46:40.889Z
+> Files: 2031 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -511,8 +511,9 @@
 - `ilink-protocol-reference.md` (~481 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `market-analysis-modules-design.md` (~435 tok)
+- `market-modules-build-progress.md` (~350 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
-- `MEMORY.md` (~1654 tok)
+- `MEMORY.md` (~1688 tok)
 - `new-module-over-modify.md` (~197 tok)
 - `no-core-code-changes.md` (~467 tok)
 - `offline-prod-deploy-solution.md` (~381 tok)
@@ -1286,7 +1287,7 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~24088 tok)
+- `database.py` — Database connection and session management for extensions module. (~24176 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~6284 tok)
@@ -1419,7 +1420,7 @@
 
 - `routers.py` — License API routers. (~1234 tok)
 - `schemas.py` — Pydantic schemas for license module. (~633 tok)
-- `service.py` — License verification and management service. (~4452 tok)
+- `service.py` — License verification and management service. (~4458 tok)
 
 ## backend/app/extensions/models/
 
@@ -1740,6 +1741,7 @@
 - `migrate_folders.py` — One-time migration: convert virtual folder strings to Folder entities. (~1917 tok)
 - `migrate_phase_duties.py` — Migrate legacy phase_duties JSONB to unified format. (~694 tok)
 - `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~4774 tok)
+- `seed_mock_pipeline.py` — 模块③ 投标/合同/开票管线查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~3028 tok)
 
 ## backend/tests/
 
@@ -1794,7 +1796,7 @@
 - `test_law_kb_registration.py` — Law system-KB registration tests — owner fixed to admin (EAI-CUSTOM). (~815 tok)
 - `test_lead_agent_prompt.py` — _FakeManager: test_build_self_update_section_empty_for_default_agent, test_build_self_update_section (~4205 tok)
 - `test_lead_agent_skills.py` — NamedTool: test_get_skills_prompt_section_returns_empty_when_no_skills_match, test_get_skills_prompt (~3906 tok)
-- `test_license_modules_sync.py` — License module key sync guard. (~790 tok)
+- `test_license_modules_sync.py` — License module key sync guard. (~799 tok)
 - `test_loop_detection_middleware.py` — Tests for LoopDetectionMiddleware. (~12877 tok)
 - `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~1270 tok)
 - `test_mcp_config_hardening.py` — Tests for MCP config endpoint hardening (upstream #3425, dev-adapted). (~1138 tok)
@@ -1862,7 +1864,7 @@
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4223 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4312 tok)
 - `roles_custom.yaml` (~1771 tok)
 
 ## deploy/offline/
@@ -1980,6 +1982,7 @@
 - `2026-08-06-word-export-layout-import.md` — Word 样例自动提取排版 + 两对话框补齐 Implementation Plan (~7435 tok)
 - `2026-08-11-water-drainage-report-optimization.md` — 给排水单体计算书技能优化 Implementation Plan (~14239 tok)
 - `2026-08-13-bid-quote-frontend.md` — 投标报价分析 (bid-quote) 前端 Implementation Plan (~14412 tok)
+- `2026-08-14-biz-pipeline-frontend.md` — 投标/合同/开票管线查询 (biz-pipeline) 前端 Implementation Plan (~14710 tok)
 
 ## docs/superpowers/reports/
 
@@ -2064,6 +2067,7 @@
 - `2026-08-13-bid-quote-frontend-design.md` — 投标报价分析 (bid-quote-analysis) 前端设计 (~2668 tok)
 - `2026-08-13-market-analysis-modules-design.md` — 市场分析四大模块设计文档 (~4318 tok)
 - `2026-08-13-spare-parts-eng-plan.md` — 模块④ 备品备件价格体系分析 — 工程实现方案(已锁) (~2225 tok)
+- `2026-08-14-biz-pipeline-frontend-design.md` — 投标/合同/开票管线查询 (biz-pipeline) 前端设计 (~3002 tok)
 - `2026-08-14-ontology-semantic-layer-design.md` — Ontology 概念移植设计 — 统一语义层（市场/分析数据域） (~5368 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
@@ -2182,6 +2186,15 @@
 ## frontend/src/app/bid-quote/query/
 
 - `page.tsx` — BidQuoteQueryPage (~42 tok)
+
+## frontend/src/app/biz-pipeline/
+
+- `layout.tsx` — navItems (~644 tok)
+- `page.tsx` — BizPipelineDashboardPage (~48 tok)
+
+## frontend/src/app/biz-pipeline/query/
+
+- `page.tsx` — BizPipelineQueryPage (~44 tok)
 
 ## frontend/src/app/contract-price/
 
@@ -2502,7 +2515,7 @@
 
 ## frontend/src/extensions/app-center/hooks/
 
-- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1920 tok)
+- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1932 tok)
 - `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
 
 ## frontend/src/extensions/bid-quote/
@@ -2523,6 +2536,25 @@
 ## frontend/src/extensions/bid-quote/components/ui/
 
 - `table.tsx` — Lightweight table primitives(raw HTML)—— bid-quote 模块用。 (~449 tok)
+
+## frontend/src/extensions/biz-pipeline/
+
+- `api.ts` — biz-pipeline API client —— Route B 薄前端直调 data_source REST(零后端增量,复用①端点)。 (~520 tok)
+- `hooks.ts` — biz-pipeline TanStack Query hooks。queryKey 统一 ["bpp", ...] 命名空间。 (~596 tok)
+- `types.ts` — 管线查询(biz-pipeline)类型 —— 对齐 data_source 罐装 dataset 列。 (~232 tok)
+
+## frontend/src/extensions/biz-pipeline/components/
+
+- `ChartCard.tsx` — ChartCard (~264 tok)
+- `DashboardView.tsx` — GRID (~2215 tok)
+- `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~910 tok)
+- `QueryView.tsx` — TABS — renders table (~2000 tok)
+- `StatCard.tsx` — HEX (~525 tok)
+- `TechTooltip.tsx` — TechTooltip (~283 tok)
+
+## frontend/src/extensions/biz-pipeline/components/ui/
+
+- `table.tsx` — Lightweight table primitives(raw HTML)—— biz-pipeline 模块用。 (~453 tok)
 
 ## frontend/src/extensions/cad-design/components/
 
@@ -2725,7 +2757,7 @@
 ## frontend/src/extensions/license/
 
 - `api.ts` — Canonical license module keys (for the admin App Management dropdown). (~756 tok)
-- `labels.ts` — Canonical license module key → user-facing label. (~163 tok)
+- `labels.ts` — Canonical license module key → user-facing label. (~170 tok)
 - `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3540 tok)
 - `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~209 tok)
 
@@ -3297,6 +3329,6 @@
 
 ## tools/license/
 
-- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1317 tok)
+- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1322 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)

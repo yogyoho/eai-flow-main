@@ -7243,3 +7243,49 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 05:19 | Created docs/superpowers/specs/2026-08-14-biz-pipeline-frontend-design.md | — | ~3135 |
+| 05:19 | Edited docs/superpowers/specs/2026-08-14-biz-pipeline-frontend-design.md | 12→14 lines | ~237 |
+| 05:20 | Edited docs/superpowers/specs/2026-08-14-biz-pipeline-frontend-design.md | inline fix | ~31 |
+| 08:19 | Created docs/superpowers/plans/2026-08-14-biz-pipeline-frontend.md | — | ~15690 |
+
+## Session: 2026-08-14 08:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:22 | Created backend/scripts/seed_mock_pipeline.py | — | ~3014 |
+| 08:22 | Edited backend/scripts/seed_mock_pipeline.py | 3→4 lines | ~54 |
+| 08:24 | Edited backend/app/extensions/license/service.py | 4→5 lines | ~23 |
+| 08:24 | Edited frontend/src/extensions/license/labels.ts | 2→3 lines | ~14 |
+| 08:24 | Edited tools/license/license_generator.py | 4→5 lines | ~23 |
+| 08:24 | Edited backend/tests/test_license_modules_sync.py | 2→2 lines | ~30 |
+| 08:24 | Edited backend/tests/test_license_modules_sync.py | inline fix | ~37 |
+| 08:26 | Edited config/permissions.yaml | expanded (+11 lines) | ~206 |
+| 08:26 | Edited config/permissions.yaml | 2→2 lines | ~68 |
+| 08:26 | Edited config/permissions.yaml | 2→2 lines | ~68 |
+| 08:28 | Edited backend/app/extensions/database.py | 3→6 lines | ~175 |
+| 08:28 | Edited backend/app/extensions/database.py | "Seeded app-center: 6 doma" → "Seeded app-center: 6 doma" | ~20 |
+| 08:29 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | 1→2 lines | ~21 |
+| 08:31 | Created frontend/src/extensions/biz-pipeline/types.ts | — | ~232 |
+| 08:32 | Created frontend/src/extensions/biz-pipeline/api.ts | — | ~520 |
+| 08:32 | Created frontend/src/extensions/biz-pipeline/hooks.ts | — | ~596 |
+| 08:32 | Created frontend/src/extensions/biz-pipeline/components/ui/table.tsx | — | ~453 |
+| 08:32 | Created frontend/src/app/biz-pipeline/layout.tsx | — | ~644 |
+| 08:32 | Created frontend/src/app/biz-pipeline/page.tsx | — | ~48 |
+| 08:32 | Created frontend/src/app/biz-pipeline/query/page.tsx | — | ~44 |
+| 08:33 | Created frontend/src/extensions/biz-pipeline/components/StatCard.tsx | — | ~525 |
+| 08:33 | Created frontend/src/extensions/biz-pipeline/components/ChartCard.tsx | — | ~264 |
+| 08:33 | Created frontend/src/extensions/biz-pipeline/components/TechTooltip.tsx | — | ~283 |
+| 08:33 | Created frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | — | ~2215 |
+| 08:33 | Created frontend/src/extensions/biz-pipeline/components/DrillDownModal.tsx | — | ~910 |
+| 08:34 | Created frontend/src/extensions/biz-pipeline/components/QueryView.tsx | — | ~2000 |
+
+## Session: 2026-08-14 08:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:05 | T7 E2E 仪表盘验证(浏览器 a11y 快照) | /biz-pipeline | 5 KPI(8/50%/7332w/5182w/2150w)+3 图表全对 | ~2400 |
+| 09:08 | T7 E2E 查询页验证:3 tab + 下钻 | /biz-pipeline/query | 投标明细8条/对账4合同/月度8月 + 中标行→发票明细(TB-001→FP-001)+ 落标行不可点 + 月度→投标明细(2025-12→TB-008)全通过 | ~5200 |
+| 09:10 | biz-pipeline(③)模块全量落地完成 | 11 文件 + seed + license4点 + 权限 + 磁贴 + nav | 功能完整,E2E 通过,已提交 fbc3d1b4b | ~400 |
+| 09:12 | Session end: ③ biz-pipeline 落地 | T1-T7 全完成 | 下一步 ② sales-personnel | ~300 |
+| 08:46 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-modules-build-progress.md | — | ~343 |
+| 08:46 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~76 |
