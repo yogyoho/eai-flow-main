@@ -85,6 +85,7 @@ function SkillSettingsList({
             <TabsList variant="line">
               <TabsTrigger value="public">{t.common.public}</TabsTrigger>
               <TabsTrigger value="custom">{t.common.custom}</TabsTrigger>
+              <TabsTrigger value="legacy">扩展</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

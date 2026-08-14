@@ -36,7 +36,11 @@ export type SettingsSection =
   | "tools"
   | "skills"
   | "notification"
-  | "appearance"; // EAI-CUSTOM: appearance section (appearance-settings-page)
+  | "appearance" // EAI-CUSTOM: appearance section (appearance-settings-page)
+  // EAI-CUSTOM: kept in the union so the shared (upstream) settings-dialog-store
+  // test + workspace-settings-deep-link compile against EAI's section list.
+  | "about"
+  | "integrations";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
   defaultSection?: SettingsSection;

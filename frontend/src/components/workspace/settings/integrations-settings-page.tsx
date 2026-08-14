@@ -1,6 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2Icon,
   CopyIcon,
@@ -25,10 +24,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/core/auth/AuthProvider";
-import { writeTextToClipboard } from "@/core/clipboard";
 import { useI18n } from "@/core/i18n/hooks";
 import {
-  larkIntegrationQueryKey,
   LarkIntegrationRequestError,
   type LarkAuthStartRequest,
   type LarkAuthStartResponse,
@@ -38,7 +35,6 @@ import {
   useCompleteLarkConfiguration,
   useInstallLarkIntegration,
   useLarkIntegrationStatus,
-  useSetLarkAppCredentials,
   useStartLarkAuthorization,
   useStartLarkConfiguration,
 } from "@/core/integrations/lark";
@@ -128,7 +124,6 @@ export function IntegrationsSettingsPage() {
 
 function LarkIntegrationCard() {
   const { t } = useI18n();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.system_role === "admin";
   const { data, isLoading, error, refetch, isFetching } =
@@ -138,15 +133,8 @@ function LarkIntegrationCard() {
   const completeConfig = useCompleteLarkConfiguration();
   const startAuth = useStartLarkAuthorization();
   const completeAuth = useCompleteLarkAuthorization();
-  const switchApp = useSetLarkAppCredentials();
   const [pendingFlow, setPendingFlow] = useState<PendingLarkFlow | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
-  const [showChangeApp, setShowChangeApp] = useState(false);
-  const [changeAppId, setChangeAppId] = useState("");
-  const [changeAppSecret, setChangeAppSecret] = useState("");
-  const [changeAppBrand, setChangeAppBrand] = useState<"feishu" | "lark">(
-    "feishu",
-  );
   const [selectedAuthDomains, setSelectedAuthDomains] = useState<
     LarkAuthDomain[]
   >([]);
@@ -154,23 +142,18 @@ function LarkIntegrationCard() {
   const browserWindowRef = useRef<Window | null>(null);
   const authRequestRef = useRef<LarkAuthStartRequest>({ recommend: false });
   const authToastIdRef = useRef<string | number | null>(null);
+  // EAI-CUSTOM: lark start→complete flow now requires `generation` (returned by
+  // the start endpoints). Captured here so the async complete calls can send it.
+  const authGenerationRef = useRef<string>("");
   const authRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   const authAttemptIdRef = useRef(0);
   const authDeadlineRef = useRef(0);
-  const flowGenerationRef = useRef(0);
+  const isMountedRef = useRef(true);
   const connectBusy =
-    startConfig.isPending ||
-    completeConfig.isPending ||
-    startAuth.isPending ||
-    completeAuth.isPending ||
-    switchApp.isPending;
-  const integrationBusy =
-    connectBusy ||
-    isCheckingConnection ||
-    pendingFlow != null ||
-    install.isPending;
+    startConfig.isPending || completeConfig.isPending || startAuth.isPending;
+  const connectActionBusy = connectBusy || isCheckingConnection;
   const credentialsConfigured = data?.auth.status === "authenticated";
   const isConnected = credentialsConfigured && data?.auth.verified === true;
   // The sandbox-runtime readiness row only applies when the sandbox actually
@@ -200,25 +183,9 @@ function LarkIntegrationCard() {
     }
   };
 
-  const beginFlow = () => {
-    clearAuthRetryTimer();
-    authAttemptIdRef.current += 1;
-    flowGenerationRef.current += 1;
-    void queryClient.cancelQueries({ queryKey: larkIntegrationQueryKey });
-    if (authToastIdRef.current != null) {
-      toast.dismiss(authToastIdRef.current);
-      authToastIdRef.current = null;
-    }
-    setPendingFlow(null);
-    return flowGenerationRef.current;
-  };
-
-  const isActiveFlow = (generation: number) =>
-    generation === flowGenerationRef.current;
-
   useEffect(
     () => () => {
-      flowGenerationRef.current += 1;
+      isMountedRef.current = false;
       if (authRetryTimeoutRef.current != null) {
         clearTimeout(authRetryTimeoutRef.current);
       }
@@ -262,83 +229,42 @@ function LarkIntegrationCard() {
   const startUserAuth = (
     browserWindow = browserWindowRef.current,
     request = authRequestRef.current,
-    generation = flowGenerationRef.current,
-    serverGeneration?: string,
   ) => {
-    startAuth.mutate(
-      {
-        ...request,
-        ...(serverGeneration ? { generation: serverGeneration } : {}),
+    startAuth.mutate(request, {
+      onSuccess: (result) => {
+        setPendingFlow({ kind: "auth", ...result });
+        authGenerationRef.current = result.generation;
+        openAuthorizationUrl(result.verification_url, browserWindow);
+        authToastIdRef.current = toast.info(
+          t.settings.integrations.lark.authStarted,
+        );
+        startAutomaticAuthorizationCheck(result);
       },
-      {
-        onSuccess: (result) => {
-          if (!isActiveFlow(generation)) return;
-          setPendingFlow({ kind: "auth", ...result });
-          openAuthorizationUrl(result.verification_url, browserWindow);
-          authToastIdRef.current = toast.info(
-            t.settings.integrations.lark.authStarted,
-          );
-          startAutomaticAuthorizationCheck(result, generation);
-        },
-        onError: (err) => {
-          if (!isActiveFlow(generation)) return;
-          closePendingBrowserWindow(browserWindow);
-          toast.error(err instanceof Error ? err.message : String(err));
-        },
+      onError: (err) => {
+        closePendingBrowserWindow(browserWindow);
+        toast.error(err instanceof Error ? err.message : String(err));
       },
-    );
+    });
   };
 
   const handleContinueConnection = () => {
     if (!pendingFlow || pendingFlow.kind !== "config") return;
-    const generation = flowGenerationRef.current;
     completeConfig.mutate(
       {
         device_code: pendingFlow.device_code,
-        generation: pendingFlow.generation,
         brand: pendingFlow.brand,
         interval: pendingFlow.interval,
         expires_in: pendingFlow.expires_in,
+        generation: pendingFlow.generation,
       },
       {
-        onSuccess: (result) => {
-          if (!isActiveFlow(generation)) return;
-          queryClient.setQueryData(larkIntegrationQueryKey, result.status);
+        onSuccess: () => {
           toast.success(t.settings.integrations.lark.connectionReady);
           setPendingFlow(null);
-          startUserAuth(
-            browserWindowRef.current,
-            authRequestRef.current,
-            generation,
-            result.generation,
-          );
+          startUserAuth(browserWindowRef.current);
         },
         onError: (err) => {
-          if (!isActiveFlow(generation)) return;
           setPendingFlow(null);
-          toast.error(err instanceof Error ? err.message : String(err));
-        },
-      },
-    );
-  };
-
-  const startBrowserAppRegistration = (
-    brand: "feishu" | "lark",
-    browserWindow: Window | null,
-    generation: number,
-  ) => {
-    startConfig.mutate(
-      { brand },
-      {
-        onSuccess: (result) => {
-          if (!isActiveFlow(generation)) return;
-          setPendingFlow({ kind: "config", ...result });
-          openAuthorizationUrl(result.verification_url, browserWindow);
-          toast.success(t.settings.integrations.lark.connectionStarted);
-        },
-        onError: (err) => {
-          if (!isActiveFlow(generation)) return;
-          closePendingBrowserWindow(browserWindow);
           toast.error(err instanceof Error ? err.message : String(err));
         },
       },
@@ -348,59 +274,25 @@ function LarkIntegrationCard() {
   const startConnectionFlow = (
     status: LarkIntegrationStatus,
     browserWindow: Window | null,
-    generation: number,
   ) => {
     if (!status.app_configured) {
-      startBrowserAppRegistration("feishu", browserWindow, generation);
+      startConfig.mutate(
+        { brand: "feishu" },
+        {
+          onSuccess: (result) => {
+            setPendingFlow({ kind: "config", ...result });
+            openAuthorizationUrl(result.verification_url, browserWindow);
+            toast.success(t.settings.integrations.lark.connectionStarted);
+          },
+          onError: (err) => {
+            closePendingBrowserWindow(browserWindow);
+            toast.error(err instanceof Error ? err.message : String(err));
+          },
+        },
+      );
       return;
     }
-    startUserAuth(browserWindow, authRequestRef.current, generation);
-  };
-
-  const handleReRegisterInBrowser = () => {
-    authRequestRef.current = buildAuthRequest();
-    const browserWindow = openPendingBrowserWindow();
-    const generation = beginFlow();
-    startBrowserAppRegistration(changeAppBrand, browserWindow, generation);
-  };
-
-  const handleChangeAppSubmit = () => {
-    // Pre-open the browser tab synchronously inside the click gesture: the
-    // subsequent user authorization runs only after the switch POST resolves,
-    // and opening the window then would be outside the gesture and blocked by
-    // the browser (same constraint as handleConnect).
-    authRequestRef.current = buildAuthRequest();
-    const browserWindow = openPendingBrowserWindow();
-    const generation = beginFlow();
-    switchApp.mutate(
-      {
-        app_id: changeAppId.trim(),
-        app_secret: changeAppSecret.trim(),
-        brand: changeAppBrand,
-      },
-      {
-        onSuccess: (result) => {
-          if (!isActiveFlow(generation)) return;
-          queryClient.setQueryData(larkIntegrationQueryKey, result.status);
-          toast.success(t.settings.integrations.lark.changeAppSwitched);
-          setChangeAppSecret("");
-          setShowChangeApp(false);
-          // The new app has no user authorization yet; drive the browser auth
-          // flow immediately so the switch ends in a usable connection.
-          startUserAuth(
-            browserWindow,
-            authRequestRef.current,
-            generation,
-            result.generation,
-          );
-        },
-        onError: (err) => {
-          if (!isActiveFlow(generation)) return;
-          closePendingBrowserWindow(browserWindow);
-          toast.error(err instanceof Error ? err.message : String(err));
-        },
-      },
-    );
+    startUserAuth(browserWindow);
   };
 
   const buildAuthRequest = (): LarkAuthStartRequest => {
@@ -438,32 +330,22 @@ function LarkIntegrationCard() {
     // would run outside the user gesture and be blocked by the browser. Opening
     // now and closing below when it turns out unneeded keeps the popup reliable.
     const browserWindow = openPendingBrowserWindow();
-    const generation = beginFlow();
     setIsCheckingConnection(true);
     try {
       const refreshed = await refetch();
-      if (!isActiveFlow(generation)) return;
       const latestStatus = refreshed.data ?? data;
-      startConnectionFlow(latestStatus, browserWindow, generation);
+      startConnectionFlow(latestStatus, browserWindow);
     } catch (err) {
-      if (!isActiveFlow(generation)) return;
       closePendingBrowserWindow(browserWindow);
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
-      if (isActiveFlow(generation)) {
-        setIsCheckingConnection(false);
-      }
+      setIsCheckingConnection(false);
     }
   };
 
   const completeAuthorization = (
     deviceCode: string,
-    serverGeneration: string,
-    {
-      automatic,
-      attemptId,
-      generation,
-    }: { automatic: boolean; attemptId?: number; generation: number },
+    { automatic, attemptId }: { automatic: boolean; attemptId?: number },
   ) => {
     const toastOptions =
       authToastIdRef.current == null
@@ -472,7 +354,7 @@ function LarkIntegrationCard() {
     completeAuth.mutate(
       {
         device_code: deviceCode,
-        generation: serverGeneration,
+        generation: authGenerationRef.current,
         ...(automatic
           ? { wait_timeout_seconds: AUTOMATIC_LARK_AUTH_WAIT_SECONDS }
           : {}),
@@ -482,11 +364,12 @@ function LarkIntegrationCard() {
           // react-query still fires this after the dialog unmounts; bail so we
           // don't toast, setState, refetch, or reschedule a retry timer on a
           // component that is gone.
-          if (!isActiveFlow(generation)) return;
+          if (!isMountedRef.current) {
+            return;
+          }
           if (automatic && attemptId !== authAttemptIdRef.current) {
             return;
           }
-          queryClient.setQueryData(larkIntegrationQueryKey, result.status);
           if (result.success) {
             clearAuthRetryTimer();
             toast.success(result.message, toastOptions);
@@ -501,16 +384,13 @@ function LarkIntegrationCard() {
             toastOptions,
           );
           if (automatic && attemptId != null) {
-            scheduleAuthorizationRetry(
-              deviceCode,
-              serverGeneration,
-              attemptId,
-              generation,
-            );
+            scheduleAuthorizationRetry(deviceCode, attemptId);
           }
         },
         onError: (err) => {
-          if (!isActiveFlow(generation)) return;
+          if (!isMountedRef.current) {
+            return;
+          }
           if (automatic && attemptId !== authAttemptIdRef.current) {
             return;
           }
@@ -524,12 +404,7 @@ function LarkIntegrationCard() {
               toastOptions,
             );
             if (attemptId != null) {
-              scheduleAuthorizationRetry(
-                deviceCode,
-                serverGeneration,
-                attemptId,
-                generation,
-              );
+              scheduleAuthorizationRetry(deviceCode, attemptId);
             }
             return;
           }
@@ -545,39 +420,28 @@ function LarkIntegrationCard() {
 
   const scheduleAuthorizationRetry = (
     deviceCode: string,
-    serverGeneration: string,
     attemptId: number,
-    generation: number,
   ) => {
     clearAuthRetryTimer();
-    if (!isActiveFlow(generation)) return;
+    if (!isMountedRef.current) {
+      return;
+    }
     if (Date.now() >= authDeadlineRef.current) {
       toast.info(t.settings.integrations.lark.authorizationStillPending);
       return;
     }
     authRetryTimeoutRef.current = setTimeout(() => {
-      completeAuthorization(deviceCode, serverGeneration, {
-        automatic: true,
-        attemptId,
-        generation,
-      });
+      completeAuthorization(deviceCode, { automatic: true, attemptId });
     }, 1500);
   };
 
-  const startAutomaticAuthorizationCheck = (
-    result: LarkAuthStartResponse,
-    generation: number,
-  ) => {
+  const startAutomaticAuthorizationCheck = (result: LarkAuthStartResponse) => {
     clearAuthRetryTimer();
     const attemptId = authAttemptIdRef.current + 1;
     authAttemptIdRef.current = attemptId;
     authDeadlineRef.current =
       Date.now() + Math.max(result.expires_in ?? 300, 30) * 1000;
-    completeAuthorization(result.device_code, result.generation, {
-      automatic: true,
-      attemptId,
-      generation,
-    });
+    completeAuthorization(result.device_code, { automatic: true, attemptId });
   };
 
   const handleCompleteAuth = () => {
@@ -587,18 +451,15 @@ function LarkIntegrationCard() {
     }
     clearAuthRetryTimer();
     authAttemptIdRef.current += 1;
-    completeAuthorization(pendingFlow.device_code, pendingFlow.generation, {
-      automatic: false,
-      generation: flowGenerationRef.current,
-    });
+    completeAuthorization(pendingFlow.device_code, { automatic: false });
   };
 
   const handleCopyAuthLink = async () => {
     if (!pendingFlow) return;
-    const didCopy = await writeTextToClipboard(pendingFlow.verification_url);
-    if (didCopy) {
+    try {
+      await navigator.clipboard.writeText(pendingFlow.verification_url);
       toast.success(t.clipboard.copiedToClipboard);
-    } else {
+    } catch {
       toast.error(t.clipboard.failedToCopyToClipboard);
     }
   };
@@ -606,12 +467,12 @@ function LarkIntegrationCard() {
   const installDisabled =
     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
     !isAdmin ||
-    integrationBusy;
+    install.isPending;
   const authDisabled =
     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
     !data?.installed ||
     !data?.cli.available ||
-    integrationBusy;
+    connectActionBusy;
 
   const connectButtonLabel = isCheckingConnection
     ? t.settings.integrations.lark.checkingConnection
@@ -782,7 +643,7 @@ function LarkIntegrationCard() {
                         size="sm"
                         variant={selected ? "default" : "outline"}
                         onClick={() => toggleAuthDomain(domain.id)}
-                        disabled={integrationBusy}
+                        disabled={connectActionBusy}
                         title={domain.description}
                       >
                         {domain.label}
@@ -796,7 +657,7 @@ function LarkIntegrationCard() {
                     onChange={(event) =>
                       setCustomAuthScope(event.currentTarget.value)
                     }
-                    disabled={integrationBusy}
+                    disabled={connectActionBusy}
                     placeholder={
                       t.settings.integrations.lark.customScopePlaceholder
                     }
@@ -824,110 +685,17 @@ function LarkIntegrationCard() {
                 onClick={() => void handleConnect()}
                 disabled={authDisabled}
               >
-                {connectBusy || isCheckingConnection ? (
+                {connectActionBusy ? (
                   <RefreshCwIcon className="size-4 animate-spin" />
                 ) : null}
                 {connectButtonLabel}
               </Button>
-              {data.installed && data.cli.available && data.app_configured && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowChangeApp((current) => !current)}
-                  disabled={
-                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ||
-                    integrationBusy
-                  }
-                >
-                  {t.settings.integrations.lark.changeAppButton}
-                </Button>
-              )}
               {!isAdmin && (
                 <span className="text-muted-foreground text-sm">
                   {t.settings.integrations.adminRequired}
                 </span>
               )}
             </div>
-            {showChangeApp && data.installed && data.cli.available && (
-              <div className="space-y-3 rounded-lg border p-3">
-                <div className="space-y-1">
-                  <div className="text-sm font-medium">
-                    {t.settings.integrations.lark.changeAppTitle}
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {t.settings.integrations.lark.changeAppDescription}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(["feishu", "lark"] as const).map((brand) => (
-                    <Button
-                      key={brand}
-                      type="button"
-                      size="sm"
-                      variant={changeAppBrand === brand ? "default" : "outline"}
-                      onClick={() => setChangeAppBrand(brand)}
-                      disabled={integrationBusy}
-                    >
-                      {brand === "feishu"
-                        ? t.settings.integrations.lark.brandFeishu
-                        : t.settings.integrations.lark.brandLark}
-                    </Button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <Input
-                    value={changeAppId}
-                    onChange={(event) =>
-                      setChangeAppId(event.currentTarget.value)
-                    }
-                    disabled={integrationBusy}
-                    placeholder={t.settings.integrations.lark.changeAppIdLabel}
-                    aria-label={t.settings.integrations.lark.changeAppIdLabel}
-                  />
-                  <Input
-                    type="password"
-                    value={changeAppSecret}
-                    onChange={(event) =>
-                      setChangeAppSecret(event.currentTarget.value)
-                    }
-                    disabled={integrationBusy}
-                    placeholder={
-                      t.settings.integrations.lark.changeAppSecretLabel
-                    }
-                    aria-label={
-                      t.settings.integrations.lark.changeAppSecretLabel
-                    }
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    {t.settings.integrations.lark.changeAppAuthResetNote}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleChangeAppSubmit}
-                    disabled={
-                      integrationBusy ||
-                      !changeAppId.trim() ||
-                      !changeAppSecret.trim()
-                    }
-                  >
-                    {switchApp.isPending ? (
-                      <RefreshCwIcon className="size-4 animate-spin" />
-                    ) : null}
-                    {t.settings.integrations.lark.changeAppSubmit}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleReRegisterInBrowser}
-                    disabled={integrationBusy}
-                  >
-                    <ExternalLinkIcon className="size-4" />
-                    {t.settings.integrations.lark.changeAppReRegister}
-                  </Button>
-                </div>
-              </div>
-            )}
             {install.isPending && (
               <Alert>
                 <RefreshCwIcon className="size-4 animate-spin" />

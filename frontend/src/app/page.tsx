@@ -1,26 +1,8 @@
-import { Footer } from "@/components/landing/footer";
-import { Header } from "@/components/landing/header";
-import { Hero } from "@/components/landing/hero";
-import { CaseStudySection } from "@/components/landing/sections/case-study-section";
-import { CommunitySection } from "@/components/landing/sections/community-section";
-import { SandboxSection } from "@/components/landing/sections/sandbox-section";
-import { SkillsSection } from "@/components/landing/sections/skills-section";
-import { WhatsNewSection } from "@/components/landing/sections/whats-new-section";
-import { DEFAULT_LOCALE } from "@/core/i18n/locale";
+// EAI-CUSTOM: the EAI landing page is landing-new (a fork-specific rewrite), not
+// the upstream landing/ sections. Restored 2026-08-15 after the upstream sync
+// overwrote page.tsx to point at landing/*.
+import LandingNew from "@/components/landing-new";
 
 export default function LandingPage() {
-  return (
-    <div className="min-h-screen w-full overflow-x-clip bg-[#0a0a0a]">
-      <Header locale={DEFAULT_LOCALE} />
-      <main className="flex w-full flex-col">
-        <Hero />
-        <CaseStudySection />
-        <SkillsSection />
-        <SandboxSection />
-        <WhatsNewSection />
-        <CommunitySection />
-      </main>
-      <Footer />
-    </div>
-  );
+  return <LandingNew />;
 }

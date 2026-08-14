@@ -113,6 +113,7 @@
     "nextra-theme-docs": "^4.6.1",
     "nuxt-og-image": "^5.1.13",
     "ogl": "^1.0.11",
+    "prosemirror-highlight": "^0.15.3",
     "prosemirror-model": "^1.25.7",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.8",

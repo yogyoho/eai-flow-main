@@ -47,7 +47,7 @@ function MCPServerList({
   servers?: Record<string, MCPServerConfig>;
 }) {
   const { t } = useI18n();
-  const { isPending, mutate: enableMCPServer } = useEnableMCPServer();
+  const { mutate: enableMCPServer } = useEnableMCPServer();
   const entries = Object.entries(servers ?? {});
   if (entries.length === 0) {
     return (
@@ -73,9 +73,7 @@ function MCPServerList({
           <ItemActions>
             <Switch
               checked={config.enabled}
-              disabled={
-                env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || isPending
-              }
+              disabled={env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"}
               onCheckedChange={(checked) =>
                 enableMCPServer({ serverName: name, enabled: checked })
               }
