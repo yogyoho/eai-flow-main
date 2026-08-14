@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -35,6 +35,8 @@ interface SelfRateDistChartProps {
   filters: FilterState;
   /** 可选自产属性行过滤(与货物构成图共用 matchesSelfAttribute,阈值不发散)。 */
   selfAttribute?: SelfAttribute;
+  /** 标题行操作区(每图筛选 Popover 等),由 DashboardView 注入。 */
+  action?: ReactNode;
 }
 
 /**
@@ -44,6 +46,7 @@ interface SelfRateDistChartProps {
 export function SelfRateDistChart({
   filters,
   selfAttribute,
+  action,
 }: SelfRateDistChartProps) {
   const [threshold, setThreshold] = useState(50);
   const q = useSelfRateDist(filters);
@@ -57,7 +60,7 @@ export function SelfRateDistChart({
     }));
 
   return (
-    <ChartCard title="项目自产率分布" meta="门槛线可拖">
+    <ChartCard title="项目自产率分布" meta="门槛线可拖" action={action}>
       {/* 门槛滑杆 */}
       <div className="mb-2 flex items-center gap-3">
         <input

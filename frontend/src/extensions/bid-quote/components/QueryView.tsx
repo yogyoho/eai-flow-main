@@ -61,7 +61,7 @@ export function QueryView() {
     null,
   );
 
-  const bidQ = useBidList();
+  const bidQ = useBidList(filters);
   const compQ = useComposition(filters);
   const segQ = useWinRateBySegment(filters);
 

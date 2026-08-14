@@ -44,6 +44,7 @@ import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import {
   useBidSummary,
   useComposition,
+  useFilterOptions,
   useProjectShowdown,
   useWinRateBySegment,
 } from "@/extensions/bid-quote/hooks";
@@ -64,8 +65,11 @@ function wan(v: string | null): string {
 export function DashboardView() {
   const [tick, setTick] = useState(0);
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
-  // 图2 货物构成:每图高级筛选(selfAttribute 前端行过滤,不进 SQL)
+  // 图2 货物构成:每图高级筛选(selfAttribute 前端行过滤 + goodsName 进 SQL)
   const [compChart, setCompChart] = useState<ChartFilter>({});
+  // 图B:每图货物筛选;图C:每图自产属性(渲染层行过滤)——spec §5.5
+  const [bChart, setBChart] = useState<ChartFilter>({});
+  const [cChart, setCChart] = useState<ChartFilter>({});
   // 图3 下钻:点击“我方”柱 → 该项目全部投标明细(我方+多友商报价对比)
   const [drill, setDrill] = useState<{ title: string; sql: string } | null>(
     null,
@@ -79,6 +83,8 @@ export function DashboardView() {
   const segQ = useWinRateBySegment(filters);
   const compQ = useComposition(filters, compChart);
   const showdownQ = useProjectShowdown(filters);
+  // 货物选项(与 FilterBar 同 queryKey,TanStack Query 去重复用)
+  const goodsOpts = useFilterOptions().data?.goods ?? [];
 
   const s = summaryQ.data?.[0];
   // 友商中标率(后端无此字段,前端算)
@@ -208,7 +214,7 @@ export function DashboardView() {
             <ChartFilterPopover
               chart={compChart}
               onChange={setCompChart}
-              enable={{ selfAttribute: true }}
+              enable={{ selfAttribute: true, goodsName: goodsOpts }}
             />
           }
         >
@@ -344,11 +350,31 @@ export function DashboardView() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* 图C:项目整标自产率分布(门槛滑杆 + 达标/未达标 Cell 色) */}
-        <SelfRateDistChart filters={filters} />
+        {/* 图C:项目整标自产率分布(门槛滑杆 + 达标/未达标 Cell 色;每图自产属性筛选) */}
+        <SelfRateDistChart
+          filters={filters}
+          selfAttribute={cChart.selfAttribute}
+          action={
+            <ChartFilterPopover
+              chart={cChart}
+              onChange={setCChart}
+              enable={{ selfAttribute: true }}
+            />
+          }
+        />
 
-        {/* 图B:自产 vs 外购金额(项目/货物视角切换) */}
-        <SelfVsOutsourceChart filters={filters} />
+        {/* 图B:自产 vs 外购金额(项目/货物视角切换;每图货物筛选) */}
+        <SelfVsOutsourceChart
+          filters={filters}
+          chart={bChart}
+          action={
+            <ChartFilterPopover
+              chart={bChart}
+              onChange={setBChart}
+              enable={{ goodsName: goodsOpts }}
+            />
+          }
+        />
       </div>
 
       {/* 图3 点击下钻弹层 */}

@@ -101,8 +101,9 @@ export interface SelfVsOutsourceRow {
   self_amount: string | null;
   outsourced_amount: string | null;
 }
-/** distinct 过滤选项。 */
+/** distinct 过滤选项(goods 供图B/货物构成每图筛选)。 */
 export interface FilterOptions {
   projects: string[];
   competitors: string[];
+  goods: string[];
 }

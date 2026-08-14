@@ -7,6 +7,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import {
+  buildWhere,
   fetchFilterOptions,
   queryFiltered,
   querySql,
@@ -30,7 +31,6 @@ import type {
 
 export const KEYS = {
   filterOptions: ["bqa", "filterOptions"] as const,
-  bidlist: ["bqa", "bidlist"] as const,
   drilldown: (sql: string) => ["bqa", "drilldown", sql] as const,
 };
 
@@ -64,12 +64,13 @@ export const useProjectShowdown = (f: FilterState) =>
 export const useSelfRateDist = (f: FilterState) =>
   useFilteredQuery<SelfRateRow>("selfRate", "selfRate", f);
 
-/** 图B:自产 vs 外购金额(项目/货物视角切换)。模板是 dim 参数化函数,不走 useFilteredQuery。 */
+/** 图B:自产 vs 外购金额(项目/货物视角切换 + 每图货物筛选)。模板是 dim 参数化函数,不走 useFilteredQuery。 */
 export function useSelfVsOutsource(
   filters: FilterState,
   dim: "project" | "goods",
+  chart?: ChartFilter,
 ) {
-  const sql = sqlSelfVsOutsource(filters, dim);
+  const sql = sqlSelfVsOutsource(filters, dim, chart);
   return useQuery({
     queryKey: ["bqa", "selfVsOutsource", dim, sql] as const,
     queryFn: async (): Promise<SelfVsOutsourceRow[]> => {
@@ -82,19 +83,18 @@ export function useSelfVsOutsource(
   });
 }
 
-/** 明细:全量 mock_bid,下钻来源。 */
-export function useBidList(enabled = true) {
+/** 明细:mock_bid 走全局过滤(与图表联动),下钻来源。SQL 进 queryKey。 */
+export function useBidList(filters: FilterState, enabled = true) {
+  const sql = `SELECT * FROM mock_bid WHERE ${buildWhere(filters, "mock_bid.project_name")} ORDER BY bid_date DESC`;
   return useQuery({
-    queryKey: KEYS.bidlist,
+    queryKey: ["bqa", "bidlist", sql] as const,
     enabled,
     queryFn: async (): Promise<BidItemRow[]> => {
-      const sid = await resolveSourceId();
-      const res = await querySql(
-        sid,
-        "SELECT * FROM mock_bid ORDER BY bid_date DESC",
-      );
+      const res = await queryFiltered(sql);
       return res.rows as BidItemRow[];
     },
+    // 切过滤时保留旧数据,避免表格闪空(与其他罐装视图一致)
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -90,12 +90,15 @@ const SEG_WHERE: Record<string, string> = {
 /**
  * 拼 WHERE 子句片段(不含 WHERE 关键字)。全局 + 每图 AND 叠加。
  * selfAttribute 不在此处理:货物构成图前端 filter / 自产率图渲染层。
- * 友商过滤对"仅我方"的查询:调用方传 useCompetitorExists=true → 追加 EXISTS 子查询。
+ * 友商过滤统一 EXISTS 语义(spec §4.3/§9):筛"有选中友商参与的项目",保留我方行 ——
+ * 裸 bidder_name IN 会把"仅我方"查询清成空集、把混合行集查询的我方聚合清零。
+ * outerProjectRef = 外层查询的项目列引用,随模板外层表别名变化:
+ *   未别名 mock_bid → "mock_bid.project_name";JOIN 别名 b → "b.project_name"。
  */
 export function buildWhere(
   g: FilterState,
+  outerProjectRef: string,
   chart?: ChartFilter,
-  useCompetitorExists = false,
 ): string {
   const c: string[] = ["1=1"];
   // IN 列表先排序:SQL 进 queryKey,选择顺序不同会碎片化缓存;排序后同集合 = 同 key
@@ -112,14 +115,9 @@ export function buildWhere(
     const list = sorted(g.competitors)
       .map((x) => `'${esc(x)}'`)
       .join(",");
-    if (useCompetitorExists) {
-      // 仅我方查询:筛"有选中友商参与的项目"
-      c.push(
-        `EXISTS (SELECT 1 FROM mock_bid c2 WHERE c2.project_name = mock_bid.project_name AND c2.bidder_role='competitor' AND c2.bidder_name IN (${list}))`,
-      );
-    } else {
-      c.push(`bidder_name IN (${list})`);
-    }
+    c.push(
+      `EXISTS (SELECT 1 FROM mock_bid c2 WHERE c2.project_name = ${outerProjectRef} AND c2.bidder_role='competitor' AND c2.bidder_name IN (${list}))`,
+    );
   }
   if (g.dateFrom) c.push(`bid_date >= '${esc(g.dateFrom)}'`);
   if (g.dateTo) c.push(`bid_date <= '${esc(g.dateTo)}'`);
@@ -201,7 +199,15 @@ export function sqlFor(
     segment: " GROUP BY 1 ORDER BY 1",
     showdown: " GROUP BY project_name ORDER BY MIN(bid_id)",
   };
-  const where = buildWhere(g, chart, key === "segment");
+  // EXISTS 外层关联列随模板外层表别名:未别名 mock_bid vs JOIN 别名 b(传错=恒真/不可解析)
+  const OUTER_REF = {
+    summary: "mock_bid.project_name",
+    composition: "b.project_name",
+    segment: "mock_bid.project_name",
+    showdown: "mock_bid.project_name",
+    selfRate: "b.project_name",
+  } as const;
+  const where = buildWhere(g, OUTER_REF[key], chart);
   const base = TPL[key];
   // EAI-CUSTOM(bid-quote 过滤): selfRate 仅我方标 —— base 无 WHERE 子句,
   // 直接内联拼 `WHERE bidder_role='ours' AND <过滤>` 再补 GROUP BY/ORDER 尾部
@@ -225,7 +231,7 @@ export function sqlSelfVsOutsource(
   dim: "project" | "goods",
   chart?: ChartFilter,
 ): string {
-  const where = buildWhere(g, chart);
+  const where = buildWhere(g, "b.project_name", chart);
   const grp = dim === "project" ? "b.project_name" : "i.goods_name";
   return `${TPL.selfVsOutsource(dim)} WHERE ${where} GROUP BY ${grp} ORDER BY ${grp}`;
 }
@@ -236,13 +242,14 @@ export async function queryFiltered(sql: string): Promise<QueryResult> {
   return querySql(sid, sql);
 }
 
-/** distinct 过滤选项(项目 + 友商)。 */
+/** distinct 过滤选项(项目 + 友商 + 货物,货物供图B/货物构成每图筛选)。 */
 export async function fetchFilterOptions(): Promise<{
   projects: string[];
   competitors: string[];
+  goods: string[];
 }> {
   const sid = await resolveSourceId();
-  const [pr, cr] = await Promise.all([
+  const [pr, cr, gd] = await Promise.all([
     querySql(
       sid,
       "SELECT DISTINCT project_name AS v FROM mock_bid ORDER BY project_name",
@@ -251,9 +258,14 @@ export async function fetchFilterOptions(): Promise<{
       sid,
       "SELECT DISTINCT bidder_name AS v FROM mock_bid WHERE bidder_role='competitor' ORDER BY bidder_name",
     ),
+    querySql(
+      sid,
+      "SELECT DISTINCT goods_name AS v FROM mock_bid_item ORDER BY goods_name",
+    ),
   ]);
   return {
     projects: (pr.rows as { v: string }[]).map((r) => r.v),
     competitors: (cr.rows as { v: string }[]).map((r) => r.v),
+    goods: (gd.rows as { v: string }[]).map((r) => r.v),
   };
 }

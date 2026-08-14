@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -23,19 +23,30 @@ import {
 } from "@/extensions/bid-quote/components/chartTheme";
 import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import { useSelfVsOutsource } from "@/extensions/bid-quote/hooks";
-import { type FilterState } from "@/extensions/bid-quote/types";
+import {
+  type ChartFilter,
+  type FilterState,
+} from "@/extensions/bid-quote/types";
 
 interface SelfVsOutsourceChartProps {
   filters: FilterState;
+  /** 每图高级筛选(货物维度,spec §5.5)。 */
+  chart?: ChartFilter;
+  /** 标题行操作区(每图筛选 Popover 等),由 DashboardView 注入。 */
+  action?: ReactNode;
 }
 
 /**
  * 图B:自产 vs 外购金额(万)。按项目/按货物双视角切换,dim 进 queryKey,
  * 切换即重查;名称经 truncateLabel 截断,长项目/货物名不挤爆 X 轴。
  */
-export function SelfVsOutsourceChart({ filters }: SelfVsOutsourceChartProps) {
+export function SelfVsOutsourceChart({
+  filters,
+  chart,
+  action,
+}: SelfVsOutsourceChartProps) {
   const [dim, setDim] = useState<"project" | "goods">("project");
-  const q = useSelfVsOutsource(filters, dim);
+  const q = useSelfVsOutsource(filters, dim, chart);
 
   // Decimal 经 JSON 序列化为 string;null 按金额 0 计,统一换算为万
   const data = (q.data ?? []).map((r) => ({
@@ -53,7 +64,7 @@ export function SelfVsOutsourceChart({ filters }: SelfVsOutsourceChartProps) {
           : "transition-opacity"
       }
     >
-      <ChartCard title="自产 vs 外购金额(万)" meta="视角可切">
+      <ChartCard title="自产 vs 外购金额(万)" meta="视角可切" action={action}>
         {/* 视角切换:项目 / 货物 */}
         <div
           role="group"

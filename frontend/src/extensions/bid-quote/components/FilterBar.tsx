@@ -59,7 +59,7 @@ function MultiSelect({
 
 export function FilterBar({ filters, onChange }: FilterBarProps) {
   const optsQ = useFilterOptions();
-  const opts = optsQ.data ?? { projects: [], competitors: [] };
+  const opts = optsQ.data ?? { projects: [], competitors: [], goods: [] };
   // 评审修正:用查询状态而非 options.length 区分 加载中/失败,避免请求失败时永远显示"加载中…"
   const status = optsQ.isPending ? "pending" : optsQ.isError ? "error" : "ok";
   const toggle = (key: "projects" | "competitors", v: string) => {
