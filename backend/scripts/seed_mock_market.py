@@ -12,7 +12,7 @@ EAI-CUSTOM: 市场部门模块①。真实投标库接入前的链路演示 mock
 数据故事(供技能推理,非真实业绩):
 - 我方(东智装备制造)在循环水泵/超滤装置等核心设备可自产 → 中小项目中标;
 - 变换炉/压缩机/脱硫塔/丙烯塔等大型核心设备我方仅能外购 → 大项目成本高、落标;
-- 友商(东方宏业)大型塔器/压缩机可自产 → 大项目低价中标。
+- 友商(东方宏业/华能重工/江南重工/航天晨光等,每项目 2-3 家)大型塔器/压缩机可自产 → 大项目低价中标。
 结论预期:技能建议我方提升大型核心设备自产率以改善大项目中标率。
 """
 
@@ -44,15 +44,24 @@ SOURCE_CONNECTION_CONFIG = {
 }
 
 OURS = "东智装备制造"
-COMP = "东方宏业"
+# EAI-CUSTOM: 多家友商(原单常量 COMP)。每项目 2-3 家友商竞争,1 家中标。
+COMPETITORS_POOL = ["东方宏业", "华能重工", "中机国能", "江南重工", "海纳智造", "航天晨光"]
 
-# ── 6 个投标项目(每项目我方+友商各 1 条 bid)──
+
+def _variant(base, k):
+    """友商货物清单变体:模拟不同友商的自产能力。
+    k=1.0 基准;k<1 自产弱(自产×k,外购补足);k>1 自产强。
+    base = [(货物,规格,数量,单位,自产万,外购万), ...]
+    """
+    return [(g, s, q, u, round(sm * k), round(om * (2 - k))) for g, s, q, u, sm, om in base]
+
+# ── 6 个投标项目(每项目我方 + 2-3 家友商竞标,恰 1 家中标)──
 # item: (货物名, 规格型号, 数量, 单位, 自产金额万, 外购金额万)
 #   脚本自动算 total = self+outsourced, unit_price = total/qty
 PROJECTS = [
     {
         "name": "华能铜川电厂二期循环水系统", "loc": "陕西铜川", "date": "2025-03-15",
-        "winner": "ours", "price": 18500000,  # 500-2000w 段
+        "price": 18500000, "winner": "ours",  # 500-2000w 段
         "ours": [
             ("循环水泵", "300QH-600", 4, "台", 280, 20),
             ("冷却塔填料", "PVC复合", 1200, "m³", 0, 150),
@@ -61,6 +70,7 @@ PROJECTS = [
             ("电气控制柜", "MNS型", 6, "面", 0, 250),
             ("安装调试", "—", 1, "项", 200, 0),
         ],
+        "main_competitor": "东方宏业",
         "comp": [
             ("循环水泵", "300QH-600", 4, "台", 160, 120),
             ("冷却塔填料", "PVC复合", 1200, "m³", 0, 140),
@@ -69,10 +79,11 @@ PROJECTS = [
             ("电气控制柜", "MNS型", 6, "面", 0, 230),
             ("安装调试", "—", 1, "项", 180, 0),
         ],
+        "extra_competitors": [("海纳智造", 0.7)],  # (友商名, variant系数)
     },
     {
         "name": "宁夏宝丰甲醇项目净化装置", "loc": "宁夏宁东", "date": "2025-04-22",
-        "winner": "competitor", "price": 26500000,  # ≥2000w 段
+        "price": 26500000, "winner": "华能重工",  # ≥2000w 段
         "ours": [  # 我方核心设备全外购 → 高成本落标
             ("变换炉", "φ3200", 2, "台", 0, 650),
             ("吸收塔", "φ2800", 1, "台", 0, 520),
@@ -81,6 +92,7 @@ PROJECTS = [
             ("管道及支架", "各类", 1200, "t", 300, 100),
             ("安装调试", "—", 1, "项", 250, 0),
         ],
+        "main_competitor": "华能重工",
         "comp": [  # 友商塔器/压缩机可自产 → 低价中标
             ("变换炉", "φ3200", 2, "台", 600, 50),
             ("吸收塔", "φ2800", 1, "台", 480, 40),
@@ -89,10 +101,11 @@ PROJECTS = [
             ("管道及支架", "各类", 1200, "t", 280, 90),
             ("安装调试", "—", 1, "项", 240, 0),
         ],
+        "extra_competitors": [("航天晨光", 0.9)],
     },
     {
         "name": "内蒙古久泰乙二醇装置", "loc": "内蒙古鄂尔多斯", "date": "2025-06-10",
-        "winner": "competitor", "price": 4800000,  # 100-500w 段
+        "price": 4800000, "winner": "中机国能",  # 100-500w 段
         "ours": [
             ("反应器", "φ2400", 1, "台", 0, 180),
             ("换热器", "BIU800", 4, "台", 120, 40),
@@ -100,6 +113,7 @@ PROJECTS = [
             ("管道及支架", "各类", 320, "t", 40, 30),
             ("安装调试", "—", 1, "项", 20, 0),
         ],
+        "main_competitor": "东方宏业",
         "comp": [
             ("反应器", "φ2400", 1, "台", 160, 20),
             ("换热器", "BIU800", 4, "台", 110, 30),
@@ -107,10 +121,11 @@ PROJECTS = [
             ("管道及支架", "各类", 320, "t", 35, 25),
             ("安装调试", "—", 1, "项", 18, 0),
         ],
+        "extra_competitors": [("中机国能", 1.1), ("江南重工", 0.8)],
     },
     {
         "name": "大唐国际雷州电厂烟气脱硫", "loc": "广东雷州", "date": "2025-07-18",
-        "winner": "competitor", "price": 32000000,  # ≥2000w 段(超大)
+        "price": 32000000, "winner": "航天晨光",  # ≥2000w 段(超大)
         "ours": [  # 脱硫塔/氧化风机我方外购 → 高成本落标
             ("脱硫塔", "φ18000", 1, "台", 0, 950),
             ("浆液循环泵", "TL800", 6, "台", 280, 120),
@@ -119,6 +134,7 @@ PROJECTS = [
             ("电气系统", "—", 1, "套", 0, 350),
             ("安装调试", "—", 1, "项", 250, 0),
         ],
+        "main_competitor": "航天晨光",
         "comp": [  # 友商自产 → 低价中标
             ("脱硫塔", "φ18000", 1, "台", 880, 70),
             ("浆液循环泵", "TL800", 6, "台", 260, 100),
@@ -127,10 +143,11 @@ PROJECTS = [
             ("电气系统", "—", 1, "套", 0, 320),
             ("安装调试", "—", 1, "项", 240, 0),
         ],
+        "extra_competitors": [("华能重工", 0.95)],
     },
     {
         "name": "中天合创煤化工水处理", "loc": "内蒙古鄂尔多斯", "date": "2025-09-05",
-        "winner": "ours", "price": 850000,  # <100w 段(小项目,我方超滤自产)
+        "price": 850000, "winner": "ours",  # <100w 段(小项目,我方超滤自产)
         "ours": [
             ("超滤装置", "UF-160", 2, "套", 60, 5),
             ("反渗透膜", "BW-440", 30, "支", 0, 15),
@@ -138,6 +155,7 @@ PROJECTS = [
             ("管道及支架", "各类", 45, "t", 3, 2),
             ("安装调试", "—", 1, "项", 5, 0),
         ],
+        "main_competitor": "东方宏业",
         "comp": [
             ("超滤装置", "UF-160", 2, "套", 55, 8),
             ("反渗透膜", "BW-440", 30, "支", 0, 14),
@@ -145,10 +163,11 @@ PROJECTS = [
             ("管道及支架", "各类", 45, "t", 2, 3),
             ("安装调试", "—", 1, "项", 4, 0),
         ],
+        "extra_competitors": [],
     },
     {
         "name": "万华化学烟台PDH装置", "loc": "山东烟台", "date": "2025-11-12",
-        "winner": "competitor", "price": 21000000,  # ≥2000w 段
+        "price": 21000000, "winner": "江南重工",  # ≥2000w 段
         "ours": [  # 丙烯塔/压缩机我方外购 → 高成本落标
             ("丙烯塔", "φ4200", 1, "台", 0, 580),
             ("压缩机", "丙烷离心", 1, "台", 0, 620),
@@ -157,6 +176,7 @@ PROJECTS = [
             ("管道及支架", "各类", 980, "t", 150, 80),
             ("安装调试", "—", 1, "项", 100, 0),
         ],
+        "main_competitor": "江南重工",
         "comp": [  # 友商自产 → 低价中标
             ("丙烯塔", "φ4200", 1, "台", 540, 40),
             ("压缩机", "丙烷离心", 1, "台", 580, 50),
@@ -165,6 +185,7 @@ PROJECTS = [
             ("管道及支架", "各类", 980, "t", 140, 70),
             ("安装调试", "—", 1, "项", 95, 0),
         ],
+        "extra_competitors": [("中机国能", 0.85), ("海纳智造", 0.75)],
     },
 ]
 
@@ -183,8 +204,9 @@ DATASETS = [
               ROUND(100.0 * COUNT(*) FILTER (WHERE bidder_role='ours' AND won)
                     / NULLIF(COUNT(*) FILTER (WHERE bidder_role='ours'),0), 1) AS ours_win_rate_pct,
               COUNT(*) FILTER (WHERE bidder_role='competitor') AS competitor_bid,
+              COUNT(DISTINCT bidder_name) FILTER (WHERE bidder_role='competitor') AS competitor_count,
               COUNT(*) FILTER (WHERE bidder_role='competitor' AND won) AS competitor_won,
-              ROUND(AVG(winning_price), 2) AS avg_winning_price,
+              ROUND(AVG(winning_price) FILTER (WHERE won), 2) AS avg_winning_price,
               MIN(bid_date) AS earliest_bid,
               MAX(bid_date) AS latest_bid
             FROM mock_bid
@@ -242,7 +264,7 @@ DATASETS = [
         "default_query": """
             SELECT project_name,
               MAX(winning_price) FILTER (WHERE bidder_role='ours') AS our_price,
-              MAX(winning_price) FILTER (WHERE bidder_role='competitor') AS competitor_price,
+              MAX(winning_price) FILTER (WHERE bidder_role='competitor' AND won) AS competitor_price,
               BOOL_OR(bidder_role='ours' AND won) AS we_won,
               MAX(project_location) AS project_location
             FROM mock_bid
@@ -298,30 +320,40 @@ async def main() -> None:
 
     bid_rows, item_rows = [], []
     seq = 0
-    for pi, p in enumerate(PROJECTS):
-        for role, bidder, items in (("ours", OURS, p["ours"]), ("competitor", COMP, p["comp"])):
-            seq += 1
-            bid_id = f"BD-2025-{seq:03d}"
-            won = role == p["winner"]
-            # EAI-CUSTOM(option A): 中标方按 base 价,落标方按 base × 上浮(落标=报价更高才落标)。
-            # 上浮系数随项目确定性变化 5%-17%,避免所有项目同比例无差异(仪表盘第3图才有可读性)。
-            markup = 0.05 + (pi % 5) * 0.03
-            price = round(p["price"] * (1.0 if won else (1.0 + markup)), 2)
-            bid_rows.append(
-                (bid_id, p["name"], p["loc"], date.fromisoformat(p["date"]), role, bidder, won, price)
-            )
-            for goods, spec, qty, unit, self_amt, out_amt in items:
-                total = self_amt + out_amt  # 单位:万元
-                # mock 表金额按元存(spec 标价以元为单位),万元 × 10000
-                item_rows.append(
-                    (
-                        bid_id, goods, spec, qty, unit,
-                        round(total * 10000 / qty, 2),       # unit_price(元)
-                        round(self_amt * 10000, 2),          # self_amount(元)
-                        round(out_amt * 10000, 2),           # outsourced_amount(元)
-                        round(total * 10000, 2),             # total_amount(元)
-                    )
+
+    def emit(p, role, bidder, items, won, pi):
+        """生成 1 条 bid + 其 item 行。price: 中标方按 base,落标方按 base×上浮。"""
+        nonlocal seq
+        seq += 1
+        bid_id = f"BD-2025-{seq:03d}"
+        # EAI-CUSTOM(option A): 中标方按 base 价,落标方按 base × 上浮(落标=报价更高才落标)。
+        # 上浮系数随项目确定性变化 5%-17%,避免所有项目同比例无差异(仪表盘第3图才有可读性)。
+        markup = 0.05 + (pi % 5) * 0.03
+        price = round(p["price"] * (1.0 if won else (1.0 + markup)), 2)
+        bid_rows.append(
+            (bid_id, p["name"], p["loc"], date.fromisoformat(p["date"]), role, bidder, won, price)
+        )
+        for goods, spec, qty, unit, self_amt, out_amt in items:
+            total = self_amt + out_amt  # 单位:万元
+            # mock 表金额按元存(spec 标价以元为单位),万元 × 10000
+            item_rows.append(
+                (
+                    bid_id, goods, spec, qty, unit,
+                    round(total * 10000 / qty, 2),   # unit_price(元)
+                    round(self_amt * 10000, 2),      # self_amount(元)
+                    round(out_amt * 10000, 2),       # outsourced_amount(元)
+                    round(total * 10000, 2),         # total_amount(元)
                 )
+            )
+
+    for pi, p in enumerate(PROJECTS):
+        # 我方
+        emit(p, "ours", OURS, p["ours"], p["winner"] == "ours", pi)
+        # 主友商(清单 = comp)
+        emit(p, "competitor", p["main_competitor"], p["comp"], p["winner"] == p["main_competitor"], pi)
+        # 额外友商(清单 = comp 的 variant)
+        for cname, k in p.get("extra_competitors", []):
+            emit(p, "competitor", cname, _variant(p["comp"], k), p["winner"] == cname, pi)
 
     await mock.executemany(
         "INSERT INTO mock_bid (bid_id,project_name,project_location,bid_date,bidder_role,bidder_name,won,winning_price) "
@@ -378,13 +410,23 @@ async def main() -> None:
     print(f"[ok] 已 upsert {len(DATASETS)} 个 dataset")
     await ext.close()
 
-    # 自检:汇总(肉眼校验数据故事)
+    # 自检:汇总 + 多家一致性断言(肉眼校验数据故事 + 防 seed 错配)
     chk = await asyncpg.connect(**common, database=MOCK_DB)
     n_bid = await chk.fetchval("SELECT count(*) FROM mock_bid")
     n_item = await chk.fetchval("SELECT count(*) FROM mock_bid_item")
     ours_rate = await chk.fetchval(
         "SELECT round(100.0*count(*) filter(where bidder_role='ours' and won)/count(*) filter(where bidder_role='ours'),1) FROM mock_bid"
     )
+    # 断言1:每项目恰 1 家中标(won=true)
+    bad_projects = await chk.fetch(
+        "SELECT project_name, count(*) c FROM mock_bid WHERE won GROUP BY project_name HAVING count(*) <> 1"
+    )
+    assert not bad_projects, f"每项目须恰 1 中标,违规: {[dict(r) for r in bad_projects]}"
+    # 断言2:友商家数 > 1(多家生效)
+    comp_count = await chk.fetchval(
+        "SELECT count(DISTINCT bidder_name) FROM mock_bid WHERE bidder_role='competitor'"
+    )
+    assert comp_count >= 3, f"友商家数应 ≥3(多家),实际 {comp_count}"
     seg = await chk.fetch(
         "SELECT CASE WHEN winning_price<1000000 THEN '<100w' WHEN winning_price<5000000 THEN '100-500w' "
         "WHEN winning_price<20000000 THEN '500-2000w' ELSE '>=2000w' END seg, "
@@ -392,7 +434,7 @@ async def main() -> None:
         "FROM mock_bid GROUP BY 1 ORDER BY 1"
     )
     print("\n===== 自检 =====")
-    print(f"bid={n_bid} item={n_item} 我方中标率={ours_rate}%")
+    print(f"bid={n_bid} item={n_item} 我方中标率={ours_rate}% 友商家数={comp_count}")
     for r in seg:
         print(f"  金额段 {r['seg']}: 我方投 {r['bid']} 中 {r['won']}")
     await chk.close()
