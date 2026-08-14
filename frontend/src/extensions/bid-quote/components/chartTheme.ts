@@ -18,8 +18,9 @@ export const THRESHOLD_RED = "#f43f5e"; // 门槛参考线
  * X 轴长名称截断:优先按 市/省 断点截断,无断点(当前 seed 全部如此)退化为纯长度截断。
  * 与图C(自产率分布)保持同一链路,长项目/货物名不会挤爆 X 轴。
  */
-export function truncateLabel(label: string): string {
-  return label
+export function truncateLabel(label: string | null | undefined): string {
+  // 兜底:label 来自 GROUP BY 列,null 组会让 .replace 抛错整卡崩掉
+  return (label ?? "")
     .replace(/.{6,}?[市省]/, (m) => m.slice(0, 4) + "…")
     .replace(/^(.{4}).{5,}$/, "$1…");
 }

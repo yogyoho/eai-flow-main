@@ -45,65 +45,78 @@ export function SelfVsOutsourceChart({ filters }: SelfVsOutsourceChartProps) {
   }));
 
   return (
-    <ChartCard title="自产 vs 外购金额(万)" meta="视角可切">
-      {/* 视角切换:项目 / 货物 */}
-      <div
-        role="group"
-        aria-label="视角"
-        className="mb-2 flex items-center gap-1"
-      >
-        {(["project", "goods"] as const).map((d) => (
-          <button
-            key={d}
-            type="button"
-            aria-pressed={dim === d}
-            onClick={() => setDim(d)}
-            className={
-              "rounded border px-1.5 py-0.5 text-[11px] " +
-              (dim === d
-                ? "border-primary text-primary"
-                : "border-border text-muted-foreground")
-            }
-          >
-            {d === "project" ? "按项目" : "按货物"}
-          </button>
-        ))}
-      </div>
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart
-          data={data}
-          margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+    // isPlaceholderData:切视角瞬间仍显示旧视角数据,半透明提示非最新
+    <div
+      className={
+        q.isPlaceholderData
+          ? "opacity-60 transition-opacity"
+          : "transition-opacity"
+      }
+    >
+      <ChartCard title="自产 vs 外购金额(万)" meta="视角可切">
+        {/* 视角切换:项目 / 货物 */}
+        <div
+          role="group"
+          aria-label="视角"
+          className="mb-2 flex items-center gap-1"
         >
-          <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
-          <XAxis
-            dataKey="label"
-            tick={{ ...AXIS, fontSize: 10 }}
-            tickLine={false}
-            axisLine={{ stroke: GRID }}
-            interval={0}
-            angle={-12}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
-          <Tooltip content={<TechTooltip />} cursor={CURSOR} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar
-            dataKey="自产"
-            fill={BLUE}
-            radius={[3, 3, 0, 0]}
-            isAnimationActive
-            animationDuration={900}
-          />
-          <Bar
-            dataKey="外购"
-            fill={AMBER}
-            radius={[3, 3, 0, 0]}
-            isAnimationActive
-            animationDuration={900}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
+          {(["project", "goods"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={dim === d}
+              onClick={() => setDim(d)}
+              className={
+                "rounded border px-1.5 py-0.5 text-[11px] " +
+                (dim === d
+                  ? "border-primary text-primary"
+                  : "border-border text-muted-foreground")
+              }
+            >
+              {d === "project" ? "按项目" : "按货物"}
+            </button>
+          ))}
+        </div>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="2 4"
+              stroke={GRID}
+              vertical={false}
+            />
+            <XAxis
+              dataKey="label"
+              tick={{ ...AXIS, fontSize: 10 }}
+              tickLine={false}
+              axisLine={{ stroke: GRID }}
+              interval={0}
+              angle={-12}
+              textAnchor="end"
+              height={50}
+            />
+            <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
+            <Tooltip content={<TechTooltip />} cursor={CURSOR} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar
+              dataKey="自产"
+              fill={BLUE}
+              radius={[3, 3, 0, 0]}
+              isAnimationActive
+              animationDuration={900}
+            />
+            <Bar
+              dataKey="外购"
+              fill={AMBER}
+              radius={[3, 3, 0, 0]}
+              isAnimationActive
+              animationDuration={900}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
   );
 }
