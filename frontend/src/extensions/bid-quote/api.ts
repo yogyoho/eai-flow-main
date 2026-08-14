@@ -169,13 +169,14 @@ export function sqlFor(
     composition: " GROUP BY i.goods_name ORDER BY i.goods_name",
     segment: " GROUP BY 1 ORDER BY 1",
     showdown: " GROUP BY project_name ORDER BY MIN(bid_id)",
-    selfRate: " WHERE b.bidder_role='ours' GROUP BY b.project_name ORDER BY self_rate DESC",
   };
   const where = buildWhere(g, chart, key === "segment");
   const base = TPL[key];
+  // EAI-CUSTOM(bid-quote 过滤): selfRate 仅我方标 —— base 无 WHERE 子句,
+  // 直接内联拼 `WHERE bidder_role='ours' AND <过滤>` 再补 GROUP BY/ORDER 尾部
+  // (spec-review 修正:原 replace 写法对 base 是 no-op,会丢掉全部过滤和 GROUP BY)。
   if (key === "selfRate") {
-    // selfRate 已含 WHERE bidder_role='ours';把 buildWhere 合并进去
-    return base.replace("WHERE b.bidder_role='ours'", `WHERE b.bidder_role='ours' AND ${where}`);
+    return `${base} WHERE b.bidder_role='ours' AND ${where} GROUP BY b.project_name ORDER BY self_rate DESC`;
   }
   if (key === "summary") return `${base} WHERE ${where}`;
   // EAI-CUSTOM(bid-quote 过滤): 修正计划自带的 bug —— segment 模板本身已含

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildWhere, esc } from "@/extensions/bid-quote/api";
+import { buildWhere, esc, sqlFor } from "@/extensions/bid-quote/api";
 import { EMPTY_FILTERS, type ChartFilter, type FilterState } from "@/extensions/bid-quote/types";
 
 describe("esc", () => {
@@ -49,5 +49,25 @@ describe("buildWhere", () => {
     const chart: ChartFilter = { amountSegment: "lt100w" };
     const w = buildWhere(g, chart);
     expect(w).toBe("1=1 AND project_name IN ('甲') AND winning_price < 1000000");
+  });
+});
+
+describe("sqlFor 组装", () => {
+  it("selfRate:WHERE ours + AND 过滤 + GROUP BY 尾部齐全", () => {
+    const g: FilterState = { ...EMPTY_FILTERS, projects: ["甲"] };
+    const sql = sqlFor("selfRate", g);
+    expect(sql).toContain("WHERE b.bidder_role='ours' AND 1=1 AND project_name IN ('甲')");
+    expect(sql).toContain("GROUP BY b.project_name");
+    expect(sql).toContain("ORDER BY self_rate DESC");
+  });
+  it("segment:base 已含 WHERE,过滤用 AND 接续不产生双 WHERE", () => {
+    const sql = sqlFor("segment", EMPTY_FILTERS);
+    expect(sql).toContain("WHERE bidder_role='ours' AND 1=1");
+    expect(sql).not.toMatch(/WHERE.*WHERE/);
+    expect(sql).toContain("GROUP BY 1");
+  });
+  it("summary:WHERE 直接拼接", () => {
+    const sql = sqlFor("summary", EMPTY_FILTERS);
+    expect(sql).toContain("FROM mock_bid WHERE 1=1");
   });
 });
