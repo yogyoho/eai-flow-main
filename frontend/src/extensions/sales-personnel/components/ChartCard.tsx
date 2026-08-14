@@ -19,7 +19,7 @@ export function ChartCard({ title, meta, children, className }: ChartCardProps) 
       }
     >
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-cyber text-sm font-semibold tracking-wide text-muted-foreground">{title}</h3>
+        <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
         {meta ? (
           <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-bold text-primary">
             {meta}

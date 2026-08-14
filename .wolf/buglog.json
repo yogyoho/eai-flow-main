@@ -18971,5 +18971,17 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T09:33:00Z"
+  },
+  {
+    "id": "bug-1185",
+    "timestamp": "2026-08-14T11:05:00Z",
+    "error_message": "重设 sales-personnel 仪表盘 3 图后,浏览器里 recharts LabelList 柱顶标签(5.8万/5.2万…)和 donut 自定义侧栏(13 笔·65.0%)不渲染,donut 中心总数显示旧值 11(应为 20);DOM 仍含已删的 font-cyber/recharts-legend",
+    "file": "frontend/src/extensions/sales-personnel/components/DashboardView.tsx (+ ChartCard.tsx/TechTooltip.tsx) — 代码正确,问题在容器",
+    "root_cause": "Docker 内 Turbopack HMR 不可靠(CLAUDE.md 已警告 frontend HMR may be unreliable):src/ 虽 bind-mount 但对 DashboardView 等 3 文件的热更没吃进,容器跑的是旧版组件。typecheck/ESLint 全绿不代表页面是新码。",
+    "fix": "docker compose -p eai-docker restart frontend(冷编译约 35s,首请求慢),再 navigate + wait_for + take_snapshot 验 DOM。判旧码指纹:DOM 有无 font-cyber / recharts-legend / 新增的 max-w-xs 侧栏。重启后三图全绿(标签 5.8万/5.2万/4.6万/2.6万;中心 20;侧栏 13笔65%/5笔25%/2笔10%)。",
+    "tags": ["frontend", "hmr", "docker", "recharts", "stale-code", "dataviz", "sales-personnel", "restart-frontend"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14T11:05:00Z"
   }
 ]

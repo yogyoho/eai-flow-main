@@ -7340,3 +7340,39 @@
 | 09:52 | git push origin main-dev-fork(postBuffer 524288000)→d2ec0d3c1..9e7c12368,rev-list 0 0 同步 | origin | 27 commits pushed ✓ | ~0 |
 | 09:29 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-modules-build-progress.md | — | ~489 |
 | 09:32 | Session end: 1 writes across 1 files (market-modules-build-progress.md) | 1 reads | ~874 tok |
+| 09:42 | Session end: 1 writes across 1 files (market-modules-build-progress.md) | 1 reads | ~874 tok |
+| 10:51 | Created frontend/src/extensions/sales-personnel/components/DashboardView.tsx | — | ~3006 |
+| 10:51 | Created frontend/src/extensions/sales-personnel/components/TechTooltip.tsx | — | ~356 |
+| 10:51 | Edited frontend/src/extensions/sales-personnel/components/ChartCard.tsx | "font-cyber text-sm font-s" → "text-sm font-semibold tra" | ~26 |
+| 10:52 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | CSS: label | ~64 |
+| 10:52 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 6→5 lines | ~61 |
+| 10:55 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | CSS: ATT_LEGEND | ~107 |
+| 10:55 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 14→9 lines | ~136 |
+
+## Session: 2026-08-14 10:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-14 10:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-14 11:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-14 11:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-14 11:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:10 | redesign 销售仪表盘 3 图(dataviz:校验调色板+柱顶标值+donut中心+侧栏) | DashboardView/TechTooltip/ChartCard.tsx | typecheck+ESLint 绿;3 图全渲染(标签/中心/侧栏齐) | ~9k |
+| 11:25 | HMR 喂旧码→图表不渲染,排查后 restart frontend | deer-flow-frontend 容器 | 冷编译后 DOM 验证全绿;font-cyber/recharts-legend 旧码指纹消失 | ~5k |
+| 11:30 | OpenWolf 记账(cerebrum+buglog-1185+memory) | .wolf/cerebrum.md/.wolf/buglog.json | 落 HMR Do-Not-Repeat + dataviz 方法落点 | ~2k |
