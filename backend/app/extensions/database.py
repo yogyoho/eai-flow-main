@@ -1631,7 +1631,7 @@ async def seed_db() -> None:
                      "icon": "package-search", "domain": "procurement", "stage": "process",
                      "path": "/contract-price", "license": "contract_price", "admin": False, "sort": 8, "sort_key": "caigouguanli"},
                     {"app_id": "spare-parts", "name": "备品备件价格分析", "desc": "跨客户备品备件价格聚类与统计，OCR 解析与认领归并",
-                     "icon": "package", "domain": "procurement", "stage": "process",
+                     "icon": "package-search", "domain": "procurement", "stage": "process",
                      "path": "/spare-parts", "license": "spare_parts", "admin": False, "sort": 11, "sort_key": "beipinbeijian"},
                     {"app_id": "bid-quote", "name": "投标报价分析", "desc": "投标中标率/报价对比/自产外购构成分析",
                      "icon": "gavel", "domain": "marketing", "stage": "analysis",

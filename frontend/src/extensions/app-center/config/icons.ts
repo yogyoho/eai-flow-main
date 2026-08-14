@@ -6,9 +6,12 @@ import {
   FileOutput,
   FileText,
   FolderCheck,
+  Gavel,
   LayoutDashboard,
   PackageSearch,
   Settings2,
+  Users,
+  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,6 +27,9 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   "package-search": PackageSearch,
   "settings-2": Settings2,
   "file-text": FileText,
+  users: Users,
+  workflow: Workflow,
+  gavel: Gavel,
 };
 
 /** Fallback icon when icon_name is unknown. */
