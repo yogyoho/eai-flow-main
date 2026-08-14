@@ -167,7 +167,10 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
                     <TableRow key={i} className="cursor-default">
                       {cols.map((c) => (
                         <TableCell key={c} className={cellCls(c)}>
-                          {cellText(r[c])}
+                          {/* won 布尔列渲染为中标标记,避免裸 true/false */}
+                          {c === "won" && r[c] === true
+                            ? "✓ 中标"
+                            : cellText(r[c])}
                         </TableCell>
                       ))}
                     </TableRow>
