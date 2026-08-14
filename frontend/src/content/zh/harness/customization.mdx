@@ -1,19 +1,19 @@
 ---
 title: 自定义与扩展
-description: EAIFlow 的可插拔架构意味着系统的大多数部分都可以在不 fork 核心的情况下被替换或扩展。本页面列举了扩展点，并解释如何使用每一个。
+description: DeerFlow 的可插拔架构意味着系统的大多数部分都可以在不 fork 核心的情况下被替换或扩展。本页面列举了扩展点，并解释如何使用每一个。
 ---
 
-import { Callout, Cards } from "nextra/components";
+import { Callout } from "nextra/components";
 
 # 自定义与扩展
 
 <Callout type="info" emoji="🔧">
-  EAIFlow
+  DeerFlow
   设计为可适配的。你可以通过编写自定义中间件、添加新工具、构建技能包以及通过
   config.yaml 的 <code>use:</code> 字段替换任何内置组件来扩展 Agent 行为。
 </Callout>
 
-EAIFlow 的可插拔架构意味着系统的大多数部分都可以在不 fork 核心的情况下被替换或扩展。本页面列举了扩展点，并解释如何使用每一个。
+DeerFlow 的可插拔架构意味着系统的大多数部分都可以在不 fork 核心的情况下被替换或扩展。本页面列举了扩展点，并解释如何使用每一个。
 
 ## 自定义中间件
 
@@ -149,7 +149,7 @@ checkpointer:
   connection_string: ./my-checkpoints.db
 ```
 
-对于自定义后端，实现 LangGraph 的 `BaseCheckpointSaver` 接口，并在初始化 `EAIFlowClient` 时以编程方式配置它。
+对于自定义后端，实现 LangGraph 的 `BaseCheckpointSaver` 接口，并在初始化 `DeerFlowClient` 时以编程方式配置它。
 
 <Cards num={2}>
   <Cards.Card title="集成指南" href="/docs/harness/integration-guide" />

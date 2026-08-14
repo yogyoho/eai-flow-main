@@ -1,17 +1,17 @@
 ---
 title: Deployment Guide
-description: "This guide covers all supported deployment methods for EAIFlow App: local development, Docker Compose, and production with Kubernetes-managed sandboxes."
+description: "This guide covers all supported deployment methods for DeerFlow App: local development, Docker Compose, and production with Kubernetes-managed sandboxes."
 ---
 
-import { Callout, Cards, Steps, Tabs } from "nextra/components";
+import { Callout, Steps, Tabs } from "nextra/components";
 
 # Deployment Guide
 
-This guide covers all supported deployment methods for EAIFlow App: local development, Docker Compose, and production with Kubernetes-managed sandboxes.
+This guide covers all supported deployment methods for DeerFlow App: local development, Docker Compose, and production with Kubernetes-managed sandboxes.
 
 ## Local development deployment
 
-The local workflow is the fastest way to run EAIFlow. All services run as native processes on your machine.
+The local workflow is the fastest way to run DeerFlow. All services run as native processes on your machine.
 
 <Tabs items={["Start", "Stop", "Logs"]}>
   <Tabs.Tab>
@@ -114,9 +114,36 @@ For production, use a named volume or a Persistent Volume Claim (PVC) instead of
 | -------------------------------------- | ------------------------------------------ |
 | `LocalSandboxProvider`                 | Single-user, trusted local workflows       |
 | `AioSandboxProvider` (Docker)          | Multi-user, moderate isolation requirement |
+| `E2BSandboxProvider` (e2b cloud)       | Hosted/serverless, no Docker/K8s ops, instant Jupyter |
 | `AioSandboxProvider` + K8s Provisioner | Production, strong isolation, multi-user   |
 
 For any deployment with more than one concurrent user, use a container-based sandbox to prevent users from interfering with each other's execution environments.
+
+### Database backend
+
+SQLite is convenient for local development and single-user deployments, but it is not a production backend for concurrent users.
+
+In SQLite mode, DeerFlow stores LangGraph checkpoint data and application data in one `deerflow.db` file. WAL mode allows concurrent reads, but SQLite still permits only one writer at a time. When several users run agents at once, checkpoint writes and application writes can contend for the same file and raise `sqlite3.OperationalError: database is locked`.
+
+For production or any multi-user deployment, use Postgres:
+
+```bash
+# .env
+DATABASE_URL=postgresql://user:password@postgres:5432/deerflow
+UV_EXTRAS=postgres
+```
+
+```yaml
+# config.yaml
+database:
+  backend: postgres
+  postgres_url: $DATABASE_URL
+
+run_events:
+  backend: db
+```
+
+Keep SQLite deployments to local, single-node, or short-lived evaluation environments.
 
 ### K8s Provisioner setup
 
@@ -153,7 +180,7 @@ USERDATA_PVC_NAME=deer-flow-userdata-pvc
 SKILLS_PVC_NAME=deer-flow-skills-pvc
 ```
 
-When `USERDATA_PVC_NAME` is set, the provisioner automatically uses subPath (`threads/{thread_id}/user-data`) so each thread gets its own directory in the PVC.
+When `USERDATA_PVC_NAME` is set, the provisioner automatically uses subPath (`deer-flow/users/{user_id}/threads/{thread_id}/user-data`) so each user's threads get their own directories in the PVC.
 
 </Steps>
 
@@ -163,7 +190,7 @@ nginx routes all traffic to the frontend or Gateway. `/api/langgraph/*` is rewri
 
 ### Authentication
 
-EAIFlow App uses [Better Auth](https://www.better-auth.com/) for session management. In production:
+DeerFlow App uses [Better Auth](https://www.better-auth.com/) for session management. In production:
 
 1. Set `BETTER_AUTH_SECRET` to a strong random string (minimum 32 characters).
 2. Set `BETTER_AUTH_URL` to your public-facing URL (e.g., `https://your-domain.com`).

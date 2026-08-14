@@ -1,19 +1,19 @@
 ---
 title: Lead Agent
-description: The Lead Agent is the central executor in a EAIFlow thread. Every conversation, task, and workflow flows through it. Understanding how it works helps you configure it effectively and extend it when needed.
+description: The Lead Agent is the central executor in a DeerFlow thread. Every conversation, task, and workflow flows through it. Understanding how it works helps you configure it effectively and extend it when needed.
 ---
 
-import { Callout, Cards, Steps } from "nextra/components";
+import { Callout, Steps } from "nextra/components";
 
 # Lead Agent
 
 <Callout type="info" emoji="🧠">
   The Lead Agent is the primary reasoning and orchestration unit in every
-  EAIFlow thread. It decides what to do, calls tools, delegates to subagents,
+  DeerFlow thread. It decides what to do, calls tools, delegates to subagents,
   and returns artifacts.
 </Callout>
 
-The Lead Agent is the central executor in a EAIFlow thread. Every conversation, task, and workflow flows through it. Understanding how it works helps you configure it effectively and extend it when needed.
+The Lead Agent is the central executor in a DeerFlow thread. Every conversation, task, and workflow flows through it. Understanding how it works helps you configure it effectively and extend it when needed.
 
 ## What the Lead Agent does
 
@@ -33,7 +33,7 @@ The Lead Agent does not hardcode a specific workflow. It uses the model's reason
 
 The Lead Agent is built on **LangGraph** and **LangChain Agent** primitives. Specifically:
 
-- [`create_agent`](https://python.langchain.com/docs/concepts/agents/) from `langchain.agents` wraps the LLM into a tool-calling agent loop.
+- [`create_agent`](https://docs.langchain.com/oss/python/langchain/agents) from `langchain.agents` wraps the LLM into a tool-calling agent loop.
 - LangGraph manages the `ThreadState` and provides the checkpointing, streaming, and graph execution model.
 - A **middleware chain** wraps every turn of the agent loop, providing cross-cutting capabilities like memory, summarization, and clarification.
 
@@ -107,9 +107,9 @@ Thinking mode is controlled per-request through the `thinking_enabled` flag. If 
 
 ```yaml
 models:
-  - name: deepseek-v3
+  - name: deepseek-v4
     use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
-    model: deepseek-reasoner
+    model: deepseek-v4-pro
     api_key: $DEEPSEEK_API_KEY
     supports_thinking: true
     when_thinking_enabled:
@@ -138,7 +138,7 @@ The same Lead Agent runtime powers both the default agent and any custom agents 
 - which **tool groups** it can use, and
 - which **model** it defaults to.
 
-Custom agents are created through the EAIFlow App UI or via the `/api/agents` endpoint. Their configuration is stored in `agents/{name}/config.yaml` relative to the backend directory.
+Custom agents are created through the DeerFlow App UI or via the `/api/agents` endpoint. Their configuration is stored in `agents/{name}/config.yaml` relative to the backend directory.
 
 <Callout type="tip">
   When a custom agent is selected in a thread, the Lead Agent loads that agent's
@@ -148,7 +148,7 @@ Custom agents are created through the EAIFlow App UI or via the `/api/agents` en
 
 ## Bootstrap mode
 
-EAIFlow includes a special **bootstrap mode** for the initial setup of custom agents. When `is_bootstrap: true` is passed in the request config, the Lead Agent runs with a minimal system prompt and only the core setup tools exposed. This is used internally to guide the first-run agent configuration flow.
+DeerFlow includes a special **bootstrap mode** for the initial setup of custom agents. When `is_bootstrap: true` is passed in the request config, the Lead Agent runs with a minimal system prompt and only the core setup tools exposed. This is used internally to guide the first-run agent configuration flow.
 
 <Cards num={2}>
   <Cards.Card title="Middlewares" href="/docs/harness/middlewares" />
