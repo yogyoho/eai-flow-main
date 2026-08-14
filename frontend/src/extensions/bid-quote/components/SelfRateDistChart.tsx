@@ -49,13 +49,13 @@ export function SelfRateDistChart({
   const q = useSelfRateDist(filters);
 
   // Decimal 经 JSON 序列化为 string;null(我方无该标)按 0 计
+  // 名称截断:优先按 市/省 断点,无断点(当前 seed 全部如此)退化为纯长度截断
   const data = (q.data ?? [])
     .filter((r) => matchesSelfAttribute(r.self_rate, selfAttribute))
     .map((r) => ({
-      project_name: r.project_name.replace(
-        /.{6,}?[市省]/,
-        (m) => m.slice(0, 4) + "…",
-      ),
+      project_name: r.project_name
+        .replace(/.{6,}?[市省]/, (m) => m.slice(0, 4) + "…")
+        .replace(/^(.{4}).{5,}$/, "$1…"),
       self_rate: Number(r.self_rate ?? 0),
     }));
 
@@ -93,6 +93,7 @@ export function SelfRateDistChart({
             height={50}
           />
           <YAxis
+            domain={[0, 100]}
             tick={AXIS}
             tickLine={false}
             axisLine={false}
