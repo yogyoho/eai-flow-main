@@ -1,5 +1,6 @@
 import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
+export { fetchAgentsApiEnabled } from "@/core/features/api";
 
 import type { Agent, CreateAgentRequest, UpdateAgentRequest } from "./types";
 
@@ -87,19 +88,6 @@ export async function deleteAgent(name: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete agent: ${res.statusText}`);
 }
 
-interface FeaturesResponse {
-  agents_api: { enabled: boolean };
-}
-
-export async function fetchAgentsApiEnabled(): Promise<boolean> {
-  const res = await fetch(`${getBackendBaseURL()}/api/features`);
-  if (!res.ok) {
-    throw new Error(`Failed to load features: ${res.statusText}`);
-  }
-  const data = (await res.json()) as FeaturesResponse;
-  return data.agents_api.enabled;
-}
-
 export async function checkAgentName(
   name: string,
 ): Promise<{ available: boolean; name: string }> {
@@ -110,7 +98,7 @@ export async function checkAgentName(
     );
   } catch {
     throw new AgentNameCheckError(
-      "Could not reach the EAIFlow backend.",
+      "Could not reach the DeerFlow backend.",
       "backend_unreachable",
     );
   }
@@ -122,7 +110,7 @@ export async function checkAgentName(
     }
     if (BACKEND_UNAVAILABLE_STATUSES.has(res.status)) {
       throw new AgentNameCheckError(
-        "Could not reach the EAIFlow backend.",
+        "Could not reach the DeerFlow backend.",
         "backend_unreachable",
       );
     }

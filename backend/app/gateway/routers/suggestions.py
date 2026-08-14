@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 
@@ -11,10 +10,9 @@ from app.gateway.deps import get_config
 from deerflow.config.app_config import AppConfig
 from deerflow.config.suggestions_config import DEFAULT_MAX_SUGGESTIONS, MAX_SUGGESTIONS_LIMIT
 from deerflow.utils.oneshot_llm import run_oneshot_llm
+from deerflow.utils.thread_id import ThreadId
 
 logger = logging.getLogger(__name__)
-
-SUGGESTIONS_LLM_TIMEOUT_SECONDS = 60
 
 router = APIRouter(prefix="/api", tags=["suggestions"])
 
@@ -105,7 +103,7 @@ async def get_suggestions_config(
 )
 @require_permission("threads", "read", owner_check=True)
 async def generate_suggestions(
-    thread_id: str,
+    thread_id: ThreadId,
     body: SuggestionsRequest,
     request: Request,
     config: AppConfig = Depends(get_config),
@@ -133,24 +131,18 @@ async def generate_suggestions(
     user_content = f"Conversation Context:\n{conversation}\n\nGenerate {n} follow-up questions"
 
     try:
-        raw = await asyncio.wait_for(
-            run_oneshot_llm(
-                system_instruction=system_instruction,
-                user_content=user_content,
-                run_name="suggest_agent",
-                app_config=config,
-                model_name=body.model_name,
-                thread_id=thread_id,
-            ),
-            timeout=SUGGESTIONS_LLM_TIMEOUT_SECONDS,
+        raw = await run_oneshot_llm(
+            system_instruction=system_instruction,
+            user_content=user_content,
+            run_name="suggest_agent",
+            app_config=config,
+            model_name=body.model_name,
+            thread_id=thread_id,
         )
         suggestions = _parse_json_string_list(raw) or []
         cleaned = [s.replace("\n", " ").strip() for s in suggestions if s.strip()]
         cleaned = cleaned[:n]
         return SuggestionsResponse(suggestions=cleaned)
-    except TimeoutError:
-        logger.warning("Suggestions generation timed out: thread_id=%s", thread_id)
-        return SuggestionsResponse(suggestions=[])
     except Exception as exc:
         logger.exception("Failed to generate suggestions: thread_id=%s err=%s", thread_id, exc)
         return SuggestionsResponse(suggestions=[])

@@ -12,7 +12,6 @@ dependencies = [
     # here would let pip resolve a newer contract package than this harness
     # implements, making newer extensions look supported at runtime.
     "deerflow-extension-api==0.1.2",
-    "packaging>=24.2",
     "dotenv>=0.9.9",
     "exa-py>=1.0.0",
     "httpx>=0.28.0",
@@ -23,6 +22,7 @@ dependencies = [
     "langchain-anthropic>=1.4.1",
     "langchain-deepseek>=1.0.1",
     "langchain-mcp-adapters>=0.2.2",
+    "langchain-openviking==0.1.0",
     "langchain-openai>=1.2.1",
     "langfuse>=3.4.1",
     "langgraph>=1.2.9,<1.3",
@@ -31,6 +31,7 @@ dependencies = [
     "langgraph-runtime-inmem>=0.28.0",
     "markdownify>=1.2.2",
     "markitdown[all,xlsx]>=0.0.1a2",
+    "packaging>=24.2",
     "pydantic>=2.12.5",
     "pyyaml>=6.0.3",
     "readabilipy>=0.3.0",
@@ -40,7 +41,7 @@ dependencies = [
     "ddgs>=9.10.0",
     "duckdb>=1.4.4",
     "langchain-google-genai>=4.2.1",
-    "langgraph-checkpoint-sqlite>=3.1.0,<3.2",
+    "langgraph-checkpoint-sqlite>=3.1.1,<3.2",
     "langgraph-sdk>=0.1.51",
     "sqlalchemy[asyncio]>=2.0,<3.0",
     "aiosqlite>=0.19",
@@ -63,7 +64,7 @@ groundroute = []
 ollama = ["langchain-ollama>=0.3.0"]
 postgres = [
     "asyncpg>=0.29",
-    "langgraph-checkpoint-postgres>=3.1.0,<3.2",
+    "langgraph-checkpoint-postgres>=3.1.1,<3.2",
     "psycopg[binary]>=3.3.3",
     "psycopg-pool>=3.3.0",
 ]
@@ -73,8 +74,9 @@ postgres = [
 redis = ["redis>=5.0.0"]
 pymupdf = ["pymupdf4llm>=0.0.17"]
 boxlite = ["boxlite>=0.9.7"]
-# EAI: tenki extra 不移植 — Tenki 是云沙箱 provider,EAI 企业内网部署无云沙箱场景、用不上。
-# community/tenki 源码已与上游对齐(保留),仅不启用 extra。
+# Tenki cloud sandbox provider (deerflow.community.tenki). Optional so a default
+# install stays free of the Tenki SDK; only pulled in when the provider is used.
+tenki = ["tenki-sandbox>=0.4.0"]
 # Agent observability (Monocle). Optional so a default install stays free of the
 # OpenTelemetry stack; only pulled in when MONOCLE_TRACING is used.
 monocle = ["monocle_apptrace>=0.8.8"]

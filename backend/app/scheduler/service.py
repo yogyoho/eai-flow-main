@@ -9,11 +9,17 @@ from typing import Any, Literal
 
 from fastapi import HTTPException
 
+from deerflow.persistence.scheduled_task_runs import ActiveScheduledRunConflict
 from deerflow.runtime import ConflictError, RunRecord
 from deerflow.scheduler.schedules import next_run_at
 from deerflow.utils.thread_id import validate_thread_id
 
 logger = logging.getLogger(__name__)
+
+# Shared so the has_active_runs fast path and the unique-index race path return
+# byte-identical outcomes for the same "task already has an active run" condition.
+_ACTIVE_RUN_CONFLICT_ERROR = "task already has an active run"
+_SKIP_ACTIVE_RUN_ERROR = "skipped: a previous run of this task is still active"
 
 
 class ScheduledTaskService:
@@ -141,28 +147,37 @@ class ScheduledTaskService:
         # does not count itself as the active run. A manual trigger against an
         # active run is rejected outright (409 at the router) instead of being
         # recorded as a skipped occurrence — nothing was scheduled to happen.
-        skip_error: str | None = None
-        if task.get("overlap_policy", "skip") == "skip" and await self._task_run_repo.has_active_runs(task["id"]):
+        #
+        # This has_active_runs check is a non-atomic fast path: it runs in its
+        # own session and is separated from the create() below by await points,
+        # so two concurrent dispatches (double-click / client retry / a manual
+        # trigger racing the poller) can both observe no active run. The DB is
+        # the atomic arbiter — the partial unique index uq_scheduled_task_run_active
+        # rejects the second active insert, surfaced as ActiveScheduledRunConflict
+        # and collapsed to the SAME outcome as this fast path just below.
+        overlap_skip = task.get("overlap_policy", "skip") == "skip"
+        if overlap_skip and await self._task_run_repo.has_active_runs(task["id"]):
             if trigger == "manual":
-                return {
-                    "outcome": "conflict",
-                    "task_run_id": None,
-                    "run_id": None,
-                    "thread_id": execution_thread_id,
-                    "error": "task already has an active run",
-                }
-            skip_error = "skipped: a previous run of this task is still active"
+                return self._active_run_conflict_result(execution_thread_id)
+            return await self._record_scheduled_skip(task, thread_id=execution_thread_id, now=now, trigger=trigger)
+
         task_run_id = f"task-run-{uuid.uuid4().hex}"
-        await self._task_run_repo.create(
-            run_record_id=task_run_id,
-            task_id=task["id"],
-            thread_id=execution_thread_id,
-            scheduled_for=now,
-            trigger=trigger,
-            status="queued",
-        )
-        if skip_error is not None:
-            return await self._finalize_skip(task, task_run_id=task_run_id, thread_id=execution_thread_id, now=now, error=skip_error)
+        try:
+            await self._task_run_repo.create(
+                run_record_id=task_run_id,
+                task_id=task["id"],
+                thread_id=execution_thread_id,
+                scheduled_for=now,
+                trigger=trigger,
+                status="queued",
+            )
+        except ActiveScheduledRunConflict:
+            # Lost the create race for the task's single active slot: a
+            # concurrent dispatch passed the same fast-path check and inserted
+            # its active row first. Identical outcome to the fast path above.
+            if trigger == "manual":
+                return self._active_run_conflict_result(execution_thread_id)
+            return await self._record_scheduled_skip(task, thread_id=execution_thread_id, now=now, trigger=trigger)
         # Track whether _launch_run has produced a live run. A bookkeeping
         # failure AFTER launch (the queued->running write, or the parent task
         # update) must NOT be recorded as "failed": "failed" is outside the
@@ -284,6 +299,13 @@ class ScheduledTaskService:
                         last_run_at=now,
                         last_run_id=launched_run_id,
                         last_thread_id=launched_thread_id,
+                        # The bookkeeping exception is an infrastructure-level
+                        # transient, not a run-level failure: the run launched
+                        # and is still in flight. Clear last_error like the
+                        # success path so the task list does not show an error
+                        # on a task whose run is actively running; the real
+                        # terminal outcome is written by handle_run_completion.
+                        # The transient itself is logged above.
                         last_error=None,
                         increment_run_count=True,
                         protect_terminal=True,
@@ -329,6 +351,47 @@ class ScheduledTaskService:
                 "thread_id": execution_thread_id,
                 "error": str(exc),
             }
+
+    def _active_run_conflict_result(self, thread_id: str) -> dict[str, Any]:
+        """Manual-trigger response when the task already has an active run.
+
+        Nothing was scheduled to happen, so no run-history row is recorded; the
+        router maps this to a 409.
+        """
+        return {
+            "outcome": "conflict",
+            "task_run_id": None,
+            "run_id": None,
+            "thread_id": thread_id,
+            "error": _ACTIVE_RUN_CONFLICT_ERROR,
+        }
+
+    async def _record_scheduled_skip(
+        self,
+        task: dict[str, Any],
+        *,
+        thread_id: str,
+        now: datetime,
+        trigger: str,
+    ) -> dict[str, Any]:
+        """Record a skipped occurrence for a scheduled dispatch that overlapped an active run.
+
+        The tombstone is created directly as terminal ``"skipped"`` rather than
+        the transient ``"queued"`` the launch path uses: a queued row is active
+        and would itself trip ``uq_scheduled_task_run_active`` against the
+        pre-existing run that is still holding the task's single active slot.
+        ``"skipped"`` is outside the index predicate, so it never conflicts.
+        """
+        task_run_id = f"task-run-{uuid.uuid4().hex}"
+        await self._task_run_repo.create(
+            run_record_id=task_run_id,
+            task_id=task["id"],
+            thread_id=thread_id,
+            scheduled_for=now,
+            trigger=trigger,
+            status="skipped",
+        )
+        return await self._finalize_skip(task, task_run_id=task_run_id, thread_id=thread_id, now=now, error=_SKIP_ACTIVE_RUN_ERROR)
 
     async def _finalize_skip(
         self,

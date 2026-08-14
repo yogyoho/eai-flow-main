@@ -1,3 +1,5 @@
+import "katex/dist/katex.min.css";
+
 import { getPageMap } from "nextra/page-map";
 import { Layout } from "nextra-theme-docs";
 
@@ -28,7 +30,7 @@ export default async function DocLayout({ children, params }) {
         />
       }
       pageMap={pageMap}
-      docsRepositoryBase="https://github.com/bytedance/deerflow/tree/main/frontend/src/content"
+      docsRepositoryBase="https://github.com/bytedance/deer-flow/tree/main/frontend"
       footer={<Footer className="mt-0" />}
       i18n={i18n}
       // ... Your additional layout options

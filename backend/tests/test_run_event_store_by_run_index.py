@@ -95,10 +95,7 @@ async def test_run_keyed_index_partitions_every_event():
     for run_id, run_events in store._events_by_run["t1"].items():
         assert all(e["run_id"] == run_id for e in run_events)
         assert [e["seq"] for e in run_events] == sorted(e["seq"] for e in run_events)
-    # Route b: this fork has no ``_messages_by_run``; verify per-run messages via
-    # the public ``list_messages_by_run`` (which filters ``_events_by_run``).
-    for run_id in store._events_by_run["t1"]:
-        run_msgs = await store.list_messages_by_run("t1", run_id, limit=50)
+    for run_id, run_msgs in store._messages_by_run["t1"].items():
         assert all(e["run_id"] == run_id and e["category"] == "message" for e in run_msgs)
 
 
@@ -113,6 +110,7 @@ async def test_run_index_stays_in_lockstep_after_delete_by_run():
     assert await store.list_events("t1", "run-a") == []
     assert await store.list_messages_by_run("t1", "run-a") == []
     assert "run-a" not in store._events_by_run.get("t1", {})
+    assert "run-a" not in store._messages_by_run.get("t1", {})
 
     # The surviving run is untouched, and the thread-wide projection agrees.
     msgs_b = await store.list_messages_by_run("t1", "run-b")
@@ -127,5 +125,6 @@ async def test_delete_by_thread_clears_run_indexes():
     await _seed(store)
     await store.delete_by_thread("t1")
     assert "t1" not in store._events_by_run
+    assert "t1" not in store._messages_by_run
     assert await store.list_events("t1", "run-a") == []
     assert await store.list_messages_by_run("t1", "run-b") == []

@@ -2,32 +2,42 @@ import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 
 import { GatewayOfflineFallback } from "@/components/workspace/gateway-offline-fallback";
+import { AuthProvider } from "@/core/auth/AuthProvider";
 import { getServerSideUser } from "@/core/auth/server";
 import { assertNever } from "@/core/auth/types";
+import { I18nProvider } from "@/core/i18n/context";
+import { detectLocaleServer } from "@/core/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Auth route group layout — server-side guard for /login, /setup, /auth/callback.
- * AuthProvider is provided by the root layout — this layout only handles
- * redirects and gateway-offline fallback.
- */
 export default async function AuthLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  const locale = await detectLocaleServer();
   const result = await getServerSideUser();
+
+  let content: ReactNode;
 
   switch (result.tag) {
     case "authenticated":
       redirect("/workspace");
     case "needs_setup":
+      // Allow access to setup page
+      content = (
+        <AuthProvider initialUser={result.user}>{children}</AuthProvider>
+      );
+      break;
     case "system_setup_required":
     case "unauthenticated":
-      return <>{children}</>;
+      content = <AuthProvider initialUser={null}>{children}</AuthProvider>;
+      break;
     case "gateway_unavailable":
-      return (
+      // Auth pages have no banner of their own, so render one here. The
+      // fallback's AuthProvider replaces the bare-HTML branch that
+      // previously locked users out without any logout/retry capability.
+      content = (
         <GatewayOfflineFallback renderBanner>
           <div className="flex h-screen flex-col items-center justify-center gap-4">
             <p className="text-muted-foreground">
@@ -36,9 +46,12 @@ export default async function AuthLayout({
           </div>
         </GatewayOfflineFallback>
       );
+      break;
     case "config_error":
       throw new Error(result.message);
     default:
       assertNever(result);
   }
+
+  return <I18nProvider initialLocale={locale}>{content}</I18nProvider>;
 }

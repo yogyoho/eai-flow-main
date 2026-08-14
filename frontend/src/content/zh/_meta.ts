@@ -8,10 +8,10 @@ const meta: MetaRecord = {
     title: "简介",
   },
   harness: {
-    title: "EAIFlow Harness",
+    title: "DeerFlow Harness",
   },
   application: {
-    title: "EAIFlow 应用",
+    title: "DeerFlow 应用",
   },
   tutorials: {
     title: "教程",
@@ -29,6 +29,9 @@ const meta: MetaRecord = {
     type: "page",
   },
   login: {
+    type: "page",
+  },
+  setup: {
     type: "page",
   },
 };

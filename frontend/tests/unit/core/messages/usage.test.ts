@@ -1,5 +1,5 @@
 import type { Message } from "@langchain/langgraph-sdk";
-import { expect, test } from "vitest";
+import { expect, test } from "@rstest/core";
 
 import { accumulateUsage, selectHeaderTokenUsage } from "@/core/messages/usage";
 import {
@@ -39,6 +39,27 @@ test("counts later usage-bearing snapshots for the same AI message id", () => {
     inputTokens: 10,
     outputTokens: 5,
     totalTokens: 15,
+  });
+});
+
+test("reads usage metadata from additional kwargs when the SDK nests it there", () => {
+  const aiMessage = {
+    id: "ai-1",
+    type: "ai",
+    content: "Answer",
+    additional_kwargs: {
+      usage_metadata: {
+        input_tokens: 8,
+        output_tokens: 3,
+        total_tokens: 11,
+      },
+    },
+  } as unknown as Message;
+
+  expect(accumulateUsage([aiMessage])).toEqual({
+    inputTokens: 8,
+    outputTokens: 3,
+    totalTokens: 11,
   });
 });
 

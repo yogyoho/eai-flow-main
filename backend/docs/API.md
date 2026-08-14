@@ -11,6 +11,11 @@ DeerFlow backend exposes two sets of APIs:
 
 All APIs are accessed through the Nginx reverse proxy at port 2026.
 
+For agent conversations, clients can either pre-create a thread
+(`POST /api/langgraph/threads`) or start immediately with the stateless stream
+endpoint (`POST /api/langgraph/runs/stream`). The latter auto-creates a thread
+and returns `thread_id` and `run_id` in the response `Content-Location` header.
+
 ## LangGraph-compatible API
 
 Base URL: `/api/langgraph`
@@ -98,8 +103,22 @@ Content-Type: application/json
 ```
 
 **Stream Mode Compatibility:**
-- Use: `values`, `messages-tuple`, `custom`, `updates`, `events`, `debug`, `tasks`, `checkpoints`
-- Do not use: `tools` (deprecated/invalid in current `langgraph-api` and will trigger schema validation errors)
+- Use: `values`, `messages-tuple`, `custom`, `updates`, `debug`, `tasks`, `checkpoints`
+- Unsupported modes, including `messages`, `events`, and `tools`, return `422` before a run is created. DeerFlow never substitutes `values` for an unsupported mode.
+
+**Run Option Compatibility:**
+- Supported concurrency strategies: `reject`, `rollback`, and `interrupt`
+- Compatibility default: `if_not_exists="create"`; this matches DeerFlow's current behavior
+- Artifact delivery is enforced automatically when a run creates or modifies regular files under `/mnt/user-data/outputs`. `present_files` must present at least one path produced by the current run (or a directory containing it), and the terminal receipt must be persisted; presenting only an unrelated file does not satisfy delivery. Runs without changed outputs retain ordinary conversational behavior. `artifact_delivery` is not a client-settable run option.
+- Unsupported options return `422`: `webhook`, `stream_resumable=true`, `after_seconds`, `feedback_keys`, any non-null `on_completion` value (including the SDK values `"complete"` and `"continue"`), `if_not_exists="reject"`, and `multitask_strategy="enqueue"`
+- `stream_resumable=false` is accepted: it is the LangGraph SDK's default and requests the non-resumable stream DeerFlow already serves
+- Undeclared SDK options, including `checkpoint_during` and `durability`, also return `422` instead of being silently discarded
+
+When outputs changed during the run, `run.delivery` events retain the Slice 1
+facts (`presented`, `paths`, and `by_tool`) and add `produced_paths`,
+`presented_paths`, `matched_paths`, plus an explicit verdict: `verification`,
+`stage` (`presented`, `mismatched`, or `not_started`), and `satisfied`. Receipts
+for runs without changed outputs keep their existing shape.
 
 **Recursion Limit:**
 
@@ -161,6 +180,78 @@ Content-Type: application/json
 
 Same request body as Create Run. Returns SSE stream.
 
+#### Stateless Stream Run
+
+Start a conversation without creating a thread first. Gateway auto-creates a
+thread when `config.configurable.thread_id` is omitted, and returns both
+identifiers in the response `Content-Location` header.
+
+```http
+POST /api/langgraph/runs/stream
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+Through Nginx, `/api/langgraph/runs/stream` is rewritten to the native Gateway
+path `POST /api/runs/stream`.
+
+**Request Body:** Same as [Create Run](#create-run). Omit `thread_id` to start a
+new conversation; include it to continue an existing one:
+
+```json
+{
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, can you help me?"
+      }
+    ]
+  },
+  "config": {
+    "recursion_limit": 100,
+    "configurable": {
+      "model_name": "gpt-4",
+      "thinking_enabled": false,
+      "is_plan_mode": false
+    }
+  },
+  "stream_mode": ["values", "messages-tuple", "custom"]
+}
+```
+
+**Response:** Server-Sent Events (SSE) stream with a `Content-Location` header:
+
+```http
+Content-Location: /api/threads/{thread_id}/runs/{run_id}
+```
+
+Clients should parse `thread_id` and `run_id` from this header (the path ends
+with `/runs/{run_id}`). Persist `thread_id` and send it back on the next turn
+via `config.configurable.thread_id` to keep conversation history.
+
+**Continuing a conversation:**
+
+```json
+{
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What did I just ask?"
+      }
+    ]
+  },
+  "config": {
+    "configurable": {
+      "thread_id": "abc123",
+      "model_name": "gpt-4"
+    }
+  },
+  "stream_mode": ["values", "messages-tuple", "custom"]
+}
+```
+
 ---
 
 ## Gateway API
@@ -221,69 +312,6 @@ GET /api/models/{model_name}
 }
 ```
 
-#### Validate Models
-
-Validate multiple models in parallel to check their availability and configuration status.
-
-```http
-POST /api/extensions/models/validate
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "models": ["gpt-4", "claude-3-opus"]
-}
-```
-
-**Response:**
-```json
-{
-  "results": [
-    {
-      "name": "gpt-4",
-      "status": "available",
-      "details": {
-        "exists": true,
-        "api_reachable": true,
-        "supports_thinking": false,
-        "supports_vision": true,
-        "has_credentials": true,
-        "message": "Model available (latency: 523ms)",
-        "latency_ms": 523
-      }
-    },
-    {
-      "name": "claude-3-opus",
-      "status": "unavailable",
-      "details": {
-        "exists": true,
-        "api_reachable": false,
-        "supports_thinking": false,
-        "supports_vision": true,
-        "has_credentials": false,
-        "message": "Missing credentials"
-      }
-    }
-  ]
-}
-```
-
-**Status Values:**
-- `available`: Model is configured and API is reachable
-- `unavailable`: Model exists but has issues (missing credentials, API unreachable)
-- `error`: Model not found in configuration
-
-**Details Fields:**
-- `exists` (boolean): Model exists in configuration
-- `api_reachable` (boolean): API endpoint is reachable
-- `supports_thinking` (boolean): Model supports extended thinking
-- `supports_vision` (boolean): Model supports vision/image input
-- `has_credentials` (boolean): Model has valid API credentials
-- `message` (string): Human-readable status message
-- `latency_ms` (number): API response latency in milliseconds (only for available models)
-
 ### MCP Configuration
 
 #### Get MCP Config
@@ -294,10 +322,13 @@ Get current MCP server configurations.
 GET /api/mcp/config
 ```
 
+Requires an authenticated admin session. Sensitive env/header/OAuth secret
+values are masked in the response.
+
 **Response:**
 ```json
 {
-  "mcpServers": {
+  "mcp_servers": {
     "github": {
       "enabled": true,
       "type": "stdio",
@@ -321,10 +352,15 @@ PUT /api/mcp/config
 Content-Type: application/json
 ```
 
+Requires an authenticated admin session. API-managed `stdio` MCP servers may
+only use allowed executable names for `command` (default: `npx`, `uvx`). Set
+`DEER_FLOW_MCP_STDIO_COMMAND_ALLOWLIST` to a comma-separated list when a
+deployment needs additional trusted launchers.
+
 **Request Body:**
 ```json
 {
-  "mcpServers": {
+  "mcp_servers": {
     "github": {
       "enabled": true,
       "type": "stdio",
@@ -342,8 +378,68 @@ Content-Type: application/json
 **Response:**
 ```json
 {
+  "mcp_servers": {
+    "github": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "***"
+      },
+      "description": "GitHub operations"
+    }
+  }
+}
+```
+
+#### Update One MCP Server State
+
+Enable or disable one configured MCP server without replacing the full
+extensions configuration.
+
+```http
+PATCH /api/mcp/config
+Content-Type: application/json
+```
+
+Requires an authenticated admin session. Enabling a `stdio` server validates
+that server's `command` against the same allowlist used by the full `PUT`
+endpoint. Disabling a server does not require its command to be allowlisted, and
+invalid commands on other servers do not block the update. The endpoint
+preserves secrets, environment-variable placeholders, skills, custom server
+fields, and other top-level extensions config. SSE/HTTP targets may use either
+DeerFlow's `type` field or the MCP-spec `transport` field.
+
+**Request Body:**
+```json
+{
+  "server_name": "semantic-scholar",
+  "enabled": false
+}
+```
+
+The response is the full masked MCP configuration, matching `GET` and `PUT`.
+An unknown `server_name` returns `404`; attempting to enable a server with a
+disallowed `stdio` command returns `400`.
+
+#### Reset MCP Tools Cache
+
+Clear cached MCP tools and persistent MCP sessions process-wide. This affects
+all threads and users in the current Gateway process. Tools are loaded again
+from configured MCP servers on the next agent run or tool lookup.
+
+```http
+POST /api/mcp/cache/reset
+```
+
+Requires an authenticated admin session.
+
+**Response:**
+```json
+{
   "success": true,
-  "message": "MCP configuration updated"
+  "message": "MCP tools cache reset. Tools will reload on next use."
 }
 ```
 
@@ -639,6 +735,19 @@ All APIs return errors in a consistent format:
 
 ## Authentication
 
+DeerFlow supports four HTTP identity sources. They share the same thread/run isolation rules but differ in whether a row is created in `users` and how external identities are mapped. See [AUTH_DESIGN.md](AUTH_DESIGN.md) for the full design.
+
+| Model | Entry | `users` table | Isolation key |
+|---|---|---|---|
+| Browser session | `access_token` cookie after login/register | Yes | `users.id` |
+| OIDC / SSO | OAuth callback → cookie | Yes | `users.id` (see [SSO.md](SSO.md)) |
+| IM channel binding | Connect code + `channel_connections` | Bound to registered user | `channel_connections.owner_user_id` |
+| **Internal Auth** | `X-DeerFlow-Internal-Token` + `X-DeerFlow-Owner-User-Id` | **No** | Owner string on `threads_meta.user_id` |
+
+**IM channel binding** and **Internal Auth** are both *platform-trust* integrations: DeerFlow trusts the channel/platform to authenticate end users. IM bindings persist the mapping in `channel_connections` / `channel_conversations` and require a DeerFlow `users` row. Internal Auth lets a platform call the Gateway API directly with a deployment-shared token and a per-request owner header—no `users` row, but thread/run/checkpoint isolation works the same way.
+
+### Browser session (default)
+
 DeerFlow enforces authentication for all non-public HTTP routes. Public routes are limited to health/docs metadata and these public auth endpoints:
 
 - `POST /api/v1/auth/initialize` creates the first admin account when no admin exists.
@@ -662,6 +771,23 @@ User isolation is enforced from the authenticated user context:
 
 Note: MCP outbound connections can still use OAuth for configured HTTP/SSE MCP servers; that is separate from DeerFlow API authentication.
 
+### Internal Auth (platform HTTP integration)
+
+For server-to-server integrations (e.g. a Feishu or WeCom/Enterprise WeChat bot backend), configure:
+
+```bash
+export DEER_FLOW_INTERNAL_AUTH_TOKEN="<long-random-secret>"
+```
+
+| Header | Required | Description |
+|---|---|---|
+| `X-DeerFlow-Internal-Token` | Yes | Must match `DEER_FLOW_INTERNAL_AUTH_TOKEN`; missing/invalid → `401` |
+| `X-DeerFlow-Owner-User-Id` | Yes for per-user isolation | Platform user id (e.g. `feishu_ou_alice`, `wecom_user_bob`); omit → `default` bucket |
+
+Does **not** use browser cookies or CSRF tokens. Does **not** insert into `users`; sets `threads_meta.user_id` / `runs.user_id` from the owner header. DeerFlow validates only the platform token—not whether the owner id represents a real end user; user validity is entirely the platform's responsibility. See [AUTH_DESIGN.md — Internal Auth](AUTH_DESIGN.md#internal-auth-direct-http) for trust boundaries, persistence, and security notes.
+
+Use the standard Gateway thread/run endpoints (`POST /api/threads`, `POST /api/threads/{thread_id}/runs/stream`, etc.) with the headers above on every request.
+
 ---
 
 ## Rate Limiting
@@ -681,12 +807,50 @@ location /api/ {
 
 ## Streaming Support
 
-Gateway's LangGraph-compatible API streams run events with Server-Sent Events (SSE):
+Gateway's LangGraph-compatible API streams run events with Server-Sent Events (SSE).
+
+**Thread-scoped streaming** (thread must exist):
 
 ```http
 POST /api/langgraph/threads/{thread_id}/runs/stream
 Accept: text/event-stream
 ```
+
+**Stateless streaming** (no pre-created thread; Gateway auto-creates one):
+
+```http
+POST /api/langgraph/runs/stream
+Accept: text/event-stream
+```
+
+Both endpoints return `Content-Location: /api/threads/{thread_id}/runs/{run_id}`.
+The DeerFlow web UI and LangGraph SDK clients rely on this header to discover the
+assigned `thread_id` and `run_id` on the first message of a new chat.
+
+### SSE replay retention and gaps
+
+Clients may reconnect to a run stream with `Last-Event-ID`. Replay history is
+bounded by `stream_bridge.queue_maxsize` (default `256`) and, for Redis, by the
+rolling `stream_ttl_seconds`. A retained cursor resumes after that event with no
+additional control frame.
+
+When a syntactically valid cursor is older than the retained watermark, the
+server sends exactly one `gap` event before any retained data and closes that
+subscription without an `end` event:
+
+```text
+event: gap
+data: {"code":"stream_replay_gap","run_id":"run-123","requested_event_id":"1718000000000-1","earliest_available_event_id":"1718000000100-42","latest_available_event_id":"1718000000200-84","recovery":"reload_durable_state"}
+
+```
+
+The frame deliberately has no SSE `id:`. Consumers must reload durable thread
+state and persisted run events/messages, then may reconnect from
+`latest_available_event_id` to follow newer live events. A gap does not cancel
+the active run. The same signal applies when a no-cursor subscriber has already
+established an empty-stream wait but the first Redis wake-up falls behind before
+delivery; in that case `requested_event_id` is `null`. Malformed cursor handling
+is backend-specific and is not the same as a valid cursor that was evicted.
 
 ---
 
@@ -698,17 +862,50 @@ Accept: text/event-stream
 from langgraph_sdk import get_client
 
 client = get_client(url="http://localhost:2026/api/langgraph")
+run_meta: dict[str, str] = {}
 
-# Create thread
+
+def on_run_created(meta) -> None:
+    # langgraph-sdk 0.3.x parses Content-Location only when this callback is set.
+    if meta.thread_id:
+        run_meta["thread_id"] = meta.thread_id
+    run_meta["run_id"] = meta.run_id
+
+
+# Option A: stateless stream — no thread pre-creation
+# Gateway auto-creates a thread and returns thread_id/run_id in Content-Location.
+async for event in client.runs.stream(
+    None,
+    "lead_agent",
+    input={"messages": [{"role": "user", "content": "Hello"}]},
+    config={"configurable": {"model_name": "gpt-4"}},
+    stream_mode=["values", "messages-tuple", "custom"],
+    on_run_created=on_run_created,
+):
+    print(event)
+
+thread_id = run_meta["thread_id"]  # persist before the next turn
+
+# Option A (continued): same thread on the next turn
+async for event in client.runs.stream(
+    None,
+    "lead_agent",
+    input={"messages": [{"role": "user", "content": "What did I just ask?"}]},
+    config={"configurable": {"thread_id": thread_id, "model_name": "gpt-4"}},
+    stream_mode=["values", "messages-tuple", "custom"],
+    on_run_created=on_run_created,
+):
+    print(event)
+
+# Option B: thread-scoped stream — create thread first, then stream
 thread = await client.threads.create()
-
-# Run agent
 async for event in client.runs.stream(
     thread["thread_id"],
     "lead_agent",
     input={"messages": [{"role": "user", "content": "Hello"}]},
     config={"configurable": {"model_name": "gpt-4"}},
     stream_mode=["values", "messages-tuple", "custom"],
+    on_run_created=on_run_created,
 ):
     print(event)
 ```
@@ -721,7 +918,46 @@ const response = await fetch('/api/models');
 const data = await response.json();
 console.log(data.models);
 
-// Create a run and stream SSE events
+function parseRunLocation(contentLocation: string | null) {
+  if (!contentLocation) return null;
+  const match = /\/threads\/([^/]+)\/runs\/([^/]+)/.exec(contentLocation);
+  if (!match) return null;
+  return { threadId: match[1], runId: match[2] };
+}
+
+// Option A: stateless stream — no thread pre-creation
+let threadId: string | undefined;
+const firstResponse = await fetch("/api/langgraph/runs/stream", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  },
+  body: JSON.stringify({
+    input: { messages: [{ role: "user", content: "Hello" }] },
+    stream_mode: ["values", "messages-tuple", "custom"],
+  }),
+});
+
+const created = parseRunLocation(firstResponse.headers.get("Content-Location"));
+threadId = created?.threadId;
+console.log("thread_id:", created?.threadId, "run_id:", created?.runId);
+
+// Option B: continue the same thread on the next turn
+const followUpResponse = await fetch("/api/langgraph/runs/stream", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  },
+  body: JSON.stringify({
+    input: { messages: [{ role: "user", content: "What did I just ask?" }] },
+    config: { configurable: { thread_id: threadId } },
+    stream_mode: ["values", "messages-tuple", "custom"],
+  }),
+});
+
+// Option C: thread-scoped stream when you already have a thread_id
 const streamResponse = await fetch(`/api/langgraph/threads/${threadId}/runs/stream`, {
   method: "POST",
   headers: {
@@ -754,19 +990,47 @@ curl -X POST http://localhost:2026/api/threads/abc123/uploads \
 # Enable skill
 curl -X POST http://localhost:2026/api/skills/pdf-processing/enable
 
-# Create thread and run agent
-curl -X POST http://localhost:2026/api/langgraph/threads \
+# Stateless stream — no thread pre-creation
+curl -s -D - -N -X POST http://localhost:2026/api/langgraph/runs/stream \
   -H "Content-Type: application/json" \
-  -d '{}'
-
-curl -X POST http://localhost:2026/api/langgraph/threads/abc123/runs \
-  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
   -d '{
     "input": {"messages": [{"role": "user", "content": "Hello"}]},
     "config": {
       "recursion_limit": 100,
       "configurable": {"model_name": "gpt-4"}
-    }
+    },
+    "stream_mode": ["values", "messages-tuple", "custom"]
+  }'
+# Read Content-Location: /api/threads/{thread_id}/runs/{run_id} from the headers.
+
+# Continue the same thread on the next turn
+curl -s -N -X POST http://localhost:2026/api/langgraph/runs/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "input": {"messages": [{"role": "user", "content": "What did I just ask?"}]},
+    "config": {
+      "configurable": {"thread_id": "abc123", "model_name": "gpt-4"}
+    },
+    "stream_mode": ["values", "messages-tuple", "custom"]
+  }'
+
+# Thread-scoped flow — create thread first, then stream
+curl -X POST http://localhost:2026/api/langgraph/threads \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+curl -X POST http://localhost:2026/api/langgraph/threads/abc123/runs/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "input": {"messages": [{"role": "user", "content": "Hello"}]},
+    "config": {
+      "recursion_limit": 100,
+      "configurable": {"model_name": "gpt-4"}
+    },
+    "stream_mode": ["values", "messages-tuple", "custom"]
   }'
 ```
 

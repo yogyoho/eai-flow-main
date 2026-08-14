@@ -20,6 +20,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 from deerflow.sandbox.local.local_sandbox import LocalSandbox
 from deerflow.skills.types import SecretRequirement, Skill, SkillCategory
 
+_SLASH_SOURCE_OWNER_TOKEN = "test-slash-source-owner"
+
 
 class TestLocalSandboxEnvInjection:
     """LocalSandbox.execute_command(env=...) injects per-call env into the subprocess."""
@@ -160,6 +162,35 @@ class TestEnvPolicy:
             "POSTGRES_DSN",
             "CONN_STR",
             "GH_PAT",
+            # Password vars for services whose connection strings are already blocked
+            # above. These carry no KEY/SECRET/TOKEN/PASSWORD/PASSWD substring, and a
+            # blanket ``*PWD*`` / ``*AUTH*`` pattern would strip benign vars (``PWD``,
+            # ``OLDPWD``), so they need exact entries.
+            "MYSQL_PWD",  # read directly by mysql / libmysqlclient
+            "REDISCLI_AUTH",  # read directly by redis-cli
+            "REDIS_AUTH",
+            # Abbreviated ``_PASS`` password vars: value-bearing plaintext passwords
+            # that the full-spelling ``*PASSWORD*`` / ``*PASSWD*`` patterns miss.
+            "DB_PASS",
+            "SMTP_PASS",
+            "MYSQL_PASS",
+            "REDIS_PASS",
+            "FTP_PASS",
+            "MAIL_PASS",
+            # Postgres file-based credential sources read by libpq/psql with no flag,
+            # the direct analog of MYSQL_PWD/REDISCLI_AUTH above. PGPASSFILE names a
+            # .pgpass (host:port:db:user:password); PGSERVICEFILE names a
+            # pg_service.conf that may carry a password field.
+            "PGPASSFILE",
+            "PGSERVICEFILE",
+            # Credential *helpers*: each names a program that dispenses a credential
+            # on demand. Inheriting the pointer is the same leak class as inheriting
+            # the value, so ``*PASS*`` scrubbing them is intended. Pinned here so the
+            # behaviour is a deliberate decision rather than a side effect of the
+            # pattern's shape.
+            "GIT_ASKPASS",
+            "SSH_ASKPASS",
+            "SUDO_ASKPASS",
         ],
     )
     def test_secret_like_names_are_blocked(self, name):
@@ -177,6 +208,7 @@ class TestEnvPolicy:
             "LANG",
             "LC_ALL",
             "PWD",
+            "OLDPWD",
             "TMPDIR",
             "VIRTUAL_ENV",
             "PYTHONPATH",
@@ -188,9 +220,49 @@ class TestEnvPolicy:
         ],
     )
     def test_benign_names_are_allowed(self, name):
+        """Names here must survive the scrub.
+
+        Note what this list does *not* contain: any name carrying a ``PASS``
+        substring. That is deliberate, not an oversight — ``*PASS*`` scrubs every
+        such name, including the ``*_ASKPASS`` credential helpers pinned in
+        ``test_secret_like_names_are_blocked`` above. Over-scrubbing is this
+        module's fail-safe direction; a skill that needs a scrubbed name declares
+        it via ``required-secrets``. ``PWD``/``OLDPWD`` are the boundary this list
+        does pin: they carry no ``PASS`` substring and must never be stripped.
+        """
         from deerflow.sandbox.env_policy import is_blocked_env_name
 
         assert is_blocked_env_name(name) is False
+
+    def test_db_password_vars_do_not_reach_the_subprocess_env(self, monkeypatch):
+        """The URL forms are scrubbed; the password vars for the same services must be too.
+
+        ``mysql`` reads ``MYSQL_PWD`` and ``redis-cli`` reads ``REDISCLI_AUTH`` as the
+        password with no further configuration, so inheriting them hands a skill
+        subprocess the credential the connection-string block already withholds.
+        """
+        from deerflow.sandbox.env_policy import build_sandbox_env
+
+        monkeypatch.setenv("MYSQL_URL", "mysql://user:pw@host/db")
+        monkeypatch.setenv("MYSQL_PWD", "prod-db-password")
+        monkeypatch.setenv("REDISCLI_AUTH", "prod-redis-auth")
+        env = build_sandbox_env()
+        assert "MYSQL_URL" not in env
+        assert "MYSQL_PWD" not in env
+        assert "REDISCLI_AUTH" not in env
+        assert env.get("PWD")  # the working directory must survive the added entries
+
+    def test_injection_still_wins_for_the_newly_blocked_names(self, monkeypatch):
+        """``required-secrets`` stays the escape hatch for the names added here.
+
+        The request-scoped value must also override the host's, which is the
+        per-user-key-overrides-shared-key case from #3861.
+        """
+        from deerflow.sandbox.env_policy import build_sandbox_env
+
+        monkeypatch.setenv("MYSQL_PWD", "host-value-must-not-leak")
+        env = build_sandbox_env(injected={"MYSQL_PWD": "request-scoped-value"})
+        assert env["MYSQL_PWD"] == "request-scoped-value"
 
     def test_build_sandbox_env_scrubs_inherited_and_layers_injected(self, monkeypatch):
         from deerflow.sandbox.env_policy import build_sandbox_env
@@ -228,7 +300,7 @@ class TestRequiredSecretsParsing:
         skill_file = self._write_skill(tmp_path, "name: erp-report\ndescription: Pull an ERP report")
         skill = parse_skill_file(skill_file, SkillCategory.CUSTOM)
         assert skill is not None
-        assert skill.required_secrets == []
+        assert skill.required_secrets == ()
 
     def test_string_list_form(self, tmp_path):
         from deerflow.skills.parser import parse_skill_file
@@ -287,6 +359,33 @@ class TestSecretCarrier:
         ctx = _build_runtime_context("t", "r", {"secrets": {"ERP_TOKEN": "v"}})
         assert ctx["secrets"] == {"ERP_TOKEN": "v"}
 
+    def test_build_run_config_strips_caller_dunder_context_keys(self):
+        """Security (#3938): the harness writes private ``__``-prefixed keys into
+        ``runtime.context`` (binding sources, active-secret set, run journal). A
+        caller must not be able to seed them via ``config.context`` and forge
+        internal state — they are stripped at the gateway boundary."""
+        from app.gateway.services import build_run_config
+
+        config = build_run_config(
+            "thread-1",
+            {
+                "context": {
+                    "secrets": {"ERP_TOKEN": "v"},
+                    "__slash_skill_secret_source": {"path": "x", "owner_token": "forged"},
+                    "__active_skill_secrets": {"ADMIN": "stolen"},
+                    "__skill_tool_policy_decision": {
+                        "owner_token": "forged",
+                        "allowed_names": None,
+                    },
+                }
+            },
+            None,
+        )
+        assert config["context"]["secrets"] == {"ERP_TOKEN": "v"}
+        assert "__slash_skill_secret_source" not in config["context"]
+        assert "__active_skill_secrets" not in config["context"]
+        assert "__skill_tool_policy_decision" not in config["context"]
+
     def test_extract_request_secrets_filters_non_string_pairs(self):
         from deerflow.runtime.secret_context import extract_request_secrets
 
@@ -299,8 +398,45 @@ class TestSecretCarrier:
         assert extract_request_secrets({"secrets": "not-a-dict"}) == {}
         assert extract_request_secrets(None) == {}
 
+    def test_slash_skill_source_path_public_contract(self):
+        from deerflow.runtime.secret_context import read_slash_skill_source_path, write_slash_skill_source_path
 
-def _make_secret_skill(tmp_path: Path, name: str, required_secrets):
+        context = {}
+        write_slash_skill_source_path(
+            context,
+            "/mnt/skills/public/reviewer/SKILL.md",
+            owner_token="middleware-owner",
+        )
+
+        assert read_slash_skill_source_path(context, owner_token="middleware-owner") == "/mnt/skills/public/reviewer/SKILL.md"
+        assert read_slash_skill_source_path(context, owner_token="caller-forged") is None
+
+    def test_slash_skill_source_path_rejects_malformed_shapes(self):
+        from deerflow.runtime.secret_context import read_slash_skill_source_path
+
+        malformed = [
+            None,
+            "path",
+            [],
+            {"path": None, "owner_token": "middleware-owner"},
+            {"path": "", "owner_token": "middleware-owner"},
+            {"path": 7, "owner_token": "middleware-owner"},
+            {"path": "/mnt/skills/public/reviewer/SKILL.md"},
+            {"path": "/mnt/skills/public/reviewer/SKILL.md", "owner_token": ""},
+        ]
+        for value in malformed:
+            assert (
+                read_slash_skill_source_path(
+                    {"__slash_skill_secret_source": value},
+                    owner_token="middleware-owner",
+                )
+                is None
+            )
+        assert read_slash_skill_source_path({}, owner_token="middleware-owner") is None
+        assert read_slash_skill_source_path(None, owner_token="middleware-owner") is None
+
+
+def _make_secret_skill(tmp_path: Path, name: str, required_secrets, *, enabled: bool = True, secrets_autonomous: bool = True):
     skill_dir = tmp_path / name
     skill_dir.mkdir()
     skill_file = skill_dir / "SKILL.md"
@@ -313,8 +449,9 @@ def _make_secret_skill(tmp_path: Path, name: str, required_secrets):
         skill_file=skill_file,
         relative_path=Path(name),
         category=SkillCategory.CUSTOM,
-        enabled=True,
-        required_secrets=required_secrets,
+        enabled=enabled,
+        required_secrets=tuple(required_secrets),
+        secrets_autonomous=secrets_autonomous,
     )
 
 
@@ -331,7 +468,7 @@ class TestActivationBindsSecrets:
             get_skills_root_path=lambda: tmp_path,
         )
         monkeypatch.setattr(mw, "get_or_new_skill_storage", lambda **kwargs: storage)
-        middleware = SkillActivationMiddleware()
+        middleware = SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN)
         request = ModelRequest(
             model=object(),
             messages=[HumanMessage(content=f"/{skill.name} do it", id="m1")],
@@ -428,7 +565,7 @@ class TestActivationBindsSecrets:
         set_app_config(AppConfig.model_validate({"sandbox": {"use": "deerflow.sandbox.local:LocalSandboxProvider"}}))
         try:
             sanitizer = InputSanitizationMiddleware()
-            skill_mw = SkillActivationMiddleware()
+            skill_mw = SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN)
 
             # Compose in real order: sanitizer (outer) -> skill activation (inner) -> model.
             def skill_layer(req):
@@ -462,7 +599,7 @@ class TestActivationBindsSecrets:
         context = {"secrets": {"A_TOKEN": "v-a"}}
 
         monkeypatch.setattr(mw, "get_or_new_skill_storage", lambda **kwargs: _storage([skill_a]))
-        SkillActivationMiddleware().wrap_model_call(
+        SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN).wrap_model_call(
             ModelRequest(
                 model=object(),
                 messages=[HumanMessage(content="/skill-a go", id="m1")],
@@ -474,7 +611,7 @@ class TestActivationBindsSecrets:
         assert read_active_secrets(context) == {"A_TOKEN": "v-a"}
 
         monkeypatch.setattr(mw, "get_or_new_skill_storage", lambda **kwargs: _storage([skill_b]))
-        SkillActivationMiddleware().wrap_model_call(
+        SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN).wrap_model_call(
             ModelRequest(
                 model=object(),
                 messages=[HumanMessage(content="/skill-b go", id="m2")],
@@ -503,7 +640,7 @@ class TestActivationBindsSecrets:
 
         # Turn 1: caller supplies ERP_TOKEN → injected.
         context = {"secrets": {"ERP_TOKEN": "tok-1"}}
-        mw_inst = SkillActivationMiddleware()
+        mw_inst = SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN)
         mw_inst.wrap_model_call(
             ModelRequest(
                 model=object(),
@@ -527,6 +664,328 @@ class TestActivationBindsSecrets:
             lambda r: AIMessage(content="ok"),
         )
         assert read_active_secrets(context2) == {}
+
+
+def _skill_context_entry(skill) -> dict:
+    return {
+        "name": skill.name,
+        "path": f"/mnt/skills/{skill.category}/{skill.name}/SKILL.md",
+        "description": skill.description,
+        "loaded_at": 0,
+    }
+
+
+class TestInContextBindsSecrets:
+    """Binding point A+ (issue #3914 gap 1): a skill the model loaded earlier in
+    the thread (tracked by ``ThreadState.skill_context``) keeps receiving its
+    declared secrets on later turns — without a fresh ``/slash`` — as long as
+    the caller supplies the values on the current request. Authorization stays
+    three-gated regardless of activation style: skill enabled by the operator,
+    values supplied per-request by the caller, names declared in frontmatter.
+    """
+
+    def _run_call(self, tmp_path, monkeypatch, skills, *, context, skill_context=None, message="continue the report", available_skills=None, middleware=None, container_root="/mnt/skills"):
+        from deerflow.agents.middlewares import skill_activation_middleware as mw
+        from deerflow.agents.middlewares.skill_activation_middleware import SkillActivationMiddleware
+
+        storage = SimpleNamespace(
+            load_skills=lambda *, enabled_only: list(skills),
+            get_container_root=lambda: container_root,
+            get_skills_root_path=lambda: tmp_path,
+        )
+        monkeypatch.setattr(mw, "get_or_new_skill_storage", lambda **kwargs: storage)
+        mw_inst = middleware or SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN, available_skills=available_skills)
+        mw_inst.wrap_model_call(
+            ModelRequest(
+                model=object(),
+                messages=[HumanMessage(content=message, id="m1")],
+                state={"messages": [], "skill_context": skill_context or []},
+                runtime=SimpleNamespace(context=context),
+            ),
+            lambda r: AIMessage(content="ok"),
+        )
+        return mw_inst
+
+    def test_in_context_skill_binds_secrets_without_slash(self, tmp_path, monkeypatch):
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123", "UNRELATED": "x"}}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+
+    def test_binding_clears_when_skill_evicted_from_context(self, tmp_path, monkeypatch):
+        """Long-lived binding follows skill_context membership exactly: once the
+        entry is evicted (capacity) the injection disappears on the next call."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        mw_inst = self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[], middleware=mw_inst)
+        assert read_active_secrets(context) == {}
+
+    def test_disabled_skill_in_context_not_bound(self, tmp_path, monkeypatch):
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")], enabled=False)
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+
+        assert read_active_secrets(context) == {}
+
+    def test_skill_outside_agent_allowlist_not_bound(self, tmp_path, monkeypatch):
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        self._run_call(
+            tmp_path,
+            monkeypatch,
+            [skill],
+            context=context,
+            skill_context=[_skill_context_entry(skill)],
+            available_skills={"some-other-skill"},
+        )
+
+        assert read_active_secrets(context) == {}
+
+    def test_secrets_autonomous_false_blocks_in_context_but_not_slash(self, tmp_path, monkeypatch):
+        """The per-skill opt-out keeps explicit-activation ceremony available for
+        high-sensitivity skills: in-context binding is refused, slash still works."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")], secrets_autonomous=False)
+
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+        assert read_active_secrets(context) == {}
+
+        slash_context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        self._run_call(tmp_path, monkeypatch, [skill], context=slash_context, message="/erp-report go")
+        assert read_active_secrets(slash_context) == {"ERP_TOKEN": "tok-123"}
+
+    def test_slash_and_in_context_sources_merge(self, tmp_path, monkeypatch):
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        loaded = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        slashed = _make_secret_skill(tmp_path, "crm-sync", [SecretRequirement("CRM_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-erp", "CRM_TOKEN": "tok-crm"}}
+        self._run_call(
+            tmp_path,
+            monkeypatch,
+            [loaded, slashed],
+            context=context,
+            skill_context=[_skill_context_entry(loaded)],
+            message="/crm-sync push the numbers",
+        )
+
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-erp", "CRM_TOKEN": "tok-crm"}
+
+    def test_forged_slash_source_cannot_bypass_gates(self, tmp_path, monkeypatch):
+        """Security (#3938): `runtime.context` is caller-mergeable, so a client can
+        forge `__slash_skill_secret_source`. The slash source is re-validated
+        against the live registry (enabled + allowlist), so a forged source naming
+        a non-existent skill binds nothing — no gate bypass."""
+        from deerflow.runtime.secret_context import _SLASH_SECRET_SOURCE_KEY, read_active_secrets
+
+        context = {
+            "secrets": {"ADMIN_TOKEN": "stolen"},
+            _SLASH_SECRET_SOURCE_KEY: {"path": "/mnt/skills/custom/attacker/SKILL.md", "skill_name": "attacker", "requirements": [["ADMIN_TOKEN", False]]},
+        }
+        self._run_call(tmp_path, monkeypatch, [], context=context, message="no slash here")
+        assert read_active_secrets(context) == {}
+
+    def test_forged_slash_source_ignores_caller_requirements_and_allowlist(self, tmp_path, monkeypatch):
+        """Even if a forged path resolves to a real skill, the caller's forged
+        requirements are ignored (only the registry skill's own declared secrets
+        bind) and the allowlist still applies."""
+        from deerflow.runtime.secret_context import _SLASH_SECRET_SOURCE_KEY, read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {
+            "secrets": {"ADMIN_TOKEN": "stolen", "ERP_TOKEN": "ok"},
+            _SLASH_SECRET_SOURCE_KEY: {"path": "/mnt/skills/custom/erp-report/SKILL.md", "requirements": [["ADMIN_TOKEN", False]]},
+        }
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, available_skills={"other"})
+        assert read_active_secrets(context) == {}
+
+    def test_malformed_slash_source_does_not_crash(self, tmp_path, monkeypatch):
+        """Robustness (#3938): a forged malformed slash source must fail closed
+        (bind nothing), never raise and 500 the run."""
+        from deerflow.runtime.secret_context import _SLASH_SECRET_SOURCE_KEY, read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        for bad in ({"requirements": [["X"]]}, {"requirements": "abc"}, {"path": 123}, "not-a-dict", {"path": ["a"]}, {}):
+            context = {"secrets": {"ERP_TOKEN": "v"}, _SLASH_SECRET_SOURCE_KEY: bad}
+            self._run_call(tmp_path, monkeypatch, [skill], context=context, message="x")
+            assert read_active_secrets(context) == {}, f"bad={bad!r}"
+
+    def test_trailing_slash_container_root_still_binds(self, tmp_path, monkeypatch):
+        """Latent bug (#3938): a non-canonical container_path (trailing slash) must
+        not silently disable in-context binding — paths are normalized both sides."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        entry = {"name": "erp-report", "path": "/mnt/skills/custom/erp-report/SKILL.md", "description": "d", "loaded_at": 0}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[entry], container_root="/mnt/skills/")
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+
+    def test_shadowing_name_does_not_bind_unread_skill(self, tmp_path, monkeypatch):
+        """Confused-deputy guard: a custom skill may shadow a same-named public
+        one (load_skills de-dupes by name, custom wins). A thread that read the
+        PUBLIC foo (no declared secrets) must NOT bind the CUSTOM foo's declared
+        secret — matching is by exact container path, never by name."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        # Registry exposes only the custom foo (name de-dup, custom wins); the
+        # model read the public foo, whose path differs.
+        custom_foo = _make_secret_skill(tmp_path, "foo", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        entry = {
+            "name": "foo",
+            "path": "/mnt/skills/public/foo/SKILL.md",  # the PUBLIC one the model actually read
+            "description": "d",
+            "loaded_at": 0,
+        }
+        self._run_call(tmp_path, monkeypatch, [custom_foo], context=context, skill_context=[entry])
+
+        assert read_active_secrets(context) == {}
+
+    def test_stale_path_does_not_fall_back_to_name(self, tmp_path, monkeypatch):
+        """A skill_context path that no longer resolves must not degrade to a
+        name match — it simply does not bind."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        entry = {
+            "name": "erp-report",
+            "path": "/mnt/skills/custom/erp-report-OLD-PATH/SKILL.md",
+            "description": "d",
+            "loaded_at": 0,
+        }
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[entry])
+
+        assert read_active_secrets(context) == {}
+
+    def test_no_caller_secrets_means_no_binding(self, tmp_path, monkeypatch):
+        """The supply gate: without caller-provided values on THIS request there
+        is nothing to inject, no matter what is in skill_context."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {}}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+
+        assert read_active_secrets(context) == {}
+
+    def test_binding_change_recorded_in_audit_journal_names_only(self, tmp_path, monkeypatch):
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        journal = MagicMock()
+        context = {"secrets": {"ERP_TOKEN": "tok-secret-value"}, "__run_journal": journal}
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+
+        bind_calls = [call for call in journal.record_middleware.call_args_list if call.kwargs.get("action") == "bind_secrets"]
+        assert len(bind_calls) == 1
+        changes = bind_calls[0].kwargs["changes"]
+        assert changes["skills"] == ["erp-report"]
+        assert changes["secrets"] == ["ERP_TOKEN"]
+        # Values must never reach the audit journal.
+        assert "tok-secret-value" not in str(bind_calls[0])
+
+    def test_binding_audit_failure_warns_without_breaking_binding(self, tmp_path, monkeypatch, caplog):
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        journal = MagicMock()
+        journal.record_middleware.side_effect = RuntimeError("db down")
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}, "__run_journal": journal}
+
+        with caplog.at_level("WARNING"):
+            self._run_call(
+                tmp_path,
+                monkeypatch,
+                [skill],
+                context=context,
+                skill_context=[_skill_context_entry(skill)],
+            )
+
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+        assert "Failed to record skill secret binding audit event" in caplog.text
+
+    def test_slash_binding_persists_across_model_calls_in_same_run(self, tmp_path, monkeypatch):
+        """#3861 semantics preserved under per-call recompute: after the single
+        activation call, the tool loop issues more model calls without a fresh
+        slash — the binding must survive on the shared run context."""
+        from deerflow.runtime.secret_context import read_active_secrets
+
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        context = {"secrets": {"ERP_TOKEN": "tok-123"}}
+        mw_inst = self._run_call(tmp_path, monkeypatch, [skill], context=context, message="/erp-report go")
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+
+        # Later model call in the SAME run (same context object): no slash in the
+        # latest message, skill never entered skill_context (slash injects the
+        # body directly, no read_file happens).
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, message="tool loop continues", middleware=mw_inst)
+        assert read_active_secrets(context) == {"ERP_TOKEN": "tok-123"}
+
+    def test_unchanged_binding_not_re_recorded(self, tmp_path, monkeypatch):
+        skill = _make_secret_skill(tmp_path, "erp-report", [SecretRequirement("ERP_TOKEN")])
+        journal = MagicMock()
+        context = {"secrets": {"ERP_TOKEN": "tok-1"}, "__run_journal": journal}
+        mw_inst = self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)])
+        self._run_call(tmp_path, monkeypatch, [skill], context=context, skill_context=[_skill_context_entry(skill)], middleware=mw_inst)
+
+        bind_calls = [call for call in journal.record_middleware.call_args_list if call.kwargs.get("action") == "bind_secrets"]
+        assert len(bind_calls) == 1
+
+
+class TestSecretsAutonomousParsing:
+    """Frontmatter ``secrets-autonomous`` controls in-context (autonomous) binding."""
+
+    def _parse(self, tmp_path, frontmatter_extra: str):
+        from deerflow.skills.parser import parse_skill_file
+        from deerflow.skills.types import SkillCategory
+
+        skill_dir = tmp_path / "erp-report"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text(
+            f"""---
+name: erp-report
+description: Pull an ERP report.
+required-secrets:
+  - ERP_TOKEN
+{frontmatter_extra}---
+
+Body.
+""",
+            encoding="utf-8",
+        )
+        return parse_skill_file(skill_file, SkillCategory.CUSTOM)
+
+    def test_defaults_to_true(self, tmp_path):
+        skill = self._parse(tmp_path, "")
+        assert skill is not None
+        assert skill.secrets_autonomous is True
+
+    def test_explicit_false(self, tmp_path):
+        skill = self._parse(tmp_path, "secrets-autonomous: false\n")
+        assert skill is not None
+        assert skill.secrets_autonomous is False
+
+    def test_malformed_value_fails_closed(self, tmp_path, caplog):
+        """A non-boolean value disables autonomous binding (the safer direction)
+        instead of silently enabling it."""
+        skill = self._parse(tmp_path, 'secrets-autonomous: "yes please"\n')
+        assert skill is not None
+        assert skill.secrets_autonomous is False
 
 
 class TestBashToolInjectsActiveSecrets:
@@ -626,7 +1085,7 @@ class TestLeakSurfaces:
             runtime=SimpleNamespace(context=context),
         )
         captured = {}
-        SkillActivationMiddleware().wrap_model_call(request, lambda r: captured.setdefault("messages", r.messages) or AIMessage(content="ok"))
+        SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN).wrap_model_call(request, lambda r: captured.setdefault("messages", r.messages) or AIMessage(content="ok"))
         return context, captured["messages"], journal_records
 
     def test_prompt_surface_has_no_secret(self, tmp_path, monkeypatch):
@@ -659,9 +1118,23 @@ class TestLeakSurfaces:
         assert _SECRET not in str(config.get("configurable", {}))
 
     def test_redact_helper_strips_secret_keys(self):
-        from deerflow.runtime.secret_context import redact_secret_context_keys
+        from deerflow.runtime.secret_context import SKILL_TOOL_POLICY_DECISION_CONTEXT_KEY, redact_secret_context_keys
 
-        ctx = {"thread_id": "t", "secrets": {"ERP_TOKEN": _SECRET}, "__active_skill_secrets": {"ERP_TOKEN": _SECRET}}
+        ctx = {
+            "thread_id": "t",
+            "secrets": {"ERP_TOKEN": _SECRET},
+            "__active_skill_secrets": {"ERP_TOKEN": _SECRET},
+            "__slash_skill_secret_source": {
+                "path": "/mnt/skills/public/reviewer/SKILL.md",
+                "owner_token": "slash-owner-token",
+            },
+            SKILL_TOOL_POLICY_DECISION_CONTEXT_KEY: {
+                "version": 1,
+                "owner_token": "policy-owner-token",
+                "active_paths": ["/mnt/skills/public/reviewer/SKILL.md"],
+                "allowed_names": None,
+            },
+        }
         redacted = redact_secret_context_keys(ctx)
         assert redacted == {"thread_id": "t"}
         assert _SECRET not in str(redacted)
@@ -670,16 +1143,40 @@ class TestLeakSurfaces:
         # The run-record persistence + run API echo the raw request config; the
         # stored/echoed copy must not carry secrets (verifier blocker), while the
         # live config used to drive the run keeps them.
-        from deerflow.runtime.secret_context import redact_config_secrets
+        from deerflow.runtime.secret_context import SKILL_TOOL_POLICY_DECISION_CONTEXT_KEY, redact_config_secrets
 
-        config = {"context": {"secrets": {"ERP_TOKEN": _SECRET}, "thread_id": "t", "model_name": "m"}, "recursion_limit": 100}
+        config = {
+            "context": {
+                "secrets": {
+                    "ERP_TOKEN": _SECRET,
+                    "nested": {"secondary": _SECRET},
+                },
+                "thread_id": "t",
+                "model_name": "m",
+                "__slash_skill_secret_source": {
+                    "path": "/mnt/skills/public/reviewer/SKILL.md",
+                    "owner_token": "slash-owner-token",
+                },
+                SKILL_TOOL_POLICY_DECISION_CONTEXT_KEY: {
+                    "version": 1,
+                    "owner_token": "forged-or-leaked-token",
+                    "active_paths": ["/mnt/skills/public/reviewer/SKILL.md"],
+                    "allowed_names": None,
+                },
+            },
+            "recursion_limit": 100,
+        }
         redacted = redact_config_secrets(config)
         assert _SECRET not in str(redacted)
         assert redacted["context"]["thread_id"] == "t"
         assert redacted["context"]["model_name"] == "m"
         assert "secrets" not in redacted["context"]
+        assert SKILL_TOOL_POLICY_DECISION_CONTEXT_KEY not in redacted["context"]
         # Original is untouched (live config still has secrets).
-        assert config["context"]["secrets"] == {"ERP_TOKEN": _SECRET}
+        assert config["context"]["secrets"] == {
+            "ERP_TOKEN": _SECRET,
+            "nested": {"secondary": _SECRET},
+        }
 
     def test_redact_config_secrets_handles_none_and_no_context(self):
         from deerflow.runtime.secret_context import redact_config_secrets
@@ -744,7 +1241,7 @@ class TestEndToEndRealSubprocess:
             state={"messages": []},
             runtime=SimpleNamespace(context=context),
         )
-        SkillActivationMiddleware().wrap_model_call(request, lambda r: AIMessage(content="ok"))
+        SkillActivationMiddleware(slash_source_owner_token=_SLASH_SOURCE_OWNER_TOKEN).wrap_model_call(request, lambda r: AIMessage(content="ok"))
         injected = read_active_secrets(context)
         assert injected == {"ERP_TOKEN": _SECRET}
 

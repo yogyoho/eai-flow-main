@@ -14,7 +14,7 @@ const meta: MetaRecord = {
     title: "Work with Memory",
   },
   "deploy-your-own-deerflow": {
-    title: "Deploy Your Own EAIFlow",
+    title: "Deploy Your Own DeerFlow",
   },
 };
 
