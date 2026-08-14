@@ -12,7 +12,7 @@ EAI-CUSTOM: 市场部门模块①。真实投标库接入前的链路演示 mock
 数据故事(供技能推理,非真实业绩):
 - 我方(东智装备制造)在循环水泵/超滤装置等核心设备可自产 → 中小项目中标;
 - 变换炉/压缩机/脱硫塔/丙烯塔等大型核心设备我方仅能外购 → 大项目成本高、落标;
-- 友商(东方宏业/华能重工/江南重工/航天晨光等,每项目 2-3 家)大型塔器/压缩机可自产 → 大项目低价中标。
+- 友商(东方宏业/华能重工/江南重工/航天晨光等,每项目 1-3 家)大型塔器/压缩机可自产 → 大项目低价中标。
 结论预期:技能建议我方提升大型核心设备自产率以改善大项目中标率。
 """
 
@@ -44,7 +44,7 @@ SOURCE_CONNECTION_CONFIG = {
 }
 
 OURS = "东智装备制造"
-# EAI-CUSTOM: 多家友商(原单常量 COMP)。每项目 2-3 家友商竞争,1 家中标。
+# EAI-CUSTOM: 多家友商(原单常量 COMP)。每项目 1-3 家友商竞争,1 家中标(项目5仅1家)。
 COMPETITORS_POOL = ["东方宏业", "华能重工", "中机国能", "江南重工", "海纳智造", "航天晨光"]
 
 
@@ -55,7 +55,7 @@ def _variant(base, k):
     """
     return [(g, s, q, u, round(sm * k), round(om * (2 - k))) for g, s, q, u, sm, om in base]
 
-# ── 6 个投标项目(每项目我方 + 2-3 家友商竞标,恰 1 家中标)──
+# ── 6 个投标项目(每项目我方 + 1-3 家友商竞标,恰 1 家中标)──
 # item: (货物名, 规格型号, 数量, 单位, 自产金额万, 外购金额万)
 #   脚本自动算 total = self+outsourced, unit_price = total/qty
 PROJECTS = [
@@ -427,6 +427,9 @@ async def main() -> None:
         "SELECT count(DISTINCT bidder_name) FROM mock_bid WHERE bidder_role='competitor'"
     )
     assert comp_count >= 3, f"友商家数应 ≥3(多家),实际 {comp_count}"
+    # 断言3:PROJECTS 里出现的友商名必须在池内(防拼写漂移静默造出新公司)
+    used = {p["main_competitor"] for p in PROJECTS} | {c for p in PROJECTS for c, _ in p.get("extra_competitors", [])}
+    assert used <= set(COMPETITORS_POOL), f"友商名不在池内: {used - set(COMPETITORS_POOL)}"
     seg = await chk.fetch(
         "SELECT CASE WHEN winning_price<1000000 THEN '<100w' WHEN winning_price<5000000 THEN '100-500w' "
         "WHEN winning_price<20000000 THEN '500-2000w' ELSE '>=2000w' END seg, "
