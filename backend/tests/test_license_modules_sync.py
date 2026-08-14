@@ -5,7 +5,7 @@ definition site stays in sync. Drift causes silent breakage: a key renamed in
 one place but not others makes licensed apps vanish from sidebar/app-center
 (hasModule returns false for the stale key).
 
-Canonical keys: project, dashboard, typography, contract_price, spare_parts, bid_quote
+Canonical keys: project, dashboard, typography, contract_price, spare_parts, bid_quote, biz_pipeline
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price", "spare_parts", "bid_quote"]
+EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price", "spare_parts", "bid_quote", "biz_pipeline"]
 REMOVED_KEYS = ["docmgr", "knowledge", "collab", "report", "approval", "workflow"]
 
 
