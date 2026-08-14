@@ -17,11 +17,16 @@ interface TechTooltipProps {
 export function TechTooltip({ active, payload, label }: TechTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-primary/30 bg-card/95 px-3 py-2 font-cyber text-xs text-card-foreground shadow-lg backdrop-blur">
-      {label !== undefined ? <p className="mb-1 font-bold text-primary text-shadow-glow">{label}</p> : null}
+    <div className="border-primary/30 bg-card/95 font-cyber text-card-foreground rounded-lg border px-3 py-2 text-xs shadow-lg backdrop-blur">
+      {label !== undefined ? (
+        <p className="text-primary text-shadow-glow mb-1 font-bold">{label}</p>
+      ) : null}
       {payload.map((p, i) => (
         <p key={i} className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} />
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: p.color }}
+          />
           <span className="text-muted-foreground">{p.name}:</span>
           <span className="font-bold">{p.value}</span>
         </p>

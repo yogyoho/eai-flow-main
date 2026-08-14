@@ -59,7 +59,12 @@ export interface FilterState {
   dateFrom: string | null; // ISO yyyy-mm-dd
   dateTo: string | null;
 }
-export const EMPTY_FILTERS: FilterState = { projects: [], competitors: [], dateFrom: null, dateTo: null };
+export const EMPTY_FILTERS: FilterState = {
+  projects: [],
+  competitors: [],
+  dateFrom: null,
+  dateTo: null,
+};
 
 /** 每图高级筛选(按图适用维度启用子集)。 */
 export type AmountSegment = "lt100w" | "100to500w" | "500to2000w" | "gt2000w";
@@ -68,6 +73,19 @@ export interface ChartFilter {
   amountSegment?: AmountSegment;
   selfAttribute?: SelfAttribute; // 不进 SQL:货物构成图前端行过滤 / 自产率图渲染门槛
   goodsName?: string[];
+}
+
+/**
+ * selfAttribute 行过滤判定(货物构成图 + 图C 自产率图共用,保证阈值不发散)。
+ * pct 为 null(我方无该行数据)时一律不匹配 —— 无自产属性可言。
+ */
+export function matchesSelfAttribute(
+  pct: string | number | null | undefined,
+  attr?: SelfAttribute,
+): boolean {
+  if (!attr || attr === "all") return true;
+  if (pct === null || pct === undefined) return false;
+  return attr === "self_dominant" ? Number(pct) >= 50 : Number(pct) < 50;
 }
 
 /** 图C 项目自产率分布 row。 */

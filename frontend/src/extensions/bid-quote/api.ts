@@ -31,9 +31,14 @@ export async function resolveSourceId(name = SOURCE_NAME): Promise<string> {
 }
 
 /** 按 label 匹配拿 dataset id(罐装视图),结果缓存。 */
-export async function resolveDatasetId(sourceId: string, label: string): Promise<string> {
+export async function resolveDatasetId(
+  sourceId: string,
+  label: string,
+): Promise<string> {
   if (datasetIdCache[label]) return datasetIdCache[label];
-  const resp = await authFetch<{ items: ListItem[] }>(`${API_BASE}/${sourceId}/datasets`);
+  const resp = await authFetch<{ items: ListItem[] }>(
+    `${API_BASE}/${sourceId}/datasets`,
+  );
   const hit = resp.items.find((d) => d.label === label);
   if (!hit) throw new Error(`数据集 "${label}" 未找到`);
   datasetIdCache[label] = hit.id;
@@ -41,14 +46,23 @@ export async function resolveDatasetId(sourceId: string, label: string): Promise
 }
 
 /** 跑罐装 dataset 的 default_query(POST,无 body)。 */
-export async function queryDataset(sourceId: string, datasetId: string): Promise<QueryResult> {
-  return authFetch<QueryResult>(`${API_BASE}/${sourceId}/datasets/${datasetId}/query`, {
-    method: "POST",
-  });
+export async function queryDataset(
+  sourceId: string,
+  datasetId: string,
+): Promise<QueryResult> {
+  return authFetch<QueryResult>(
+    `${API_BASE}/${sourceId}/datasets/${datasetId}/query`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 /** 跑下钻参数化只读 SQL(POST body {sql})。 */
-export async function querySql(sourceId: string, sql: string): Promise<QueryResult> {
+export async function querySql(
+  sourceId: string,
+  sql: string,
+): Promise<QueryResult> {
   return authFetch<QueryResult>(`${API_BASE}/${sourceId}/query`, {
     method: "POST",
     body: JSON.stringify({ sql }),
@@ -85,12 +99,19 @@ export function buildWhere(
 ): string {
   const c: string[] = ["1=1"];
   // IN 列表先排序:SQL 进 queryKey,选择顺序不同会碎片化缓存;排序后同集合 = 同 key
-  const sorted = (xs: string[]) => [...xs].sort((a, b) => a.localeCompare(b, "zh-Hans-u-co-pinyin"));
+  const sorted = (xs: string[]) =>
+    [...xs].sort((a, b) => a.localeCompare(b, "zh-Hans-u-co-pinyin"));
   if (g.projects.length) {
-    c.push(`project_name IN (${sorted(g.projects).map((p) => `'${esc(p)}'`).join(",")})`);
+    c.push(
+      `project_name IN (${sorted(g.projects)
+        .map((p) => `'${esc(p)}'`)
+        .join(",")})`,
+    );
   }
   if (g.competitors.length) {
-    const list = sorted(g.competitors).map((x) => `'${esc(x)}'`).join(",");
+    const list = sorted(g.competitors)
+      .map((x) => `'${esc(x)}'`)
+      .join(",");
     if (useCompetitorExists) {
       // 仅我方查询:筛"有选中友商参与的项目"
       c.push(
@@ -107,7 +128,12 @@ export function buildWhere(
     if (seg) c.push(seg); // noUncheckedIndexedAccess:索引可能 undefined,判空后再 push
   }
   if (chart?.goodsName?.length) {
-    c.push(`goods_name IN (${chart.goodsName.map((n) => `'${esc(n)}'`).join(",")})`);
+    // 与 projects/competitors 同理:IN 列表排序,queryKey 对选择顺序不敏感
+    c.push(
+      `goods_name IN (${sorted(chart.goodsName)
+        .map((n) => `'${esc(n)}'`)
+        .join(",")})`,
+    );
   }
   return c.join(" AND ");
 }
@@ -162,7 +188,10 @@ const TPL = {
 
 /** 拼最终 SQL:模板 + WHERE + GROUP BY/ORDER(各模板尾部固定)。 */
 export function sqlFor(
-  key: keyof Pick<typeof TPL, "summary" | "composition" | "segment" | "showdown" | "selfRate">,
+  key: keyof Pick<
+    typeof TPL,
+    "summary" | "composition" | "segment" | "showdown" | "selfRate"
+  >,
   g: FilterState,
   chart?: ChartFilter,
 ): string {
@@ -191,7 +220,11 @@ export function sqlFor(
 }
 
 /** 图B 自产vs外购(项目/货物视角)。 */
-export function sqlSelfVsOutsource(g: FilterState, dim: "project" | "goods", chart?: ChartFilter): string {
+export function sqlSelfVsOutsource(
+  g: FilterState,
+  dim: "project" | "goods",
+  chart?: ChartFilter,
+): string {
   const where = buildWhere(g, chart);
   const grp = dim === "project" ? "b.project_name" : "i.goods_name";
   return `${TPL.selfVsOutsource(dim)} WHERE ${where} GROUP BY ${grp} ORDER BY ${grp}`;
@@ -204,11 +237,20 @@ export async function queryFiltered(sql: string): Promise<QueryResult> {
 }
 
 /** distinct 过滤选项(项目 + 友商)。 */
-export async function fetchFilterOptions(): Promise<{ projects: string[]; competitors: string[] }> {
+export async function fetchFilterOptions(): Promise<{
+  projects: string[];
+  competitors: string[];
+}> {
   const sid = await resolveSourceId();
   const [pr, cr] = await Promise.all([
-    querySql(sid, "SELECT DISTINCT project_name AS v FROM mock_bid ORDER BY project_name"),
-    querySql(sid, "SELECT DISTINCT bidder_name AS v FROM mock_bid WHERE bidder_role='competitor' ORDER BY bidder_name"),
+    querySql(
+      sid,
+      "SELECT DISTINCT project_name AS v FROM mock_bid ORDER BY project_name",
+    ),
+    querySql(
+      sid,
+      "SELECT DISTINCT bidder_name AS v FROM mock_bid WHERE bidder_role='competitor' ORDER BY bidder_name",
+    ),
   ]);
   return {
     projects: (pr.rows as { v: string }[]).map((r) => r.v),

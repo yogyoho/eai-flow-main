@@ -6,7 +6,13 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { fetchFilterOptions, queryFiltered, querySql, resolveSourceId, sqlFor } from "./api";
+import {
+  fetchFilterOptions,
+  queryFiltered,
+  querySql,
+  resolveSourceId,
+  sqlFor,
+} from "./api";
 import type {
   BidItemRow,
   BidSummaryRow,
@@ -44,11 +50,14 @@ function useFilteredQuery<T>(
   });
 }
 
-export const useBidSummary = (f: FilterState) => useFilteredQuery<BidSummaryRow>("summary", "summary", f);
+export const useBidSummary = (f: FilterState) =>
+  useFilteredQuery<BidSummaryRow>("summary", "summary", f);
 export const useComposition = (f: FilterState, chart?: ChartFilter) =>
   useFilteredQuery<CompositionRow>("composition", "composition", f, chart);
-export const useWinRateBySegment = (f: FilterState) => useFilteredQuery<SegmentRow>("segment", "segment", f);
-export const useProjectShowdown = (f: FilterState) => useFilteredQuery<ShowdownRow>("showdown", "showdown", f);
+export const useWinRateBySegment = (f: FilterState) =>
+  useFilteredQuery<SegmentRow>("segment", "segment", f);
+export const useProjectShowdown = (f: FilterState) =>
+  useFilteredQuery<ShowdownRow>("showdown", "showdown", f);
 
 /** 明细:全量 mock_bid,下钻来源。 */
 export function useBidList(enabled = true) {
@@ -57,7 +66,10 @@ export function useBidList(enabled = true) {
     enabled,
     queryFn: async (): Promise<BidItemRow[]> => {
       const sid = await resolveSourceId();
-      const res = await querySql(sid, "SELECT * FROM mock_bid ORDER BY bid_date DESC");
+      const res = await querySql(
+        sid,
+        "SELECT * FROM mock_bid ORDER BY bid_date DESC",
+      );
       return res.rows as BidItemRow[];
     },
   });

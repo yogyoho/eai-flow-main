@@ -24,22 +24,40 @@ const HEX: Record<StatColor, { bg: string; border: string; text: string }> = {
   chart5: { bg: "#10b98114", border: "#10b98133", text: "#10b981" },
 };
 
-export function StatCard({ label, value, icon: Icon, hint, color = "primary" }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  hint,
+  color = "primary",
+}: StatCardProps) {
   const c = HEX[color];
   return (
     <div
-      className={cn("relative overflow-hidden rounded-xl p-4 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08)] transition-all hover:scale-[1.015]")}
+      className={cn(
+        "relative overflow-hidden rounded-xl p-4 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08)] transition-all hover:scale-[1.015]",
+      )}
       style={{ background: c.bg, borderColor: c.border, borderWidth: 1 }}
     >
-      <span className="absolute right-0 top-0 h-2 w-2 rounded-bl-md" style={{ background: c.text }} />
-      <div className="flex items-center gap-2 text-muted-foreground/70">
+      <span
+        className="absolute top-0 right-0 h-2 w-2 rounded-bl-md"
+        style={{ background: c.text }}
+      />
+      <div className="text-muted-foreground/70 flex items-center gap-2">
         <Icon className="h-4 w-4" />
-        <p className="text-xs uppercase tracking-wide">{label}</p>
+        <p className="text-xs tracking-wide uppercase">{label}</p>
       </div>
-      <p className="mt-2 font-cyber text-3xl font-extrabold tracking-tight text-shadow-glow" style={{ color: c.text }}>
+      <p
+        className="font-cyber text-shadow-glow mt-2 text-3xl font-extrabold tracking-tight"
+        style={{ color: c.text }}
+      >
         {value}
       </p>
-      {hint ? <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{hint}</p> : null}
+      {hint ? (
+        <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

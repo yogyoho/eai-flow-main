@@ -23,7 +23,11 @@ interface DrillDownModalProps {
 // 通用下钻 modal:标题 + sql → 明细 table。下钻 SQL 走后端 assert_readonly_select 守卫。
 // no-base-to-string: 行单元格为 unknown(SQL JSON),收窄后再 String()。
 const cellText = (v: unknown) =>
-  v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v as string | number | boolean);
+  v === null || v === undefined
+    ? ""
+    : typeof v === "object"
+      ? JSON.stringify(v)
+      : String(v as string | number | boolean);
 export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
   const { data, isLoading, error } = useDrillDown(sql);
 
@@ -39,24 +43,38 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
   const cols = rows.length ? Object.keys(rows[0] ?? {}) : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
       <div
-        className="flex max-h-[80vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-background shadow-2xl"
+        className="border-border bg-background flex max-h-[80vh] w-full max-w-3xl flex-col rounded-xl border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h3 className="font-cyber text-sm font-bold text-foreground">{title}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <div className="border-border flex items-center justify-between border-b px-5 py-3">
+          <h3 className="font-cyber text-foreground text-sm font-bold">
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-4">
           {isLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              加载中…
+            </p>
           ) : error ? (
-            <p className="py-8 text-center text-sm text-destructive">加载失败:{String(error)}</p>
+            <p className="text-destructive py-8 text-center text-sm">
+              加载失败:{String(error)}
+            </p>
           ) : rows.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">无明细数据</p>
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              无明细数据
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -78,7 +96,7 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
             </Table>
           )}
         </div>
-        <div className="border-t border-border px-5 py-2 text-[11px] text-muted-foreground/70">
+        <div className="border-border text-muted-foreground/70 border-t px-5 py-2 text-[11px]">
           共 {data?.row_count ?? 0} 条 · {sql}
         </div>
       </div>

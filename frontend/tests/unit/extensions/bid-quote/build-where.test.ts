@@ -1,7 +1,29 @@
 import { describe, expect, it } from "vitest";
 
 import { buildWhere, esc, sqlFor } from "@/extensions/bid-quote/api";
-import { EMPTY_FILTERS, type ChartFilter, type FilterState } from "@/extensions/bid-quote/types";
+import {
+  EMPTY_FILTERS,
+  type ChartFilter,
+  type FilterState,
+  matchesSelfAttribute,
+} from "@/extensions/bid-quote/types";
+
+describe("matchesSelfAttribute", () => {
+  it("all/undefined → 全过", () => {
+    expect(matchesSelfAttribute(null, "all")).toBe(true);
+    expect(matchesSelfAttribute(null, undefined)).toBe(true);
+  });
+  it("self_dominant: ≥50;outsource_dominant: <50", () => {
+    expect(matchesSelfAttribute("60.0", "self_dominant")).toBe(true);
+    expect(matchesSelfAttribute("49.9", "self_dominant")).toBe(false);
+    expect(matchesSelfAttribute("30.0", "outsource_dominant")).toBe(true);
+    expect(matchesSelfAttribute("50.0", "outsource_dominant")).toBe(false);
+  });
+  it("pct 为 null(我方无数据)不匹配任何属性分支", () => {
+    expect(matchesSelfAttribute(null, "self_dominant")).toBe(false);
+    expect(matchesSelfAttribute(null, "outsource_dominant")).toBe(false);
+  });
+});
 
 describe("esc", () => {
   it("转义单引号", () => {
@@ -29,16 +51,26 @@ describe("buildWhere", () => {
     expect(w).toContain("c2.bidder_name IN ('友A')");
   });
   it("日期范围", () => {
-    const g: FilterState = { ...EMPTY_FILTERS, dateFrom: "2025-01-01", dateTo: "2025-12-31" };
-    expect(buildWhere(g)).toBe("1=1 AND bid_date >= '2025-01-01' AND bid_date <= '2025-12-31'");
+    const g: FilterState = {
+      ...EMPTY_FILTERS,
+      dateFrom: "2025-01-01",
+      dateTo: "2025-12-31",
+    };
+    expect(buildWhere(g)).toBe(
+      "1=1 AND bid_date >= '2025-01-01' AND bid_date <= '2025-12-31'",
+    );
   });
   it("chart.amountSegment", () => {
     const chart: ChartFilter = { amountSegment: "100to500w" };
-    expect(buildWhere(EMPTY_FILTERS, chart)).toContain("winning_price >= 1000000 AND winning_price < 5000000");
+    expect(buildWhere(EMPTY_FILTERS, chart)).toContain(
+      "winning_price >= 1000000 AND winning_price < 5000000",
+    );
   });
   it("chart.goodsName", () => {
     const chart: ChartFilter = { goodsName: ["塔器"] };
-    expect(buildWhere(EMPTY_FILTERS, chart)).toBe("1=1 AND goods_name IN ('塔器')");
+    expect(buildWhere(EMPTY_FILTERS, chart)).toBe(
+      "1=1 AND goods_name IN ('塔器')",
+    );
   });
   it("单引号转义进 SQL", () => {
     const g: FilterState = { ...EMPTY_FILTERS, projects: ["O'Brien厂"] };
@@ -48,7 +80,9 @@ describe("buildWhere", () => {
     const g: FilterState = { ...EMPTY_FILTERS, projects: ["甲"] };
     const chart: ChartFilter = { amountSegment: "lt100w" };
     const w = buildWhere(g, chart);
-    expect(w).toBe("1=1 AND project_name IN ('甲') AND winning_price < 1000000");
+    expect(w).toBe(
+      "1=1 AND project_name IN ('甲') AND winning_price < 1000000",
+    );
   });
 });
 
@@ -56,7 +90,9 @@ describe("sqlFor 组装", () => {
   it("selfRate:WHERE ours + AND 过滤 + GROUP BY 尾部齐全", () => {
     const g: FilterState = { ...EMPTY_FILTERS, projects: ["甲"] };
     const sql = sqlFor("selfRate", g);
-    expect(sql).toContain("WHERE b.bidder_role='ours' AND 1=1 AND project_name IN ('甲')");
+    expect(sql).toContain(
+      "WHERE b.bidder_role='ours' AND 1=1 AND project_name IN ('甲')",
+    );
     expect(sql).toContain("GROUP BY b.project_name");
     expect(sql).toContain("ORDER BY self_rate DESC");
   });

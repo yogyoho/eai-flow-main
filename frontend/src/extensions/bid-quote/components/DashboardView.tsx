@@ -39,6 +39,7 @@ import {
   type ChartFilter,
   EMPTY_FILTERS,
   type FilterState,
+  matchesSelfAttribute,
 } from "@/extensions/bid-quote/types";
 
 // EAI-CUSTOM: 项目 chart/success/destructive CSS 变量为完整颜色(非 HSL 通道),故图表用字面 hex
@@ -194,83 +195,73 @@ export function DashboardView() {
         </ChartCard>
 
         {/* 图2:货物构成对比 自产%(每图筛选:自产属性前端行过滤) */}
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-muted-foreground text-xs">
-              自产率(我方 vs 友商)
-            </span>
+        <ChartCard
+          title="货物构成对比 · 自产率(我方 vs 友商)"
+          meta="失标根因"
+          action={
             <ChartFilterPopover
               chart={compChart}
               onChange={setCompChart}
               enable={{ selfAttribute: true }}
             />
-          </div>
-          <ChartCard
-            title="货物构成对比 · 自产率(我方 vs 友商)"
-            meta="失标根因"
-          >
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={(compQ.data ?? [])
-                  .filter((r) => {
-                    if (
-                      !compChart.selfAttribute ||
-                      compChart.selfAttribute === "all"
-                    )
-                      return true;
-                    const pct = Number(r.ours_self_pct ?? 0);
-                    return compChart.selfAttribute === "self_dominant"
-                      ? pct >= 50
-                      : pct < 50;
-                  })
-                  .map((r) => ({
-                    goods_name: r.goods_name,
-                    ours_self_pct: toNum(r.ours_self_pct),
-                    competitor_self_pct: toNum(r.competitor_self_pct),
-                  }))}
-                margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="2 4"
-                  stroke={GRID}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="goods_name"
-                  tick={{ ...AXIS, fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={{ stroke: GRID }}
-                  interval={0}
-                />
-                <YAxis
-                  tick={AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  unit="%"
-                  width={40}
-                />
-                <Tooltip content={<TechTooltip />} cursor={CURSOR} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar
-                  dataKey="ours_self_pct"
-                  name="我方自产%"
-                  fill={BLUE}
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive
-                  animationDuration={900}
-                />
-                <Bar
-                  dataKey="competitor_self_pct"
-                  name="友商自产%"
-                  fill={AMBER}
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive
-                  animationDuration={900}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
+          }
+        >
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              data={(compQ.data ?? [])
+                .filter((r) =>
+                  matchesSelfAttribute(
+                    r.ours_self_pct,
+                    compChart.selfAttribute,
+                  ),
+                )
+                .map((r) => ({
+                  goods_name: r.goods_name,
+                  ours_self_pct: toNum(r.ours_self_pct),
+                  competitor_self_pct: toNum(r.competitor_self_pct),
+                }))}
+              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="2 4"
+                stroke={GRID}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="goods_name"
+                tick={{ ...AXIS, fontSize: 10 }}
+                tickLine={false}
+                axisLine={{ stroke: GRID }}
+                interval={0}
+              />
+              <YAxis
+                tick={AXIS}
+                tickLine={false}
+                axisLine={false}
+                unit="%"
+                width={40}
+              />
+              <Tooltip content={<TechTooltip />} cursor={CURSOR} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar
+                dataKey="ours_self_pct"
+                name="我方自产%"
+                fill={BLUE}
+                radius={[3, 3, 0, 0]}
+                isAnimationActive
+                animationDuration={900}
+              />
+              <Bar
+                dataKey="competitor_self_pct"
+                name="友商自产%"
+                fill={AMBER}
+                radius={[3, 3, 0, 0]}
+                isAnimationActive
+                animationDuration={900}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
         {/* 图3:项目报价对比 我方 vs 友商(胜负 Cell 色) */}
         <ChartCard

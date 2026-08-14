@@ -13,7 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/bid-quote/components/ui/table";
-import { useBidList, useComposition, useWinRateBySegment } from "@/extensions/bid-quote/hooks";
+import {
+  useBidList,
+  useComposition,
+  useWinRateBySegment,
+} from "@/extensions/bid-quote/hooks";
 import {
   EMPTY_FILTERS,
   type BidItemRow,
@@ -41,14 +45,21 @@ const SEG_BOUNDS: Record<string, [number, number]> = {
 // 清洗:单引号转义防 SQL 注入(值来自 DB 行数据,非用户自由输入)。
 // no-base-to-string: v 为 unknown,需显式收窄后再 String()(对象走 JSON)。
 const esc = (v: unknown) => {
-  const s = v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v as string | number | boolean);
+  const s =
+    v === null || v === undefined
+      ? ""
+      : typeof v === "object"
+        ? JSON.stringify(v)
+        : String(v as string | number | boolean);
   return s.replace(/'/g, "''");
 };
 
 export function QueryView() {
   const [tab, setTab] = useState<TabKey>("bidlist");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
-  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(null);
+  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(
+    null,
+  );
 
   const bidQ = useBidList();
   const compQ = useComposition(filters);
@@ -61,7 +72,10 @@ export function QueryView() {
   // noUncheckedIndexedAccess: bidRows[0] 推断为 T|undefined,length 守卫不收窄 → ?? {} 兜底。
   const bidCols = bidRows.length ? Object.keys(bidRows[0] ?? {}) : [];
 
-  const onRowDrill = (key: TabKey, row: BidItemRow | CompositionRow | SegmentRow) => {
+  const onRowDrill = (
+    key: TabKey,
+    row: BidItemRow | CompositionRow | SegmentRow,
+  ) => {
     // 白名单维度:仅 project_name / goods_name / amount_segment;值经 esc 转义后拼入只读 SELECT。
     // EAI-CUSTOM: mock_bid_item 无 project_name 列(在 mock_bid 上),故明细下钻走 bid_id JOIN。
     if (key === "bidlist") {
@@ -87,15 +101,20 @@ export function QueryView() {
   };
 
   const loading = useMemo(
-    () => (tab === "bidlist" ? bidQ.isLoading : tab === "composition" ? compQ.isLoading : segQ.isLoading),
+    () =>
+      tab === "bidlist"
+        ? bidQ.isLoading
+        : tab === "composition"
+          ? compQ.isLoading
+          : segQ.isLoading,
     [tab, bidQ.isLoading, compQ.isLoading, segQ.isLoading],
   );
 
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center gap-3">
-        <Search className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">数据查询</h1>
+        <Search className="text-primary h-5 w-5" />
+        <h1 className="text-foreground text-2xl font-bold">数据查询</h1>
       </div>
 
       {/* 全局过滤 */}
@@ -120,9 +139,11 @@ export function QueryView() {
       </div>
 
       {/* 当前视图表(点行下钻) */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-xl border p-4">
         {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            加载中…
+          </p>
         ) : tab === "bidlist" ? (
           <Table>
             <TableHeader>
@@ -189,7 +210,11 @@ export function QueryView() {
         )}
       </div>
 
-      <DrillDownModal title={drill?.title ?? ""} sql={drill?.sql ?? null} onClose={() => setDrill(null)} />
+      <DrillDownModal
+        title={drill?.title ?? ""}
+        sql={drill?.sql ?? null}
+        onClose={() => setDrill(null)}
+      />
     </div>
   );
 }
