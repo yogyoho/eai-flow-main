@@ -70,9 +70,12 @@ cd /app/backend
 
 # `--all-packages` propagates extras into workspace members (PR #2584).
 # `$EXTRAS_FLAGS` intentionally unquoted so each `--extra X` becomes its own arg.
+# `--locked` keeps the container on the committed uv.lock (upstream #4780);
+# the self-heal retry falls back to an unlocked sync so a stale lock does not
+# brick the dev container (EAI-CUSTOM).
 # shellcheck disable=SC2086 # word-splitting is intentional here
-if ! uv sync --all-packages $EXTRAS_FLAGS; then
-    echo "[startup] uv sync failed; recreating .venv and retrying once"
+if ! uv sync --locked --all-packages $EXTRAS_FLAGS; then
+    echo "[startup] locked uv sync failed; recreating .venv and retrying unlocked once"
     uv venv --allow-existing .venv
     # shellcheck disable=SC2086
     uv sync --all-packages $EXTRAS_FLAGS
@@ -92,6 +95,6 @@ fi
 
 # EAI-CUSTOM: exclude runtime projection dir (.deer-flow/skills_view rebuilds
 # hundreds of files every boot → triggers WatchFiles reload death-loop → nginx 502).
-PYTHONPATH=. exec uv run uvicorn app.gateway.app:app \
+PYTHONPATH=. exec uv run --no-sync uvicorn app.gateway.app:app \
     --host 0.0.0.0 --port 8001 \
     --reload --reload-exclude='.deer-flow/**' --reload-include='*.yaml .env'

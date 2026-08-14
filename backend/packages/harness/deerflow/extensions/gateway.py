@@ -27,9 +27,13 @@ _HOST_PUBLIC_PATH_PREFIXES = (
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/ui/config",
+    "/api/license/status",
     "/api/v1/auth/oauth/",
     "/api/v1/auth/callback/",
     "/api/webhooks/",
+    # EAI-CUSTOM: EAI SSO OIDC 发起/回调（无会话时也要可达）
+    "/api/extensions/auth/oidc/",
 )
 _HOST_PUBLIC_EXACT_PATHS = frozenset(
     {
@@ -39,6 +43,14 @@ _HOST_PUBLIC_EXACT_PATHS = frozenset(
         "/api/v1/auth/setup-status",
         "/api/v1/auth/initialize",
         "/api/v1/auth/providers",
+        # EAI-CUSTOM: extensions auth facade login endpoints (工号+密码 / 邮箱验证码)
+        # must be reachable without a session — they CREATE the session. Mirrors
+        # app.gateway.auth_middleware._PUBLIC_EXACT_PATHS (kept in sync by
+        # tests/test_extension_gateway_wiring.py).
+        "/api/extensions/auth/login",
+        "/api/extensions/auth/logout",
+        "/api/extensions/auth/otp/send",
+        "/api/extensions/auth/login/otp",
     }
 )
 _HOST_CSRF_EXEMPT_EXACT_PATHS = frozenset({"/api/v1/auth/me"})

@@ -73,8 +73,8 @@ export function DashboardPage() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--db-border-color-muted)] bg-[var(--db-bg-tertiary)] py-4 px-6 mt-8 text-center text-[10px] db-text-subtle font-cyber select-none tracking-widest leading-relaxed">
-        吉林化工工程 · 企业智能体应用平台 v0.5.0
-        <div className="text-[9px] text-slate-400 mt-0.5">© 2026 吉林化工工程有限公司</div>
+        XXXX工程 · 企业智能体应用平台 v0.5.0
+        <div className="text-[9px] text-slate-400 mt-0.5">© 2026 XXXX工程有限公司</div>
       </footer>
     </div>
   );

@@ -304,13 +304,25 @@ safety_finish_reason:
 
 # User-owned IM channel connections (E-续 ③). Built for bot_token/binding-code
 # providers (feishu/dingtalk/etc.) where an admin pastes credentials in the 渠道
-# tab. WeChat/iLink is QR-based (token auto-generated on scan) so it does NOT fit
-# this model — it runs via the system `channels.wechat` + QR login below instead.
-# wechat is therefore left out of channel_connections to avoid a meaningless
-# "连接 / Bot token" prompt in the sidebar.
+# tab, then end-users link their account via /connect <code>.
+# WeChat/iLink is QR-based: the bot_token is auto-fetched by `channels.wechat`
+# (QR login below), NOT admin-pasted. So wechat's channel_connections entry uses
+# NO credential fields (see _CREDENTIAL_FIELDS/_RUNTIME_REQUIREMENTS in
+# channel_connections.py — EAI-CUSTOM, bug-1176): its "configured" state is
+# simply "the QR-activated wechat channel is running" (gated by
+# _runtime_channel_running). This lets end-users bind via /connect <code> while
+# activation stays QR-only.
 channel_connections:
   enabled: true
-  require_bound_identity: false
+  # true: 强制渠道用户先 /connect 绑定才能用 bot → 多用户消息正确路由到各自账号
+  # (manager.py: 未绑定且非 /connect 的消息被拦, 回 "link first")。
+  # wechat 另由 channels.wechat.require_bound_identity 控制(OR 关系, 二者均 true);
+  # wecom 无 per-channel flag, 依赖此全局值强制企业成员绑定。
+  require_bound_identity: true
+  wechat:
+    enabled: true
+  wecom:
+    enabled: true
 
 # System WeChat iLink bot. qrcode_login_enabled triggers the QR bootstrap on
 # first start (no bot_token yet): WechatChannel._bind_via_qrcode() fetches a QR
@@ -325,6 +337,17 @@ channels:
     # their DeerFlow account) may use the bot. Unbound senders get a "link first"
     # prompt. The connection_repo + binding flow are enabled by channels.wechat.
     require_bound_identity: true
+  # ── 企业微信「智能机器人」(wecom-aibot-python-sdk) ──
+  # WebSocket 长连接 wss://openws.work.weixin.qq.com, 免公网回调(SDK 主动出站,
+  # 内网部署只需出站可达)。bot_id/bot_secret 在企业微信管理后台创建智能机器人
+  # 后获取(官方文档 developer.work.weixin.qq.com/document/path/101463)。
+  # 留空时 channel 不启动(WeComChannel.start 检测无凭据即 return); 填好后重启
+  # gateway 生效。同一 bot 同时只允许一个长连接(勿多实例连同一 bot_id)。
+  wecom:
+    enabled: true
+    bot_id: ""
+    bot_secret: ""
+    working_message: "正在为您处理..."
 
 # ── Subagent system ──
 subagents:

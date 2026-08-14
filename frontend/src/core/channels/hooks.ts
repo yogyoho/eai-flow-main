@@ -6,8 +6,10 @@ import {
   connectChannelProvider,
   disconnectChannelConnection,
   disconnectChannelProvider,
+  getWechatBotStatus,
   listChannelConnections,
   listChannelProviders,
+  restartWechatChannel,
 } from "./api";
 import { startConnectionPoll, type ConnectPollHandle } from "./connect-poll";
 import type { ChannelProviderId, ChannelRuntimeConfigValues } from "./types";
@@ -132,43 +134,32 @@ export function useDisconnectChannelProvider() {
   });
 }
 
-// ── WeChat / iLink bind code ─────────────────────────────────────────
+// EAI-CUSTOM: WeChat ClawBot activation status + regenerate.
+export const wechatBotStatusQueryKey = ["wechatBotStatus"] as const;
 
-export function useCreateWechatBindCode() {
-  return useMutation({
-    mutationFn: () =>
-      import("./api").then((m) => m.createWechatBindCode()),
+export function useWechatBotStatus() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: wechatBotStatusQueryKey,
+    queryFn: () => getWechatBotStatus(),
+    // Poll fast while a QR awaits a scan; poll slowly while the bot is in a
+    // non-confirmed state so a regenerate (channel restart) is picked up
+    // automatically; stop once the bot is confirmed (steady state).
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      if (s === "pending") return 3000;
+      return s && s !== "confirmed" ? 5000 : false;
+    },
   });
+  return { status: data, isLoading, error };
 }
 
-export function useStartWechatBotBind() {
+export function useRestartWechatChannel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      import("./api").then((m) => m.startWechatBotBind()),
+    mutationFn: () => restartWechatChannel(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: wechatBotBindStatusQueryKey,
-      });
+      void queryClient.invalidateQueries({ queryKey: wechatBotStatusQueryKey });
     },
   });
 }
 
-const wechatBotBindStatusQueryKey = ["wechat-bot-bind-status"] as const;
-
-export function useWechatBotBindStatus(enabled: boolean) {
-  return useQuery({
-    queryKey: wechatBotBindStatusQueryKey,
-    queryFn: () =>
-      import("./api").then((m) => m.getWechatBotBindStatus()),
-    enabled,
-    refetchInterval: enabled ? 10_000 : false,
-  });
-}
-
-export function useRefreshWechatShareQrcode() {
-  return useMutation({
-    mutationFn: () =>
-      import("./api").then((m) => m.refreshWechatShareQrcode()),
-  });
-}

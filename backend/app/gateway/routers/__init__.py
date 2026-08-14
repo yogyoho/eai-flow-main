@@ -20,7 +20,6 @@ from . import (
     threads,
     ui,
     uploads,
-    wechat_bot,
 )
 
 __all__ = [
@@ -45,5 +44,4 @@ __all__ = [
     "thread_runs",
     "ui",
     "uploads",
-    "wechat_bot",
 ]

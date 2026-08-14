@@ -1,12 +1,32 @@
 [
   {
+    "id": "bug-700",
+    "timestamp": "2026-08-14T15:30:00",
+    "error_message": "bid-quote 下钻 modal 的 won 布尔列渲染裸 true/false;且 DashboardView 图3 onClick 内联第三份 .replace(/'/g,\"''\") 转义、DrillDownModal 内联 >=50/<50 阈值判定,与 api.ts::esc() / types.ts::matchesSelfAttribute 单源约定漂移;绿色高亮用 green-* 与 chartTheme.GREEN(#10b981 emerald)不同族",
+    "file": "frontend/src/extensions/bid-quote/components/DrillDownModal.tsx",
+    "root_cause": "Task7 实现者未察觉 spec 要求 won→'✓ 中标' 标记;三处单源约定(esc/matchesSelfAttribute/emerald)在并行组件开发中各自内联,评审才暴露",
+    "fix": "commit 60e1bd0fd + 6ac399628:won 列 true→'✓ 中标'/false→留空(避免 cellText(false) 裸 false);DashboardView 改用 esc();DrillDownModal 行过滤改喂 matchesSelfAttribute(rowSelfPct(r), attr);green→emerald;页脚筛选时显示 '共 X / Y 条'",
+    "tags": ["bid-quote", "spec-gap", "single-source", "esc", "matchesSelfAttribute", "review-finding"],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14T15:30:00"
+  },
+  {
     "id": "bug-699",
     "timestamp": "2026-08-13T15:10:00",
     "error_message": "test_data_source_routers.py 全 12 测试失败:require_permission 链路在 AsyncMock db 上崩溃 —— 先 policy_loader.py 'coroutine' object has no attribute 'all',再 identity.py 'coroutine' object has no attribute 'id'。原 8 个测试在加 ABAC 引擎前能过,升级后未同步 stub → 全部红。",
     "file": "backend/tests/test_data_source_routers.py",
     "root_cause": "middleware.py:184 EAI-CUSTOM 把 require_permission 的 check_permission 升级成 ABAC-lite:引擎构建调 load_active_policies(db)(查 policies 表)、identity 解析调 provider.resolve(current_user.id, db)(查 users/roles 表)。但单测 _build_app() 只 override get_current_user/get_db 为 AsyncMock,没 stub 这两条 DB 链,AsyncMock.execute().scalars().all() 与 provider.resolve 的 ORM 查询全抛 AttributeError。check_permission 在落 DB 前会先查 per-request 缓存(get_cached_engine/get_cached_identity),None 才查库 —— 这是干净的注入点。",
     "fix": "加 autouse fixture _stub_auth_caches:patch app.extensions.auth.cache.get_cached_engine 返回 MagicMock(check→True)+ get_cached_identity 返回 MagicMock(role_code='test')。两个缓存非 None → check_permission 跳过 load_active_policies + provider.resolve 全部 DB 工作;engine.check 直返 True → 放行。全 12 测试通过(原 8 + 新 4)。patch 源模块(非 middleware 命名空间)因 check_permission 内部是 local import,call time 重读模块属性。",
-    "tags": ["test-infra", "auth", "abac", "require_permission", "AsyncMock", "data_source", "pre-existing-rot"],
+    "tags": [
+      "test-infra",
+      "auth",
+      "abac",
+      "require_permission",
+      "AsyncMock",
+      "data_source",
+      "pre-existing-rot"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-13T15:10:00"
@@ -18955,7 +18975,14 @@
     "file": "frontend/src/extensions/bid-quote/components/QueryView.tsx",
     "root_cause": "mock_bid_item 表无 project_name 列(该列在 mock_bid 表上,两表靠 bid_id FK 关联)。plan/spec 作者未核对 mock_bid_item 真实 schema 就写了按项目下钻 SQL,assert_readonly_select 守卫放行(SELECT 语法合法)但执行期 column does not exist → 后端 400 → modal 显『加载失败』。",
     "fix": "明细下钻改走 bid_id JOIN: `SELECT i.goods_name,...,b.bidder_role,b.won FROM mock_bid_item i JOIN mock_bid b ON i.bid_id=b.bid_id WHERE b.project_name='${v}' ORDER BY i.total_amount DESC`。货物下钻/金额段下钻 SQL 列(goods_name/winning_price)经核对确实存在,保持原样。",
-    "tags": ["bid-quote", "mock_market", "schema", "drill-down", "plan-bug", "assert_readonly_select"],
+    "tags": [
+      "bid-quote",
+      "mock_market",
+      "schema",
+      "drill-down",
+      "plan-bug",
+      "assert_readonly_select"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T04:15:00Z"
@@ -18967,7 +18994,15 @@
     "file": "backend/app/extensions/data_source/routers.py(POST query 端点) + backend/app/extensions/auth/routers.py(登录门面)",
     "root_cause": "(1) POST /api/extensions/data-sources/{sid}/datasets/{did}/query 是写式动词,受 CSRF Double-Submit 守卫;前端 authFetch 自动带 X-CSRF-Token(读 cookie),curl 手测时漏带。(2) 登录门面字段是 username 非 identifier(identifier 是代码内局部变量 = body.username.strip())",
     "fix": "curl 联调三步:先 POST /api/extensions/auth/login -c jar -d '{\"username\":\"admin@eai-flow.com\",\"password\":\"Admin@2026\"}';再 CSRF=$(grep -i csrf_token jar|awk '{print $NF}');查询请求加 -H \"X-CSRF-Token: $CSRF\"。GET(list)不需 CSRF",
-    "tags": ["csrf", "data-source", "auth", "login-facade", "curl", "route-b", "e2e-verification"],
+    "tags": [
+      "csrf",
+      "data-source",
+      "auth",
+      "login-facade",
+      "curl",
+      "route-b",
+      "e2e-verification"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T09:33:00Z"
@@ -18979,9 +19014,142 @@
     "file": "frontend/src/extensions/sales-personnel/components/DashboardView.tsx (+ ChartCard.tsx/TechTooltip.tsx) — 代码正确,问题在容器",
     "root_cause": "Docker 内 Turbopack HMR 不可靠(CLAUDE.md 已警告 frontend HMR may be unreliable):src/ 虽 bind-mount 但对 DashboardView 等 3 文件的热更没吃进,容器跑的是旧版组件。typecheck/ESLint 全绿不代表页面是新码。",
     "fix": "docker compose -p eai-docker restart frontend(冷编译约 35s,首请求慢),再 navigate + wait_for + take_snapshot 验 DOM。判旧码指纹:DOM 有无 font-cyber / recharts-legend / 新增的 max-w-xs 侧栏。重启后三图全绿(标签 5.8万/5.2万/4.6万/2.6万;中心 20;侧栏 13笔65%/5笔25%/2笔10%)。",
-    "tags": ["frontend", "hmr", "docker", "recharts", "stale-code", "dataviz", "sales-personnel", "restart-frontend"],
+    "tags": [
+      "frontend",
+      "hmr",
+      "docker",
+      "recharts",
+      "stale-code",
+      "dataviz",
+      "sales-personnel",
+      "restart-frontend"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T11:05:00Z"
+  },
+  {
+    "id": "bug-1186",
+    "timestamp": "2026-08-14",
+    "error_message": "git add <spec> && git commit 误吞 index 里并发会话已 staged 的 24 个 WIP 文件(extension-api/harness/test_extension_*),且套了不匹配的 docs(bid-quote) message",
+    "file": "docs/superpowers/specs/2026-08-14-bid-quote-filter-multicompetitor-design.md",
+    "root_cause": "git commit 提交整个 index;本会话 git status 快照是会话开始时的(无 staged 项),未察觉并发会话已 stage 文件",
+    "fix": "git reset --soft HEAD~1 撤销错误 commit;git commit -m ... -- <仅目标文件> 精确提交;并发 WIP 保持 staged 不动。另:pathspec 必须放在 -m 之后、-- 之后只放路径,否则报 pathspec '-m' did not match",
+    "tags": [
+      "git",
+      "concurrent-session",
+      "staged-index",
+      "commit-hygiene",
+      "pathspec"
+    ],
+    "related_bugs": [],
+    "occurrences": 2,
+    "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-1187",
+    "timestamp": "2026-08-14",
+    "error_message": "test_gateway_lifespan_shutdown::test_shutdown_is_bounded_when_channel_stop_hangs FAILED: 15s > 7s",
+    "file": "backend/app/gateway/app.py",
+    "root_cause": "PRE-EXISTING,与 #4684 suspend 块无关(移除后仍 15.9s)。EAI temporal_lifespan 包裹 lifespan,退出时疑似 ~10s 等待叠加 5s channel hook 超时",
+    "fix": "未修(记录在案)。temporal_lifespan 关机路径需单独排查",
+    "tags": [
+      "temporal",
+      "shutdown",
+      "pre-existing",
+      "lifespan"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-1188",
+    "timestamp": "2026-08-14",
+    "error_message": "test_extension_stack_wiring 5 FAILED: cannot import SubagentDateContextMiddleware from dynamic_context_middleware",
+    "file": "backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py",
+    "root_cause": "上游 tip 的 dynamic_context_middleware(+138/-60)含 SubagentDateContextMiddleware;本地是用户并行 WIP 未含此类。不碰该文件",
+    "fix": "未修:blocked on dynamic_context_middleware 上游同步(用户 WIP)",
+    "tags": [
+      "upstream-sync",
+      "4684",
+      "dynamic-context",
+      "wip",
+      "concurrent-session"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-seed-dockerexec-venv",
+    "timestamp": "2026-08-14T13:40:00",
+    "error_message": "docker exec deer-flow-gateway python /app/backend/scripts/seed_mock_market.py 失败:1) Git Bash 路径改写为 /app/C:/Program Files/Git/...;2) 裸 python 无 asyncpg",
+    "file": "backend/scripts/seed_mock_market.py",
+    "root_cause": "宿主 Git Bash MSYS 路径转换 + gateway 容器系统 python 未装 asyncpg(asyncpg 只在 /app/backend/.venv)",
+    "fix": "MSYS_NO_PATHCONV=1 docker exec deer-flow-gateway /app/backend/.venv/bin/python /app/backend/scripts/seed_mock_market.py",
+    "tags": [
+      "docker",
+      "seed",
+      "git-bash",
+      "venv",
+      "asyncpg"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14T13:40:00"
+  },
+  {
+    "id": "bug-1189",
+    "timestamp": "2026-08-14",
+    "error_message": "41 test_extension_manager failures: uv 0.8.0+ required / git not found / CLI 'extensions' subcommand unrecognized",
+    "file": "backend/packages/harness/deerflow/tui/cli.py + container env",
+    "root_cause": "container uv 0.7.20 + no git; tui/cli.py lacked upstream #4780 'extensions' dispatch; DEER_FLOW_CONFIG_PATH container env overrides tests' tmp config",
+    "fix": "pip install uv==0.9.13 + apt git in container; checkout upstream tui/cli.py; run tests with env -u DEER_FLOW_CONFIG_PATH",
+    "tags": [
+      "upstream-sync",
+      "4780",
+      "extensions",
+      "uv",
+      "docker"
+    ],
+    "related_bugs": [
+      "bug-1186",
+      "bug-1188"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-1190",
+    "timestamp": "2026-08-14",
+    "error_message": "12 test_channels ImportErrors: cannot import name 'INBOUND_FILE_CONTENT_KEY' from app.channels.message_bus",
+    "file": "backend/app/channels/message_bus.py",
+    "root_cause": "telegram.py at upstream tip imports the constant but message_bus.py was 3 lines behind upstream",
+    "fix": "git checkout bytedance/main -- message_bus.py (restored constant)",
+    "tags": [
+      "channels",
+      "upstream-sync",
+      "partial-sync"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-1191",
+    "timestamp": "2026-08-14",
+    "error_message": "ModuleNotFoundError: deerflow.skills.skillscan.orchestrator at collection",
+    "file": "backend/packages/harness/deerflow/skills/skillscan/orchestrator.py",
+    "root_cause": "file deleted in worktree (unstaged) — likely concurrent-session git reset hazard",
+    "fix": "git checkout -- orchestrator.py",
+    "tags": [
+      "concurrent-session",
+      "git-reset",
+      "skills"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-14"
   }
 ]

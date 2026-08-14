@@ -10,6 +10,8 @@ import type {
   ChannelProvider,
   ChannelProvidersResponse,
   ChannelRuntimeConfigValues,
+  WechatBotRestartResponse,
+  WechatBotStatus,
 } from "./types";
 
 function channelsUrl(path: string): string {
@@ -107,50 +109,28 @@ export async function disconnectChannelProvider(
   return response.json() as Promise<ChannelProvider>;
 }
 
-// ── WeChat / iLink bot management ────────────────────────────────────
-
-export interface StartWechatBotBindResponse {
-  qrcode_url?: string;
+// EAI-CUSTOM: WeChat ClawBot activation status + regenerate (restart) helpers.
+export async function getWechatBotStatus(): Promise<WechatBotStatus> {
+  const response = await fetch(channelsUrl("/wechat/bot-status"));
+  if (!response.ok) {
+    await throwGatewayApiError(
+      response,
+      `Failed to load WeChat bot status: ${response.statusText}`,
+    );
+  }
+  return response.json() as Promise<WechatBotStatus>;
 }
 
-export async function startWechatBotBind(): Promise<StartWechatBotBindResponse> {
-  const base = getBackendBaseURL();
-  const res = await fetch(`${base}/api/channels/wechat/bind`, {
+export async function restartWechatChannel(): Promise<WechatBotRestartResponse> {
+  const response = await fetch(channelsUrl("/wechat/restart"), {
     method: "POST",
   });
-  if (!res.ok) {
-    await throwGatewayApiError(res, "Failed to start WeChat bot bind");
+  if (!response.ok) {
+    await throwGatewayApiError(
+      response,
+      `Failed to restart WeChat channel: ${response.statusText}`,
+    );
   }
-  return res.json();
+  return response.json() as Promise<WechatBotRestartResponse>;
 }
 
-export async function getWechatBotBindStatus(): Promise<import("./types").WechatBotBindStatus> {
-  const base = getBackendBaseURL();
-  const res = await fetch(`${base}/api/channels/wechat/bind-status`);
-  if (!res.ok) {
-    await throwGatewayApiError(res, "Failed to get WeChat bind status");
-  }
-  return res.json();
-}
-
-export async function createWechatBindCode(): Promise<import("./types").WechatBindCodeResponse> {
-  const base = getBackendBaseURL();
-  const res = await fetch(`${base}/api/channels/wechat/bind-code`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    await throwGatewayApiError(res, "Failed to create WeChat bind code");
-  }
-  return res.json();
-}
-
-export async function refreshWechatShareQrcode(): Promise<import("./types").WechatShareQrcodeResponse> {
-  const base = getBackendBaseURL();
-  const res = await fetch(`${base}/api/channels/wechat/share-qrcode`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    await throwGatewayApiError(res, "Failed to refresh WeChat share QR code");
-  }
-  return res.json();
-}

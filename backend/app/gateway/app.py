@@ -59,7 +59,6 @@ from app.gateway.routers import (
     threads,
     ui,
     uploads,
-    wechat_bot,
 )
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.config.app_config import apply_logging_level
@@ -334,6 +333,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to initialize scheduled task service")
 
+            # Start MCP task service (constructed once; background poll loop
+            # only when mcp_tasks.enabled). Upstream #4665.
+            try:
+                from app.mcp_tasks import McpTaskService
+                from deerflow.mcp.tasks import McpTaskDriverRegistry
+
+                if getattr(app.state, "mcp_task_repo", None) is not None:
+                    mcp_task_drivers = McpTaskDriverRegistry()
+                    mcp_task_service = McpTaskService(
+                        repository=app.state.mcp_task_repo,
+                        drivers=mcp_task_drivers,
+                        poll_interval_seconds=startup_config.mcp_tasks.poll_interval_seconds,
+                        lease_seconds=startup_config.mcp_tasks.lease_seconds,
+                        max_concurrent_polls=startup_config.mcp_tasks.max_concurrent_polls,
+                    )
+                    app.state.mcp_task_drivers = mcp_task_drivers
+                    app.state.mcp_task_service = mcp_task_service
+                    if startup_config.mcp_tasks.enabled:
+                        await mcp_task_service.start()
+            except Exception:
+                logger.exception("Failed to initialize MCP task service")
+
             yield
 
             # Stop channel service on shutdown (bounded to prevent worker hang)
@@ -352,11 +373,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to stop channel service")
 
+            if getattr(app.state, "scheduled_task_service", None) is not None:
+                try:
+                    await app.state.scheduled_task_service.stop()
+                except Exception:
+                    logger.exception("Failed to stop scheduled task service")
+
+            if getattr(app.state, "mcp_task_service", None) is not None:
+                try:
+                    await app.state.mcp_task_service.stop()
+                except Exception:
+                    logger.exception("Failed to stop MCP task service")
+
             # Drain the memory update queue's pending buffer before exit (best-effort,
             # bounded). IM channels are already stopped above, so no new IM updates
             # arrive during the drain. Without this, anything enqueued since the last
             # debounce Timer fire is lost on restart / SIGTERM — the queue is pure
             # in-memory and the Timer is a daemon thread. Upstream #4181.
+            try:
+                # Memory shutdown runs on a worker thread and can trigger detached
+                # system-model callbacks. Stop accepting those callbacks before
+                # flushing, while keeping the registered loop alive for awaited
+                # task hooks until langgraph_runtime drains runs and subagents.
+                from deerflow.extensions.notify import suspend_extension_system_observations
+
+                suspend_extension_system_observations()
+            except Exception:
+                logger.debug("Failed to suspend extension system observations (non-fatal)", exc_info=True)
+
             try:
                 app_cfg = get_app_config()
                 if app_cfg.memory.enabled:
@@ -490,6 +534,45 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             expose_headers=list(CORS_EXPOSED_HEADERS),
         )
 
+    # Python extensions load once while the Gateway app is constructed. Agent
+    # middleware builders consume the same immutable set through the process
+    # singleton; app.state exposes it to the Gateway runtime. (Upstream #4780)
+    from deerflow.extensions import (
+        EMPTY_EXTENSIONS,
+        ExtensionLoadError,
+        initialize_runtime_diagnostics,
+        load_extensions,
+        record_runtime_diagnostics,
+        set_loaded_extensions,
+    )
+
+    # Resolving the configured plugin list is deliberately outside the
+    # fail-open guard below: a config.yaml that exists but cannot be parsed or
+    # validated is a configuration failure, not an extension failure. Reporting
+    # it as the latter would silently drop a `required: true` extension instead
+    # of failing the boot. Only an absent config.yaml is tolerated, mirroring
+    # _resolve_trace_enabled_for_app_construction() — create_app() runs at
+    # import time, and lifespan still performs strict config loading before
+    # serving.
+    try:
+        configured_plugins = get_app_config().plugins
+    except FileNotFoundError:
+        logger.debug("config.yaml not found while constructing Gateway app; loading no extensions for this app instance")
+        configured_plugins = []
+
+    try:
+        loaded_extensions, extension_diagnostics = load_extensions(configured_plugins)
+    except ExtensionLoadError:
+        # `required: true` makes the extension part of the startup contract.
+        # Booting without it would silently change configured behaviour.
+        raise
+    except Exception:
+        logger.exception("Extension loading failed; continuing with no extensions")
+        loaded_extensions, extension_diagnostics = EMPTY_EXTENSIONS, []
+    set_loaded_extensions(loaded_extensions)
+    app.state.extensions = loaded_extensions
+    app.state.extension_diagnostics = initialize_runtime_diagnostics(extension_diagnostics)
+
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
@@ -526,7 +609,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
     app.include_router(channel_connections.router)
-    app.include_router(wechat_bot.router)
 
     # Assistants compatibility API (LangGraph Platform stub)
     app.include_router(assistants_compat.router)
@@ -631,6 +713,15 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             Service health status information.
         """
         return {"status": "healthy", "service": "deer-flow-gateway"}
+
+    # Extension routes are deliberately last: FastAPI/Starlette dispatches in
+    # registration order, so every host route (including conditional routes
+    # and /health) keeps precedence. Definite shadows are rejected with an
+    # attributed diagnostic while unrelated extension routers still mount.
+    # (Upstream #4780)
+    from deerflow.extensions.gateway import include_contributed_routers
+
+    record_runtime_diagnostics(include_contributed_routers(app, loaded_extensions))
 
     return app
 

@@ -16,6 +16,7 @@ from starlette.types import ASGIApp
 
 from app.gateway.auth.config import get_auth_config
 from app.gateway.auth_disabled import is_auth_disabled
+from app.gateway.request_path import get_request_route_path
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -32,18 +33,31 @@ def generate_csrf_token() -> str:
     return secrets.token_urlsafe(CSRF_TOKEN_LENGTH)
 
 
+# State-changing HTTP methods that require CSRF validation (upstream #4780).
+_CSRF_STATE_CHANGING_METHODS: frozenset[str] = frozenset({"POST", "PUT", "DELETE", "PATCH"})
+
+# Host-owned endpoints that implement their own request posture and are
+# exempt from the double-submit cookie check (upstream #4780).
+_CSRF_EXEMPT_EXACT_PATHS: frozenset[str] = frozenset({"/api/v1/auth/me"})
+
+
 def should_check_csrf(request: Request) -> bool:
     """Determine if a request needs CSRF validation.
 
     CSRF is checked for state-changing methods (POST, PUT, DELETE, PATCH).
     GET, HEAD, OPTIONS, and TRACE are exempt per RFC 7231.
     """
-    if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
+    if request.method not in _CSRF_STATE_CHANGING_METHODS:
         return False
 
-    path = request.url.path.rstrip("/")
-    # Exempt /api/v1/auth/me endpoint
-    if path == "/api/v1/auth/me":
+    route_path = get_request_route_path(request)
+    path = route_path.rstrip("/")
+    # Exempt host-owned endpoints that implement their own request posture.
+    if path in _CSRF_EXEMPT_EXACT_PATHS:
+        return False
+    # Inbound webhooks authenticate themselves via provider-specific
+    # signatures (upstream #4780).
+    if route_path.startswith("/api/webhooks/"):
         return False
     return True
 
@@ -85,7 +99,7 @@ def is_auth_endpoint(request: Request) -> bool:
 
     Auth endpoints don't need CSRF validation on first call (no token).
     """
-    return request.url.path.rstrip("/") in _AUTH_EXEMPT_PATHS
+    return get_request_route_path(request).rstrip("/") in _AUTH_EXEMPT_PATHS
 
 
 def _host_with_optional_port(hostname: str, port: int | None, scheme: str) -> str:
@@ -211,7 +225,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         _is_auth = is_auth_endpoint(request)
-        _is_csrf_exempt = request.url.path.rstrip("/") in _CSRF_EXEMPT_PATHS
+        _route_path = get_request_route_path(request).rstrip("/")
+        _is_csrf_exempt = _route_path in _CSRF_EXEMPT_PATHS
 
         if should_check_csrf(request) and _is_auth and not is_allowed_auth_origin(request):
             return JSONResponse(
@@ -219,8 +234,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Cross-site auth request denied."},
             )
 
-        _path = request.url.path.rstrip("/")
-        _is_prefix_exempt = _path.startswith(_CSRF_EXEMPT_PREFIXES)
+        _is_prefix_exempt = _route_path.startswith(_CSRF_EXEMPT_PREFIXES)
 
         if should_check_csrf(request) and not _is_auth and not _is_csrf_exempt and not _is_prefix_exempt:
             cookie_token = request.cookies.get(CSRF_COOKIE_NAME)

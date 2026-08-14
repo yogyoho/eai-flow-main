@@ -903,6 +903,21 @@ class ChannelManager:
         thread_id = await self._lookup_thread_id(msg)
         if thread_id:
             logger.info("[Manager] reusing thread: thread_id=%s for topic_id=%s", thread_id, msg.topic_id)
+            # EAI-CUSTOM: the stored mapping may reference a thread that has
+            # since been deleted (e.g. a stale conversation from a previous bot
+            # session). Validate it still exists; drop the mapping so a fresh
+            # thread is created below instead of failing the run with a 404.
+            try:
+                await client.threads.get(thread_id)
+            except Exception as exc:
+                resp = getattr(exc, "response", None)
+                if resp is not None and resp.status_code == 404:
+                    logger.warning(
+                        "[Manager] stored thread no longer exists, creating a new one: thread_id=%s", thread_id
+                    )
+                    thread_id = None
+                else:
+                    raise
 
         # No existing thread found — create a new one
         if thread_id is None:
@@ -958,6 +973,18 @@ class ChannelManager:
                 raise
 
         response_text = _extract_response_text(result)
+        if not response_text:
+            # EAI-CUSTOM: runs.wait returns a materialized state snapshot that
+            # omits the 'messages' channel, so _extract_response_text above can
+            # come back empty even though the agent did respond. Fall back to
+            # fetching the thread's latest state to relay the response.
+            try:
+                _history = await client.threads.get_history(thread_id, limit=1)
+                if _history:
+                    _msgs = (_history[0].get("values") or {}).get("messages", [])
+                    response_text = _extract_response_text(_msgs)
+            except Exception:
+                logger.exception("[Manager] failed to fetch thread messages for response relay")
         pending_clarification = _has_current_turn_clarification(result)
         artifacts = _extract_artifacts(result)
 
@@ -1111,30 +1138,10 @@ class ChannelManager:
             await self._handle_chat(chat_msg, extra_context={"is_bootstrap": True})
             return
 
-        if command == "connect":
-            # User-binding flow: link this sender's platform identity to the
-            # DeerFlow account that issued the binding code. Reuses the
-            # channel_connections persistence (provider = channel name).
-            code = parts[1].strip() if len(parts) > 1 else ""
-            if self._connection_repo is None or not code:
-                reply = "绑定不可用。请在设置 → 微信中获取绑定码并发送：/connect <code>。"
-            else:
-                try:
-                    owner = await self._connection_repo.consume_oauth_state(provider=msg.channel_name, state=code)
-                except Exception:
-                    logger.exception("绑定渠道失败，无法获取绑定码")
-                    owner = None
-                if owner is None:
-                    reply = "无效或过期的绑定码。请在设置 → 微信中获取新的绑定码。"
-                else:
-                    await self._connection_repo.upsert_connection(
-                        provider=msg.channel_name,
-                        external_account_id=msg.user_id,
-                        owner_user_id=owner["owner_user_id"],
-                        status="connected",
-                    )
-                    reply = "已连接到您的企业AI智能体账户。发送消息即可开始聊天。"
-        elif command == "new":
+        # EAI-CUSTOM (aligned with upstream): /connect is now handled inside the
+        # WeChat channel (_handle_update -> _bind_connection_from_connect_code),
+        # so the manager no longer needs a connect branch here.
+        if command == "new":
             # Create a new thread on the LangGraph Server
             client = self._get_client(self._resolve_owner_user_id(msg))
             thread = await client.threads.create()

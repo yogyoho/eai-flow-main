@@ -74,7 +74,9 @@
         "-m",
         "app.extensions.data_source.mcp"
       ],
-      "env": {},
+      "env": {
+        "DATA_SOURCE_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
       "cwd": "/app/backend",
       "url": null,
       "headers": {},
@@ -224,6 +226,9 @@
       "enabled": true
     },
     "spare-parts-analysis": {
+      "enabled": true
+    },
+    "bid-quote-analysis": {
       "enabled": true
     },
     "plugin-dbd709b2-f795-45a6-8ee5-d4360ca671b7": {

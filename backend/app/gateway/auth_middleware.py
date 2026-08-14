@@ -18,6 +18,7 @@ from starlette.types import ASGIApp
 
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
 from app.gateway.authz import _ALL_PERMISSIONS, AuthContext
+from app.gateway.request_path import get_request_route_path
 from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, INTERNAL_OWNER_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
 from deerflow.config.paths import make_safe_user_id
 from deerflow.runtime.user_context import reset_current_user, set_current_user
@@ -33,6 +34,9 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     # OAuth endpoints are public (redirect flow + provider callback).
     "/api/v1/auth/oauth/",
     "/api/v1/auth/callback/",
+    # Inbound webhooks authenticate themselves via provider-specific signatures
+    # (upstream #4780).
+    "/api/webhooks/",
     # EAI-CUSTOM: EAI SSO OIDC 发起/回调（无会话时也要可达）
     "/api/extensions/auth/oidc/",
 )
@@ -95,7 +99,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if _is_public(request.url.path):
+        # Route-path projection (upstream #4780): resolve the matched route's
+        # template path instead of the raw URL so extension-contributed routes
+        # mounted under a public prefix keep host auth semantics.
+        if _is_public(get_request_route_path(request)):
             return await call_next(request)
 
         internal_user = None

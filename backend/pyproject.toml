@@ -11,6 +11,11 @@ dependencies = [
     "python-multipart>=0.0.27",
     "sse-starlette>=2.1.0",
     "uvicorn[standard]>=0.34.0",
+    # Direct dependency on purpose, even though FastAPI already pulls it in:
+    # app/gateway/request_path.py imports the private
+    # `starlette._utils.get_route_path` so the auth and CSRF predicates
+    # classify the exact string Starlette's router matches on (upstream #4780).
+    "starlette>=1.3.1,<2",
     "lark-oapi>=1.4.0",
     "slack-sdk>=3.33.0",
     "python-telegram-bot>=21.0",
@@ -51,6 +56,11 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "ruff>=0.14.11",
 ]
+# Managed extension packages are added here by `deerflow extensions install`
+# (upstream #4780). Keeping them separate from development tooling lets every
+# startup mode sync the same locked runtime set without promoting those
+# packages to core deps.
+extensions = []
 
 [tool.pytest.ini_options]
 markers = [
@@ -60,6 +70,7 @@ markers = [
 
 [tool.uv]
 index-url = "https://pypi.org/simple"
+default-groups = ["dev", "extensions"]
 # Pin these transitive deps to bytedance/main exact versions.
 # 2026-07-23: upgraded to langchain 1.3.14 + langgraph 1.2.9 (#4292 DeltaChannel).
 # Removed langchain-core==1.3.3 constraint (now 1.4.9 via langchain 1.3.14).

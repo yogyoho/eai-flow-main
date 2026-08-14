@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -112,7 +114,15 @@ _CREDENTIAL_FIELDS: dict[str, tuple[dict[str, str], ...]] = {
         {"name": "client_id", "label": "Client ID", "type": "text"},
         {"name": "client_secret", "label": "Client secret", "type": "password"},
     ),
-    "wechat": ({"name": "bot_token", "label": "Bot token", "type": "password"},),
+    # EAI-CUSTOM START: wechat binding-code needs no pasted credentials (bug-1176)
+    # WeChat/iLink is QR-based: bot_token is auto-fetched into wechat-auth.json by
+    # channels.wechat (QR login), NOT admin-pasted. So wechat exposes NO credential
+    # form here — the 渠道 tab offers a direct binding-code flow, and "configured"
+    # is simply "the QR-activated wechat channel is running" (gated separately by
+    # _runtime_channel_running). Upgrade note: if upstream ever adds a pasted-cred
+    # wechat flow, revisit both this and _RUNTIME_REQUIREMENTS["wechat"].
+    "wechat": (),
+    # EAI-CUSTOM END
     "wecom": (
         {"name": "bot_id", "label": "Bot ID", "type": "text"},
         {"name": "bot_secret", "label": "Bot secret", "type": "password"},
@@ -125,7 +135,11 @@ _RUNTIME_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "discord": ("bot_token",),
     "feishu": ("app_id", "app_secret"),
     "dingtalk": ("client_id", "client_secret"),
-    "wechat": ("bot_token",),
+    # EAI-CUSTOM: wechat has no pasted runtime creds (QR-activated — see
+    # _CREDENTIAL_FIELDS above, bug-1176). Empty so _runtime_channel_configured
+    # passes from channels.wechat's enabled flag alone; the live-channel gate
+    # (_runtime_channel_running) still rejects a non-running bot.
+    "wechat": (),
     "wecom": ("bot_id", "bot_secret"),
 }
 
@@ -695,72 +709,89 @@ async def configure_channel_provider_runtime(
     return _provider_response(config, live_channels_config, provider, _PROVIDER_META[provider])
 
 
-# ── WeChat iLink bot management ────────────────────────────────────────
-
-class WechatBindStatusResponse(BaseModel):
+# EAI-CUSTOM START: WeChat ClawBot activation-status endpoint (bug-1173)
+# Surfaces the bot-activation QR + status that WechatChannel persists to
+# {state_dir}/wechat-auth.json, so users can scan to activate ClawBot from the
+# Settings UI instead of digging through gateway logs. Read-only and sanitized:
+# NEVER returns bot_token / ilink_bot_id / raw qrcode token. Upstream
+# wechat.py (byte-identical with bytedance/main) is untouched — this only
+# reads the file it already writes. Upgrade note: if upstream renames the
+# auth-state file or its fields, update _load_wechat_auth_state / _sanitize.
+class WechatBotStatusResponse(BaseModel):
+    qrcode_login_enabled: bool
     status: str
-    bound: bool
+    bot_bound: bool
     qrcode_url: str | None = None
+    updated_at: int | None = None
 
 
-class WechatBindCodeResponse(BaseModel):
-    code: str
-    instruction: str
+def _load_wechat_auth_state(auth_path: Path | None) -> dict[str, Any] | None:
+    """Read + parse the wechat auth-state file; None if missing or unreadable.
+
+    Intended to be called via ``asyncio.to_thread`` — it performs sync file IO.
+    """
+    if auth_path is None:
+        return None
+    try:
+        if not auth_path.exists():
+            return None
+        data = json.loads(auth_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("[channel-connections] failed to read wechat auth state from %s", auth_path)
+        return None
+    return data if isinstance(data, dict) else None
 
 
-class WechatShareQrcodeResponse(BaseModel):
-    qrcode_img_content: str
+def _sanitize_wechat_bot_status(data: dict[str, Any] | None) -> dict[str, Any]:
+    """Build the public bot-status view from the raw auth-state dict.
+
+    Drops every secret. ``qrcode_url`` is surfaced only while ``pending`` so a
+    stale image from a later state is never shown.
+    """
+    if not isinstance(data, dict):
+        return {"status": "none", "bot_bound": False, "qrcode_url": None, "updated_at": None}
+    status = str(data.get("status") or "").strip().lower() or "none"
+    bot_token = data.get("bot_token")
+    # A persisted bot_token is the durable proof of activation. The QR-login
+    # flow writes status="expired"/"timeout" *without* clearing a previously
+    # stored token (wechat.py::_save_auth_state keeps self._bot_token via the
+    # `elif self._bot_token` merge branch), so status can be stale even while
+    # the bot is fully activated. iLink only truly invalidates the token on
+    # errcode==-14, which pops it. Trust the token, not the transient status.
+    bot_bound = isinstance(bot_token, str) and bool(bot_token.strip())
+    qrcode_img = data.get("qrcode_img_content")
+    qrcode_url = str(qrcode_img).strip() if status == "pending" and isinstance(qrcode_img, str) and qrcode_img.strip() else None
+    updated_at = data.get("updated_at")
+    return {
+        "status": status,
+        "bot_bound": bot_bound,
+        "qrcode_url": qrcode_url,
+        "updated_at": int(updated_at) if isinstance(updated_at, (int, float)) else None,
+    }
 
 
-def _get_wechat_channel(request: Request):
-    """Return the live WeChat channel instance, or raise 404."""
-    from app.channels.wechat import WechatChannel
+@router.get("/wechat/bot-status", response_model=WechatBotStatusResponse)
+async def get_wechat_bot_status(request: Request) -> WechatBotStatusResponse:
+    """Return the WeChat ClawBot activation status (+ QR image URL when pending).
 
-    channel_service = getattr(request.app.state, "channel_service", None)
-    if channel_service is None:
-        raise HTTPException(status_code=503, detail="Channel service not available")
-    wechat = channel_service.get_channel("wechat")
-    if wechat is None or not isinstance(wechat, WechatChannel):
-        raise HTTPException(status_code=404, detail="WeChat channel not configured or not running")
-    return wechat
-
-
-@router.post("/wechat/bind", response_model=dict)
-async def start_wechat_bind(request: Request):
-    """Admin: start (or restart) the WeChat QR code bind flow."""
-    await require_admin_user(request, detail="Admin privileges required to manage WeChat bot binding")
-    wechat = _get_wechat_channel(request)
-    await wechat.start_bind()
-    state = wechat.get_bind_state()
-    return {"qrcode_url": state.get("qrcode_img_content")}
-
-
-@router.get("/wechat/bind-status", response_model=WechatBindStatusResponse)
-async def get_wechat_bind_status(request: Request):
-    """Get the current WeChat bot bind status."""
-    wechat = _get_wechat_channel(request)
-    state = wechat.get_bind_state()
-    return WechatBindStatusResponse(
-        status=state.get("status", "unbound"),
-        bound=state.get("status") == "confirmed",
-        qrcode_url=state.get("qrcode_img_content"),
-    )
+    Visible to any authenticated user: ordinary users scan the pending QR to
+    activate the bot, so this must not be admin-gated. Regeneration is a
+    separate admin-only action handled by the existing
+    ``POST /api/channels/wechat/restart`` endpoint (channels.py), not here.
+    """
+    _get_user_id(request)  # enforce authentication
+    channels_config = await _get_channels_config(request)
+    wechat_cfg = channels_config.get("wechat") if isinstance(channels_config, dict) else None
+    if isinstance(wechat_cfg, dict):
+        qrcode_login_enabled = bool(wechat_cfg.get("qrcode_login_enabled"))
+        raw_state_dir = wechat_cfg.get("state_dir")
+        auth_path = Path(raw_state_dir).expanduser() / "wechat-auth.json" if isinstance(raw_state_dir, str) and raw_state_dir.strip() else None
+    else:
+        qrcode_login_enabled = False
+        auth_path = None
+    data = await asyncio.to_thread(_load_wechat_auth_state, auth_path)
+    view = _sanitize_wechat_bot_status(data)
+    return WechatBotStatusResponse(qrcode_login_enabled=qrcode_login_enabled, **view)
 
 
-@router.post("/wechat/bind-code", response_model=WechatBindCodeResponse)
-async def create_wechat_bind_code(request: Request):
-    """Generate a one-time /connect <code> for WeChat user account linking."""
-    code = _new_binding_code()
-    instruction = _connect_instruction("wechat", code)
-    return WechatBindCodeResponse(code=code, instruction=instruction)
-
-
-@router.post("/wechat/share-qrcode", response_model=WechatShareQrcodeResponse)
-async def refresh_wechat_share_qrcode(request: Request):
-    """Generate a fresh WeChat share QR code for adding the bot."""
-    wechat = _get_wechat_channel(request)
-    result = await wechat.fetch_share_qrcode()
-    qrcode_img = result.get("qrcode_img_content", "")
-    if not qrcode_img:
-        raise HTTPException(status_code=500, detail="Failed to fetch WeChat share QR code")
-    return WechatShareQrcodeResponse(qrcode_img_content=qrcode_img)
+# EAI-CUSTOM END

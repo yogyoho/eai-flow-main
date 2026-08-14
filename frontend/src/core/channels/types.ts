@@ -52,17 +52,28 @@ export interface ChannelConnectResponse {
   expires_in: number;
 }
 
-export interface WechatBotBindStatus {
-  status: "unbound" | "pending" | "confirmed" | "expired";
-  bound: boolean;
-  qrcode_url?: string;
+// EAI-CUSTOM: WeChat ClawBot activation status (mirrors backend
+// WechatBotStatusResponse). The bot-activation QR surfaced from the auth-state
+// file; secrets (bot_token / ilink_bot_id) are never included.
+export type WechatBotStatusValue =
+  | "none"
+  | "pending"
+  | "confirmed"
+  | "expired"
+  | "timeout"
+  | "canceled"
+  | "invalid"
+  | "failed";
+
+export interface WechatBotStatus {
+  qrcode_login_enabled: boolean;
+  status: WechatBotStatusValue;
+  bot_bound: boolean;
+  qrcode_url: string | null;
+  updated_at: number | null;
 }
 
-export interface WechatBindCodeResponse {
-  code: string;
-  instruction: string;
-}
-
-export interface WechatShareQrcodeResponse {
-  qrcode_img_content: string;
+export interface WechatBotRestartResponse {
+  success: boolean;
+  message: string;
 }

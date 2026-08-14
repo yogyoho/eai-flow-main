@@ -4,229 +4,200 @@ import {
   CheckCircle2Icon,
   LoaderCircleIcon,
   QrCodeIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/core/auth/AuthProvider";
 import {
-  useCreateWechatBindCode,
-  useRefreshWechatShareQrcode,
-  useStartWechatBotBind,
-  useWechatBotBindStatus,
+  useConnectChannelProvider,
+  useRestartWechatChannel,
+  useWechatBotStatus,
 } from "@/core/channels/hooks";
-import type {
-  WechatBindCodeResponse,
-  WechatShareQrcodeResponse,
-} from "@/core/channels/types";
+import type { ChannelConnectResponse } from "@/core/channels/types";
 import { useI18n } from "@/core/i18n/hooks";
-import { cn } from "@/lib/utils";
 
 import { SettingsSection } from "./settings-section";
 
-export function WechatSettingsPage() {
+// EAI-CUSTOM: ClawBot activation card. Surfaces the bot-activation QR + status
+// read from the gateway auth-state file so users can scan to activate without
+// digging through logs. Regenerate is admin-only (POST /wechat/restart).
+function BotStatusCard() {
   const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = user?.system_role === "admin";
-  const { data: bindStatus, isLoading: statusLoading } =
-    useWechatBotBindStatus(true);
-  const startBind = useStartWechatBotBind();
-  const createCode = useCreateWechatBindCode();
-  const refreshShareQr = useRefreshWechatShareQrcode();
-  const [code, setCode] = useState<WechatBindCodeResponse | null>(null);
-  const [shareQr, setShareQr] = useState<WechatShareQrcodeResponse | null>(
-    null,
-  );
+  const { status, isLoading } = useWechatBotStatus();
+  const restart = useRestartWechatChannel();
 
-  const status = bindStatus?.status;
-  const isPending = status === "pending";
-  const isBound = bindStatus?.bound === true;
+  // QR-login disabled: the operator must configure bot_token instead.
+  if (status && !status.qrcode_login_enabled) {
+    return (
+      <div className="bg-muted space-y-1 rounded-md border p-3 text-sm">
+        <div className="font-medium">{t.settings.wechat.botStatusTitle}</div>
+        <div className="text-muted-foreground">
+          {t.settings.wechat.botQrLoginDisabled}
+        </div>
+      </div>
+    );
+  }
+
+  const confirmed = status?.bot_bound === true;
+  // A lingering bot_token means the bot is activated even if the QR-flow
+  // status is stale (expired/timeout); don't show a stale QR in that case.
+  const pending = !confirmed && status?.status === "pending";
+  const expiredLike =
+    status?.status === "expired" || status?.status === "timeout";
+
+  return (
+    <div className="bg-muted space-y-3 rounded-md border p-3 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-medium">{t.settings.wechat.botStatusTitle}</div>
+          <div className="text-muted-foreground mt-0.5">
+            {confirmed
+              ? t.settings.wechat.botActive
+              : pending
+                ? t.settings.wechat.botPending
+                : expiredLike
+                  ? t.settings.wechat.botExpired
+                  : t.settings.wechat.botNeedsActivation}
+          </div>
+        </div>
+        {isLoading ? (
+          <LoaderCircleIcon className="text-muted-foreground h-4 w-4 animate-spin" />
+        ) : confirmed ? (
+          <CheckCircle2Icon className="h-5 w-5 text-emerald-500" />
+        ) : (
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+        )}
+      </div>
+
+      {pending && status?.qrcode_url ? (
+        <div className="flex flex-col items-center gap-2 py-1">
+          <img
+            alt="WeChat ClawBot QR"
+            src={status.qrcode_url}
+            className="h-48 w-48 rounded-md border bg-white"
+          />
+          <div className="text-muted-foreground text-xs">
+            {t.settings.wechat.botScanHint}
+          </div>
+        </div>
+      ) : null}
+
+      {!confirmed && !pending ? (
+        <div className="flex items-center justify-end gap-3">
+          {!isAdmin ? (
+            <div className="text-muted-foreground text-xs">
+              {t.settings.wechat.botAskAdmin}
+            </div>
+          ) : null}
+          {isAdmin ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={restart.isPending}
+              onClick={() => {
+                void restart
+                  .mutateAsync()
+                  .then((res) => {
+                    toast.success(res.message);
+                  })
+                  .catch((error) => {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : t.settings.wechat.linkFailed,
+                    );
+                  });
+              }}
+            >
+              {restart.isPending ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <RefreshCwIcon />
+              )}
+              {restart.isPending
+                ? t.settings.wechat.botRegenerating
+                : t.settings.wechat.botRegenerate}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function WechatSettingsPage() {
+  const { t } = useI18n();
+  const connect = useConnectChannelProvider();
+  const [result, setResult] = useState<ChannelConnectResponse | null>(null);
 
   return (
     <SettingsSection
       title={t.settings.wechat.title}
       description={t.settings.wechat.description}
     >
-      {/* User: link their WeChat to this account */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm font-medium">
-              {t.settings.wechat.linkTitle}
-            </div>
-            <div className="text-muted-foreground text-sm">
-              {t.settings.wechat.linkDescription}
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            disabled={createCode.isPending}
-            onClick={() => {
-              void createCode
-                .mutateAsync()
-                .then((res) => {
-                  setCode(res);
-                  toast.success(res.instruction);
-                })
-                .catch((error) => {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : t.settings.wechat.linkFailed,
-                  );
-                });
-            }}
-          >
-            {createCode.isPending ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : (
-              <QrCodeIcon />
-            )}
-            {t.settings.wechat.getCode}
-          </Button>
-        </div>
-        {code ? (
-          <div className="bg-muted rounded-md border p-3 text-sm">
-            <div className="font-mono text-base font-semibold">
-              {`/connect ${code.code}`}
-            </div>
-            <div className="text-muted-foreground mt-1">
-              {t.settings.wechat.codeHint}
-            </div>
-          </div>
-        ) : null}
-      </div>
+      <div className="space-y-4">
+        <BotStatusCard />
 
-      {/* Admin: bind/rebind the bot */}
-      {isAdmin ? (
-        <div className="space-y-3 border-t pt-6">
+        {/* User: link their WeChat to this account */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                {t.settings.wechat.botTitle}
-                <Badge
-                  variant={isBound ? "default" : "outline"}
-                  className={cn(!isBound && "text-muted-foreground")}
-                >
-                  {isBound ? (
-                    <CheckCircle2Icon />
-                  ) : (
-                    <QrCodeIcon />
-                  )}
-                  {isBound
-                    ? t.settings.wechat.bound
-                    : isPending
-                      ? t.settings.wechat.pending
-                      : t.settings.wechat.unbound}
-                </Badge>
+              <div className="text-sm font-medium">
+                {t.settings.wechat.linkTitle}
               </div>
               <div className="text-muted-foreground text-sm">
-                {t.settings.wechat.botDescription}
+                {t.settings.wechat.linkDescription}
               </div>
             </div>
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              disabled={startBind.isPending}
+              disabled={connect.isPending}
               onClick={() => {
-                void startBind
-                  .mutateAsync()
-                  .then(() => toast.success(t.settings.wechat.bindStarted))
+                void connect
+                  .mutateAsync("wechat")
+                  .then((res) => {
+                    setResult(res);
+                    toast.success(res.instruction);
+                  })
                   .catch((error) => {
                     toast.error(
                       error instanceof Error
                         ? error.message
-                        : t.settings.wechat.bindFailed,
+                        : t.settings.wechat.linkFailed,
                     );
                   });
               }}
             >
-              {startBind.isPending ? (
+              {connect.isPending ? (
                 <LoaderCircleIcon className="animate-spin" />
               ) : (
                 <QrCodeIcon />
               )}
-              {isBound ? t.settings.wechat.rebind : t.settings.wechat.bind}
+              {t.settings.wechat.getCode}
             </Button>
           </div>
-          {isPending && bindStatus?.qrcode_url ? (
-            <a
-              href={bindStatus.qrcode_url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-primary inline-flex items-center gap-1 text-sm underline"
-            >
-              <QrCodeIcon className="size-4" />
-              {t.settings.wechat.openQr}
-            </a>
-          ) : null}
-          {isBound ? (
-            <div className="bg-muted/40 rounded-md border p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">
-                    {t.settings.wechat.shareQrTitle}
-                  </div>
-                  <div className="text-muted-foreground mt-1 text-sm">
-                    {t.settings.wechat.shareQrDescription}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={refreshShareQr.isPending}
-                  onClick={() => {
-                    void refreshShareQr
-                      .mutateAsync()
-                      .then((res) => {
-                        setShareQr(res);
-                        toast.success(t.settings.wechat.shareQrTitle);
-                      })
-                      .catch((error) => {
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : t.settings.wechat.bindFailed,
-                        );
-                      });
-                  }}
-                >
-                  {refreshShareQr.isPending ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <QrCodeIcon />
-                  )}
-                  {t.settings.wechat.refreshShareQr}
-                </Button>
+          {result ? (
+            <div className="bg-muted rounded-md border p-3 text-sm">
+              <div className="font-mono text-base font-semibold">
+                {`/connect ${result.code}`}
               </div>
-              {shareQr?.qrcode_img_content ? (
-                <a
-                  href={shareQr.qrcode_img_content}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary mt-3 inline-flex items-center gap-1 text-sm underline"
-                >
-                  <QrCodeIcon className="size-4" />
-                  {t.settings.wechat.openQr}
-                </a>
-              ) : null}
-              <div className="text-muted-foreground mt-2 text-xs">
-                {t.settings.wechat.shareQrFreshHint}
+              <div className="text-muted-foreground mt-1">
+                {t.settings.wechat.codeHint}
               </div>
             </div>
           ) : null}
-          {statusLoading ? (
-            <div className="text-muted-foreground text-sm">
-              {t.common.loading}
-            </div>
-          ) : null}
+          <div className="text-muted-foreground text-xs">
+            {t.settings.wechat.addBotHint}
+          </div>
         </div>
-      ) : null}
+      </div>
     </SettingsSection>
   );
 }

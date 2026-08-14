@@ -16,6 +16,11 @@ _SCRIPT = _SKILL / "scripts" / "formula_runner.py"
 _CHAPTER_PLANNER = _SKILL / "scripts" / "chapter_planner.py"
 _FORMULAS = _SKILL / "references" / "formulas.json"
 
+# 导入 formula_runner 模块以单测 _resolve_backend（bug-1168 回归）。scripts 目录加入 sys.path。
+sys.path.insert(0, str(_SKILL / "scripts"))
+import formula_runner  # noqa: E402
+import pytest  # noqa: E402
+
 # 已知好的完整参数集（与 SKILL.md 一致）；Q=20000 是基准。
 _GOOD_PARAMS = json.dumps(
     {
@@ -120,3 +125,50 @@ class TestImpactedEndToEnd:
         assert ri.returncode == 0, ri.stderr
         result = json.loads(out.read_text(encoding="utf-8"))
         assert result["affected_formulas"] == []
+
+
+class TestResolveBackend:
+    """bug-1168 回归：_resolve_backend 必须在宿主 + 容器两种布局下都定位到 backend。
+
+    容器内 agent 走 /mnt/skills → skills_view 投影，脚本物理路径为
+    /app/backend/.deer-flow/skills_view/public/.../scripts/。旧代码写死 parents[4] 在此处
+    指向 .deer-flow（无 backend），import app 直接失败 → formula_runner trace/check 全部
+    不可用 → agent 无法跑规范管线 → 陷入反复 ask_clarification 的死循环（反馈3/4/5/6/7 在
+    页面全失效）。改为向上搜索「含 app/extensions/formula_engine 的目录」后两种布局都命中。
+    """
+
+    def test_host_layout(self, tmp_path):
+        """宿主：<repo>/backend/app/extensions/formula_engine，脚本在 <repo>/skills/public/.../scripts。"""
+        repo = tmp_path / "repo"
+        (repo / "backend" / "app" / "extensions" / "formula_engine").mkdir(parents=True)
+        start = repo / "skills" / "public" / "water-drainage-report" / "scripts" / "formula_runner.py"
+        start.parent.mkdir(parents=True)
+        start.touch()
+        assert formula_runner._resolve_backend(start.resolve()) == (repo / "backend").resolve()
+
+    def test_container_layout(self, tmp_path):
+        """容器：/app/backend 下直接挂 app/...；脚本在 .deer-flow/skills_view/.../scripts。
+
+        parents[4] 从此处指向 .deer-flow（旧 bug 现场），向上搜索应命中 /app/backend 本身。"""
+        app_backend = tmp_path / "app" / "backend"
+        (app_backend / "app" / "extensions" / "formula_engine").mkdir(parents=True)
+        start = (
+            app_backend
+            / ".deer-flow"
+            / "skills_view"
+            / "public"
+            / "water-drainage-report"
+            / "scripts"
+            / "formula_runner.py"
+        )
+        start.parent.mkdir(parents=True)
+        start.touch()
+        assert formula_runner._resolve_backend(start.resolve()) == app_backend.resolve()
+
+    def test_not_found_raises(self, tmp_path):
+        """上溯链上没有 backend → 明确报错（而非静默 import 失败）。"""
+        start = tmp_path / "scripts" / "formula_runner.py"
+        start.parent.mkdir(parents=True)
+        start.touch()
+        with pytest.raises(RuntimeError):
+            formula_runner._resolve_backend(start.resolve())
