@@ -12,6 +12,7 @@ import {
   querySql,
   resolveSourceId,
   sqlFor,
+  sqlSelfVsOutsource,
 } from "./api";
 import type {
   BidItemRow,
@@ -23,6 +24,7 @@ import type {
   QueryResult,
   SegmentRow,
   SelfRateRow,
+  SelfVsOutsourceRow,
   ShowdownRow,
 } from "./types";
 
@@ -61,6 +63,24 @@ export const useProjectShowdown = (f: FilterState) =>
   useFilteredQuery<ShowdownRow>("showdown", "showdown", f);
 export const useSelfRateDist = (f: FilterState) =>
   useFilteredQuery<SelfRateRow>("selfRate", "selfRate", f);
+
+/** 图B:自产 vs 外购金额(项目/货物视角切换)。模板是 dim 参数化函数,不走 useFilteredQuery。 */
+export function useSelfVsOutsource(
+  filters: FilterState,
+  dim: "project" | "goods",
+) {
+  const sql = sqlSelfVsOutsource(filters, dim);
+  return useQuery({
+    queryKey: ["bqa", "selfVsOutsource", dim, sql] as const,
+    queryFn: async (): Promise<SelfVsOutsourceRow[]> => {
+      const res = await queryFiltered(sql);
+      // QueryResult.rows 默认 Record<string, unknown>[],闭接口无隐式索引签名,须经 unknown 中转
+      return res.rows as unknown as SelfVsOutsourceRow[];
+    },
+    // 切视角/过滤时保留旧数据,避免图表闪空
+    placeholderData: keepPreviousData,
+  });
+}
 
 /** 明细:全量 mock_bid,下钻来源。 */
 export function useBidList(enabled = true) {

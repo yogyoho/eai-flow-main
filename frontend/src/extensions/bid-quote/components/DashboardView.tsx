@@ -26,8 +26,18 @@ import { Button } from "@/components/ui/button";
 import { clearBidQuoteCache } from "@/extensions/bid-quote/api";
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
 import { ChartFilterPopover } from "@/extensions/bid-quote/components/ChartFilterPopover";
+import {
+  AMBER,
+  AXIS,
+  BLUE,
+  CURSOR,
+  GREEN,
+  GRID,
+  RED_55,
+} from "@/extensions/bid-quote/components/chartTheme";
 import { FilterBar } from "@/extensions/bid-quote/components/FilterBar";
 import { SelfRateDistChart } from "@/extensions/bid-quote/components/SelfRateDistChart";
+import { SelfVsOutsourceChart } from "@/extensions/bid-quote/components/SelfVsOutsourceChart";
 import { StatCard } from "@/extensions/bid-quote/components/StatCard";
 import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import {
@@ -42,16 +52,6 @@ import {
   type FilterState,
   matchesSelfAttribute,
 } from "@/extensions/bid-quote/types";
-
-// EAI-CUSTOM: 项目 chart/success/destructive CSS 变量为完整颜色(非 HSL 通道),故图表用字面 hex
-const GRID = "rgba(100,116,139,0.22)";
-const AXIS_FILL = "#94a3b8";
-const AXIS = { fontSize: 11, fill: AXIS_FILL };
-const CURSOR = { fill: "rgba(148,163,184,0.15)" };
-const BLUE = "#3b82f6";
-const AMBER = "#f6bd16";
-const GREEN = "#10b981";
-const RED_55 = "#f43f5e8c"; // destructive @ ~55%
 
 // Decimal/numeric 列经 JSON 序列化为 string;recharts 需 number → 统一转。
 const toNum = (v: string | null): number => (v === null ? 0 : Number(v));
@@ -330,6 +330,9 @@ export function DashboardView() {
 
         {/* 图C:项目整标自产率分布(门槛滑杆 + 达标/未达标 Cell 色) */}
         <SelfRateDistChart filters={filters} />
+
+        {/* 图B:自产 vs 外购金额(项目/货物视角切换) */}
+        <SelfVsOutsourceChart filters={filters} />
       </div>
     </div>
   );

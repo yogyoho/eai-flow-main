@@ -14,6 +14,15 @@ import {
 } from "recharts";
 
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
+import {
+  AMBER,
+  AXIS,
+  CURSOR,
+  GREEN,
+  GRID,
+  THRESHOLD_RED,
+  truncateLabel,
+} from "@/extensions/bid-quote/components/chartTheme";
 import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import { useSelfRateDist } from "@/extensions/bid-quote/hooks";
 import {
@@ -21,15 +30,6 @@ import {
   matchesSelfAttribute,
   type SelfAttribute,
 } from "@/extensions/bid-quote/types";
-
-// EAI-CUSTOM: 同 DashboardView 模块级常量(图C 独立文件,故本地声明保持一致)
-const GRID = "rgba(100,116,139,0.22)";
-const AXIS_FILL = "#94a3b8";
-const AXIS = { fontSize: 11, fill: AXIS_FILL };
-const CURSOR = { fill: "rgba(148,163,184,0.15)" };
-const GREEN = "#10b981"; // 自产率达标(≥ 门槛)
-const AMBER = "#f6bd16"; // 自产率未达门槛
-const THRESHOLD_RED = "#f43f5e"; // 门槛参考线
 
 interface SelfRateDistChartProps {
   filters: FilterState;
@@ -48,14 +48,11 @@ export function SelfRateDistChart({
   const [threshold, setThreshold] = useState(50);
   const q = useSelfRateDist(filters);
 
-  // Decimal 经 JSON 序列化为 string;null(我方无该标)按 0 计
-  // 名称截断:优先按 市/省 断点,无断点(当前 seed 全部如此)退化为纯长度截断
+  // Decimal 经 JSON 序列化为 string;null(我方无该标)按 0 计;名称经共享 truncateLabel 截断
   const data = (q.data ?? [])
     .filter((r) => matchesSelfAttribute(r.self_rate, selfAttribute))
     .map((r) => ({
-      project_name: r.project_name
-        .replace(/.{6,}?[市省]/, (m) => m.slice(0, 4) + "…")
-        .replace(/^(.{4}).{5,}$/, "$1…"),
+      project_name: truncateLabel(r.project_name),
       self_rate: Number(r.self_rate ?? 0),
     }));
 
