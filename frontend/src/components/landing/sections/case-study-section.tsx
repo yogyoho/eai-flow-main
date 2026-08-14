@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
-import { pathOfPublicDemoThread } from "@/core/threads/static-demo";
+import { pathOfThread } from "@/core/threads/utils";
 import { cn } from "@/lib/utils";
 
 import { Section } from "../section";
@@ -50,30 +49,26 @@ export function CaseStudySection({ className }: { className?: string }) {
     <Section
       className={className}
       title="Case Studies"
-      subtitle="See how DeerFlow is used in the wild"
+      subtitle="See how EAIFlow is used in the wild"
     >
-      <div className="container-md mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 md:px-20 lg:grid-cols-3">
+      <div className="container-md mt-8 grid grid-cols-1 gap-4 px-4 md:grid-cols-2 md:px-20 lg:grid-cols-3">
         {caseStudies.map((caseStudy) => (
           <Link
             key={caseStudy.title}
-            href={pathOfPublicDemoThread(caseStudy.threadId)}
+            href={pathOfThread(caseStudy.threadId) + "?mock=true"}
             target="_blank"
             rel="noopener noreferrer"
           >
             <Card className="group/card relative h-64 overflow-hidden">
-              <Image
-                src={`/images/${caseStudy.threadId}.jpg`}
-                alt={`${caseStudy.title} preview`}
-                width={640}
-                height={360}
-                loading="lazy"
-                decoding="async"
-                sizes="(min-width: 1024px) 320px, (min-width: 768px) 50vw, 100vw"
-                className="absolute inset-0 z-0 h-full w-full object-cover transition-all duration-300 group-hover/card:scale-110 group-hover/card:brightness-90"
-              />
+              <div
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-300 group-hover/card:scale-110 group-hover/card:brightness-90"
+                style={{
+                  backgroundImage: `url(/images/${caseStudy.threadId}.jpg)`,
+                }}
+              ></div>
               <div
                 className={cn(
-                  "relative z-10 flex h-full w-full translate-y-[calc(100%-60px)] flex-col items-center",
+                  "flex h-full w-full translate-y-[calc(100%-60px)] flex-col items-center",
                   "transition-all duration-300",
                   "group-hover/card:translate-y-[calc(100%-128px)]",
                 )}
