@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LANGGRAPH_URL = "http://localhost:4024"
 DEFAULT_GATEWAY_URL = "http://localhost:4001"
+# EAI-CUSTOM: ported from upstream bytedance/main so `app/channels/service.py`
+# (adopted in the 2026-08-14 sync) can fall back to the upstream defaults for
+# the per-channel max_concurrency / shutdown_grace_period_seconds settings.
+DEFAULT_CHANNEL_MAX_CONCURRENCY = 5
+DEFAULT_CHANNEL_SHUTDOWN_GRACE_PERIOD_SECONDS = 3.0
 DEFAULT_ASSISTANT_ID = "lead_agent"
 CUSTOM_AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 

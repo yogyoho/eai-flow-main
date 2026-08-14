@@ -29,7 +29,7 @@ dependencies = [
     "wecom-aibot-python-sdk>=0.1.6",
     "dingtalk-stream>=0.24.3",
     # --- EAI-CUSTOM: extra deps for the EAI fork (preserved from local HEAD) ---
-    "langchain-ollama[ollama]>=1.1.0",
+    "langchain-ollama>=1.1.0",
     "bcrypt>=4.2.0",
     "pyjwt>=2.13.0",
     # WeChat message AES + at-rest encryption for persisted channel-connection
