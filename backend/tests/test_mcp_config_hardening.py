@@ -19,11 +19,11 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 
+from app.gateway.deps import require_admin_user
 from app.gateway.routers.mcp import (
     McpConfigUpdateRequest,
     McpServerConfigResponse,
     _allowed_stdio_commands,
-    _require_admin_user,
     _stdio_command_name,
     _validate_mcp_update_request,
 )
@@ -87,7 +87,10 @@ def test_validate_skips_non_stdio_transport():
     _validate_mcp_update_request(req)  # no raise
 
 
-# --- _require_admin_user -----------------------------------------------------
+# --- require_admin_user ------------------------------------------------------
+# EAI-CUSTOM: the actual admin gate is `require_admin_user` from app.gateway.deps
+# (mcp.py calls it on every config-mutating route); the old `_require_admin_user`
+# name never existed. Fixed 2026-08-15 to test the real gate.
 
 def _request_with_user(system_role):
     request = MagicMock()
@@ -96,17 +99,17 @@ def _request_with_user(system_role):
 
 
 def test_require_admin_user_allows_admin():
-    asyncio.run(_require_admin_user(_request_with_user("admin")))  # no raise
+    asyncio.run(require_admin_user(_request_with_user("admin"), detail="x"))  # no raise
 
 
 def test_require_admin_user_rejects_regular_user():
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(_require_admin_user(_request_with_user("user")))
+        asyncio.run(require_admin_user(_request_with_user("user"), detail="x"))
     assert exc.value.status_code == 403
 
 
 def test_require_admin_user_rejects_internal_channel_user():
     # IM-channel internal auth must NOT manage MCP config (admin-only).
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(_require_admin_user(_request_with_user("internal")))
+        asyncio.run(require_admin_user(_request_with_user("internal"), detail="x"))
     assert exc.value.status_code == 403

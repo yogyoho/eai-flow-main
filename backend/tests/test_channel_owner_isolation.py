@@ -19,7 +19,7 @@ from app.channels.message_bus import InboundMessage, MessageBus
 from app.channels.store import ChannelStore
 from app.gateway.internal_auth import (
     INTERNAL_AUTH_HEADER_NAME,
-    INTERNAL_OWNER_HEADER_NAME,
+    INTERNAL_OWNER_USER_ID_HEADER_NAME,
     create_internal_auth_headers,
     get_internal_user,
 )
@@ -66,12 +66,12 @@ def test_make_safe_user_id_rejects_empty() -> None:
 def test_internal_auth_headers_include_owner_when_provided() -> None:
     headers = create_internal_auth_headers(owner_user_id="owner-42")
     assert headers[INTERNAL_AUTH_HEADER_NAME]
-    assert headers[INTERNAL_OWNER_HEADER_NAME] == "owner-42"
+    assert headers[INTERNAL_OWNER_USER_ID_HEADER_NAME] == "owner-42"
 
 
 def test_internal_auth_headers_omit_owner_by_default() -> None:
     headers = create_internal_auth_headers()
-    assert INTERNAL_OWNER_HEADER_NAME not in headers
+    assert INTERNAL_OWNER_USER_ID_HEADER_NAME not in headers
     assert headers[INTERNAL_AUTH_HEADER_NAME]
 
 
@@ -140,7 +140,7 @@ def test_get_client_caches_per_owner_and_passes_owner_header(monkeypatch: pytest
     assert client_a2 is client_a
     # Only two get_client calls (owner-a once, owner-b once).
     assert len(captured) == 2
-    owners = {c["headers"].get(INTERNAL_OWNER_HEADER_NAME) for c in captured}
+    owners = {c["headers"].get(INTERNAL_OWNER_USER_ID_HEADER_NAME) for c in captured}
     assert owners == {"owner-a", "owner-b"}
     # Every client carries the internal token + CSRF double-submit.
     for c in captured:
@@ -161,4 +161,4 @@ def test_get_client_default_owner_has_no_owner_header(monkeypatch: pytest.Monkey
     manager._get_client(None)  # legacy default-user path
 
     assert len(captured) == 1
-    assert INTERNAL_OWNER_HEADER_NAME not in captured[0]
+    assert INTERNAL_OWNER_USER_ID_HEADER_NAME not in captured[0]
