@@ -22,6 +22,7 @@ import type {
   FilterState,
   QueryResult,
   SegmentRow,
+  SelfRateRow,
   ShowdownRow,
 } from "./types";
 
@@ -34,7 +35,7 @@ export const KEYS = {
 /** 过滤驱动的罐装视图查询。filters/chart 变 → SQL 变 → queryKey 变 → 自动重查。 */
 function useFilteredQuery<T>(
   keyBase: string,
-  tplKey: "summary" | "composition" | "segment" | "showdown",
+  tplKey: "summary" | "composition" | "segment" | "showdown" | "selfRate",
   filters: FilterState,
   chart?: ChartFilter,
 ) {
@@ -58,6 +59,8 @@ export const useWinRateBySegment = (f: FilterState) =>
   useFilteredQuery<SegmentRow>("segment", "segment", f);
 export const useProjectShowdown = (f: FilterState) =>
   useFilteredQuery<ShowdownRow>("showdown", "showdown", f);
+export const useSelfRateDist = (f: FilterState) =>
+  useFilteredQuery<SelfRateRow>("selfRate", "selfRate", f);
 
 /** 明细:全量 mock_bid,下钻来源。 */
 export function useBidList(enabled = true) {

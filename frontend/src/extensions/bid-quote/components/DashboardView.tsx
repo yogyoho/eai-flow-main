@@ -27,6 +27,7 @@ import { clearBidQuoteCache } from "@/extensions/bid-quote/api";
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
 import { ChartFilterPopover } from "@/extensions/bid-quote/components/ChartFilterPopover";
 import { FilterBar } from "@/extensions/bid-quote/components/FilterBar";
+import { SelfRateDistChart } from "@/extensions/bid-quote/components/SelfRateDistChart";
 import { StatCard } from "@/extensions/bid-quote/components/StatCard";
 import { TechTooltip } from "@/extensions/bid-quote/components/TechTooltip";
 import {
@@ -326,6 +327,9 @@ export function DashboardView() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+
+        {/* 图C:项目整标自产率分布(门槛滑杆 + 达标/未达标 Cell 色) */}
+        <SelfRateDistChart filters={filters} />
       </div>
     </div>
   );
