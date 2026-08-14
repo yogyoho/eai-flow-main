@@ -161,6 +161,10 @@ services:
       - ../skills:/app/skills
       - ../mcp-server:/app/mcp-server
       - ../contracts:/app/contracts
+      # EAI-CUSTOM: mount project scripts so upstream-added scripts (e.g.
+      # check_agent_guidance.py from the 2026-08-14 sync) are visible to the
+      # gateway container/tests without an image rebuild.
+      - ../scripts:/app/scripts
       - ../logs:/app/logs
       # Use a Docker-managed uv cache volume instead of a host bind mount.
       # On macOS/Docker Desktop, uv may fail to create symlinks inside shared
