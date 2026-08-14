@@ -61,6 +61,7 @@ roles:
     - csp_dept
     - bqa_dept
     - bpp_all
+    - spq_all
     - doc_owner
     - doc_project_member
     is_system: false
@@ -97,6 +98,8 @@ roles:
     - bqa:page:query
     - bpp:page:dashboard
     - bpp:page:query
+    - spq:page:dashboard
+    - spq:page:query
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users
@@ -136,6 +139,7 @@ roles:
     - nav:spare-parts
     - nav:bid-quote
     - nav:biz-pipeline
+    - nav:sales-personnel
     - nav:output
     - nav:app-center
     - nav:settings
@@ -149,6 +153,7 @@ roles:
     - csp_dept
     - bqa_dept
     - bpp_all
+    - spq_all
     - doc_owner
     - doc_project_member
     pages:
@@ -179,6 +184,8 @@ roles:
     - bqa:page:query
     - bpp:page:dashboard
     - bpp:page:query
+    - spq:page:dashboard
+    - spq:page:query
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users

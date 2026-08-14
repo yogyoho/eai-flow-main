@@ -77,6 +77,7 @@ function deriveNavId(path: string): string | null {
   const mapping: Record<string, string> = {
     "bid-quote": "nav:bid-quote",
     "biz-pipeline": "nav:biz-pipeline",
+    "sales-personnel": "nav:sales-personnel",
     "contract-price": "nav:contract-price",
     "knowledge-factory": "nav:knowledge-factory",
     "workflow-admin": "nav:workflow-admin",
