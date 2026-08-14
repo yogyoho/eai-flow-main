@@ -1636,6 +1636,9 @@ async def seed_db() -> None:
                     {"app_id": "bid-quote", "name": "投标报价分析", "desc": "投标中标率/报价对比/自产外购构成分析",
                      "icon": "gavel", "domain": "marketing", "stage": "analysis",
                      "path": "/bid-quote", "license": "bid_quote", "admin": False, "sort": 12, "sort_key": "toubiaobaojiafenxi"},
+                    {"app_id": "biz-pipeline", "name": "管线查询", "desc": "投标/合同/开票管线漏斗与对账",
+                     "icon": "workflow", "domain": "marketing", "stage": "analysis",
+                     "path": "/biz-pipeline", "license": "biz_pipeline", "admin": False, "sort": 13, "sort_key": "guanxianchaxun"},
                     {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
                      "icon": "settings-2", "domain": "admin", "stage": "manage",
                      "path": "/admin", "license": "platform", "admin": True, "sort": 9, "sort_key": "xitongguanli"},
@@ -1658,7 +1661,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 6 domains + 12 apps")
+                logger.info("Seeded app-center: 6 domains + 13 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 

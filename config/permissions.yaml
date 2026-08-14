@@ -187,6 +187,17 @@ modules:
       - { id: "bqa_all", display_name: "全部投标数据", rule_template: {} }
       - { id: "bqa_dept", display_name: "本部门投标", rule_template: { dept_id IN: "$identity.dept_ids" } }
 
+  biz_pipeline:
+    display_name: "管线查询"
+    nav_id: "nav:biz-pipeline"
+    pages:
+      - id: "bpp:page:dashboard"
+        display_name: "管线仪表盘"
+      - id: "bpp:page:query"
+        display_name: "数据查询"
+    data_scopes:
+      - { id: "bpp_all", display_name: "全部管线数据", rule_template: {} }
+
   # ─── 报告输出（应用中心 → 报告输出）───
   output:
     display_name: "报告输出"
@@ -316,7 +327,7 @@ roles:
     # EAI-CUSTOM (bug-1135): +knowledge_public — 公开库是部门可见的超集（私有<部门<公开），
     # 凡持有 knowledge_dept 的角色亦应可见公开库；M1 只补了 user 角色遗漏了继承链。
     # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
-    data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "project_member", "doc_owner", "doc_project_member"]
+    data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "bpp_all", "project_member", "doc_owner", "doc_project_member"]
 
   project_manager:
     display_name: "项目经理"
@@ -349,7 +360,7 @@ roles:
       - user:read
     # EAI-CUSTOM (bug-1135): +knowledge_public（同 dept_head，公开库是部门可见超集）
     # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
-    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "doc_owner", "doc_project_member"]
+    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "bpp_all", "doc_owner", "doc_project_member"]
 
   writer:
     display_name: "撰写人"

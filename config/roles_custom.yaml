@@ -60,6 +60,7 @@ roles:
     - cpa_dept
     - csp_dept
     - bqa_dept
+    - bpp_all
     - doc_owner
     - doc_project_member
     is_system: false
@@ -94,6 +95,8 @@ roles:
     - csp:page:settings
     - bqa:page:dashboard
     - bqa:page:query
+    - bpp:page:dashboard
+    - bpp:page:query
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users
@@ -132,6 +135,7 @@ roles:
     - nav:contract-price
     - nav:spare-parts
     - nav:bid-quote
+    - nav:biz-pipeline
     - nav:output
     - nav:app-center
     - nav:settings
@@ -144,6 +148,7 @@ roles:
     - cpa_dept
     - csp_dept
     - bqa_dept
+    - bpp_all
     - doc_owner
     - doc_project_member
     pages:
@@ -172,6 +177,8 @@ roles:
     - csp:page:settings
     - bqa:page:dashboard
     - bqa:page:query
+    - bpp:page:dashboard
+    - bpp:page:query
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users
