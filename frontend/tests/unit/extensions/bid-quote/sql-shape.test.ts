@@ -25,6 +25,8 @@ describe("三问框架新图 SQL 形状(2026-08-15)", () => {
   it("sqlTrend: 按季度 date_trunc + 我方/友商双率", () => {
     const sql = sqlTrend(f);
     expect(sql).toContain("date_trunc('quarter'");
+    // 季度标签在 SQL 侧 to_char 出 "23Q1":timestamptz 序列化为 UTC 串,前端 new Date 取 UTC 会整体错一季
+    expect(sql).toContain(`to_char(qtr, 'YY"Q"Q')`);
     expect(sql).toContain("bidder_role='ours'");
     expect(sql).toContain("bidder_role='competitor'");
   });
@@ -73,6 +75,8 @@ describe("三问框架新图 SQL 形状(2026-08-15)", () => {
     expect(sql).toContain("东方''宏业"); // esc 转义,防注入/防语法错误
     expect(sql).toContain("HAVING BOOL_OR(bidder_role='ours')");
     expect(sql).toContain("EXTRACT(YEAR");
+    // CTE 不能叫 both——PG 保留字(TRIM(BOTH…)),运行期 PostgresSyntaxError(bug-1211)
+    expect(sql).toContain("both_in AS (");
   });
 
   it("sqlShareStack: 只统计中标金额,按年", () => {

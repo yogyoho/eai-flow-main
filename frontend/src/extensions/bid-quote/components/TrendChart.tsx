@@ -25,6 +25,7 @@ import type { FilterState } from "@/extensions/bid-quote/types";
 
 /** qtr(时间戳 ISO 串)→ "25Q1" 短标签;解析失败原样返回。 */
 function qtrLabel(qtr: string): string {
+  // SQL 已用 to_char 出 "23Q1" 标签;此处仅兜底解析失败原样返回
   const d = new Date(qtr);
   if (Number.isNaN(d.getTime())) return qtr;
   const q = Math.floor(d.getUTCMonth() / 3) + 1;

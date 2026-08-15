@@ -69,7 +69,7 @@ export function PremiumCurveChart({ filters }: { filters: FilterState }) {
   return (
     <ChartCard
       title="胜率 – 溢价曲线"
-      meta="我方报价相对该项目中标价的溢价率 · 全部投标"
+      meta="我方报价相对该项目友商最低价的溢价率 · 我方全部投标"
     >
       <ResponsiveContainer width="100%" height={215}>
         <BarChart

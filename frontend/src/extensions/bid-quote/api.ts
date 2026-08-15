@@ -244,7 +244,7 @@ export function sqlSelfVsOutsource(
 export function sqlTrend(g: FilterState): string {
   return `WITH base AS (SELECT bidder_role, won, bid_date FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
 q AS (SELECT date_trunc('quarter', bid_date) AS qtr, bidder_role, won FROM base)
-SELECT qtr,
+SELECT to_char(qtr, 'YY"Q"Q') AS qtr, -- timestamptz 序列化为 UTC 串,前端 new Date 再取 UTC 会整体错一季,直接在 SQL 出标签
   ROUND(100.0 * COUNT(*) FILTER (WHERE bidder_role='ours' AND won) / NULLIF(COUNT(*) FILTER (WHERE bidder_role='ours'), 0), 1) AS ours_rate,
   ROUND(100.0 * COUNT(*) FILTER (WHERE bidder_role='competitor' AND won) / NULLIF(COUNT(*) FILTER (WHERE bidder_role='competitor'), 0), 1) AS comp_rate
 FROM q GROUP BY qtr ORDER BY qtr`;
@@ -318,14 +318,14 @@ GROUP BY b.bidder_name, i.goods_name`;
 export function sqlHead2Head(g: FilterState, competitor: string): string {
   const c = esc(competitor);
   return `WITH base AS (SELECT * FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
-both AS (SELECT project_name FROM base
+both_in AS (SELECT project_name FROM base
   WHERE (bidder_role='ours' OR bidder_name='${c}')
   GROUP BY project_name
   HAVING BOOL_OR(bidder_role='ours') AND BOOL_OR(bidder_name='${c}')),
 pair AS (SELECT b.project_name,
     BOOL_OR(b.bidder_role='ours' AND b.won) AS ours_won,
     BOOL_OR(b.bidder_name='${c}' AND b.won) AS comp_won
-  FROM base b JOIN both ON both.project_name = b.project_name
+  FROM base b JOIN both_in ON both_in.project_name = b.project_name
   WHERE b.bidder_role='ours' OR b.bidder_name='${c}'
   GROUP BY b.project_name),
 d AS (SELECT project_name, MIN(bid_date) AS bid_date FROM base GROUP BY project_name)
